@@ -50,24 +50,25 @@ model Organization {
 }
 
 model User {
-  id             String     @id @default(uuid()) @db.Uuid
-  organizationId String     @map("organization_id") @db.Uuid
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
   email          String
-  passwordHash   String     @map("password_hash")
-  firstName      String     @map("first_name")
-  lastName       String     @map("last_name")
-  middleName     String?    @map("middle_name")
+  passwordHash   String      @map("password_hash")
+  firstName      String      @map("first_name")
+  lastName       String      @map("last_name")
+  middleName     String?     @map("middle_name")
   phone          String?
-  status         UserStatus @default(active)
-  locale         String     @default("ru")
-  timezone       String     @default("Asia/Almaty")
-  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz
+  status         UserStatus  @default(active)
+  locale         String      @default("ru")
+  timezone       String      @default("Asia/Almaty")
+  lastLoginAt    DateTime?   @map("last_login_at") @db.Timestamptz
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  memberships  Membership[]
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships         Membership[] @relation("UserMemberships")
+  assignedMemberships Membership[] @relation("MembershipAssignedBy")
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -83,11 +84,13 @@ model Membership {
   assignedBy     String?  @map("assigned_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  assignedByUser User?        @relation("MembershipAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, userId, role])
   @@index([organizationId, role])
   @@index([userId])
+  @@index([assignedBy])
   @@map("memberships")
 }
