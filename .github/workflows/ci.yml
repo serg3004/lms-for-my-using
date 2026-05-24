@@ -34,7 +34,7 @@ jobs:
         run: pnpm --filter @lms/api prisma:generate
 
       - name: Typecheck
-        run: pnpm typecheck
+        run: pnpm --recursive typecheck
 
       - name: Build
-        run: pnpm build
+        run: pnpm --recursive build
