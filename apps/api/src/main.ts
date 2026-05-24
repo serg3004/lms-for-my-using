@@ -2,16 +2,15 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module.js';
-
-const DEFAULT_API_PORT = 3000;
+import { loadApiEnv } from './config/env.js';
 
 async function bootstrap(): Promise<void> {
+  const apiEnv = loadApiEnv();
   const app = await NestFactory.create(AppModule);
-  const port = Number(process.env.API_PORT ?? DEFAULT_API_PORT);
 
   app.setGlobalPrefix('api/v1');
 
-  await app.listen(port);
+  await app.listen(apiEnv.API_PORT);
 }
 
 void bootstrap();
