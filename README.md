@@ -13,6 +13,8 @@ Created so far:
 - backend skeleton in `apps/api`
 - frontend skeleton with i18n in `apps/web`
 - shared package in `packages/shared`
+- Prisma / database foundation
+- GitHub Actions CI
 
 ## Tech stack
 
@@ -79,24 +81,44 @@ zh
 
 Frontend UI text must use translation keys instead of hardcoded strings.
 
+## Current CI baseline
+
+GitHub Actions CI is configured in:
+
+```text
+.github/workflows/ci.yml
+```
+
+Current CI runs:
+
+```text
+pnpm install --no-frozen-lockfile
+pnpm --filter @lms/api prisma:generate
+pnpm --recursive typecheck
+pnpm --recursive build
+```
+
+`pnpm-lock.yaml` is not committed yet, so CI uses `--no-frozen-lockfile`.
+
 ## Planned next steps
 
-1. Prisma / database foundation.
-2. Local Docker services for PostgreSQL and MinIO.
-3. API module implementation.
-4. Frontend routing and layout.
-5. Auth foundation.
-6. Testing and CI setup.
+1. Sync documentation with current repo state.
+2. Add `pnpm-lock.yaml` and switch CI to `--frozen-lockfile`.
+3. Check and fix root tool dependencies such as `turbo`.
+4. Create initial Prisma migration.
+5. Local Docker services for PostgreSQL and MinIO.
+6. API module implementation.
+7. Frontend routing and layout.
+8. Auth foundation.
 
 ## Checks
 
-Automated checks are not configured yet.
-
-Current check status:
+Current automated CI status:
 
 ```text
+[Check] Prisma generate: OK
+[Check] Types: OK
+[Check] Build: OK
 [Check] Lint: not run
-[Check] Types: not run
 [Check] Tests: not run
-[Check] Build: not run
 ```
