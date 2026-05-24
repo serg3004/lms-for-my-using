@@ -223,6 +223,31 @@ foreign keys
 
 No database migration was applied to any real database.
 
+### Local Docker services
+
+Added local Docker services:
+
+```text
+infra/docker/docker-compose.yml
+```
+
+Services:
+
+```text
+PostgreSQL 16 Alpine
+MinIO
+```
+
+Ports:
+
+```text
+PostgreSQL: 5432
+MinIO API: 9000
+MinIO Console: 9001
+```
+
+Values match `.env.example`.
+
 ## Current next step
 
-Add local Docker services for PostgreSQL and MinIO.
+Start API module implementation.
