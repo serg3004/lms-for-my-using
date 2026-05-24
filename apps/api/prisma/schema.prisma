@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  invited
+  suspended
+  archived
+}
+
+enum OrganizationStatus {
+  active
+  suspended
+  archived
+}
+
+enum OrganizationPlan {
+  trial
+  standard
+  enterprise
+}
+
+enum UserRole {
+  learner
+  instructor
+  manager
+  admin
+}
+
+model Organization {
+  id        String             @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String             @unique
+  status    OrganizationStatus @default(active)
+  plan      OrganizationPlan   @default(trial)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime?          @map("deleted_at") @db.Timestamptz
+
+  users       User[]
+  memberships Membership[]
+
+  @@map("organizations")
+}
+
+model User {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  email          String
+  passwordHash   String     @map("password_hash")
+  firstName      String     @map("first_name")
+  lastName       String     @map("last_name")
+  middleName     String?    @map("middle_name")
+  phone          String?
+  status         UserStatus @default(active)
+  locale         String     @default("ru")
+  timezone       String     @default("Asia/Almaty")
+  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships  Membership[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, status])
+  @@index([lastLoginAt])
+  @@map("users")
+}
+
+model Membership {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  role           UserRole
+  assignedBy     String?  @map("assigned_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, role])
+  @@index([organizationId, role])
+  @@index([userId])
+  @@map("memberships")
+}
