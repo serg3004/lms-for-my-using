@@ -18,6 +18,7 @@ Created so far:
 - GitHub Actions CI
 - committed `pnpm-lock.yaml`
 - root `turbo` dev dependency
+- local Docker services for PostgreSQL and MinIO
 
 ## Tech stack
 
@@ -27,9 +28,10 @@ Created so far:
 - Turbo
 - NestJS for API
 - React + Vite for web
-- Prisma + PostgreSQL planned
+- Prisma + PostgreSQL
 - Zod for runtime validation
 - i18next / react-i18next for frontend i18n
+- MinIO for local S3-compatible storage
 
 ## Repository structure
 
@@ -120,13 +122,30 @@ apps/api/prisma/migrations/migration_lock.toml
 
 No database migration has been applied to any real database yet.
 
+## Local Docker services
+
+Local development services are configured in:
+
+```text
+infra/docker/docker-compose.yml
+```
+
+Services:
+
+```text
+PostgreSQL: localhost:5432
+MinIO API: localhost:9000
+MinIO Console: localhost:9001
+```
+
+Values match `.env.example`.
+
 ## Planned next steps
 
-1. Local Docker services for PostgreSQL and MinIO.
-2. API module implementation.
-3. Frontend routing and layout.
-4. Auth foundation.
-5. Add lint/test CI steps when the project has stable lint/test coverage.
+1. API module implementation.
+2. Frontend routing and layout.
+3. Auth foundation.
+4. Add lint/test CI steps when the project has stable lint/test coverage.
 
 ## Checks
 
