@@ -131,6 +131,51 @@ UserRole
 
 No database migration was created or applied in this step.
 
+### GitHub Actions CI
+
+Added initial GitHub Actions CI workflow:
+
+```text
+.github/workflows/ci.yml
+```
+
+Current CI runs:
+
+```text
+pnpm install --no-frozen-lockfile
+pnpm --filter @lms/api prisma:generate
+pnpm --recursive typecheck
+pnpm --recursive build
+```
+
+Also fixed the shared package build script:
+
+```text
+packages/shared/package.json
+```
+
+Changed:
+
+```text
+tsc -p itsconfig.json
+```
+
+to:
+
+```text
+tsc -p tsconfig.json
+```
+
+CI result after this step:
+
+```text
+[Check] Prisma generate: OK
+[Check] Types: OK
+[Check] Build: OK
+[Check] Lint: not run
+[Check] Tests: not run
+```
+
 ## Current next step
 
-Local dependency install and verification.
+Add `pnpm-lock.yaml` in a separate PR, then switch CI install from `--no-frozen-lockfile` to `--frozen-lockfile`.
