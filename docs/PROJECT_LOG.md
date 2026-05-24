@@ -129,11 +129,9 @@ OrganizationPlan
 UserRole
 ```
 
-No database migration was created or applied in this step.
-
 ### GitHub Actions CI
 
-Added initial GitHub Actions CI workflow:
+Added GitHub Actions CI workflow:
 
 ```text
 .github/workflows/ci.yml
@@ -142,13 +140,25 @@ Added initial GitHub Actions CI workflow:
 Current CI runs:
 
 ```text
-pnpm install --no-frozen-lockfile
+pnpm install --frozen-lockfile
 pnpm --filter @lms/api prisma:generate
 pnpm --recursive typecheck
 pnpm --recursive build
 ```
 
-Also fixed the shared package build script:
+CI result:
+
+```text
+[Check] Prisma generate: OK
+[Check] Types: OK
+[Check] Build: OK
+[Check] Lint: not run
+[Check] Tests: not run
+```
+
+### Shared package build script fix
+
+Fixed shared package build script:
 
 ```text
 packages/shared/package.json
@@ -166,16 +176,53 @@ to:
 tsc -p tsconfig.json
 ```
 
-CI result after this step:
+### pnpm lockfile
+
+Added committed lockfile:
 
 ```text
-[Check] Prisma generate: OK
-[Check] Types: OK
-[Check] Build: OK
-[Check] Lint: not run
-[Check] Tests: not run
+pnpm-lock.yaml
 ```
+
+CI now uses:
+
+```text
+pnpm install --frozen-lockfile
+```
+
+### Turbo dependency
+
+Added missing root `turbo` dev dependency:
+
+```text
+package.json
+pnpm-lock.yaml
+```
+
+Root scripts now have a declared `turbo` dependency.
+
+### Initial Prisma migration
+
+Added first Prisma migration:
+
+```text
+apps/api/prisma/migrations/20260524115000_init/migration.sql
+apps/api/prisma/migrations/migration_lock.toml
+```
+
+Migration contains SQL for:
+
+```text
+organizations
+users
+memberships
+enums
+indexes
+foreign keys
+```
+
+No database migration was applied to any real database.
 
 ## Current next step
 
-Add `pnpm-lock.yaml` in a separate PR, then switch CI install from `--no-frozen-lockfile` to `--frozen-lockfile`.
+Add local Docker services for PostgreSQL and MinIO.

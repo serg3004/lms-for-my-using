@@ -14,7 +14,10 @@ Created so far:
 - frontend skeleton with i18n in `apps/web`
 - shared package in `packages/shared`
 - Prisma / database foundation
+- initial Prisma migration
 - GitHub Actions CI
+- committed `pnpm-lock.yaml`
+- root `turbo` dev dependency
 
 ## Tech stack
 
@@ -92,24 +95,38 @@ GitHub Actions CI is configured in:
 Current CI runs:
 
 ```text
-pnpm install --no-frozen-lockfile
+pnpm install --frozen-lockfile
 pnpm --filter @lms/api prisma:generate
 pnpm --recursive typecheck
 pnpm --recursive build
 ```
 
-`pnpm-lock.yaml` is not committed yet, so CI uses `--no-frozen-lockfile`.
+`pnpm-lock.yaml` is committed.
+
+## Current Prisma baseline
+
+Prisma schema is defined in:
+
+```text
+apps/api/prisma/schema.prisma
+```
+
+Initial migration is committed:
+
+```text
+apps/api/prisma/migrations/20260524115000_init/migration.sql
+apps/api/prisma/migrations/migration_lock.toml
+```
+
+No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Sync documentation with current repo state.
-2. Add `pnpm-lock.yaml` and switch CI to `--frozen-lockfile`.
-3. Check and fix root tool dependencies such as `turbo`.
-4. Create initial Prisma migration.
-5. Local Docker services for PostgreSQL and MinIO.
-6. API module implementation.
-7. Frontend routing and layout.
-8. Auth foundation.
+1. Local Docker services for PostgreSQL and MinIO.
+2. API module implementation.
+3. Frontend routing and layout.
+4. Auth foundation.
+5. Add lint/test CI steps when the project has stable lint/test coverage.
 
 ## Checks
 
