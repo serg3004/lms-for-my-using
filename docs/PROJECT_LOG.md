@@ -102,6 +102,35 @@ Zod: paginationQuerySchema
 types: ApiError, ApiErrorResponse, PaginatedResponse
 ```
 
+### Prisma / database foundation
+
+Added initial Prisma foundation:
+
+```text
+apps/api/prisma/schema.prisma
+apps/api/src/database/database.module.ts
+apps/api/src/database/prisma.service.ts
+```
+
+Initial models:
+
+```text
+Organization
+User
+Membership
+```
+
+Initial enums:
+
+```text
+UserStatus
+OrganizationStatus
+OrganizationPlan
+UserRole
+```
+
+No database migration was created or applied in this step.
+
 ## Current next step
 
-Prisma / database foundation.
+Local dependency install and verification.
