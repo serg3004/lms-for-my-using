@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
+import { AuthGuard } from '../auth/auth.guard.js';
 import {
   CreateOrganizationInput,
   createOrganizationSchema,
@@ -11,11 +12,13 @@ export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Get()
+  @UseGuards(AuthGuard)
   listOrganizations() {
     return this.organizationsService.listOrganizations();
   }
 
   @Get(':id')
+  @UseGuards(AuthGuard)
   getOrganization(@Param('id') organizationId: string) {
     return this.organizationsService.getOrganization(organizationId);
   }
