@@ -11,6 +11,8 @@ const userSelect = {
   firstName: true,
   lastName: true,
   middleName: true,
+  position: true,
+  shift: true,
   phone: true,
   status: true,
   locale: true,

@@ -47,3 +47,18 @@
 [2026-05-25T09:30:09Z] CHANGE: added scrypt password hashing and verification, changed user creation input from passwordHash to password, and validates login password
 [2026-05-25T09:30:10Z] CHECK: GitHub Actions pending
 [2026-05-25T09:30:11Z] ROLLBACK: revert PR #27 or delete branch feature/password-hashing-flow
+
+[2026-05-25T11:00:00Z] BRANCH: feature/user-position-shift
+[2026-05-25T11:00:01Z] TASK: add optional user position and shift fields
+[2026-05-25T11:00:02Z] FILE: apps/api/prisma/schema.prisma
+[2026-05-25T11:00:03Z] FILE: apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
+[2026-05-25T11:00:04Z] FILE: apps/api/src/modules/users/users.schemas.ts
+[2026-05-25T11:00:05Z] FILE: apps/api/src/modules/users/users.service.ts
+[2026-05-25T11:00:06Z] FILE: apps/api/src/modules/auth/auth.schemas.ts
+[2026-05-25T11:00:07Z] FILE: apps/api/src/modules/auth/auth.service.ts
+[2026-05-25T11:00:08Z] FILE: apps/api/src/modules/users/users.service.spec.ts
+[2026-05-25T11:00:09Z] FILE: apps/api/src/modules/auth/auth.service.spec.ts
+[2026-05-25T11:00:10Z] FILE: docs/API_STATUS.md
+[2026-05-25T11:00:11Z] CHANGE: added nullable user position and shift fields to Prisma model, Users API response, Auth current user shape, validation, and tests
+[2026-05-25T11:00:12Z] CHECK: GitHub Actions pending
+[2026-05-25T11:00:13Z] ROLLBACK: revert PR #28 or delete branch feature/user-position-shift

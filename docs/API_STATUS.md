@@ -24,6 +24,7 @@ Source branch: `main`
   - `POST /api/v1/users`
   - accepts plaintext `password` input
   - stores only `passwordHash`
+  - supports optional `position` and `shift`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
@@ -39,6 +40,7 @@ Source branch: `main`
   - current user response shape
   - active user lookup by organization and email
   - password verification flow
+  - includes optional `position` and `shift` in current user shape
   - no password hash returned
   - basic validation tests
 - Password hashing flow:

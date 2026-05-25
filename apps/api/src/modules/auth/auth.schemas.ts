@@ -13,6 +13,8 @@ export const currentUserSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   middleName: z.string().nullable(),
+  position: z.string().nullable(),
+  shift: z.string().nullable(),
   phone: z.string().nullable(),
   status: z.enum(['active', 'invited', 'suspended', 'archived']),
   locale: z.string(),
