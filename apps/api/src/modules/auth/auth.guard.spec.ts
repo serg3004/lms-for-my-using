@@ -1,5 +1,4 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
-import { jest } from '@jest/globals';
 
 import { AuthGuard, AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
@@ -29,8 +28,13 @@ function createContext(request: AuthenticatedRequest) {
 
 describe('AuthGuard', () => {
   it('attaches current user for a valid bearer token', async () => {
+    const tokens: string[] = [];
     const authService = {
-      getCurrentUser: jest.fn().mockResolvedValue(currentUser),
+      getCurrentUser: async (token: string) => {
+        tokens.push(token);
+
+        return currentUser;
+      },
     } as unknown as AuthService;
     const request: AuthenticatedRequest = {
       headers: { authorization: 'Bearer token' },
@@ -39,13 +43,13 @@ describe('AuthGuard', () => {
     const result = await new AuthGuard(authService).canActivate(createContext(request));
 
     expect(result).toBe(true);
-    expect(authService.getCurrentUser).toHaveBeenCalledWith('token');
+    expect(tokens).toEqual(['token']);
     expect(request.currentUser).toBe(currentUser);
   });
 
   it('rejects requests without bearer token', async () => {
     const authService = {
-      getCurrentUser: jest.fn(),
+      getCurrentUser: async () => currentUser,
     } as unknown as AuthService;
     const request: AuthenticatedRequest = { headers: {} };
 
