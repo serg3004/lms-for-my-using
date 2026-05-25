@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-const jwtAlg= 'HS256';
+const jwtAlg = 'HS256';
 const jwtType = 'JWT';
 const jwtSecretMinLength = 32;
 const defaultTokenExpiresInSeconds = 60 * 60;
@@ -52,7 +52,13 @@ function isJwtClaims(value: unknown): value is JwtClaims {
 
   const claims = value as Record<string, unknown>;
 
-  return typeof claims.sub === 'string' && typeof claims.organizationId === 'string' && typeof claims.email === 'string' && typeof claims.iat === 'number' && typeof claims.exp === 'number';
+  return (
+    typeof claims.sub === 'string' &&
+    typeof claims.organizationId === 'string' &&
+    typeof claims.email === 'string' &&
+    typeof claims.iat === 'number' &&
+    typeof claims.exp === 'number'
+  );
 }
 
 export function signJwt(payload: JwtSignPayload, secret = getJwtSecret()) {
@@ -78,7 +84,7 @@ export function verifyJwt(token: string, secret = getJwtSecret()) {
 
   const claims: unknown = JSON.parse(base64UrlDecode(body));
 
-  if (!isJwtClaims(claims) {
+  if (!isJwtClaims(claims)) {
     throw new Error('Invalid JWT claims');
   }
 
