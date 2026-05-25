@@ -11,9 +11,11 @@ import { AuthService } from './auth.service.js';
 const bearerPrefix = 'Bearer ';
 
 export type AuthenticatedRequest = {
+  body?: Record<string, unknown>;
   headers: {
     authorization?: string | string[];
   };
+  params?: Record<string, string | undefined>;
   currentUser?: CurrentUser;
 };
 
