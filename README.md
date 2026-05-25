@@ -21,7 +21,75 @@ Created so far:
 - local Docker services for PostgreSQL and MinIO
 - ESLint flat config
 - safe baseline test scripts
-- CI lint and test checks
+- CI lint, Prisma generate, typecheck, tests, and build checks
+- Health API
+- Organizations API
+- Users API
+- Memberships / roles API
+- Auth foundation
+- password hashing flow
+- JWT login and current user API
+- reusable `AuthGuard`
+- reusable `RolesGuard`
+- reusable `OrganizationScopeGuard`
+- RBAC policy map for current backend endpoints
+- organization-scoped reads for current backend endpoints
+
+## Implemented backend API
+
+```text
+GET  /api/v1/health
+
+GET  /api/v1/organizations
+GET  /api/v1/organizations/:id
+POST /api/v1/organizations
+
+GET  /api/v1/users
+GET  /api/v1/users/:id
+POST /api/v1/users
+
+GET  /api/v1/memberships
+GET  /api/v1/memberships/:id
+POST /api/v1/memberships
+
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+## Current backend security status
+
+```text
+Auth:
+- JWT login/current user is implemented.
+- JWT uses an internal Node crypto HS256 helper.
+- JWT_SECRET must be at least 32 characters.
+- passwordHash is not returned from auth responses.
+
+RBAC:
+- roles are checked through Membership records.
+- current role enum: learner, instructor, manager, admin.
+- organizations read: admin
+- users read: admin, manager
+- memberships read: admin, manager
+- memberships create: admin
+
+Organization scope:
+- organization, user, and membership reads are scoped to current user organization.
+- POST /api/v1/memberships requires body.organizationId to match current user organization.
+```
+
+## Current backend limitations
+
+```text
+POST /api/v1/organizations and POST /api/v1/users remain public until bootstrap/admin registration flow is defined.
+
+Instructor and learner roles are defined but will be enforced on Courses, Assignments, Progress, Knowledge Base, Reports, and Certificates APIs when those modules exist.
+
+OpenAPI is not implemented yet.
+Centralized API error format is not implemented yet.
+Integration tests are not implemented yet.
+The internal JWT helper can later be replaced by a maintained JWT library when dependency and lockfile updates are safe.
+```
 
 ## Tech stack
 
@@ -67,6 +135,7 @@ docs/MVP_SCOPE_LOCK.md
 docs/TODO_VERIFY.md
 docs/I18N_GUIDE.md
 docs/PROJECT_LOG.md
+docs/API_STATUS.md
 docs/master-context/
 ```
 
@@ -135,6 +204,12 @@ apps/api/prisma/migrations/20260524115000_init/migration.sql
 apps/api/prisma/migrations/migration_lock.toml
 ```
 
+User position/shift migration is committed:
+
+```text
+apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
+```
+
 No database migration has been applied to any real database yet.
 
 ## Local Docker services
@@ -157,9 +232,12 @@ Values match `.env.example`.
 
 ## Planned next steps
 
-1. API module implementation.
-2. Frontend routing and layout.
-3. Auth foundation.
+1. Groups API.
+2. Courses API skeleton.
+3. Extend RBAC policies as new LMS modules are implemented.
+4. OpenAPI.
+5. Centralized API error format.
+6. Integration tests.
 
 ## Checks
 

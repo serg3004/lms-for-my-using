@@ -1,64 +1,90 @@
 [2026-05-25T06:30:00Z] BRANCH: feature/users-api
 [2026-05-25T06:30:01Z] TASK: implement initial Users API module
-[2026-05-25T06:30:02Z] FILE: apps/api/src/app.module.ts
-[2026-05-25T06:30:03Z] FILE: apps/api/src/modules/users/users.controller.ts
-[2026-05-25T06:30:04Z] FILE: apps/api/src/modules/users/users.module.ts
-[2026-05-25T06:30:05Z] FILE: apps/api/src/modules/users/users.schemas.ts
-[2026-05-25T06:30:06Z] FILE: apps/api/src/modules/users/users.service.ts
-[2026-05-25T06:30:07Z] FILE: apps/api/src/modules/users/users.service.spec.ts
-[2026-05-25T06:30:08Z] FILE: docs/API_STATUS.md
-[2026-05-25T06:30:09Z] CHANGE: added list, get by id, and create user API handlers with Zod validation and Prisma access
-[2026-05-25T06:30:10Z] ROLLBACK: revert PR #24 or delete branch feature/users-api
+[2026-05-25T06:30:02Z] CHANGE: added list, get by id, and create user API handlers with Zod validation and Prisma access
+[2026-05-25T06:30:03Z] PR: #24 merged
 
 [2026-05-25T07:00:00Z] BRANCH: feature/memberships-api
 [2026-05-25T07:00:01Z] TASK: implement initial Memberships / roles API module
-[2026-05-25T07:00:02Z] FILE: apps/api/src/app.module.ts
-[2026-05-25T07:00:03Z] FILE: apps/api/src/modules/memberships/memberships.controller.ts
-[2026-05-25T07:00:04Z] FILE: apps/api/src/modules/memberships/memberships.module.ts
-[2026-05-25T07:00:05Z] FILE: apps/api/src/modules/memberships/memberships.schemas.ts
-[2026-05-25T07:00:06Z] FILE: apps/api/src/modules/memberships/memberships.service.ts
-[2026-05-25T07:00:07Z] FILE: apps/api/src/modules/memberships/memberships.service.spec.ts
-[2026-05-25T07:00:08Z] FILE: docs/API_STATUS.md
-[2026-05-25T07:00:09Z] CHANGE: added list, get by id, and create membership role API handlers with Zod validation and Prisma access
-[2026-05-25T07:00:10Z] CHECK: GitHub Actions pending
-[2026-05-25T07:00:11Z] ROLLBACK: revert PR #25 or delete branch feature/memberships-api
+[2026-05-25T07:00:02Z] CHANGE: added list, get by id, and create membership role API handlers with Zod validation and Prisma access
+[2026-05-25T07:00:03Z] PR: #25 merged
 
 [2026-05-25T09:00:00Z] BRANCH: feature/auth-foundation
 [2026-05-25T09:00:01Z] TASK: implement Auth foundation module
-[2026-05-25T09:00:02Z] FILE: apps/api/src/app.module.ts
-[2026-05-25T09:00:03Z] FILE: apps/api/src/modules/auth/auth.module.ts
-[2026-05-25T09:00:04Z] FILE: apps/api/src/modules/auth/auth.schemas.ts
-[2026-05-25T09:00:05Z] FILE: apps/api/src/modules/auth/auth.service.ts
-[2026-05-25T09:00:06Z] FILE: apps/api/src/modules/auth/auth.service.spec.ts
-[2026-05-25T09:00:07Z] FILE: docs/API_STATUS.md
-[2026-05-25T09:00:08Z] CHANGE: added login validation, current user shape, and active user lookup without returning password hash
-[2026-05-25T09:00:09Z] CHECK: GitHub Actions pending
-[2026-05-25T09:00:10Z] ROLLBACK: revert PR #26 or delete branch feature/auth-foundation
+[2026-05-25T09:00:02Z] CHANGE: added login validation, current user shape, active user lookup, and password hash exclusion from responses
+[2026-05-25T09:00:03Z] PR: #26 merged
 
 [2026-05-25T09:30:00Z] BRANCH: feature/password-hashing-flow
 [2026-05-25T09:30:01Z] TASK: implement Password hashing flow
-[2026-05-25T09:30:02Z] FILE: apps/api/src/modules/auth/passwords.ts
-[2026-05-25T09:30:03Z] FILE: apps/api/src/modules/auth/passwords.spec.ts
-[2026-05-25T09:30:04Z] FILE: apps/api/src/modules/auth/auth.service.ts
-[2026-05-25T09:30:05Z] FILE: apps/api/src/modules/users/users.schemas.ts
-[2026-05-25T09:30:06Z] FILE: apps/api/src/modules/users/users.service.ts
-[2026-05-25T09:30:07Z] FILE: apps/api/src/modules/users/users.service.spec.ts
-[2026-05-25T09:30:08Z] FILE: docs/API_STATUS.md
-[2026-05-25T09:30:09Z] CHANGE: added scrypt password hashing and verification, changed user creation input from passwordHash to password, and validates login password
-[2026-05-25T09:30:10Z] CHECK: GitHub Actions pending
-[2026-05-25T09:30:11Z] ROLLBACK: revert PR #27 or delete branch feature/password-hashing-flow
+[2026-05-25T09:30:02Z] CHANGE: added scrypt password hashing and verification, user plaintext password input, and login password validation
+[2026-05-25T09:30:03Z] PR: #27 merged
 
 [2026-05-25T11:00:00Z] BRANCH: feature/user-position-shift
 [2026-05-25T11:00:01Z] TASK: add optional user position and shift fields
-[2026-05-25T11:00:02Z] FILE: apps/api/prisma/schema.prisma
-[2026-05-25T11:00:03Z] FILE: apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
-[2026-05-25T11:00:04Z] FILE: apps/api/src/modules/users/users.schemas.ts
-[2026-05-25T11:00:05Z] FILE: apps/api/src/modules/users/users.service.ts
-[2026-05-25T11:00:06Z] FILE: apps/api/src/modules/auth/auth.schemas.ts
-[2026-05-25T11:00:07Z] FILE: apps/api/src/modules/auth/auth.service.ts
-[2026-05-25T11:00:08Z] FILE: apps/api/src/modules/users/users.service.spec.ts
-[2026-05-25T11:00:09Z] FILE: apps/api/src/modules/auth/auth.service.spec.ts
-[2026-05-25T11:00:10Z] FILE: docs/API_STATUS.md
-[2026-05-25T11:00:11Z] CHANGE: added nullable user position and shift fields to Prisma model, Users API response, Auth current user shape, validation, and tests
-[2026-05-25T11:00:12Z] CHECK: GitHub Actions pending
-[2026-05-25T11:00:13Z] ROLLBACK: revert PR #28 or delete branch feature/user-position-shift
+[2026-05-25T11:00:02Z] CHANGE: added nullable user position and shift fields to Prisma model, Users API response, Auth current user shape, validation, and tests
+[2026-05-25T11:00:03Z] PR: #28 merged
+
+[2026-05-25T12:00:00Z] BRANCH: feature/jwt-login-current-user
+[2026-05-25T12:00:01Z] TASK: implement JWT login and current user API
+[2026-05-25T12:00:02Z] FILE: apps/api/src/modules/auth/auth.controller.ts
+[2026-05-25T12:00:03Z] FILE: apps/api/src/modules/auth/auth.tokens.ts
+[2026-05-25T12:00:04Z] FILE: apps/api/src/modules/auth/auth.service.ts
+[2026-05-25T12:00:05Z] FILE: apps/api/src/modules/auth/auth.schemas.ts
+[2026-05-25T12:00:06Z] FILE: apps/api/src/modules/auth/auth.tokens.spec.ts
+[2026-05-25T12:00:07Z] FILE: docs/API_STATUS.md
+[2026-05-25T12:00:08Z] CHANGE: added POST /api/v1/auth/login, GET /api/v1/auth/me, JWT_SECRET validation, internal HS256 token helper, and validation tests
+[2026-05-25T12:00:09Z] CHECK: GitHub Actions OK
+[2026-05-25T12:00:10Z] PR: #29 merged
+[2026-05-25T12:00:11Z] ROLLBACK: revert PR #29 or delete branch feature/jwt-login-current-user
+
+[2026-05-25T13:00:00Z] BRANCH: feature/auth-guard
+[2026-05-25T13:00:01Z] TASK: implement reusable JWT AuthGuard
+[2026-05-25T13:00:02Z] FILE: apps/api/src/modules/auth/auth.guard.ts
+[2026-05-25T13:00:03Z] FILE: apps/api/src/modules/auth/auth.guard.spec.ts
+[2026-05-25T13:00:04Z] FILE: apps/api/src/modules/auth/auth.module.ts
+[2026-05-25T13:00:05Z] FILE: apps/api/src/modules/users/users.controller.ts
+[2026-05-25T13:00:06Z] FILE: apps/api/src/modules/organizations/organizations.controller.ts
+[2026-05-25T13:00:07Z] FILE: apps/api/src/modules/memberships/memberships.controller.ts
+[2026-05-25T13:00:08Z] FILE: docs/API_STATUS.md
+[2026-05-25T13:00:09Z] CHANGE: added bearer token parsing, current user attachment to request, and protected existing read endpoints
+[2026-05-25T13:00:10Z] CHECK: GitHub Actions OK
+[2026-05-25T13:00:11Z] PR: #30 merged
+[2026-05-25T13:00:12Z] ROLLBACK: revert PR #30 or delete branch feature/auth-guard
+
+[2026-05-25T14:00:00Z] BRANCH: feature/rbac-foundation
+[2026-05-25T14:00:01Z] TASK: implement RBAC foundation
+[2026-05-25T14:00:02Z] FILE: apps/api/src/modules/auth/roles.ts
+[2026-05-25T14:00:03Z] FILE: apps/api/src/modules/auth/roles.guard.ts
+[2026-05-25T14:00:04Z] FILE: apps/api/src/modules/auth/roles.guard.spec.ts
+[2026-05-25T14:00:05Z] FILE: apps/api/src/modules/users/users.controller.ts
+[2026-05-25T14:00:06Z] FILE: apps/api/src/modules/organizations/organizations.controller.ts
+[2026-05-25T14:00:07Z] FILE: apps/api/src/modules/memberships/memberships.controller.ts
+[2026-05-25T14:00:08Z] FILE: docs/API_STATUS.md
+[2026-05-25T14:00:09Z] CHANGE: added Roles decorator, RolesGuard, shared role policy map, and Membership-backed role checks
+[2026-05-25T14:00:10Z] CHECK: GitHub Actions OK
+[2026-05-25T14:00:11Z] PR: #31 merged
+[2026-05-25T14:00:12Z] ROLLBACK: revert PR #31 or delete branch feature/rbac-foundation
+
+[2026-05-25T15:00:00Z] BRANCH: feature/organization-scope-guard
+[2026-05-25T15:00:01Z] TASK: implement organization scope guard
+[2026-05-25T15:00:02Z] FILE: apps/api/src/modules/auth/organization-scope.ts
+[2026-05-25T15:00:03Z] FILE: apps/api/src/modules/auth/organization-scope.guard.ts
+[2026-05-25T15:00:04Z] FILE: apps/api/src/modules/auth/organization-scope.guard.spec.ts
+[2026-05-25T15:00:05Z] FILE: apps/api/src/modules/users/users.controller.ts
+[2026-05-25T15:00:06Z] FILE: apps/api/src/modules/users/users.service.ts
+[2026-05-25T15:00:07Z] FILE: apps/api/src/modules/organizations/organizations.controller.ts
+[2026-05-25T15:00:08Z] FILE: apps/api/src/modules/organizations/organizations.service.ts
+[2026-05-25T15:00:09Z] FILE: apps/api/src/modules/memberships/memberships.controller.ts
+[2026-05-25T15:00:10Z] FILE: apps/api/src/modules/memberships/memberships.service.ts
+[2026-05-25T15:00:11Z] FILE: docs/API_STATUS.md
+[2026-05-25T15:00:12Z] CHANGE: added OrganizationScope decorator, OrganizationScopeGuard, organization-scoped reads, and membership creation organization match check
+[2026-05-25T15:00:13Z] CHECK: GitHub Actions OK
+[2026-05-25T15:00:14Z] PR: #32 merged
+[2026-05-25T15:00:15Z] ROLLBACK: revert PR #32 or delete branch feature/organization-scope-guard
+
+[2026-05-25T15:35:00Z] BRANCH: docs/sync-auth-rbac-scope
+[2026-05-25T15:35:01Z] TASK: sync README and auto-changes log after auth/RBAC/scope work
+[2026-05-25T15:35:02Z] FILE: README.md
+[2026-05-25T15:35:03Z] FILE: .github/auto-changes.log
+[2026-05-25T15:35:04Z] CHANGE: updated public project status, implemented API list, security status, limitations, next steps, and recent PR log entries
+[2026-05-25T15:35:05Z] CHECK: GitHub Actions pending
+[2026-05-25T15:35:06Z] ROLLBACK: revert docs PR or delete branch docs/sync-auth-rbac-scope
