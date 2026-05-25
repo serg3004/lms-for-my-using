@@ -1,4 +1,4 @@
-import { createMembershipSchema } from './memberships.schemas.js';
+import { createMembershipSchema } from './memberships.schemas';
 
 describe('Memberships validation', () => {
   it('accepts valid membership input', () => {
