@@ -3,7 +3,7 @@ module.exports = {
   moduleNameMapper: {
     '^\\.\\/organizations\\.schemas\\.js$': '<rootDir>/src/modules/organizations/organizations.schemas.ts',
     '^\\.\\/organizations\\.service\\.js$': '<rootDir>/src/modules/organizations/organizations.service.ts',
-    '^\\.\\.\\/\\..\\/database\\prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
+    '^\\.\\.\\/\\..\\/database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
