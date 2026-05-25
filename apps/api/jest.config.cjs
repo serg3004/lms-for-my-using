@@ -1,7 +1,9 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
-    '^(.{1,2}/.*)\\.js$': '$1',
+    '^\\.\\/organizations\\.schemas\\.js$': '<rootDir>/src/modules/organizations/organizations.schemas.ts',
+    '^\\.\\/organizations\\.service\\.js$': '<rootDir>/src/modules/organizations/organizations.service.ts',
+    '^\\.\\.\\/\\..\\/database\\prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
