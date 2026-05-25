@@ -22,6 +22,8 @@ Source branch: `main`
   - `GET /api/v1/users`
   - `GET /api/v1/users/:id`
   - `POST /api/v1/users`
+  - accepts plaintext `password` input
+  - stores only `passwordHash`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
@@ -36,8 +38,13 @@ Source branch: `main`
   - login input validation
   - current user response shape
   - active user lookup by organization and email
+  - password verification flow
   - no password hash returned
   - basic validation tests
+- Password hashing flow:
+  - Node `crypto.scrypt` password hashing
+  - password verification helper
+  - wrong password rejection test
 
 ## Current backend modules
 
@@ -53,7 +60,7 @@ users
 
 ```text
 JWT/login endpoint
-password hashing flow
+current user endpoint
 guards / RBAC
 organization scope guard
 groups
@@ -74,14 +81,13 @@ audit
 - Organizations, Users, and Memberships endpoints are not protected by auth/RBAC yet.
 - Organization scope guard is not implemented yet.
 - Auth foundation does not issue JWT tokens yet.
-- Password hashing and password comparison are not implemented yet.
+- Public login endpoint is not implemented yet.
 - API error format is not centralized yet.
 - API docs/OpenAPI are not implemented yet.
 
 ## Recommended next PRs
 
-1. Password hashing flow.
-2. JWT login endpoint and current user endpoint.
-3. Backend guards: auth, role, organization scope.
-4. Groups API.
-5. Courses API skeleton.
+1. JWT login endpoint and current user endpoint.
+2. Backend guards: auth, role, organization scope.
+3. Groups API.
+4. Courses API skeleton.
