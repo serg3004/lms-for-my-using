@@ -15,16 +15,7 @@ const organization = {
   updatedAt: now,
 };
 
-type PrismaMock = {
-  organization: {
-    findMany: jest.Mock;
-    findFirst: jest.Mock;
-    findUnique: jest.Mock;
-    create: jest.Mock;
-  };
-};
-
-function createPrismaMock(): PrismaMock {
+function createPrismaMock() {
   return {
     organization: {
       findMany: jest.fn(),
@@ -35,9 +26,11 @@ function createPrismaMock(): PrismaMock {
   };
 }
 
+type PrismaMock = ReturnType<typeof createPrismaMock>;
+
 describe('OrganizationsService', () => {
   it('lists active organizations', async () => {
-    const prisma = createPrismaMock();
+    const prisma: PrismaMock = createPrismaMock();
     prisma.organization.findMany.mockResolvedValue([organization]);
 
     const service = new OrganizationsService(prisma as never);
@@ -51,7 +44,7 @@ describe('OrganizationsService', () => {
   });
 
   it('rejects duplicate organization slug', async () => {
-    const prisma = createPrismaMock();
+    const prisma: PrismaMock = createPrismaMock();
     prisma.organization.findUnique.mockResolvedValue({ id: organization.id });
 
     const service = new OrganizationsService(prisma as never);
@@ -67,7 +60,7 @@ describe('OrganizationsService', () => {
   });
 
   it('throws when organization is not found', async () => {
-    const prisma = createPrismaMock();
+    const prisma: PrismaMock = createPrismaMock();
     prisma.organization.findFirst.mockResolvedValue(null);
 
     const service = new OrganizationsService(prisma as never);
