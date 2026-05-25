@@ -10,6 +10,8 @@ module.exports = {
     '^\\./organization-scope\\.guard\\.js$': '<rootDir>/src/modules/auth/organization-scope.guard.ts',
     '^\\./roles\\.js$': '<rootDir>/src/modules/auth/roles.ts',
     '^\\./roles\\.guard\\.js$': '<rootDir>/src/modules/auth/roles.guard.ts',
+    '^\\./courses\\.schemas\\.js$': '<rootDir>/src/modules/courses/courses.schemas.ts',
+    '^\\./courses\\.service\\.js$': '<rootDir>/src/modules/courses/courses.service.ts',
     '^\\./groups\\.schemas\\.js$': '<rootDir>/src/modules/groups/groups.schemas.ts',
     '^\\./groups\\.service\\.js$': '<rootDir>/src/modules/groups/groups.service.ts',
     '^\\./memberships\\.schemas\\.js$': '<rootDir>/src/modules/memberships/memberships.schemas.ts',
