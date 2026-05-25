@@ -5,8 +5,7 @@ Source branch: `main`
 
 ## Implemented
 
-- Monorepo foundation and GitHub Actions CI.
-- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, `Course`, and `Lesson` models.
+- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, `Course`, `Lesson`, and `CourseMaterial` models.
 - Health API: `GET /api/v1/health`
 - Organizations API:
   - `GET /api/v1/organizations`
@@ -32,6 +31,10 @@ Source branch: `main`
   - `GET /api/v1/courses/:courseId/lessons`
   - `GET /api/v1/lessons/:id`
   - `POST /api/v1/courses/:courseId/lessons`
+- Course materials / files API skeleton:
+  - `GET /api/v1/courses/:courseId/materials`
+  - `GET /api/v1/materials/:id`
+  - `POST /api/v1/courses/:courseId/materials`
 - Auth API:
   - `POST /api/v1/auth/login`
   - `GET /api/v1/auth/me`
@@ -43,66 +46,59 @@ Source branch: `main`
 ## Current RBAC policy map
 
 ```text
-GET  /api/v1/organizations       admin
-GET  /api/v1/organizations/:id   admin
+GET  /api/v1/organizations                  admin
+GET  /api/v1/organizations/:id              admin
 
-GET  /api/v1/users               admin, manager
-GET  /api/v1/users/:id           admin, manager
+GET  /api/v1/users                          admin, manager
+GET  /api/v1/users/:id                      admin, manager
 
-GET  /api/v1/memberships         admin, manager
-GET  /api/v1/memberships/:id     admin, manager
-POST /api/v1/memberships         admin
+GET  /api/v1/memberships                    admin, manager
+GET  /api/v1/memberships/:id                admin, manager
+POST /api/v1/memberships                    admin
 
-GET  /api/v1/groups              admin, manager
-GET  /api/v1/groups/:id          admin, manager
-POST /api/v1/groups              admin, manager
+GET  /api/v1/groups                         admin, manager
+GET  /api/v1/groups/:id                     admin, manager
+POST /api/v1/groups                         admin, manager
 
-GET  /api/v1/courses             admin, manager, instructor
-GET  /api/v1/courses/:id         admin, manager, instructor
-POST /api/v1/courses             admin, instructor
+GET  /api/v1/courses                        admin, manager, instructor
+GET  /api/v1/courses/:id                    admin, manager, instructor
+POST /api/v1/courses                        admin, instructor
 
-GET  /api/v1/courses/:courseId/lessons   admin, manager, instructor
-GET  /api/v1/lessons/:id                 admin, manager, instructor
-POST /api/v1/courses/:courseId/lessons   admin, instructor
+GET  /api/v1/courses/:courseId/lessons      admin, manager, instructor
+GET  /api/v1/lessons/:id                    admin, manager, instructor
+POST /api/v1/courses/:courseId/lessons      admin, instructor
+
+GET  /api/v1/courses/:courseId/materials    admin, manager, instructor
+GET  /api/v1/materials/:id                  admin, manager, instructor
+POST /api/v1/courses/:courseId/materials    admin, instructor
 ```
 
 ## Current organization scope behavior
 
 ```text
-organization, user, membership, group, course, and lesson read endpoints:
+Read endpoints:
 - current user organization only
 
-POST /api/v1/memberships:
+Create endpoints:
 - body.organizationId must match current user organization
-
-POST /api/v1/groups:
-- body.organizationId must match current user organization
-
-POST /api/v1/courses:
-- body.organizationId must match current user organization
-
-POST /api/v1/courses/:courseId/lessons:
-- body.organizationId must match current user organization
-- route courseId is injected into validated input
+- route courseId must belong to current user organization
+- optional material lessonId must belong to the same course and organization
 ```
 
 ## Current limitations
 
 - `POST /api/v1/organizations` and `POST /api/v1/users` remain public until bootstrap/admin registration flow is defined.
-- Courses and Lessons APIs are skeletons: materials, assignments, progress, assessments, and certificates are not implemented yet.
-- RBAC currently covers only implemented backend endpoints.
-- `learner` role is defined but will be enforced on learner-facing LMS APIs when those modules exist.
-- JWT auth uses an internal Node `crypto` helper until a dependency PR can safely add a maintained JWT library.
-- API error format is not centralized yet.
+- Courses, Lessons, and Course Materials APIs are skeletons.
+- Assignments, progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
 - OpenAPI is not implemented yet.
+- API error format is not centralized yet.
 - Integration tests are not implemented yet.
 
 ## Recommended next PRs
 
-1. Course materials / files API skeleton.
-2. Assignments API skeleton.
-3. Progress API skeleton.
-4. Extend RBAC policies as new LMS modules are implemented.
-5. OpenAPI.
-6. Centralized API error format.
-7. Integration tests.
+1. Assignments API skeleton.
+2. Progress API skeleton.
+3. Extend RBAC policies as new LMS modules are implemented.
+4. OpenAPI.
+5. Centralized API error format.
+6. Integration tests.
