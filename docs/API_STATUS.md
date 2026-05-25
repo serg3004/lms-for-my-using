@@ -18,6 +18,7 @@ Source branch: `main`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+  - read endpoints protected by JWT auth guard
 - Users API:
   - `GET /api/v1/users`
   - `GET /api/v1/users/:id`
@@ -28,6 +29,7 @@ Source branch: `main`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+  - read endpoints protected by JWT auth guard
 - Memberships / roles API:
   - `GET /api/v1/memberships`
   - `GET /api/v1/memberships/:id`
@@ -35,6 +37,7 @@ Source branch: `main`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+  - endpoints protected by JWT auth guard
 - Auth foundation:
   - login input validation
   - current user response shape
@@ -47,7 +50,8 @@ Source branch: `main`
   - `GET /api/v1/auth/me`
   - HS256 JWT signing and verification with Node `crypto`
   - `JWT_SECRET` minimum length validation
-  - basic token and validation tests
+  - reusable `AuthGuard`
+  - basic token and guard tests
 - Password hashing flow:
   - Node `crypto.scrypt` password hashing
   - password verification helper
@@ -66,7 +70,7 @@ users
 ## Not implemented yet
 
 ```text
-guards / RBAC
+RBAC
 organization scope guard
 groups
 courses
@@ -83,7 +87,8 @@ audit
 
 ## Current limitations
 
-- Organizations, Users, and Memberships endpoints are not protected by auth/RBAC yet.
+- `POST /api/v1/organizations` and `POST /api/v1/users` remain public until bootstrap/admin registration flow is defined.
+- Auth guard only checks a valid JWT and active user; it does not enforce RBAC yet.
 - Organization scope guard is not implemented yet.
 - JWT auth uses an internal Node `crypto` helper until a dependency PR can safely add a maintained JWT library with lockfile update.
 - API error format is not centralized yet.
@@ -91,7 +96,8 @@ audit
 
 ## Recommended next PRs
 
-1. Backend guards: auth, role, organization scope.
-2. Groups API.
-3. Courses API skeleton.
-4. Optional dependency PR to replace internal JWT helper with a maintained JWT library.
+1. RBAC roles from memberships.
+2. Organization scope guard.
+3. Groups API.
+4. Courses API skeleton.
+5. Optional dependency PR to replace internal JWT helper with a maintained JWT library.
