@@ -8,6 +8,8 @@ describe('Users validation', () => {
       password: 'secret-password',
       firstName: 'Ada',
       lastName: 'Lovelace',
+      position: 'Instructor',
+      shift: 'Day',
     });
 
     expect(input).toEqual({
@@ -16,6 +18,8 @@ describe('Users validation', () => {
       password: 'secret-password',
       firstName: 'Ada',
       lastName: 'Lovelace',
+      position: 'Instructor',
+      shift: 'Day',
       status: 'active',
       locale: 'ru',
       timezone: 'Asia/Almaty',
