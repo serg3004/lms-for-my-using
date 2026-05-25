@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
+import { AuthGuard } from '../auth/auth.guard.js';
 import {
   CreateMembershipInput,
   createMembershipSchema,
@@ -7,6 +8,7 @@ import {
 import { MembershipsService } from './memberships.service.js';
 
 @Controller('memberships')
+@UseGuards(AuthGuard)
 export class MembershipsController {
   constructor(private readonly membershipsService: MembershipsService) {}
 
