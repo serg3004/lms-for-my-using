@@ -18,10 +18,10 @@ const organization = {
 function createPrismaMock() {
   return {
     organization: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      create: jest.fn(),
+      findMany: jest.fn<() => Promise<unknown>>(),
+      findFirst: jest.fn<() => Promise<unknown>>(),
+      findUnique: jest.fn<() => Promise<unknown>>(),
+      create: jest.fn<() => Promise<unknown>>(),
     },
   };
 }
