@@ -137,23 +137,13 @@ Added GitHub Actions CI workflow:
 .github/workflows/ci.yml
 ```
 
-Current CI runs:
+Initial CI runs:
 
 ```text
 pnpm install --frozen-lockfile
 pnpm --filter @lms/api prisma:generate
 pnpm --recursive typecheck
 pnpm --recursive build
-```
-
-CI result:
-
-```text
-[Check] Prisma generate: OK
-[Check] Types: OK
-[Check] Build: OK
-[Check] Lint: not run
-[Check] Tests: not run
 ```
 
 ### Shared package build script fix
@@ -184,7 +174,7 @@ Added committed lockfile:
 pnpm-lock.yaml
 ```
 
-CI now uses:
+CI uses:
 
 ```text
 pnpm install --frozen-lockfile
@@ -247,6 +237,90 @@ MinIO Console: 9001
 ```
 
 Values match `.env.example`.
+
+## 2026-05-25
+
+### API environment validation
+
+Added API environment validation:
+
+```text
+apps/api/src/config/env.ts
+apps/api/src/main.ts
+```
+
+Current behavior:
+
+```text
+API_PORT is validated with Zod
+default API_PORT is 3000
+invalid API_PORT fails before NestJS bootstrap
+```
+
+### ESLint flat config
+
+Added ESLint flat config:
+
+```text
+eslint.config.js
+package.json
+pnpm-lock.yaml
+```
+
+Root dev dependencies added:
+
+```text
+@eslint/js
+globals
+typescript-eslint
+```
+
+### Test scripts baseline
+
+Updated package test scripts so they are safe for the current baseline without test files:
+
+```text
+apps/api/package.json
+apps/web/package.json
+```
+
+Current test scripts:
+
+```text
+API: jest --passWithNoTests
+Web: vitest run --passWithNoTests
+```
+
+`packages/shared` already had a safe test script.
+
+### CI lint and test checks
+
+Updated GitHub Actions CI:
+
+```text
+.github/workflows/ci.yml
+```
+
+Current CI runs:
+
+```text
+pnpm install --frozen-lockfile
+pnpm --recursive lint
+pnpm --filter @lms/api prisma:generate
+pnpm --recursive typecheck
+pnpm --recursive test
+pnpm --recursive build
+```
+
+Current CI result:
+
+```text
+[Check] Lint: OK
+[Check] Prisma generate: OK
+[Check] Types: OK
+[Check] Tests: OK
+[Check] Build: OK
+```
 
 ## Current next step
 
