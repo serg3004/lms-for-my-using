@@ -5,6 +5,7 @@ module.exports = {
     '^\\./auth\\.schemas\\.js$': '<rootDir>/src/modules/auth/auth.schemas.ts',
     '^\\./auth\\.service\\.js$': '<rootDir>/src/modules/auth/auth.service.ts',
     '^\\./auth\\.tokens\\.js$': '<rootDir>/src/modules/auth/auth.tokens.ts',
+    '^\\./passwords\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\./organizations\\.schemas\\.js$': '<rootDir>/src/modules/organizations/organizations.schemas.ts',
     '^\\./organizations\\.service\\.js$': '<rootDir>/src/modules/organizations/organizations.service.ts',
     '^\\./users\\.schemas\\.js$': '<rootDir>/src/modules/users/users.schemas.ts',
