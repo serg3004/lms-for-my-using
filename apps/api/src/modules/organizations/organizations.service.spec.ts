@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { OrganizationsService } from './organizations.service.js';
