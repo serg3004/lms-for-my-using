@@ -40,9 +40,14 @@ Source branch: `main`
   - current user response shape
   - active user lookup by organization and email
   - password verification flow
-  - includes optional `position` and `shift` in current user shape
   - no password hash returned
   - basic validation tests
+- JWT auth API:
+  - `POST /api/v1/auth/login`
+  - `GET /api/v1/auth/me`
+  - HS256 JWT signing and verification with Node `crypto`
+  - `JWT_SECRET` minimum length validation
+  - basic token and validation tests
 - Password hashing flow:
   - Node `crypto.scrypt` password hashing
   - password verification helper
@@ -61,8 +66,6 @@ users
 ## Not implemented yet
 
 ```text
-JWT/login endpoint
-current user endpoint
 guards / RBAC
 organization scope guard
 groups
@@ -82,14 +85,13 @@ audit
 
 - Organizations, Users, and Memberships endpoints are not protected by auth/RBAC yet.
 - Organization scope guard is not implemented yet.
-- Auth foundation does not issue JWT tokens yet.
-- Public login endpoint is not implemented yet.
+- JWT auth uses an internal Node `crypto` helper until a dependency PR can safely add a maintained JWT library with lockfile update.
 - API error format is not centralized yet.
 - API docs/OpenAPI are not implemented yet.
 
 ## Recommended next PRs
 
-1. JWT login endpoint and current user endpoint.
-2. Backend guards: auth, role, organization scope.
-3. Groups API.
-4. Courses API skeleton.
+1. Backend guards: auth, role, organization scope.
+2. Groups API.
+3. Courses API skeleton.
+4. Optional dependency PR to replace internal JWT helper with a maintained JWT library.

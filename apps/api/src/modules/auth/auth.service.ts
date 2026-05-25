@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { LoginInput } from './auth.schemas.js';
+import { signJwt, verifyJwt } from './auth.tokens.js';
 import { verifyPassword } from './passwords.js';
 
 const currentUserSelect = {
@@ -81,5 +82,32 @@ export class AuthService {
       locale: user.locale,
       timezone: user.timezone,
     };
+  }
+
+  async login(input: LoginInput) {
+    const user = await this.validateLogin(input);
+
+    return {
+      accessToken: signJwt({
+        sub: user.id,
+        organizationId: user.organizationId,
+        email: user.email,
+      }),
+      tokenType: 'Bearer',
+      user,
+    };
+  }
+
+  async getCurrentUser(accessToken: string) {
+    try {
+      const claims = verifyJwt(accessToken);
+
+      return this.findActiveUserByLoginIdentity({
+        organizationId: claims.organizationId,
+        email: claims.email,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
   }
 }
