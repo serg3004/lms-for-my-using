@@ -16,16 +16,20 @@ const membershipSelect = {
 export class MembershipsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listMemberships() {
+  async listMemberships(organizationId: string) {
     return this.prisma.membership.findMany({
+      where: { organizationId },
       orderBy: { createdAt: 'desc' },
       select: membershipSelect,
     });
   }
 
-  async getMembership(membershipId: string) {
-    const membership = await this.prisma.membership.findUnique({
-      where: { id: membershipId },
+  async getMembership(membershipId: string, organizationId: string) {
+    const membership = await this.prisma.membership.findFirst({
+      where: {
+        id: membershipId,
+        organizationId,
+      },
       select: membershipSelect,
     });
 
