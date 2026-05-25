@@ -36,5 +36,8 @@ jobs:
       - name: Typecheck
         run: pnpm --recursive typecheck
 
+      - name: Tests
+        run: pnpm --recursive test
+
       - name: Build
         run: pnpm --recursive build
