@@ -26,18 +26,19 @@ const userSelect = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listUsers() {
+  async listUsers(organizationId: string) {
     return this.prisma.user.findMany({
-      where: { deletedAt: null },
+      where: { organizationId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       select: userSelect,
     });
   }
 
-  async getUser(userId: string) {
+  async getUser(userId: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
+        organizationId,
         deletedAt: null,
       },
       select: userSelect,

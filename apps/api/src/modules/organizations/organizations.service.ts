@@ -17,9 +17,12 @@ const organizationSelect = {
 export class OrganizationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listOrganizations() {
+  async listOrganizations(organizationId: string) {
     return this.prisma.organization.findMany({
-      where: { deletedAt: null },
+      where: {
+        id: organizationId,
+        deletedAt: null,
+      },
       orderBy: { createdAt: 'desc' },
       select: organizationSelect,
     });
