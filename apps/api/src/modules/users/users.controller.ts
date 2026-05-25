@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard } from '../auth/auth.guard.js';
+import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { createUserSchema, CreateUserInput } from './users.schemas.js';
@@ -13,15 +13,15 @@ export class UsersController {
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)
-  listUsers() {
-    return this.usersService.listUsers();
+  listUsers(@Req() request: AuthenticatedRequest) {
+    return this.usersService.listUsers(request.currentUser!.organizationId);
   }
 
   @Get(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)
-  getUser(@Param('id') userId: string) {
-    return this.usersService.getUser(userId);
+  getUser(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.getUser(userId, request.currentUser!.organizationId);
   }
 
   @Post()
