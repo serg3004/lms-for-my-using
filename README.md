@@ -8,11 +8,8 @@ Current stage: early MVP foundation.
 
 Created so far:
 
-- project documentation in `docs/`
-- monorepo foundation
 - backend skeleton in `apps/api`
-- frontend skeleton with i18n in `apps/web`
-- shared package in `packages/shared`
+- frontend skeleton in `apps/web`
 - Prisma / database foundation
 - GitHub Actions CI
 - Health API
@@ -22,6 +19,7 @@ Created so far:
 - Groups API
 - Courses API skeleton
 - Lessons API skeleton
+- Course materials / files API skeleton
 - Auth foundation
 - password hashing flow
 - JWT login and current user API
@@ -60,6 +58,10 @@ GET  /api/v1/courses/:courseId/lessons
 GET  /api/v1/lessons/:id
 POST /api/v1/courses/:courseId/lessons
 
+GET  /api/v1/courses/:courseId/materials
+GET  /api/v1/materials/:id
+POST /api/v1/courses/:courseId/materials
+
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
@@ -85,10 +87,13 @@ RBAC:
 - courses create: admin, instructor
 - lessons read: admin, manager, instructor
 - lessons create: admin, instructor
+- course materials read: admin, manager, instructor
+- course materials create: admin, instructor
 
 Organization scope:
-- organization, user, membership, group, course, and lesson reads are scoped to current user organization.
-- POST /api/v1/memberships, POST /api/v1/groups, POST /api/v1/courses, and POST /api/v1/courses/:courseId/lessons require body.organizationId to match current user organization.
+- organization, user, membership, group, course, lesson, and material reads are scoped to current user organization.
+- create endpoints with organizationId require body.organizationId to match current user organization.
+- course materials may be attached to a course or optionally to a lesson through lessonId.
 ```
 
 ## Current backend limitations
@@ -96,48 +101,12 @@ Organization scope:
 ```text
 POST /api/v1/organizations and POST /api/v1/users remain public until bootstrap/admin registration flow is defined.
 
-Courses and Lessons APIs are skeletons. Materials, assignments, progress, assessments, and certificates are not implemented yet.
-
-Learner role is defined but will be enforced on learner-facing LMS APIs when those modules exist.
+Courses, Lessons, and Course Materials APIs are skeletons.
+Assignments, progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
 
 OpenAPI is not implemented yet.
 Centralized API error format is not implemented yet.
 Integration tests are not implemented yet.
-```
-
-## Tech stack
-
-- TypeScript
-- Node.js / ESM
-- pnpm workspaces
-- Turbo
-- NestJS for API
-- React + Vite for web
-- Prisma + PostgreSQL
-- Zod for runtime validation
-
-## Repository structure
-
-```text
-apps/
-  api/        Backend API
-  web/        Frontend web app
-
-packages/
-  shared/     Shared constants, types, and schemas
-
-docs/         Project documentation
-infra/        Infrastructure configs
-scripts/      Utility scripts
-```
-
-## Documentation
-
-```text
-docs/
-docs/API_STATUS.md
-docs/PROJECT_LOG.md
-docs/master-context/
 ```
 
 ## Current CI baseline
@@ -160,16 +129,16 @@ apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
 apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
 apps/api/prisma/migrations/20260525163000_add_courses/migration.sql
 apps/api/prisma/migrations/20260525170000_add_lessons/migration.sql
+apps/api/prisma/migrations/20260525173000_add_course_materials/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Course materials / files API skeleton.
-2. Assignments API skeleton.
-3. Progress API skeleton.
-4. Extend RBAC policies as new LMS modules are implemented.
-5. OpenAPI.
-6. Centralized API error format.
-7. Integration tests.
+1. Assignments API skeleton.
+2. Progress API skeleton.
+3. Extend RBAC policies as new LMS modules are implemented.
+4. OpenAPI.
+5. Centralized API error format.
+6. Integration tests.

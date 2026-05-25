@@ -1,44 +1,20 @@
 [2026-05-25T06:30:00Z] PR: #24 Users API merged
-[2026-05-25T06:30:01Z] CHANGE: added Users API list/get/create with Zod validation, Prisma-backed service, password input hashing support later, and docs sync
-
 [2026-05-25T07:00:00Z] PR: #25 Memberships / roles API merged
-[2026-05-25T07:00:01Z] CHANGE: added Memberships API list/get/create with Zod validation, Prisma-backed service, and docs sync
-
 [2026-05-25T09:00:00Z] PR: #26 Auth foundation merged
-[2026-05-25T09:00:01Z] CHANGE: added login validation, current user response shape, active user lookup, and password hash exclusion from responses
-
 [2026-05-25T09:30:00Z] PR: #27 Password hashing flow merged
-[2026-05-25T09:30:01Z] CHANGE: added scrypt password hashing and verification helpers, plaintext password input, and login password validation
-
 [2026-05-25T11:00:00Z] PR: #28 User position / shift merged
-[2026-05-25T11:00:01Z] CHANGE: added nullable user position and shift fields to Prisma model, migration, API response, validation, and tests
-
 [2026-05-25T12:00:00Z] PR: #29 JWT login/current user merged
-[2026-05-25T12:00:01Z] CHANGE: added POST /api/v1/auth/login, GET /api/v1/auth/me, JWT_SECRET validation, internal HS256 token helper, and token tests
-
 [2026-05-25T13:00:00Z] PR: #30 Auth guard merged
-[2026-05-25T13:00:01Z] CHANGE: added bearer token parsing, current user attachment to request, and protected existing read endpoints
-
 [2026-05-25T14:00:00Z] PR: #31 RBAC foundation merged
-[2026-05-25T14:00:01Z] CHANGE: added Roles decorator, RolesGuard, shared role policy map, and Membership-backed role checks
-
 [2026-05-25T15:00:00Z] PR: #32 Organization scope guard merged
-[2026-05-25T15:00:01Z] CHANGE: added OrganizationScope decorator, OrganizationScopeGuard, scoped organization/user/membership reads, and membership create organization match check
-
 [2026-05-25T15:35:00Z] PR: #33 Docs sync merged
-[2026-05-25T15:35:01Z] CHANGE: updated README and auto-changes log after auth/RBAC/scope work
-
 [2026-05-25T16:00:00Z] PR: #34 Groups API merged
-[2026-05-25T16:00:01Z] CHANGE: added Group Prisma model and migration, Groups API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-
 [2026-05-25T16:30:00Z] PR: #35 Courses API skeleton merged
-[2026-05-25T16:30:01Z] CHANGE: added Course Prisma model and migration, Courses API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-
 [2026-05-25T16:45:00Z] PR: #36 Project log sync merged
-[2026-05-25T16:45:01Z] CHANGE: synced docs/PROJECT_LOG.md with backend/API work through Courses API skeleton
+[2026-05-25T17:00:00Z] PR: #37 Lessons API skeleton merged
 
-[2026-05-25T17:00:00Z] BRANCH: feature/lessons-api
-[2026-05-25T17:00:01Z] TASK: implement Lessons API skeleton
-[2026-05-25T17:00:02Z] CHANGE: added Lesson Prisma model and migration, Lessons API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-[2026-05-25T17:00:03Z] CHECK: GitHub Actions pending
-[2026-05-25T17:00:04Z] ROLLBACK: revert PR #37 or delete branch feature/lessons-api
+[2026-05-25T17:30:00Z] BRANCH: feature/course-materials-api
+[2026-05-25T17:30:01Z] TASK: implement Course materials / files API skeleton
+[2026-05-25T17:30:02Z] CHANGE: added CourseMaterial Prisma model and migration, Course Materials API list/get/create endpoints, optional lessonId attachment, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
+[2026-05-25T17:30:03Z] CHECK: GitHub Actions pending
+[2026-05-25T17:30:04Z] ROLLBACK: revert PR #38 or delete branch feature/course-materials-api
