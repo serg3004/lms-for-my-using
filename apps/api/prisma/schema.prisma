@@ -33,6 +33,11 @@ enum UserRole {
   admin
 }
 
+enum GroupStatus {
+  active
+  archived
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -44,29 +49,30 @@ model Organization {
   deletedAt DateTime?          @map("deleted_at") @db.Timestamptz
 
   users       User[]
+  groups      Group[]
   memberships Membership[]
 
   @@map("organizations")
 }
 
 model User {
-  id             String      @id @default(uuid()) @db.Uuid
-  organizationId String      @map("organization_id") @db.Uuid
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
   email          String
-  passwordHash   String      @map("password_hash")
-  firstName      String      @map("first_name")
-  lastName       String      @map("last_name")
-  middleName     String?     @map("middle_name")
+  passwordHash   String     @map("password_hash")
+  firstName      String     @map("first_name")
+  lastName       String     @map("last_name")
+  middleName     String?    @map("middle_name")
   position       String?
   shift          String?
   phone          String?
-  status         UserStatus  @default(active)
-  locale         String      @default("ru")
-  timezone       String      @default("Asia/Almaty")
-  lastLoginAt    DateTime?   @map("last_login_at") @db.Timestamptz
-  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz
+  status         UserStatus @default(active)
+  locale         String     @default("ru")
+  timezone       String     @default("Asia/Almaty")
+  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz
 
   organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   memberships         Membership[] @relation("UserMemberships")
@@ -76,6 +82,24 @@ model User {
   @@index([organizationId, status])
   @@index([lastLoginAt])
   @@map("users")
+}
+
+model Group {
+  id             String      @id @default(uuid()) @db.Uuid
+  organizationId String      @map("organization_id") @db.Uuid
+  name           String
+  slug           String
+  description    String?
+  status         GroupStatus @default(active)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("groups")
 }
 
 model Membership {
