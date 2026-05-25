@@ -19,6 +19,9 @@ Created so far:
 - committed `pnpm-lock.yaml`
 - root `turbo` dev dependency
 - local Docker services for PostgreSQL and MinIO
+- ESLint flat config
+- safe baseline test scripts
+- CI lint and test checks
 
 ## Tech stack
 
@@ -98,12 +101,24 @@ Current CI runs:
 
 ```text
 pnpm install --frozen-lockfile
+pnpm --recursive lint
 pnpm --filter @lms/api prisma:generate
 pnpm --recursive typecheck
+pnpm --recursive test
 pnpm --recursive build
 ```
 
 `pnpm-lock.yaml` is committed.
+
+## Current tooling baseline
+
+ESLint flat config is configured in:
+
+```text
+eslint.config.js
+```
+
+Current package test scripts are safe for the current baseline even when no test files exist.
 
 ## Current Prisma baseline
 
@@ -145,16 +160,15 @@ Values match `.env.example`.
 1. API module implementation.
 2. Frontend routing and layout.
 3. Auth foundation.
-4. Add lint/test CI steps when the project has stable lint/test coverage.
 
 ## Checks
 
 Current automated CI status:
 
 ```text
+[Check] Lint: OK
 [Check] Prisma generate: OK
 [Check] Types: OK
+[Check] Tests: OK
 [Check] Build: OK
-[Check] Lint: not run
-[Check] Tests: not run
 ```
