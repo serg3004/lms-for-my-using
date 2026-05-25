@@ -22,3 +22,15 @@
 [2026-05-25T07:00:09Z] CHANGE: added list, get by id, and create membership role API handlers with Zod validation and Prisma access
 [2026-05-25T07:00:10Z] CHECK: GitHub Actions pending
 [2026-05-25T07:00:11Z] ROLLBACK: revert PR #25 or delete branch feature/memberships-api
+
+[2026-05-25T09:00:00Z] BRANCH: feature/auth-foundation
+[2026-05-25T09:00:01Z] TASK: implement Auth foundation module
+[2026-05-25T09:00:02Z] FILE: apps/api/src/app.module.ts
+[2026-05-25T09:00:03Z] FILE: apps/api/src/modules/auth/auth.module.ts
+[2026-05-25T09:00:04Z] FILE: apps/api/src/modules/auth/auth.schemas.ts
+[2026-05-25T09:00:05Z] FILE: apps/api/src/modules/auth/auth.service.ts
+[2026-05-25T09:00:06Z] FILE: apps/api/src/modules/auth/auth.service.spec.ts
+[2026-05-25T09:00:07Z] FILE: docs/API_STATUS.md
+[2026-05-25T09:00:08Z] CHANGE: added login validation, current user shape, and active user lookup without returning password hash
+[2026-05-25T09:00:09Z] CHECK: GitHub Actions pending
+[2026-05-25T09:00:10Z] ROLLBACK: revert PR #26 or delete branch feature/auth-foundation

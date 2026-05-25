@@ -32,11 +32,17 @@ Source branch: `main`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+- Auth foundation:
+  - login input validation
+  - current user response shape
+  - active user lookup by organization and email
+  - no password hash returned
+  - basic validation tests
 
 ## Current backend modules
 
-
 ```text
+auth
 health
 memberships
 organizations
@@ -46,7 +52,8 @@ users
 ## Not implemented yet
 
 ```text
-auth
+JWT/login endpoint
+password hashing flow
 guards / RBAC
 organization scope guard
 groups
@@ -66,13 +73,15 @@ audit
 
 - Organizations, Users, and Memberships endpoints are not protected by auth/RBAC yet.
 - Organization scope guard is not implemented yet.
-- Auth foundation is still pending.
+- Auth foundation does not issue JWT tokens yet.
+- Password hashing and password comparison are not implemented yet.
 - API error format is not centralized yet.
 - API docs/OpenAPI are not implemented yet.
 
 ## Recommended next PRs
 
-1. Auth foundation.
-2. Backend guards: auth, role, organization scope.
-3. Groups API.
-4. Courses API skeleton.
+1. Password hashing flow.
+2. JWT login endpoint and current user endpoint.
+3. Backend guards: auth, role, organization scope.
+4. Groups API.
+5. Courses API skeleton.
