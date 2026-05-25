@@ -1,0 +1,10 @@
+[2026-05-25T00:00:00Z] BRANCH: feature/organizations-api
+[2026-05-25T00:00:01Z] TASK: implement initial Organizations API module
+[2026-05-25T00:00:02Z] FILE: apps/api/src/app.module.ts
+[2026-05-25T00:00:03Z] FILE: apps/api/src/modules/organizations/organizations.controller.ts
+[2026-05-25T00:00:04Z] FILE: apps/api/src/modules/organizations/organizations.module.ts
+[2026-05-25T00:00:05Z] FILE: apps/api/src/modules/organizations/organizations.schemas.ts
+[2026-05-25T00:00:06Z] FILE: apps/api/src/modules/organizations/organizations.service.ts
+[2026-05-25T00:00:07Z] FILE: apps/api/src/modules/organizations/organizations.service.spec.ts
+[2026-05-25T00:00:08Z] CHANGE: added list, get by id, and create organization API handlers with Zod validation and Prisma access
+[2026-05-25T00:00:09Z] ROLLBACK: revert PR #22 or delete branch feature/organizations-api
