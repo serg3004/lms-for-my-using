@@ -9,7 +9,8 @@ import { rolesMetadataKey, UserRole } from './roles.js';
 export class RolesGuard implements CanActivate {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly reflector: Reflector,\n  ) {}
+    private readonly reflector: Reflector,
+  ) {}
 
   async canActivate(context: ExecutionContext) {
     const allowedRoles = this.reflector.getAllAndOverride<UserRole[]>(rolesMetadataKey, [
