@@ -30,11 +30,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm --recursive lint
+
       - name: Generate Prisma Client
         run: pnpm --filter @lms/api prisma:generate
 
       - name: Typecheck
         run: pnpm --recursive typecheck
+
+      - name: Tests
+        run: pnpm --recursive test
 
       - name: Build
         run: pnpm --recursive build
