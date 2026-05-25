@@ -57,6 +57,8 @@ model User {
   firstName      String      @map("first_name")
   lastName       String      @map("last_name")
   middleName     String?     @map("middle_name")
+  position       String?
+  shift          String?
   phone          String?
   status         UserStatus  @default(active)
   locale         String      @default("ru")
