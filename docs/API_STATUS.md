@@ -25,11 +25,20 @@ Source branch: `main`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+- Memberships / roles API:
+  - `GET /api/v1/memberships`
+  - `GET /api/v1/memberships/:id`
+  - `POST /api/v1/memberships`
+  - Zod validation
+  - Prisma-backed service
+  - basic validation tests
 
 ## Current backend modules
 
+
 ```text
 health
+memberships
 organizations
 users
 ```
@@ -38,7 +47,8 @@ users
 
 ```text
 auth
-roles / memberships
+guards / RBAC
+organization scope guard
 groups
 courses
 lessons
@@ -54,16 +64,15 @@ audit
 
 ## Current limitations
 
-- Organizations and Users endpoints are not protected by auth/RBAC yet.
+- Organizations, Users, and Memberships endpoints are not protected by auth/RBAC yet.
 - Organization scope guard is not implemented yet.
-- Memberships / roles API is still pending.
+- Auth foundation is still pending.
 - API error format is not centralized yet.
 - API docs/OpenAPI are not implemented yet.
 
 ## Recommended next PRs
 
-1. Memberships / roles API.
-2. Auth foundation.
-3. Backend guards: auth, role, organization scope.
-4. Groups API.
-5. Courses API skeleton.
+1. Auth foundation.
+2. Backend guards: auth, role, organization scope.
+3. Groups API.
+4. Courses API skeleton.
