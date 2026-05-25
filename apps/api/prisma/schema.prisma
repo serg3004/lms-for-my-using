@@ -50,6 +50,16 @@ enum LessonStatus {
   archived
 }
 
+enum CourseMaterialStatus {
+  active
+  archived
+}
+
+enum CourseMaterialKind {
+  file
+  link
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -128,6 +138,7 @@ model Course {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lessons      Lesson[]
+  materials    CourseMaterial[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -148,10 +159,38 @@ model Lesson {
   deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
 
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials CourseMaterial[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
   @@map("lessons")
+}
+
+model CourseMaterial {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  courseId       String               @map("course_id") @db.Uuid
+  lessonId       String?              @map("lesson_id") @db.Uuid
+  title          String
+  slug           String
+  description    String?
+  kind           CourseMaterialKind   @default(file)
+  fileName       String?             @map("file_name")
+  fileUrl        String               @map("file_url")
+  mimeType       String?              @map("mime_type")
+  sizeBytes      Int?                 @map("size_bytes")
+  status         CourseMaterialStatus @default(active)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz
+
+  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, slug])
+  @@index([organizationId, courseId, status])
+  @@index([lessonId])
+  @@map("course_materials")
 }
 
 model Membership {
