@@ -1,8 +1,7 @@
 # API Status
 
 Last synced: 2026-05-25  
-Source branch: `main`  
-Current main commit: `fa9c98f1eb0b0c8fd565f62aa8cbb8f503c4ee9d`
+Source branch: `main`
 
 ## Implemented
 
@@ -19,19 +18,26 @@ Current main commit: `fa9c98f1eb0b0c8fd565f62aa8cbb8f503c4ee9d`
   - Zod validation
   - Prisma-backed service
   - basic validation tests
+- Users API:
+  - `GET /api/v1/users`
+  - `GET /api/v1/users/:id`
+  - `POST /api/v1/users`
+  - Zod validation
+  - Prisma-backed service
+  - basic validation tests
 
 ## Current backend modules
 
 ```text
 health
 organizations
+users
 ```
 
 ## Not implemented yet
 
 ```text
 auth
-users
 roles / memberships
 groups
 courses
@@ -48,17 +54,16 @@ audit
 
 ## Current limitations
 
-- Organizations endpoints are not protected by auth/RBAC yet.
+- Organizations and Users endpoints are not protected by auth/RBAC yet.
 - Organization scope guard is not implemented yet.
-- Users and memberships APIs are still pending.
+- Memberships / roles API is still pending.
 - API error format is not centralized yet.
 - API docs/OpenAPI are not implemented yet.
 
 ## Recommended next PRs
 
-1. Users API.
-2. Memberships / roles API.
-3. Auth foundation.
-4. Backend guards: auth, role, organization scope.
-5. Groups API.
-6. Courses API skeleton.
+1. Memberships / roles API.
+2. Auth foundation.
+3. Backend guards: auth, role, organization scope.
+4. Groups API.
+5. Courses API skeleton.
