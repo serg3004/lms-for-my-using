@@ -21,6 +21,12 @@ export const currentUserSchema = z.object({
   timezone: z.string(),
 });
 
+export const loginResponseSchema = z.object({
+  accessToken: z.string().min(1),
+  tokenType: z.literal('Bearer'),
+  user: currentUserSchema,
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
