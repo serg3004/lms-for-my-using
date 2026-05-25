@@ -65,8 +65,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { passwordHash, ...currentUser } = user;
-
-    return currentUser;
+    return {
+      id: user.id,
+      organizationId: user.organizationId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName,
+      phone: user.phone,
+      status: user.status,
+      locale: user.locale,
+      timezone: user.timezone,
+    };
   }
 }
