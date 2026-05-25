@@ -1,4 +1,4 @@
-import { Module } from '@nestqs/common';
+import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
 import { OrganizationsController } from './organizations.controller.js';
