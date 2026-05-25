@@ -46,3 +46,9 @@
 [2026-05-25T16:00:15Z] CHANGE: added Group Prisma model and migration, Groups API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
 [2026-05-25T16:00:16Z] CHECK: GitHub Actions pending
 [2026-05-25T16:00:17Z] ROLLBACK: revert PR #34 or delete branch feature/groups-api
+
+[2026-05-25T16:30:00Z] BRANCH: feature/courses-api
+[2026-05-25T16:30:01Z] TASK: implement Courses API skeleton
+[2026-05-25T16:30:02Z] CHANGE: added Course Prisma model and migration, Courses API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
+[2026-05-25T16:30:03Z] CHECK: GitHub Actions pending
+[2026-05-25T16:30:04Z] ROLLBACK: revert PR #35 or delete branch feature/courses-api
