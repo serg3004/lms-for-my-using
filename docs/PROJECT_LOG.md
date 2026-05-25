@@ -1,6 +1,6 @@
 # Project Log
 
-This file tracks completed project setup steps.
+This file tracks completed project setup and implementation steps.
 
 ## 2026-05-24
 
@@ -36,21 +36,7 @@ turbo.json
 
 ### Backend skeleton
 
-Added minimal NestJS API skeleton:
-
-```text
-apps/api/package.json
-apps/api/tsconfig.json
-apps/api/nest-cli.json
-apps/api/src/main.ts
-apps/api/src/app.module.ts
-apps/api/src/modules/health/
-apps/api/src/common/
-apps/api/src/config/
-apps/api/test/
-```
-
-Health endpoint planned in current skeleton:
+Added minimal NestJS API skeleton with health endpoint:
 
 ```text
 GET /api/v1/health
@@ -58,19 +44,7 @@ GET /api/v1/health
 
 ### Frontend skeleton with i18n
 
-Added minimal React/Vite frontend skeleton:
-
-```text
-apps/web/package.json
-apps/web/tsconfig.json
-apps/web/index.html
-apps/web/vite.config.ts
-apps/web/src/main.tsx
-apps/web/src/app/App.tsx
-apps/web/src/i18n/
-```
-
-Initial frontend locales:
+Added minimal React/Vite frontend skeleton with locales:
 
 ```text
 ru
@@ -81,38 +55,11 @@ zh
 
 ### Shared package
 
-Added initial shared package:
-
-```text
-packages/shared/package.json
-packages/shared/tsconfig.json
-packages/shared/src/index.ts
-packages/shared/src/constants/locales.ts
-packages/shared/src/constants/roles.ts
-packages/shared/src/schemas/pagination.schema.ts
-packages/shared/src/types/api.ts
-```
-
-Includes:
-
-```text
-locales: ru, en, kk, zh
-roles: learner, instructor, manager, admin
-Zod: paginationQuerySchema
-types: ApiError, ApiErrorResponse, PaginatedResponse
-```
+Added initial shared package with locales, roles, pagination schema, and API types.
 
 ### Prisma / database foundation
 
-Added initial Prisma foundation:
-
-```text
-apps/api/prisma/schema.prisma
-apps/api/src/database/database.module.ts
-apps/api/src/database/prisma.service.ts
-```
-
-Initial models:
+Added initial Prisma foundation with models:
 
 ```text
 Organization
@@ -120,108 +67,36 @@ User
 Membership
 ```
 
-Initial enums:
+Added initial Prisma migration:
 
 ```text
-UserStatus
-OrganizationStatus
-OrganizationPlan
-UserRole
+apps/api/prisma/migrations/20260524115000_init/migration.sql
 ```
+
+No database migration was applied to any real database.
 
 ### GitHub Actions CI
 
-Added GitHub Actions CI workflow:
+Added CI workflow:
 
 ```text
 .github/workflows/ci.yml
 ```
 
-Initial CI runs:
+Current CI baseline:
 
 ```text
 pnpm install --frozen-lockfile
+pnpm --recursive lint
 pnpm --filter @lms/api prisma:generate
 pnpm --recursive typecheck
+pnpm --recursive test
 pnpm --recursive build
 ```
-
-### Shared package build script fix
-
-Fixed shared package build script:
-
-```text
-packages/shared/package.json
-```
-
-Changed:
-
-```text
-tsc -p itsconfig.json
-```
-
-to:
-
-```text
-tsc -p tsconfig.json
-```
-
-### pnpm lockfile
-
-Added committed lockfile:
-
-```text
-pnpm-lock.yaml
-```
-
-CI uses:
-
-```text
-pnpm install --frozen-lockfile
-```
-
-### Turbo dependency
-
-Added missing root `turbo` dev dependency:
-
-```text
-package.json
-pnpm-lock.yaml
-```
-
-Root scripts now have a declared `turbo` dependency.
-
-### Initial Prisma migration
-
-Added first Prisma migration:
-
-```text
-apps/api/prisma/migrations/20260524115000_init/migration.sql
-apps/api/prisma/migrations/migration_lock.toml
-```
-
-Migration contains SQL for:
-
-```text
-organizations
-users
-memberships
-enums
-indexes
-foreign keys
-```
-
-No database migration was applied to any real database.
 
 ### Local Docker services
 
 Added local Docker services:
-
-```text
-infra/docker/docker-compose.yml
-```
-
-Services:
 
 ```text
 PostgreSQL 16 Alpine
@@ -263,16 +138,6 @@ Added ESLint flat config:
 
 ```text
 eslint.config.js
-package.json
-pnpm-lock.yaml
-```
-
-Root dev dependencies added:
-
-```text
-@eslint/js
-globals
-typescript-eslint
 ```
 
 ### Test scripts baseline
@@ -291,28 +156,216 @@ API: jest --passWithNoTests
 Web: vitest run --passWithNoTests
 ```
 
-`packages/shared` already had a safe test script.
+### Users API
 
-### CI lint and test checks
-
-Updated GitHub Actions CI:
+Implemented initial Users API:
 
 ```text
-.github/workflows/ci.yml
+GET  /api/v1/users
+GET  /api/v1/users/:id
+POST /api/v1/users
 ```
 
-Current CI runs:
+Included Zod validation, Prisma-backed service, password input handling, and tests.
+
+### Memberships / roles API
+
+Implemented initial Memberships API:
 
 ```text
-pnpm install --frozen-lockfile
-pnpm --recursive lint
-pnpm --filter @lms/api prisma:generate
-pnpm --recursive typecheck
-pnpm --recursive test
-pnpm --recursive build
+GET  /api/v1/memberships
+GET  /api/v1/memberships/:id
+POST /api/v1/memberships
 ```
 
-Current CI result:
+Included Zod validation, Prisma-backed service, role assignment support, and tests.
+
+### Auth foundation
+
+Implemented Auth foundation:
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+Added login validation, current user response shape, active user lookup, and password hash exclusion from responses.
+
+### Password hashing flow
+
+Added password hashing and verification using Node `crypto.scrypt`.
+
+Current behavior:
+
+```text
+POST /api/v1/users accepts plaintext password input
+only passwordHash is stored
+login validates password against passwordHash
+passwordHash is never returned in API responses
+```
+
+### User position / shift
+
+Added nullable user fields:
+
+```text
+position
+shift
+```
+
+Updated Prisma schema, migration, API response shape, validation, and tests.
+
+Migration:
+
+```text
+apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
+```
+
+### JWT login / current user
+
+Implemented JWT login and current user flow:
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+```
+
+Current behavior:
+
+```text
+JWT_SECRET is required and must be at least 32 characters
+token signing and verification use internal Node crypto HS256 helper
+current user is resolved from access token
+```
+
+### AuthGuard
+
+Added reusable `AuthGuard`.
+
+Applied it to implemented protected read endpoints:
+
+```text
+GET /api/v1/organizations
+GET /api/v1/organizations/:id
+GET /api/v1/users
+GET /api/v1/users/:id
+GET /api/v1/memberships
+GET /api/v1/memberships/:id
+```
+
+### RBAC foundation
+
+Added reusable RBAC foundation:
+
+```text
+Roles decorator
+RolesGuard
+shared role policy map
+Membership-backed role checks
+```
+
+Current role policies:
+
+```text
+organizations read: admin
+users read: admin, manager
+memberships read: admin, manager
+memberships create: admin
+```
+
+### Organization scope guard
+
+Added tenant isolation foundation:
+
+```text
+OrganizationScope decorator
+OrganizationScopeGuard
+currentUser.organizationId scope checks
+```
+
+Current behavior:
+
+```text
+organization, user, and membership reads are scoped to current user organization
+POST /api/v1/memberships requires body.organizationId to match current user organization
+```
+
+### Documentation sync
+
+Updated:
+
+```text
+README.md
+docs/API_STATUS.md
+.github/auto-changes.log
+```
+
+### Groups API
+
+Implemented Groups API:
+
+```text
+GET  /api/v1/groups
+GET  /api/v1/groups/:id
+POST /api/v1/groups
+```
+
+Added Prisma model and migration:
+
+```text
+Group
+GroupStatus
+apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
+```
+
+Current policies:
+
+```text
+groups read: admin, manager
+groups create: admin, manager
+```
+
+Group reads are scoped to current user organization.
+Group creation requires `body.organizationId` to match current user organization.
+
+### Courses API skeleton
+
+Implemented Courses API skeleton:
+
+```text
+GET  /api/v1/courses
+GET  /api/v1/courses/:id
+POST /api/v1/courses
+```
+
+Added Prisma model and migration:
+
+```text
+Course
+CourseStatus
+apps/api/prisma/migrations/20260525163000_add_courses/migration.sql
+```
+
+Current policies:
+
+```text
+courses read: admin, manager, instructor
+courses create: admin, instructor
+```
+
+Course reads are scoped to current user organization.
+Course creation requires `body.organizationId` to match current user organization.
+
+Scope limitation:
+
+```text
+Courses API is a skeleton.
+Lessons, materials, assignments, progress, assessments, and certificates are not implemented yet.
+```
+
+### Current CI result
+
+Current automated CI status:
 
 ```text
 [Check] Lint: OK
@@ -322,6 +375,18 @@ Current CI result:
 [Check] Build: OK
 ```
 
-## Current next step
+### Current next step
 
-Start API module implementation.
+Continue LMS module implementation:
+
+```text
+Lessons API skeleton
+Course materials / files API skeleton
+Assignments API skeleton
+Extend RBAC policies as new LMS modules are implemented
+OpenAPI
+Centralized API error format
+Integration tests
+```
+
+No database migration has been applied to any real database yet.
