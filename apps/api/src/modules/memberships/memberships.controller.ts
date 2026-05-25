@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard } from '../auth/auth.guard.js';
+import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
+import { OrganizationScope } from '../auth/organization-scope.js';
+import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import {
@@ -16,18 +18,20 @@ export class MembershipsController {
 
   @Get()
   @Roles(...rolePolicies.membershipsRead)
-  listMemberships() {
-    return this.membershipsService.listMemberships();
+  listMemberships(@Req() request: AuthenticatedRequest) {
+    return this.membershipsService.listMemberships(request.currentUser!.organizationId);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.membershipsRead)
-  getMembership(@Param('id') membershipId: string) {
-    return this.membershipsService.getMembership(membershipId);
+  getMembership(@Param('id') membershipId: string, @Req() request: AuthenticatedRequest) {
+    return this.membershipsService.getMembership(membershipId, request.currentUser!.organizationId);
   }
 
   @Post()
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.membershipsCreate)
+  @OrganizationScope('body', 'organizationId')
   createMembership(@Body() body: unknown) {
     const input: CreateMembershipInput = createMembershipSchema.parse(body);
 
