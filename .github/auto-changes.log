@@ -28,27 +28,17 @@
 [2026-05-25T15:35:00Z] PR: #33 Docs sync merged
 [2026-05-25T15:35:01Z] CHANGE: updated README and auto-changes log after auth/RBAC/scope work
 
-[2026-05-25T16:00:00Z] BRANCH: feature/groups-api
-[2026-05-25T16:00:01Z] TASK: implement Groups API
-[2026-05-25T16:00:02Z] FILE: apps/api/prisma/schema.prisma
-[2026-05-25T16:00:03Z] FILE: apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
-[2026-05-25T16:00:04Z] FILE: apps/api/src/app.module.ts
-[2026-05-25T16:00:05Z] FILE: apps/api/src/modules/auth/roles.ts
-[2026-05-25T16:00:06Z] FILE: apps/api/src/modules/groups/groups.controller.ts
-[2026-05-25T16:00:07Z] FILE: apps/api/src/modules/groups/groups.module.ts
-[2026-05-25T16:00:08Z] FILE: apps/api/src/modules/groups/groups.schemas.ts
-[2026-05-25T16:00:09Z] FILE: apps/api/src/modules/groups/groups.service.ts
-[2026-05-25T16:00:10Z] FILE: apps/api/src/modules/groups/groups.service.spec.ts
-[2026-05-25T16:00:11Z] FILE: apps/api/jest.config.cjs
-[2026-05-25T16:00:12Z] FILE: docs/API_STATUS.md
-[2026-05-25T16:00:13Z] FILE: README.md
-[2026-05-25T16:00:14Z] FILE: .github/auto-changes.log
-[2026-05-25T16:00:15Z] CHANGE: added Group Prisma model and migration, Groups API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-[2026-05-25T16:00:16Z] CHECK: GitHub Actions pending
-[2026-05-25T16:00:17Z] ROLLBACK: revert PR #34 or delete branch feature/groups-api
+[2026-05-25T16:00:00Z] PR: #34 Groups API merged
+[2026-05-25T16:00:01Z] CHANGE: added Group Prisma model and migration, Groups API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
 
-[2026-05-25T16:30:00Z] BRANCH: feature/courses-api
-[2026-05-25T16:30:01Z] TASK: implement Courses API skeleton
-[2026-05-25T16:30:02Z] CHANGE: added Course Prisma model and migration, Courses API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-[2026-05-25T16:30:03Z] CHECK: GitHub Actions pending
-[2026-05-25T16:30:04Z] ROLLBACK: revert PR #35 or delete branch feature/courses-api
+[2026-05-25T16:30:00Z] PR: #35 Courses API skeleton merged
+[2026-05-25T16:30:01Z] CHANGE: added Course Prisma model and migration, Courses API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
+
+[2026-05-25T16:45:00Z] PR: #36 Project log sync merged
+[2026-05-25T16:45:01Z] CHANGE: synced docs/PROJECT_LOG.md with backend/API work through Courses API skeleton
+
+[2026-05-25T17:00:00Z] BRANCH: feature/lessons-api
+[2026-05-25T17:00:01Z] TASK: implement Lessons API skeleton
+[2026-05-25T17:00:02Z] CHANGE: added Lesson Prisma model and migration, Lessons API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
+[2026-05-25T17:00:03Z] CHECK: GitHub Actions pending
+[2026-05-25T17:00:04Z] ROLLBACK: revert PR #37 or delete branch feature/lessons-api
