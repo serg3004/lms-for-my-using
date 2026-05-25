@@ -1,5 +1,8 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
+  moduleNameMapper: {
+    '^(.{1,2}/.*)\\.js$': '$1',
+  },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
   transform: {
