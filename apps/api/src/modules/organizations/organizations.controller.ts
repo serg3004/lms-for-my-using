@@ -1,6 +1,8 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/auth.guard.js';
+import { Roles, rolePolicies } from '../auth/roles.js';
+import { RolesGuard } from '../auth/roles.guard.js';
 import {
   CreateOrganizationInput,
   createOrganizationSchema,
@@ -12,13 +14,15 @@ export class OrganizationsController {
   constructor(private readonly organizationsService: OrganizationsService) {}
 
   @Get()
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.organizationsRead)
   listOrganizations() {
     return this.organizationsService.listOrganizations();
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard)
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.organizationsRead)
   getOrganization(@Param('id') organizationId: string) {
     return this.organizationsService.getOrganization(organizationId);
   }

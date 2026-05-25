@@ -19,6 +19,7 @@ Source branch: `main`
   - Prisma-backed service
   - basic validation tests
   - read endpoints protected by JWT auth guard
+  - read endpoints restricted to `admin` by RBAC
 - Users API:
   - `GET /api/v1/users`
   - `GET /api/v1/users/:id`
@@ -30,6 +31,7 @@ Source branch: `main`
   - Prisma-backed service
   - basic validation tests
   - read endpoints protected by JWT auth guard
+  - read endpoints restricted to `admin` and `manager` by RBAC
 - Memberships / roles API:
   - `GET /api/v1/memberships`
   - `GET /api/v1/memberships/:id`
@@ -38,6 +40,8 @@ Source branch: `main`
   - Prisma-backed service
   - basic validation tests
   - endpoints protected by JWT auth guard
+  - read endpoints restricted to `admin` and `manager` by RBAC
+  - create endpoint restricted to `admin` by RBAC
 - Auth foundation:
   - login input validation
   - current user response shape
@@ -51,7 +55,9 @@ Source branch: `main`
   - HS256 JWT signing and verification with Node `crypto`
   - `JWT_SECRET` minimum length validation
   - reusable `AuthGuard`
-  - basic token and guard tests
+  - reusable `RolesGuard`
+  - shared role policy map for current API endpoints
+  - basic token, auth guard, and RBAC guard tests
 - Password hashing flow:
   - Node `crypto.scrypt` password hashing
   - password verification helper
@@ -67,10 +73,23 @@ organizations
 users
 ```
 
+## Current RBAC policy map
+
+```text
+GET /api/v1/organizations      admin
+GET /api/v1/organizations/:id  admin
+
+GET /api/v1/users              admin, manager
+GET /api/v1/users/:id          admin, manager
+
+GET /api/v1/memberships        admin, manager
+GET /api/v1/memberships/:id    admin, manager
+POST /api/v1/memberships       admin
+```
+
 ## Not implemented yet
 
 ```text
-RBAC
 organization scope guard
 groups
 courses
@@ -78,7 +97,7 @@ lessons
 files
 assignments
 progress
-assessments
+assessment
 certificates
 notifications
 reports
@@ -88,7 +107,8 @@ audit
 ## Current limitations
 
 - `POST /api/v1/organizations` and `POST /api/v1/users` remain public until bootstrap/admin registration flow is defined.
-- Auth guard only checks a valid JWT and active user; it does not enforce RBAC yet.
+- RBAC currently covers only implemented backend endpoints.
+- `instructor` and `learner` roles are defined but will be enforced on Courses, Assignments, Progress, Knowledge Base, Reports, and Certificates APIs when those modules exist.
 - Organization scope guard is not implemented yet.
 - JWT auth uses an internal Node `crypto` helper until a dependency PR can safely add a maintained JWT library with lockfile update.
 - API error format is not centralized yet.
@@ -96,8 +116,8 @@ audit
 
 ## Recommended next PRs
 
-1. RBAC roles from memberships.
-2. Organization scope guard.
-3. Groups API.
-4. Courses API skeleton.
+1. Organization scope guard.
+2. Groups API.
+3. Courses API skeleton.
+4. Extend RBAC policies as new LMS modules are implemented.
 5. Optional dependency PR to replace internal JWT helper with a maintained JWT library.
