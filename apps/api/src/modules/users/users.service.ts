@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { hashPassword } from '../auth/passwords.js';
 import { CreateUserInput } from './users.schemas.js';
 
 const userSelect = {
@@ -74,8 +75,14 @@ export class UsersService {
       throw new ConflictException('User email already exists in organization');
     }
 
+    const { password, ...userData } = input;
+    const passwordHash = await hashPassword(password);
+
     return this.prisma.user.create({
-      data: input,
+      data: {
+        ...userData,
+        passwordHash,
+      },
       select: userSelect,
     });
   }
