@@ -14,6 +14,8 @@ module.exports = {
     '^\\./courses\\.service\\.js$': '<rootDir>/src/modules/courses/courses.service.ts',
     '^\\./groups\\.schemas\\.js$': '<rootDir>/src/modules/groups/groups.schemas.ts',
     '^\\./groups\\.service\\.js$': '<rootDir>/src/modules/groups/groups.service.ts',
+    '^\\./lessons\\.schemas\\.js$': '<rootDir>/src/modules/lessons/lessons.schemas.ts',
+    '^\\./lessons\\.service\\.js$': '<rootDir>/src/modules/lessons/lessons.service.ts',
     '^\\./memberships\\.schemas\\.js$': '<rootDir>/src/modules/memberships/memberships.schemas.ts',
     '^\\./memberships\\.service\\.js$': '<rootDir>/src/modules/memberships/memberships.service.ts',
     '^\\./organizations\\.schemas\\.js$': '<rootDir>/src/modules/organizations/organizations.schemas.ts',
