@@ -6,7 +6,7 @@ Source branch: `main`
 ## Implemented
 
 - Monorepo foundation and GitHub Actions CI.
-- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, and `Course` models.
+- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, `Course`, and `Lesson` models.
 - Health API: `GET /api/v1/health`
 - Organizations API:
   - `GET /api/v1/organizations`
@@ -28,6 +28,10 @@ Source branch: `main`
   - `GET /api/v1/courses`
   - `GET /api/v1/courses/:id`
   - `POST /api/v1/courses`
+- Lessons API skeleton:
+  - `GET /api/v1/courses/:courseId/lessons`
+  - `GET /api/v1/lessons/:id`
+  - `POST /api/v1/courses/:courseId/lessons`
 - Auth API:
   - `POST /api/v1/auth/login`
   - `GET /api/v1/auth/me`
@@ -56,12 +60,16 @@ POST /api/v1/groups              admin, manager
 GET  /api/v1/courses             admin, manager, instructor
 GET  /api/v1/courses/:id         admin, manager, instructor
 POST /api/v1/courses             admin, instructor
+
+GET  /api/v1/courses/:courseId/lessons   admin, manager, instructor
+GET  /api/v1/lessons/:id                 admin, manager, instructor
+POST /api/v1/courses/:courseId/lessons   admin, instructor
 ```
 
 ## Current organization scope behavior
 
 ```text
-organizations, users, memberships, groups, and courses read endpoints:
+organization, user, membership, group, course, and lesson read endpoints:
 - current user organization only
 
 POST /api/v1/memberships:
@@ -72,12 +80,16 @@ POST /api/v1/groups:
 
 POST /api/v1/courses:
 - body.organizationId must match current user organization
+
+POST /api/v1/courses/:courseId/lessons:
+- body.organizationId must match current user organization
+- route courseId is injected into validated input
 ```
 
 ## Current limitations
 
 - `POST /api/v1/organizations` and `POST /api/v1/users` remain public until bootstrap/admin registration flow is defined.
-- Courses API is a skeleton: lessons, materials, assignments, progress, assessments, and certificates are not implemented yet.
+- Courses and Lessons APIs are skeletons: materials, assignments, progress, assessments, and certificates are not implemented yet.
 - RBAC currently covers only implemented backend endpoints.
 - `learner` role is defined but will be enforced on learner-facing LMS APIs when those modules exist.
 - JWT auth uses an internal Node `crypto` helper until a dependency PR can safely add a maintained JWT library.
@@ -87,9 +99,9 @@ POST /api/v1/courses:
 
 ## Recommended next PRs
 
-1. Lessons API skeleton.
-2. Course materials / files API skeleton.
-3. Assignments API skeleton.
+1. Course materials / files API skeleton.
+2. Assignments API skeleton.
+3. Progress API skeleton.
 4. Extend RBAC policies as new LMS modules are implemented.
 5. OpenAPI.
 6. Centralized API error format.

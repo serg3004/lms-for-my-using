@@ -6,60 +6,19 @@ This file tracks completed project setup and implementation steps.
 
 ### Documentation uploaded
 
-Added project documentation to `docs/`:
-
-```text
-AI_AGENT_STARTER_PROMPT.md
-I18N_GUIDE.md
-MVP_SCOPE_LOCK.md
-PROJECT_SOURCE_OF_TRUTH.md
-TODO_VERIFY.md
-master-context/
-```
+Added project documentation to `docs/`.
 
 ### Monorepo foundation
 
-Added base monorepo structure:
+Added base monorepo structure with `apps/api`, `apps/web`, `packages/shared`, `infra`, and CI baseline.
 
-```text
-apps/api/
-apps/web/
-packages/shared/
-infra/docker/
-infra/railway/
-scripts/
-package.json
-pnpm-workspace.yaml
-turbo.json
-.env.example
-```
+### Backend / frontend / shared skeletons
 
-### Backend skeleton
-
-Added minimal NestJS API skeleton with health endpoint:
-
-```text
-GET /api/v1/health
-```
-
-### Frontend skeleton with i18n
-
-Added minimal React/Vite frontend skeleton with locales:
-
-```text
-ru
-en
-kk
-zh
-```
-
-### Shared package
-
-Added initial shared package with locales, roles, pagination schema, and API types.
+Added initial NestJS API skeleton, React/Vite frontend skeleton with i18n, and shared package.
 
 ### Prisma / database foundation
 
-Added initial Prisma foundation with models:
+Added initial Prisma schema and migration with:
 
 ```text
 Organization
@@ -67,23 +26,13 @@ User
 Membership
 ```
 
-Added initial Prisma migration:
-
-```text
-apps/api/prisma/migrations/20260524115000_init/migration.sql
-```
-
 No database migration was applied to any real database.
 
-### GitHub Actions CI
+## 2026-05-25
 
-Added CI workflow:
+### API environment / lint / test / CI baseline
 
-```text
-.github/workflows/ci.yml
-```
-
-Current CI baseline:
+Added Zod environment validation, ESLint flat config, safe test scripts, and full GitHub Actions CI:
 
 ```text
 pnpm install --frozen-lockfile
@@ -94,71 +43,9 @@ pnpm --recursive test
 pnpm --recursive build
 ```
 
-### Local Docker services
-
-Added local Docker services:
-
-```text
-PostgreSQL 16 Alpine
-MinIO
-```
-
-Ports:
-
-```text
-PostgreSQL: 5432
-MinIO API: 9000
-MinIO Console: 9001
-```
-
-Values match `.env.example`.
-
-## 2026-05-25
-
-### API environment validation
-
-Added API environment validation:
-
-```text
-apps/api/src/config/env.ts
-apps/api/src/main.ts
-```
-
-Current behavior:
-
-```text
-API_PORT is validated with Zod
-default API_PORT is 3000
-invalid API_PORT fails before NestJS bootstrap
-```
-
-### ESLint flat config
-
-Added ESLint flat config:
-
-```text
-eslint.config.js
-```
-
-### Test scripts baseline
-
-Updated package test scripts so they are safe for the current baseline without test files:
-
-```text
-apps/api/package.json
-apps/web/package.json
-```
-
-Current test scripts:
-
-```text
-API: jest --passWithNoTests
-Web: vitest run --passWithNoTests
-```
-
 ### Users API
 
-Implemented initial Users API:
+Implemented:
 
 ```text
 GET  /api/v1/users
@@ -170,7 +57,7 @@ Included Zod validation, Prisma-backed service, password input handling, and tes
 
 ### Memberships / roles API
 
-Implemented initial Memberships API:
+Implemented:
 
 ```text
 GET  /api/v1/memberships
@@ -182,7 +69,7 @@ Included Zod validation, Prisma-backed service, role assignment support, and tes
 
 ### Auth foundation
 
-Implemented Auth foundation:
+Implemented:
 
 ```text
 POST /api/v1/auth/login
@@ -298,6 +185,7 @@ Updated:
 README.md
 docs/API_STATUS.md
 .github/auto-changes.log
+docs/PROJECT_LOG.md
 ```
 
 ### Groups API
@@ -356,11 +244,39 @@ courses create: admin, instructor
 Course reads are scoped to current user organization.
 Course creation requires `body.organizationId` to match current user organization.
 
+### Lessons API skeleton
+
+Implemented Lessons API skeleton:
+
+```text
+GET  /api/v1/courses/:courseId/lessons
+GET  /api/v1/lessons/:id
+POST /api/v1/courses/:courseId/lessons
+```
+
+Added Prisma model and migration:
+
+```text
+Lesson
+LessonStatus
+apps/api/prisma/migrations/20260525170000_add_lessons/migration.sql
+```
+
+Current policies:
+
+```text
+lessons read: admin, manager, instructor
+lessons create: admin, instructor
+```
+
+Lesson reads are scoped to current user organization.
+Lesson creation requires `body.organizationId` to match current user organization and route `courseId` to belong to the same organization.
+
 Scope limitation:
 
 ```text
-Courses API is a skeleton.
-Lessons, materials, assignments, progress, assessments, and certificates are not implemented yet.
+Lessons API is a skeleton.
+Lesson materials, content blocks, assignments, progress, assessments, and certificates are not implemented yet.
 ```
 
 ### Current CI result
@@ -380,9 +296,9 @@ Current automated CI status:
 Continue LMS module implementation:
 
 ```text
-Lessons API skeleton
 Course materials / files API skeleton
 Assignments API skeleton
+Progress API skeleton
 Extend RBAC policies as new LMS modules are implemented
 OpenAPI
 Centralized API error format
