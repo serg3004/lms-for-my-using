@@ -14,13 +14,13 @@ Created so far:
 - frontend skeleton with i18n in `apps/web`
 - shared package in `packages/shared`
 - Prisma / database foundation
-- initial Prisma migration
 - GitHub Actions CI
 - Health API
 - Organizations API
 - Users API
 - Memberships / roles API
 - Groups API
+- Courses API skeleton
 - Auth foundation
 - password hashing flow
 - JWT login and current user API
@@ -51,6 +51,10 @@ GET  /api/v1/groups
 GET  /api/v1/groups/:id
 POST /api/v1/groups
 
+GET  /api/v1/courses
+GET  /api/v1/courses/:id
+POST /api/v1/courses
+
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
@@ -72,10 +76,12 @@ RBAC:
 - memberships create: admin
 - groups read: admin, manager
 - groups create: admin, manager
+- courses read: admin, manager, instructor
+- courses create: admin, instructor
 
 Organization scope:
-- organization, user, membership, and group reads are scoped to current user organization.
-- POST /api/v1/memberships and POST /api/v1/groups require body.organizationId to match current user organization.
+- organization, user, membership, group, and course reads are scoped to current user organization.
+- POST /api/v1/memberships, POST /api/v1/groups, and POST /api/v1/courses require body.organizationId to match current user organization.
 ```
 
 ## Current backend limitations
@@ -83,7 +89,9 @@ Organization scope:
 ```text
 POST /api/v1/organizations and POST /api/v1/users remain public until bootstrap/admin registration flow is defined.
 
-Instructor and learner roles are defined but will be enforced on LMS module APIs when those modules exist.
+Courses API is a skeleton. Lessons, materials, assignments, progress, assessments, and certificates are not implemented yet.
+
+Learner role is defined but will be enforced on learner-facing LMS APIs when those modules exist.
 
 OpenAPI is not implemented yet.
 Centralized API error format is not implemented yet.
@@ -142,14 +150,17 @@ apps/api/prisma/schema.prisma
 apps/api/prisma/migrations/20260524115000_init/migration.sql
 apps/api/prisma/migrations/20260525110000_add_user_position_shift/migration.sql
 apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
+apps/api/prisma/migrations/20260525163000_add_courses/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Courses API skeleton.
-2. Extend RBAC policies as new LMS modules are implemented.
-3. OpenAPI.
-4. Centralized API error format.
-5. Integration tests.
+1. Lessons API skeleton.
+2. Course materials / files API skeleton.
+3. Assignments API skeleton.
+4. Extend RBAC policies as new LMS modules are implemented.
+5. OpenAPI.
+6. Centralized API error format.
+7. Integration tests.

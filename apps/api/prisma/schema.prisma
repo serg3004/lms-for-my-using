@@ -38,6 +38,12 @@ enum GroupStatus {
   archived
 }
 
+enum CourseStatus {
+  draft
+  published
+  archived
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -50,6 +56,7 @@ model Organization {
 
   users       User[]
   groups      Group[]
+  courses     Course[]
   memberships Membership[]
 
   @@map("organizations")
@@ -100,6 +107,24 @@ model Group {
   @@unique([organizationId, slug])
   @@index([organizationId, status])
   @@map("groups")
+}
+
+model Course {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  title          String
+  slug           String
+  description    String?
+  status         CourseStatus @default(draft)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+  @@map("courses")
 }
 
 model Membership {
