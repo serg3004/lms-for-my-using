@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 import { PrismaService } from '../../database/prisma.service.js';
 import { createCourseSchema } from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
