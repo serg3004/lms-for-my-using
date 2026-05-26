@@ -1,29 +1,48 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateAssessmentAttemptAnswerInput, CreateAssessmentAttemptInput } from './assessment-attempts.schemas.js';
+import {
+  CreateAssessmentAttemptAnswerInput,
+  CreateAssessmentAttemptInput,
+} from './assessment-attempts.schemas.js';
 
-type AttemptRow = {
-  id: string;
-  organizationId: string;
-  assessmentId: string;
-  userId: string;
-  status: string;
-  score: number;
-  maxScore: number;
-  percentage: number;
-  passed: boolean;
-  startedAt: Date;
-  completedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
+const attemptSelect = {
+  id: true,
+  organizationId: true,
+  assessmentId: true,
+  userId: true,
+  status: true,
+  score: true,
+  maxScore: true,
+  percentage: true,
+  passed: true,
+  startedAt: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const attemptAnswerSelect = {
+  id: true,
+  organizationId: true,
+  attemptId: true,
+  questionId: true,
+  selectedOptionId: true,
+  selectedOptionIds: true,
+  isCorrect: true,
+  score: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 type QuestionWithOptions = {
   id: string;
   type: 'single_choice' | 'multiple_choice' | 'true_false';
   points: number;
-  options: { id: string; isCorrect: boolean }[];
+  options: {
+    id: string;
+    isCorrect: boolean;
+  }[];
 };
 
 type GradedAnswer = {
@@ -41,47 +60,53 @@ export class AssessmentAttemptsService {
   async listAttempts(assessmentId: string, organizationId: string) {
     await this.ensureAssessmentExists(assessmentId, organizationId);
 
-    return this.prisma.$queryRaw<AttemptRow[]>`
-      SELECT id, organization_id AS "organizationId", assessment_id AS "assessmentId", user_id AS "userId",
-        status::text, score, max_score AS "maxScore", percentage, passed, started_at AS "startedAt",
-        completed_at AS "completedAt", created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM assessment_attempts
-      WHERE assessment_id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
-      ORDER BY created_at DESC
-    `;
+    return this.prisma.assessmentAttempt.findMany({
+      where: {
+        assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: attemptSelect,
+    });
   }
 
   async getAttempt(attemptId: string, organizationId: string) {
-    const attempts = await this.prisma.$queryRaw<AttemptRow[]>`
-      SELECT id, organization_id AS "organizationId", assessment_id AS "assessmentId", user_id AS "userId",
-        status::text, score, max_score AS "maxScore", percentage, passed, started_at AS "startedAt",
-        completed_at AS "completedAt", created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM assessment_attempts
-      WHERE id = ${attemptId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
-      LIMIT 1
-    `;
-    const attempt = attempts[0];
+    const attempt = await this.prisma.assessmentAttempt.findFirst({
+      where: {
+        id: attemptId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: {
+        ...attemptSelect,
+        answers: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'asc' },
+          select: attemptAnswerSelect,
+        },
+      },
+    });
 
     if (!attempt) {
       throw new NotFoundException('Assessment attempt not found');
     }
 
-    const answers = await this.prisma.$queryRaw`
-      SELECT id, organization_id AS "organizationId", attempt_id AS "attemptId", question_id AS "questionId",
-        selected_option_id AS "selectedOptionId", selected_option_ids AS "selectedOptionIds",
-        is_correct AS "isCorrect", score, created_at AS "createdAt", updated_at AS "updatedAt"
-      FROM assessment_attempt_answers
-      WHERE attempt_id = ${attempt.id}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
-      ORDER BY created_at ASC
-    `;
-
-    return { ...attempt, answers };
+    return attempt;
   }
 
   async createAttempt(assessmentId: string, userId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
     const assessment = await this.prisma.assessment.findFirst({
-      where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true, passingScore: true, maxAttempts: true },
+      where: {
+        id: assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        passingScore: true,
+        maxAttempts: true,
+      },
     });
 
     if (!assessment) {
@@ -100,37 +125,34 @@ export class AssessmentAttemptsService {
     const completedAt = new Date();
 
     const attemptId = await this.prisma.$transaction(async (tx) => {
-      const attempts = await tx.$queryRaw<{ id: string }[]>`
-        INSERT INTO assessment_attempts (
-          organization_id, assessment_id, user_id, status, score, max_score, percentage, passed, completed_at, updated_at
-        )
-        VALUES (
-          ${organizationId}::uuid, ${assessmentId}::uuid, ${userId}::uuid, 'completed',
-          ${score}, ${maxScore}, ${percentage}, ${passed}, ${completedAt}, CURRENT_TIMESTAMP
-        )
-        RETURNING id
-      `;
-      const createdAttemptId = attempts[0]?.id;
+      const attempt = await tx.assessmentAttempt.create({
+        data: {
+          organizationId,
+          assessmentId,
+          userId,
+          status: 'completed',
+          score,
+          maxScore,
+          percentage,
+          passed,
+          completedAt,
+        },
+        select: { id: true },
+      });
 
-      if (!createdAttemptId) {
-        throw new BadRequestException('Assessment attempt was not created');
-      }
+      await tx.assessmentAttemptAnswer.createMany({
+        data: gradedAnswers.map((answer) => ({
+          organizationId,
+          attemptId: attempt.id,
+          questionId: answer.questionId,
+          selectedOptionId: answer.selectedOptionId,
+          selectedOptionIds: answer.selectedOptionIds ?? undefined,
+          isCorrect: answer.isCorrect,
+          score: answer.score,
+        })),
+      });
 
-      for (const answer of gradedAnswers) {
-        await tx.$executeRaw`
-          INSERT INTO assessment_attempt_answers (
-            organization_id, attempt_id, question_id, selected_option_id, selected_option_ids, is_correct, score, updated_at
-          )
-          VALUES (
-            ${organizationId}::uuid, ${createdAttemptId}::uuid, ${answer.questionId}::uuid,
-            ${answer.selectedOptionId ?? null}::uuid,
-            ${answer.selectedOptionIds ? JSON.stringify(answer.selectedOptionIds) : null}::jsonb,
-            ${answer.isCorrect}, ${answer.score}, CURRENT_TIMESTAMP
-          )
-        `;
-      }
-
-      return createdAttemptId;
+      return attempt.id;
     });
 
     return this.getAttempt(attemptId, organizationId);
@@ -138,7 +160,11 @@ export class AssessmentAttemptsService {
 
   private async ensureAssessmentExists(assessmentId: string, organizationId: string) {
     const assessment = await this.prisma.assessment.findFirst({
-      where: { id: assessmentId, organizationId, deletedAt: null },
+      where: {
+        id: assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
       select: { id: true },
     });
 
@@ -149,7 +175,11 @@ export class AssessmentAttemptsService {
 
   private async ensureUserExists(userId: string, organizationId: string) {
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, organizationId, deletedAt: null },
+      where: {
+        id: userId,
+        organizationId,
+        deletedAt: null,
+      },
       select: { id: true },
     });
 
@@ -163,21 +193,27 @@ export class AssessmentAttemptsService {
       return;
     }
 
-    const attempts = await this.prisma.$queryRaw<{ count: bigint }[]>`
-      SELECT COUNT(*) AS count
-      FROM assessment_attempts
-      WHERE assessment_id = ${assessmentId}::uuid AND user_id = ${userId}::uuid
-        AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
-    `;
+    const attemptsCount = await this.prisma.assessmentAttempt.count({
+      where: {
+        assessmentId,
+        userId,
+        organizationId,
+        deletedAt: null,
+      },
+    });
 
-    if (Number(attempts[0]?.count ?? 0) >= maxAttempts) {
+    if (attemptsCount >= maxAttempts) {
       throw new BadRequestException('Assessment attempts limit reached');
     }
   }
 
   private async getQuestions(assessmentId: string, organizationId: string): Promise<QuestionWithOptions[]> {
     const questions = await this.prisma.assessmentQuestion.findMany({
-      where: { assessmentId, organizationId, deletedAt: null },
+      where: {
+        assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
       orderBy: { order: 'asc' },
       select: {
         id: true,
@@ -185,7 +221,10 @@ export class AssessmentAttemptsService {
         points: true,
         options: {
           where: { deletedAt: null },
-          select: { id: true, isCorrect: true },
+          select: {
+            id: true,
+            isCorrect: true,
+          },
         },
       },
     });
