@@ -348,7 +348,7 @@ export class AssessmentAttemptsService {
     }
 
     const selected = selectedOptionIds.sort();
-    corst correct = [...correctOptionIds].sort();
+    const correct = [...correctOptionIds].sort();
     const isCorrect = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
 
     return {
