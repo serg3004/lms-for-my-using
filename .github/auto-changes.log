@@ -12,18 +12,11 @@
 [2026-05-25T16:30:00Z] PR: #35 Courses API skeleton merged
 [2026-05-25T16:45:00Z] PR: #36 Project log sync merged
 [2026-05-25T17:00:00Z] PR: #37 Lessons API skeleton merged
+[2026-05-25T17:30:00Z] PR: #38 Course materials / files API skeleton merged
+[2026-05-26T09:00:00Z] PR: #39 Assignments API skeleton merged
 
-[2026-05-25T17:30:00Z] BRANCH: feature/course-materials-api
-[2026-05-25T17:30:01Z] TASK: implement Course materials / files API skeleton
-[2026-05-25T17:30:02Z] CHANGE: added CourseMaterial Prisma model and migration, Course Materials API list/get/create endpoints, optional lessonId attachment, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-[2026-05-25T17:30:03Z] CHECK: GitHub Actions pending
-[2026-05-25T17:30:04Z] ROLLBACK: revert PR #38 or delete branch feature/course-materials-api
-
-[2026-05-26T09:00:00Z] BRANCH: feature/pr-39-assignments-api
-[2026-05-26T09:00:01Z] TASK: implement Assignments API skeleton
-[2026-05-26T09:00:02Z] CHANGE: added Assignment Prisma model and migration, Assignments API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, and docs sync
-[2026-05-26T09:00:03Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T09:00:04Z] ROLLBACK: revert PR #39 or delete branch feature/pr-39-assignments-api
-[2026-05-26T09:05:00Z] CI: PR #39 tests failed on assignments.service.spec.ts missing assignments.schemas.js mapper
-[2026-05-26T09:05:01Z] FIX: added assignments schemas/service moduleNameMapper entries to apps/api/jest.config.cjs
-[2026-05-26T09:05:02Z] CHECK: waiting for next GitHub Actions result from user-provided screenshot
+[2026-05-26T10:00:00Z] BRANCH: feature/pr-40-progress-api
+[2026-05-26T10:00:01Z] TASK: implement Progress API skeleton
+[2026-05-26T10:00:02Z] CHANGE: added Progress Prisma model and migration, Progress API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest module mapper entries, and docs sync
+[2026-05-26T10:00:03Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T10:00:04Z] ROLLBACK: revert PR #40 or delete branch feature/pr-40-progress-api
