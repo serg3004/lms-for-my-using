@@ -173,10 +173,51 @@ Current automated CI status:
 [Check] Build: OK
 ```
 
+## 2026-05-26
+
+### Assignments API skeleton
+
+Implemented:
+
+```text
+GET  /api/v1/assignments
+GET  /api/v1/assignments/:id
+POST /api/v1/assignments
+```
+
+Added Prisma model and migration:
+
+```text
+Assignment
+AssignmentStatus
+apps/api/prisma/migrations/20260526090000_add_assignments/migration.sql
+```
+
+Current policies:
+
+```text
+assignments read: admin, manager, instructor
+assignments create: admin, manager, instructor
+```
+
+Assignments target exactly one `userId` or `groupId`.
+The course, optional user, and optional group must belong to the current user organization.
+
+### Current PR #39 check status
+
+Local checks were not run in the GitHub API environment:
+
+```text
+[Check] Lint: not run
+[Check] Prisma generate: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
 ### Current next step
 
 ```text
-Assignments API skeleton
 Progress API skeleton
 Extend RBAC policies as new LMS modules are implemented
 OpenAPI
