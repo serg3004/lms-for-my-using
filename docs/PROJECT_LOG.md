@@ -2,16 +2,17 @@
 
 ## 2026-05-26
 
-### Course completion gate
+### Assessment results / reports
 
-Implemented PR #46 scope on `feature/course-completion-gate`.
+Implemented PR #47 scope on `feature/assessment-results-reports`.
 
 Changes:
-- Added course completion calculation based on published lessons and completed lesson progress.
-- Added `GET /api/v1/courses/:id/completion`.
-- Enforced `Assessment.availableAfterCourseCompletion` before assessment attempt creation.
-- Added service tests for course completion happy/incomplete paths.
-- Added business test for rejecting gated assessment attempts before course completion.
+- Added `AssessmentResultsService` for attempt result summaries, answer-level correctness, and aggregate reports.
+- Added `GET /api/v1/assessments/:assessmentId/results`.
+- Added `GET /api/v1/assessments/:assessmentId/report`.
+- Added `GET /api/v1/attempts/:id/result`.
+- Added learner access to own attempt result while preserving privileged organization access for admins/managers/instructors.
+- Added tests for own result access, denied cross-learner access, and aggregate report calculation.
 - Updated README, API status, project log, and auto-change audit log.
 
 ### Current PR check status
@@ -24,6 +25,20 @@ Local checks were not run in the GitHub API environment:
 [Check] Tests: not run
 [Check] Build: not run
 ```
+
+## 2026-05-26
+
+### Course completion gate
+
+Implemented PR #46 scope on `feature/course-completion-gate`.
+
+Changes:
+- Added course completion calculation based on published lessons and completed lesson progress.
+- Added `GET /api/v1/courses/:id/completion`.
+- Enforced `Assessment.availableAfterCourseCompletion` before assessment attempt creation.
+- Added service tests for course completion happy/incomplete paths.
+- Added business test for rejecting gated assessment attempts before course completion.
+- Updated README, API status, project log, and auto-change audit log.
 
 ## 2026-05-26
 
