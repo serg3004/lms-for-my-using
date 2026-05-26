@@ -72,6 +72,12 @@ enum ProgressStatus {
   completed
 }
 
+enum AssessmentStatus {
+  draft
+  published
+  archived
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -87,6 +93,7 @@ model Organization {
   courses     Course[]
   assignments Assignment[]
   progress    Progress[]
+  assessments Assessment[]
   memberships Membership[]
 
   @@map("organizations")
@@ -158,6 +165,7 @@ model Course {
   materials    CourseMaterial[]
   assignments  Assignment[]
   progress     Progress[]
+  assessments  Assessment[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -177,9 +185,10 @@ model Lesson {
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
 
-  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  materials CourseMaterial[]
-  progress  Progress[]
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials   CourseMaterial[]
+  progress    Progress[]
+  assessments Assessment[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
@@ -195,14 +204,14 @@ model CourseMaterial {
   slug           String
   description    String?
   kind           CourseMaterialKind   @default(file)
-  fileName       String?             @map("file_name")
+  fileName       String?              @map("file_name")
   fileUrl        String               @map("file_url")
   mimeType       String?              @map("mime_type")
   sizeBytes      Int?                 @map("size_bytes")
   status         CourseMaterialStatus @default(active)
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz
+  deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz
 
   course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
@@ -228,7 +237,7 @@ model Assignment {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user         User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  group         Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
   @@index([courseId, status])
@@ -262,6 +271,33 @@ model Progress {
   @@index([userId])
   @@index([completedAt])
   @@map("progress")
+}
+
+model Assessment {
+  id                               String           @id @default(uuid()) @db.Uuid
+  organizationId                   String           @map("organization_id") @db.Uuid
+  courseId                         String           @map("course_id") @db.Uuid
+  lessonId                         String?          @map("lesson_id") @db.Uuid
+  title                            String
+  slug                             String
+  description                      String?
+  status                           AssessmentStatus @default(draft)
+  passingScore                     Int              @default(70) @map("passing_score")
+  maxAttempts                      Int?             @map("max_attempts")
+  availableAfterCourseCompletion   Boolean          @default(true) @map("available_after_course_completion")
+  createdAt                        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                        DateTime?        @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, slug])
+  @@index([organizationId, status])
+  @@index([courseId, status])
+  @@index([lessonId])
+  @@map("assessments")
 }
 
 model Membership {
