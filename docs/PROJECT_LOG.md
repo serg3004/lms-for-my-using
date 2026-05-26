@@ -137,21 +137,6 @@ GET  /api/v1/assessments/:id
 POST /api/v1/assessments
 ```
 
-Added Prisma model and migration:
-
-```text
-Assessment
-AssessmentStatus
-apps/api/prisma/migrations/20260526110000_add_assessments/migration.sql
-```
-
-Current policies:
-
-```text
-assessments read: admin, manager, instructor
-assessments create: admin, instructor
-```
-
 Assessments are prepared for future automatic grading after course completion with:
 
 ```text
@@ -160,7 +145,39 @@ maxAttempts
 availableAfterCourseCompletion
 ```
 
-### Current PR #41 check status
+### Assessment questions / answer options API skeleton
+
+Implemented:
+
+```text
+GET  /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:id
+POST /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:questionId/options
+POST /api/v1/questions/:questionId/options
+```
+
+Added Prisma models and migration:
+
+```text
+AssessmentQuestion
+AssessmentAnswerOption
+AssessmentQuestionType
+apps/api/prisma/migrations/20260526113000_add_assessment_questions/migration.sql
+```
+
+Current policies:
+
+```text
+assessment questions read: admin, manager, instructor
+assessment questions create: admin, instructor
+assessment answer options read: admin, manager, instructor
+assessment answer options create: admin, instructor
+```
+
+Questions and answer options are the next layer for future automatic grading.
+
+### Current PR #42 check status
 
 Local checks were not run in the GitHub API environment:
 
@@ -175,7 +192,6 @@ Local checks were not run in the GitHub API environment:
 ### Current next step
 
 ```text
-Assessment questions / answer options API skeleton
 Assessment attempts / automatic grading
 Course completion gate for final assessment
 OpenAPI
