@@ -12,12 +12,13 @@
 [2026-05-25T16:30:00Z] PR: #35 Courses API skeleton merged
 [2026-05-25T16:45:00Z] PR: #36 Project log sync merged
 [2026-05-25T17:00:00Z] PR: #37 Lessons API skeleton merged
-[2026-05-25T17:30:00Z] PR: #38 Course materials / files API skeleton merged
+[2026-05-25T17:30:00Z] PR: #38 Course materials / files API merged
 [2026-05-26T09:00:00Z] PR: #39 Assignments API skeleton merged
 [2026-05-26T10:00:00Z] PR: #40 Progress API skeleton merged
+[2026-05-26T11:00:00Z] PR: #41 Assessments API skeleton merged
 
-[2026-05-26T11:00:00Z] BRANCH: feature/pr-41-assessments-api
-[2026-05-26T11:00:01Z] TASK: implement Assessments API skeleton with future automatic grading fields
-[2026-05-26T11:00:02Z] CHANGE: added Assessment Prisma model and migration, Assessments API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest mapper entries, and docs sync
-[2026-05-26T11:00:03Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T11:00:04Z] ROLLBACK: revert PR #41 or delete branch feature/pr-41-assessments-api
+[2026-05-26T11:30:00Z] BRANCH: feature/pr-42-assessment-questions-api
+[2026-05-26T11:30:01Z] TASK: implement Assessment questions / answer options API skeleton
+[2026-05-26T11:30:02Z] CHANGE: added AssessmentQuestion and AssessmentAnswerOption Prisma models and migration, Assessment Questions API list/get/create endpoints, Answer Options API list/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest mapper entries, and docs sync
+[2026-05-26T11:30:03Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T11:30:04Z] ROLLBACK: revert PR #42 or delete branch feature/pr-42-assessment-questions-api
