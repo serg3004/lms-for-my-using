@@ -21,31 +21,51 @@ Implemented backend foundation modules:
 
 ## 2026-05-26
 
-Uplated backend MVP skeleton modules:
+Updated backend MVP skeleton modules:
 - Assignments API skeleton
 - Progress API skeleton
 - Assessments API skeleton
 - Assessment questions / answer options API skeleton
+- Assessment media support for questions/options
 
-### Assessment media support
+### Assessment attempts / automatic grading API skeleton
 
-Added media support for assessment questions and answer options:
+Implemented:
 
 ```text
-AssessmentQuestion.imageUrl?
-AssessmentAnswerOption.text?
-AssessmentAnswerOption.imageUrl?
+GET  /api/v1/assessments/:assessmentId/attempts
+GET  /api/v1/attempts/:id
+POST /api/v1/assessments/:assessmentId/attempts
 ```
-
-Answer options now support text-only, image-only, and text+image options. This allows authors to create mixed assessment formats such as text questions, image questions, single image choice, and multiple image choice while preserving automatic grading by selected option id.
 
 Added migration:
 
 ```text
-apps/api/prisma/migrations/20260526120000_add_assessment_media/migration.sql
+apps/api/prisma/migrations/20260526123000_add_assessment_attempts/migration.sql
 ```
 
-### Current PR #43 check status
+Added automatic grading MVP for:
+
+```text
+single_choice
+multiple_choice
+true_false
+```
+
+Current grading behavior:
+
+```text
+single_choice and true_false require selectedOptionId.
+multiple_choice requires selectedOptionIds.
+All assessment questions must be answered.
+Duplicate answers for one question are rejected.
+Score is calculated from question points.
+percentage is rounded from score / maxScore.
+passed is calculated by assessment.passingScore.
+assessment.maxAttempts is enforced when provided.
+```
+
+### Current PR #44 check status
 
 Local checks were not run in the GitHub API environment:
 
