@@ -4,3 +4,10 @@
 [2026-05-26T12:45:03Z] CHANGE: replaced assessment attempt raw queries with Prisma Client calls
 [2026-05-26T12:45:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-26T12:45:05Z] ROLLBACK: revert PR or delete branch feature/pr-45-sync-attempts-prisma
+[2026-05-26T10:20:00Z] BRANCH: feature/course-completion-gate
+[2026-05-26T10:20:01Z] TASK: PR #46 course completion gate
+[2026-05-26T10:20:02Z] CHANGE: added course completion calculation and GET /api/v1/courses/:id/completion
+[2026-05-26T10:20:03Z] CHANGE: blocked gated assessment attempts until course completion
+[2026-05-26T10:20:04Z] CHANGE: added happy path and negative business tests
+[2026-05-26T10:20:05Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T10:20:06Z] ROLLBACK: revert PR or delete branch feature/course-completion-gate
