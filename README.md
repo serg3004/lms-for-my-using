@@ -24,6 +24,7 @@ Implemented backend modules:
 - Assessments API skeleton
 - Assessment questions / answer options API skeleton
 - Assessment media support for questions/options
+- Assessment attempts / automatic grading API skeleton
 
 ## Implemented backend API
 
@@ -64,6 +65,9 @@ GET  /api/v1/questions/:id
 POST /api/v1/assessments/:assessmentId/questions
 GET  /api/v1/questions/:questionId/options
 POST /api/v1/questions/:questionId/options
+GET  /api/v1/assessments/:assessmentId/attempts
+GET  /api/v1/attempts/:id
+POST /api/v1/assessments/:assessmentId/attempts
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
@@ -90,16 +94,22 @@ assessment questions read: admin, manager, instructor
 assessment questions create: admin, instructor
 assessment answer options read: admin, manager, instructor
 assessment answer options create: admin, instructor
+assessment attempts read: admin, manager, instructor
+assessment attempts create: admin, manager, instructor, learner
 ```
 
-## Current scope rules
+## Assessment attempt grading
 
 ```text
-Read endpoints are scoped to current user organization.
-Create endpoints with organizationId require body.organizationId to match current user organization.
-Assessment questions can include optional imageUrl.
-Assessment answer options can include text, imageUrl, or both.
-Assessment answer options require at least one of text or imageUrl.
+single_choice and true_false require selectedOptionId.
+multiple_choice requires selectedOptionIds.
+All assessment questions must be answered.
+Duplicate question answers are rejected.
+Selected options must belong to their question.
+Score is sum of points for fully correct answers.
+percentage = round(score / maxScore * 100).
+passed = percentage >= assessment.passingScore.
+assessment.maxAttempts is enforced when provided.
 ```
 
 ## Current Prisma baseline
@@ -117,14 +127,20 @@ apps/api/prisma/migrations/20260526100000_add_progress/migration.sql
 apps/api/prisma/migrations/20260526110000_add_assessments/migration.sql
 apps/api/prisma/migrations/20260526113000_add_assessment_questions/migration.sql
 apps/api/prisma/migrations/20260526120000_add_assessment_media/migration.sql
+apps/api/prisma/migrations/20260526123000_add_assessment_attempts/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Assessment attempts / automatic grading.
-2. Course completion gate for final assessment.
-3. OpenAPI.
-4. Centralized API error format.
-5. Integration tests.
+1. Course completion gate for final assessment.
+2. Assessment results / reports.
+3. Users bulk create.
+4. Users import skeleton.
+5. Organization registration / first admin flow.
+6. Certificates skeleton.
+7. Centralized API error format.
+8. OpenAPI / Swagger skeleton.
+9. Integration tests.
+10. Deployment readiness.
