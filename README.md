@@ -22,6 +22,7 @@ Implemented backend modules:
 - Assignments API skeleton
 - Progress API skeleton
 - Assessments API skeleton
+- Assessment questions / answer options API skeleton
 
 ## Implemented backend API
 
@@ -57,6 +58,11 @@ POST /api/v1/progress
 GET  /api/v1/assessments
 GET  /api/v1/assessments/:id
 POST /api/v1/assessments
+GET  /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:id
+POST /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:questionId/options
+POST /api/v1/questions/:questionId/options
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
@@ -79,6 +85,10 @@ assignments read/create: admin, manager, instructor
 progress read/create: admin, manager, instructor
 assessments read: admin, manager, instructor
 assessments create: admin, instructor
+assessment questions read: admin, manager, instructor
+assessment questions create: admin, instructor
+assessment answer options read: admin, manager, instructor
+assessment answer options create: admin, instructor
 ```
 
 ## Current scope rules
@@ -86,18 +96,10 @@ assessments create: admin, instructor
 ```text
 Read endpoints are scoped to current user organization.
 Create endpoints with organizationId require body.organizationId to match current user organization.
-Course materials optional lessonId must belong to the same course and organization.
-Assignments target exactly one userId or groupId.
-Assignment courseId, userId, and groupId must belong to current user organization.
-Progress courseId and userId must belong to current user organization.
-Progress lessonId, if provided, must belong to the same course and organization.
-Progress score, if provided, must be 0..100.
-Assessment courseId must belong to current user organization.
-Assessment lessonId, if provided, must belong to the same course and organization.
-Assessment slug is unique inside courseId.
-Assessment passingScore must be 0..100.
-Assessment maxAttempts, if provided, must be at least 1.
-Assessment availableAfterCourseCompletion defaults to true for future final-course auto grading.
+Assessment questions belong to assessments in the current organization.
+Assessment answer options belong to questions in the current organization.
+Question points must be at least 1.
+Question and answer option order must be at least 0.
 ```
 
 ## Current Prisma baseline
@@ -113,15 +115,15 @@ apps/api/prisma/migrations/20260525173000_add_course_materials/migration.sql
 apps/api/prisma/migrations/20260526090000_add_assignments/migration.sql
 apps/api/prisma/migrations/20260526100000_add_progress/migration.sql
 apps/api/prisma/migrations/20260526110000_add_assessments/migration.sql
+apps/api/prisma/migrations/20260526113000_add_assessment_questions/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Assessment questions / answer options API skeleton.
-2. Assessment attempts / automatic grading.
-3. Course completion gate for final assessment.
-4. OpenAPI.
-5. Centralized API error format.
-6. Integration tests.
+1. Assessment attempts / automatic grading.
+2. Course completion gate for final assessment.
+3. OpenAPI.
+4. Centralized API error format.
+5. Integration tests.
