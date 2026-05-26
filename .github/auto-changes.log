@@ -14,12 +14,10 @@
 [2026-05-25T17:00:00Z] PR: #37 Lessons API skeleton merged
 [2026-05-25T17:30:00Z] PR: #38 Course materials / files API skeleton merged
 [2026-05-26T09:00:00Z] PR: #39 Assignments API skeleton merged
+[2026-05-26T10:00:00Z] PR: #40 Progress API skeleton merged
 
-[2026-05-26T10:00:00Z] BRANCH: feature/pr-40-progress-api
-[2026-05-26T10:00:01Z] TASK: implement Progress API skeleton
-[2026-05-26T10:00:02Z] CHANGE: added Progress Prisma model and migration, Progress API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest module mapper entries, and docs sync
-[2026-05-26T10:00:03Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T10:00:04Z] ROLLBACK: revert PR #40 or delete branch feature/pr-40-progress-api
-[2026-05-26T10:05:00Z] CI: PR #40 tests failed because jest.config.cjs regex mapper was over-escaped
-[2026-05-26T10:05:01Z] FIX: restored working Jest moduleNameMapper and added only progress schemas/service entries
-[2026-05-26T10:05:02Z] CHECK: waiting for next GitHub Actions result from user-provided screenshot
+[2026-05-26T11:00:00Z] BRANCH: feature/pr-41-assessments-api
+[2026-05-26T11:00:01Z] TASK: implement Assessments API skeleton with future automatic grading fields
+[2026-05-26T11:00:02Z] CHANGE: added Assessment Prisma model and migration, Assessments API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest mapper entries, and docs sync
+[2026-05-26T11:00:03Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T11:00:04Z] ROLLBACK: revert PR #41 or delete branch feature/pr-41-assessments-api
