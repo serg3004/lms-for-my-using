@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import type { UserRole } from '../auth/roles.js';
 
-const privilegedResultRoles = ['admin', 'manager', 'instructor'] as const;
+const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 
 type AttemptResultInput = {
   id: string;
