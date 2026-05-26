@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
@@ -87,7 +88,14 @@ describe('AssessmentAttemptsService completion gate', () => {
     const service = new AssessmentAttemptsService(prisma);
 
     await expect(
-      service.createAttempt(assessmentId, userId, organizationId, { answers: [] }),
+      service.createAttempt(assessmentId, userId, organizationId, {
+        answers: [
+          {
+            questionId: organizationId,
+            selectedOptionId: assessmentId,
+          },
+        ],
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(createAttempt).not.toHaveBeenCalled();
   });
