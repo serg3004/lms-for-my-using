@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from './database/database.module.js';
+import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module.js';
@@ -16,6 +17,7 @@ import { UsersModule } from './modules/users/users.module.js';
 @Module({
   imports: [
     DatabaseModule,
+    AssessmentsModule,
     AssignmentsModule,
     AuthModule,
     CourseMaterialsModule,

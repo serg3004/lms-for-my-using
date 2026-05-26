@@ -14,6 +14,8 @@ module.exports = {
     '^\\./assignments\\.service\\.js$': '<rootDir>/src/modules/assignments/assignments.service.ts',
     '^\\./progress\\.schemas\\.js$': '<rootDir>/src/modules/progress/progress.schemas.ts',
     '^\\./progress\\.service\\.js$': '<rootDir>/src/modules/progress/progress.service.ts',
+    '^\\./assessments\\.schemas\\.js$': '<rootDir>/src/modules/assessments/assessments.schemas.ts',
+    '^\\./assessments\\.service\\.js$': '<rootDir>/src/modules/assessments/assessments.service.ts',
     '^\\./course-materials\\.schemas\\.js$': '<rootDir>/src/modules/course-materials/course-materials.schemas.ts',
     '^\\./course-materials\\.service\\.js$': '<rootDir>/src/modules/course-materials/course-materials.service.ts',
     '^\\./courses\\.schemas\\.js$': '<rootDir>/src/modules/courses/courses.schemas.ts',
