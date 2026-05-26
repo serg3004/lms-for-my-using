@@ -1,11 +1,11 @@
 # API Status
 
-Last synced: 2026-05-25  
-Source branch: `main`
+Last synced: 2026-05-26  
+Source branch: `feature/pr-39-assignments-api`
 
 ## Implemented
 
-- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, `Course`, `Lesson`, and `CourseMaterial` models.
+- Prisma foundation with `Organization`, `User`, `Membership`, `Group`, `Course`, `Lesson`, `CourseMaterial`, and `Assignment` models.
 - Health API: `GET /api/v1/health`
 - Organizations API:
   - `GET /api/v1/organizations`
@@ -35,6 +35,10 @@ Source branch: `main`
   - `GET /api/v1/courses/:courseId/materials`
   - `GET /api/v1/materials/:id`
   - `POST /api/v1/courses/:courseId/materials`
+- Assignments API skeleton:
+  - `GET /api/v1/assignments`
+  - `GET /api/v1/assignments/:id`
+  - `POST /api/v1/assignments`
 - Auth API:
   - `POST /api/v1/auth/login`
   - `GET /api/v1/auth/me`
@@ -46,31 +50,35 @@ Source branch: `main`
 ## Current RBAC policy map
 
 ```text
-GET  /api/v1/organizations                  admin
-GET  /api/v1/organizations/:id              admin
+GET  /api/v1/organizations                    admin
+GET  /api/v1/organizations/:id                admin
 
-GET  /api/v1/users                          admin, manager
-GET  /api/v1/users/:id                      admin, manager
+GET  /api/v1/users                            admin, manager
+GET  /api/v1/users/:id                        admin, manager
 
-GET  /api/v1/memberships                    admin, manager
-GET  /api/v1/memberships/:id                admin, manager
-POST /api/v1/memberships                    admin
+GET  /api/v1/memberships                      admin, manager
+GET  /api/v1/memberships/:id                  admin, manager
+POST /api/v1/memberships                      admin
 
-GET  /api/v1/groups                         admin, manager
-GET  /api/v1/groups/:id                     admin, manager
-POST /api/v1/groups                         admin, manager
+GET  /api/v1/groups                           admin, manager
+GET  /api/v1/groups/:id                       admin, manager
+POST /api/v1/groups                           admin, manager
 
-GET  /api/v1/courses                        admin, manager, instructor
-GET  /api/v1/courses/:id                    admin, manager, instructor
-POST /api/v1/courses                        admin, instructor
+GET  /api/v1/courses                          admin, manager, instructor
+GET  /api/v1/courses/:id                      admin, manager, instructor
+POST /api/v1/courses                          admin, instructor
 
-GET  /api/v1/courses/:courseId/lessons      admin, manager, instructor
-GET  /api/v1/lessons/:id                    admin, manager, instructor
-POST /api/v1/courses/:courseId/lessons      admin, instructor
+GET  /api/v1/courses/:courseId/lessons        admin, manager, instructor
+GET  /api/v1/lessons/:id                      admin, manager, instructor
+POST /api/v1/courses/:courseId/lessons        admin, instructor
 
-GET  /api/v1/courses/:courseId/materials    admin, manager, instructor
-GET  /api/v1/materials/:id                  admin, manager, instructor
-POST /api/v1/courses/:courseId/materials    admin, instructor
+GET  /api/v1/courses/:courseId/materials      admin, manager, instructor
+GET  /api/v1/materials/:id                    admin, manager, instructor
+POST /api/v1/courses/:courseId/materials      admin, instructor
+
+GET  /api/v1/assignments                      admin, manager, instructor
+GET  /api/v1/assignments/:id                  admin, manager, instructor
+POST /api/v1/assignments                      admin, manager, instructor
 ```
 
 ## Current organization scope behavior
@@ -83,22 +91,25 @@ Create endpoints:
 - body.organizationId must match current user organization
 - route courseId must belong to current user organization
 - optional material lessonId must belong to the same course and organization
+- assignment courseId must belong to current user organization
+- assignment userId, if provided, must belong to current user organization
+- assignment groupId, if provided, must belong to current user organization
+- assignment must target exactly one of userId or groupId
 ```
 
 ## Current limitations
 
 - `POST /api/v1/organizations` and `POST /api/v1/users` remain public until bootstrap/admin registration flow is defined.
-- Courses, Lessons, and Course Materials APIs are skeletons.
-- Assignments, progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
+- Courses, Lessons, Course Materials, and Assignments APIs are skeletons.
+- Progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
 - OpenAPI is not implemented yet.
 - API error format is not centralized yet.
 - Integration tests are not implemented yet.
 
 ## Recommended next PRs
 
-1. Assignments API skeleton.
-2. Progress API skeleton.
-3. Extend RBAC policies as new LMS modules are implemented.
-4. OpenAPI.
-5. Centralized API error format.
-6. Integration tests.
+1. Progress API skeleton.
+2. Extend RBAC policies as new LMS modules are implemented.
+3. OpenAPI.
+4. Centralized API error format.
+5. Integration tests.
