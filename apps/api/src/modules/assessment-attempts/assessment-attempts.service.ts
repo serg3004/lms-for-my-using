@@ -99,7 +99,7 @@ export class AssessmentAttemptsService {
     const passed = percentage >= assessment.passingScore;
     const completedAt = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    const attemptId = await this.prisma.$transaction(async (tx) => {
       const attempts = await tx.$queryRaw<{ id: string }[]>`
         INSERT INTO assessment_attempts (
           organization_id, assessment_id, user_id, status, score, max_score, percentage, passed, completed_at, updated_at
@@ -110,9 +110,9 @@ export class AssessmentAttemptsService {
         )
         RETURNING id
       `;
-      const attemptId = attempts[0]?.id;
+      const createdAttemptId = attempts[0]?.id;
 
-      if (!attemptId) {
+      if (!createdAttemptId) {
         throw new BadRequestException('Assessment attempt was not created');
       }
 
@@ -122,7 +122,7 @@ export class AssessmentAttemptsService {
             organization_id, attempt_id, question_id, selected_option_id, selected_option_ids, is_correct, score, updated_at
           )
           VALUES (
-            ${organizationId}::uuid, ${attemptId}::uuid, ${answer.questionId}::uuid,
+            ${organizationId}::uuid, ${createdAttemptId}::uuid, ${answer.questionId}::uuid,
             ${answer.selectedOptionId ?? null}::uuid,
             ${answer.selectedOptionIds ? JSON.stringify(answer.selectedOptionIds) : null}::jsonb,
             ${answer.isCorrect}, ${answer.score}, CURRENT_TIMESTAMP
@@ -130,8 +130,10 @@ export class AssessmentAttemptsService {
         `;
       }
 
-      return this.getAttempt(attemptId, organizationId);
+      return createdAttemptId;
     });
+
+    return this.getAttempt(attemptId, organizationId);
   }
 
   private async ensureAssessmentExists(assessmentId: string, organizationId: string) {
