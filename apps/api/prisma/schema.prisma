@@ -66,6 +66,12 @@ enum AssignmentStatus {
   cancelled
 }
 
+enum ProgressStatus {
+  not_started
+  in_progress
+  completed
+}
+
 model Organization {
   id        String             @id @default(uuid()) @db.Uuid
   name      String
@@ -80,6 +86,7 @@ model Organization {
   groups      Group[]
   courses     Course[]
   assignments Assignment[]
+  progress    Progress[]
   memberships Membership[]
 
   @@map("organizations")
@@ -108,6 +115,7 @@ model User {
   memberships         Membership[] @relation("UserMemberships")
   assignedMemberships Membership[] @relation("MembershipAssignedBy")
   assignments         Assignment[]
+  progress            Progress[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -149,6 +157,7 @@ model Course {
   lessons      Lesson[]
   materials    CourseMaterial[]
   assignments  Assignment[]
+  progress     Progress[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -170,6 +179,7 @@ model Lesson {
 
   course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
   materials CourseMaterial[]
+  progress  Progress[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
@@ -185,14 +195,14 @@ model CourseMaterial {
   slug           String
   description    String?
   kind           CourseMaterialKind   @default(file)
-  fileName       String?              @map("file_name")
+  fileName       String?             @map("file_name")
   fileUrl        String               @map("file_url")
   mimeType       String?              @map("mime_type")
   sizeBytes      Int?                 @map("size_bytes")
   status         CourseMaterialStatus @default(active)
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz
 
   course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
@@ -218,7 +228,7 @@ model Assignment {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   user         User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  group         Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
   @@index([courseId, status])
@@ -226,6 +236,32 @@ model Assignment {
   @@index([groupId])
   @@index([dueAt])
   @@map("assignments")
+}
+
+model Progress {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  courseId       String         @map("course_id") @db.Uuid
+  lessonId       String?        @map("lesson_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  status         ProgressStatus @default(in_progress)
+  score          Int?
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status])
+  @@index([courseId, status])
+  @@index([lessonId])
+  @@index([userId])
+  @@index([completedAt])
+  @@map("progress")
 }
 
 model Membership {
