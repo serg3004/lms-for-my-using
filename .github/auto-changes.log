@@ -1,26 +1,6 @@
-[2026-05-25T06:30:00Z] PR: #24 Users API merged
-[2026-05-25T07:00:00Z] PR: #25 Memberships / roles API merged
-[2026-05-25T09:00:00Z] PR: #26 Auth foundation merged
-[2026-05-25T09:30:00Z] PR: #27 Password hashing flow merged
-[2026-05-25T11:00:00Z] PR: #28 User position / shift merged
-[2026-05-25T12:00:00Z] PR: #29 JWT login/current user merged
-[2026-05-25T13:00:00Z] PR: #30 Auth guard merged
-[2026-05-25T14:00:00Z] PR: #31 RBAC foundation merged
-[2026-05-25T15:00:00Z] PR: #32 Organization scope guard merged
-[2026-05-25T15:35:00Z] PR: #33 Docs sync merged
-[2026-05-25T16:00:00Z] PR: #34 Groups API merged
-[2026-05-25T16:30:00Z] PR: #35 Courses API skeleton merged
-[2026-05-25T16:45:00Z] PR: #36 Project log sync merged
-[2026-05-25T17:00:00Z] PR: #37 Lessons API skeleton merged
-[2026-05-25T17:30:00Z] PR: #38 Course materials / files API merged
-[2026-05-26T09:00:00Z] PR: #39 Assignments API skeleton merged
-[2026-05-26T10:00:00Z] PR: #40 Progress API skeleton merged
-[2026-05-26T11:00:00Z] PR: #41 Assessments API skeleton merged
-[2026-05-26T11:30:00Z] PR: #42 Assessment questions / answer options API skeleton merged
-[2026-05-26T12:00:00Z] PR: #43 Assessment media support merged
-
-[2026-05-26T12:30:00Z] BRANCH: feature/pr-44-assessment-attempts
-[2026-05-26T12:30:01Z] TASK: implement Assessment attempts / automatic grading API skeleton
-[2026-05-26T12:30:02Z] CHANGE: added assessment attempt migration, attempt controller/module/service/schemas, automatic grading logic, RBAC policies, validation tests, Jest mapper entries, and docs sync
-[2026-05-26T12:30:03Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T12:30:04Z] ROLLBACK: revert PR #44 or delete branch feature/pr-44-assessment-attempts
+[2026-05-26T12:45:00Z] BRANCH: feature/pr-45-sync-attempts-prisma
+[2026-05-26T12:45:01Z] TASK: sync AssessmentAttempt Prisma schema and remove raw SQL from attempts service
+[2026-05-26T12:45:02Z] CHANGE: added AssessmentAttemptStatus, AssessmentAttempt, AssessmentAttemptAnswer, and relations to apps/api/prisma/schema.prisma
+[2026-05-26T12:45:03Z] CHANGE: replaced assessment attempt raw queries with Prisma Client calls
+[2026-05-26T12:45:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T12:45:05Z] ROLLBACK: revert PR or delete branch feature/pr-45-sync-attempts-prisma
