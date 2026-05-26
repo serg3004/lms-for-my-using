@@ -11,3 +11,5 @@
 [2026-05-26T10:20:04Z] CHANGE: added happy path and negative business tests
 [2026-05-26T10:20:05Z] CHECK: local checks not run in GitHub API environment
 [2026-05-26T10:20:06Z] ROLLBACK: revert PR or delete branch feature/course-completion-gate
+[2026-05-26T10:30:00Z] CI: pnpm --recursive test failed; user-provided log showed missing Jest ESM globals and invalid empty attempt input in new tests
+[2026-05-26T10:30:01Z] FIX: imported jest from @jest/globals in new specs and used a nonempty answer input for gated attempt test
