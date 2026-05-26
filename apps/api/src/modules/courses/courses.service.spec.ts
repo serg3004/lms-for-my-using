@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import { PrismaService } from '../../database/prisma.service.js';
 import { createCourseSchema } from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
@@ -39,13 +37,13 @@ describe('CoursesService completion', () => {
   const createService = (totalLessons: number, completedLessons: number) => {
     const prisma = {
       course: {
-        findFirst: jest.fn().mockResolvedValue({ id: courseId }),
+        findFirst: async () => ({ id: courseId }),
       },
       lesson: {
-        count: jest.fn().mockResolvedValue(totalLessons),
+        count: async () => totalLessons,
       },
       progress: {
-        count: jest.fn().mockResolvedValue(completedLessons),
+        count: async () => completedLessons,
       },
     } as unknown as PrismaService;
 
