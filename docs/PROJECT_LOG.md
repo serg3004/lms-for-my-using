@@ -43,8 +43,6 @@ GET  /api/v1/users/:id
 POST /api/v1/users
 ```
 
-Included Zod validation, Prisma-backed service, password input handling, and tests.
-
 ### Memberships / roles API
 
 Implemented:
@@ -67,17 +65,6 @@ RolesGuard
 OrganizationScopeGuard
 ```
 
-Added password hashing with Node `crypto.scrypt`, JWT login/current user flow, RBAC foundation, and organization scope guard.
-
-### User position / shift
-
-Added nullable user fields:
-
-```text
-position
-shift
-```
-
 ### Groups API
 
 Implemented:
@@ -86,14 +73,6 @@ Implemented:
 GET  /api/v1/groups
 GET  /api/v1/groups/:id
 POST /api/v1/groups
-```
-
-Added Prisma model and migration:
-
-```text
-Group
-GroupStatus
-apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
 ```
 
 ### Courses API skeleton
@@ -106,14 +85,6 @@ GET  /api/v1/courses/:id
 POST /api/v1/courses
 ```
 
-Added Prisma model and migration:
-
-```text
-Course
-CourseStatus
-apps/api/prisma/migrations/20260525163000_add_courses/migration.sql
-```
-
 ### Lessons API skeleton
 
 Implemented:
@@ -122,14 +93,6 @@ Implemented:
 GET  /api/v1/courses/:courseId/lessons
 GET  /api/v1/lessons/:id
 POST /api/v1/courses/:courseId/lessons
-```
-
-Added Prisma model and migration:
-
-```text
-Lesson
-LessonStatus
-apps/api/prisma/migrations/20260525170000_add_lessons/migration.sql
 ```
 
 ### Course materials / files API skeleton
@@ -142,25 +105,6 @@ GET  /api/v1/materials/:id
 POST /api/v1/courses/:courseId/materials
 ```
 
-Added Prisma model and migration:
-
-```text
-CourseMaterial
-CourseMaterialStatus
-CourseMaterialKind
-apps/api/prisma/migrations/20260525173000_add_course_materials/migration.sql
-```
-
-Current policies:
-
-```text
-course materials read: admin, manager, instructor
-course materials create: admin, instructor
-```
-
-Materials can be attached to a course and optionally to a lesson through `lessonId`.
-The optional lesson must belong to the same course and organization.
-
 ### Assignments API skeleton
 
 Implemented:
@@ -170,24 +114,6 @@ GET  /api/v1/assignments
 GET  /api/v1/assignments/:id
 POST /api/v1/assignments
 ```
-
-Added Prisma model and migration:
-
-```text
-Assignment
-AssignmentStatus
-apps/api/prisma/migrations/20260526090000_add_assignments/migration.sql
-```
-
-Current policies:
-
-```text
-assignments read: admin, manager, instructor
-assignments create: admin, manager, instructor
-```
-
-Assignments target exactly one `userId` or `groupId`.
-The course, optional user, and optional group must belong to the current user organization.
 
 ## 2026-05-26
 
@@ -201,26 +127,40 @@ GET  /api/v1/progress/:id
 POST /api/v1/progress
 ```
 
+### Assessments API skeleton
+
+Implemented:
+
+```text
+GET  /api/v1/assessments
+GET  /api/v1/assessments/:id
+POST /api/v1/assessments
+```
+
 Added Prisma model and migration:
 
 ```text
-Progress
-ProgressStatus
-apps/api/prisma/migrations/20260526100000_add_progress/migration.sql
+Assessment
+AssessmentStatus
+apps/api/prisma/migrations/20260526110000_add_assessments/migration.sql
 ```
 
 Current policies:
 
 ```text
-progress read: admin, manager, instructor
-progress create: admin, manager, instructor
+assessments read: admin, manager, instructor
+assessments create: admin, instructor
 ```
 
-Progress belongs to a course and user, and can optionally be tied to a lesson.
-The course, user, and optional lesson must belong to the current user organization.
-If provided, score must be between 0 and 100.
+Assessments are prepared for future automatic grading after course completion with:
 
-### Current PR #40 check status
+```text
+passingScore
+maxAttempts
+availableAfterCourseCompletion
+```
+
+### Current PR #41 check status
 
 Local checks were not run in the GitHub API environment:
 
@@ -235,8 +175,9 @@ Local checks were not run in the GitHub API environment:
 ### Current next step
 
 ```text
-Assessments API skeleton
-Extend RBAC policies as new LMS modules are implemented
+Assessment questions / answer options API skeleton
+Assessment attempts / automatic grading
+Course completion gate for final assessment
 OpenAPI
 Centralized API error format
 Integration tests
