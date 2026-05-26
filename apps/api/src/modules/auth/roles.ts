@@ -23,6 +23,10 @@ export const rolePolicies = {
   progressCreate: ['admin', 'manager', 'instructor'],
   assessmentsRead: ['admin', 'manager', 'instructor'],
   assessmentsCreate: ['admin', 'instructor'],
+  assessmentQuestionsRead: ['admin', 'manager', 'instructor'],
+  assessmentQuestionsCreate: ['admin', 'instructor'],
+  assessmentAnswerOptionsRead: ['admin', 'manager', 'instructor'],
+  assessmentAnswerOptionsCreate: ['admin', 'instructor'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export function Roles(...roles: UserRole[]) {

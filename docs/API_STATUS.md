@@ -1,11 +1,11 @@
 # API Status
 
 Last synced: 2026-05-26  
-Source branch: `feature/pr-41-assessments-api`
+Source branch: `feature/pr-42-assessment-questions-api`
 
 ## Implemented
 
-- Prisma models: `Organization`, `User`, `Membership`, `Group`, `Course`, `Lesson`, `CourseMaterial`, `Assignment`, `Progress`, `Assessment`.
+- Prisma models: `Organization`, `User`, `Membership`, `Group`, `Course`, `Lesson`, `CourseMaterial`, `Assignment`, `Progress`, `Assessment`, `AssessmentQuestion`, `AssessmentAnswerOption`.
 - Auth API: `POST /api/v1/auth/login`, `GET /api/v1/auth/me`.
 - Reusable guards: `AuthGuard`, `RolesGuard`, `OrganizationScopeGuard`.
 
@@ -53,6 +53,12 @@ POST /api/v1/progress
 GET  /api/v1/assessments
 GET  /api/v1/assessments/:id
 POST /api/v1/assessments
+
+GET  /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:id
+POST /api/v1/assessments/:assessmentId/questions
+GET  /api/v1/questions/:questionId/options
+POST /api/v1/questions/:questionId/options
 ```
 
 ## RBAC
@@ -73,6 +79,10 @@ assignments read/create: admin, manager, instructor
 progress read/create: admin, manager, instructor
 assessments read: admin, manager, instructor
 assessments create: admin, instructor
+assessment questions read: admin, manager, instructor
+assessment questions create: admin, instructor
+assessment answer options read: admin, manager, instructor
+assessment answer options create: admin, instructor
 ```
 
 ## Organization scope
@@ -80,11 +90,12 @@ assessments create: admin, instructor
 ```text
 Read endpoints return current user organization data only.
 Create endpoints with organizationId require organization match.
-Assessment create validates courseId, optional lessonId, passingScore, maxAttempts, and future course-completion gate flag.
+Assessment question create validates assessmentId.
+Assessment answer option create validates questionId.
 ```
 
 ## Current limitations
 
 - Public organization/user create remains until bootstrap/admin registration flow.
-- Courses, Lessons, Course Materials, Assignments, Progress, and Assessments APIs are skeletons.
-- Assessment questions, answer options, attempts, automatic grading, certificates, OpenAPI, centralized API errors, and integration tests are not implemented yet.
+- Courses, Lessons, Course Materials, Assignments, Progress, Assessments, and Assessment Questions APIs are skeletons.
+- Assessment attempts, automatic grading, certificates, OpenAPI, centralized API errors, and integration tests are not implemented yet.
