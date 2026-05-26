@@ -25,6 +25,14 @@ export class CoursesController {
     return this.coursesService.getCourse(courseId, request.currentUser!.organizationId);
   }
 
+  @Get(':id/completion')
+  @Roles(...rolePolicies.coursesRead)
+  getCourseCompletion(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+    const currentUser = request.currentUser!;
+
+    return this.coursesService.getCourseCompletion(courseId, currentUser.id, currentUser.organizationId);
+  }
+
   @Post()
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.coursesCreate)

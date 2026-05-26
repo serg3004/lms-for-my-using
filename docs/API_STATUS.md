@@ -1,21 +1,31 @@
 # API Status
 
 Last synced: 2026-05-26  
-Source branch: `feature/pr-45-sync-attempts-prisma`
+Source branch: `feature/course-completion-gate`
 
 ## Current status
 
-Assessment attempts technical debt from PR #44 is resolved in this branch:
+Course completion gate is implemented in this branch:
 
-- `schema.prisma` now contains `AssessmentAttemptStatus`.
-- `schema.prisma` now contains `AssessmentAttempt`.
-- `schema.prisma` now contains `AssessmentAttemptAnswer`.
-- Assessment attempt relations are linked to `Organization`, `User`, `Assessment`, `AssessmentQuestion`, and `AssessmentAnswerOption`.
-- `AssessmentAttemptsService` now uses Prisma Client for attempt reads/writes instead of raw SQL.
+- `GET /api/v1/courses/:id/completion` returns current user completion for a course.
+- Course completion is calculated from published lessons and completed lesson progress.
+- `Assessment.availableAfterCourseCompletion` is enforced before creating an assessment attempt.
+- Gated assessment attempts are rejected until all published course lessons are completed.
+- AuthGuard and RolesGuard protect the course completion endpoint through the existing courses controller guard stack.
+- Existing attempt Zod validation is reused for attempt input.
+
+Assessment attempt Prisma sync from PR #45 remains active:
+
+- `schema.prisma` contains `AssessmentAttemptStatus`.
+- `schema.prisma` contains `AssessmentAttempt`.
+- `schema.prisma` contains `AssessmentAttemptAnswer`.
+- `AssessmentAttemptsService` uses Prisma Client for attempt reads/writes instead of raw SQL.
 
 ## Endpoint map
 
 ```text
+GET  /api/v1/courses/:id/completion
+
 GET  /api/v1/assessments/:assessmentId/attempts
 GET  /api/v1/attempts/:id
 POST /api/v1/assessments/:assessmentId/attempts
@@ -23,7 +33,6 @@ POST /api/v1/assessments/:assessmentId/attempts
 
 ## Current limitations
 
-- Course completion gate for final assessment is not implemented yet.
 - Assessment results / reports are not implemented yet.
 - Certificates are not implemented yet.
 - Users bulk import is not implemented yet.

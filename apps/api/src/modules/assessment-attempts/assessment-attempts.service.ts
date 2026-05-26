@@ -104,8 +104,10 @@ export class AssessmentAttemptsService {
       },
       select: {
         id: true,
+        courseId: true,
         passingScore: true,
         maxAttempts: true,
+        availableAfterCourseCompletion: true,
       },
     });
 
@@ -114,6 +116,7 @@ export class AssessmentAttemptsService {
     }
 
     await this.ensureUserExists(userId, organizationId);
+    await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
     await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
 
     const questions = await this.getQuestions(assessmentId, organizationId);
@@ -185,6 +188,41 @@ export class AssessmentAttemptsService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+  }
+
+  private async ensureAssessmentIsAvailable(courseId: string, userId: string, organizationId: string, availableAfterCourseCompletion: boolean) {
+    if (!availableAfterCourseCompletion) {
+      return;
+    }
+
+    const [totalLessons, completedLessons] = await Promise.all([
+      this.prisma.lesson.count({
+        where: {
+          courseId,
+          organizationId,
+          deletedAt: null,
+          status: 'published',
+        },
+      }),
+      this.prisma.progress.count({
+        where: {
+          courseId,
+          userId,
+          organizationId,
+          deletedAt: null,
+          status: 'completed',
+          lessonId: { not: null },
+          lesson: {
+            status: 'published',
+            deletedAt: null,
+          },
+        },
+      }),
+    ]);
+
+    if (totalLessons === 0 || completedLessons < totalLessons) {
+      throw new BadRequestException('Course must be completed before assessment attempt');
     }
   }
 
