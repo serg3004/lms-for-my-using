@@ -14,6 +14,8 @@ const courseSelect = {
   updatedAt: true,
 } as const;
 
+const completedProgressStatus = 'completed' as const;
+
 @Injectable()
 export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -44,6 +46,48 @@ export class CoursesService {
     }
 
     return course;
+  }
+
+  async getCourseCompletion(courseId: string, userId: string, organizationId: string) {
+    await this.ensureCourseExists(courseId, organizationId);
+
+    const [totalLessons, completedLessons] = await Promise.all([
+      this.prisma.lesson.count({
+        where: {
+          courseId,
+          organizationId,
+          deletedAt: null,
+          status: 'published',
+        },
+      }),
+      this.prisma.progress.count({
+        where: {
+          courseId,
+          userId,
+          organizationId,
+          deletedAt: null,
+          status: completedProgressStatus,
+          lessonId: { not: null },
+          lesson: {
+            status: 'published',
+            deletedAt: null,
+          },
+        },
+      }),
+    ]);
+
+    const isCompleted = totalLessons > 0 && completedLessons >= totalLessons;
+    const percentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+    return {
+      courseId,
+      userId,
+      organizationId,
+      totalLessons,
+      completedLessons,
+      isCompleted,
+      percentage,
+    };
   }
 
   async createCourse(input: CreateCourseInput) {
@@ -77,5 +121,20 @@ export class CoursesService {
       data: input,
       select: courseSelect,
     });
+  }
+
+  private async ensureCourseExists(courseId: string, organizationId: string) {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        id: courseId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
   }
 }
