@@ -1,18 +1,18 @@
 # API Status
 
 Last synced: 2026-05-26  
-Source branch: `feature/course-completion-gate`
+Source branch: `feature/assessment-results-reports`
 
 ## Current status
 
-Course completion gate is implemented in this branch:
+Assessment results / reports are implemented in this branch:
 
-- `GET /api/v1/courses/:id/completion` returns current user completion for a course.
-- Course completion is calculated from published lessons and completed lesson progress.
-- `Assessment.availableAfterCourseCompletion` is enforced before creating an assessment attempt.
-- Gated assessment attempts are rejected until all published course lessons are completed.
-- AuthGuard and RolesGuard protect the course completion endpoint through the existing courses controller guard stack.
-- Existing attempt Zod validation is reused for attempt input.
+- `GET /api/v1/assessments/:assessmentId/results` returns attempt result summaries for privileged organization roles.
+- `GET /api/v1/assessments/:assessmentId/report` returns aggregate assessment report metrics.
+- `GET /api/v1/attempts/:id/result` returns an attempt result with answer-level correctness summary.
+- Learners can read only their own attempt result through the result endpoint.
+- Admins, managers, and instructors can read learner attempt results in the same organization.
+- Attempt creation still enforces `Assessment.availableAfterCourseCompletion`.
 
 Assessment attempt Prisma sync from PR #45 remains active:
 
@@ -27,13 +27,15 @@ Assessment attempt Prisma sync from PR #45 remains active:
 GET  /api/v1/courses/:id/completion
 
 GET  /api/v1/assessments/:assessmentId/attempts
+GET  /api/v1/assessments/:assessmentId/results
+GET  /api/v1/assessments/:assessmentId/report
 GET  /api/v1/attempts/:id
+GET  /api/v1/attempts/:id/result
 POST /api/v1/assessments/:assessmentId/attempts
 ```
 
 ## Current limitations
 
-- Assessment results / reports are not implemented yet.
 - Certificates are not implemented yet.
 - Users bulk import is not implemented yet.
 - OpenAPI, centralized API errors, and integration tests are not implemented yet.
