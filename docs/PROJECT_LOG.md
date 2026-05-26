@@ -161,20 +161,6 @@ course materials create: admin, instructor
 Materials can be attached to a course and optionally to a lesson through `lessonId`.
 The optional lesson must belong to the same course and organization.
 
-### Current CI result
-
-Current automated CI status:
-
-```text
-[Check] Lint: OK
-[Check] Prisma generate: OK
-[Check] Types: OK
-[Check] Tests: OK
-[Check] Build: OK
-```
-
-## 2026-05-26
-
 ### Assignments API skeleton
 
 Implemented:
@@ -203,7 +189,38 @@ assignments create: admin, manager, instructor
 Assignments target exactly one `userId` or `groupId`.
 The course, optional user, and optional group must belong to the current user organization.
 
-### Current PR #39 check status
+## 2026-05-26
+
+### Progress API skeleton
+
+Implemented:
+
+```text
+GET  /api/v1/progress
+GET  /api/v1/progress/:id
+POST /api/v1/progress
+```
+
+Added Prisma model and migration:
+
+```text
+Progress
+ProgressStatus
+apps/api/prisma/migrations/20260526100000_add_progress/migration.sql
+```
+
+Current policies:
+
+```text
+progress read: admin, manager, instructor
+progress create: admin, manager, instructor
+```
+
+Progress belongs to a course and user, and can optionally be tied to a lesson.
+The course, user, and optional lesson must belong to the current user organization.
+If provided, score must be between 0 and 100.
+
+### Current PR #40 check status
 
 Local checks were not run in the GitHub API environment:
 
@@ -218,7 +235,7 @@ Local checks were not run in the GitHub API environment:
 ### Current next step
 
 ```text
-Progress API skeleton
+Assessments API skeleton
 Extend RBAC policies as new LMS modules are implemented
 OpenAPI
 Centralized API error format
