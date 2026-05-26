@@ -27,6 +27,7 @@ Implemented backend modules:
 - Assessment media support for questions/options
 - Assessment attempts / automatic grading API skeleton
 - Course completion gate for gated assessment attempts
+- Assessment results and reports API skeleton
 
 ## Implemented backend API
 
@@ -82,7 +83,10 @@ GET  /api/v1/questions/:questionId/options
 POST /api/v1/questions/:questionId/options
 
 GET  /api/v1/assessments/:assessmentId/attempts
+GET  /api/v1/assessments/:assessmentId/results
+GET  /api/v1/assessments/:assessmentId/report
 GET  /api/v1/attempts/:id
+GET  /api/v1/attempts/:id/result
 POST /api/v1/assessments/:assessmentId/attempts
 
 POST /api/v1/auth/login
@@ -116,6 +120,15 @@ Automatic grading supports:
 - `multiple_choice`
 - `true_false`
 
+## Assessment results and reports
+
+Assessment results are available through:
+- `GET /api/v1/assessments/:assessmentId/results` for organization instructors/managers/admins;
+- `GET /api/v1/assessments/:assessmentId/report` for aggregate assessment reporting;
+- `GET /api/v1/attempts/:id/result` for own learner result or privileged organization roles.
+
+Attempt result responses include score, max score, percentage, passed flag, assessment/user summary, and answer-level correctness summary.
+
 ## Current Prisma baseline
 
 ```text
@@ -127,12 +140,11 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Assessment results / reports.
-2. Users bulk create.
-3. Users import skeleton.
-4. Organization registration / first admin flow.
-5. Certificates skeleton.
-6. Centralized API error format.
-7. OpenAPI / Swagger skeleton.
-8. Integration tests.
-9. Deployment readiness.
+1. Users bulk create.
+2. Users import skeleton.
+3. Organization registration / first admin flow.
+4. Certificates skeleton.
+5. Centralized API error format.
+6. OpenAPI / Swagger skeleton.
+7. Integration tests.
+8. Deployment readiness.

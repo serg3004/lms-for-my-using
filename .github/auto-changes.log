@@ -3,15 +3,19 @@
 [2026-05-26T12:45:02Z] CHANGE: added AssessmentAttemptStatus, AssessmentAttempt, AssessmentAttemptAnswer, and relations to apps/api/prisma/schema.prisma
 [2026-05-26T12:45:03Z] CHANGE: replaced assessment attempt raw queries with Prisma Client calls
 [2026-05-26T12:45:04Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T12:45:05Z] ROLLBACK: revert PR or delete branch feature/pr-45-sync-attempts-prisma
 [2026-05-26T10:20:00Z] BRANCH: feature/course-completion-gate
 [2026-05-26T10:20:01Z] TASK: PR #46 course completion gate
 [2026-05-26T10:20:02Z] CHANGE: added course completion calculation and GET /api/v1/courses/:id/completion
 [2026-05-26T10:20:03Z] CHANGE: blocked gated assessment attempts until course completion
 [2026-05-26T10:20:04Z] CHANGE: added happy path and negative business tests
-[2026-05-26T10:20:05Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T10:20:06Z] ROLLBACK: revert PR or delete branch feature/course-completion-gate
-[2026-05-26T10:30:00Z] CI: pnpm --recursive test failed; user-provided log showed missing Jest ESM globals and invalid empty attempt input in new tests
-[2026-05-26T10:30:01Z] FIX: imported jest from @jest/globals in new specs and used a nonempty answer input for gated attempt test
-[2026-05-26T10:33:00Z] CI: pnpm --recursive test failed again; API workspace does not resolve @jest/globals in specs
-[2026-05-26T10:33:01Z] FIX: removed unsupported @jest/globals imports and replaced jest.fn usage in new specs with project-style manual async mocks
+[2026-05-26T10:30:00Z] CI: pnpm --recursive test failed; fixed new tests
+[2026-05-26T10:33:00Z] CI: pnpm --recursive test failed again; removed unsupported @jest/globals imports
+[2026-05-26T11:54:00Z] BRANCH: feature/assessment-results-reports
+[2026-05-26T11:54:01Z] TASK: PR #47 assessment results / reports
+[2026-05-26T11:54:02Z] CHANGE: added AssessmentResultsService for result summaries, answer correctness, and aggregate reports
+[2026-05-26T11:54:03Z] CHANGE: added GET /api/v1/assessments/:assessmentId/results
+[2026-05-26T11:54:04Z] CHANGE: added GET /api/v1/assessments/:assessmentId/report
+[2026-05-26T11:54:05Z] CHANGE: added GET /api/v1/attempts/:id/result with own-learner or privileged role access
+[2026-05-26T11:54:06Z] CHANGE: added service tests for result access, denied cross-learner access, and aggregate report calculation
+[2026-05-26T11:54:07Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T11:54:08Z] ROLLBACK: revert PR or delete branch feature/assessment-results-reports

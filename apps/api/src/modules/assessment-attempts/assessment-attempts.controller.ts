@@ -8,11 +8,15 @@ import {
   createAssessmentAttemptSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
+import { AssessmentResultsService } from './assessment-results.service.js';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
 export class AssessmentAttemptsController {
-  constructor(private readonly assessmentAttemptsService: AssessmentAttemptsService) {}
+  constructor(
+    private readonly assessmentAttemptsService: AssessmentAttemptsService,
+    private readonly assessmentResultsService: AssessmentResultsService,
+  ) {}
 
   @Get('assessments/:assessmentId/attempts')
   @Roles(...rolePolicies.assessmentAttemptsRead)
@@ -20,10 +24,30 @@ export class AssessmentAttemptsController {
     return this.assessmentAttemptsService.listAttempts(assessmentId, request.currentUser!.organizationId);
   }
 
+  @Get('assessments/:assessmentId/results')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  listAssessmentResults(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!.organizationId);
+  }
+
+  @Get('assessments/:assessmentId/report')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  getAssessmentReport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentResultsService.getAssessmentReport(assessmentId, request.currentUser!.organizationId);
+  }
+
   @Get('attempts/:id')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   getAttempt(@Param('id') attemptId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentAttemptsService.getAttempt(attemptId, request.currentUser!.organizationId);
+  }
+
+  @Get('attempts/:id/result')
+  @Roles(...rolePolicies.assessmentAttemptResultsRead)
+  getAttemptResult(@Param('id') attemptId: string, @Req() request: AuthenticatedRequest) {
+    const currentUser = request.currentUser!;
+
+    return this.assessmentResultsService.getAttemptResult(attemptId, currentUser.id, currentUser.organizationId);
   }
 
   @Post('assessments/:assessmentId/attempts')
