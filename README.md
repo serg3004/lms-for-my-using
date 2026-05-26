@@ -20,6 +20,7 @@ Created so far:
 - Courses API skeleton
 - Lessons API skeleton
 - Course materials / files API skeleton
+- Assignments API skeleton
 - Auth foundation
 - password hashing flow
 - JWT login and current user API
@@ -62,6 +63,10 @@ GET  /api/v1/courses/:courseId/materials
 GET  /api/v1/materials/:id
 POST /api/v1/courses/:courseId/materials
 
+GET  /api/v1/assignments
+GET  /api/v1/assignments/:id
+POST /api/v1/assignments
+
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
@@ -89,11 +94,16 @@ RBAC:
 - lessons create: admin, instructor
 - course materials read: admin, manager, instructor
 - course materials create: admin, instructor
+- assignments read: admin, manager, instructor
+- assignments create: admin, manager, instructor
 
 Organization scope:
-- organization, user, membership, group, course, lesson, and material reads are scoped to current user organization.
+- organization, user, membership, group, course, lesson, material, and assignment reads are scoped to current user organization.
 - create endpoints with organizationId require body.organizationId to match current user organization.
 - course materials may be attached to a course or optionally to a lesson through lessonId.
+- the optional material lesson must belong to the same course and organization.
+- assignments target exactly one user or group.
+- assignment courseId, userId, and groupId must belong to the current user organization.
 ```
 
 ## Current backend limitations
@@ -101,8 +111,8 @@ Organization scope:
 ```text
 POST /api/v1/organizations and POST /api/v1/users remain public until bootstrap/admin registration flow is defined.
 
-Courses, Lessons, and Course Materials APIs are skeletons.
-Assignments, progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
+Courses, Lessons, Course Materials, and Assignments APIs are skeletons.
+Progress, assessments, certificates, and rich lesson content blocks are not implemented yet.
 
 OpenAPI is not implemented yet.
 Centralized API error format is not implemented yet.
@@ -130,15 +140,15 @@ apps/api/prisma/migrations/20260525160000_add_groups/migration.sql
 apps/api/prisma/migrations/20260525163000_add_courses/migration.sql
 apps/api/prisma/migrations/20260525170000_add_lessons/migration.sql
 apps/api/prisma/migrations/20260525173000_add_course_materials/migration.sql
+apps/api/prisma/migrations/20260526090000_add_assignments/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Assignments API skeleton.
-2. Progress API skeleton.
-3. Extend RBAC policies as new LMS modules are implemented.
-4. OpenAPI.
-5. Centralized API error format.
-6. Integration tests.
+1. Progress API skeleton.
+2. Extend RBAC policies as new LMS modules are implemented.
+3. OpenAPI.
+4. Centralized API error format.
+5. Integration tests.
