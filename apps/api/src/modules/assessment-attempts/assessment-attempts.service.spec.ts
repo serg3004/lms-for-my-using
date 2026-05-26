@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
@@ -60,10 +59,10 @@ describe('Assessment attempts validation', () => {
 
 describe('AssessmentAttemptsService completion gate', () => {
   it('rejects attempt when gated assessment course is incomplete', async () => {
-    const createAttempt = jest.fn();
+    let createAttemptCalled = false;
     const prisma = {
       assessment: {
-        findFirst: jest.fn().mockResolvedValue({
+        findFirst: async () => ({
           id: assessmentId,
           courseId,
           passingScore: 70,
@@ -72,16 +71,20 @@ describe('AssessmentAttemptsService completion gate', () => {
         }),
       },
       user: {
-        findFirst: jest.fn().mockResolvedValue({ id: userId }),
+        findFirst: async () => ({ id: userId }),
       },
       lesson: {
-        count: jest.fn().mockResolvedValue(2),
+        count: async () => 2,
       },
       progress: {
-        count: jest.fn().mockResolvedValue(1),
+        count: async () => 1,
       },
       assessmentAttempt: {
-        create: createAttempt,
+        create: async () => {
+          createAttemptCalled = true;
+
+          return { id: assessmentId };
+        },
       },
     } as unknown as PrismaService;
 
@@ -97,6 +100,6 @@ describe('AssessmentAttemptsService completion gate', () => {
         ],
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(createAttempt).not.toHaveBeenCalled();
+    expect(createAttemptCalled).toBe(false);
   });
 });
