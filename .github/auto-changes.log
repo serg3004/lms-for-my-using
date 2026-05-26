@@ -20,3 +20,6 @@
 [2026-05-26T10:00:02Z] CHANGE: added Progress Prisma model and migration, Progress API list/get/create endpoints, Zod validation, Prisma service, RBAC policies, organization scope checks, validation tests, Jest module mapper entries, and docs sync
 [2026-05-26T10:00:03Z] CHECK: local checks not run in GitHub API environment
 [2026-05-26T10:00:04Z] ROLLBACK: revert PR #40 or delete branch feature/pr-40-progress-api
+[2026-05-26T10:05:00Z] CI: PR #40 tests failed because jest.config.cjs regex mapper was over-escaped
+[2026-05-26T10:05:01Z] FIX: restored working Jest moduleNameMapper and added only progress schemas/service entries
+[2026-05-26T10:05:02Z] CHECK: waiting for next GitHub Actions result from user-provided screenshot
