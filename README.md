@@ -21,10 +21,12 @@ Implemented backend modules:
 - Course materials / files API skeleton
 - Assignments API skeleton
 - Progress API skeleton
+- Course completion check by lesson progress
 - Assessments API skeleton
 - Assessment questions / answer options API skeleton
 - Assessment media support for questions/options
 - Assessment attempts / automatic grading API skeleton
+- Course completion gate for gated assessment attempts
 
 ## Implemented backend API
 
@@ -49,6 +51,7 @@ POST /api/v1/groups
 
 GET  /api/v1/courses
 GET  /api/v1/courses/:id
+GET  /api/v1/courses/:id/completion
 POST /api/v1/courses
 
 GET  /api/v1/courses/:courseId/lessons
@@ -86,9 +89,21 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## Course completion gate
+
+Course completion is calculated from published lessons and completed lesson progress for the current authenticated user.
+
+`GET /api/v1/courses/:id/completion` returns:
+- total published lessons;
+- completed lessons;
+- completion flag;
+- completion percentage.
+
+Assessment attempts are blocked when `Assessment.availableAfterCourseCompletion = true` and the learner has not completed all published course lessons.
+
 ## Assessment attempts
 
-Assessment attempt models are now synchronized in `apps/api/prisma/schema.prisma` and the attempts service uses Prisma Client for attempt tables instead of raw SQL.
+Assessment attempt models are synchronized in `apps/api/prisma/schema.prisma` and the attempts service uses Prisma Client for attempt tables instead of raw SQL.
 
 ```text
 AssessmentAttempt
@@ -112,13 +127,12 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Course completion gate for final assessment.
-2. Assessment results / reports.
-3. Users bulk create.
-4. Users import skeleton.
-5. Organization registration / first admin flow.
-6. Certificates skeleton.
-7. Centralized API error format.
-8. OpenAPI / Swagger skeleton.
-9. Integration tests.
-10. Deployment readiness.
+1. Assessment results / reports.
+2. Users bulk create.
+3. Users import skeleton.
+4. Organization registration / first admin flow.
+5. Certificates skeleton.
+6. Centralized API error format.
+7. OpenAPI / Swagger skeleton.
+8. Integration tests.
+9. Deployment readiness.
