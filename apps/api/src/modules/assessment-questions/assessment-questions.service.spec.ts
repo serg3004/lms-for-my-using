@@ -19,7 +19,17 @@ describe('Assessment questions validation', () => {
     });
   });
 
-  it('accepts valid answer option input', () => {
+  it('accepts valid assessment question input with image', () => {
+    const input = createAssessmentQuestionSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      title: 'Choose the safety sign',
+      imageUrl: '/files/sign.png',
+    });
+
+    expect(input.imageUrl).toBe('/files/sign.png');
+  });
+
+  it('accepts valid text answer option input', () => {
     const input = createAssessmentAnswerOptionSchema.parse({
       organizationId: '11111111-1111-1111-1111-111111111111',
       text: 'Correct option',
@@ -30,6 +40,21 @@ describe('Assessment questions validation', () => {
     expect(input).toEqual({
       organizationId: '11111111-1111-1111-1111-111111111111',
       text: 'Correct option',
+      isCorrect: true,
+      order: 0,
+    });
+  });
+
+  it('accepts valid image answer option input', () => {
+    const input = createAssessmentAnswerOptionSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      imageUrl: '/files/option-a.png',
+      isCorrect: true,
+    });
+
+    expect(input).toEqual({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      imageUrl: '/files/option-a.png',
       isCorrect: true,
       order: 0,
     });
@@ -49,6 +74,14 @@ describe('Assessment questions validation', () => {
         organizationId: '11111111-1111-1111-1111-111111111111',
         title: 'Safety basics',
         points: 0,
+      }),
+    ).toThrow();
+  });
+
+  it('rejects answer option without text and image', () => {
+    expect(() =>
+      createAssessmentAnswerOptionSchema.parse({
+        organizationId: '11111111-1111-1111-1111-111111111111',
       }),
     ).toThrow();
   });

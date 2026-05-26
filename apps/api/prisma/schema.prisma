@@ -85,14 +85,14 @@ enum AssessmentQuestionType {
 }
 
 model Organization {
-  id        String             @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String             @unique
-  status    OrganizationStatus @default(active)
-  plan      OrganizationPlan   @default(trial)
-  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt DateTime?          @map("deleted_at") @db.Timestamptz
+  id                      String                   @id @default(uuid()) @db.Uuid
+  name                    String
+  slug                    String                   @unique
+  status                  OrganizationStatus       @default(active)
+  plan                    OrganizationPlan         @default(trial)
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt               DateTime?                @map("deleted_at") @db.Timestamptz
 
   users                   User[]
   groups                  Group[]
@@ -108,23 +108,23 @@ model Organization {
 }
 
 model User {
-  id             String     @id @default(uuid()) @db.Uuid
-  organizationId String     @map("organization_id") @db.Uuid
-  email          String
-  passwordHash   String     @map("password_hash")
-  firstName      String     @map("first_name")
-  lastName       String     @map("last_name")
-  middleName     String?    @map("middle_name")
-  position       String?
-  shift          String?
-  phone          String?
-  status         UserStatus @default(active)
-  locale         String     @default("ru")
-  timezone       String     @default("Asia/Almaty")
-  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz
+  id                  String       @id @default(uuid()) @db.Uuid
+  organizationId      String       @map("organization_id") @db.Uuid
+  email               String
+  passwordHash        String       @map("password_hash")
+  firstName           String       @map("first_name")
+  lastName            String       @map("last_name")
+  middleName          String?      @map("middle_name")
+  position            String?
+  shift               String?
+  phone               String?
+  status              UserStatus   @default(active)
+  locale              String       @default("ru")
+  timezone            String       @default("Asia/Almaty")
+  lastLoginAt         DateTime?    @map("last_login_at") @db.Timestamptz
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime?    @map("deleted_at") @db.Timestamptz
 
   organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   memberships         Membership[] @relation("UserMemberships")
@@ -282,20 +282,20 @@ model Progress {
 }
 
 model Assessment {
-  id                              String           @id @default(uuid()) @db.Uuid
-  organizationId                  String           @map("organization_id") @db.Uuid
-  courseId                        String           @map("course_id") @db.Uuid
-  lessonId                        String?          @map("lesson_id") @db.Uuid
-  title                           String
-  slug                            String
-  description                     String?
-  status                          AssessmentStatus @default(draft)
-  passingScore                    Int              @default(70) @map("passing_score")
-  maxAttempts                     Int?             @map("max_attempts")
-  availableAfterCourseCompletion  Boolean          @default(true) @map("available_after_course_completion")
-  createdAt                       DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                       DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt                       DateTime?        @map("deleted_at") @db.Timestamptz
+  id                               String           @id @default(uuid()) @db.Uuid
+  organizationId                   String           @map("organization_id") @db.Uuid
+  courseId                         String           @map("course_id") @db.Uuid
+  lessonId                         String?          @map("lesson_id") @db.Uuid
+  title                            String
+  slug                             String
+  description                      String?
+  status                           AssessmentStatus @default(draft)
+  passingScore                     Int              @default(70) @map("passing_score")
+  maxAttempts                      Int?             @map("max_attempts")
+  availableAfterCourseCompletion   Boolean          @default(true) @map("available_after_course_completion")
+  createdAt                        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                        DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                        DateTime?        @map("deleted_at") @db.Timestamptz
 
   organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course       Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -316,6 +316,7 @@ model AssessmentQuestion {
   type           AssessmentQuestionType @default(single_choice)
   title          String
   text           String?
+  imageUrl       String?                @map("image_url")
   points         Int                    @default(1)
   order          Int                    @default(0)
   createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
@@ -332,18 +333,19 @@ model AssessmentQuestion {
 }
 
 model AssessmentAnswerOption {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  questionId     String    @map("question_id") @db.Uuid
-  text           String
-  isCorrect      Boolean   @default(false) @map("is_correct")
-  order          Int       @default(0)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  questionId     String             @map("question_id") @db.Uuid
+  text           String?
+  imageUrl       String?            @map("image_url")
+  isCorrect      Boolean            @default(false) @map("is_correct")
+  order          Int                @default(0)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz
 
-  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  question     AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  question     AssessmentQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([questionId, order])

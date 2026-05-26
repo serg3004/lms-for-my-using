@@ -23,6 +23,7 @@ Implemented backend modules:
 - Progress API skeleton
 - Assessments API skeleton
 - Assessment questions / answer options API skeleton
+- Assessment media support for questions/options
 
 ## Implemented backend API
 
@@ -96,10 +97,9 @@ assessment answer options create: admin, instructor
 ```text
 Read endpoints are scoped to current user organization.
 Create endpoints with organizationId require body.organizationId to match current user organization.
-Assessment questions belong to assessments in the current organization.
-Assessment answer options belong to questions in the current organization.
-Question points must be at least 1.
-Question and answer option order must be at least 0.
+Assessment questions can include optional imageUrl.
+Assessment answer options can include text, imageUrl, or both.
+Assessment answer options require at least one of text or imageUrl.
 ```
 
 ## Current Prisma baseline
@@ -116,6 +116,7 @@ apps/api/prisma/migrations/20260526090000_add_assignments/migration.sql
 apps/api/prisma/migrations/20260526100000_add_progress/migration.sql
 apps/api/prisma/migrations/20260526110000_add_assessments/migration.sql
 apps/api/prisma/migrations/20260526113000_add_assessment_questions/migration.sql
+apps/api/prisma/migrations/20260526120000_add_assessment_media/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
