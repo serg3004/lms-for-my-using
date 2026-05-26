@@ -17,9 +17,10 @@
 [2026-05-26T10:00:00Z] PR: #40 Progress API skeleton merged
 [2026-05-26T11:00:00Z] PR: #41 Assessments API skeleton merged
 [2026-05-26T11:30:00Z] PR: #42 Assessment questions / answer options API skeleton merged
+[2026-05-26T12:00:00Z] PR: #43 Assessment media support merged
 
-[2026-05-26T12:00:00Z] BRANCH: feature/pr-43-assessment-media
-[2026-05-26T12:00:01Z] TASK: implement Assessment media support for questions/options
-[2026-05-26T12:00:02Z] CHANGE: added imageUrl to AssessmentQuestion, optional text and imageUrl to AssessmentAnswerOption, migration check requiring text or imageUrl, Zod validation, tests, and docs sync
-[2026-05-26T12:00:03Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T12:00:04Z] ROLLBACK: revert PR #43 or delete branch feature/pr-43-assessment-media
+[2026-05-26T12:30:00Z] BRANCH: feature/pr-44-assessment-attempts
+[2026-05-26T12:30:01Z] TASK: implement Assessment attempts / automatic grading API skeleton
+[2026-05-26T12:30:02Z] CHANGE: added assessment attempt migration, attempt controller/module/service/schemas, automatic grading logic, RBAC policies, validation tests, Jest mapper entries, and docs sync
+[2026-05-26T12:30:03Z] CHECK: local checks not run in GitHub API environment
+[2026-05-26T12:30:04Z] ROLLBACK: revert PR #44 or delete branch feature/pr-44-assessment-attempts
