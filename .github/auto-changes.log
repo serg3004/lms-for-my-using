@@ -1,8 +1,8 @@
-[2026-05-27T15:19:00Z] BRANCH: docs/mvp-dod-pilot-checklist
-[2026-05-27T15:19:01Z] TASK: PR 4 docs add mvp definition of done and pilot checklist
-[2026-05-27T15:19:02Z] READ: README, API status, project log, audit log
-[2026-05-27T15:19:03Z] CHANGE: added docs/MVP_DEFINITION_OF_DONE.md
-[2026-05-27T15:19:04Z] CHANGE: added docs/PILOT_CHECKLIST.md
-[2026-05-27T15:19:05Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T15:19:06Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T15:19:07Z] ROLLBACK: revert PR or delete branch docs/mvp-dod-pilot-checklist
+[2026-05-27T16:05:00Z] BRANCH: docs/mvp-local-runbook
+[2026-05-27T16:05:01Z] TASK: PR 5 docs add mvp local runbook
+[2026-05-27T16:05:02Z] READ: README, API status, project log, audit log, package scripts, .env.example
+[2026-05-27T16:05:03Z] CHANGE: added docs/MVP_LOCAL_RUNBOOK.md
+[2026-05-27T16:05:04Z] DOCS: documented env setup, local PostgreSQL/MinIO, Prisma generate, safe migration flow, API start, web start, health check
+[2026-05-27T16:05:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T16:05:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T16:05:07Z] ROLLBACK: revert PR or delete branch docs/mvp-local-runbook
