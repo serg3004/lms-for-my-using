@@ -1,9 +1,76 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/roles.js';
 
 const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
+
+const attemptResultSummarySelect = {
+  id: true,
+  organizationId: true,
+  assessmentId: true,
+  userId: true,
+  status: true,
+  score: true,
+  maxScore: true,
+  percentage: true,
+  passed: true,
+  startedAt: true,
+  completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  assessment: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      passingScore: true,
+    },
+  },
+  user: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
+} as const satisfies Prisma.AssessmentAttemptSelect;
+
+const attemptResultDetailSelect = {
+  ...attemptResultSummarySelect,
+  answers: {
+    where: { deletedAt: null },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      questionId: true,
+      selectedOptionId: true,
+      selectedOptionIds: true,
+      isCorrect: true,
+      score: true,
+      createdAt: true,
+      updatedAt: true,
+      question: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          points: true,
+          order: true,
+        },
+      },
+      selectedOption: {
+        select: {
+          id: true,
+          text: true,
+          imageUrl: true,
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.AssessmentAttemptSelect;
 
 type AttemptResultInput = {
   id: string;
@@ -69,7 +136,7 @@ export class AssessmentResultsService {
         deletedAt: null,
       },
       orderBy: { completedAt: 'desc' },
-      select: this.getAttemptResultSelect(false),
+      select: attemptResultSummarySelect,
     });
 
     return attempts.map((attempt) => this.toAttemptResult(attempt));
@@ -82,7 +149,7 @@ export class AssessmentResultsService {
         organizationId,
         deletedAt: null,
       },
-      select: this.getAttemptResultSelect(true),
+      select: attemptResultDetailSelect,
     });
 
     if (!attempt) {
@@ -172,74 +239,6 @@ export class AssessmentResultsService {
     if (!membership) {
       throw new ForbiddenException('Assessment attempt result is not available for current user');
     }
-  }
-
-  private getAttemptResultSelect(includeAnswers: boolean) {
-    return {
-      id: true,
-      organizationId: true,
-      assessmentId: true,
-      userId: true,
-      status: true,
-      score: true,
-      maxScore: true,
-      percentage: true,
-      passed: true,
-      startedAt: true,
-      completedAt: true,
-      createdAt: true,
-      updatedAt: true,
-      assessment: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          passingScore: true,
-        },
-      },
-      user: {
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-        },
-      },
-      ...(includeAnswers
-        ? {
-            answers: {
-              where: { deletedAt: null },
-              orderBy: { createdAt: 'asc' },
-              select: {
-                id: true,
-                questionId: true,
-                selectedOptionId: true,
-                selectedOptionIds: true,
-                isCorrect: true,
-                score: true,
-                createdAt: true,
-                updatedAt: true,
-                question: {
-                  select: {
-                    id: true,
-                    title: true,
-                    type: true,
-                    points: true,
-                    order: true,
-                  },
-                },
-                selectedOption: {
-                  select: {
-                    id: true,
-                    text: true,
-                    imageUrl: true,
-                  },
-                },
-              },
-            },
-          }
-        : {}),
-    } as const;
   }
 
   private toAttemptResult(attempt: AttemptResultInput) {
