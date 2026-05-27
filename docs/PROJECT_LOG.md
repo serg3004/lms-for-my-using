@@ -2,34 +2,22 @@
 
 ## 2026-05-27
 
-### Users import skeleton
+### Organization registration / first admin flow
 
-Implemented PR #49 scope on `feature/users-import-skeleton`.
+Implemented PR #50 scope on `feature/organization-registration-first-admin`.
 
 Changes:
-- Added `POST /api/v1/users/import`.
-- Added Zod schema for JSON-only user import payloads.
-- Added `validateOnly` mode for row-level validation report without writes.
-- Added `create` mode that skips invalid, duplicate, and existing-email rows while creating valid rows.
-- Added 100-row import batch limit.
-- Added duplicate email detection inside import payload.
-- Added existing organization email checks before writes.
-- Added password hashing and Prisma transaction writes for created import rows.
-- Reused `AuthGuard`, `RolesGuard`, `OrganizationScopeGuard`, and `usersCreate`.
-- Added tests for validate-only report and partial create with skipped existing email.
+- Added `POST /api/v1/organizations/register`.
+- Added Zod schema for public organization registration with nested `organization` and `admin` sections.
+- Added duplicate active organization slug validation.
+- Added duplicate active admin email validation.
+- Added first admin password hashing.
+- Added transactional creation of organization, first admin user, and `admin` membership.
+- Added response summary without password hash.
+- Added service tests for registration happy path and duplicate slug rejection.
 - Updated README, API status, project log, and auto-change audit log.
 
-Deferred by design:
-- CSV upload `multipart/form-data`.
-- Import file storage.
-- Background jobs / queue.
-- Import history table and related Prisma migration.
-- Import UI.
-- Email invitations.
-
-### Current PR check status
-
-Local checks were not run in the GitHub API environment:
+Current PR check status:
 
 ```text
 [Check] Lint: not run
@@ -38,7 +26,16 @@ Local checks were not run in the GitHub API environment:
 [Check] Build: not run
 ```
 
-## 2026-05-27
+### Users import skeleton
+
+Implemented PR #49 scope on `feature/users-import-skeleton`.
+
+Changes:
+- Added `POST /api/v1/users/import`.
+- Added JSON-only import schema with `validateOnly`/`create` modes and 100-row batch limit.
+- Added row-level validation report, duplicate payload email detection, and existing database email checks.
+- Added create mode with password hashing and Prisma transaction writes for valid rows.
+- Deferred CSV upload, file storage, queue, import history table/migration, UI, and email invitations.
 
 ### Users bulk create
 
@@ -51,9 +48,6 @@ Changes:
 - Added duplicate email validation inside the request payload.
 - Added database duplicate email check before writes.
 - Added transactional Prisma writes for bulk user creation.
-- Added password hashing for each created user.
-- Added service tests for happy path bulk create and duplicate database email rejection.
-- Updated README, API status, project log, and auto-change audit log.
 
 ## 2026-05-26
 
@@ -61,41 +55,10 @@ Changes:
 
 Implemented PR #47 scope on `feature/assessment-results-reports`.
 
-Changes:
-- Added `AssessmentResultsService` for attempt result summaries, answer-level correctness, and aggregate reports.
-- Added `GET /api/v1/assessments/:assessmentId/results`.
-- Added `GET /api/v1/assessments/:assessmentId/report`.
-- Added `GET /api/v1/attempts/:id/result`.
-- Added learner access to own attempt result while preserving privileged organization access for admins/managers/instructors.
-- Added tests for own result access, denied cross-learner access, and aggregate report calculation.
-- Updated README, API status, project log, and auto-change audit log.
-
 ### Course completion gate
 
 Implemented PR #46 scope on `feature/course-completion-gate`.
 
-Changes:
-- Added course completion calculation based on published lessons and completed lesson progress.
-- Added `GET /api/v1/courses/:id/completion`.
-- Enforced `Assessment.availableAfterCourseCompletion` before assessment attempt creation.
-- Added service tests for course completion happy/incomplete paths.
-- Added business test for rejecting gated assessment attempts before course completion.
-- Updated README, API status, project log, and auto-change audit log.
-
-## 2026-05-26
-
 ### Assessment attempts Prisma sync
 
-Resolved the technical debt introduced in PR #44:
-
-```text
-AssessmentAttemptStatus
-AssessmentAttempt
-AssessmentAttemptAnswer
-```
-
-Changes:
-- Synced assessment attempt tables into `apps/api/prisma/schema.prisma`.
-- Added Prisma relations for attempts and attempt answers.
-- Replaced parameterized raw SQL usage in `AssessmentAttemptsService` with Prisma Client calls.
-- Kept the existing migration `20260526123000_add_assessment_attempts` as the database source for the already-added tables.
+Resolved the technical debt introduced in PR #44 by syncing assessment attempt tables into Prisma schema and replacing raw SQL with Prisma Client calls.
