@@ -1,26 +1,25 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `docs/mvp-local-runbook`
+Source branch: `chore/mvp-seed-data`
 
 ## Current status
 
-MVP local runbook is available:
+MVP seed data is available:
 
-- `docs/MVP_LOCAL_RUNBOOK.md` documents local `.env` setup.
-- Local PostgreSQL and MinIO setup is documented as a local-only Docker Compose example.
-- Prisma Client generation is documented through `pnpm --filter @lms/api prisma:generate`.
-- Migration guidance is documented as a safe operator-controlled flow.
-- API start, web start, and health check are documented.
+- `apps/api/prisma/seed.mjs` seeds the current Prisma MVP baseline.
+- The seed script is idempotent through fixed IDs and Prisma `upsert`.
+- Dataset includes 1 organization, 1 admin, 1 instructor, 2 learners, 1 group, 1 course, 2 lessons, 1 assignment, and 1 progress record.
+- Seed users use local-only `example.test` emails.
+- The seed script is standalone and can be run manually with `node prisma/seed.mjs` from `apps/api`.
 - API runtime behavior is unchanged in this PR.
 
 ## Current limitations
 
-- Docs-only PR.
 - No Prisma schema or migration changes.
 - No CI/CD changes.
-- No deploy scripts.
 - No new dependencies.
+- No package script changes.
 - No public runtime API endpoint changes.
 - No real migrations are applied.
 

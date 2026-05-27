@@ -6,42 +6,18 @@ Learning management system.
 
 Current stage: early MVP foundation.
 
-Implemented backend modules:
+Implemented backend foundation:
 - Health API
-- Organizations API
-- Organization registration / first admin flow
-- Users API
-- Users bulk create API
-- Users import skeleton API
-- Memberships / roles API
-- Auth login/current user
-- Auth password reset skeleton
-- AuthGuard
-- RolesGuard / RBAC
-- OrganizationScopeGuard
-- Groups API
-- Courses API skeleton
-- Lessons API skeleton
-- Course materials / files API skeleton
-- Assignments API skeleton
-- Progress API skeleton
-- Course completion check by lesson progress
-- Assessments API skeleton
-- Assessment questions / answer options API skeleton
-- Assessment media support for questions/options
-- Assessment attempts / automatic grading API skeleton
-- Course completion gate for gated assessment attempts
-- Assessment results and reports API skeleton
-- Certificates API skeleton
+- Organizations / users / memberships / groups APIs
+- Auth login/current user and password reset skeleton
+- AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
+- Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
 - Centralized API error format
 - OpenAPI document skeleton
-- Integration tests skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - Centralized JWT secret access through API env config
-- JWT secret failure behavior test coverage
-- Zod validation errors return 400 Bad Request through the centralized API error format
-- MVP API smoke coverage for health, auth login, protected access, env validation, and tenant scope mismatch
-- MVP Definition of Done, Pilot Checklist, and Local Runbook
+- MVP API smoke coverage
+- MVP Definition of Done, Pilot Checklist, Local Runbook, and Seed Data
 
 ## Implemented backend API
 
@@ -55,65 +31,37 @@ POST /api/v1/auth/password-reset/confirm
 GET  /api/v1/auth/me
 
 GET  /api/v1/organizations
-GET  /api/v1/organizations/:id
 POST /api/v1/organizations
 POST /api/v1/organizations/register
 
 GET  /api/v1/users
-GET  /api/v1/users/:id
 POST /api/v1/users
 POST /api/v1/users/bulk
 POST /api/v1/users/import
 
 GET  /api/v1/memberships
-GET  /api/v1/memberships/:id
 POST /api/v1/memberships
 
 GET  /api/v1/groups
-GET  /api/v1/groups/:id
 POST /api/v1/groups
 
 GET  /api/v1/courses
-GET  /api/v1/courses/:id
-GET  /api/v1/courses/:id/completion
 POST /api/v1/courses
+GET  /api/v1/courses/:id/completion
 
 GET  /api/v1/courses/:courseId/lessons
-GET  /api/v1/lessons/:id
 POST /api/v1/courses/:courseId/lessons
 
-GET  /api/v1/courses/:courseId/materials
-GET  /api/v1/materials/:id
-POST /api/v1/courses/:courseId/materials
-
 GET  /api/v1/assignments
-GET  /api/v1/assignments/:id
 POST /api/v1/assignments
 
 GET  /api/v1/progress
-GET  /api/v1/progress/:id
 POST /api/v1/progress
 
 GET  /api/v1/assessments
-GET  /api/v1/assessments/:id
 POST /api/v1/assessments
 
-GET  /api/v1/assessments/:assessmentId/questions
-GET  /api/v1/questions/:id
-POST /api/v1/assessments/:assessmentId/questions
-
-GET  /api/v1/questions/:questionId/options
-POST /api/v1/questions/:questionId/options
-
-GET  /api/v1/assessments/:assessmentId/attempts
-GET  /api/v1/assessments/:assessmentId/results
-GET  /api/v1/assessments/:assessmentId/report
-GET  /api/v1/attempts/:id
-GET  /api/v1/attempts/:id/result
-POST /api/v1/assessments/:assessmentId/attempts
-
 GET  /api/v1/certificates
-GET  /api/v1/certificates/:id
 POST /api/v1/certificates
 ```
 
@@ -122,6 +70,35 @@ POST /api/v1/certificates
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
+
+## MVP seed data
+
+Seed data is available in:
+
+```text
+apps/api/prisma/seed.mjs
+```
+
+It creates:
+- 1 organization
+- 1 admin
+- 1 instructor
+- 2 learners
+- 1 group
+- 1 course
+- 2 lessons
+- 1 assignment
+- 1 progress record
+
+Run it from the API app after Prisma Client is generated and the local database is available:
+
+```bash
+cd apps/api
+pnpm prisma:generate
+node prisma/seed.mjs
+```
+
+Seed users use local-only emails under `example.test` and the local password printed by the seed script. Do not use seed credentials outside local or disposable pilot environments.
 
 ## API environment validation
 
@@ -142,7 +119,7 @@ Local setup and run instructions are documented in:
 docs/MVP_LOCAL_RUNBOOK.md
 ```
 
-The runbook covers `.env` setup, local PostgreSQL/MinIO, Prisma generate, safe migration guardrails, API start, web start, and health check.
+The runbook covers `.env` setup, local PostgreSQL/MinIO, Prisma generate, safe migration guardrails, API start, web start, health check, and seed data.
 
 ## MVP API smoke coverage
 
@@ -173,20 +150,12 @@ The global API exception filter normalizes Zod validation errors as `400 Bad Req
 
 ## Auth password reset skeleton
 
-`POST /api/v1/auth/password-reset/request` accepts `organizationId` and `email`, normalizes email casing, and returns a generic `{ "accepted": true }` response to avoid account enumeration.
-
-`POST /api/v1/auth/password-reset/confirm` accepts `token` and a strong password candidate. The current skeleton validates input and returns `{ "accepted": true }`.
-
 Current constraints:
 - no password reset token persistence;
 - no email delivery;
 - no password hash update;
 - no rate limiting store;
 - no Prisma schema or migration changes.
-
-## OpenAPI document skeleton
-
-`GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
 
 ## Current Prisma baseline
 
@@ -200,4 +169,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. MVP seed data.
+1. RBAC matrix and API contracts.
