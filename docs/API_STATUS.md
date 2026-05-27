@@ -1,22 +1,23 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `fix/align-api-env-validation`
+Source branch: `refactor/centralize-jwt-secret-env`
 
 ## Current status
 
-API runtime environment validation is aligned with the auth token configuration:
+JWT secret access is centralized through the API environment config:
 
 - `apps/api/src/config/env.ts` validates `API_PORT` and `JWT_SECRET`.
-- `JWT_SECRET` is the single token signing secret used by `auth.tokens.ts`.
-- `.env.example` now documents `JWT_SECRET` instead of unused JWT access/refresh secret names.
-- Added env validation tests for a valid environment, missing JWT secret, and invalid API port.
+- `getJwtSecret()` returns the validated `JWT_SECRET`.
+- `apps/api/src/modules/auth/auth.tokens.ts` no longer reads `process.env.JWT_SECRET` directly.
+- Auth token tests cover explicit secret usage and configured JWT secret usage.
 
 ## Current limitations
 
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
+- No API endpoint changes.
 
 ## Endpoint map
 

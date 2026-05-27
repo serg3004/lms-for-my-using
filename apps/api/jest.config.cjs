@@ -49,6 +49,7 @@ module.exports = {
     '^\\.\\./auth/organization-scope\\.guard\\.js$': '<rootDir>/src/modules/auth/organization-scope.guard.ts',
     '^\\.\\./auth/roles\\.js$': '<rootDir>/src/modules/auth/roles.ts',
     '^\\.\\./auth/roles\\.guard\\.js$': '<rootDir>/src/modules/auth/roles.guard.ts',
+    '^\\.\\./\\.\\./config/env\\.js$': '<rootDir>/src/config/env.ts',
     '^\\.\\./\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
   },
   roots: ['<rootDir>/src'],

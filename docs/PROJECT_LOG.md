@@ -2,6 +2,34 @@
 
 ## 2026-05-27
 
+### Centralize JWT secret env access
+
+Implemented PR 2 scope on `refactor/centralize-jwt-secret-env`.
+
+Changes:
+- Added `getJwtSecret()` to API env config.
+- Updated auth token signing/verification to use centralized JWT secret access.
+- Removed direct `process.env.JWT_SECRET` access from `auth.tokens.ts`.
+- Added auth token coverage for configured JWT secret usage.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+
+## 2026-05-27
+
 ### Align API environment validation
 
 Implemented PR 1 scope on `fix/align-api-env-validation`.
