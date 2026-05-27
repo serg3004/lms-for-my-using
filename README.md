@@ -38,6 +38,7 @@ Implemented backend modules:
 - Integration tests skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - Centralized JWT secret access through API env config
+- JWT secret failure behavior test coverage
 
 ## Implemented backend API
 
@@ -122,7 +123,7 @@ API_PORT=3000
 JWT_SECRET=change-me-change-me-change-me-32chars
 ```
 
-`JWT_SECRET` must be at least 32 characters and matches the token signing secret used by auth through the centralized API env config.
+`JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config. Tests cover missing and short JWT secret failure behavior for both env config and auth tokens.
 
 ## Auth password reset skeleton
 

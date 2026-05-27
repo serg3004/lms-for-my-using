@@ -2,6 +2,12 @@ import { signJwt, verifyJwt } from './auth.tokens';
 
 const jwtSecret = '0123456789abcdef0123456789abcdef';
 
+const userJwtPayload = {
+  sub: '22222222-2222-2222-2222-222222222222',
+  organizationId: '11111111-1111-1111-1111-111111111111',
+  email: 'user@example.com',
+};
+
 describe('Auth tokens', () => {
   const originalJwtSecret = process.env.JWT_SECRET;
 
@@ -15,43 +21,38 @@ describe('Auth tokens', () => {
   });
 
   it('signs and verifies a JWT', () => {
-    const token = signJwt(
-      {
-        sub: '22222222-2222-2222-2222-222222222222',
-        organizationId: '11111111-1111-1111-1111-111111111111',
-        email: 'user@example.com',
-      },
-      jwtSecret,
-    );
+    const token = signJwt(userJwtPayload, jwtSecret);
 
     const claims = verifyJwt(token, jwtSecret);
 
-    expect(claims.sub).toBe('22222222-2222-2222-2222-222222222222');
-    expect(claims.organizationId).toBe('11111111-1111-1111-1111-111111111111');
-    expect(claims.email).toBe('user@example.com');
+    expect(claims.sub).toBe(userJwtPayload.sub);
+    expect(claims.organizationId).toBe(userJwtPayload.organizationId);
+    expect(claims.email).toBe(userJwtPayload.email);
   });
 
   it('signs and verifies a JWT with the configured JWT secret', () => {
     process.env.JWT_SECRET = jwtSecret;
 
-    const token = signJwt({
-      sub: '22222222-2222-2222-2222-222222222222',
-      organizationId: '11111111-1111-1111-1111-111111111111',
-      email: 'user@example.com',
-    });
+    const token = signJwt(userJwtPayload);
 
-    expect(verifyJwt(token).sub).toBe('22222222-2222-2222-2222-222222222222');
+    expect(verifyJwt(token).sub).toBe(userJwtPayload.sub);
+  });
+
+  it('fails signing when the configured JWT secret is missing', () => {
+    delete process.env.JWT_SECRET;
+
+    expect(() => signJwt(userJwtPayload)).toThrow(/JWT_SECRET/);
+  });
+
+  it('fails verification when the configured JWT secret is too short', () => {
+    process.env.JWT_SECRET = 'short-secret';
+    const token = signJwt(userJwtPayload, jwtSecret);
+
+    expect(() => verifyJwt(token)).toThrow(/JWT_SECRET/);
   });
 
   it('rejects a token signed with a different secret', () => {
-    const token = signJwt(
-      {
-        sub: '22222222-2222-2222-2222-222222222222',
-        organizationId: '11111111-1111-1111-1111-111111111111',
-        email: 'user@example.com',
-      },
-      jwtSecret,
-    );
+    const token = signJwt(userJwtPayload, jwtSecret);
 
     expect(() => verifyJwt(token, 'abcdef0123456789abcdef0123456789')).toThrow();
   });

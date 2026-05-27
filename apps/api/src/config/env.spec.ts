@@ -1,4 +1,4 @@
-import { loadApiEnv } from './env';
+import { getJwtSecret, loadApiEnv } from './env';
 
 const validJwtSecret = '0123456789abcdef0123456789abcdef';
 
@@ -15,8 +15,20 @@ describe('API environment validation', () => {
     });
   });
 
+  it('returns the configured JWT secret', () => {
+    expect(getJwtSecret({ JWT_SECRET: validJwtSecret })).toBe(validJwtSecret);
+  });
+
   it('rejects a missing JWT secret', () => {
     expect(() => loadApiEnv({ API_PORT: '3000' })).toThrow(/JWT_SECRET/);
+  });
+
+  it('rejects a short JWT secret', () => {
+    expect(() =>
+      getJwtSecret({
+        JWT_SECRET: 'short-secret',
+      }),
+    ).toThrow(/JWT_SECRET/);
   });
 
   it('rejects an invalid API port', () => {
