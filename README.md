@@ -41,7 +41,7 @@ Implemented backend modules:
 - JWT secret failure behavior test coverage
 - Zod validation errors return 400 Bad Request through the centralized API error format
 - MVP API smoke coverage for health, auth login, protected access, env validation, and tenant scope mismatch
-- MVP Definition of Done and Pilot Checklist
+- MVP Definition of Done, Pilot Checklist, and Local Runbook
 
 ## Implemented backend API
 
@@ -121,6 +121,7 @@ POST /api/v1/certificates
 
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
+- `docs/MVP_LOCAL_RUNBOOK.md`
 
 ## API environment validation
 
@@ -132,6 +133,16 @@ JWT_SECRET=change-me-change-me-change-me-32chars
 ```
 
 `JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config.
+
+## MVP local runbook
+
+Local setup and run instructions are documented in:
+
+```text
+docs/MVP_LOCAL_RUNBOOK.md
+```
+
+The runbook covers `.env` setup, local PostgreSQL/MinIO, Prisma generate, safe migration guardrails, API start, web start, and health check.
 
 ## MVP API smoke coverage
 
@@ -189,4 +200,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. MVP local runbook.
+1. MVP seed data.
