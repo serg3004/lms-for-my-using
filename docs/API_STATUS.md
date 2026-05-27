@@ -1,16 +1,16 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `test/harden-jwt-secret-failures`
+Source branch: `fix/handle-zod-validation-errors`
 
 ## Current status
 
-JWT secret failure behavior is covered by API/auth tests:
+Zod validation errors are normalized through the centralized API error format:
 
-- `apps/api/src/config/env.ts` validates `API_PORT` and `JWT_SECRET`.
-- `getJwtSecret()` returns only a validated `JWT_SECRET`.
-- Env tests cover valid JWT secret, missing JWT secret, short JWT secret, and invalid API port.
-- Auth token tests cover configured JWT secret usage, missing JWT secret during signing, and short configured JWT secret during verification.
+- `ApiExceptionFilter` maps `ZodError` to `400 Bad Request`.
+- Validation failures use error code `VALIDATION_ERROR`.
+- Integration coverage includes a direct Zod validation error route.
+- Integration coverage includes `POST /api/v1/auth/login` invalid body from `schema.parse(body)` returning `400 Bad Request`.
 
 ## Current limitations
 
