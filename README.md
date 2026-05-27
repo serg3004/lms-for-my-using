@@ -39,6 +39,7 @@ Implemented backend modules:
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - Centralized JWT secret access through API env config
 - JWT secret failure behavior test coverage
+- Zod validation errors return 400 Bad Request through the centralized API error format
 
 ## Implemented backend API
 
@@ -125,6 +126,12 @@ JWT_SECRET=change-me-change-me-change-me-32chars
 
 `JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config. Tests cover missing and short JWT secret failure behavior for both env config and auth tokens.
 
+## Centralized API error format
+
+The global API exception filter normalizes Zod validation errors as `400 Bad Request` responses with `VALIDATION_ERROR`.
+
+`POST /api/v1/auth/login` has integration coverage for invalid body payloads thrown by `schema.parse(body)`.
+
 ## Auth password reset skeleton
 
 `POST /api/v1/auth/password-reset/request` accepts `organizationId` and `email`, normalizes email casing, and returns a generic `{ "accepted": true }` response to avoid account enumeration.
@@ -154,6 +161,7 @@ Current coverage:
 - `GET /api/v1/health` smoke test.
 - `GET /api/v1/openapi` smoke test.
 - Global centralized error format smoke test for Zod validation errors.
+- `POST /api/v1/auth/login` invalid body returns `400 Bad Request`.
 
 ## Current Prisma baseline
 
@@ -167,4 +175,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Deployment readiness.
+1. Continue MVP API smoke coverage.
