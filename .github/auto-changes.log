@@ -1,3 +1,12 @@
+[2026-05-27T11:34:00Z] BRANCH: refactor/centralize-jwt-secret-env
+[2026-05-27T11:34:01Z] TASK: PR 2 refactor centralize JWT secret env access
+[2026-05-27T11:34:02Z] CHANGE: added getJwtSecret helper in API env config
+[2026-05-27T11:34:03Z] CHANGE: auth tokens use centralized JWT secret config
+[2026-05-27T11:34:04Z] CHANGE: added auth token test for configured JWT secret usage
+[2026-05-27T11:34:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T11:34:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T11:34:07Z] ROLLBACK: revert PR or delete branch refactor/centralize-jwt-secret-env
+
 [2026-05-27T11:00:00Z] BRANCH: fix/align-api-env-validation
 [2026-05-27T11:00:01Z] TASK: PR 1 fix align api environment validation
 [2026-05-27T11:00:02Z] CHANGE: aligned JWT env naming to JWT_SECRET
