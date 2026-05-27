@@ -2,24 +2,21 @@
 
 ## 2026-05-27
 
-### Add MVP API smoke coverage
+### Add MVP Definition of Done and Pilot Checklist
 
-Implemented PR 3 scope on `test/mvp-api-smoke-coverage`.
+Implemented PR 4 scope on `docs/mvp-dod-pilot-checklist`.
 
 Changes:
-- Expanded API integration smoke coverage for health.
-- Added auth login happy path smoke coverage.
-- Kept auth login invalid body negative coverage.
-- Added protected endpoint without bearer token smoke coverage.
-- Added tenant scope mismatch negative smoke coverage.
-- Kept env validation coverage in `apps/api/src/config/env.spec.ts`.
-- Updated README, API status, project log, and audit log.
+- Added `docs/MVP_DEFINITION_OF_DONE.md`.
+- Added `docs/PILOT_CHECKLIST.md`.
+- Updated README with MVP docs references.
+- Updated API status, project log, and audit log.
 
 Deferred:
 - Prisma schema/migration changes.
 - CI/CD changes.
 - Dependency changes.
-- Production runtime endpoint changes.
+- Runtime API changes.
 
 Current PR check status:
 
@@ -32,14 +29,17 @@ Current PR check status:
 
 ## 2026-05-27
 
-### Handle Zod validation errors as bad requests
+### Add MVP API smoke coverage
 
-Implemented PR 2 scope on `fix/handle-zod-validation-errors`.
+Implemented PR 3 scope on `test/mvp-api-smoke-coverage`.
 
 Changes:
-- Verified centralized `ApiExceptionFilter` already maps `ZodError` to `400 Bad Request`.
-- Added integration coverage for `POST /api/v1/auth/login` invalid body thrown by `schema.parse(body)`.
-- Kept centralized API error response shape with `VALIDATION_ERROR`.
+- Expanded API integration smoke coverage for health.
+- Added auth login happy path smoke coverage.
+- Kept auth login invalid body negative coverage.
+- Added protected endpoint without bearer token smoke coverage.
+- Added tenant scope mismatch negative smoke coverage.
+- Kept env validation coverage in `apps/api/src/config/env.spec.ts`.
 - Updated README, API status, project log, and audit log.
 
 Current PR check status:
