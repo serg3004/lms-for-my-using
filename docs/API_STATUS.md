@@ -1,32 +1,33 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/openapi-swagger-skeleton`
+Source branch: `feature/integration-tests-skeleton`
 
 ## Current status
 
-OpenAPI document skeleton is implemented in this branch:
+Integration tests skeleton is implemented in this branch:
 
-- Added `GET /api/v1/openapi`.
-- Added static OpenAPI 3.0.3 JSON document builder.
-- Added API metadata: title, description, version, and `/api/v1` server.
-- Added Bearer JWT security scheme.
-- Added common centralized API error response schema from PR #52.
-- Added initial path coverage for health, auth, organization registration, users, and certificates.
-- Added unit tests for document shape, error response schema, and key documented paths.
-- No `@nestjs/swagger` dependency was added, so `pnpm-lock.yaml` remains unchanged.
-- Swagger UI, full DTO schemas, generated clients, and published `openapi.json` artifacts remain deferred.
+- Added `apps/api/src/integration/app.integration.spec.ts`.
+- Added test Nest application bootstrap with the same global API prefix as runtime: `/api/v1`.
+- Registered the global `ApiExceptionFilter` in the integration test app.
+- Added a smoke test for `GET /api/v1/health`.
+- Added a smoke test for `GET /api/v1/openapi`.
+- Added a negative integration test for centralized error format using a Zod validation failure.
+- Used Node `http` test requests to avoid adding `supertest` or changing `pnpm-lock.yaml`.
+- Added Jest module mappers for integration test imports.
 
-## Endpoint map
+## Current integration coverage
 
 ```text
+GET /api/v1/health
 GET /api/v1/openapi
+GET /api/v1/integration-test/validation-error
 ```
 
 ## Current limitations
 
-- Swagger UI is not implemented yet.
-- `@nestjs/swagger` decorators/integration are not implemented yet.
-- Full request/response schemas for every endpoint are not implemented yet.
-- Generated OpenAPI client is not implemented yet.
-- Published `openapi.json` artifact is not implemented yet.
+- No database integration tests yet.
+- No test containers or seed data yet.
+- No full auth flow integration test yet.
+- No `supertest` dependency.
+- No CI workflow change.
