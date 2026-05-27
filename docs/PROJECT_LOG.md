@@ -2,6 +2,44 @@
 
 ## 2026-05-27
 
+### Users import skeleton
+
+Implemented PR #49 scope on `feature/users-import-skeleton`.
+
+Changes:
+- Added `POST /api/v1/users/import`.
+- Added Zod schema for JSON-only user import payloads.
+- Added `validateOnly` mode for row-level validation report without writes.
+- Added `create` mode that skips invalid, duplicate, and existing-email rows while creating valid rows.
+- Added 100-row import batch limit.
+- Added duplicate email detection inside import payload.
+- Added existing organization email checks before writes.
+- Added password hashing and Prisma transaction writes for created import rows.
+- Reused `AuthGuard`, `RolesGuard`, `OrganizationScopeGuard`, and `usersCreate`.
+- Added tests for validate-only report and partial create with skipped existing email.
+- Updated README, API status, project log, and auto-change audit log.
+
+Deferred by design:
+- CSV upload `multipart/form-data`.
+- Import file storage.
+- Background jobs / queue.
+- Import history table and related Prisma migration.
+- Import UI.
+- Email invitations.
+
+### Current PR check status
+
+Local checks were not run in the GitHub API environment:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+## 2026-05-27
+
 ### Users bulk create
 
 Implemented PR #48 scope on `feature/users-bulk-create`.
@@ -16,17 +54,6 @@ Changes:
 - Added password hashing for each created user.
 - Added service tests for happy path bulk create and duplicate database email rejection.
 - Updated README, API status, project log, and auto-change audit log.
-
-### Current PR check status
-
-Local checks were not run in the GitHub API environment:
-
-```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
-```
 
 ## 2026-05-26
 

@@ -10,6 +10,8 @@ import {
   CreateBulkUsersInput,
   createUserSchema,
   CreateUserInput,
+  importUsersSchema,
+  ImportUsersInput,
 } from './users.schemas.js';
 import { UsersService } from './users.service.js';
 
@@ -39,6 +41,16 @@ export class UsersController {
     const input: CreateBulkUsersInput = createBulkUsersSchema.parse(body);
 
     return this.usersService.createBulkUsers(input);
+  }
+
+  @Post('import')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.usersCreate)
+  @OrganizationScope('body', 'organizationId')
+  importUsers(@Body() body: unknown) {
+    const input: ImportUsersInput = importUsersSchema.parse(body);
+
+    return this.usersService.importUsers(input);
   }
 
   @Post()
