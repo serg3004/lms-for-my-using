@@ -73,19 +73,23 @@ export class UsersService {
     const emails = input.users.map((user) => user.email);
     await this.ensureEmailsAreAvailable(input.organizationId, emails);
 
-    const createOperations = await Promise.all(
+    const usersData = await Promise.all(
       input.users.map(async (user) => {
         const { password, ...userData } = user;
         const passwordHash = await hashPassword(password);
 
-        return this.prisma.user.create({
-          data: {
-            ...userData,
-            organizationId: input.organizationId,
-            passwordHash,
-          },
-          select: userSelect,
-        });
+        return {
+          ...userData,
+          organizationId: input.organizationId,
+          passwordHash,
+        };
+      }),
+    );
+
+    const createOperations = usersData.map((data) =>
+      this.prisma.user.create({
+        data,
+        select: userSelect,
       }),
     );
 
