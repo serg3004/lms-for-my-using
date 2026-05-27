@@ -15,6 +15,7 @@ Implemented backend modules:
 - Users import skeleton API
 - Memberships / roles API
 - Auth login/current user
+- Auth password reset skeleton
 - AuthGuard
 - RolesGuard / RBAC
 - OrganizationScopeGuard
@@ -41,6 +42,11 @@ Implemented backend modules:
 ```text
 GET  /api/v1/health
 GET  /api/v1/openapi
+
+POST /api/v1/auth/login
+POST /api/v1/auth/password-reset/request
+POST /api/v1/auth/password-reset/confirm
+GET  /api/v1/auth/me
 
 GET  /api/v1/organizations
 GET  /api/v1/organizations/:id
@@ -103,10 +109,24 @@ POST /api/v1/assessments/:assessmentId/attempts
 GET  /api/v1/certificates
 GET  /api/v1/certificates/:id
 POST /api/v1/certificates
-
-POST /api/v1/auth/login
-GET  /api/v1/auth/me
 ```
+
+## Auth password reset skeleton
+
+`POST /api/v1/auth/password-reset/request` accepts `organizationId` and `email`, normalizes email casing, and returns a generic `{ "accepted": true }` response to avoid account enumeration.
+
+`POST /api/v1/auth/password-reset/confirm` accepts `token` and a strong password candidate. The current skeleton validates input and returns `{ "accepted": true }`.
+
+Current constraints:
+- no password reset token persistence;
+- no email delivery;
+- no password hash update;
+- no rate limiting store;
+- no Prisma schema or migration changes.
+
+## OpenAPI document skeleton
+
+`GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
 
 ## Integration tests skeleton
 
@@ -120,54 +140,6 @@ Current coverage:
 - `GET /api/v1/health` smoke test.
 - `GET /api/v1/openapi` smoke test.
 - Global centralized error format smoke test for Zod validation errors.
-
-Current constraints:
-- no database connection;
-- no `supertest` dependency;
-- no test containers or seed data;
-- no full auth flow integration test yet.
-
-## OpenAPI document skeleton
-
-`GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
-
-Current scope:
-- API title, description, version, and `/api/v1` server.
-- Bearer JWT security scheme.
-- Common centralized API error response schema from PR #52.
-- Initial path coverage for health, auth, organization registration, users, and certificates.
-
-Deferred:
-- Swagger UI.
-- `@nestjs/swagger` integration.
-- Full DTO/request/response schemas for every endpoint.
-- Generated OpenAPI client.
-- Published `openapi.json` artifact.
-
-## Centralized API error format
-
-All unhandled API exceptions are normalized by the global `ApiExceptionFilter`.
-
-Response shape:
-
-```json
-{
-  "statusCode": 400,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": [
-      {
-        "field": "email",
-        "message": "Invalid email",
-        "code": "invalid_string"
-      }
-    ]
-  },
-  "path": "/api/v1/example",
-  "timestamp": "2026-05-27T00:00:00.000Z"
-}
-```
 
 ## Current Prisma baseline
 
