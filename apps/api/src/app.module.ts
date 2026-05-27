@@ -6,6 +6,7 @@ import { AssessmentQuestionsModule } from './modules/assessment-questions/assess
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
 import { GroupsModule } from './modules/groups/groups.module.js';
@@ -24,6 +25,7 @@ import { UsersModule } from './modules/users/users.module.js';
     AssessmentsModule,
     AssignmentsModule,
     AuthModule,
+    CertificatesModule,
     CourseMaterialsModule,
     CoursesModule,
     GroupsModule,

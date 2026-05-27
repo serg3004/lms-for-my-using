@@ -1,65 +1,35 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/organization-registration-first-admin`
+Source branch: `feature/certificates-skeleton`
 
 ## Current status
 
-Organization registration / first admin flow is implemented in this branch:
+Certificates skeleton is implemented in this branch:
 
-- `POST /api/v1/organizations/register` creates an organization, first admin user, and admin membership.
+- `CertificateStatus` enum and `Certificate` Prisma model.
+- Migration: `apps/api/prisma/migrations/20260527100000_add_certificates/migration.sql`.
+- `GET /api/v1/certificates` returns certificates for the current learner.
+- `GET /api/v1/certificates/:id` returns own certificate or a certificate visible to admin/manager/instructor roles.
+- `POST /api/v1/certificates` issues a certificate for a user/course.
+- Eligibility is satisfied by either completed published course lessons or a passed assessment attempt for an assessment in the course.
 - Input is validated with Zod.
-- Admin email is normalized to lowercase.
-- Duplicate active organization slugs are rejected.
-- Duplicate active admin emails are rejected.
-- First admin password is hashed before database writes.
-- Organization, first admin user, and `admin` membership are created in one Prisma transaction.
-- The response returns organization and first admin summaries without password hash.
-
-Users import skeleton from PR #49 remains active:
-
-- `POST /api/v1/users/import`
-- `validateOnly` and `create` modes
-- row-level validation report
-- JSON-only payload
-- CSV upload, file storage, queue, import history, UI, and email invitations remain deferred.
-
-Users bulk create from PR #48 remains active:
-
-- `POST /api/v1/users/bulk` creates up to 50 users for one organization.
-
-Assessment results / reports from PR #47 remain active:
-
-- `GET /api/v1/assessments/:assessmentId/results`
-- `GET /api/v1/assessments/:assessmentId/report`
-- `GET /api/v1/attempts/:id/result`
+- Endpoints use AuthGuard, RolesGuard, and OrganizationScopeGuard where needed.
+- Existing certificate for the same organization/course/user is returned instead of creating a duplicate.
+- PDF generation, public verification, template editor, revocation endpoint, numbering format, and UI are deferred.
 
 ## Endpoint map
 
 ```text
-GET  /api/v1/courses/:id/completion
-
-GET  /api/v1/organizations
-GET  /api/v1/organizations/:id
-POST /api/v1/organizations
-POST /api/v1/organizations/register
-
-GET  /api/v1/users
-GET  /api/v1/users/:id
-POST /api/v1/users
-POST /api/v1/users/bulk
-POST /api/v1/users/import
-
-GET  /api/v1/assessments/:assessmentId/attempts
-GET  /api/v1/assessments/:assessmentId/results
-GET  /api/v1/assessments/:assessmentId/report
-GET  /api/v1/attempts/:id
-GET  /api/v1/attempts/:id/result
-POST /api/v1/assessments/:assessmentId/attempts
+GET  /api/v1/certificates
+GET  /api/v1/certificates/:id
+POST /api/v1/certificates
 ```
 
 ## Current limitations
 
-- Certificates are not implemented yet.
-- OpenAPI, centralized API errors, and integration tests are not implemented yet.
-- CSV upload, import file storage, import history tables/migrations, background jobs/queue, import UI, and email invitations are deferred.
+- Certificate PDF generation is not implemented.
+- Public certificate verification is not implemented.
+- Certificate templates are not implemented.
+- Certificate revocation endpoint is not implemented.
+- Certificate UI is not implemented.

@@ -2,20 +2,31 @@
 
 ## 2026-05-27
 
-### Organization registration / first admin flow
+### Certificates skeleton
 
-Implemented PR #50 scope on `feature/organization-registration-first-admin`.
+Implemented PR #51 scope on `feature/certificates-skeleton`.
 
 Changes:
-- Added `POST /api/v1/organizations/register`.
-- Added Zod schema for public organization registration with nested `organization` and `admin` sections.
-- Added duplicate active organization slug validation.
-- Added duplicate active admin email validation.
-- Added first admin password hashing.
-- Added transactional creation of organization, first admin user, and `admin` membership.
-- Added response summary without password hash.
-- Added service tests for registration happy path and duplicate slug rejection.
-- Updated README, API status, project log, and auto-change audit log.
+- Added `CertificateStatus` enum and `Certificate` Prisma model.
+- Added migration `20260527100000_add_certificates`.
+- Added certificates module, controller, service, and schema.
+- Added `GET /api/v1/certificates`.
+- Added `GET /api/v1/certificates/:id`.
+- Added `POST /api/v1/certificates`.
+- Added certificate eligibility by completed course lessons or passed assessment attempt.
+- Added duplicate-safe certificate issue behavior for organization/course/user.
+- Added certificate RBAC policies.
+- Registered certificates module in `AppModule`.
+- Added service tests for happy path and negative eligibility case.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- PDF generation.
+- Certificate templates.
+- Public verification.
+- Certificate numbering format.
+- Revocation endpoint.
+- UI.
 
 Current PR check status:
 
@@ -24,41 +35,5 @@ Current PR check status:
 [Check] Types: not run
 [Check] Tests: not run
 [Check] Build: not run
+[Check] Prisma generate: not run
 ```
-
-### Users import skeleton
-
-Implemented PR #49 scope on `feature/users-import-skeleton`.
-
-Changes:
-- Added `POST /api/v1/users/import`.
-- Added JSON-only import schema with `validateOnly`/`create` modes and 100-row batch limit.
-- Added row-level validation report, duplicate payload email detection, and existing database email checks.
-- Added create mode with password hashing and Prisma transaction writes for valid rows.
-- Deferred CSV upload, file storage, queue, import history table/migration, UI, and email invitations.
-
-### Users bulk create
-
-Implemented PR #48 scope on `feature/users-bulk-create`.
-
-Changes:
-- Added `POST /api/v1/users/bulk`.
-- Added Zod schema for bulk user create payload.
-- Added batch limit of 50 users per request.
-- Added duplicate email validation inside the request payload.
-- Added database duplicate email check before writes.
-- Added transactional Prisma writes for bulk user creation.
-
-## 2026-05-26
-
-### Assessment results / reports
-
-Implemented PR #47 scope on `feature/assessment-results-reports`.
-
-### Course completion gate
-
-Implemented PR #46 scope on `feature/course-completion-gate`.
-
-### Assessment attempts Prisma sync
-
-Resolved the technical debt introduced in PR #44 by syncing assessment attempt tables into Prisma schema and replacing raw SQL with Prisma Client calls.
