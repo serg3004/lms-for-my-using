@@ -2,6 +2,7 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
+    '^\\./openapi\\.document\\.js$': '<rootDir>/src/modules/openapi/openapi.document.ts',
     '^\\./auth\\.guard\\.js$': '<rootDir>/src/modules/auth/auth.guard.ts',
     '^\\./auth\\.schemas\\.js$': '<rootDir>/src/modules/auth/auth.schemas.ts',
     '^\\./auth\\.service\\.js$': '<rootDir>/src/modules/auth/auth.service.ts',
