@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { LoginInput, PasswordResetConfirmInput, PasswordResetRequestInput } from './auth.schemas.js';
+import { LoginInput } from './auth.schemas.js';
 import { signJwt, verifyJwt } from './auth.tokens.js';
 import { verifyPassword } from './passwords.js';
 
@@ -88,11 +88,11 @@ export class AuthService {
     };
   }
 
-  requestPasswordReset(_input: PasswordResetRequestInput) {
+  requestPasswordReset() {
     return passwordResetAccepted;
   }
 
-  confirmPasswordReset(_input: PasswordResetConfirmInput) {
+  confirmPasswordReset() {
     return passwordResetAccepted;
   }
 
