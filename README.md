@@ -32,6 +32,7 @@ Implemented backend modules:
 - Course completion gate for gated assessment attempts
 - Assessment results and reports API skeleton
 - Certificates API skeleton
+- Centralized API error format
 
 ## Implemented backend API
 
@@ -104,27 +105,46 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## Centralized API error format
+
+All unhandled API exceptions are normalized by the global `ApiExceptionFilter`.
+
+Response shape:
+
+```json
+{
+  "statusCode": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email",
+        "code": "invalid_string"
+      }
+    ]
+  },
+  "path": "/api/v1/example",
+  "timestamp": "2026-05-27T00:00:00.000Z"
+}
+```
+
+Supported normalization:
+- Zod errors -> `400 VALIDATION_ERROR` with row/field-level details.
+- Nest HTTP exceptions -> HTTP status based error codes such as `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, and `CONFLICT`.
+- Prisma-like request errors -> `DATABASE_ERROR`, with `P2002` mapped to `409 CONFLICT`.
+- Unknown errors -> `500 INTERNAL_SERVER_ERROR` without leaking internal details.
+
 ## Certificates skeleton
 
 `POST /api/v1/certificates` issues a certificate record for a user/course when at least one eligibility rule is satisfied:
-
 - all published course lessons are completed by the user; or
 - the user has a passed assessment attempt for an assessment in the course.
 
-The endpoint:
-- uses Zod validation;
-- uses `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`;
-- reuses organization scoping;
-- stores certificates in the new `Certificate` Prisma model;
-- returns an existing certificate for the same organization/course/user instead of creating duplicates;
-- does not generate PDFs yet.
+The endpoint uses Zod validation, `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`, stores certificates in the `Certificate` Prisma model, and returns an existing certificate for the same organization/course/user instead of creating duplicates.
 
-`GET /api/v1/certificates` returns certificates for the current learner.
-`GET /api/v1/certificates/:id` returns own certificate or a certificate visible to admin/manager/instructor roles.
-
-## Deferred certificate features
-
-Deferred until after MVP / separate PRs:
+Deferred certificate features:
 - PDF generation;
 - certificate template editor;
 - public certificate verification page;
@@ -144,7 +164,6 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Centralized API error format.
-2. OpenAPI / Swagger skeleton.
-3. Integration tests.
-4. Deployment readiness.
+1. OpenAPI / Swagger skeleton.
+2. Integration tests.
+3. Deployment readiness.

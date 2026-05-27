@@ -1,35 +1,42 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/certificates-skeleton`
+Source branch: `feature/centralized-api-error-format`
 
 ## Current status
 
-Certificates skeleton is implemented in this branch:
+Centralized API error format is implemented in this branch:
 
-- `CertificateStatus` enum and `Certificate` Prisma model.
-- Migration: `apps/api/prisma/migrations/20260527100000_add_certificates/migration.sql`.
-- `GET /api/v1/certificates` returns certificates for the current learner.
-- `GET /api/v1/certificates/:id` returns own certificate or a certificate visible to admin/manager/instructor roles.
-- `POST /api/v1/certificates` issues a certificate for a user/course.
-- Eligibility is satisfied by either completed published course lessons or a passed assessment attempt for an assessment in the course.
-- Input is validated with Zod.
-- Endpoints use AuthGuard, RolesGuard, and OrganizationScopeGuard where needed.
-- Existing certificate for the same organization/course/user is returned instead of creating a duplicate.
-- PDF generation, public verification, template editor, revocation endpoint, numbering format, and UI are deferred.
+- Added global `ApiExceptionFilter`.
+- Registered the filter in `apps/api/src/main.ts`.
+- Zod errors return `400 VALIDATION_ERROR` with field-level details.
+- Nest HTTP exceptions return normalized HTTP error codes such as `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, and `CONFLICT`.
+- Prisma-like request errors return `DATABASE_ERROR`, with `P2002` mapped to `409 CONFLICT`.
+- Unknown errors return `500 INTERNAL_SERVER_ERROR` without leaking internal error messages.
+- Added tests for validation errors, HTTP exceptions, unknown errors, and bad request message arrays.
 
-## Endpoint map
+## Error response shape
 
-```text
-GET  /api/v1/certificates
-GET  /api/v1/certificates/:id
-POST /api/v1/certificates
+```json
+{
+  "statusCode": 400,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "email",
+        "message": "Invalid email",
+        "code": "invalid_string"
+      }
+    ]
+  },
+  "path": "/api/v1/example",
+  "timestamp": "2026-05-27T00:00:00.000Z"
+}
 ```
 
 ## Current limitations
 
-- Certificate PDF generation is not implemented.
-- Public certificate verification is not implemented.
-- Certificate templates are not implemented.
-- Certificate revocation endpoint is not implemented.
-- Certificate UI is not implemented.
+- OpenAPI / Swagger schema documentation is not implemented yet.
+- Integration tests are not implemented yet.

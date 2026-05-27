@@ -2,31 +2,20 @@
 
 ## 2026-05-27
 
-### Certificates skeleton
+### Centralized API error format
 
-Implemented PR #51 scope on `feature/certificates-skeleton`.
+Implemented PR #52 scope on `feature/centralized-api-error-format`.
 
 Changes:
-- Added `CertificateStatus` enum and `Certificate` Prisma model.
-- Added migration `20260527100000_add_certificates`.
-- Added certificates module, controller, service, and schema.
-- Added `GET /api/v1/certificates`.
-- Added `GET /api/v1/certificates/:id`.
-- Added `POST /api/v1/certificates`.
-- Added certificate eligibility by completed course lessons or passed assessment attempt.
-- Added duplicate-safe certificate issue behavior for organization/course/user.
-- Added certificate RBAC policies.
-- Registered certificates module in `AppModule`.
-- Added service tests for happy path and negative eligibility case.
+- Added global `ApiExceptionFilter`.
+- Registered centralized exception handling in `main.ts`.
+- Added normalized error response shape with `statusCode`, `error.code`, `error.message`, optional `error.details`, `path`, and `timestamp`.
+- Added Zod error normalization with field-level details.
+- Added Nest HTTP exception normalization.
+- Added Prisma-like request error normalization with `P2002` mapped to conflict.
+- Added safe fallback for unknown errors without leaking internal messages.
+- Added tests for validation errors, HTTP exceptions, unknown errors, and bad request message arrays.
 - Updated README, API status, project log, and audit log.
-
-Deferred:
-- PDF generation.
-- Certificate templates.
-- Public verification.
-- Certificate numbering format.
-- Revocation endpoint.
-- UI.
 
 Current PR check status:
 
@@ -35,5 +24,4 @@ Current PR check status:
 [Check] Types: not run
 [Check] Tests: not run
 [Check] Build: not run
-[Check] Prisma generate: not run
 ```

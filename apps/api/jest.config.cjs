@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\./auth\\.guard\\.js$': '<rootDir>/src/modules/auth/auth.guard.ts',
     '^\\./auth\\.schemas\\.js$': '<rootDir>/src/modules/auth/auth.schemas.ts',
     '^\\./auth\\.service\\.js$': '<rootDir>/src/modules/auth/auth.service.ts',
@@ -44,7 +45,6 @@ module.exports = {
     '^\\.\\./auth/organization-scope\\.guard\\.js$': '<rootDir>/src/modules/auth/organization-scope.guard.ts',
     '^\\.\\./auth/roles\\.js$': '<rootDir>/src/modules/auth/roles.ts',
     '^\\.\\./auth/roles\\.guard\\.js$': '<rootDir>/src/modules/auth/roles.guard.ts',
-    '^\\.\\./auth/passwors\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\.\\./\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
   },
   roots: ['<rootDir>/src'],
