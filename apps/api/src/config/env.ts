@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 const DEFAULT_API_PORT = 3000;
+const JWT_SECRET_MIN_LENGTH = 32;
 
 const apiEnvSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
+  JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
