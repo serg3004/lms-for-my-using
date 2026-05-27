@@ -9,6 +9,7 @@ Current stage: early MVP foundation.
 Implemented backend modules:
 - Health API
 - Organizations API
+- Organization registration / first admin flow
 - Users API
 - Users bulk create API
 - Users import skeleton API
@@ -39,6 +40,7 @@ GET  /api/v1/health
 GET  /api/v1/organizations
 GET  /api/v1/organizations/:id
 POST /api/v1/organizations
+POST /api/v1/organizations/register
 
 GET  /api/v1/users
 GET  /api/v1/users/:id
@@ -46,7 +48,7 @@ POST /api/v1/users
 POST /api/v1/users/bulk
 POST /api/v1/users/import
 
-GET  /api/v1/memberships
+GET   /api/v1/memberships
 GET  /api/v1/memberships/:id
 POST /api/v1/memberships
 
@@ -97,12 +99,26 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## Organization registration / first admin flow
+
+`POST /api/v1/organizations/register` creates a new organization, first admin user, and admin membership in one transactional flow.
+
+The endpoint:
+- accepts public registration input with `organization` and `admin` sections;
+- validates input with Zod;
+- normalizes admin email to lowercase;
+- rejects duplicate active organization slugs;
+- rejects duplicate active admin emails;
+- hashes the first admin password before writing;
+- creates organization, user, and `admin` membership in one Prisma transaction;
+- returns organization and first admin summaries without password hash.
+
 ## Users bulk create
 
 `POST /api/v1/users/bulk` creates up to 50 users for one organization in one request.
 
 The endpoint:
-- requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`;
+- requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard;
 - uses the existing `usersCreate` role policy;
 - validates input with Zod;
 - normalizes emails to lowercase;
@@ -146,21 +162,6 @@ Course completion is calculated from published lessons and completed lesson prog
 
 Assessment attempts are blocked when `Assessment.availableAfterCourseCompletion = true` and the learner has not completed all published course lessons.
 
-## Assessment attempts
-
-Assessment attempt models are synchronized in `apps/api/prisma/schema.prisma` and the attempts service uses Prisma Client for attempt tables instead of raw SQL.
-
-```text
-AssessmentAttempt
-AssessmentAttemptAnswer
-AssessmentAttemptStatus
-```
-
-Automatic grading supports:
-- `single_choice`
-- `multiple_choice`
-- `true_false`
-
 ## Assessment results and reports
 
 Assessment results are available through:
@@ -181,9 +182,8 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Organization registration / first admin flow.
-2. Certificates skeleton.
-3. Centralized API error format.
-4. OpenAPI / Swagger skeleton.
-5. Integration tests.
-6. Deployment readiness.
+1. Certificates skeleton.
+2. Centralized API error format.
+3. OpenAPI / Swagger skeleton.
+4. Integration tests.
+5. Deployment readiness.
