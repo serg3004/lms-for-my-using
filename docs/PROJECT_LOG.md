@@ -2,6 +2,35 @@
 
 ## 2026-05-27
 
+### Harden JWT secret failure behavior
+
+Implemented PR 3 scope on `test/harden-jwt-secret-failures`.
+
+Changes:
+- Added env test coverage for `getJwtSecret()` returning a valid secret.
+- Added env test coverage for short `JWT_SECRET`.
+- Added auth token test coverage for missing configured JWT secret during signing.
+- Added auth token test coverage for short configured JWT secret during verification.
+- Kept runtime API behavior unchanged.
+- Updated API status, project log, and audit log.
+
+Deferred:
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+
+## 2026-05-27
+
 ### Centralize JWT secret env access
 
 Implemented PR 2 scope on `refactor/centralize-jwt-secret-env`.
@@ -21,10 +50,10 @@ Deferred:
 Current PR check status:
 
 ```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
+[Check] Lint: OK
+[Check] Types: OK
+[Check] Tests: OK
+[Check] Build: OK
 ```
 
 
@@ -49,10 +78,10 @@ Deferred:
 Current PR check status:
 
 ```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
+[Check] Lint: OK
+[Check] Types: OK
+[Check] Tests: OK
+[Check] Build: OK
 ```
 
 
@@ -84,8 +113,8 @@ Deferred:
 Current PR check status:
 
 ```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
+[Check] Lint: OK
+[Check] Types: OK
+[Check] Tests: OK
+[Check] Build: OK
 ```
