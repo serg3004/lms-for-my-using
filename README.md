@@ -31,6 +31,7 @@ Implemented backend modules:
 - Assessment attempts / automatic grading API skeleton
 - Course completion gate for gated assessment attempts
 - Assessment results and reports API skeleton
+- Certificates API skeleton
 
 ## Implemented backend API
 
@@ -48,7 +49,7 @@ POST /api/v1/users
 POST /api/v1/users/bulk
 POST /api/v1/users/import
 
-GET   /api/v1/memberships
+GET  /api/v1/memberships
 GET  /api/v1/memberships/:id
 POST /api/v1/memberships
 
@@ -95,95 +96,55 @@ GET  /api/v1/attempts/:id
 GET  /api/v1/attempts/:id/result
 POST /api/v1/assessments/:assessmentId/attempts
 
+GET  /api/v1/certificates
+GET  /api/v1/certificates/:id
+POST /api/v1/certificates
+
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
-## Organization registration / first admin flow
+## Certificates skeleton
 
-`POST /api/v1/organizations/register` creates a new organization, first admin user, and admin membership in one transactional flow.
+`POST /api/v1/certificates` issues a certificate record for a user/course when at least one eligibility rule is satisfied:
 
-The endpoint:
-- accepts public registration input with `organization` and `admin` sections;
-- validates input with Zod;
-- normalizes admin email to lowercase;
-- rejects duplicate active organization slugs;
-- rejects duplicate active admin emails;
-- hashes the first admin password before writing;
-- creates organization, user, and `admin` membership in one Prisma transaction;
-- returns organization and first admin summaries without password hash.
-
-## Users bulk create
-
-`POST /api/v1/users/bulk` creates up to 50 users for one organization in one request.
+- all published course lessons are completed by the user; or
+- the user has a passed assessment attempt for an assessment in the course.
 
 The endpoint:
-- requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard;
-- uses the existing `usersCreate` role policy;
-- validates input with Zod;
-- normalizes emails to lowercase;
-- rejects duplicate emails inside the request payload;
-- rejects emails that already exist in the target organization;
-- hashes each password before writing users.
+- uses Zod validation;
+- uses `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`;
+- reuses organization scoping;
+- stores certificates in the new `Certificate` Prisma model;
+- returns an existing certificate for the same organization/course/user instead of creating duplicates;
+- does not generate PDFs yet.
 
-## Users import skeleton
+`GET /api/v1/certificates` returns certificates for the current learner.
+`GET /api/v1/certificates/:id` returns own certificate or a certificate visible to admin/manager/instructor roles.
 
-`POST /api/v1/users/import` provides the first backend import flow without CSV upload, file storage, queues, import history tables, UI, or email invitations.
-
-Supported modes:
-- `validateOnly` — validates rows and returns a row-level report without writes.
-- `create` — validates rows, skips invalid/existing/duplicate emails, and creates valid rows.
-
-The endpoint:
-- accepts JSON payloads only;
-- supports up to 100 rows per request;
-- returns `createdCount`, `skippedCount`, `errorCount`, and per-row errors;
-- reuses password hashing, Prisma transactions, `usersCreate`, and organization scope checks.
-
-## Deferred import features
+## Deferred certificate features
 
 Deferred until after MVP / separate PRs:
-- CSV upload `multipart/form-data`;
-- import file storage;
-- background jobs / queue;
-- import history table and related Prisma migration;
-- import UI;
-- email invitations.
-
-## Course completion gate
-
-Course completion is calculated from published lessons and completed lesson progress for the current authenticated user.
-
-`GET /api/v1/courses/:id/completion` returns:
-- total published lessons;
-- completed lessons;
-- completion flag;
-- completion percentage.
-
-Assessment attempts are blocked when `Assessment.availableAfterCourseCompletion = true` and the learner has not completed all published course lessons.
-
-## Assessment results and reports
-
-Assessment results are available through:
-- `GET /api/v1/assessments/:assessmentId/results` for organization instructors/managers/admins;
-- `GET /api/v1/assessments/:assessmentId/report` for aggregate assessment reporting;
-- `GET /api/v1/attempts/:id/result` for own learner result or privileged organization roles.
-
-Attempt result responses include score, max score, percentage, passed flag, assessment/user summary, and answer-level correctness summary.
+- PDF generation;
+- certificate template editor;
+- public certificate verification page;
+- certificate numbering format;
+- certificate revocation endpoint;
+- certificate UI.
 
 ## Current Prisma baseline
 
 ```text
 apps/api/prisma/schema.prisma
 apps/api/prisma/migrations/20260526123000_add_assessment_attempts/migration.sql
+apps/api/prisma/migrations/20260527100000_add_certificates/migration.sql
 ```
 
 No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Certificates skeleton.
-2. Centralized API error format.
-3. OpenAPI / Swagger skeleton.
-4. Integration tests.
-5. Deployment readiness.
+1. Centralized API error format.
+2. OpenAPI / Swagger skeleton.
+3. Integration tests.
+4. Deployment readiness.
