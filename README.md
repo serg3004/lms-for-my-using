@@ -10,6 +10,7 @@ Implemented backend modules:
 - Health API
 - Organizations API
 - Users API
+- Users bulk create API
 - Memberships / roles API
 - Auth login/current user
 - AuthGuard
@@ -41,6 +42,7 @@ POST /api/v1/organizations
 GET  /api/v1/users
 GET  /api/v1/users/:id
 POST /api/v1/users
+POST /api/v1/users/bulk
 
 GET  /api/v1/memberships
 GET  /api/v1/memberships/:id
@@ -93,6 +95,19 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## Users bulk create
+
+`POST /api/v1/users/bulk` creates up to 50 users for one organization in one request.
+
+The endpoint:
+- requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`;
+- uses the existing `usersCreate` role policy;
+- validates input with Zod;
+- normalizes emails to lowercase;
+- rejects duplicate emails inside the request payload;
+- rejects emails that already exist in the target organization;
+- hashes each password before writing users.
+
 ## Course completion gate
 
 Course completion is calculated from published lessons and completed lesson progress for the current authenticated user.
@@ -140,11 +155,10 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Users bulk create.
-2. Users import skeleton.
-3. Organization registration / first admin flow.
-4. Certificates skeleton.
-5. Centralized API error format.
-6. OpenAPI / Swagger skeleton.
-7. Integration tests.
-8. Deployment readiness.
+1. Users import skeleton.
+2. Organization registration / first admin flow.
+3. Certificates skeleton.
+4. Centralized API error format.
+5. OpenAPI / Swagger skeleton.
+6. Integration tests.
+7. Deployment readiness.

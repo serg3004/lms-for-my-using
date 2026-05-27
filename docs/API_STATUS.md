@@ -1,18 +1,25 @@
 # API Status
 
-Last synced: 2026-05-26  
-Source branch: `feature/assessment-results-reports`
+Last synced: 2026-05-27  
+Source branch: `feature/users-bulk-create`
 
 ## Current status
 
-Assessment results / reports are implemented in this branch:
+Users bulk create is implemented in this branch:
 
-- `GET /api/v1/assessments/:assessmentId/results` returns attempt result summaries for privileged organization roles.
-- `GET /api/v1/assessments/:assessmentId/report` returns aggregate assessment report metrics.
-- `GET /api/v1/attempts/:id/result` returns an attempt result with answer-level correctness summary.
-- Learners can read only their own attempt result through the result endpoint.
-- Admins, managers, and instructors can read learner attempt results in the same organization.
-- Attempt creation still enforces `Assessment.availableAfterCourseCompletion`.
+- `POST /api/v1/users/bulk` creates up to 50 users for one organization.
+- Input is validated with Zod.
+- Emails are trimmed, normalized to lowercase, and checked for duplicates inside the request payload.
+- Existing organization users are checked before writes; duplicate database emails reject the whole request.
+- User passwords are hashed before database writes.
+- Bulk writes use Prisma Client and a transaction.
+- The endpoint uses `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`.
+
+Assessment results / reports from PR #47 remain active:
+
+- `GET /api/v1/assessments/:assessmentId/results`
+- `GET /api/v1/assessments/:assessmentId/report`
+- `GET /api/v1/attempts/:id/result`
 
 Assessment attempt Prisma sync from PR #45 remains active:
 
@@ -26,6 +33,11 @@ Assessment attempt Prisma sync from PR #45 remains active:
 ```text
 GET  /api/v1/courses/:id/completion
 
+GET  /api/v1/users
+GET  /api/v1/users/:id
+POST /api/v1/users
+POST /api/v1/users/bulk
+
 GET  /api/v1/assessments/:assessmentId/attempts
 GET  /api/v1/assessments/:assessmentId/results
 GET  /api/v1/assessments/:assessmentId/report
@@ -36,6 +48,6 @@ POST /api/v1/assessments/:assessmentId/attempts
 
 ## Current limitations
 
+- Users import is not implemented yet.
 - Certificates are not implemented yet.
-- Users bulk import is not implemented yet.
 - OpenAPI, centralized API errors, and integration tests are not implemented yet.

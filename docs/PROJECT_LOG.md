@@ -1,18 +1,20 @@
 # Project Log
 
-## 2026-05-26
+## 2026-05-27
 
-### Assessment results / reports
+### Users bulk create
 
-Implemented PR #47 scope on `feature/assessment-results-reports`.
+Implemented PR #48 scope on `feature/users-bulk-create`.
 
 Changes:
-- Added `AssessmentResultsService` for attempt result summaries, answer-level correctness, and aggregate reports.
-- Added `GET /api/v1/assessments/:assessmentId/results`.
-- Added `GET /api/v1/assessments/:assessmentId/report`.
-- Added `GET /api/v1/attempts/:id/result`.
-- Added learner access to own attempt result while preserving privileged organization access for admins/managers/instructors.
-- Added tests for own result access, denied cross-learner access, and aggregate report calculation.
+- Added `POST /api/v1/users/bulk`.
+- Added Zod schema for bulk user create payload.
+- Added batch limit of 50 users per request.
+- Added duplicate email validation inside the request payload.
+- Added database duplicate email check before writes.
+- Added transactional Prisma writes for bulk user creation.
+- Added password hashing for each created user.
+- Added service tests for happy path bulk create and duplicate database email rejection.
 - Updated README, API status, project log, and auto-change audit log.
 
 ### Current PR check status
@@ -27,6 +29,19 @@ Local checks were not run in the GitHub API environment:
 ```
 
 ## 2026-05-26
+
+### Assessment results / reports
+
+Implemented PR #47 scope on `feature/assessment-results-reports`.
+
+Changes:
+- Added `AssessmentResultsService` for attempt result summaries, answer-level correctness, and aggregate reports.
+- Added `GET /api/v1/assessments/:assessmentId/results`.
+- Added `GET /api/v1/assessments/:assessmentId/report`.
+- Added `GET /api/v1/attempts/:id/result`.
+- Added learner access to own attempt result while preserving privileged organization access for admins/managers/instructors.
+- Added tests for own result access, denied cross-learner access, and aggregate report calculation.
+- Updated README, API status, project log, and auto-change audit log.
 
 ### Course completion gate
 

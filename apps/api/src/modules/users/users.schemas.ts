@@ -17,4 +17,30 @@ export const createUserSchema = z.object({
   timezone: z.string().trim().min(1).max(64).default('Asia/Almaty'),
 });
 
+export const usersBulkCreateMaxItems = 50;
+
+export const createBulkUserItemSchema = createUserSchema.omit({ organizationId: true });
+
+export const createBulkUsersSchema = z
+  .object({
+    organizationId: z.string().uuid(),
+    users: z.array(createBulkUserItemSchema).min(1).max(usersBulkCreateMaxItems),
+  })
+  .superRefine((input, context) => {
+    const emails = new Set<string>();
+
+    input.users.forEach((user, index) => {
+      if (emails.has(user.email)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Duplicate user email in bulk payload',
+          path: ['users', index, 'email'],
+        });
+      }
+
+      emails.add(user.email);
+    });
+  });
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type CreateBulkUsersInput = z.infer<typeof createBulkUsersSchema>;
