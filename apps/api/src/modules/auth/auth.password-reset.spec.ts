@@ -15,19 +15,19 @@ describe('password reset skeleton', () => {
       email: ' Learner@Example.COM ',
     });
 
-    expect(authService.requestPasswordReset(input)).toEqual({
+    expect(authService.requestPasswordReset()).toEqual({
       accepted: true,
     });
     expect(input.email).toBe('learner@example.com');
   });
 
   it('accepts strong password reset confirmation input', () => {
-    const input = passwordResetConfirmSchema.parse({
+    passwordResetConfirmSchema.parse({
       token: 'a'.repeat(32),
       password: 'StrongPass1!',
     });
 
-    expect(authService.confirmPasswordReset(input)).toEqual({
+    expect(authService.confirmPasswordReset()).toEqual({
       accepted: true,
     });
   });
