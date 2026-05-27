@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { hashPassword } from '../auth/passwords.js';
@@ -27,6 +27,7 @@ const userSelect = {
   updatedAt: true,
 } as const;
 
+type ImportUserData = Omit<CreateUserInput, 'organizationId'>;
 type ImportRowStatus = 'created' | 'valid' | 'skipped';
 
 type ImportRowReport = {
@@ -35,6 +36,12 @@ type ImportRowReport = {
   status: ImportRowStatus;
   userId: string | null;
   errors: string[];
+};
+
+type ImportRow = {
+  index: number;
+  data: ImportUserData | null;
+  report: ImportRowReport;
 };
 
 @Injectable()
@@ -71,7 +78,7 @@ export class UsersService {
     const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
 
     if (existingEmails.size > 0) {
-      throw new NotFoundException('User email already exists in organization');
+      throw new ConflictException('User email already exists in organization');
     }
 
     const { password, ...userData } = input;
@@ -92,7 +99,7 @@ export class UsersService {
     const existingEmails = await this.findExistingEmails(input.organizationId, emails);
 
     if (existingEmails.size > 0) {
-      throw new NotFoundException('User email already exists in organization');
+      throw new ConflictException('User email already exists in organization');
     }
 
     const usersData = await Promise.all(
@@ -128,7 +135,7 @@ export class UsersService {
   async importUsers(input: ImportUsersInput) {
     await this.ensureOrganizationExists(input.organizationId);
 
-    const rows = input.users.map((rawUser, index) => {
+    const rows: ImportRow[] = input.users.map((rawUser, index) => {
       const parsed = createBulkUserItemSchema.safeParse(rawUser);
 
       if (!parsed.success) {
@@ -138,7 +145,7 @@ export class UsersService {
           report: {
             index,
             email: typeof rawUser.email === 'string' ? rawUser.email.trim().toLowerCase() : null,
-            status: 'skipped' as const,
+            status: 'skipped',
             userId: null,
             errors: parsed.error.issues.map((issue) => issue.message),
           },
@@ -151,7 +158,7 @@ export class UsersService {
         report: {
           index,
           email: parsed.data.email,
-          status: 'valid' as const,
+          status: 'valid',
           userId: null,
           errors: [],
         },
