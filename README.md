@@ -33,11 +33,14 @@ Implemented backend modules:
 - Assessment results and reports API skeleton
 - Certificates API skeleton
 - Centralized API error format
+- OpenAPI document skeleton
 
 ## Implemented backend API
 
 ```text
 GET  /api/v1/health
+
+GET  /api/v1/openapi
 
 GET  /api/v1/organizations
 GET  /api/v1/organizations/:id
@@ -105,6 +108,24 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## OpenAPI document skeleton
+
+`GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
+
+Current scope:
+- API title, description, version, and `/api/v1` server.
+- Bearer JWT security scheme.
+- Common centralized API error response schema from PR #52.
+- Initial path coverage for health, auth, organization registration, users, and certificates.
+- Unit tests for document shape, error schema, and key paths.
+
+Deferred:
+- Swagger UI.
+- `@nestjs/swagger` integration.
+- Full DTO/request/response schemas for every endpoint.
+- Generated OpenAPI client.
+- Published `openapi.json` artifact.
+
 ## Centralized API error format
 
 All unhandled API exceptions are normalized by the global `ApiExceptionFilter`.
@@ -130,28 +151,6 @@ Response shape:
 }
 ```
 
-Supported normalization:
-- Zod errors -> `400 VALIDATION_ERROR` with row/field-level details.
-- Nest HTTP exceptions -> HTTP status based error codes such as `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, and `CONFLICT`.
-- Prisma-like request errors -> `DATABASE_ERROR`, with `P2002` mapped to `409 CONFLICT`.
-- Unknown errors -> `500 INTERNAL_SERVER_ERROR` without leaking internal details.
-
-## Certificates skeleton
-
-`POST /api/v1/certificates` issues a certificate record for a user/course when at least one eligibility rule is satisfied:
-- all published course lessons are completed by the user; or
-- the user has a passed assessment attempt for an assessment in the course.
-
-The endpoint uses Zod validation, `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`, stores certificates in the `Certificate` Prisma model, and returns an existing certificate for the same organization/course/user instead of creating duplicates.
-
-Deferred certificate features:
-- PDF generation;
-- certificate template editor;
-- public certificate verification page;
-- certificate numbering format;
-- certificate revocation endpoint;
-- certificate UI.
-
 ## Current Prisma baseline
 
 ```text
@@ -164,6 +163,5 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. OpenAPI / Swagger skeleton.
-2. Integration tests.
-3. Deployment readiness.
+1. Integration tests.
+2. Deployment readiness.
