@@ -43,6 +43,7 @@ module.exports = {
     '^\\./organizations\\.service\\.js$': '<rootDir>/src/modules/organizations/organizations.service.ts',
     '^\\./users\\.schemas\\.js$': '<rootDir>/src/modules/users/users.schemas.ts',
     '^\\./users\\.service\\.js$': '<rootDir>/src/modules/users/users.service.ts',
+    '^\\.\\./auth/auth\\.controller\\.js$': '<rootDir>/src/modules/auth/auth.controller.ts',
     '^\\.\\./auth/auth\\.guard\\.js$': '<rootDir>/src/modules/auth/auth.guard.ts',
     '^\\.\\./auth/auth\\.module\\.js$': '<rootDir>/src/modules/auth/auth.module.ts',
     '^\\.\\./auth/organization-scope\\.js$': '<rootDir>/src/modules/auth/organization-scope.ts',
