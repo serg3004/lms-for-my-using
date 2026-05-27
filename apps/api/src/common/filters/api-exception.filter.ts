@@ -47,6 +47,13 @@ type PrismaLikeError = {
   message?: string;
 };
 
+type NormalizedApiError = {
+  statusCode: number;
+  code: string;
+  message: string;
+  details?: ApiErrorDetails[];
+};
+
 const defaultErrorMessage = 'Internal server error';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -76,7 +83,7 @@ function getHttpErrorCode(statusCode: number) {
   }
 }
 
-function normalizeHttpException(exception: HttpException) {
+function normalizeHttpException(exception: HttpException): NormalizedApiError {
   const statusCode = exception.getStatus();
   const response = getExceptionResponse(exception);
 
@@ -100,7 +107,7 @@ function normalizeHttpException(exception: HttpException) {
   };
 }
 
-function normalizeZodError(error: ZodError) {
+function normalizeZodError(error: ZodError): NormalizedApiError {
   return {
     statusCode: HttpStatus.BAD_REQUEST,
     code: 'VALIDATION_ERROR',
@@ -113,7 +120,7 @@ function normalizeZodError(error: ZodError) {
   };
 }
 
-function normalizePrismaError(error: PrismaLikeError) {
+function normalizePrismaError(error: PrismaLikeError): NormalizedApiError {
   if (error.code === 'P2002') {
     return {
       statusCode: HttpStatus.CONFLICT,
@@ -153,7 +160,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     });
   }
 
-  private normalizeException(exception: unknown) {
+  private normalizeException(exception: unknown): NormalizedApiError {
     if (exception instanceof ZodError) {
       return normalizeZodError(exception);
     }
