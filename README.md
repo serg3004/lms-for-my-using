@@ -41,6 +41,7 @@ Implemented backend modules:
 - JWT secret failure behavior test coverage
 - Zod validation errors return 400 Bad Request through the centralized API error format
 - MVP API smoke coverage for health, auth login, protected access, env validation, and tenant scope mismatch
+- MVP Definition of Done and Pilot Checklist
 
 ## Implemented backend API
 
@@ -116,6 +117,11 @@ GET  /api/v1/certificates/:id
 POST /api/v1/certificates
 ```
 
+## MVP docs
+
+- `docs/MVP_DEFINITION_OF_DONE.md`
+- `docs/PILOT_CHECKLIST.md`
+
 ## API environment validation
 
 The API validates the runtime environment on startup:
@@ -183,4 +189,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. MVP definition of done and pilot checklist.
+1. MVP local runbook.
