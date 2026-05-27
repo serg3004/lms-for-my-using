@@ -23,3 +23,7 @@ export function loadApiEnv(env = process.env): ApiEnv {
 
   return parsedResult.data;
 }
+
+export function getJwtSecret(env = process.env): string {
+  return loadApiEnv(env).JWT_SECRET;
+}
