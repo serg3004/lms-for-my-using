@@ -21,9 +21,9 @@ describe('Auth tokens', () => {
   });
 
   it('signs and verifies a JWT', () => {
-    const token = signJwt(userJwtPayload, secretJwt);
+    const token = signJwt(userJwtPayload, jwtSecret);
 
-    const claims = verifyJwt(token, secretJwt);
+    const claims = verifyJwt(token, jwtSecret);
 
     expect(claims.sub).toBe(userJwtPayload.sub);
     expect(claims.organizationId).toBe(userJwtPayload.organizationId);
@@ -31,7 +31,7 @@ describe('Auth tokens', () => {
   });
 
   it('signs and verifies a JWT with the configured JWT secret', () => {
-    process.env.JWT_SECRET = secretJwt;
+    process.env.JWT_SECRET = jwtSecret;
 
     const token = signJwt(userJwtPayload);
 
@@ -46,13 +46,13 @@ describe('Auth tokens', () => {
 
   it('fails verification when the configured JWT secret is too short', () => {
     process.env.JWT_SECRET = 'short-secret';
-    const token = signJwt(userJwtPayload, secretJwt);
+    const token = signJwt(userJwtPayload, jwtSecret);
 
     expect(() => verifyJwt(token)).toThrow(/JWT_SECRET/);
   });
 
   it('rejects a token signed with a different secret', () => {
-    const token = signJwt(userJwtPayload, secretJwt);
+    const token = signJwt(userJwtPayload, jwtSecret);
 
     expect(() => verifyJwt(token, 'abcdef0123456789abcdef0123456789')).toThrow();
   });
