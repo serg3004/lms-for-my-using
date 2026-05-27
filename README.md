@@ -34,12 +34,12 @@ Implemented backend modules:
 - Certificates API skeleton
 - Centralized API error format
 - OpenAPI document skeleton
+- Integration tests skeleton
 
 ## Implemented backend API
 
 ```text
 GET  /api/v1/health
-
 GET  /api/v1/openapi
 
 GET  /api/v1/organizations
@@ -108,6 +108,25 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
+## Integration tests skeleton
+
+Integration test scaffold is available under:
+
+```text
+apps/api/src/integration/app.integration.spec.ts
+```
+
+Current coverage:
+- `GET /api/v1/health` smoke test.
+- `GET /api/v1/openapi` smoke test.
+- Global centralized error format smoke test for Zod validation errors.
+
+Current constraints:
+- no database connection;
+- no `supertest` dependency;
+- no test containers or seed data;
+- no full auth flow integration test yet.
+
 ## OpenAPI document skeleton
 
 `GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
@@ -117,7 +136,6 @@ Current scope:
 - Bearer JWT security scheme.
 - Common centralized API error response schema from PR #52.
 - Initial path coverage for health, auth, organization registration, users, and certificates.
-- Unit tests for document shape, error schema, and key paths.
 
 Deferred:
 - Swagger UI.
@@ -163,5 +181,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Integration tests.
-2. Deployment readiness.
+1. Deployment readiness.

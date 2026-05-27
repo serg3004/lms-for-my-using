@@ -2,29 +2,31 @@
 
 ## 2026-05-27
 
-### OpenAPI / Swagger skeleton
+### Integration tests skeleton
 
-Implemented PR #53 scope on `feature/openapi-swagger-skeleton`.
+Implemented PR #54 scope on `feature/integration-tests-skeleton`.
 
 Changes:
-- Added OpenAPI module.
-- Added `GET /api/v1/openapi`.
-- Added static OpenAPI 3.0.3 document builder.
-- Added API metadata, `/api/v1` server, and Bearer JWT security scheme.
-- Added centralized API error response schemas from PR #52.
-- Added initial documented paths for health, auth, organization registration, users, and certificates.
-- Added unit tests for document shape, common error schema, and key paths.
+- Added `apps/api/src/integration/app.integration.spec.ts`.
+- Added test Nest application bootstrap with `/api/v1` global prefix.
+- Registered `ApiExceptionFilter` in the integration test app.
+- Added `GET /api/v1/health` smoke integration test.
+- Added `GET /api/v1/openapi` smoke integration test.
+- Added centralized error response integration test through a Zod validation failure.
+- Used Node `http` requests instead of adding `supertest`.
+- Added Jest module mappers for integration test imports.
 - Updated README, API status, project log, and audit log.
 
 Decision:
-- Did not add `@nestjs/swagger` in this PR because it requires dependency and lockfile changes. The current skeleton avoids lockfile risk and keeps runtime impact minimal.
+- Did not add `supertest` because that would require dependency and lockfile changes.
+- Did not use the full `AppModule` to avoid database connection requirements in this skeleton PR.
 
 Deferred:
-- Swagger UI.
-- `@nestjs/swagger` integration.
-- Full DTO/request/response schemas.
-- Generated OpenAPI client.
-- Published `openapi.json` artifact.
+- Database-backed integration tests.
+- Auth flow integration tests.
+- Test containers.
+- Seed data.
+- CI workflow changes.
 
 Current PR check status:
 

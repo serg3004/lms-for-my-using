@@ -2,7 +2,10 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
+    '^\\.\\./common/filters/api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\./openapi\\.document\\.js$': '<rootDir>/src/modules/openapi/openapi.document.ts',
+    '^\\.\\./modules/health/health\\.controller\\.js$': '<rootDir>/src/modules/health/health.controller.ts',
+    '^\\.\\./modules/openapi/openapi\\.controller\\.js$': '<rootDir>/src/modules/openapi/openapi.controller.ts',
     '^\\./auth\\.guard\\.js$': '<rootDir>/src/modules/auth/auth.guard.ts',
     '^\\./auth\\.schemas\\.js$': '<rootDir>/src/modules/auth/auth.schemas.ts',
     '^\\./auth\\.service\\.js$': '<rootDir>/src/modules/auth/auth.service.ts',
