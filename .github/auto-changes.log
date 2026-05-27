@@ -1,9 +1,12 @@
-[2026-05-27T08:43:00Z] BRANCH: feature/centralized-api-error-format
-[2026-05-27T08:43:01Z] TASK: PR #52 centralized API error format
-[2026-05-27T08:43:02Z] CHANGE: added global ApiExceptionFilter
-[2026-05-27T08:43:03Z] CHANGE: registered centralized exception filter in main.ts
-[2026-05-27T08:43:04Z] CHANGE: added Zod, HTTP exception, Prisma-like, and unknown error normalization
-[2026-05-27T08:43:05Z] CHANGE: added tests for centralized API error response format
-[2026-05-27T08:43:06Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T08:43:07Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T08:43:08Z] ROLLBACK: revert PR or delete branch feature/centralized-api-error-format
+[2026-05-27T09:14:00Z] BRANCH: feature/openapi-swagger-skeleton
+[2026-05-27T09:14:01Z] TASK: PR #53 OpenAPI / Swagger skeleton
+[2026-05-27T09:14:02Z] CHANGE: added OpenAPI module
+[2026-05-27T09:14:03Z] CHANGE: added GET /api/v1/openapi
+[2026-05-27T09:14:04Z] CHANGE: added static OpenAPI 3.0.3 document builder
+[2026-05-27T09:14:05Z] CHANGE: added API metadata, /api/v1 server, and Bearer JWT security scheme
+[2026-05-27T09:14:06Z] CHANGE: added centralized API error response schemas
+[2026-05-27T09:14:07Z] CHANGE: added initial path coverage for health, auth, organization registration, users, and certificates
+[2026-05-27T09:14:08Z] CHANGE: added OpenAPI document tests
+[2026-05-27T09:14:09Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T09:14:10Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T09:14:11Z] ROLLBACK: revert PR or delete branch feature/openapi-swagger-skeleton
