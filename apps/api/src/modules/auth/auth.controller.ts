@@ -3,8 +3,6 @@ import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@ne
 import { AuthService } from './auth.service.js';
 import {
   LoginInput,
-  PasswordResetConfirmInput,
-  PasswordResetRequestInput,
   loginSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
@@ -39,16 +37,16 @@ export class AuthController {
 
   @Post('password-reset/request')
   requestPasswordReset(@Body() body: unknown) {
-    const input: PasswordResetRequestInput = passwordResetRequestSchema.parse(body);
+    passwordResetRequestSchema.parse(body);
 
-    return this.authService.requestPasswordReset(input);
+    return this.authService.requestPasswordReset();
   }
 
   @Post('password-reset/confirm')
   confirmPasswordReset(@Body() body: unknown) {
-    const input: PasswordResetConfirmInput = passwordResetConfirmSchema.parse(body);
+    passwordResetConfirmSchema.parse(body);
 
-    return this.authService.confirmPasswordReset(input);
+    return this.authService.confirmPasswordReset();
   }
 
   @Get('me')
