@@ -7,6 +7,7 @@ export const rolesMetadataKey = 'roles';
 export const rolePolicies = {
   organizationsRead: ['admin'],
   usersRead: ['admin', 'manager'],
+  usersCreate: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],
   membershipsCreate: ['admin'],
   groupsRead: ['admin', 'manager'],
@@ -28,7 +29,7 @@ export const rolePolicies = {
   assessmentAnswerOptionsRead: ['admin', 'manager', 'instructor'],
   assessmentAnswerOptionsCreate: ['admin', 'instructor'],
   assessmentAttemptsRead: ['admin', 'manager', 'instructor'],
-  assessmentAttemptResultsRead: ['admin', 'manager', 'instructor', 'learner'],
+  assessmentAttemptResultSRead: ['admin', 'manager', 'instructor', 'learner'],
   assessmentAttemptsCreate: ['admin', 'manager', 'instructor', 'learner'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
