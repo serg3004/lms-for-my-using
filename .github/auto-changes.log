@@ -1,11 +1,13 @@
-[2026-05-27T04:25:00Z] BRANCH: feature/organization-registration-first-admin
-[2026-05-27T04:25:01Z] TASK: PR #50 organization registration / first admin flow
-[2026-05-27T04:25:02Z] CHANGE: added POST /api/v1/organizations/register
-[2026-05-27T04:25:03Z] CHANGE: added Zod registration schema with organization and admin sections
-[2026-05-27T04:25:04Z] CHANGE: added duplicate organization slug and admin email checks
-[2026-05-27T04:25:05Z] CHANGE: added first admin password hashing
-[2026-05-27T04:25:06Z] CHANGE: added Prisma transaction for organization, first admin user, and admin membership
-[2026-05-27T04:25:07Z] CHANGE: added happy path and duplicate slug service tests
-[2026-05-27T04:25:08Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T04:25:09Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T04:25:10Z] ROLLBACK: revert PR or delete branch feature/organization-registration-first-admin
+[2026-05-27T06:10:00Z] BRANCH: feature/certificates-skeleton
+[2026-05-27T06:10:01Z] TASK: PR #51 certificates skeleton
+[2026-05-27T06:10:02Z] CHANGE: added CertificateStatus enum and Certificate Prisma model
+[2026-05-27T06:10:03Z] CHANGE: added 20260527100000_add_certificates migration
+[2026-05-27T06:10:04Z] CHANGE: added certificates module/controller/service/schema
+[2026-05-27T06:10:05Z] CHANGE: added GET /api/v1/certificates and GET /api/v1/certificates/:id
+[2026-05-27T06:10:06Z] CHANGE: added POST /api/v1/certificates
+[2026-05-27T06:10:07Z] CHANGE: added eligibility by course completion or passed assessment attempt
+[2026-05-27T06:10:08Z] CHANGE: added certificate RBAC policies and AppModule registration
+[2026-05-27T06:10:09Z] CHANGE: added certificate service tests
+[2026-05-27T06:10:10Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T06:10:11Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T06:10:12Z] ROLLBACK: revert PR or delete branch feature/certificates-skeleton
