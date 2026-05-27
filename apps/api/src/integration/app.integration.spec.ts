@@ -1,12 +1,10 @@
-import { Controller, Get, INestApplication } from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { get, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
-import { AuthController } from '../modules/auth/auth.controller.js';
-import { AuthService } from '../modules/auth/auth.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
 
@@ -85,24 +83,23 @@ class IntegrationTestController {
   }
 }
 
+@Controller('auth')
+class IntegrationAutTestController {
+  @Post('login')
+  login(@Body() body: unknown) {
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+    }).parse(body);
+  }
+}
+
 describe('API integration scaffold', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleReference = await Test.createTestingModule({
-      controllers: [HealthController, OpenApiController, AuthController, IntegrationTestController],
-      providers: [
-        {
-          provide: AuthService,
-          useValue: {
-            login: async () => ({
-              accessToken: 'token',
-              tokenType: 'Bearer',
-              user: null,
-            }),
-          },
-        },
-      ],
+      controllers: [HealthController, OpenApiController, IntegrationTestController, IntegrationAutTestController],
     }).compile();
 
     app = moduleReference.createNestApplication();
