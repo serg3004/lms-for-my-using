@@ -1,42 +1,32 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/centralized-api-error-format`
+Source branch: `feature/openapi-swagger-skeleton`
 
 ## Current status
 
-Centralized API error format is implemented in this branch:
+OpenAPI document skeleton is implemented in this branch:
 
-- Added global `ApiExceptionFilter`.
-- Registered the filter in `apps/api/src/main.ts`.
-- Zod errors return `400 VALIDATION_ERROR` with field-level details.
-- Nest HTTP exceptions return normalized HTTP error codes such as `BAD_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, and `CONFLICT`.
-- Prisma-like request errors return `DATABASE_ERROR`, with `P2002` mapped to `409 CONFLICT`.
-- Unknown errors return `500 INTERNAL_SERVER_ERROR` without leaking internal error messages.
-- Added tests for validation errors, HTTP exceptions, unknown errors, and bad request message arrays.
+- Added `GET /api/v1/openapi`.
+- Added static OpenAPI 3.0.3 JSON document builder.
+- Added API metadata: title, description, version, and `/api/v1` server.
+- Added Bearer JWT security scheme.
+- Added common centralized API error response schema from PR #52.
+- Added initial path coverage for health, auth, organization registration, users, and certificates.
+- Added unit tests for document shape, error response schema, and key documented paths.
+- No `@nestjs/swagger` dependency was added, so `pnpm-lock.yaml` remains unchanged.
+- Swagger UI, full DTO schemas, generated clients, and published `openapi.json` artifacts remain deferred.
 
-## Error response shape
+## Endpoint map
 
-```json
-{
-  "statusCode": 400,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": [
-      {
-        "field": "email",
-        "message": "Invalid email",
-        "code": "invalid_string"
-      }
-    ]
-  },
-  "path": "/api/v1/example",
-  "timestamp": "2026-05-27T00:00:00.000Z"
-}
+```text
+GET /api/v1/openapi
 ```
 
 ## Current limitations
 
-- OpenAPI / Swagger schema documentation is not implemented yet.
-- Integration tests are not implemented yet.
+- Swagger UI is not implemented yet.
+- `@nestjs/swagger` decorators/integration are not implemented yet.
+- Full request/response schemas for every endpoint are not implemented yet.
+- Generated OpenAPI client is not implemented yet.
+- Published `openapi.json` artifact is not implemented yet.
