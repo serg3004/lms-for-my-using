@@ -1,3 +1,12 @@
+[2026-05-27T11:00:00Z] BRANCH: fix/align-api-env-validation
+[2026-05-27T11:00:01Z] TASK: PR 1 fix align api environment validation
+[2026-05-27T11:00:02Z] CHANGE: aligned JWT env naming to JWT_SECRET
+[2026-05-27T11:00:03Z] CHANGE: extended API env validation for API_PORT and JWT_SECRET
+[2026-05-27T11:00:04Z] CHANGE: added env validation tests
+[2026-05-27T11:00:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T11:00:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T11:00:07Z] ROLLBACK: revert PR or delete branch fix/align-api-env-validation
+
 [2026-05-27T10:31:00Z] BRANCH: feature/auth-hardening-password-reset-skeleton
 [2026-05-27T10:31:01Z] TASK: PR #56 auth hardening / password reset skeleton
 [2026-05-27T10:31:02Z] CHANGE: added password reset request and confirm validation schemas

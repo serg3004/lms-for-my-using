@@ -1,33 +1,23 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/auth-hardening-password-reset-skeleton`
+Source branch: `fix/align-api-env-validation`
 
 ## Current status
 
-Auth password reset skeleton is implemented in this branch:
+API runtime environment validation is aligned with the auth token configuration:
 
-- Added `POST /api/v1/auth/password-reset/request`.
-- Added `POST /api/v1/auth/password-reset/confirm`.
-- Added Zod validation schemas for request and confirm payloads.
-- Added strong password validation for reset confirmation candidates.
-- Added generic `{ "accepted": true }` response to avoid account enumeration.
-- Added service skeleton methods without token persistence or email delivery.
-- Added tests for accepted request, accepted strong confirmation input, and weak password rejection.
-- Added password reset paths to the static OpenAPI skeleton.
+- `apps/api/src/config/env.ts` validates `API_PORT` and `JWT_SECRET`.
+- `JWT_SECRET` is the single token signing secret used by `auth.tokens.ts`.
+- `.env.example` now documents `JWT_SECRET` instead of unused JWT access/refresh secret names.
+- Added env validation tests for a valid environment, missing JWT secret, and invalid API port.
 
 ## Current limitations
 
-- No password reset token persistence yet.
-- No email delivery yet.
-- No password hash update yet.
-- No rate limiting store yet.
 - No Prisma schema or migration changes.
-- No secrets or env changes.
+- No CI/CD changes.
+- No new dependencies.
 
 ## Endpoint map
 
-```text
-POST /api/v1/auth/password-reset/request
-POST /api/v1/auth/password-reset/confirm
-```
+No API endpoint changes in this PR.

@@ -36,6 +36,7 @@ Implemented backend modules:
 - Centralized API error format
 - OpenAPI document skeleton
 - Integration tests skeleton
+- Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 
 ## Implemented backend API
 
@@ -110,6 +111,17 @@ GET  /api/v1/certificates
 GET  /api/v1/certificates/:id
 POST /api/v1/certificates
 ```
+
+## API environment validation
+
+The API validates the runtime environment on startup:
+
+```text
+API_PORT=3000
+JWT_SECRET=change-me-change-me-change-me-32chars
+```
+
+`JWT_SECRET` must be at least 32 characters and matches the token signing secret used by auth.
 
 ## Auth password reset skeleton
 
