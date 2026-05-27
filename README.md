@@ -37,6 +37,7 @@ Implemented backend modules:
 - OpenAPI document skeleton
 - Integration tests skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
+- Centralized JWT secret access through API env config
 
 ## Implemented backend API
 
@@ -121,7 +122,7 @@ API_PORT=3000
 JWT_SECRET=change-me-change-me-change-me-32chars
 ```
 
-`JWT_SECRET` must be at least 32 characters and matches the token signing secret used by auth.
+`JWT_SECRET` must be at least 32 characters and matches the token signing secret used by auth through the centralized API env config.
 
 ## Auth password reset skeleton
 
