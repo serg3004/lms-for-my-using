@@ -11,6 +11,7 @@ Implemented backend modules:
 - Organizations API
 - Users API
 - Users bulk create API
+- Users import skeleton API
 - Memberships / roles API
 - Auth login/current user
 - AuthGuard
@@ -43,6 +44,7 @@ GET  /api/v1/users
 GET  /api/v1/users/:id
 POST /api/v1/users
 POST /api/v1/users/bulk
+POST /api/v1/users/import
 
 GET  /api/v1/memberships
 GET  /api/v1/memberships/:id
@@ -108,6 +110,30 @@ The endpoint:
 - rejects emails that already exist in the target organization;
 - hashes each password before writing users.
 
+## Users import skeleton
+
+`POST /api/v1/users/import` provides the first backend import flow without CSV upload, file storage, queues, import history tables, UI, or email invitations.
+
+Supported modes:
+- `validateOnly` — validates rows and returns a row-level report without writes.
+- `create` — validates rows, skips invalid/existing/duplicate emails, and creates valid rows.
+
+The endpoint:
+- accepts JSON payloads only;
+- supports up to 100 rows per request;
+- returns `createdCount`, `skippedCount`, `errorCount`, and per-row errors;
+- reuses password hashing, Prisma transactions, `usersCreate`, and organization scope checks.
+
+## Deferred import features
+
+Deferred until after MVP / separate PRs:
+- CSV upload `multipart/form-data`;
+- import file storage;
+- background jobs / queue;
+- import history table and related Prisma migration;
+- import UI;
+- email invitations.
+
 ## Course completion gate
 
 Course completion is calculated from published lessons and completed lesson progress for the current authenticated user.
@@ -155,10 +181,9 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Users import skeleton.
-2. Organization registration / first admin flow.
-3. Certificates skeleton.
-4. Centralized API error format.
-5. OpenAPI / Swagger skeleton.
-6. Integration tests.
-7. Deployment readiness.
+1. Organization registration / first admin flow.
+2. Certificates skeleton.
+3. Centralized API error format.
+4. OpenAPI / Swagger skeleton.
+5. Integration tests.
+6. Deployment readiness.
