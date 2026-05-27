@@ -7,7 +7,6 @@
 [2026-05-26T10:20:01Z] TASK: PR #46 course completion gate
 [2026-05-26T10:20:02Z] CHANGE: added course completion calculation and GET /api/v1/courses/:id/completion
 [2026-05-26T10:20:03Z] CHANGE: blocked gated assessment attempts until course completion
-[2026-05-26T10:20:04Z] CHANGE: added happy path and negative business tests
 [2026-05-26T10:30:00Z] CI: pnpm --recursive test failed; fixed new tests
 [2026-05-26T10:33:00Z] CI: pnpm --recursive test failed again; removed unsupported @jest/globals imports
 [2026-05-26T11:54:00Z] BRANCH: feature/assessment-results-reports
@@ -18,4 +17,12 @@
 [2026-05-26T11:54:05Z] CHANGE: added GET /api/v1/attempts/:id/result with own-learner or privileged role access
 [2026-05-26T11:54:06Z] CHANGE: added service tests for result access, denied cross-learner access, and aggregate report calculation
 [2026-05-26T11:54:07Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T11:54:08Z] ROLLBACK: revert PR or delete branch feature/assessment-results-reports
+[2026-05-27T02:45:00Z] BRANCH: feature/users-bulk-create
+[2026-05-27T02:45:01Z] TASK: PR #48 users bulk create
+[2026-05-27T02:45:02Z] CHANGE: added POST /api/v1/users/bulk
+[2026-05-27T02:45:03Z] CHANGE: added Zod schema with 50-user batch limit and duplicate payload email validation
+[2026-05-27T02:45:04Z] CHANGE: added database duplicate email check before bulk writes
+[2026-05-27T02:45:05Z] CHANGE: added transactional Prisma writes and password hashing for bulk user creation
+[2026-05-27T02:45:06Z] CHANGE: added happy path and negative duplicate-email service tests
+[2026-05-27T02:45:07Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T02:45:08Z] ROLLBACK: revert PR or delete branch feature/users-bulk-create
