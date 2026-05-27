@@ -1,28 +1,32 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/users-import-skeleton`
+Source branch: `feature/organization-registration-first-admin`
 
 ## Current status
 
-Users import skeleton is implemented in this branch:
+Organization registration / first admin flow is implemented in this branch:
 
-- `POST /api/v1/users/import` accepts JSON-only import payloads.
-- Supported modes:
-  - `validateOnly` validates rows and returns a row-level report without writes.
-  - `create` validates rows, skips invalid/existing/duplicate emails, and creates valid rows.
+- `POST /api/v1/organizations/register` creates an organization, first admin user, and admin membership.
 - Input is validated with Zod.
-- Import batch size is limited to 100 rows.
-- Emails are trimmed, normalized to lowercase, and checked for duplicates inside the payload.
-- Existing organization users are checked before writes; duplicate database emails are skipped in the row report.
-- Valid created rows use password hashing and Prisma transaction writes.
-- The endpoint uses `AuthGuard`, `RolesGuard`, `OrganizationScopeGuard`, and the existing `usersCreate` role policy.
-- Deferred by design: CSV upload, file storage, background jobs, import history tables/migrations, UI, and email invitations.
+- Admin email is normalized to lowercase.
+- Duplicate active organization slugs are rejected.
+- Duplicate active admin emails are rejected.
+- First admin password is hashed before database writes.
+- Organization, first admin user, and `admin` membership are created in one Prisma transaction.
+- The response returns organization and first admin summaries without password hash.
+
+Users import skeleton from PR #49 remains active:
+
+- `POST /api/v1/users/import`
+- `validateOnly` and `create` modes
+- row-level validation report
+- JSON-only payload
+- CSV upload, file storage, queue, import history, UI, and email invitations remain deferred.
 
 Users bulk create from PR #48 remains active:
 
 - `POST /api/v1/users/bulk` creates up to 50 users for one organization.
-- Duplicate payload/database emails reject the whole bulk create request.
 
 Assessment results / reports from PR #47 remain active:
 
@@ -34,6 +38,11 @@ Assessment results / reports from PR #47 remain active:
 
 ```text
 GET  /api/v1/courses/:id/completion
+
+GET  /api/v1/organizations
+GET  /api/v1/organizations/:id
+POST /api/v1/organizations
+POST /api/v1/organizations/register
 
 GET  /api/v1/users
 GET  /api/v1/users/:id
@@ -51,11 +60,6 @@ POST /api/v1/assessments/:assessmentId/attempts
 
 ## Current limitations
 
-- CSV upload is deferred.
-- Import file storage is deferred.
-- Import history table / Prisma migration is deferred.
-- Background jobs / queue are deferred.
-- Import UI is deferred.
-- Email invitations are deferred.
 - Certificates are not implemented yet.
 - OpenAPI, centralized API errors, and integration tests are not implemented yet.
+- CSV upload, import file storage, import history tables/migrations, background jobs/queue, import UI, and email invitations are deferred.
