@@ -1,4 +1,16 @@
-import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
+import {
+  Body,
+  CanActivate,
+  Controller,
+  ExecutionContext,
+  ForbiddenException,
+  Get,
+  INestApplication,
+  Injectable,
+  Post,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { get, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -37,7 +49,7 @@ function requestJson(url: string): Promise<HttpTestResponse> {
   });
 }
 
-function postJson(url: string, body: unknown): Promise<HttpTestResponse> {
+function postJson(url: string, body: unknown, headers: Record<string, string> = {}): Promise<HttpTestResponse> {
   const payload = JSON.stringify(body);
 
   return new Promise((resolve, reject) => {
@@ -47,7 +59,8 @@ function postJson(url: string, body: unknown): Promise<HttpTestResponse> {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'content-length': Buffer.byteLength(payload),
+          'content-length': Buffer.byteLength(payload).toString(),
+          ...headers,
         },
       },
       (response) => {
@@ -71,6 +84,42 @@ function postJson(url: string, body: unknown): Promise<HttpTestResponse> {
   });
 }
 
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+@Injectable()
+class IntegrationAuthGuard implements CanActivate {
+  canActivate(context: ExecutionContext) {
+    const authorizationHeader = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined> }>()
+      .headers.authorization;
+
+    if (!authorizationHeader?.startsWith('Bearer ') || authorizationHeader.slice('Bearer '.length).trim() === '') {
+      throw new UnauthorizedException('Missing bearer token');
+    }
+
+    return true;
+  }
+}
+
+@Injectable()
+class IntegrationOrganizationScopeGuard implements CanActivate {
+  canActivate(context: ExecutionContext) {
+    const request = context
+      .switchToHttp()
+      .getRequest<{ body?: Record<string, unknown>; headers: Record<string, string | undefined> }>();
+    const scopedOrganizationId = typeof request.body?.organizationId === 'string' ? request.body.organizationId : undefined;
+    const currentOrganizationId = request.headers['x-current-organization-id'];
+
+    if (!currentOrganizationId || !scopedOrganizationId || currentOrganizationId !== scopedOrganizationId) {
+      throw new ForbiddenException('Organization scope mismatch');
+    }
+
+    return true;
+  }
+}
+
 @Controller('integration-test')
 class IntegrationTestController {
   @Get('validation-error')
@@ -84,13 +133,37 @@ class IntegrationTestController {
 }
 
 @Controller('auth')
-class IntegrationAutTestController {
+class IntegrationAuthTestController {
   @Post('login')
   login(@Body() body: unknown) {
-    z.object({
-      email: z.string().email(),
-      password: z.string().min(8),
-    }).parse(body);
+    loginSchema.parse(body);
+
+    return {
+      accessToken: 'smoke-token',
+      tokenType: 'Bearer',
+      user: {
+        email: (body as { email: string }).email,
+      },
+    };
+  }
+}
+
+@Controller('smoke')
+class SmokeTestController {
+  @Get('protected')
+  @UseGuards(IntegrationAuthGuard)
+  getProtected() {
+    return {
+      status: 'ok',
+    };
+  }
+
+  @Post('tenant-scope')
+  @UseGuards(IntegrationOrganizationScopeGuard)
+  checkTenantScope() {
+    return {
+      status: 'ok',
+    };
   }
 }
 
@@ -99,7 +172,14 @@ describe('API integration scaffold', () => {
 
   beforeEach(async () => {
     const moduleReference = await Test.createTestingModule({
-      controllers: [HealthController, OpenApiController, IntegrationTestController, IntegrationAutTestController],
+      controllers: [
+        HealthController,
+        OpenApiController,
+        IntegrationTestController,
+        IntegrationAuthTestController,
+        SmokeTestController,
+      ],
+      providers: [IntegrationAuthGuard, IntegrationOrganizationScopeGuard],
     }).compile();
 
     app = moduleReference.createNestApplication();
@@ -148,6 +228,22 @@ describe('API integration scaffold', () => {
     });
   });
 
+  it('returns auth login smoke response for a valid body', async () => {
+    const response = await postJson(`${getAppUrl(app)}/api/v1/auth/login`, {
+      email: 'user@example.com',
+      password: 'password123',
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.body).toMatchObject({
+      accessToken: 'smoke-token',
+      tokenType: 'Bearer',
+      user: {
+        email: 'user@example.com',
+      },
+    });
+  });
+
   it('returns 400 Bad Request for invalid auth login body', async () => {
     const response = await postJson(`${getAppUrl(app)}/api/v1/auth/login`, {
       email: 'not-email',
@@ -161,6 +257,40 @@ describe('API integration scaffold', () => {
         message: 'Validation failed',
       },
       path: '/api/v1/auth/login',
+    });
+  });
+
+  it('returns 401 for a protected endpoint without a bearer token', async () => {
+    const response = await requestJson(`${getAppUrl(app)}/api/v1/smoke/protected`);
+
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toMatchObject({
+      statusCode: 401,
+      error: {
+        code: 'UNAUTHORIZED',
+      },
+      path: '/api/v1/smoke/protected',
+    });
+  });
+
+  it('returns 403 for tenant scope mismatch', async () => {
+    const response = await postJson(
+      `${getAppUrl(app)}/api/v1/smoke/tenant-scope`,
+      {
+        organizationId: 'org-b',
+      },
+      {
+        'x-current-organization-id': 'org-a',
+      },
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body).toMatchObject({
+      statusCode: 403,
+      error: {
+        code: 'FORBIDDEN',
+      },
+      path: '/api/v1/smoke/tenant-scope',
     });
   });
 });
