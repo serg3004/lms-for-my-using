@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
+import { getJwtSecret } from '../../config/env.js';
+
 const jwtAlg = 'HS256';
-const jwtType = 'JWT';
-const jwtSecretMinLength = 32;
+const jwtTyp = 'JWT';
 const defaultTokenExpiresInSeconds = 60 * 60;
 
 export type JwtSignPayload = {
@@ -15,16 +16,6 @@ export type JwtClaims = JwtSignPayload & {
   iat: number;
   exp: number;
 };
-
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret || secret.length < jwtSecretMinLength) {
-    throw new Error('JWT_SECRET must be at least 32 characters');
-  }
-
-  return secret;
-}
 
 function base64UrlEncode(input: Buffer | string) {
   return Buffer.from(input).toString('base64url');
@@ -63,7 +54,7 @@ function isJwtClaims(value: unknown): value is JwtClaims {
 
 export function signJwt(payload: JwtSignPayload, secret = getJwtSecret()) {
   const now = Math.floor(Date.now() / 1000);
-  const header = base64UrlEncode(JSON.stringify({ alg: jwtAlg, typ: jwtType }));
+  const header = base64UrlEncode(JSON.stringify({ alg: jwtAlg, typ: jwtTyp }));
   const claims: JwtClaims = { ...payload, iat: now, exp: now + defaultTokenExpiresInSeconds };
   const body = base64UrlEncode(JSON.stringify(claims));
   const signature = base64UrlEncode(sign(`${header}.${body}`, secret));
