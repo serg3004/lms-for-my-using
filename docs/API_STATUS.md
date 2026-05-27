@@ -1,22 +1,20 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `test/mvp-api-smoke-coverage`
+Source branch: `docs/mvp-dod-pilot-checklist`
 
 ## Current status
 
-MVP API smoke coverage is expanded:
+MVP documentation baseline is available:
 
-- `GET /api/v1/health` smoke coverage.
-- Auth login happy path coverage through a local integration test controller.
-- Auth login validation negative coverage through `schema.parse(body)`.
-- Protected endpoint without bearer token returns `401 Unauthorized`.
-- Tenant scope mismatch returns `403 Forbidden`.
-- Environment validation remains covered in `apps/api/src/config/env.spec.ts`.
+- `docs/MVP_DEFINITION_OF_DONE.md` defines the controlled pilot readiness criteria.
+- `docs/PILOT_CHECKLIST.md` defines operational go / no-go checks before pilot use.
+- MVP API smoke coverage is documented and remains unchanged.
+- API runtime behavior is unchanged in this PR.
 
 ## Current limitations
 
-- Smoke auth/tenant endpoints are integration-test-only controllers.
+- Docs-only PR.
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
