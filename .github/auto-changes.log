@@ -1,8 +1,8 @@
-[2026-05-27T13:44:00Z] BRANCH: fix/handle-zod-validation-errors
-[2026-05-27T13:44:01Z] TASK: PR 2 fix handle zod validation errors as bad requests
-[2026-05-27T13:44:02Z] READ: main.ts, ApiExceptionFilter, integration spec, auth controller, docs/logs
-[2026-05-27T13:44:03Z] CHANGE: added integration coverage for POST /api/v1/auth/login invalid body
-[2026-05-27T13:44:04Z] CHANGE: verified ZodError maps to 400 Bad Request through centralized API error format
-[2026-05-27T13:44:05Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T13:44:06Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T13:44:07Z] ROLLBACK: revert PR or delete branch fix/handle-zod-validation-errors
+[2026-05-27T14:40:00Z] BRANCH: test/mvp-api-smoke-coverage
+[2026-05-27T14:40:01Z] TASK: PR 3 test add mvp api smoke coverage
+[2026-05-27T14:40:02Z] READ: integration spec, auth guards, env spec, docs/logs
+[2026-05-27T14:40:03Z] CHANGE: expanded API integration smoke coverage for health, auth login, protected endpoint, tenant scope
+[2026-05-27T14:40:04Z] CHANGE: kept env validation coverage in config env spec
+[2026-05-27T14:40:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T14:40:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T14:40:07Z] ROLLBACK: revert PR or delete branch test/mvp-api-smoke-coverage

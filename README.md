@@ -40,6 +40,7 @@ Implemented backend modules:
 - Centralized JWT secret access through API env config
 - JWT secret failure behavior test coverage
 - Zod validation errors return 400 Bad Request through the centralized API error format
+- MVP API smoke coverage for health, auth login, protected access, env validation, and tenant scope mismatch
 
 ## Implemented backend API
 
@@ -124,13 +125,34 @@ API_PORT=3000
 JWT_SECRET=change-me-change-me-change-me-32chars
 ```
 
-`JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config. Tests cover missing and short JWT secret failure behavior for both env config and auth tokens.
+`JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config.
+
+## MVP API smoke coverage
+
+Integration smoke coverage is available in:
+
+```text
+apps/api/src/integration/app.integration.spec.ts
+```
+
+Current coverage:
+- `GET /api/v1/health` smoke test.
+- `GET /api/v1/openapi` smoke test.
+- Auth login happy path.
+- Auth login validation negative path.
+- Protected endpoint without bearer token returns `401 Unauthorized`.
+- Tenant scope mismatch returns `403 Forbidden`.
+- Global centralized error format smoke test for Zod validation errors.
+
+Environment validation is covered in:
+
+```text
+apps/api/src/config/env.spec.ts
+```
 
 ## Centralized API error format
 
 The global API exception filter normalizes Zod validation errors as `400 Bad Request` responses with `VALIDATION_ERROR`.
-
-`POST /api/v1/auth/login` has integration coverage for invalid body payloads thrown by `schema.parse(body)`.
 
 ## Auth password reset skeleton
 
@@ -149,20 +171,6 @@ Current constraints:
 
 `GET /api/v1/openapi` returns a static OpenAPI 3.0.3 JSON document.
 
-## Integration tests skeleton
-
-Integration test scaffold is available under:
-
-```text
-apps/api/src/integration/app.integration.spec.ts
-```
-
-Current coverage:
-- `GET /api/v1/health` smoke test.
-- `GET /api/v1/openapi` smoke test.
-- Global centralized error format smoke test for Zod validation errors.
-- `POST /api/v1/auth/login` invalid body returns `400 Bad Request`.
-
 ## Current Prisma baseline
 
 ```text
@@ -175,4 +183,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Continue MVP API smoke coverage.
+1. MVP definition of done and pilot checklist.

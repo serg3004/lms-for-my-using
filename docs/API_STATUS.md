@@ -1,24 +1,27 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `fix/handle-zod-validation-errors`
+Source branch: `test/mvp-api-smoke-coverage`
 
 ## Current status
 
-Zod validation errors are normalized through the centralized API error format:
+MVP API smoke coverage is expanded:
 
-- `ApiExceptionFilter` maps `ZodError` to `400 Bad Request`.
-- Validation failures use error code `VALIDATION_ERROR`.
-- Integration coverage includes a direct Zod validation error route.
-- Integration coverage includes `POST /api/v1/auth/login` invalid body from `schema.parse(body)` returning `400 Bad Request`.
+- `GET /api/v1/health` smoke coverage.
+- Auth login happy path coverage through a local integration test controller.
+- Auth login validation negative coverage through `schema.parse(body)`.
+- Protected endpoint without bearer token returns `401 Unauthorized`.
+- Tenant scope mismatch returns `403 Forbidden`.
+- Environment validation remains covered in `apps/api/src/config/env.spec.ts`.
 
 ## Current limitations
 
+- Smoke auth/tenant endpoints are integration-test-only controllers.
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
-- No API endpoint changes.
+- No public runtime API endpoint changes.
 
 ## Endpoint map
 
-No API endpoint changes in this PR.
+No production API endpoint changes in this PR.
