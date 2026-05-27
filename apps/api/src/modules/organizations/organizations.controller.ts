@@ -7,7 +7,9 @@ import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import {
   CreateOrganizationInput,
+  RegisterOrganizationInput,
   createOrganizationSchema,
+  registerOrganizationSchema,
 } from './organizations.schemas.js';
 import { OrganizationsService } from './organizations.service.js';
 
@@ -28,6 +30,13 @@ export class OrganizationsController {
   @OrganizationScope('param', 'id')
   getOrganization(@Param('id') organizationId: string) {
     return this.organizationsService.getOrganization(organizationId);
+  }
+
+  @Post('register')
+  registerOrganization(@Body() body: unknown) {
+    const input: RegisterOrganizationInput = registerOrganizationSchema.parse(body);
+
+    return this.organizationsService.registerOrganization(input);
   }
 
   @Post()
