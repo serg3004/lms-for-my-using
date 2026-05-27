@@ -1,33 +1,33 @@
 # API Status
 
 Last synced: 2026-05-27  
-Source branch: `feature/integration-tests-skeleton`
+Source branch: `feature/auth-hardening-password-reset-skeleton`
 
 ## Current status
 
-Integration tests skeleton is implemented in this branch:
+Auth password reset skeleton is implemented in this branch:
 
-- Added `apps/api/src/integration/app.integration.spec.ts`.
-- Added test Nest application bootstrap with the same global API prefix as runtime: `/api/v1`.
-- Registered the global `ApiExceptionFilter` in the integration test app.
-- Added a smoke test for `GET /api/v1/health`.
-- Added a smoke test for `GET /api/v1/openapi`.
-- Added a negative integration test for centralized error format using a Zod validation failure.
-- Used Node `http` test requests to avoid adding `supertest` or changing `pnpm-lock.yaml`.
-- Added Jest module mappers for integration test imports.
-
-## Current integration coverage
-
-```text
-GET /api/v1/health
-GET /api/v1/openapi
-GET /api/v1/integration-test/validation-error
-```
+- Added `POST /api/v1/auth/password-reset/request`.
+- Added `POST /api/v1/auth/password-reset/confirm`.
+- Added Zod validation schemas for request and confirm payloads.
+- Added strong password validation for reset confirmation candidates.
+- Added generic `{ "accepted": true }` response to avoid account enumeration.
+- Added service skeleton methods without token persistence or email delivery.
+- Added tests for accepted request, accepted strong confirmation input, and weak password rejection.
+- Added password reset paths to the static OpenAPI skeleton.
 
 ## Current limitations
 
-- No database integration tests yet.
-- No test containers or seed data yet.
-- No full auth flow integration test yet.
-- No `supertest` dependency.
-- No CI workflow change.
+- No password reset token persistence yet.
+- No email delivery yet.
+- No password hash update yet.
+- No rate limiting store yet.
+- No Prisma schema or migration changes.
+- No secrets or env changes.
+
+## Endpoint map
+
+```text
+POST /api/v1/auth/password-reset/request
+POST /api/v1/auth/password-reset/confirm
+```

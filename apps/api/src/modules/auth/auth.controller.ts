@@ -1,7 +1,12 @@
 import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
 
 import { AuthService } from './auth.service.js';
-import { LoginInput, loginSchema } from './auth.schemas.js';
+import {
+  LoginInput,
+  loginSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+} from './auth.schemas.js';
 
 const bearerPrefix = 'Bearer ';
 
@@ -28,6 +33,20 @@ export class AuthController {
     const input: LoginInput = loginSchema.parse(body);
 
     return this.authService.login(input);
+  }
+
+  @Post('password-reset/request')
+  requestPasswordReset(@Body() body: unknown) {
+    passwordResetRequestSchema.parse(body);
+
+    return this.authService.requestPasswordReset();
+  }
+
+  @Post('password-reset/confirm')
+  confirmPasswordReset(@Body() body: unknown) {
+    passwordResetConfirmSchema.parse(body);
+
+    return this.authService.confirmPasswordReset();
   }
 
   @Get('me')

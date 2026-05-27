@@ -25,6 +25,10 @@ const loginUserSelect = {
   passwordHash: true,
 } as const;
 
+const passwordResetAccepted = {
+  accepted: true,
+} as const;
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -82,6 +86,14 @@ export class AuthService {
       locale: user.locale,
       timezone: user.timezone,
     };
+  }
+
+  requestPasswordReset() {
+    return passwordResetAccepted;
+  }
+
+  confirmPasswordReset() {
+    return passwordResetAccepted;
   }
 
   async login(input: LoginInput) {

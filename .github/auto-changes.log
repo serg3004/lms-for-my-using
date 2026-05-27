@@ -1,12 +1,11 @@
-[2026-05-27T09:26:00Z] BRANCH: feature/integration-tests-skeleton
-[2026-05-27T09:26:01Z] TASK: PR #54 integration tests skeleton
-[2026-05-27T09:26:02Z] CHANGE: added apps/api/src/integration/app.integration.spec.ts
-[2026-05-27T09:26:03Z] CHANGE: added Nest integration test app bootstrap with /api/v1 prefix
-[2026-05-27T09:26:04Z] CHANGE: added health endpoint integration smoke test
-[2026-05-27T09:26:05Z] CHANGE: added OpenAPI endpoint integration smoke test
-[2026-05-27T09:26:06Z] CHANGE: added centralized error format integration smoke test
-[2026-05-27T09:26:07Z] CHANGE: used Node http requests without adding supertest dependency
-[2026-05-27T09:26:08Z] CHANGE: added Jest module mappers for integration imports
-[2026-05-27T09:26:09Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T09:26:10Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T09:26:11Z] ROLLBACK: revert PR or delete branch feature/integration-tests-skeleton
+[2026-05-27T10:31:00Z] BRANCH: feature/auth-hardening-password-reset-skeleton
+[2026-05-27T10:31:01Z] TASK: PR #56 auth hardening / password reset skeleton
+[2026-05-27T10:31:02Z] CHANGE: added password reset request and confirm validation schemas
+[2026-05-27T10:31:03Z] CHANGE: added strong password validation for reset confirmation
+[2026-05-27T10:31:04Z] CHANGE: added POST /api/v1/auth/password-reset/request
+[2026-05-27T10:31:05Z] CHANGE: added POST /api/v1/auth/password-reset/confirm
+[2026-05-27T10:31:06Z] CHANGE: added generic accepted response skeleton to avoid account enumeration
+[2026-05-27T10:31:07Z] CHANGE: added password reset tests
+[2026-05-27T10:31:08Z] DOCS: updated README, API status, project log, OpenAPI skeleton, and audit log
+[2026-05-27T10:31:09Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T10:31:10Z] ROLLBACK: revert PR or delete branch feature/auth-hardening-password-reset-skeleton
