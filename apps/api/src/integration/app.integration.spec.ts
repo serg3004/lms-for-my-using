@@ -1,6 +1,6 @@
-import { Controller, Get, INestApplication } from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { get } from 'node:http';
+import { get, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
@@ -37,6 +37,40 @@ function requestJson(url: string): Promise<HttpTestResponse> {
   });
 }
 
+function postJson(url: string, body: unknown): Promise<HttpTestResponse> {
+  const payload = JSON.stringify(body);
+
+  return new Promise((resolve, reject) => {
+    const clientRequest = request(
+      url,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': Buffer.byteLength(payload),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => {
+          const rawBody = Buffer.concat(chunks).toString('utf8');
+
+          resolve({
+            statusCode: response.statusCode,
+            body: rawBody ? JSON.parse(rawBody) : null,
+          });
+        });
+      },
+    );
+
+    clientRequest.on('error', reject);
+    clientRequest.write(payload);
+    clientRequest.end();
+  });
+}
+
 @Controller('integration-test')
 class IntegrationTestController {
   @Get('validation-error')
@@ -49,12 +83,23 @@ class IntegrationTestController {
   }
 }
 
+@Controller('auth')
+class IntegrationAutTestController {
+  @Post('login')
+  login(@Body() body: unknown) {
+    z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+    }).parse(body);
+  }
+}
+
 describe('API integration scaffold', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleReference = await Test.createTestingModule({
-      controllers: [HealthController, OpenApiController, IntegrationTestController],
+      controllers: [HealthController, OpenApiController, IntegrationTestController, IntegrationAutTestController],
     }).compile();
 
     app = moduleReference.createNestApplication();
@@ -100,6 +145,22 @@ describe('API integration scaffold', () => {
         message: 'Validation failed',
       },
       path: '/api/v1/integration-test/validation-error',
+    });
+  });
+
+  it('returns 400 Bad Request for invalid auth login body', async () => {
+    const response = await postJson(`${getAppUrl(app)}/api/v1/auth/login`, {
+      email: 'not-email',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toMatchObject({
+      statusCode: 400,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+      },
+      path: '/api/v1/auth/login',
     });
   });
 });
