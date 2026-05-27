@@ -26,7 +26,7 @@ function requestJson(url: string): Promise<HttpTestResponse> {
 
       response.on('data', (chunk: Buffer) => chunks.push(chunk));
       response.on('end', () => {
-        const rawBody = Buffer.concat(chunks).toString('ut8');
+        const rawBody = Buffer.concat(chunks).toString('utf8');
 
         resolve({
           statusCode: response.statusCode,
