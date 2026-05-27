@@ -90,6 +90,12 @@ export function getOpenApiDocument(): OpenApiDocument {
       '/auth/login': {
         post: operation('Login', ['Auth']),
       },
+      '/auth/password-reset/request': {
+        post: operation('Request password reset', ['Auth']),
+      },
+      '/auth/password-reset/confirm': {
+        post: operation('Confirm password reset', ['Auth']),
+      },
       '/auth/me': {
         get: operation('Get current user', ['Auth'], true),
       },
