@@ -1,142 +1,32 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum UserStatus {
-  active
-  invited
-  suspended
-  archived
-}
-
-enum OrganizationStatus {
-  active
-  suspended
-  archived
-}
-
-enum OrganizationPlan {
-  trial
-  standard
-  enterprise
-}
-
-enum UserRole {
-  learner
-  instructor
-  manager
-  admin
-}
-
-enum GroupStatus {
-  active
-  archived
-}
-
-enum CourseStatus {
-  draft
-  published
-  archived
-}
-
-enum LessonStatus {
-  draft
-  published
-  archived
-}
-
-enum CourseMaterialStatus {
-  active
-  archived
-}
-
-enum CourseMaterialKind {
-  file
-  link
-}
-
-enum AssignmentStatus {
-  assigned
-  completed
-  cancelled
-}
-
-enum ProgressStatus {
-  not_started
-  in_progress
-  completed
-}
-
-enum AssessmentStatus {
-  draft
-  published
-  archived
-}
-
-enum AssessmentQuestionType {
-  single_choice
-  multiple_choice
-  true_false
-}
-
-enum AssessmentAttemptStatus {
-  completed
-}
-
-enum CertificateStatus {
-  issued
-  revoked
-}
-
-model Organization {
-  id        String             @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String             @unique
-  status    OrganizationStatus @default(active)
-  plan      OrganizationPlan   @default(trial)
-  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt DateTime?          @map("deleted_at") @db.Timestamptz
-
-  users                          User[]
-  groups                        Group[]
-  courses                       Course[]
-  assignments                  Assignment[]
-  progress                       Progress[]
-  assessments                   Assessment[]
-  assessmentQuestions            AssessmentQuestion[]
-  assessmentAnswerOptions       AssessmentAnswerOption[]
-  assessmentAttempts            AssessmentAttempt[]
-  assessmentAttemptAnswers      AssessmentAttemptAnswer[]
-  certificates                  Certificate[]
-  memberships                    Membership[]
-
-  @@map("organizations")
-}
-
-model User {
-  id             String     @id @default(uuid()) @db.Uuid
-  organizationId String     @map("organization_id") @db.Uuid
-  email          String
-  passwordHash   String     @map("password_hash")
-  firstName      String     @map("first_name")
-  lastName       String     @map("last_name")
-  middleName     String?    @map("middle_name")
-  position       String?
-  shift          String?
-  phone          String?
-  status         UserStatus @default(active)
-  locale         String     @default("ru")
-  timezone       String     @default("Asia/Almaty")
-  lastLoginAt    DateTime?  @map("last_login_at") @db.Timestamptz
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?  @map("deleted_at") @db.Timestamptz
-
-  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  memberships         Membershipm
+generator client {provider="prisma-client-js"}
+datasource db {provider="postgresql" url=env("DATABASE_URL")}
+enum UserStatus{active invited suspended archived}
+enum OrganizationStatus{active suspended archived}
+enum OrganizationPlan{trial standard enterprise}
+enum UserRole{learner instructor manager admin}
+enum GroupStatus{active archived}
+enum CourseStatus{draft published archived}
+enum LessonStatus{draft published archived}
+enum CourseMaterialStatus{active archived}
+enum CourseMaterialKind{file link}
+enum AssignmentStatus{assigned completed cancelled}
+enum ProgressStatus{not_started in_progress completed}
+enum AssessmentStatus{draft published archived}
+enum AssessmentQuestionType{single_choice multiple_choice true_false}
+enum AssessmentAttemptStatus{completed}
+enum CertificateStatus{issued revoked}
+model Organization{id String @id @default(uuid()) @db.Uuid name String slug String @unique status OrganizationStatus @default(active) plan OrganizationPlan @default(trial) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz users User[] groups Group[] courses Course[] assignments Assignment[] progress Progress[] assessments Assessment[] assessmentQuestions AssessmentQuestion[] assessmentAnswerOptions AssessmentAnswerOption[] assessmentAttempts AssessmentAttempt[] assessmentAttemptAnswers AssessmentAttemptAnswer[] certificates Certificate[] memberships Membership[] @@map("organizations")}
+model User{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid email String passwordHash String @map("password_hash") firstName String @map("first_name") lastName String @map("last_name") middleName String? @map("middle_name") position String? shift String? phone String? status UserStatus @default(active) locale String @default("ru") timezone String @default("Asia/Almaty") lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Restrict) memberships Membership[] @relation("UserMemberships") assignedMemberships Membership[] @relation("MembershipAssignedBy") assignments Assignment[] progress Progress[] assessmentAttempts AssessmentAttempt[] certificates Certificate[] @@unique([organizationId,email]) @@index([organizationId,status]) @@index([lastLoginAt]) @@map("users")}
+model Group{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid name String slug String description String? status GroupStatus @default(active) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) assignments Assignment[] @@unique([organizationId,slug]) @@index([organizationId,status]) @@map("groups")}
+model Course{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid title String slug String description String? status CourseStatus @default(draft) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) lessons Lesson[] materials CourseMaterial[] assignments Assignment[] progress Progress[] assessments Assessment[] certificates Certificate[] @@unique([organizationId,slug]) @@index([organizationId,status]) @@map("courses")}
+model Lesson{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid title String slug String description String? order Int @default(0) status LessonStatus @default(draft) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) materials CourseMaterial[] progress Progress[] assessments Assessment[] @@unique([courseId,slug]) @@index([organizationId,courseId,status]) @@map("lessons")}
+model CourseMaterial{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid lessonId String? @map("lesson_id") @db.Uuid title String slug String description String? kind CourseMaterialKind @default(file) fileName String? @map("file_name") fileUrl String @map("file_url") mimeType String? @map("mime_type") sizeBytes Int? @map("size_bytes") status CourseMaterialStatus @default(active) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) lesson Lesson? @relation(fields:[lessonId],references:[id],onDelete:SetNull) @@unique([courseId,slug]) @@index([organizationId,courseId,status]) @@index([lessonId]) @@map("course_materials")}
+model Assignment{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid userId String? @map("user_id") @db.Uuid groupId String? @map("group_id") @db.Uuid status AssignmentStatus @default(assigned) dueAt DateTime? @map("due_at") @db.Timestamptz createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) user User? @relation(fields:[userId],references:[id],onDelete:Restrict) group Group? @relation(fields:[groupId],references:[id],onDelete:Restrict) @@index([organizationId,status]) @@index([courseId,status]) @@index([userId]) @@index([groupId]) @@index([dueAt]) @@map("assignments")}
+model Progress{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid lessonId String? @map("lesson_id") @db.Uuid userId String @map("user_id") @db.Uuid status ProgressStatus @default(in_progress) score Int? completedAt DateTime? @map("completed_at") @db.Timestamptz createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) lesson Lesson? @relation(fields:[lessonId],references:[id],onDelete:SetNull) user User @relation(fields:[userId],references:[id],onDelete:Restrict) @@index([organizationId,status]) @@index([courseId,status]) @@index([lessonId]) @@index([userId]) @@index([completedAt]) @@map("progress")}
+model Assessment{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid lessonId String? @map("lesson_id") @db.Uuid title String slug String description String? status AssessmentStatus @default(draft) passingScore Int @default(70) @map("passing_score") maxAttempts Int? @map("max_attempts") availableAfterCourseCompletion Boolean @default(true) @map("available_after_course_completion") createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) lesson Lesson? @relation(fields:[lessonId],references:[id],onDelete:SetNull) questions AssessmentQuestion[] attempts AssessmentAttempt[] @@unique([courseId,slug]) @@index([organizationId,status]) @@index([courseId,status]) @@index([lessonId]) @@map("assessments")}
+model AssessmentQuestion{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid assessmentId String @map("assessment_id") @db.Uuid type AssessmentQuestionType @default(single_choice) title String text String? imageUrl String? @map("image_url") points Int @default(1) order Int @default(0) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) assessment Assessment @relation(fields:[assessmentId],references:[id],onDelete:Cascade) options AssessmentAnswerOption[] attemptAnswers AssessmentAttemptAnswer[] @@index([organizationId,type]) @@index([assessmentId,order]) @@map("assessment_questions")}
+model AssessmentAnswerOption{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid questionId String @map("question_id") @db.Uuid text String? imageUrl String? @map("image_url") isCorrect Boolean @default(false) @map("is_correct") order Int @default(0) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) question AssessmentQuestion @relation(fields:[questionId],references:[id],onDelete:Cascade) attemptAnswers AssessmentAttemptAnswer[] @@index([organizationId]) @@index([questionId,order]) @@map("assessment_answer_options")}
+model AssessmentAttempt{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid assessmentId String @map("assessment_id") @db.Uuid userId String @map("user_id") @db.Uuid status AssessmentAttemptStatus @default(completed) score Int @default(0) maxScore Int @default(0) @map("max_score") percentage Int @default(0) passed Boolean @default(false) startedAt DateTime @default(now()) @map("started_at") @db.Timestamptz completedAt DateTime? @map("completed_at") @db.Timestamptz createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) assessment Assessment @relation(fields:[assessmentId],references:[id],onDelete:Cascade) user User @relation(fields:[userId],references:[id],onDelete:Restrict) answers AssessmentAttemptAnswer[] certificates Certificate[] @@index([organizationId,status]) @@index([assessmentId,status]) @@index([userId]) @@index([completedAt]) @@map("assessment_attempts")}
+model AssessmentAttemptAnswer{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid attemptId String @map("attempt_id") @db.Uuid questionId String @map("question_id") @db.Uuid selectedOptionId String? @map("selected_option_id") @db.Uuid selectedOptionIds Json? @map("selected_option_ids") isCorrect Boolean @default(false) @map("is_correct") score Int @default(0) createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) attempt AssessmentAttempt @relation(fields:[attemptId],references:[id],onDelete:Cascade) question AssessmentQuestion @relation(fields:[questionId],references:[id],onDelete:Restrict) selectedOption AssessmentAnswerOption? @relation(fields:[selectedOptionId],references:[id],onDelete:SetNull) @@index([organizationId]) @@index([attemptId]) @@index([questionId]) @@index([selectedOptionId]) @@map("assessment_attempt_answers")}
+model Certificate{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid courseId String @map("course_id") @db.Uuid userId String @map("user_id") @db.Uuid assessmentAttemptId String? @map("assessment_attempt_id") @db.Uuid status CertificateStatus @default(issued) issuedAt DateTime @default(now()) @map("issued_at") @db.Timestamptz revokedAt DateTime? @map("revoked_at") @db.Timestamptz createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz deletedAt DateTime? @map("deleted_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) course Course @relation(fields:[courseId],references:[id],onDelete:Cascade) user User @relation(fields:[userId],references:[id],onDelete:Restrict) assessmentAttempt AssessmentAttempt? @relation(fields:[assessmentAttemptId],references:[id],onDelete:SetNull) @@unique([organizationId,courseId,userId]) @@index([organizationId,status]) @@index([courseId]) @@index([userId]) @@index([assessmentAttemptId]) @@index([issuedAt]) @@map("certificates")}
+model Membership{id String @id @default(uuid()) @db.Uuid organizationId String @map("organization_id") @db.Uuid userId String @map("user_id") @db.Uuid role UserRole assignedBy String? @map("assigned_by") @db.Uuid createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz organization Organization @relation(fields:[organizationId],references:[id],onDelete:Cascade) user User @relation("UserMemberships",fields:[userId],references:[id],onDelete:Cascade) assignedByUser User? @relation("MembershipAssignedBy",fields:[assignedBy],references:[id],onDelete:SetNull) @@unique([organizationId,userId,role]) @@index([organizationId,role]) @@index([userId]) @@index([assignedBy]) @@map("memberships")}
