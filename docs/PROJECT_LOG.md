@@ -2,20 +2,29 @@
 
 ## 2026-05-27
 
-### Centralized API error format
+### OpenAPI / Swagger skeleton
 
-Implemented PR #52 scope on `feature/centralized-api-error-format`.
+Implemented PR #53 scope on `feature/openapi-swagger-skeleton`.
 
 Changes:
-- Added global `ApiExceptionFilter`.
-- Registered centralized exception handling in `main.ts`.
-- Added normalized error response shape with `statusCode`, `error.code`, `error.message`, optional `error.details`, `path`, and `timestamp`.
-- Added Zod error normalization with field-level details.
-- Added Nest HTTP exception normalization.
-- Added Prisma-like request error normalization with `P2002` mapped to conflict.
-- Added safe fallback for unknown errors without leaking internal messages.
-- Added tests for validation errors, HTTP exceptions, unknown errors, and bad request message arrays.
+- Added OpenAPI module.
+- Added `GET /api/v1/openapi`.
+- Added static OpenAPI 3.0.3 document builder.
+- Added API metadata, `/api/v1` server, and Bearer JWT security scheme.
+- Added centralized API error response schemas from PR #52.
+- Added initial documented paths for health, auth, organization registration, users, and certificates.
+- Added unit tests for document shape, common error schema, and key paths.
 - Updated README, API status, project log, and audit log.
+
+Decision:
+- Did not add `@nestjs/swagger` in this PR because it requires dependency and lockfile changes. The current skeleton avoids lockfile risk and keeps runtime impact minimal.
+
+Deferred:
+- Swagger UI.
+- `@nestjs/swagger` integration.
+- Full DTO/request/response schemas.
+- Generated OpenAPI client.
+- Published `openapi.json` artifact.
 
 Current PR check status:
 
