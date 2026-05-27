@@ -1,39 +1,11 @@
-[2026-05-26T12:45:00Z] BRANCH: feature/pr-45-sync-attempts-prisma
-[2026-05-26T12:45:01Z] TASK: sync AssessmentAttempt Prisma schema and remove raw SQL from attempts service
-[2026-05-26T12:45:02Z] CHANGE: added AssessmentAttemptStatus, AssessmentAttempt, AssessmentAttemptAnswer, and relations to apps/api/prisma/schema.prisma
-[2026-05-26T12:45:03Z] CHANGE: replaced assessment attempt raw queries with Prisma Client calls
-[2026-05-26T12:45:04Z] CHECK: local checks not run in GitHub API environment
-[2026-05-26T10:20:00Z] BRANCH: feature/course-completion-gate
-[2026-05-26T10:20:01Z] TASK: PR #46 course completion gate
-[2026-05-26T10:20:02Z] CHANGE: added course completion calculation and GET /api/v1/courses/:id/completion
-[2026-05-26T10:20:03Z] CHANGE: blocked gated assessment attempts until course completion
-[2026-05-26T10:20:04Z] CHANGE: added happy path and negative business tests
-[2026-05-26T10:30:00Z] CI: pnpm --recursive test failed; fixed new tests
-[2026-05-26T10:33:00Z] CI: pnpm --recursive test failed again; removed unsupported @jest/globals imports
-[2026-05-26T11:54:00Z] BRANCH: feature/assessment-results-reports
-[2026-05-26T11:54:01Z] TASK: PR #47 assessment results / reports
-[2026-05-26T11:54:02Z] CHANGE: added AssessmentResultsService for result summaries, answer correctness, and aggregate reports
-[2026-05-26T11:54:03Z] CHANGE: added GET /api/v1/assessments/:assessmentId/results
-[2026-05-26T11:54:04Z] CHANGE: added GET /api/v1/assessments/:assessmentId/report
-[2026-05-26T11:54:05Z] CHANGE: added GET /api/v1/attempts/:id/result with own-learner or privileged role access
-[2026-05-26T11:54:06Z] CHANGE: added service tests for result access, denied cross-learner access, and aggregate report calculation
-[2026-05-26T11:54:07Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T02:45:00Z] BRANCH: feature/users-bulk-create
-[2026-05-27T02:45:01Z] TASK: PR #48 users bulk create
-[2026-05-27T02:45:02Z] CHANGE: added POST /api/v1/users/bulk
-[2026-05-27T02:45:03Z] CHANGE: added Zod schema with 50-user batch limit and duplicate payload email validation
-[2026-05-27T02:45:04Z] CHANGE: added database duplicate email check before bulk writes
-[2026-05-27T02:45:05Z] CHANGE: added transactional Prisma writes and password hashing for bulk user creation
-[2026-05-27T02:45:06Z] CHANGE: added happy path and negative duplicate-email service tests
-[2026-05-27T02:45:07Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T02:45:08Z] ROLLBACK: revert PR or delete branch feature/users-bulk-create
-[2026-05-27T04:08:00Z] BRANCH: feature/users-import-skeleton
-[2026-05-27T04:08:01Z] TASK: PR #49 users import skeleton
-[2026-05-27T04:08:02Z] CHANGE: added POST /api/v1/users/import
-[2026-05-27T04:08:03Z] CHANGE: added JSON-only import schema with validateOnly/create modes and 100-row batch limit
-[2026-05-27T04:08:04Z] CHANGE: added row-level validation report, duplicate payload email detection, and existing database email checks
-[2026-05-27T04:08:05Z] CHANGE: added create mode with password hashing and Prisma transaction writes for valid rows
-[2026-05-27T04:08:06Z] CHANGE: deferred CSV upload, file storage, queue, import history table/migration, UI, and email invitations
-[2026-05-27T04:08:07Z] CHANGE: added validateOnly and partial-create import tests
-[2026-05-27T04:08:08Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T04:08:09Z] ROLLBACK: revert PR or delete branch feature/users-import-skeleton
+[2026-05-27T04:25:00Z] BRANCH: feature/organization-registration-first-admin
+[2026-05-27T04:25:01Z] TASK: PR #50 organization registration / first admin flow
+[2026-05-27T04:25:02Z] CHANGE: added POST /api/v1/organizations/register
+[2026-05-27T04:25:03Z] CHANGE: added Zod registration schema with organization and admin sections
+[2026-05-27T04:25:04Z] CHANGE: added duplicate organization slug and admin email checks
+[2026-05-27T04:25:05Z] CHANGE: added first admin password hashing
+[2026-05-27T04:25:06Z] CHANGE: added Prisma transaction for organization, first admin user, and admin membership
+[2026-05-27T04:25:07Z] CHANGE: added happy path and duplicate slug service tests
+[2026-05-27T04:25:08Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T04:25:09Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T04:25:10Z] ROLLBACK: revert PR or delete branch feature/organization-registration-first-admin
