@@ -1,12 +1,12 @@
-[2026-05-27T09:14:00Z] BRANCH: feature/openapi-swagger-skeleton
-[2026-05-27T09:14:01Z] TASK: PR #53 OpenAPI / Swagger skeleton
-[2026-05-27T09:14:02Z] CHANGE: added OpenAPI module
-[2026-05-27T09:14:03Z] CHANGE: added GET /api/v1/openapi
-[2026-05-27T09:14:04Z] CHANGE: added static OpenAPI 3.0.3 document builder
-[2026-05-27T09:14:05Z] CHANGE: added API metadata, /api/v1 server, and Bearer JWT security scheme
-[2026-05-27T09:14:06Z] CHANGE: added centralized API error response schemas
-[2026-05-27T09:14:07Z] CHANGE: added initial path coverage for health, auth, organization registration, users, and certificates
-[2026-05-27T09:14:08Z] CHANGE: added OpenAPI document tests
-[2026-05-27T09:14:09Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T09:14:10Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T09:14:11Z] ROLLBACK: revert PR or delete branch feature/openapi-swagger-skeleton
+[2026-05-27T09:26:00Z] BRANCH: feature/integration-tests-skeleton
+[2026-05-27T09:26:01Z] TASK: PR #54 integration tests skeleton
+[2026-05-27T09:26:02Z] CHANGE: added apps/api/src/integration/app.integration.spec.ts
+[2026-05-27T09:26:03Z] CHANGE: added Nest integration test app bootstrap with /api/v1 prefix
+[2026-05-27T09:26:04Z] CHANGE: added health endpoint integration smoke test
+[2026-05-27T09:26:05Z] CHANGE: added OpenAPI endpoint integration smoke test
+[2026-05-27T09:26:06Z] CHANGE: added centralized error format integration smoke test
+[2026-05-27T09:26:07Z] CHANGE: used Node http requests without adding supertest dependency
+[2026-05-27T09:26:08Z] CHANGE: added Jest module mappers for integration imports
+[2026-05-27T09:26:09Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-27T09:26:10Z] CHECK: local checks not run in GitHub API environment
+[2026-05-27T09:26:11Z] ROLLBACK: revert PR or delete branch feature/integration-tests-skeleton
