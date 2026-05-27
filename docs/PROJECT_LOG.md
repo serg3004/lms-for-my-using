@@ -2,21 +2,26 @@
 
 ## 2026-05-27
 
-### Add MVP Definition of Done and Pilot Checklist
+### Add MVP local runbook
 
-Implemented PR 4 scope on `docs/mvp-dod-pilot-checklist`.
+Implemented PR 5 scope on `docs/mvp-local-runbook`.
 
 Changes:
-- Added `docs/MVP_DEFINITION_OF_DONE.md`.
-- Added `docs/PILOT_CHECKLIST.md`.
-- Updated README with MVP docs references.
-- Updated API status, project log, and audit log.
+- Added `docs/MVP_LOCAL_RUNBOOK.md`.
+- Documented `.env` setup from `.env.example`.
+- Documented local PostgreSQL and MinIO Docker Compose example without adding repo infrastructure files.
+- Documented Prisma generate.
+- Documented safe migration guardrails without applying real migrations.
+- Documented API start, web start, and health check.
+- Updated README, API status, project log, and audit log.
 
 Deferred:
 - Prisma schema/migration changes.
 - CI/CD changes.
 - Dependency changes.
-- Runtime API changes.
+- Deploy scripts.
+- Real migration execution.
+- Seed data.
 
 Current PR check status:
 
@@ -29,18 +34,15 @@ Current PR check status:
 
 ## 2026-05-27
 
-### Add MVP API smoke coverage
+### Add MVP Definition of Done and Pilot Checklist
 
-Implemented PR 3 scope on `test/mvp-api-smoke-coverage`.
+Implemented PR 4 scope on `docs/mvp-dod-pilot-checklist`.
 
 Changes:
-- Expanded API integration smoke coverage for health.
-- Added auth login happy path smoke coverage.
-- Kept auth login invalid body negative coverage.
-- Added protected endpoint without bearer token smoke coverage.
-- Added tenant scope mismatch negative smoke coverage.
-- Kept env validation coverage in `apps/api/src/config/env.spec.ts`.
-- Updated README, API status, project log, and audit log.
+- Added `docs/MVP_DEFINITION_OF_DONE.md`.
+- Added `docs/PILOT_CHECKLIST.md`.
+- Updated README with MVP docs references.
+- Updated API status, project log, and audit log.
 
 Current PR check status:
 
