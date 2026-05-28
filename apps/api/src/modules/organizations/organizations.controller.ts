@@ -40,6 +40,8 @@ export class OrganizationsController {
   }
 
   @Post()
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.organizationsCreate)
   createOrganization(@Body() body: unknown) {
     const input: CreateOrganizationInput = createOrganizationSchema.parse(body);
 
