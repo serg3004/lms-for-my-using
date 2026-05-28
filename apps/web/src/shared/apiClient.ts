@@ -228,7 +228,7 @@ export function listProgress() {
 }
 
 export function markLessonCompleted(input: CreateLessonCompletionInput) {
-  return apiRequest<ProgressSummary>'/progress', {
+  return apiRequest<ProgressSummary>('/progress', {
     method: 'POST',
     body: JSON.stringify({
       ...input,
