@@ -16,6 +16,10 @@ function formatCourseDescription(course: CourseSummary) {
   return course.description?.trim() || course.slug;
 }
 
+function getLessonsHref(courseId: string) {
+  return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
+}
+
 export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CourseDetailLoadState>({ status: 'idle' });
@@ -107,6 +111,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     <main>
       <nav>
         <a href="/learn/courses">{t('courses.navLink')}</a>
+        <a href={getLessonsHref(loadState.course.id)}>{t('lessons.navLink')}</a>
       </nav>
 
       <article>
