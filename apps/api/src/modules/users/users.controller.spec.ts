@@ -17,7 +17,7 @@ describe('UsersController', () => {
   };
 
   it('requires auth, roles, and organization scope for single user creation', () => {
-    const guards = Reflect.getMetadata(GUARDS_METADATAI, UsersController.prototype.createUser);
+    const guards = Reflect.getMetadata(GUARDS_METADATA, UsersController.prototype.createUser);
     const roles = Reflect.getMetadata(rolesMetadataKey, UsersController.prototype.createUser);
 
     expect(guards).toEqual([AuthGuard, RolesGuard, OrganizationScopeGuard]);
