@@ -1,10 +1,10 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 
-import { AuthGuard } from '../auth/auth.guard.js';
-import { rolePolicies, rolesMetadataKey } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { OrganizationsController } from './organizations.controller.js';
-import { OrganizationsService } from './organizations.service.js';
+import { AuthGuard } from '../auth/auth.guard';
+import { rolePolicies, rolesMetadataKey } from '../auth/roles';
+import { RolesGuard } from '../auth/roles.guard';
+import { OrganizationsController } from './organizations.controller';
+import { OrganizationsService } from './organizations.service';
 
 describe('OrganizationsController', () => {
   const createOrganizationInput = {
