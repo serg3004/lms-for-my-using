@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
 import { LearnerCoursesPage } from './LearnerCoursesPage.js';
 import { LearnerHomePage } from './LearnerHomePage.js';
+import { LearnerLessonDetailPage } from './LearnerLessonDetailPage.js';
 import { LearnerLessonsPage } from './LearnerLessonsPage.js';
 import { LoginPage } from './LoginPage.js';
 
 const courseDetailPathPrefix = '/learn/courses/';
 const lessonsPathSuffix = '/lessons';
+const lessonDetailPathPrefix = '/learn/lessons/';
 
 export function App() {
   const { t } = useTranslation();
@@ -23,6 +25,14 @@ export function App() {
 
   if (pathname === '/learn/courses') {
     return <LearnerCoursesPage />;
+  }
+
+  if (pathname.startsWith(lessonDetailPathPrefix)) {
+    const lessonId = pathname.slice(lessonDetailPathPrefix.length);
+
+    if (lessonId) {
+      return <LearnerLessonDetailPage lessonId={lessonId} />;
+    }
   }
 
   if (pathname.startsWith(courseDetailPathPrefix) && pathname.endsWith(lessonsPathSuffix)) {
