@@ -11,12 +11,13 @@ Implemented backend foundation:
 - Organizations / users / memberships / groups APIs
 - Auth login/current user and password reset skeleton
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
+- Protected direct user and organization creation endpoints
 - Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
 - Centralized API error format
 - OpenAPI document skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - MVP API smoke coverage
-- MVP Iefinition of Done, Pilot Checklist, Local Runbook, Seed Data
+- MVP Definition of Done, Pilot Checklist, Local Runbook, Seed Data
 - RBAC Matrix and API Contracts
 - Web auth shell and learner-facing flows
 - Learner certificate list/detail web flow with `/learn/certificates` and `/learn/certificates/:id`
@@ -75,6 +76,8 @@ GET  /api/v1/certificates
 GET  /api/v1/certificates/:id
 POST /api/v1/certificates
 ```
+
+`POST /api/v1/organizations/register` remains the public workspace registration flow. Direct `POST /api/v1/users` and `POST /api/v1/organizations` require auth/RBAC.
 
 ## MVP docs
 
