@@ -148,3 +148,7 @@ export function getCourse(courseId: string) {
 export function listLessons(courseId: string) {
   return apiRequest<LessonSummary[]>(`/courses/${encodeURIComponent(courseId)}/lessons`);
 }
+
+export function getLesson(lessonId: string) {
+  return apiRequest<LessonSummary>(`/lessons/${encodeURIComponent(lessonId)}`);
+}
