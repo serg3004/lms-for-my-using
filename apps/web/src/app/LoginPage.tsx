@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { ChangeEvent, FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, login } from '../shared/apiClient.js';
@@ -24,7 +24,7 @@ export function LoginPage() {
 
   const updateField =
     (field: keyof LoginFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (event: ChangeEvent<HTMLInputElement>) => {
       setFormState((currentFormState) => ({
         ...currentFormState,
         [field]: event.target.value,
