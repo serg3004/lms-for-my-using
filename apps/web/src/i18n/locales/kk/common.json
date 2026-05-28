@@ -2,5 +2,19 @@
   "app": {
     "title": "LMS",
     "subtitle": "Оқытуды басқару жүйесі"
+  },
+  "login": {
+    "navLink": "Кіру",
+    "title": "Кіру",
+    "subtitle": "Access token алу үшін ұйымды, email және құпиясөзді енгізіңіз.",
+    "organizationId": "Ұйым ID",
+    "email": "Email",
+    "password": "Құпиясөз",
+    "submit": "Кіру",
+    "submitting": "Кіру...",
+    "success": "Кіру орындалды. Access token API сұраулары үшін сақталды.",
+    "errors": {
+      "generic": "Кіру мүмкін болмады. Қайталап көріңіз."
+    }
   }
 }
