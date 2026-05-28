@@ -1,9 +1,8 @@
-[2026-05-27T16:31:00Z] BRANCH: chore/mvp-seed-data
-[2026-05-27T16:31:01Z] TASK: PR 6 chore add mvp seed data
-[2026-05-27T16:31:02Z] READ: Prisma schema, prisma directory, package scripts, password hashing helper, README, API status, project log, audit log
-[2026-05-27T16:31:03Z] CHANGE: added apps/api/prisma/seed.mjs
-[2026-05-27T16:31:04Z] CHANGE: seed dataset covers organization, admin, instructor, learners, group, course, lessons, assignment, progress
-[2026-05-27T16:31:05Z] CHANGE: seed script uses fixed IDs and Prisma upsert for idempotency
-[2026-05-27T16:31:06Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-27T16:31:07Z] CHECK: local checks not run in GitHub API environment
-[2026-05-27T16:31:08Z] ROLLBACK: revert PR or delete branch chore/mvp-seed-data
+[2026-05-28T03:42:00Z] BRANCH: docs/rbac-matrix-api-contracts
+[2026-05-28T03:42:01Z] TASK: PR 7 docs add rbac matrix and api contracts
+[2026-05-28T03:42:02Z] READ: roles policies, modules, courses controller, docs
+[2026-05-28T03:42:03Z] CHANGE: added docs/RBAC_MATRIX.md
+[2026-05-28T03:42:04Z] CHANGE: added docs/API_CONTRACTS.md
+[2026-05-28T03:42:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T03:42:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T03:42:07Z] ROLLBACK: revert PR or delete branch docs/rbac-matrix-api-contracts
