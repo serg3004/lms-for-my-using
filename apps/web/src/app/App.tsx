@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next';
 
+import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
 import { LearnerCoursesPage } from './LearnerCoursesPage.js';
 import { LearnerHomePage } from './LearnerHomePage.js';
 import { LoginPage } from './LoginPage.js';
+
+const courseDetailPathPrefix = '/learn/courses/';
 
 export function App() {
   const { t } = useTranslation();
@@ -18,6 +21,14 @@ export function App() {
 
   if (pathname === '/learn/courses') {
     return <LearnerCoursesPage />;
+  }
+
+  if (pathname.startsWith(courseDetailPathPrefix)) {
+    const courseId = pathname.slice(courseDetailPathPrefix.length);
+
+    if (courseId) {
+      return <LearnerCourseDetailPage courseId={courseId} />;
+    }
   }
 
   return (
