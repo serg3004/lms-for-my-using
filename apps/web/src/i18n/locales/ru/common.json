@@ -11,7 +11,7 @@
     "email": "Email",
     "password": "Пароль",
     "submit": "Войти",
-    "submitting": "Вход...",
+    "submitting": "Входим...",
     "success": "Вход выполнен. Открываем кабинет ученика.",
     "errors": {
       "generic": "Не удалось войти. Попробуйте ещё раз."
@@ -70,7 +70,11 @@
     "notFound": "Урок не найден.",
     "order": "Порядок",
     "status": "Статус",
-    "slug": "Slug"
+    "slug": "Slug",
+    "completeAction": "Отметить урок завершённым",
+    "completing": "Отмечаем завершение...",
+    "completionSuccess": "Урок отмечен как завершённый.",
+    "completionError": "Не удалось отметить урок завершённым. Попробуйте позже."
   },
   "materials": {
     "navLink": "Материалы",
@@ -101,6 +105,25 @@
     "lessonId": "ID урока",
     "score": "Оценка",
     "completedAt": "Завершено",
+    "notAvailable": "Недоступно"
+  },
+  "assignments": {
+    "navLink": "Задания",
+    "title": "Задания",
+    "detailTitle": "Детали задания",
+    "loading": "Загружаем задания...",
+    "loadingDetail": "Загружаем детали задания...",
+    "authRequired": "Войдите, чтобы посмотреть задания.",
+    "sessionExpired": "Сессия истекла. Войдите снова.",
+    "loadError": "Не удалось загрузить задания. Попробуйте позже.",
+    "notFound": "Задание не найдено.",
+    "empty": "Задания пока недоступны.",
+    "assignmentId": "ID задания",
+    "courseId": "ID курса",
+    "userId": "ID пользователя",
+    "groupId": "ID группы",
+    "status": "Статус",
+    "dueAt": "Срок",
     "notAvailable": "Недоступно"
   }
 }
