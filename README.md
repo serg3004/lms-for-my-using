@@ -28,6 +28,7 @@ Implemented backend foundation:
 - Learner lesson materials web flow with `/learn/lessons/:id/materials`, lesson-scoped materials loading, empty state, and basic error handling
 - Learner progress web flow with `/learn/progress`, progress loading, empty state, and basic error handling
 - Learner lesson completion action on `/learn/lessons/:id` using the existing progress API
+- Learner assignment list/detail web flow with `/learn/assignments` and `/learn/assignments/:id`
 
 ## Implemented backend API
 
@@ -69,6 +70,7 @@ POST /api/v1/courses/:courseId/materials
 GET  /api/v1/materials/:id
 
 GET  /api/v1/assignments
+GET  /api/v1/assignments/:id
 POST /api/v1/assignments
 
 GET  /api/v1/progress
@@ -101,4 +103,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner assignment list/detail.
+1. Learner assessment list/detail.
