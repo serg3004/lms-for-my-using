@@ -106,6 +106,19 @@ export type AssessmentSummary = {
   updatedAt: string;
 };
 
+export type CertificateSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  userId: string;
+  assessmentAttemptId: string | null;
+  status: string;
+  issuedAt: string;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type CreateLessonCompletionInput = {
   organizationId: string;
   courseId: string;
@@ -252,4 +265,12 @@ export function listAssessments() {
 
 export function getAssessment(assessmentId: string) {
   return apiRequest<AssessmentSummary>(`/assessments/${encodeURIComponent(assessmentId)}`);
+}
+
+export function listCertificates() {
+  return apiRequest<CertificateSummary[]>('/certificates');
+}
+
+export function getCertificate(certificateId: string) {
+  return apiRequest<CertificateSummary>(`/certificates/${encodeURIComponent(certificateId)}`);
 }

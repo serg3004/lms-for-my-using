@@ -147,5 +147,25 @@
     "notAvailable": "Not available",
     "yes": "Yes",
     "no": "No"
+  },
+  "certificates": {
+    "navLink": "Certificates",
+    "title": "Certificates",
+    "detailTitle": "Certificate details",
+    "loading": "Loading certificates...",
+    "loadingDetail": "Loading certificate details...",
+    "authRequired": "Sign in to view certificates.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load certificates. Try again later.",
+    "notFound": "Certificate not found.",
+    "empty": "No certificates are available yet.",
+    "certificateId": "Certificate ID",
+    "courseId": "Course ID",
+    "userId": "User ID",
+    "assessmentAttemptId": "Assessment attempt ID",
+    "status": "Status",
+    "issuedAt": "Issued at",
+    "revokedAt": "Revoked at",
+    "notAvailable": "Not available"
   }
 }

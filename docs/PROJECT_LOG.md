@@ -2,24 +2,24 @@
 
 ## 2026-05-28
 
-### Add learner assessment list/detail web flow
+### Add learner certificate/report shell
 
-Implemented PR 18 scope on `feature/learner-assessments`.
+Implemented PR 19 scope on `feature/learner-certificate-report-shell`.
 
 Changes:
-- Added frontend API client support for `GET /api/v1/assessments` and `GET /api/v1/assessments/:id`.
-- Added `/learn/assessments` learner assessment list page in `apps/web`.
-- Added `/learn/assessments/:id` learner assessment detail page in `apps/web`.
-- Linked learner home and app navigation to assessments.
+- Added frontend API client support for `GET /api/v1/certificates` and `GET /api/v1/certificates/:id`.
+- Added `/learn/certificates` learner certificate list page in `apps/web`.
+- Added `/learn/certificates/:id` learner certificate detail page in `apps/web`.
+- Linked learner home and app navigation to certificates.
 - Added loading, empty, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
-- Added assessments i18n copy for `en` and `ru`.
+- Added certificates i18n copy for `en` and `ru`.
 - Updated README, API status, project log, and audit log.
 
 Deferred:
-- Assessment taking/attempt UI.
-- Assessment submission UI.
-- Grading/review UI.
-- Assessment filters/search/sort.
+- Certificate generation UI.
+- Certificate download/export/PDF UI.
+- Reports UI.
+- Filters/search/sort.
 - Enrollment UI.
 - Refresh token flow.
 - Logout flow.
@@ -36,6 +36,12 @@ Current PR check status:
 [Check] Tests: not run
 [Check] Build: not run
 ```
+
+## 2026-05-28
+
+### Add learner assessment list/detail web flow
+
+Implemented PR 18 scope on `feature/learner-assessments`.
 
 ## 2026-05-28
 
@@ -89,7 +95,7 @@ Implemented PR 10 scope on `feat/learner-course-list`.
 
 ### Add learner-facing web flows
 
-Implemented PR 9 scope on `feat/learner-web-flows`.
+Implemented PR 9 scope on `feature/learner-web-flows`.
 
 ## 2026-05-28
 

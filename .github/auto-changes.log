@@ -1,12 +1,12 @@
-[2026-05-28T16:14:00Z] BRANCH: feature/learner-assessments
-[2026-05-28T16:14:01Z] TASK: PR 18 learner assessment list/detail
-[2026-05-28T16:14:02Z] READ: assessments API controller/service, web app, shared API client, learner home, i18n, docs
-[2026-05-28T16:17:44Z] CHANGE: added assessments API client support
-[2026-05-28T16:18:26Z] CHANGE: added /learn/assessments and /learn/assessments/:id routes
-[2026-05-28T16:19:19Z] CHANGE: linked learner home to assessments
-[2026-05-28T16:20:06Z] CHANGE: added learner assessments list page
-[2026-05-28T16:20:46Z] CHANGE: added learner assessment detail page
-[2026-05-28T16:23:14Z] CHANGE: added assessments i18n copy
-[2026-05-28T16:25:25Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T16:25:26Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T16:25:27Z] ROLLBACK: revert PR or delete branch feature/learner-assessments
+[2026-05-28T16:40:00Z] BRANCH: feature/learner-certificate-report-shell
+[2026-05-28T16:40:01Z] TASK: PR 19 learner certificate/report shell
+[2026-05-28T16:40:02Z] READ: certificates API controller/service, web app, shared API client, learner home, i18n, docs
+[2026-05-28T16:44:50Z] CHANGE: added certificates API client support
+[2026-05-28T16:45:47Z] CHANGE: added /learn/certificates and /learn/certificates/:id routes
+[2026-05-28T16:46:23Z] CHANGE: linked learner home to certificates
+[2026-05-28T16:47:20Z] CHANGE: added learner certificates list page
+[2026-05-28T16:47:59Z] CHANGE: added learner certificate detail page
+[2026-05-28T16:50:19Z] CHANGE: added certificates i18n copy
+[2026-05-28T16:52:10Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T16:52:11Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T16:52:12Z] ROLLBACK: revert PR or delete branch feature/learner-certificate-report-shell
