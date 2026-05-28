@@ -1,20 +1,11 @@
-[2026-05-28T08:16:00Z] BRANCH: feat/web-auth-shell
-[2026-05-28T08:16:01Z] TASK: PR 8 add web auth shell
-[2026-05-28T08:16:02Z] READ: README, web app, i18n, auth API contract, docs
-[2026-05-28T08:16:03Z] CHANGE: added auth token storage helper
-[2026-05-28T08:19:31Z] CHANGE: added frontend auth API client shell
-[2026-05-28T08:20:03Z] CHANGE: added /login page shell
-[2026-05-28T08:20:17Z] CHANGE: wired /login route shell
-[2026-05-28T08:21:05Z] CHANGE: added login i18n copy
-[2026-05-28T08:21:35Z] FIX: imported login change event type
-[2026-05-28T08:24:05Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T08:24:06Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T08:24:07Z] ROLLBACK: revert PR or delete branch feat/web-auth-shell
-[2026-05-28T03:42:00Z] BRANCH: docs/rbac-matrix-api-contracts
-[2026-05-28T03:42:01Z] TASK: PR 7 docs add rbac matrix and api contracts
-[2026-05-28T03:42:02Z] READ: roles policies, modules, courses controller, docs
-[2026-05-28T03:42:03Z] CHANGE: added docs/RBAC_MATRIX.md
-[2026-05-28T03:42:04Z] CHANGE: added docs/API_CONTRACTS.md
-[2026-05-28T03:42:05Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T03:42:06Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T03:42:07Z] ROLLBACK: revert PR or delete branch docs/rbac-matrix-api-contracts
+[2026-05-28T08:39:00Z] BRANCH: feat/learner-web-flows
+[2026-05-28T08:39:01Z] TASK: PR 9 learner-facing web flows
+[2026-05-28T08:39:02Z] READ: web app, shared API client, auth token helper, i18n, docs
+[2026-05-28T08:39:58Z] CHANGE: added current user API client support
+[2026-05-28T08:40:18Z] CHANGE: added /learn learner landing flow
+[2026-05-28T08:40:28Z] CHANGE: wired /learn route
+[2026-05-28T08:40:48Z] CHANGE: redirected successful login to /learn
+[2026-05-28T08:41:53Z] CHANGE: added learner i18n copy
+[2026-05-28T08:43:00Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T08:43:01Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T08:43:02Z] ROLLBACK: revert PR or delete branch feat/learner-web-flows
