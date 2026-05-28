@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, LessonSummary, getLesson } from '../shared/apiClient.js';
+import {
+  ApiClientError,
+  LessonSummary,
+  getCurrentUser,
+  getLesson,
+  markLessonCompleted,
+} from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
 
 type LessonDetailLoadState =
@@ -10,6 +16,12 @@ type LessonDetailLoadState =
   | { status: 'loaded'; lesson: LessonSummary }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
+  | { status: 'error'; message: string };
+
+type CompletionState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'completed'; message: string }
   | { status: 'error'; message: string };
 
 function formatLessonDescription(lesson: LessonSummary) {
@@ -27,6 +39,7 @@ function getLessonMaterialsHref(lessonId: string) {
 export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LessonDetailLoadState>({ status: 'idle' });
+  const [completionState, setCompletionState] = useState<CompletionState>({ status: 'idle' });
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +96,39 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     };
   }, [lessonId, t]);
 
+  async function handleCompleteLesson(lesson: LessonSummary) {
+    setCompletionState({ status: 'submitting' });
+
+    try {
+      const currentUser = await getCurrentUser();
+
+      await markLessonCompleted({
+        organizationId: lesson.organizationId,
+        courseId: lesson.courseId,
+        lessonId: lesson.id,
+        userId: currentUser.id,
+      });
+
+      setCompletionState({
+        status: 'completed',
+        message: t('lessonDetail.completionSuccess'),
+      });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        setCompletionState({
+          status: 'error',
+          message: t('lessonDetail.sessionExpired'),
+        });
+        return;
+      }
+
+      setCompletionState({
+        status: 'error',
+        message: t('lessonDetail.completionError'),
+      });
+    }
+  }
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
@@ -129,6 +175,17 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           <dt>{t('lessonDetail.slug')}</dt>
           <dd>{loadState.lesson.slug}</dd>
         </dl>
+        <button
+          disabled={completionState.status === 'submitting' || completionState.status === 'completed'}
+          type="button"
+          onClick={() => void handleCompleteLesson(loadState.lesson)}
+        >
+          {completionState.status === 'submitting'
+            ? t('lessonDetail.completing')
+            : t('lessonDetail.completeAction')}
+        </button>
+        {completionState.status === 'completed' ? <p>{completionState.message}</p> : null}
+        {completionState.status === 'error' ? <p role="alert">{completionState.message}</p> : null}
       </article>
     </main>
   );
