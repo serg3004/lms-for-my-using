@@ -15,21 +15,11 @@ Implemented backend foundation:
 - Centralized API error format
 - OpenAPI document skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
-- Centralized JWT secret access through API env config
 - MVP API smoke coverage
-- MVP Definition of Done, Pilot Checklist, Local Runbook, and Seed Data
+- MVP Iefinition of Done, Pilot Checklist, Local Runbook, Seed Data
 - RBAC Matrix and API Contracts
-- Web auth shell with `/login`, frontend API client shell, access token storage, and basic auth error display
-- Learner-facing web flow with `/learn`, current user loading, and basic unauthorized/session-expired handling
-- Learner course list web flow with `/learn/courses`, course loading, empty state, and basic error handling
-- Learner course detail web flow with `/learn/courses/:id`, course detail loading, not found state, and basic error handling
-- Learner lessons list web flow with `/learn/courses/:id/lessons`, lessons loading, empty state, and basic error handling
-- Learner lesson detail web flow with `/learn/lessons/:id`, lesson detail loading, not found state, and basic error handling
-- Learner lesson materials web flow with `/learn/lessons/:id/materials`, lesson-scoped materials loading, empty state, and basic error handling
-- Learner progress web flow with `/learn/progress`, progress loading, empty state, and basic error handling
-- Learner lesson completion action on `/learn/lessons/:id` using the existing progress API
-- Learner assignment list/detail web flow with `/learn/assignments` and `/learn/assignments/:id`
-- Learner assessment list/detail web flow with `/learn/assessments` and `/learn/assessments/:id`
+- Web auth shell and learner-facing flows
+- Learner certificate list/detail web flow with `/learn/certificates` and `/learn/certificates/:id`
 
 ## Implemented backend API
 
@@ -82,6 +72,7 @@ GET  /api/v1/assessments/:id
 POST /api/v1/assessments
 
 GET  /api/v1/certificates
+GET  /api/v1/certificates/:id
 POST /api/v1/certificates
 ```
 
@@ -105,4 +96,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner certificate/report shell.
+1. Stabilization and bugfixes after learner MVP web shell.
