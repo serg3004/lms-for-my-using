@@ -1,3 +1,14 @@
+[2026-05-28T12:39:00Z] BRANCH: feature/learner-lesson-materials
+[2026-05-28T12:39:01Z] TASK: PR 14 learner lesson materials web flow
+[2026-05-28T12:39:02Z] READ: web app, shared API client, course-materials API, i18n, docs
+[2026-05-28T12:39:20Z] CHANGE: added course materials API client support
+[2026-05-28T12:39:40Z] CHANGE: added /learn/lessons/:id/materials route
+[2026-05-28T12:40:00Z] CHANGE: linked lesson detail page to materials
+[2026-05-28T12:40:20Z] CHANGE: added learner lesson materials page
+[2026-05-28T12:40:40Z] CHANGE: added lesson materials i18n copy
+[2026-05-28T12:41:00Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T12:41:01Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T12:41:02Z] ROLLBACK: revert PR or delete branch feature/learner-lesson-materials
 [2026-05-28T12:07:00Z] BRANCH: feat/learner-lesson-detail
 [2026-05-28T12:07:01Z] TASK: PR 13 learner lesson detail web flow
 [2026-05-28T12:07:02Z] READ: web app, shared API client, lessons page, i18n, docs
