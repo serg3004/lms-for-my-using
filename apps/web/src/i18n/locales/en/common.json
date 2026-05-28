@@ -28,5 +28,15 @@
     "name": "Name",
     "email": "Email",
     "organizationId": "Organization ID"
+  },
+  "courses": {
+    "navLink": "Courses",
+    "title": "Courses",
+    "loading": "Loading courses...",
+    "authRequired": "Sign in to view courses.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load courses. Try again later.",
+    "empty": "No courses are available yet.",
+    "status": "Status"
   }
 }

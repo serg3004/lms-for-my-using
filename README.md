@@ -21,6 +21,7 @@ Implemented backend foundation:
 - RBAC Matrix and API Contracts
 - Web auth shell with `/login`, frontend API client shell, access token storage, and basic auth error display
 - Learner-facing web flow with `/learn`, current user loading, and basic unauthorized/session-expired handling
+- Learner course list web flow with `/learn/courses`, course loading, empty state, and basic error handling
 
 ## Implemented backend API
 
@@ -183,4 +184,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner course list web flow.
+1. Learner course detail web flow.

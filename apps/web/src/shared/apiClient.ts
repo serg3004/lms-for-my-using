@@ -23,6 +23,17 @@ export type CurrentUser = {
   timezone: string;
 };
 
+export type CourseSummary = {
+  id: string;
+  organizationId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
@@ -111,4 +122,8 @@ export async function login(input: LoginInput) {
 
 export function getCurrentUser() {
   return apiRequest<CurrentUser>('/auth/me');
+}
+
+export function listCourses() {
+  return apiRequest<CourseSummary[]>('/courses');
 }

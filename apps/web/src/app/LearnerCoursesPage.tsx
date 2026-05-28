@@ -1,34 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
+import { ApiClientError, CourseSummary, listCourses } from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
 
-type LoadState =
+type CoursesLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'authenticated'; user: CurrentUser }
+  | { status: 'loaded'; courses: CourseSummary[] }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-function getUserDisplayName(user: CurrentUser) {
-  const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
-
-  return fullName || user.email;
+function formatCourseDescription(course: CourseSummary) {
+  return course.description?.trim() || course.slug;
 }
 
-export function LearnerHomePage() {
+export function LearnerCoursesPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
+  const [loadState, setLoadState] = useState<CoursesLoadState>({ status: 'idle' });
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadCurrentUser() {
+    async function loadCourses() {
       if (!getAuthToken()) {
         setLoadState({
           status: 'unauthenticated',
-          message: t('learner.authRequired'),
+          message: t('courses.authRequired'),
         });
         return;
       }
@@ -36,10 +34,10 @@ export function LearnerHomePage() {
       setLoadState({ status: 'loading' });
 
       try {
-        const user = await getCurrentUser();
+        const courses = await listCourses();
 
         if (isMounted) {
-          setLoadState({ status: 'authenticated', user });
+          setLoadState({ status: 'loaded', courses });
         }
       } catch (error) {
         if (!isMounted) {
@@ -49,19 +47,19 @@ export function LearnerHomePage() {
         if (error instanceof ApiClientError && error.status === 401) {
           setLoadState({
             status: 'unauthenticated',
-            message: t('learner.sessionExpired'),
+            message: t('courses.sessionExpired'),
           });
           return;
         }
 
         setLoadState({
           status: 'error',
-          message: t('learner.loadError'),
+          message: t('courses.loadError'),
         });
       }
     }
 
-    void loadCurrentUser();
+    void loadCourses();
 
     return () => {
       isMounted = false;
@@ -71,7 +69,7 @@ export function LearnerHomePage() {
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('learner.loading')}</p>
+        <p>{t('courses.loading')}</p>
       </main>
     );
   }
@@ -79,7 +77,7 @@ export function LearnerHomePage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('learner.title')}</h1>
+        <h1>{t('courses.title')}</h1>
         <p role="alert">{loadState.message}</p>
         <a href="/login">{t('login.navLink')}</a>
       </main>
@@ -89,7 +87,7 @@ export function LearnerHomePage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('learner.title')}</h1>
+        <h1>{t('courses.title')}</h1>
         <p role="alert">{loadState.message}</p>
       </main>
     );
@@ -97,21 +95,28 @@ export function LearnerHomePage() {
 
   return (
     <main>
-      <h1>{t('learner.title')}</h1>
+      <h1>{t('courses.title')}</h1>
       <nav>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
+        <a href="/learn">{t('learner.navLink')}</a>
       </nav>
-      <section>
-        <h2>{t('learner.profileTitle')}</h2>
-        <dl>
-          <dt>{t('learner.name')}</dt>
-          <dd>{getUserDisplayName(loadState.user)}</dd>
-          <dt>{t('learner.email')}</dt>
-          <dd>{loadState.user.email}</dd>
-          <dt>{t('learner.organizationId')}</dt>
-          <dd>{loadState.user.organizationId}</dd>
-        </dl>
-      </section>
+
+      {loadState.courses.length === 0 ? (
+        <p>{t('courses.empty')}</p>
+      ) : (
+        <ul>
+          {loadState.courses.map((course) => (
+            <li key={course.id}>
+              <article>
+                <h2>{course.title}</h2>
+                <p>{formatCourseDescription(course)}</p>
+                <p>
+                  {t('courses.status')}: {course.status}
+                </p>
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   );
 }
