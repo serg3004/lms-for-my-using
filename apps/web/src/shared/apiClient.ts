@@ -78,6 +78,13 @@ export type ProgressSummary = {
   updatedAt: string;
 };
 
+type CreateLessonCompletionInput = {
+  organizationId: string;
+  courseId: string;
+  lessonId: string;
+  userId: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
@@ -190,4 +197,15 @@ export function listCourseMaterials(courseId: string) {
 
 export function listProgress() {
   return apiRequest<ProgressSummary[]>('/progress');
+}
+
+export function markLessonCompleted(input: CreateLessonCompletionInput) {
+  return apiRequest<ProgressSummary>('/progress', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...input,
+      status: 'completed',
+      completedAt: new Date().toISOString(),
+    }),
+  });
 }
