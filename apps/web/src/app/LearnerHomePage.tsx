@@ -5,7 +5,8 @@ import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient
 import { getAuthToken } from '../shared/authToken.js';
 
 type LoadState =
-  | { status: 'idle' | 'loading' }
+  | { status: 'idle' }
+  | { status: 'loading' }
   | { status: 'authenticated'; user: CurrentUser }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
