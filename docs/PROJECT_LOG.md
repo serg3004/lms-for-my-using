@@ -2,22 +2,22 @@
 
 ## 2026-05-28
 
-### Add learner course detail web flow
+### Add learner lessons list web flow
 
-Implemented PR 11 scope on `feat/learner-course-detail`.
+Implemented PR 12 scope on `feat/learner-lessons-list`.
 
 Changes:
-- Added `/learn/courses/:id` learner course detail page in `apps/web`.
-- Added frontend API client support for `GET /api/v1/courses/:id`.
-- Linked course titles from `/learn/courses` to the detail page.
-- Added loading, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
+- Added `/learn/courses/:id/lessons` learner lessons list page in `apps/web`.
+- Added frontend API client support for `GET /api/v1/courses/:courseId/lessons`.
+- Linked course detail pages to the lessons list.
+- Added loading, empty, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
 - Updated README, API status, project log, and audit log.
 
 Deferred:
-- Lessons list UI.
+- Lesson detail UI.
+- Lesson materials UI.
 - Progress UI.
 - Enrollment UI.
-- Course edit/create UI.
 - Refresh token flow.
 - Logout flow.
 - Global state manager.
@@ -36,16 +36,15 @@ Current PR check status:
 
 ## 2026-05-28
 
+### Add learner course detail web flow
+
+Implemented PR 11 scope on `feat/learner-course-detail`.
+
+## 2026-05-28
+
 ### Add learner course list web flow
 
 Implemented PR 10 scope on `feat/learner-course-list`.
-
-Changes:
-- Added `/learn/courses` learner course list page in `apps/web`.
-- Added frontend API client support for `GET /api/v1/courses`.
-- Added loading, empty, error, missing-token, and `401 Unauthorized` states.
-- Added navigation links from the app shell and learner landing page.
-- Updated README, API status, project log, and audit log.
 
 ## 2026-05-28
 
