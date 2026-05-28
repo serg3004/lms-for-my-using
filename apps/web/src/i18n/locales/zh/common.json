@@ -12,9 +12,21 @@
     "password": "密码",
     "submit": "登录",
     "submitting": "正在登录...",
-    "success": "登录成功。Access token 已保存用于 API 请求。",
+    "success": "登录成功。正在打开学习区。",
     "errors": {
       "generic": "无法登录。请重试。"
     }
+  },
+  "learner": {
+    "navLink": "学习区",
+    "title": "学习区",
+    "loading": "正在加载学习者资料...",
+    "authRequired": "请登录以打开学习区。",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载学习者资料。请稍后重试。",
+    "profileTitle": "资料",
+    "name": "姓名",
+    "email": "邮箱",
+    "organizationId": "组织 ID"
   }
 }
