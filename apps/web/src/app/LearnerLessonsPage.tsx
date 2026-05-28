@@ -16,6 +16,10 @@ function formatLessonDescription(lesson: LessonSummary) {
   return lesson.description?.trim() || lesson.slug;
 }
 
+function getLessonDetailHref(lesson: LessonSummary) {
+  return `/learn/lessons/${encodeURIComponent(lesson.id)}`;
+}
+
 export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LessonsLoadState>({ status: 'idle' });
@@ -117,7 +121,9 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
           {loadState.lessons.map((lesson) => (
             <li key={lesson.id}>
               <article>
-                <h2>{lesson.title}</h2>
+                <h2>
+                  <a href={getLessonDetailHref(lesson)}>{lesson.title}</a>
+                </h2>
                 <p>{formatLessonDescription(lesson)}</p>
                 <p>
                   {t('lessons.order')}: {lesson.order}
