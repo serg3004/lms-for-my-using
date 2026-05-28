@@ -15,6 +15,10 @@ function formatCourseDescription(course: CourseSummary) {
   return course.description?.trim() || course.slug;
 }
 
+function getCourseDetailHref(course: CourseSummary) {
+  return `/learn/courses/${encodeURIComponent(course.id)}`;
+}
+
 export function LearnerCoursesPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CoursesLoadState>({ status: 'idle' });
@@ -107,7 +111,9 @@ export function LearnerCoursesPage() {
           {loadState.courses.map((course) => (
             <li key={course.id}>
               <article>
-                <h2>{course.title}</h2>
+                <h2>
+                  <a href={getCourseDetailHref(course)}>{course.title}</a>
+                </h2>
                 <p>{formatCourseDescription(course)}</p>
                 <p>
                   {t('courses.status')}: {course.status}

@@ -127,3 +127,7 @@ export function getCurrentUser() {
 export function listCourses() {
   return apiRequest<CourseSummary[]>('/courses');
 }
+
+export function getCourse(courseId: string) {
+  return apiRequest<CourseSummary>(`/courses/${encodeURIComponent(courseId)}`);
+}

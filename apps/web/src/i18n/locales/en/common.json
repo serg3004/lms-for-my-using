@@ -38,5 +38,15 @@
     "loadError": "Unable to load courses. Try again later.",
     "empty": "No courses are available yet.",
     "status": "Status"
+  },
+  "courseDetail": {
+    "title": "Course details",
+    "loading": "Loading course details...",
+    "authRequired": "Sign in to view course details.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load course details. Try again later.",
+    "notFound": "Course not found.",
+    "status": "Status",
+    "slug": "Slug"
   }
 }
