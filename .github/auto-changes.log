@@ -1,19 +1,17 @@
+[2026-05-28T10:08:00Z] BRANCH: feat/learner-course-detail
+[2026-05-28T10:08:01Z] TASK: PR 11 learner course detail web flow
+[2026-05-28T10:08:02Z] READ: web app, shared API client, i18n, docs
+[2026-05-28T10:09:00Z] CHANGE: added course detail API client support
+[2026-05-28T10:09:35Z] CHANGE: added /learn/courses/:id detail page
+[2026-05-28T10:09:57Z] CHANGE: wired learner course detail route
+[2026-05-28T10:10:30Z] CHANGE: linked course list titles to detail pages
+[2026-05-28T10:12:09Z] CHANGE: added learner course detail i18n copy
+[2026-05-28T10:12:10Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T10:12:11Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T10:12:12Z] ROLLBACK: revert PR or delete branch feat/learner-course-detail
 [2026-05-28T09:14:00Z] BRANCH: feat/learner-course-list
 [2026-05-28T09:14:01Z] TASK: PR 10 learner course list web flow
-[2026-05-28T09:14:02Z] READ: web app, shared API client, courses controller/service, i18n, docs
-[2026-05-28T09:14:04Z] CHANGE: added courses API client support
-[2026-05-28T09:14:53Z] CHANGE: added /learn/courses page
-[2026-05-28T09:15:08Z] CHANGE: wired /learn/courses route
-[2026-05-28T09:15:40Z] CHANGE: linked learner courses from learner home
-[2026-05-28T09:17:58Z] CHANGE: added learner courses i18n copy
-[2026-05-28T09:18:00Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T09:18:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T09:18:02Z] ROLLBACK: revert PR or delete branch feat/learner-course-list
 [2026-05-28T08:39:00Z] BRANCH: feat/learner-web-flows
 [2026-05-28T08:39:01Z] TASK: PR 9 learner-facing web flows
-[2026-05-28T08:43:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T08:43:02Z] ROLLBACK: revert PR or delete branch feat/learner-web-flows
 [2026-05-28T08:16:00Z] BRANCH: feat/web-auth-shell
 [2026-05-28T08:16:01Z] TASK: PR 8 add web auth shell
-[2026-05-28T08:24:06Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T08:24:07Z] ROLLBACK: revert PR or delete branch feat/web-auth-shell
