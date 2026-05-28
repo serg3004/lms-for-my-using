@@ -2,5 +2,19 @@
   "app": {
     "title": "LMS",
     "subtitle": "Система управления обучением"
+  },
+  "login": {
+    "navLink": "Войти",
+    "title": "Вход",
+    "subtitle": "Укажите организацию, email и пароль, чтобы получить access token.",
+    "organizationId": "ID организации",
+    "email": "Email",
+    "password": "Пароль",
+    "submit": "Войти",
+    "submitting": "Вход...",
+    "success": "Вход выполнен. Access token сохранён для API-запросов.",
+    "errors": {
+      "generic": "Не удалось войти. Попробуйте ещё раз."
+    }
   }
 }

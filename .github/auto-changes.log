@@ -1,3 +1,15 @@
+[2026-05-28T08:16:00Z] BRANCH: feat/web-auth-shell
+[2026-05-28T08:16:01Z] TASK: PR 8 add web auth shell
+[2026-05-28T08:16:02Z] READ: README, web app, i18n, auth API contract, docs
+[2026-05-28T08:16:03Z] CHANGE: added auth token storage helper
+[2026-05-28T08:19:31Z] CHANGE: added frontend auth API client shell
+[2026-05-28T08:20:03Z] CHANGE: added /login page shell
+[2026-05-28T08:20:17Z] CHANGE: wired /login route shell
+[2026-05-28T08:21:05Z] CHANGE: added login i18n copy
+[2026-05-28T08:21:35Z] FIX: imported login change event type
+[2026-05-28T08:24:05Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T08:24:06Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T08:24:07Z] ROLLBACK: revert PR or delete branch feat/web-auth-shell
 [2026-05-28T03:42:00Z] BRANCH: docs/rbac-matrix-api-contracts
 [2026-05-28T03:42:01Z] TASK: PR 7 docs add rbac matrix and api contracts
 [2026-05-28T03:42:02Z] READ: roles policies, modules, courses controller, docs

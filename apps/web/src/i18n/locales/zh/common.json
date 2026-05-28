@@ -2,5 +2,19 @@
   "app": {
     "title": "LMS",
     "subtitle": "学习管理系统"
+  },
+  "login": {
+    "navLink": "登录",
+    "title": "登录",
+    "subtitle": "输入组织、邮箱和密码以获取 access token。",
+    "organizationId": "组织 ID",
+    "email": "邮箱",
+    "password": "密码",
+    "submit": "登录",
+    "submitting": "正在登录...",
+    "success": "登录成功。Access token 已保存用于 API 请求。",
+    "errors": {
+      "generic": "无法登录。请重试。"
+    }
   }
 }
