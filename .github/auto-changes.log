@@ -1,8 +1,12 @@
-[2026-05-28T15:40:00Z] BRANCH: feature/lesson-completion-action
-[2026-05-28T15:40:01Z] TASK: PR 16 lesson completion action
-[2026-05-28T15:40:02Z] READ: courses completion, progress schema, API client, lesson detail, docs
-[2026-05-28T15:41:50Z] CHANGE: added lesson completion API client support
-[2026-05-28T15:43:09Z] CHANGE: added lesson completion button and states
-[2026-05-28T15:45:00Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T15:45:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T15:45:03Z] ROLLBACK: revert PR or delete branch feature/lesson-completion-action
+[2026-05-28T15:54:00Z] BRANCH: feature/learner-assignments
+[2026-05-28T15:54:01Z] TASK: PR 17 learner assignment list/detail
+[2026-05-28T15:54:02Z] READ: assignments API controller/service, web app, shared API client, learner home, i18n, docs
+[2026-05-28T15:55:06Z] CHANGE: added assignments API client support
+[2026-05-28T15:56:00Z] CHANGE: added /learn/assignments and /learn/assignments/:id routes
+[2026-05-28T15:56:25Z] CHANGE: linked learner home to assignments
+[2026-05-28T15:57:18Z] CHANGE: added learner assignments list page
+[2026-05-28T15:57:58Z] CHANGE: added learner assignment detail page
+[2026-05-28T16:00:13Z] CHANGE: added assignments i18n copy
+[2026-05-28T16:02:30Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T16:02:31Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T16:02:32Z] ROLLBACK: revert PR or delete branch feature/learner-assignments

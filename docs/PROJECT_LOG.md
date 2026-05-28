@@ -2,22 +2,24 @@
 
 ## 2026-05-28
 
-### Add lesson completion action
+### Add learner assignment list/detail web flow
 
-Implemented PR 16 scope on `feature/lesson-completion-action`.
+Implemented PR 17 scope on `feature/learner-assignments`.
 
 Changes:
-- Added frontend API client support for lesson completion via `POST /api/v1/progress`.
-- Added a lesson completion button to `/learn/lessons/:id`.
-- Resolved the current user via the existing `GET /api/v1/auth/me` contract.
-- Added completion submitting, success, and error states.
+- Added frontend API client support for `GET /api/v1/assignments` and `GET /api/v1/assignments/:id`.
+- Added `/learn/assignments` learner assignment list page in `apps/web`.
+- Added `/learn/assignments/:id` learner assignment detail page in `apps/web`.
+- Linked learner home and app navigation to assignments.
+- Added loading, empty, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
+- Added assignments i18n copy for `en` and `ru`.
 - Updated README, API status, project log, and audit log.
 
 Deferred:
-- Lesson completion status pre-load.
-- Progress update/upsert behavior.
-- Progress detail page.
-- Progress filters/search/sort.
+- Assignment submission UI.
+- Assignment upload UI.
+- Grading/review UI.
+- Assignment filters/search/sort.
 - Enrollment UI.
 - Refresh token flow.
 - Logout flow.
@@ -34,6 +36,12 @@ Current PR check status:
 [Check] Tests: not run
 [Check] Build: not run
 ```
+
+## 2026-05-28
+
+### Add lesson completion action
+
+Implemented PR 16 scope on `feature/lesson-completion-action`.
 
 ## 2026-05-28
 

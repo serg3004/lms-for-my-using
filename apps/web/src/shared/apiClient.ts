@@ -78,6 +78,18 @@ export type ProgressSummary = {
   updatedAt: string;
 };
 
+export type AssignmentSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  userId: string | null;
+  groupId: string | null;
+  status: string;
+  dueAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type CreateLessonCompletionInput = {
   organizationId: string;
   courseId: string;
@@ -208,4 +220,12 @@ export function markLessonCompleted(input: CreateLessonCompletionInput) {
       completedAt: new Date().toISOString(),
     }),
   });
+}
+
+export function listAssignments() {
+  return apiRequest<AssignmentSummary[]>('/assignments');
+}
+
+export function getAssignment(assignmentId: string) {
+  return apiRequest<AssignmentSummary>(`/assignments/${encodeURIComponent(assignmentId)}`);
 }

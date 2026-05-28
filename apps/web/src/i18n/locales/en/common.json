@@ -70,7 +70,11 @@
     "notFound": "Lesson not found.",
     "order": "Order",
     "status": "Status",
-    "slug": "Slug"
+    "slug": "Slug",
+    "completeAction": "Mark lesson completed",
+    "completing": "Marking completed...",
+    "completionSuccess": "Lesson marked as completed.",
+    "completionError": "Unable to mark lesson completed. Try again later."
   },
   "materials": {
     "navLink": "Materials",
@@ -101,6 +105,25 @@
     "lessonId": "Lesson ID",
     "score": "Score",
     "completedAt": "Completed at",
+    "notAvailable": "Not available"
+  },
+  "assignments": {
+    "navLink": "Assignments",
+    "title": "Assignments",
+    "detailTitle": "Assignment details",
+    "loading": "Loading assignments...",
+    "loadingDetail": "Loading assignment details...",
+    "authRequired": "Sign in to view assignments.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load assignments. Try again later.",
+    "notFound": "Assignment not found.",
+    "empty": "No assignments are available yet.",
+    "assignmentId": "Assignment ID",
+    "courseId": "Course ID",
+    "userId": "User ID",
+    "groupId": "Group ID",
+    "status": "Status",
+    "dueAt": "Due at",
     "notAvailable": "Not available"
   }
 }
