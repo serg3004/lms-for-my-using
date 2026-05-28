@@ -184,7 +184,7 @@ export async function login(input: LoginInput) {
 }
 
 export function getCurrentUser() {
-  return apiRequest<CurrentUser>'/auth/me');
+  return apiRequest<CurrentUser>('/auth/me');
 }
 
 export function listCourses() {
@@ -212,7 +212,7 @@ export function listProgress() {
 }
 
 export function markLessonCompleted(input: CreateLessonCompletionInput) {
-  return apiRequest<ProgressSummary>'/progress', {
+  return apiRequest<ProgressSummary>('/progress', {
     method: 'POST',
     body: JSON.stringify({
       ...input,
