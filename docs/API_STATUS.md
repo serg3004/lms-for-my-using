@@ -1,24 +1,27 @@
 # API Status
 
 Last synced: 2026-05-28  
-Source branch: `docs/rbac-matrix-api-contracts`
+Source branch: `feat/web-auth-shell`
 
 ## Current status
 
-RBAC and API contract documentation is available for the current MVP baseline:
+Web auth shell is available for the current MVP baseline:
 
-- `docs/RBAC_MATRIX.md` mirrors the current role policy map from `apps/api/src/modules/auth/roles.ts`.
-- `docs/API_CONTRACTS.md` records public/authenticated endpoint conventions, error shape, auth header, tenant scope rules, and contract change rules.
-- No runtime API behavior changed in this PR.
+- `/login` is implemented in `apps/web`.
+- The frontend API client posts to `/api/v1/auth/login`.
+- Access tokens are stored in browser local storage for follow-up API requests.
+- Basic auth error messages are displayed on the login form.
+- No backend runtime API behavior changed in this PR.
 
 ## Current limitations
 
+- No refresh token flow.
+- No logout flow.
+- No global state manager.
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
-- No public runtime API endpoint changes.
-- Learner-facing read policies remain intentionally narrow until learner web flows are implemented.
 
 ## Endpoint map
 
-No production API endpoint changes in this PR.
+No production API endpoint changes in this PR. The web shell uses the existing `POST /api/v1/auth/login` contract.
