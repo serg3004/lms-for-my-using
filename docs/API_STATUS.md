@@ -1,27 +1,23 @@
 # API Status
 
-Last synced: 2026-05-27  
-Source branch: `chore/mvp-seed-data`
+Last synced: 2026-05-28  
+Source branch: `docs/rbac-matrix-api-contracts`
 
 ## Current status
 
-MVP seed data is available:
+RBAC and API contract documentation is available for the current MVP baseline:
 
-- `apps/api/prisma/seed.mjs` seeds the current Prisma MVP baseline.
-- The seed script is idempotent through fixed IDs and Prisma `upsert`.
-- Dataset includes 1 organization, 1 admin, 1 instructor, 2 learners, 1 group, 1 course, 2 lessons, 1 assignment, and 1 progress record.
-- Seed users use local-only `example.test` emails.
-- The seed script is standalone and can be run manually with `node prisma/seed.mjs` from `apps/api`.
-- API runtime behavior is unchanged in this PR.
+- `docs/RBAC_MATRIX.md` mirrors the current role policy map from `apps/api/src/modules/auth/roles.ts`.
+- `docs/API_CONTRACTS.md` records public/authenticated endpoint conventions, error shape, auth header, tenant scope rules, and contract change rules.
+- No runtime API behavior changed in this PR.
 
 ## Current limitations
 
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
-- No package script changes.
 - No public runtime API endpoint changes.
-- No real migrations are applied.
+- Learner-facing read policies remain intentionally narrow until learner web flows are implemented.
 
 ## Endpoint map
 

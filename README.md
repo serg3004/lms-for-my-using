@@ -18,6 +18,7 @@ Implemented backend foundation:
 - Centralized JWT secret access through API env config
 - MVP API smoke coverage
 - MVP Definition of Done, Pilot Checklist, Local Runbook, and Seed Data
+- RBAC Matrix and API Contracts
 
 ## Implemented backend API
 
@@ -70,6 +71,8 @@ POST /api/v1/certificates
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
+- `docs/RBAC_MATRIX.md`
+- `docs/API_CONTRACTS.md`
 
 ## MVP seed data
 
@@ -148,6 +151,15 @@ apps/api/src/config/env.spec.ts
 
 The global API exception filter normalizes Zod validation errors as `400 Bad Request` responses with `VALIDATION_ERROR`.
 
+## RBAC and API contracts
+
+Current MVP RBAC and API contracts are documented in:
+
+```text
+docs/RBAC_MATRIX.md
+docs/API_CONTRACTS.md
+```
+
 ## Auth password reset skeleton
 
 Current constraints:
@@ -169,4 +181,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. RBAC matrix and API contracts.
+1. Web auth shell.
