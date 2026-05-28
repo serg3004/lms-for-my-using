@@ -34,6 +34,19 @@ export type CourseSummary = {
   updatedAt: string;
 };
 
+export type LessonSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  order: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
@@ -130,4 +143,8 @@ export function listCourses() {
 
 export function getCourse(courseId: string) {
   return apiRequest<CourseSummary>(`/courses/${encodeURIComponent(courseId)}`);
+}
+
+export function listLessons(courseId: string) {
+  return apiRequest<LessonSummary[]>(`/courses/${encodeURIComponent(courseId)}/lessons`);
 }
