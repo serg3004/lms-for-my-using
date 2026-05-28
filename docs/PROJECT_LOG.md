@@ -2,6 +2,36 @@
 
 ## 2026-05-28
 
+### Add web auth shell
+
+Implemented PR 8 scope on `feat/web-auth-shell`.
+
+Changes:
+- Added `/login` shell in `apps/web`.
+- Added frontend API client shell for `POST /api/v1/auth/login`.
+- Added browser access token storage helper.
+- Added basic auth error display on the login form.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- Refresh token flow.
+- Logout flow.
+- Global state manager.
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+## 2026-05-28
+
 ### Add RBAC matrix and API contracts
 
 Implemented PR 7 scope on `docs/rbac-matrix-api-contracts`.
