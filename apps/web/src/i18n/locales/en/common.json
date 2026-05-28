@@ -48,5 +48,17 @@
     "notFound": "Course not found.",
     "status": "Status",
     "slug": "Slug"
+  },
+  "lessons": {
+    "navLink": "Lessons",
+    "title": "Lessons",
+    "loading": "Loading lessons...",
+    "authRequired": "Sign in to view lessons.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load lessons. Try again later.",
+    "notFound": "Course not found.",
+    "empty": "No lessons are available yet.",
+    "order": "Order",
+    "status": "Status"
   }
 }
