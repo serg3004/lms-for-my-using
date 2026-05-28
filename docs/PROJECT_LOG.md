@@ -2,6 +2,36 @@
 
 ## 2026-05-28
 
+### Secure public user and organization creation
+
+Implemented PR 20 scope on `fix/secure-public-user-organization-creation`.
+
+Changes:
+- Added auth, RBAC, and organization scope guard to direct `POST /api/v1/users`.
+- Added auth and admin RBAC guard to direct `POST /api/v1/organizations`.
+- Kept `POST /api/v1/organizations/register` public as the explicit workspace registration flow.
+- Added `rolePolicies.organizationsCreate`.
+- Added controller tests for protected direct creation endpoints and public registration metadata.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+- Frontend redesign.
+- Workspace registration hardening beyond existing public register flow.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+## 2026-05-28
+
 ### Add learner certificate/report shell
 
 Implemented PR 19 scope on `feature/learner-certificate-report-shell`.
