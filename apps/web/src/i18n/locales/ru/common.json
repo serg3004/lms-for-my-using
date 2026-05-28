@@ -125,5 +125,27 @@
     "status": "Статус",
     "dueAt": "Срок",
     "notAvailable": "Недоступно"
+  },
+  "assessments": {
+    "navLink": "Оценивания",
+    "title": "Оценивания",
+    "detailTitle": "Детали оценивания",
+    "loading": "Загружаем оценивания...",
+    "loadingDetail": "Загружаем детали оценивания...",
+    "authRequired": "Войдите, чтобы посмотреть оценивания.",
+    "sessionExpired": "Сессия истекла. Войдите снова.",
+    "loadError": "Не удалось загрузить оценивания. Попробуйте позже.",
+    "notFound": "Оценивание не найдено.",
+    "empty": "Оценивания пока недоступны.",
+    "assessmentId": "ID оценивания",
+    "courseId": "ID курса",
+    "lessonId": "ID урока",
+    "status": "Статус",
+    "passingScore": "Проходной балл",
+    "maxAttempts": "Максимум попыток",
+    "availableAfterCourseCompletion": "Доступно после завершения курса",
+    "notAvailable": "Недоступно",
+    "yes": "Да",
+    "no": "Нет"
   }
 }

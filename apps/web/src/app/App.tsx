@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
+import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
+import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
 import { LearnerAssignmentDetailPage } from './LearnerAssignmentDetailPage.js';
 import { LearnerAssignmentsPage } from './LearnerAssignmentsPage.js';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
@@ -11,6 +13,7 @@ import { LearnerLessonsPage } from './LearnerLessonsPage.js';
 import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
 
+const assessmentDetailPathPrefix = '/learn/assessments/';
 const assignmentDetailPathPrefix = '/learn/assignments/';
 const courseDetailPathPrefix = '/learn/courses/';
 const lessonsPathSuffix = '/lessons';
@@ -39,6 +42,18 @@ export function App() {
 
   if (pathname === '/learn/assignments') {
     return <LearnerAssignmentsPage />;
+  }
+
+  if (pathname === '/learn/assessments') {
+    return <LearnerAssessmentsPage />;
+  }
+
+  if (pathname.startsWith(assessmentDetailPathPrefix)) {
+    const assessmentId = pathname.slice(assessmentDetailPathPrefix.length);
+
+    if (assessmentId) {
+      return <LearnerAssessmentDetailPage assessmentId={assessmentId} />;
+    }
   }
 
   if (pathname.startsWith(assignmentDetailPathPrefix)) {
@@ -94,6 +109,7 @@ export function App() {
         <a href="/learn/courses">{t('courses.navLink')}</a>
         <a href="/learn/progress">{t('progress.navLink')}</a>
         <a href="/learn/assignments">{t('assignments.navLink')}</a>
+        <a href="/learn/assessments">{t('assessments.navLink')}</a>
       </nav>
     </main>
   );

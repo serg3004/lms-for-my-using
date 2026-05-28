@@ -102,6 +102,7 @@ export function LearnerHomePage() {
         <a href="/learn/courses">{t('courses.navLink')}</a>
         <a href="/learn/progress">{t('progress.navLink')}</a>
         <a href="/learn/assignments">{t('assignments.navLink')}</a>
+        <a href="/learn/assessments">{t('assessments.navLink')}</a>
       </nav>
       <section>
         <h2>{t('learner.profileTitle')}</h2>
