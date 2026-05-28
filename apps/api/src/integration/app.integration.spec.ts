@@ -1,10 +1,11 @@
-import { Controller, Get, INestApplication } from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { get } from 'node:http';
+import { get, request } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
+import { loginSchema } from '../modules/auth/auth.schemas.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
 
@@ -37,6 +38,43 @@ function requestJson(url: string): Promise<HttpTestResponse> {
   });
 }
 
+function postJson(url: string, body: unknown): Promise<HttpTestResponse> {
+  return new Promise((resolve, reject) => {
+    const rawBody = JSON.stringify(body);
+    const requestUrl = new URL(url);
+
+    const clientRequest = request(
+      {
+        hostname: requestUrl.hostname,
+        port: requestUrl.port,
+        path: requestUrl.pathname,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': Buffer.byteLength(rawBody),
+        },
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => {
+          const rawResponseBody = Buffer.concat(chunks).toString('utf8');
+
+          resolve({
+            statusCode: response.statusCode,
+            body: rawResponseBody ? JSON.parse(rawResponseBody) : null,
+          });
+        });
+      },
+    );
+
+    clientRequest.on('error', reject);
+    clientRequest.write(rawBody);
+    clientRequest.end();
+  });
+}
+
 @Controller('integration-test')
 class IntegrationTestController {
   @Get('validation-error')
@@ -46,6 +84,13 @@ class IntegrationTestController {
     }).parse({
       email: 'not-email',
     });
+  }
+
+  @Post('login-validation-error')
+  postLoginValidationError(@Body() body: unknown) {
+    loginSchema.parse(body);
+
+    return { accepted: true };
   }
 }
 
@@ -100,6 +145,22 @@ describe('API integration scaffold', () => {
         message: 'Validation failed',
       },
       path: '/api/v1/integration-test/validation-error',
+    });
+  });
+
+  it('returns 400 for schema.parse(body) validation errors', async () => {
+    const response = await postJson(`${getAppUrl(app)}/api/v1/integration-test/login-validation-error`, {
+      email: 'not-email',
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toMatchObject({
+      statusCode: 400,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Validation failed',
+      },
+      path: '/api/v1/integration-test/login-validation-error',
     });
   });
 });
