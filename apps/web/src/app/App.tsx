@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { LearnerCoursesPage } from './LearnerCoursesPage.js';
 import { LearnerHomePage } from './LearnerHomePage.js';
 import { LoginPage } from './LoginPage.js';
 
@@ -15,6 +16,10 @@ export function App() {
     return <LearnerHomePage />;
   }
 
+  if (pathname === '/learn/courses') {
+    return <LearnerCoursesPage />;
+  }
+
   return (
     <main>
       <h1>{t('app.title')}</h1>
@@ -22,6 +27,7 @@ export function App() {
       <nav>
         <a href="/login">{t('login.navLink')}</a>
         <a href="/learn">{t('learner.navLink')}</a>
+        <a href="/learn/courses">{t('courses.navLink')}</a>
       </nav>
     </main>
   );
