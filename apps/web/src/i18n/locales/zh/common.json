@@ -71,5 +71,21 @@
     "order": "顺序",
     "status": "状态",
     "slug": "Slug"
+  },
+  "materials": {
+    "navLink": "资料",
+    "title": "课时资料",
+    "loading": "正在加载课时资料...",
+    "authRequired": "请登录以查看课时资料。",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载课时资料。请稍后重试。",
+    "notFound": "未找到课时或资料。",
+    "empty": "此课时暂无资料。",
+    "kind": "类型",
+    "status": "状态",
+    "file": "文件",
+    "mimeType": "MIME 类型",
+    "sizeBytes": "大小，字节",
+    "notAvailable": "不可用"
   }
 }

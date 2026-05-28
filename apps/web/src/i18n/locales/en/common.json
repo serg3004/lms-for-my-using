@@ -71,5 +71,21 @@
     "order": "Order",
     "status": "Status",
     "slug": "Slug"
+  },
+  "materials": {
+    "navLink": "Materials",
+    "title": "Lesson materials",
+    "loading": "Loading lesson materials...",
+    "authRequired": "Sign in to view lesson materials.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load lesson materials. Try again later.",
+    "notFound": "Lesson or materials not found.",
+    "empty": "No materials are available for this lesson yet.",
+    "kind": "Kind",
+    "status": "Status",
+    "file": "File",
+    "mimeType": "MIME type",
+    "sizeBytes": "Size, bytes",
+    "notAvailable": "Not available"
   }
 }

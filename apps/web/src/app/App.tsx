@@ -4,12 +4,14 @@ import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
 import { LearnerCoursesPage } from './LearnerCoursesPage.js';
 import { LearnerHomePage } from './LearnerHomePage.js';
 import { LearnerLessonDetailPage } from './LearnerLessonDetailPage.js';
+import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage.js';
 import { LearnerLessonsPage } from './LearnerLessonsPage.js';
 import { LoginPage } from './LoginPage.js';
 
 const courseDetailPathPrefix = '/learn/courses/';
 const lessonsPathSuffix = '/lessons';
 const lessonDetailPathPrefix = '/learn/lessons/';
+const lessonMaterialsPathSuffix = '/materials';
 
 export function App() {
   const { t } = useTranslation();
@@ -25,6 +27,17 @@ export function App() {
 
   if (pathname === '/learn/courses') {
     return <LearnerCoursesPage />;
+  }
+
+  if (pathname.startsWith(lessonDetailPathPrefix) && pathname.endsWith(lessonMaterialsPathSuffix)) {
+    const lessonId = pathname.slice(
+      lessonDetailPathPrefix.length,
+      -lessonMaterialsPathSuffix.length,
+    );
+
+    if (lessonId) {
+      return <LearnerLessonMaterialsPage lessonId={lessonId} />;
+    }
   }
 
   if (pathname.startsWith(lessonDetailPathPrefix)) {
