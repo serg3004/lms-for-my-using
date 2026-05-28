@@ -2,23 +2,23 @@
 
 ## 2026-05-28
 
-### Add learner lesson materials web flow
+### Add learner progress web flow
 
-Implemented PR 14 scope on `feature/learner-lesson-materials`.
+Implemented PR 15 scope on `feature/learner-progress`.
 
 Changes:
-- Added frontend API client support for `GET /api/v1/courses/:courseId/materials`.
-- Added `/learn/lessons/:id/materials` learner lesson materials page in `apps/web`.
-- Linked lesson detail pages to lesson materials.
+- Added frontend API client support for `GET /api/v1/progress`.
+- Added `/learn/progress` learner progress page in `apps/web`.
+- Linked learner home and app navigation to progress.
 - Added loading, empty, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
-- Added lesson materials i18n copy for `en`, `ru`, `kk`, and `zh`.
+- Added progress i18n copy for `en` and `ru`.
 - Updated README, API status, project log, and audit log.
 
 Deferred:
-- Material upload/edit UI.
-- Material detail page.
-- Progress UI.
+- Progress detail page.
+- Progress filters/search/sort.
 - Lesson completion action.
+- Progress create/update UI.
 - Enrollment UI.
 - Refresh token flow.
 - Logout flow.
@@ -38,37 +38,15 @@ Current PR check status:
 
 ## 2026-05-28
 
+### Add learner lesson materials web flow
+
+Implemented PR 14 scope on `feature/learner-lesson-materials`.
+
+## 2026-05-28
+
 ### Add learner lesson detail web flow
 
 Implemented PR 13 scope on `feat/learner-lesson-detail`.
-
-Changes:
-- Added `/learn/lessons/:id` learner lesson detail page in `apps/web`.
-- Added frontend API client support for `GET /api/v1/lessons/:id`.
-- Linked lesson titles from `/learn/courses/:id/lessons` to lesson detail pages.
-- Added loading, error, missing-token, `401 Unauthorized`, and `404 Not Found` states.
-- Updated README, API status, project log, and audit log.
-
-Deferred:
-- Lesson materials UI.
-- Progress UI.
-- Lesson completion action.
-- Enrollment UI.
-- Refresh token flow.
-- Logout flow.
-- Global state manager.
-- Prisma schema/migration changes.
-- CI/CD changes.
-- Dependency changes.
-
-Current PR check status:
-
-```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
-```
 
 ## 2026-05-28
 

@@ -65,6 +65,19 @@ export type CourseMaterialSummary = {
   updatedAt: string;
 };
 
+export type ProgressSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  lessonId: string | null;
+  userId: string;
+  status: string;
+  score: number | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
@@ -173,4 +186,8 @@ export function getLesson(lessonId: string) {
 
 export function listCourseMaterials(courseId: string) {
   return apiRequest<CourseMaterialSummary[]>(`/courses/${encodeURIComponent(courseId)}/materials`);
+}
+
+export function listProgress() {
+  return apiRequest<ProgressSummary[]>('/progress');
 }

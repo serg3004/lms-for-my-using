@@ -6,6 +6,7 @@ import { LearnerHomePage } from './LearnerHomePage.js';
 import { LearnerLessonDetailPage } from './LearnerLessonDetailPage.js';
 import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage.js';
 import { LearnerLessonsPage } from './LearnerLessonsPage.js';
+import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
 
 const courseDetailPathPrefix = '/learn/courses/';
@@ -27,6 +28,10 @@ export function App() {
 
   if (pathname === '/learn/courses') {
     return <LearnerCoursesPage />;
+  }
+
+  if (pathname === '/learn/progress') {
+    return <LearnerProgressPage />;
   }
 
   if (pathname.startsWith(lessonDetailPathPrefix) && pathname.endsWith(lessonMaterialsPathSuffix)) {
@@ -72,6 +77,7 @@ export function App() {
         <a href="/login">{t('login.navLink')}</a>
         <a href="/learn">{t('learner.navLink')}</a>
         <a href="/learn/courses">{t('courses.navLink')}</a>
+        <a href="/learn/progress">{t('progress.navLink')}</a>
       </nav>
     </main>
   );
