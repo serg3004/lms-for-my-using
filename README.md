@@ -19,6 +19,7 @@ Implemented backend foundation:
 - MVP API smoke coverage
 - MVP Definition of Done, Pilot Checklist, Local Runbook, and Seed Data
 - RBAC Matrix and API Contracts
+- Web auth shell with `/login`, frontend API client shell, access token storage, and basic auth error display
 
 ## Implemented backend API
 
@@ -181,4 +182,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Web auth shell.
+1. Learner-facing web flows.
