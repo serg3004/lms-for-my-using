@@ -48,5 +48,17 @@
     "notFound": "未找到课程。",
     "status": "状态",
     "slug": "Slug"
+  },
+  "lessons": {
+    "navLink": "课时",
+    "title": "课时",
+    "loading": "正在加载课时...",
+    "authRequired": "请登录以查看课时。",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载课时。请稍后重试。",
+    "notFound": "未找到课程。",
+    "empty": "暂无可用课时。",
+    "order": "顺序",
+    "status": "状态"
   }
 }
