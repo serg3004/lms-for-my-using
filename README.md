@@ -22,6 +22,7 @@ Implemented backend foundation:
 - Web auth shell with `/login`, frontend API client shell, access token storage, and basic auth error display
 - Learner-facing web flow with `/learn`, current user loading, and basic unauthorized/session-expired handling
 - Learner course list web flow with `/learn/courses`, course loading, empty state, and basic error handling
+- Learner course detail web flow with `/learn/courses/:id`, course detail loading, not found state, and basic error handling
 
 ## Implemented backend API
 
@@ -51,6 +52,7 @@ POST /api/v1/groups
 
 GET  /api/v1/courses
 POST /api/v1/courses
+GET  /api/v1/courses/:id
 GET  /api/v1/courses/:id/completion
 
 GET  /api/v1/courses/:courseId/lessons
@@ -77,101 +79,6 @@ POST /api/v1/certificates
 - `docs/RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
 
-## MVP seed data
-
-Seed data is available in:
-
-```text
-apps/api/prisma/seed.mjs
-```
-
-It creates:
-- 1 organization
-- 1 admin
-- 1 instructor
-- 2 learners
-- 1 group
-- 1 course
-- 2 lessons
-- 1 assignment
-- 1 progress record
-
-Run it from the API app after Prisma Client is generated and the local database is available:
-
-```bash
-cd apps/api
-pnpm prisma:generate
-node prisma/seed.mjs
-```
-
-Seed users use local-only emails under `example.test` and the local password printed by the seed script. Do not use seed credentials outside local or disposable pilot environments.
-
-## API environment validation
-
-The API validates the runtime environment on startup:
-
-```text
-API_PORT=3000
-JWT_SECRET=change-me-change-me-change-me-32chars
-```
-
-`JWT_SECRET` must be at least 32 characters and is accessed by auth through the centralized API env config.
-
-## MVP local runbook
-
-Local setup and run instructions are documented in:
-
-```text
-docs/MVP_LOCAL_RUNBOOK.md
-```
-
-The runbook covers `.env` setup, local PostgreSQL/MinIO, Prisma generate, safe migration guardrails, API start, web start, health check, and seed data.
-
-## MVP API smoke coverage
-
-Integration smoke coverage is available in:
-
-```text
-apps/api/src/integration/app.integration.spec.ts
-```
-
-Current coverage:
-- `GET /api/v1/health` smoke test.
-- `GET /api/v1/openapi` smoke test.
-- Auth login happy path.
-- Auth login validation negative path.
-- Protected endpoint without bearer token returns `401 Unauthorized`.
-- Tenant scope mismatch returns `403 Forbidden`.
-- Global centralized error format smoke test for Zod validation errors.
-
-Environment validation is covered in:
-
-```text
-apps/api/src/config/env.spec.ts
-```
-
-## Centralized API error format
-
-The global API exception filter normalizes Zod validation errors as `400 Bad Request` responses with `VALIDATION_ERROR`.
-
-## RBAC and API contracts
-
-Current MVP RBAC and API contracts are documented in:
-
-```text
-docs/RBAC_MATRIX.md
-docs/API_CONTRACTS.md
-```
-
-## Auth password reset skeleton
-
-Current constraints:
-- no password reset token persistence;
-- no email delivery;
-- no password hash update;
-- no rate limiting store;
-- no Prisma schema or migration changes.
-
 ## Current Prisma baseline
 
 ```text
@@ -184,4 +91,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner course detail web flow.
+1. Learner lesson list web flow.
