@@ -98,6 +98,9 @@ export function LearnerHomePage() {
   return (
     <main>
       <h1>{t('learner.title')}</h1>
+      <nav>
+        <a href="/learn/courses">{t('courses.navLink')}</a>
+      </nav>
       <section>
         <h2>{t('learner.profileTitle')}</h2>
         <dl>
