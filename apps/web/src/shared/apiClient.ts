@@ -1,4 +1,4 @@
-import { getAuthToken, setAuthToken } from './authToken.js';
+import { clearAuthToken, getAuthToken, setAuthToken } from './authToken.js';
 
 const apiBasePath = '/api/v1';
 
@@ -8,9 +8,25 @@ type LoginInput = {
   password: string;
 };
 
+export type CurrentUser = {
+  id: string;
+  organizationId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  position: string | null;
+  shift: string | null;
+  phone: string | null;
+  status: string;
+  locale: string;
+  timezone: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
+  user: CurrentUser;
 };
 
 type ApiErrorResponse = {
@@ -72,6 +88,10 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
   const body = await parseJsonResponse(response);
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthToken();
+    }
+
     throw new ApiClientError(getErrorMessage(body), response.status);
   }
 
@@ -87,4 +107,8 @@ export async function login(input: LoginInput) {
   setAuthToken(response.accessToken);
 
   return response;
+}
+
+export function getCurrentUser() {
+  return apiRequest<CurrentUser>('/auth/me');
 }

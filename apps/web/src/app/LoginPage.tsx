@@ -48,6 +48,7 @@ export function LoginPage() {
         ...currentFormState,
         password: '',
       }));
+      window.location.assign('/learn');
     } catch (error) {
       const message =
         error instanceof ApiClientError ? error.message : t('login.errors.generic');

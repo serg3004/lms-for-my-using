@@ -20,6 +20,7 @@ Implemented backend foundation:
 - MVP Definition of Done, Pilot Checklist, Local Runbook, and Seed Data
 - RBAC Matrix and API Contracts
 - Web auth shell with `/login`, frontend API client shell, access token storage, and basic auth error display
+- Learner-facing web flow with `/learn`, current user loading, and basic unauthorized/session-expired handling
 
 ## Implemented backend API
 
@@ -182,4 +183,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner-facing web flows.
+1. Learner course list web flow.

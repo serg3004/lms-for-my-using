@@ -2,6 +2,38 @@
 
 ## 2026-05-28
 
+### Add learner-facing web flows
+
+Implemented PR 9 scope on `feat/learner-web-flows`.
+
+Changes:
+- Added `/learn` learner landing page in `apps/web`.
+- Added frontend API client support for `GET /api/v1/auth/me`.
+- Redirected successful login from `/login` to `/learn`.
+- Added basic missing-token and `401 Unauthorized` handling.
+- Added learner profile summary display.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- Refresh token flow.
+- Logout flow.
+- Global state manager.
+- Learner course list UI.
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+## 2026-05-28
+
 ### Add web auth shell
 
 Implemented PR 8 scope on `feat/web-auth-shell`.

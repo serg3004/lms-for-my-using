@@ -12,9 +12,21 @@
     "password": "Password",
     "submit": "Sign in",
     "submitting": "Signing in...",
-    "success": "Signed in. Access token saved for API requests.",
+    "success": "Signed in. Opening learner area.",
     "errors": {
       "generic": "Unable to sign in. Try again."
     }
+  },
+  "learner": {
+    "navLink": "Learner area",
+    "title": "Learner area",
+    "loading": "Loading learner profile...",
+    "authRequired": "Sign in to open the learner area.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load learner profile. Try again later.",
+    "profileTitle": "Profile",
+    "name": "Name",
+    "email": "Email",
+    "organizationId": "Organization ID"
   }
 }
