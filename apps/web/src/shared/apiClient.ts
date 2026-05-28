@@ -141,7 +141,7 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 export async function login(input: LoginInput) {
-  const response = await apiRequest<LoginResponse>'/auth/login', {
+  const response = await apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
