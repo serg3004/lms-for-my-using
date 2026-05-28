@@ -20,6 +20,10 @@ function getCourseLessonsHref(courseId: string) {
   return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
 }
 
+function getLessonMaterialsHref(lessonId: string) {
+  return `/learn/lessons/${encodeURIComponent(lessonId)}/materials`;
+}
+
 export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LessonDetailLoadState>({ status: 'idle' });
@@ -111,6 +115,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     <main>
       <nav>
         <a href={getCourseLessonsHref(loadState.lesson.courseId)}>{t('lessons.navLink')}</a>
+        <a href={getLessonMaterialsHref(loadState.lesson.id)}>{t('materials.navLink')}</a>
       </nav>
 
       <article>
