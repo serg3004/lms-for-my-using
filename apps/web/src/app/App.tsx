@@ -4,6 +4,8 @@ import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
 import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
 import { LearnerAssignmentDetailPage } from './LearnerAssignmentDetailPage.js';
 import { LearnerAssignmentsPage } from './LearnerAssignmentsPage.js';
+import { LearnerCertificateDetailPage } from './LearnerCertificateDetailPage.js';
+import { LearnerCertificatesPage } from './LearnerCertificatesPage.js';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
 import { LearnerCoursesPage } from './LearnerCoursesPage.js';
 import { LearnerHomePage } from './LearnerHomePage.js';
@@ -15,6 +17,7 @@ import { LoginPage } from './LoginPage.js';
 
 const assessmentDetailPathPrefix = '/learn/assessments/';
 const assignmentDetailPathPrefix = '/learn/assignments/';
+const certificateDetailPathPrefix = '/learn/certificates/';
 const courseDetailPathPrefix = '/learn/courses/';
 const lessonsPathSuffix = '/lessons';
 const lessonDetailPathPrefix = '/learn/lessons/';
@@ -46,6 +49,18 @@ export function App() {
 
   if (pathname === '/learn/assessments') {
     return <LearnerAssessmentsPage />;
+  }
+
+  if (pathname === '/learn/certificates') {
+    return <LearnerCertificatesPage />;
+  }
+
+  if (pathname.startsWith(certificateDetailPathPrefix)) {
+    const certificateId = pathname.slice(certificateDetailPathPrefix.length);
+
+    if (certificateId) {
+      return <LearnerCertificateDetailPage certificateId={certificateId} />;
+    }
   }
 
   if (pathname.startsWith(assessmentDetailPathPrefix)) {
@@ -110,6 +125,7 @@ export function App() {
         <a href="/learn/progress">{t('progress.navLink')}</a>
         <a href="/learn/assignments">{t('assignments.navLink')}</a>
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
+        <a href="/learn/certificates">{t('certificates.navLink')}</a>
       </nav>
     </main>
   );
