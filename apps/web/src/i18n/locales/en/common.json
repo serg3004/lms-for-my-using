@@ -125,5 +125,27 @@
     "status": "Status",
     "dueAt": "Due at",
     "notAvailable": "Not available"
+  },
+  "assessments": {
+    "navLink": "Assessments",
+    "title": "Assessments",
+    "detailTitle": "Assessment details",
+    "loading": "Loading assessments...",
+    "loadingDetail": "Loading assessment details...",
+    "authRequired": "Sign in to view assessments.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load assessments. Try again later.",
+    "notFound": "Assessment not found.",
+    "empty": "No assessments are available yet.",
+    "assessmentId": "Assessment ID",
+    "courseId": "Course ID",
+    "lessonId": "Lesson ID",
+    "status": "Status",
+    "passingScore": "Passing score",
+    "maxAttempts": "Max attempts",
+    "availableAfterCourseCompletion": "Available after course completion",
+    "notAvailable": "Not available",
+    "yes": "Yes",
+    "no": "No"
   }
 }
