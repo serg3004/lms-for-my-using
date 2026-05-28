@@ -2,5 +2,19 @@
   "app": {
     "title": "LMS",
     "subtitle": "Learning management system"
+  },
+  "login": {
+    "navLink": "Sign in",
+    "title": "Sign in",
+    "subtitle": "Use your organization, email, and password to get an access token.",
+    "organizationId": "Organization ID",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "success": "Signed in. Access token saved for API requests.",
+    "errors": {
+      "generic": "Unable to sign in. Try again."
+    }
   }
 }
