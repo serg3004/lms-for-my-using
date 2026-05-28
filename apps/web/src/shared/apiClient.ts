@@ -47,6 +47,24 @@ export type LessonSummary = {
   updatedAt: string;
 };
 
+export type CourseMaterialSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  lessonId: string | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  kind: string;
+  fileName: string | null;
+  fileUrl: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
@@ -123,7 +141,7 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 export async function login(input: LoginInput) {
-  const response = await apiRequest<LoginResponse>('/auth/login', {
+  const response = await apiRequest<LoginResponse>'/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -151,4 +169,8 @@ export function listLessons(courseId: string) {
 
 export function getLesson(lessonId: string) {
   return apiRequest<LessonSummary>(`/lessons/${encodeURIComponent(lessonId)}`);
+}
+
+export function listCourseMaterials(courseId: string) {
+  return apiRequest<CourseMaterialSummary[]>(`/courses/${encodeURIComponent(courseId)}/materials`);
 }
