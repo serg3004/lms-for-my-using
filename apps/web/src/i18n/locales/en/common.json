@@ -60,5 +60,16 @@
     "empty": "No lessons are available yet.",
     "order": "Order",
     "status": "Status"
+  },
+  "lessonDetail": {
+    "title": "Lesson details",
+    "loading": "Loading lesson details...",
+    "authRequired": "Sign in to view lesson details.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load lesson details. Try again later.",
+    "notFound": "Lesson not found.",
+    "order": "Order",
+    "status": "Status",
+    "slug": "Slug"
   }
 }

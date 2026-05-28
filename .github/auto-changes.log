@@ -1,14 +1,16 @@
+[2026-05-28T12:07:00Z] BRANCH: feat/learner-lesson-detail
+[2026-05-28T12:07:01Z] TASK: PR 13 learner lesson detail web flow
+[2026-05-28T12:07:02Z] READ: web app, shared API client, lessons page, i18n, docs
+[2026-05-28T12:07:22Z] CHANGE: added lesson detail API client support
+[2026-05-28T12:08:01Z] CHANGE: added /learn/lessons/:id detail page
+[2026-05-28T12:08:30Z] CHANGE: wired learner lesson detail route
+[2026-05-28T12:09:10Z] CHANGE: linked lessons list titles to detail pages
+[2026-05-28T12:12:03Z] CHANGE: added learner lesson detail i18n copy
+[2026-05-28T12:13:00Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T12:13:01Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T12:13:02Z] ROLLBACK: revert PR or delete branch feat/learner-lesson-detail
 [2026-05-28T10:38:00Z] BRANCH: feat/learner-lessons-list
 [2026-05-28T10:38:01Z] TASK: PR 12 learner lessons list web flow
-[2026-05-28T10:38:02Z] READ: web app, shared API client, lessons controller/service, i18n, docs
-[2026-05-28T10:40:18Z] CHANGE: added lessons API client support
-[2026-05-28T10:40:56Z] CHANGE: added /learn/courses/:id/lessons page
-[2026-05-28T10:41:18Z] CHANGE: wired learner lessons route
-[2026-05-28T10:41:57Z] CHANGE: linked learner lessons from course detail
-[2026-05-28T10:43:43Z] CHANGE: added learner lessons i18n copy
-[2026-05-28T10:44:00Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T10:44:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T10:44:02Z] ROLLBACK: revert PR or delete branch feat/learner-lessons-list
 [2026-05-28T10:08:00Z] BRANCH: feat/learner-course-detail
 [2026-05-28T10:08:01Z] TASK: PR 11 learner course detail web flow
 [2026-05-28T09:14:00Z] BRANCH: feat/learner-course-list

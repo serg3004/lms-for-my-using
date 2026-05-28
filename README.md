@@ -24,6 +24,7 @@ Implemented backend foundation:
 - Learner course list web flow with `/learn/courses`, course loading, empty state, and basic error handling
 - Learner course detail web flow with `/learn/courses/:id`, course detail loading, not found state, and basic error handling
 - Learner lessons list web flow with `/learn/courses/:id/lessons`, lessons loading, empty state, and basic error handling
+- Learner lesson detail web flow with `/learn/lessons/:id`, lesson detail loading, not found state, and basic error handling
 
 ## Implemented backend API
 
@@ -93,4 +94,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Learner lesson detail web flow.
+1. Learner lesson materials web flow.

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, LessonSummary, listLessons } from '../shared/apiClient.js';
+import { ApiClientError, LessonSummary, getLesson } from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
 
-type LessonsLoadState =
+type LessonDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; lessons: LessonSummary[] }
+  | { status: 'loaded'; lesson: LessonSummary }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
@@ -16,22 +16,22 @@ function formatLessonDescription(lesson: LessonSummary) {
   return lesson.description?.trim() || lesson.slug;
 }
 
-function getLessonDetailHref(lesson: LessonSummary) {
-  return `/learn/lessons/${encodeURIComponent(lesson.id)}`;
+function getCourseLessonsHref(courseId: string) {
+  return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
 }
 
-export function LearnerLessonsPage({ courseId }: { courseId: string }) {
+export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LessonsLoadState>({ status: 'idle' });
+  const [loadState, setLoadState] = useState<LessonDetailLoadState>({ status: 'idle' });
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadLessons() {
+    async function loadLesson() {
       if (!getAuthToken()) {
         setLoadState({
           status: 'unauthenticated',
-          message: t('lessons.authRequired'),
+          message: t('lessonDetail.authRequired'),
         });
         return;
       }
@@ -39,10 +39,10 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
       setLoadState({ status: 'loading' });
 
       try {
-        const lessons = await listLessons(courseId);
+        const lesson = await getLesson(lessonId);
 
         if (isMounted) {
-          setLoadState({ status: 'loaded', lessons });
+          setLoadState({ status: 'loaded', lesson });
         }
       } catch (error) {
         if (!isMounted) {
@@ -52,7 +52,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
         if (error instanceof ApiClientError && error.status === 401) {
           setLoadState({
             status: 'unauthenticated',
-            message: t('lessons.sessionExpired'),
+            message: t('lessonDetail.sessionExpired'),
           });
           return;
         }
@@ -60,29 +60,29 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
         if (error instanceof ApiClientError && error.status === 404) {
           setLoadState({
             status: 'notFound',
-            message: t('lessons.notFound'),
+            message: t('lessonDetail.notFound'),
           });
           return;
         }
 
         setLoadState({
           status: 'error',
-          message: t('lessons.loadError'),
+          message: t('lessonDetail.loadError'),
         });
       }
     }
 
-    void loadLessons();
+    void loadLesson();
 
     return () => {
       isMounted = false;
     };
-  }, [courseId, t]);
+  }, [lessonId, t]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('lessons.loading')}</p>
+        <p>{t('lessonDetail.loading')}</p>
       </main>
     );
   }
@@ -90,7 +90,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('lessons.title')}</h1>
+        <h1>{t('lessonDetail.title')}</h1>
         <p role="alert">{loadState.message}</p>
         <a href="/login">{t('login.navLink')}</a>
       </main>
@@ -100,42 +100,31 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('lessons.title')}</h1>
+        <h1>{t('lessonDetail.title')}</h1>
         <p role="alert">{loadState.message}</p>
-        <a href={`/learn/courses/${encodeURIComponent(courseId)}`}>{t('courseDetail.title')}</a>
+        <a href="/learn/courses">{t('courses.navLink')}</a>
       </main>
     );
   }
 
   return (
     <main>
-      <h1>{t('lessons.title')}</h1>
       <nav>
-        <a href={`/learn/courses/${encodeURIComponent(courseId)}`}>{t('courseDetail.title')}</a>
+        <a href={getCourseLessonsHref(loadState.lesson.courseId)}>{t('lessons.navLink')}</a>
       </nav>
 
-      {loadState.lessons.length === 0 ? (
-        <p>{t('lessons.empty')}</p>
-      ) : (
-        <ol>
-          {loadState.lessons.map((lesson) => (
-            <li key={lesson.id}>
-              <article>
-                <h2>
-                  <a href={getLessonDetailHref(lesson)}>{lesson.title}</a>
-                </h2>
-                <p>{formatLessonDescription(lesson)}</p>
-                <p>
-                  {t('lessons.order')}: {lesson.order}
-                </p>
-                <p>
-                  {t('lessons.status')}: {lesson.status}
-                </p>
-              </article>
-            </li>
-          ))}
-        </ol>
-      )}
+      <article>
+        <h1>{loadState.lesson.title}</h1>
+        <p>{formatLessonDescription(loadState.lesson)}</p>
+        <dl>
+          <dt>{t('lessonDetail.order')}</dt>
+          <dd>{loadState.lesson.order}</dd>
+          <dt>{t('lessonDetail.status')}</dt>
+          <dd>{loadState.lesson.status}</dd>
+          <dt>{t('lessonDetail.slug')}</dt>
+          <dd>{loadState.lesson.slug}</dd>
+        </dl>
+      </article>
     </main>
   );
 }

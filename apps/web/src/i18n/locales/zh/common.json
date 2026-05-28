@@ -60,5 +60,16 @@
     "empty": "暂无可用课时。",
     "order": "顺序",
     "status": "状态"
+  },
+  "lessonDetail": {
+    "title": "课时详情",
+    "loading": "正在加载课时详情...",
+    "authRequired": "请登录以查看课时详情。",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载课时详情。请稍后重试。",
+    "notFound": "未找到课时。",
+    "order": "顺序",
+    "status": "状态",
+    "slug": "Slug"
   }
 }
