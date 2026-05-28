@@ -1,12 +1,12 @@
-[2026-05-28T15:54:00Z] BRANCH: feature/learner-assignments
-[2026-05-28T15:54:01Z] TASK: PR 17 learner assignment list/detail
-[2026-05-28T15:54:02Z] READ: assignments API controller/service, web app, shared API client, learner home, i18n, docs
-[2026-05-28T15:55:06Z] CHANGE: added assignments API client support
-[2026-05-28T15:56:00Z] CHANGE: added /learn/assignments and /learn/assignments/:id routes
-[2026-05-28T15:56:25Z] CHANGE: linked learner home to assignments
-[2026-05-28T15:57:18Z] CHANGE: added learner assignments list page
-[2026-05-28T15:57:58Z] CHANGE: added learner assignment detail page
-[2026-05-28T16:00:13Z] CHANGE: added assignments i18n copy
-[2026-05-28T16:02:30Z] DOCS: updated README, API status, project log, and audit log
-[2026-05-28T16:02:31Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T16:02:32Z] ROLLBACK: revert PR or delete branch feature/learner-assignments
+[2026-05-28T16:14:00Z] BRANCH: feature/learner-assessments
+[2026-05-28T16:14:01Z] TASK: PR 18 learner assessment list/detail
+[2026-05-28T16:14:02Z] READ: assessments API controller/service, web app, shared API client, learner home, i18n, docs
+[2026-05-28T16:17:44Z] CHANGE: added assessments API client support
+[2026-05-28T16:18:26Z] CHANGE: added /learn/assessments and /learn/assessments/:id routes
+[2026-05-28T16:19:19Z] CHANGE: linked learner home to assessments
+[2026-05-28T16:20:06Z] CHANGE: added learner assessments list page
+[2026-05-28T16:20:46Z] CHANGE: added learner assessment detail page
+[2026-05-28T16:23:14Z] CHANGE: added assessments i18n copy
+[2026-05-28T16:25:25Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T16:25:26Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T16:25:27Z] ROLLBACK: revert PR or delete branch feature/learner-assessments
