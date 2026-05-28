@@ -87,5 +87,20 @@
     "mimeType": "MIME type",
     "sizeBytes": "Size, bytes",
     "notAvailable": "Not available"
+  },
+  "progress": {
+    "navLink": "Progress",
+    "title": "Learning progress",
+    "loading": "Loading progress...",
+    "authRequired": "Sign in to view progress.",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load progress. Try again later.",
+    "notFound": "Progress not found.",
+    "empty": "No progress records are available yet.",
+    "courseId": "Course ID",
+    "lessonId": "Lesson ID",
+    "score": "Score",
+    "completedAt": "Completed at",
+    "notAvailable": "Not available"
   }
 }
