@@ -1,24 +1,23 @@
 # Project Log
 
-## 2026-05-27
+## 2026-05-28
 
-### Add MVP seed data
+### Add RBAC matrix and API contracts
 
-Implemented PR 6 scope on `chore/mvp-seed-data`.
+Implemented PR 7 scope on `docs/rbac-matrix-api-contracts`.
 
 Changes:
-- Added `apps/api/prisma/seed.mjs`.
-- Seed dataset includes 1 organization, 1 admin, 1 instructor, 2 learners, 1 group, 1 course, 2 lessons, 1 assignment, and 1 progress record.
-- Seed script uses fixed IDs and Prisma `upsert` for idempotency.
-- Seed users use local-only `example.test` emails and a local seed password printed by the script.
+- Added `docs/RBAC_MATRIX.md`.
+- Added `docs/API_CONTRACTS.md`.
+- Documented the current MVP role policy map from `apps/api/src/modules/auth/roles.ts`.
+- Documented the current MVP API contract baseline, common auth conventions, tenant scope rules, and error format.
 - Updated README, API status, project log, and audit log.
 
 Deferred:
+- Runtime API changes.
 - Prisma schema/migration changes.
 - CI/CD changes.
 - Dependency changes.
-- Package script changes.
-- Real migration execution.
 
 Current PR check status:
 
@@ -31,17 +30,13 @@ Current PR check status:
 
 ## 2026-05-27
 
-### Add MVP local runbook
+### MVP seed data
 
-Implemented PR 5 scope on `docs/mvp-local-runbook`.
+Implemented MVP seed data scope on `chore/mvp-seed-data`.
 
 Changes:
-- Added `docs/MVP_LOCAL_RUNBOOK.md`.
-- Documented `.env` setup from `.env.example`.
-- Documented local PostgreSQL and MinIO Docker Compose example without adding repo infrastructure files.
-- Documented Prisma generate.
-- Documented safe migration guardrails without applying real migrations.
-- Documented API start, web start, and health check.
+- Added standalone Prisma seed data script.
+- Seed dataset includes 1 organization, 1 admin, 1 instructor, 2 learners, 1 group, 1 course, 2 lessons, 1 assignment, and 1 progress record.
 - Updated README, API status, project log, and audit log.
 
 Current PR check status:
