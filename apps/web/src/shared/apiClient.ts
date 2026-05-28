@@ -78,6 +78,18 @@ export type ProgressSummary = {
   updatedAt: string;
 };
 
+export type AssignmentSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  userId: string | null;
+  groupId: string | null;
+  status: string;
+  dueAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type CreateLessonCompletionInput = {
   organizationId: string;
   courseId: string;
@@ -172,7 +184,7 @@ export async function login(input: LoginInput) {
 }
 
 export function getCurrentUser() {
-  return apiRequest<CurrentUser>('/auth/me');
+  return apiRequest<CurrentUser>'/auth/me');
 }
 
 export function listCourses() {
@@ -200,7 +212,7 @@ export function listProgress() {
 }
 
 export function markLessonCompleted(input: CreateLessonCompletionInput) {
-  return apiRequest<ProgressSummary>('/progress', {
+  return apiRequest<ProgressSummary>'/progress', {
     method: 'POST',
     body: JSON.stringify({
       ...input,
@@ -208,4 +220,12 @@ export function markLessonCompleted(input: CreateLessonCompletionInput) {
       completedAt: new Date().toISOString(),
     }),
   });
+}
+
+export function listAssignments() {
+  return apiRequest<AssignmentSummary[]>('/assignments');
+}
+
+export function getAssignment(assignmentId: string) {
+  return apiRequest<AssignmentSummary>(`/assignments/${encodeURIComponent(assignmentId)}`);
 }
