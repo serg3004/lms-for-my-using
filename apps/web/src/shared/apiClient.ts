@@ -90,6 +90,22 @@ export type AssignmentSummary = {
   updatedAt: string;
 };
 
+export type AssessmentSummary = {
+  id: string;
+  organizationId: string;
+  courseId: string;
+  lessonId: string | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  status: string;
+  passingScore: number;
+  maxAttempts: number;
+  availableAfterCourseCompletion: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type CreateLessonCompletionInput = {
   organizationId: string;
   courseId: string;
@@ -212,7 +228,7 @@ export function listProgress() {
 }
 
 export function markLessonCompleted(input: CreateLessonCompletionInput) {
-  return apiRequest<ProgressSummary>('/progress', {
+  return apiRequest<ProgressSummary>'/progress', {
     method: 'POST',
     body: JSON.stringify({
       ...input,
@@ -228,4 +244,12 @@ export function listAssignments() {
 
 export function getAssignment(assignmentId: string) {
   return apiRequest<AssignmentSummary>(`/assignments/${encodeURIComponent(assignmentId)}`);
+}
+
+export function listAssessments() {
+  return apiRequest<AssessmentSummary[]>('/assessments');
+}
+
+export function getAssessment(assessmentId: string) {
+  return apiRequest<AssessmentSummary>(`/assessments/${encodeURIComponent(assessmentId)}`);
 }
