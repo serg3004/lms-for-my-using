@@ -6,6 +6,7 @@ export const rolesMetadataKey = 'roles';
 
 export const rolePolicies = {
   organizationsRead: ['admin'],
+  organizationsCreate: ['admin'],
   usersRead: ['admin', 'manager'],
   usersCreate: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],
