@@ -6,13 +6,23 @@ describe('API environment validation', () => {
   it('loads a valid API environment', () => {
     const apiEnv = loadApiEnv({
       API_PORT: '3001',
+      FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
     });
 
     expect(apiEnv).toEqual({
       API_PORT: 3001,
+      FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
     });
+  });
+
+  it('uses default frontend URL for local development', () => {
+    const apiEnv = loadApiEnv({
+      JWT_SECRET: validJwtSecret,
+    });
+
+    expect(apiEnv.FRONTEND_URL).toBe('http://localhost:5173');
   });
 
   it('returns the configured JWT secret', () => {
@@ -38,5 +48,14 @@ describe('API environment validation', () => {
         JWT_SECRET: validJwtSecret,
       }),
     ).toThrow(/API_PORT/);
+  });
+
+  it('rejects an invalid frontend URL', () => {
+    expect(() =>
+      loadApiEnv({
+        FRONTEND_URL: 'not-a-url',
+        JWT_SECRET: validJwtSecret,
+      }),
+    ).toThrow(/FRONTEND_URL/);
   });
 });
