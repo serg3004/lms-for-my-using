@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 import { createSecurityHeadersMiddleware, createSensitiveRouteRateLimitMiddleware } from './api-hardening';
 
 type TestRequest = {
