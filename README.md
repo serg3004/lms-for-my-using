@@ -9,7 +9,7 @@ Current stage: early MVP foundation.
 Implemented backend foundation:
 - Health API
 - Organizations / users / memberships / groups APIs
-- Auth login/current user and password reset skeleton
+- Auth login/current user/logout and password reset skeleton
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
 - Protected direct user and organization creation endpoints
 - Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
@@ -31,6 +31,7 @@ GET  /api/v1/health
 GET  /api/v1/openapi
 
 POST /api/v1/auth/login
+POST /api/v1/auth/logout
 POST /api/v1/auth/password-reset/request
 POST /api/v1/auth/password-reset/confirm
 GET  /api/v1/auth/me
@@ -81,6 +82,8 @@ POST /api/v1/certificates
 ```
 
 `POST /api/v1/organizations/register` remains the public workspace registration flow. Direct `POST /api/v1/users` and `POST /api/v1/organizations` require auth/RBAC.
+
+`POST /api/v1/auth/logout` validates the bearer token before returning a stateless logout acknowledgement. The web logout helper clears the stored access token in `finally`.
 
 ## MVP docs
 
