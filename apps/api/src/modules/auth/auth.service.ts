@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { LoginInput } from './auth.schemas.js';
@@ -25,9 +25,7 @@ const loginUserSelect = {
   passwordHash: true,
 } as const;
 
-const passwordResetAccepted = {
-  accepted: true,
-} as const;
+const passwordResetUnavailableMessage = 'Password reset is not available';
 
 const logoutAccepted = {
   accepted: true,
@@ -93,11 +91,11 @@ export class AuthService {
   }
 
   requestPasswordReset() {
-    return passwordResetAccepted;
+    throw new ServiceUnavailableException(passwordResetUnavailableMessage);
   }
 
   confirmPasswordReset() {
-    return passwordResetAccepted;
+    throw new ServiceUnavailableException(passwordResetUnavailableMessage);
   }
 
   logout() {
