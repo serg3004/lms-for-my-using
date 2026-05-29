@@ -1,11 +1,11 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { jest } from '@jest/globals';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard';
 import { rolePolicies, rolesMetadataKey } from '../auth/roles';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersController } from './users.controller';
+import { CreateUserInput } from './users.schemas';
 import { UsersService } from './users.service';
 
 describe('UsersController', () => {
@@ -26,18 +26,23 @@ describe('UsersController', () => {
   });
 
   it('creates a user through the guarded controller action', () => {
-    const createUser = jest.fn((input: typeof createUserInput) => ({ id: 'user-id', ...input }));
+    const calls: CreateUserInput[] = [];
+    const createUser = (input: CreateUserInput) => {
+      calls.push(input);
+
+      return { id: 'user-id', ...input };
+    };
     const controller = new UsersController({ createUser } as unknown as UsersService);
 
     const result = controller.createUser(createUserInput);
 
-    expect(createUser).toHaveBeenCalledWith({
+    expect(calls).toEqual([{
       ...createUserInput,
       email: 'new.user@example.com',
       status: 'active',
       locale: 'ru',
       timezone: 'Asia/Almaty',
-    });
+    }]);
     expect(result).toEqual({
       id: 'user-id',
       ...createUserInput,
