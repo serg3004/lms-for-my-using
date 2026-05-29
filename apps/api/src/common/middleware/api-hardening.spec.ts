@@ -46,7 +46,7 @@ describe('API hardening middleware', () => {
     const response = createResponse();
     const next = jest.fn();
 
-    middleware(request, response, next);
+    middleware(request as never, response as never, next);
 
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(response.headers.get('X-Frame-Options')).toBe('DENY');
@@ -60,11 +60,11 @@ describe('API hardening middleware', () => {
     const response = createResponse();
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      middleware(request, createResponse(), jest.fn());
+      middleware(request as never, createResponse() as never, jest.fn());
     }
 
     const next = jest.fn();
-    middleware(request, response, next);
+    middleware(request as never, response as never, next);
 
     expect(response.statusCode).toBe(429);
     expect(response.body).toBe(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
@@ -72,7 +72,7 @@ describe('API hardening middleware', () => {
 
     currentTime += 60_001;
     const nextAfterReset = jest.fn();
-    middleware(request, createResponse(), nextAfterReset);
+    middleware(request as never, createResponse() as never, nextAfterReset);
 
     expect(nextAfterReset).toHaveBeenCalledTimes(1);
   });
@@ -83,7 +83,7 @@ describe('API hardening middleware', () => {
     const next = jest.fn();
 
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      middleware(request, createResponse(), next);
+      middleware(request as never, createResponse() as never, next);
     }
 
     expect(next).toHaveBeenCalledTimes(25);
