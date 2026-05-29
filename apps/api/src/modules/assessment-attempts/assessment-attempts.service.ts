@@ -105,6 +105,7 @@ export class AssessmentAttemptsService {
       select: {
         id: true,
         courseId: true,
+        status: true,
         passingScore: true,
         maxAttempts: true,
         availableAfterCourseCompletion: true,
@@ -113,6 +114,10 @@ export class AssessmentAttemptsService {
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
+    }
+
+    if (assessment.status !== 'published') {
+      throw new BadRequestException('Assessment must be published before attempting');
     }
 
     await this.ensureUserExists(userId, organizationId);
