@@ -29,6 +29,10 @@ const passwordResetAccepted = {
   accepted: true,
 } as const;
 
+const logoutAccepted = {
+  accepted: true,
+} as const;
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
@@ -94,6 +98,10 @@ export class AuthService {
 
   confirmPasswordReset() {
     return passwordResetAccepted;
+  }
+
+  logout() {
+    return logoutAccepted;
   }
 
   async login(input: LoginInput) {

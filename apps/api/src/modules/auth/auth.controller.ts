@@ -35,6 +35,15 @@ export class AuthController {
     return this.authService.login(input);
   }
 
+  @Post('logout')
+  async logout(@Headers('authorization') authorizationHeader: string | undefined) {
+    const accessToken = parseBearerToken(authorizationHeader);
+
+    await this.authService.getCurrentUser(accessToken);
+
+    return this.authService.logout();
+  }
+
   @Post('password-reset/request')
   requestPasswordReset(@Body() body: unknown) {
     passwordResetRequestSchema.parse(body);
