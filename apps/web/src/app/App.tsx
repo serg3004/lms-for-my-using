@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { AdminDashboardPage } from './AdminDashboardPage.js';
+import { AdminRolesPage } from './AdminRolesPage.js';
 import { AdminUsersPage } from './AdminUsersPage.js';
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
 import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
@@ -39,6 +40,10 @@ export function App() {
 
   if (pathname === '/admin/users') {
     return <AdminUsersPage />;
+  }
+
+  if (pathname === '/admin/roles') {
+    return <AdminRolesPage />;
   }
 
   if (pathname === '/learn') {
