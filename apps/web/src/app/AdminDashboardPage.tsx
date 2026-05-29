@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
+import '../styles/admin.css';
 
 type LoadState =
   | { status: 'idle' }
