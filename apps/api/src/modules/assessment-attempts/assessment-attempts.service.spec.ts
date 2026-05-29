@@ -133,7 +133,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   };
 
   it('creates attempt for published assessment', async () => {
-    const service = new AssessmentAttempsService(createBasePrismaMock('published'));
+    const service = new AssessmentAttemptService(createBasePrismaMock('published'));
 
     const attempt = await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
 
@@ -145,13 +145,13 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   });
 
   it('rejects attempt for draft assessment', async () => {
-    const service = new AssessmentAttempsService(createBasePrismaMock('draft'));
+    const service = new AssessmentAttemptService(createBasePrismaMock('draft'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects attempt for archived assessment', async () => {
-    const service = new AssessmentAttempsService(createBasePrismaMock('archived'));
+    const service = new AssessmentAttemptService(createBasePrismaMock('archived'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
