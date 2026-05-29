@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
+  CreateAssessmentAttemptInput,
   createAssessmentAttemptAnswerSchema,
   createAssessmentAttemptSchema,
 } from './assessment-attempts.schemas.js';
@@ -122,7 +123,7 @@ function createBasePrismaMock(status: 'draft' | 'published' | 'archived') {
 }
 
 describe('AssessmentAttemptsService attempt eligibility', () => {
-  const attemptInput = {
+  const attemptInput: CreateAssessmentAttemptInput = {
     answers: [
       {
         questionId,
@@ -132,7 +133,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   };
 
   it('creates attempt for published assessment', async () => {
-    const service = new AssessmentAttemptsService(createBasePrismaMock('published'));
+    const service = new AssessmentAttempsService(createBasePrismaMock('published'));
 
     const attempt = await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
 
@@ -144,13 +145,13 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   });
 
   it('rejects attempt for draft assessment', async () => {
-    const service = new AssessmentAttemptsService(createBasePrismaMock('draft'));
+    const service = new AssessmentAttempsService(createBasePrismaMock('draft'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects attempt for archived assessment', async () => {
-    const service = new AssessmentAttemptsService(createBasePrismaMock('archived'));
+    const service = new AssessmentAttempsService(createBasePrismaMock('archived'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -186,7 +187,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
       },
     } as unknown as PrismaService;
 
-    const service = new AssessmentAttemptsService(prisma);
+    const service = new AssessmentAttemptSService(prisma);
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
     expect(createAttemptCalled).toBe(false);
