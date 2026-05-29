@@ -1,29 +1,21 @@
 # API Status
 
 Last synced: 2026-05-28  
-Source branch: `feature/learner-certificate-report-shell`
+Source branch: `fix/secure-public-user-organization-creation`
 
 ## Current status
 
-Learner certificate list/detail web flow is available for the current MVP baseline:
+Security hardening for public creation endpoints is in place for the current MVP baseline:
 
-- `/learn/certificates` is implemented in `apps/web`.
-- `/learn/certificates/:id` is implemented in `apps/web`.
-- The learner home page links to the certificates page.
-- The frontend API client calls the existing `GET /api/v1/certificates` endpoint.
-- The frontend API client calls the existing `GET /api/v1/certificates/:id` endpoint.
-- Missing tokens and `401 Unauthorized` responses show a basic learner-facing auth message.
-- `404 Not Found` certificate detail responses show a basic not-found state.
-- Empty certificate lists show a basic empty state.
-- No backend runtime API behavior changed in this PR.
+- Direct `POST /api/v1/users` now requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`.
+- Direct `POST /api/v1/users` is limited to `rolePolicies.usersCreate`.
+- Direct `POST /api/v1/users` validates `body.organizationId` against the authenticated user's organization scope.
+- Direct `POST /api/v1/organizations` now requires `AuthGuard` and `RolesGuard`.
+- Direct `POST /api/v1/organizations` is limited to the new `rolePolicies.organizationsCreate` admin policy.
+- Public `POST /api/v1/organizations/register` remains available as the explicit workspace registration flow.
 
 ## Current limitations
 
-- No certificate generation UI.
-- No certificate download/export/PDF UI.
-- No reports UI.
-- No filters/search/sort.
-- No enrollment UI.
 - No refresh token flow.
 - No logout flow.
 - No global state manager.
@@ -33,9 +25,10 @@ Learner certificate list/detail web flow is available for the current MVP baseli
 
 ## Endpoint map
 
-No production API endpoint changes in this PR. The web flow uses existing contracts:
-
 ```text
-GET /api/v1/certificates
-GET /api/v1/certificates/:id
+POST /api/v1/users                  protected
+POST /api/v1/users/bulk             protected
+POST /api/v1/users/import           protected
+POST /api/v1/organizations          protected
+POST /api/v1/organizations/register public registration flow
 ```

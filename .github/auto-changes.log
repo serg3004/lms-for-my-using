@@ -10,3 +10,11 @@
 [2026-05-28T16:52:10Z] DOCS: updated README, API status, project log, and audit log
 [2026-05-28T16:52:11Z] CHECK: local checks not run in GitHub API environment
 [2026-05-28T16:52:12Z] ROLLBACK: revert PR or delete branch feature/learner-certificate-report-shell
+[2026-05-28T17:24:00Z] BRANCH: fix/secure-public-user-organization-creation
+[2026-05-28T17:24:01Z] TASK: PR 20 secure public user and organization creation
+[2026-05-28T17:24:02Z] READ: users controller/schema, organizations controller/schema, auth roles, docs
+[2026-05-28T17:25:17Z] CHANGE: protected direct POST /users and POST /organizations with auth/RBAC guards
+[2026-05-28T17:26:28Z] TESTS: added controller tests for guarded direct creation endpoints
+[2026-05-28T17:27:00Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-28T17:27:01Z] CHECK: local checks not run in GitHub API environment
+[2026-05-28T17:27:02Z] ROLLBACK: revert PR or delete branch fix/secure-public-user-organization-creation

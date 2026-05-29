@@ -54,6 +54,9 @@ export class UsersController {
   }
 
   @Post()
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.usersCreate)
+  @OrganizationScope('body', 'organizationId')
   createUser(@Body() body: unknown) {
     const input: CreateUserInput = createUserSchema.parse(body);
 
