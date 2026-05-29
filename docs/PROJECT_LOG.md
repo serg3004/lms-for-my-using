@@ -2,6 +2,42 @@
 
 ## 2026-05-29
 
+### Add admin layout and dashboard
+
+Implemented PR 23 scope on `feat/admin-layout-dashboard`.
+
+Changes:
+- Added `/admin` web route.
+- Added `AdminDashboardPage` shell.
+- Reused existing auth token and `GET /api/v1/auth/me` flow.
+- Added loading, missing token, `401 Unauthorized`, and generic error states.
+- Added basic admin sidebar/dashboard links for users, roles, org structure, courses, assessments, and reports.
+- Added `/admin` link to root navigation.
+- Updated README, API status, project log, and audit log.
+
+Deferred:
+- Admin role-specific frontend guard.
+- User management UI.
+- Role assignment UI.
+- Org structure UI.
+- Course builder.
+- Assessment builder.
+- Reports dashboard.
+- Prisma schema/migration changes.
+- CI/CD changes.
+- Dependency changes.
+
+Current PR check status:
+
+```text
+[Check] Lint: not run
+[Check] Types: not run
+[Check] Tests: not run
+[Check] Build: not run
+```
+
+## 2026-05-29
+
 ### Add workspace registration/login/logout hardening
 
 Implemented PR 22 scope on `fix/workspace-registration-login-logout-hardening`.
@@ -13,23 +49,6 @@ Changes:
 - Added web logout helper that clears the stored access token in `finally`.
 - Added controller tests for missing bearer token and valid logout flow.
 - Updated README, API status, project log, and audit log.
-
-Deferred:
-- Refresh token flow.
-- Server-side token revocation list.
-- Prisma schema/migration changes.
-- CI/CD changes.
-- Dependency changes.
-- Frontend redesign.
-
-Current PR check status:
-
-```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
-```
 
 ## 2026-05-29
 
@@ -43,7 +62,6 @@ Changes:
 - Kept attempts allowed for `published` assessments when existing gates pass.
 - Aligned shared `ApiErrorResponse` with the backend error envelope.
 - Added service tests for published, draft, and archived assessment attempt eligibility.
-- Updated API status, project log, and audit log.
 
 ## 2026-05-28
 
@@ -57,4 +75,3 @@ Changes:
 - Kept `POST /api/v1/organizations/register` public as the explicit workspace registration flow.
 - Added `rolePolicies.organizationsCreate`.
 - Added controller tests for protected direct creation endpoints and public registration metadata.
-- Updated README, API status, project log, and audit log.
