@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AdminDashboardPage } from './AdminDashboardPage.js';
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
 import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
 import { LearnerAssignmentDetailPage } from './LearnerAssignmentDetailPage.js';
@@ -29,6 +30,10 @@ export function App() {
 
   if (pathname === '/login') {
     return <LoginPage />;
+  }
+
+  if (pathname === '/admin') {
+    return <AdminDashboardPage />;
   }
 
   if (pathname === '/learn') {
@@ -120,6 +125,7 @@ export function App() {
       <p>{t('app.subtitle')}</p>
       <nav>
         <a href="/login">{t('login.navLink')}</a>
+        <a href="/admin">{t('admin.navLink', 'Admin')}</a>
         <a href="/learn">{t('learner.navLink')}</a>
         <a href="/learn/courses">{t('courses.navLink')}</a>
         <a href="/learn/progress">{t('progress.navLink')}</a>

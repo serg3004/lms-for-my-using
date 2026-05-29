@@ -22,6 +22,7 @@ Implemented backend foundation:
 - MVP Definition of Done, Pilot Checklist, Local Runbook, Seed Data
 - RBAC Matrix and API Contracts
 - Web auth shell and learner-facing flows
+- Admin dashboard shell at `/admin`
 - Learner certificate list/detail web flow with `/learn/certificates` and `/learn/certificates/:id`
 
 ## Implemented backend API
@@ -85,6 +86,26 @@ POST /api/v1/certificates
 
 `POST /api/v1/auth/logout` validates the bearer token before returning a stateless logout acknowledgement. The web logout helper clears the stored access token in `finally`.
 
+## Implemented web flows
+
+```text
+/login
+/admin
+/learn
+/learn/courses
+/learn/courses/:id
+/learn/courses/:id/lessons
+/learn/lessons/:id
+/learn/lessons/:id/materials
+/learn/progress
+/learn/assignments
+/learn/assignments/:id
+/learn/assessments
+/learn/assessments/:id
+/learn/certificates
+/learn/certificates/:id
+```
+
 ## MVP docs
 
 - `docs/MVP_DEFINITION_OF_DONE.md`
@@ -105,4 +126,4 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Stabilization and bugfixes after learner MVP web shell.
+1. Admin user management UI.
