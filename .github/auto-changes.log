@@ -1,17 +1,20 @@
 [2026-05-28T17:24:00Z] BRANCH: fix/secure-public-user-organization-creation
 [2026-05-28T17:24:01Z] TASK: PR 20 secure public user and organization creation
-[2026-05-28T17:24:02Z] READ: users controller/schema, organizations controller/schema, auth roles, docs
 [2026-05-28T17:25:17Z] CHANGE: protected direct POST /users and POST /organizations with auth/RBAC guards
 [2026-05-28T17:26:28Z] TESTS: added controller tests for guarded direct creation endpoints
-[2026-05-28T17:27:00Z] DOCS: updated README, API status, project log, and audit log
 [2026-05-28T17:27:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-28T17:27:02Z] ROLLBACK: revert PR or delete branch fix/secure-public-user-organization-creation
 [2026-05-29T03:50:00Z] BRANCH: fix/assessment-attempt-eligibility-api-error-contract
 [2026-05-29T03:50:01Z] TASK: PR 21 fix assessment attempt eligibility and API error contract
-[2026-05-29T03:50:02Z] READ: assessment attempts service/spec, assessment schemas, API exception filter, shared API types, docs
 [2026-05-29T03:53:27Z] CHANGE: blocked attempts for draft and archived assessments
-[2026-05-29T03:53:57Z] TESTS: added published/draft/archived assessment attempt eligibility coverage
 [2026-05-29T03:54:03Z] CHANGE: aligned shared API error response type with backend envelope
-[2026-05-29T03:55:00Z] DOCS: updated API status, project log, and audit log
-[2026-05-29T03:55:01Z] CHECK: local checks not run in GitHub API environment
-[2026-05-29T03:55:02Z] ROLLBACK: revert PR or delete branch fix/assessment-attempt-eligibility-api-error-contract
+[2026-05-29T04:20:41Z] TESTS: normalized assessment attempt eligibility service tests
+[2026-05-29T04:20:42Z] CHECK: local checks not run in GitHub API environment
+[2026-05-29T04:35:00Z] BRANCH: fix/workspace-registration-login-logout-hardening
+[2026-05-29T04:35:01Z] TASK: PR 22 add workspace registration/login/logout hardening
+[2026-05-29T04:37:17Z] CHANGE: added authenticated POST /auth/logout controller action
+[2026-05-29T04:37:47Z] CHANGE: added stateless AuthService.logout result
+[2026-05-29T04:38:12Z] TESTS: added auth controller logout tests
+[2026-05-29T04:38:35Z] CHANGE: added web logout helper with token cleanup in finally
+[2026-05-29T04:39:47Z] DOCS: updated README, API status, project log, and audit log
+[2026-05-29T04:39:48Z] CHECK: local checks not run in GitHub API environment
+[2026-05-29T04:39:49Z] ROLLBACK: revert PR or delete branch fix/workspace-registration-login-logout-hardening
