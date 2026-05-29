@@ -13,7 +13,9 @@ Implemented backend foundation:
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
 - Protected direct user and organization creation endpoints
 - Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
+- Assessment attempts are allowed only for published assessments
 - Centralized API error format
+- Shared API error response type aligned with backend error envelope
 - OpenAPI document skeleton
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - MVP API smoke coverage
@@ -71,6 +73,7 @@ POST /api/v1/progress
 GET  /api/v1/assessments
 GET  /api/v1/assessments/:id
 POST /api/v1/assessments
+POST /api/v1/assessments/:assessmentId/attempts
 
 GET  /api/v1/certificates
 GET  /api/v1/certificates/:id

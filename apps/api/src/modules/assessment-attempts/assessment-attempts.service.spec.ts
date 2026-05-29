@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
+  CreateAssessmentAttemptInput,
   createAssessmentAttemptAnswerSchema,
   createAssessmentAttemptSchema,
 } from './assessment-attempts.schemas.js';
@@ -11,6 +12,28 @@ const organizationId = '11111111-1111-1111-1111-111111111111';
 const assessmentId = '22222222-2222-2222-2222-222222222222';
 const courseId = '33333333-3333-3333-3333-333333333333';
 const userId = '44444444-4444-4444-4444-444444444444';
+const questionId = '55555555-5555-5555-5555-555555555555';
+const optionId = '66666666-6666-6666-6666-666666666666';
+
+const attemptInput: CreateAssessmentAttemptInput = {
+  answers: [
+    {
+      questionId,
+      selectedOptionId: optionId,
+    },
+  ],
+};
+
+type AssessmentStatus = 'draft' | 'published' | 'archived';
+
+type AssessmentAttemptTransaction = {
+  assessmentAttempt: {
+    create: () => Promise<{ id: string }>;
+  };
+  assessmentAttemptAnswer: {
+    createMany: () => Promise<{ count: number }>;
+  };
+};
 
 describe('Assessment attempts validation', () => {
   it('accepts valid single choice attempt input', () => {
@@ -57,7 +80,93 @@ describe('Assessment attempts validation', () => {
   });
 });
 
-describe('AssessmentAttemptsService completion gate', () => {
+function createBasePrismaMock(status: AssessmentStatus) {
+  return {
+    assessment: {
+      findFirst: async () => ({
+        id: assessmentId,
+        courseId,
+        status,
+        passingScore: 70,
+        maxAttempts: null,
+        availableAfterCourseCompletion: false,
+      }),
+    },
+    user: {
+      findFirst: async () => ({ id: userId }),
+    },
+    lesson: {
+      count: async () => 0,
+    },
+    progress: {
+      count: async () => 0,
+    },
+    assessmentAttempt: {
+      count: async () => 0,
+      findFirst: async () => ({
+        id: 'attempt-id',
+        organizationId,
+        assessmentId,
+        userId,
+        status: 'completed',
+        score: 1,
+        maxScore: 1,
+        percentage: 100,
+        passed: true,
+        startedAt: new Date('2026-05-28T00:00:00.000Z'),
+        completedAt: new Date('2026-05-28T00:00:00.000Z'),
+        createdAt: new Date('2026-05-28T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-28T00:00:00.000Z'),
+        answers: [],
+      }),
+    },
+    assessmentQuestion: {
+      findMany: async () => [
+        {
+          id: questionId,
+          type: 'single_choice',
+          points: 1,
+          options: [{ id: optionId, isCorrect: true }],
+        },
+      ],
+    },
+    $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
+      callback({
+        assessmentAttempt: {
+          create: async () => ({ id: 'attempt-id' }),
+        },
+        assessmentAttemptAnswer: {
+          createMany: async () => ({ count: 1 }),
+        },
+      }),
+  } as unknown as PrismaService;
+}
+
+describe('AssessmentAttemptsService attempt eligibility', () => {
+  it('creates attempt for published assessment', async () => {
+    const service = new AssessmentAttemptsService(createBasePrismaMock('published'));
+
+    const attempt = await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
+
+    expect(attempt).toMatchObject({
+      id: 'attempt-id',
+      status: 'completed',
+      passed: true,
+    });
+  });
+
+  it('rejects attempt for draft assessment', async () => {
+    const service = new AssessmentAttemptsService(createBasePrismaMock('draft'));
+
+    await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects attempt for archived assessment', async () => {
+    const service = new AssessmentAttemptsService(createBasePrismaMock('archived'));
+
+    await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('rejects attempt when gated assessment course is incomplete', async () => {
     let createAttemptCalled = false;
     const prisma = {
@@ -65,6 +174,7 @@ describe('AssessmentAttemptsService completion gate', () => {
         findFirst: async () => ({
           id: assessmentId,
           courseId,
+          status: 'published',
           passingScore: 70,
           maxAttempts: null,
           availableAfterCourseCompletion: true,
@@ -90,16 +200,7 @@ describe('AssessmentAttemptsService completion gate', () => {
 
     const service = new AssessmentAttemptsService(prisma);
 
-    await expect(
-      service.createAttempt(assessmentId, userId, organizationId, {
-        answers: [
-          {
-            questionId: organizationId,
-            selectedOptionId: assessmentId,
-          },
-        ],
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
     expect(createAttemptCalled).toBe(false);
   });
 });
