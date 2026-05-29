@@ -1,34 +1,26 @@
 # API Status
 
-Last synced: 2026-05-28  
-Source branch: `fix/secure-public-user-organization-creation`
+Last synced: 2026-05-29  
+Source branch: `fix/assessment-attempt-eligibility-api-error-contract`
 
 ## Current status
 
-Security hardening for public creation endpoints is in place for the current MVP baseline:
+Assessment attempt eligibility and shared API error typing are hardened for the current MVP baseline:
 
-- Direct `POST /api/v1/users` now requires `AuthGuard`, `RolesGuard`, and `OrganizationScopeGuard`.
-- Direct `POST /api/v1/users` is limited to `rolePolicies.usersCreate`.
-- Direct `POST /api/v1/users` validates `body.organizationId` against the authenticated user's organization scope.
-- Direct `POST /api/v1/organizations` now requires `AuthGuard` and `RolesGuard`.
-- Direct `POST /api/v1/organizations` is limited to the new `rolePolicies.organizationsCreate` admin policy.
-- Public `POST /api/v1/organizations/register` remains available as the explicit workspace registration flow.
+- `POST /api/v1/assessments/:assessmentId/attempts` now rejects attempts for `draft` and `archived` assessments.
+- Assessment attempts remain allowed for `published` assessments when the existing user, course-completion, attempt-limit, question, and answer validation gates pass.
+- Shared `ApiErrorResponse` now matches the backend error envelope with `statusCode`, `error`, `path`, and `timestamp`.
+- Shared `ApiError.details` now reflects backend validation detail objects instead of `unknown`.
 
 ## Current limitations
 
-- No refresh token flow.
-- No logout flow.
-- No global state manager.
 - No Prisma schema or migration changes.
 - No CI/CD changes.
 - No new dependencies.
+- No frontend redesign.
 
 ## Endpoint map
 
 ```text
-POST /api/v1/users                  protected
-POST /api/v1/users/bulk             protected
-POST /api/v1/users/import           protected
-POST /api/v1/organizations          protected
-POST /api/v1/organizations/register public registration flow
+POST /api/v1/assessments/:assessmentId/attempts  protected, published assessments only
 ```
