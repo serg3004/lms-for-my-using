@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 const DEFAULT_API_PORT = 3000;
+const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 const JWT_SECRET_MIN_LENGTH = 32;
 
 const apiEnvSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
+  FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
 });
 
