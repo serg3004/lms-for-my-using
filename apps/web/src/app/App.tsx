@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage.js';
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage.js';
 import { AdminDashboardPage } from './AdminDashboardPage.js';
 import { AdminLessonsPage } from './AdminLessonsPage.js';
@@ -64,6 +65,10 @@ export function App() {
 
   if (pathname === '/admin/materials') {
     return <AdminMaterialsPage />;
+  }
+
+  if (pathname === '/admin/assessments') {
+    return <AdminAssessmentBuilderPage />;
   }
 
   if (pathname === '/learn') {
