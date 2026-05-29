@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CourseSummary, listCourses } from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type CoursesLoadState =
   | { status: 'idle' }
@@ -73,7 +74,7 @@ export function LearnerCoursesPage() {
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('courses.loading')}</p>
+        <PageState message={t('courses.loading')} variant="loading" />
       </main>
     );
   }
@@ -81,9 +82,12 @@ export function LearnerCoursesPage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('courses.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('courses.title')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -91,8 +95,7 @@ export function LearnerCoursesPage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('courses.title')}</h1>
-        <p role="alert">{loadState.message}</p>
+        <PageState title={t('courses.title')} message={loadState.message} variant="error" />
       </main>
     );
   }
@@ -105,7 +108,7 @@ export function LearnerCoursesPage() {
       </nav>
 
       {loadState.courses.length === 0 ? (
-        <p>{t('courses.empty')}</p>
+        <EmptyState message={t('courses.empty')} />
       ) : (
         <ul>
           {loadState.courses.map((course) => (
@@ -116,7 +119,7 @@ export function LearnerCoursesPage() {
                 </h2>
                 <p>{formatCourseDescription(course)}</p>
                 <p>
-                  {t('courses.status')}: {course.status}
+                  {t('courses.status')}: <StatusBadge>{course.status}</StatusBadge>
                 </p>
               </article>
             </li>
