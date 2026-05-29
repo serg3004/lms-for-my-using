@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
 import { getAuthToken } from '../shared/authToken.js';
+import '../styles/admin.css';
 
 type LoadState =
   | { status: 'idle' }
@@ -79,7 +80,7 @@ export function AdminDashboardPage() {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <main className="admin-state">
         <p>{t('admin.loading', 'Loading admin dashboard...')}</p>
       </main>
     );
@@ -87,7 +88,7 @@ export function AdminDashboardPage() {
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <main className="admin-state">
         <h1>{t('admin.title', 'Admin dashboard')}</h1>
         <p role="alert">{loadState.message}</p>
         <a href="/login">{t('login.navLink')}</a>
@@ -97,7 +98,7 @@ export function AdminDashboardPage() {
 
   if (loadState.status === 'error') {
     return (
-      <main>
+      <main className="admin-state">
         <h1>{t('admin.title', 'Admin dashboard')}</h1>
         <p role="alert">{loadState.message}</p>
       </main>
@@ -105,43 +106,55 @@ export function AdminDashboardPage() {
   }
 
   return (
-    <main>
-      <aside aria-label={t('admin.sidebarLabel', 'Admin navigation')}>
-        <a href="/admin">{t('admin.navLink', 'Admin')}</a>
-        <nav>
+    <main className="admin-layout">
+      <aside className="admin-sidebar" aria-label={t('admin.sidebarLabel', 'Admin navigation')}>
+        <a className="admin-brand" href="/admin">
+          {t('admin.navLink', 'Admin')}
+        </a>
+        <nav className="admin-nav">
           {adminSections.map((section) => (
-            <a href={section.href} key={section.key}>
+            <a className="admin-nav-link" href={section.href} key={section.key}>
               {t(`admin.sections.${section.key}.title`, section.key)}
             </a>
           ))}
         </nav>
       </aside>
-      <section>
-        <header>
-          <h1>{t('admin.title', 'Admin dashboard')}</h1>
-          <p>{t('admin.subtitle', 'MVP entry point for admin workspace operations.')}</p>
+      <section className="admin-shell">
+        <header className="admin-topbar">
+          <div>
+            <h1>{t('admin.title', 'Admin dashboard')}</h1>
+            <p>{t('admin.subtitle', 'MVP entry point for admin workspace operations.')}</p>
+          </div>
+          <div className="admin-user-summary" aria-label={t('admin.profileTitle', 'Admin profile')}>
+            <strong>{getUserDisplayName(loadState.user)}</strong>
+            <span>{loadState.user.email}</span>
+          </div>
         </header>
-        <section>
-          <h2>{t('admin.profileTitle', 'Admin profile')}</h2>
-          <dl>
-            <dt>{t('admin.name', 'Name')}</dt>
-            <dd>{getUserDisplayName(loadState.user)}</dd>
-            <dt>{t('admin.email', 'Email')}</dt>
-            <dd>{loadState.user.email}</dd>
-            <dt>{t('admin.organizationId', 'Organization ID')}</dt>
-            <dd>{loadState.user.organizationId}</dd>
-          </dl>
-        </section>
-        <section>
-          <h2>{t('admin.sectionsTitle', 'Admin sections')}</h2>
-          <ul>
-            {adminSections.map((section) => (
-              <li key={section.key}>
-                <a href={section.href}>{t(`admin.sections.${section.key}.title`, section.key)}</a>
-                <p>{t(`admin.sections.${section.key}.description`, 'Coming soon.')}</p>
-              </li>
-            ))}
-          </ul>
+
+        <section className="admin-content-grid">
+          <article className="admin-card">
+            <h2>{t('admin.profileTitle', 'Admin profile')}</h2>
+            <dl className="admin-profile-list">
+              <dt>{t('admin.name', 'Name')}</dt>
+              <dd>{getUserDisplayName(loadState.user)}</dd>
+              <dt>{t('admin.email', 'Email')}</dt>
+              <dd>{loadState.user.email}</dd>
+              <dt>{t('admin.organizationId', 'Organization ID')}</dt>
+              <dd>{loadState.user.organizationId}</dd>
+            </dl>
+          </article>
+
+          <article className="admin-card">
+            <h2>{t('admin.sectionsTitle', 'Admin sections')}</h2>
+            <ul className="admin-section-list">
+              {adminSections.map((section) => (
+                <li key={section.key}>
+                  <a href={section.href}>{t(`admin.sections.${section.key}.title`, section.key)}</a>
+                  <p>{t(`admin.sections.${section.key}.description`, 'Coming soon.')}</p>
+                </li>
+              ))}
+            </ul>
+          </article>
         </section>
       </section>
     </main>
