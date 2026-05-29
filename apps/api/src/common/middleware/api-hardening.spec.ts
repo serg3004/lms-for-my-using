@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import { createSecurityHeadersMiddleware, createSensitiveRouteRateLimitMiddleware } from './api-hardening';
 
 type TestRequest = {
@@ -41,18 +39,27 @@ function createResponse() {
   };
 }
 
+function createNextTracker() {
+  return {
+    calls: 0,
+    next() {
+      this.calls += 1;
+    },
+  };
+}
+
 describe('API hardening middleware', () => {
   it('sets security headers', () => {
     const middleware = createSecurityHeadersMiddleware();
     const request = createRequest();
     const response = createResponse();
-    const next = jest.fn();
+    const nextTracker = createNextTracker();
 
-    middleware(request as never, response as never, next);
+    middleware(request as never, response as never, nextTracker.next.bind(nextTracker));
 
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(response.headers.get('X-Frame-Options')).toBe('DENY');
-    expect(next).toHaveBeenCalledTimes(1);
+    expect(nextTracker.calls).toBe(1);
   });
 
   it('limits sensitive POST routes after the configured threshold', () => {
@@ -62,32 +69,33 @@ describe('API hardening middleware', () => {
     const response = createResponse();
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      middleware(request as never, createResponse() as never, jest.fn());
+      const nextTracker = createNextTracker();
+      middleware(request as never, createResponse() as never, nextTracker.next.bind(nextTracker));
     }
 
-    const next = jest.fn();
-    middleware(request as never, response as never, next);
+    const nextTracker = createNextTracker();
+    middleware(request as never, response as never, nextTracker.next.bind(nextTracker));
 
     expect(response.statusCode).toBe(429);
     expect(response.body).toBe(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
-    expect(next).not.toHaveBeenCalled();
+    expect(nextTracker.calls).toBe(0);
 
     currentTime += 60_001;
-    const nextAfterReset = jest.fn();
-    middleware(request as never, createResponse() as never, nextAfterReset);
+    const nextAfterReset = createNextTracker();
+    middleware(request as never, createResponse() as never, nextAfterReset.next.bind(nextAfterReset));
 
-    expect(nextAfterReset).toHaveBeenCalledTimes(1);
+    expect(nextAfterReset.calls).toBe(1);
   });
 
   it('skips non-sensitive routes', () => {
     const middleware = createSensitiveRouteRateLimitMiddleware();
     const request = createRequest({ url: '/api/v1/courses' });
-    const next = jest.fn();
+    const nextTracker = createNextTracker();
 
     for (let attempt = 0; attempt < 25; attempt += 1) {
-      middleware(request as never, createResponse() as never, next);
+      middleware(request as never, createResponse() as never, nextTracker.next.bind(nextTracker));
     }
 
-    expect(next).toHaveBeenCalledTimes(25);
+    expect(nextTracker.calls).toBe(25);
   });
 });
