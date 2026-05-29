@@ -15,6 +15,26 @@ const userId = '44444444-4444-4444-4444-444444444444';
 const questionId = '55555555-5555-5555-5555-555555555555';
 const optionId = '66666666-6666-6666-6666-666666666666';
 
+const attemptInput: CreateAssessmentAttemptInput = {
+  answers: [
+    {
+      questionId,
+      selectedOptionId: optionId,
+    },
+  ],
+};
+
+type AssessmentStatus = 'draft' | 'published' | 'archived';
+
+type AssessmentAttemptTransaction = {
+  assessmentAttempt: {
+    create: () => Promise<{ id: string }>;
+  };
+  assessmentAttemptAnswer: {
+    createMany: () => Promise<{ count: number }>;
+  };
+};
+
 describe('Assessment attempts validation', () => {
   it('accepts valid single choice attempt input', () => {
     const input = createAssessmentAttemptSchema.parse({
@@ -60,7 +80,7 @@ describe('Assessment attempts validation', () => {
   });
 });
 
-function createBasePrismaMock(status: 'draft' | 'published' | 'archived') {
+function createBasePrismaMock(status: AssessmentStatus) {
   return {
     assessment: {
       findFirst: async () => ({
@@ -110,7 +130,7 @@ function createBasePrismaMock(status: 'draft' | 'published' | 'archived') {
         },
       ],
     },
-    $transaction: async (callback: (tx: unknown) => Promise<string>) =>
+    $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
       callback({
         assessmentAttempt: {
           create: async () => ({ id: 'attempt-id' }),
@@ -123,17 +143,8 @@ function createBasePrismaMock(status: 'draft' | 'published' | 'archived') {
 }
 
 describe('AssessmentAttemptsService attempt eligibility', () => {
-  const attemptInput: CreateAssessmentAttemptInput = {
-    answers: [
-      {
-        questionId,
-        selectedOptionId: optionId,
-      },
-    ],
-  };
-
   it('creates attempt for published assessment', async () => {
-    const service = new AssessmentAttemptService(createBasePrismaMock('published'));
+    const service = new AssessmentAttemptsService(createBasePrismaMock('published'));
 
     const attempt = await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
 
@@ -145,13 +156,13 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   });
 
   it('rejects attempt for draft assessment', async () => {
-    const service = new AssessmentAttemptService(createBasePrismaMock('draft'));
+    const service = new AssessmentAttemptsService(createBasePrismaMock('draft'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects attempt for archived assessment', async () => {
-    const service = new AssessmentAttemptService(createBasePrismaMock('archived'));
+    const service = new AssessmentAttemptsService(createBasePrismaMock('archived'));
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -187,7 +198,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
       },
     } as unknown as PrismaService;
 
-    const service = new AssessmentAttemptService(prisma);
+    const service = new AssessmentAttemptsService(prisma);
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
     expect(createAttemptCalled).toBe(false);
