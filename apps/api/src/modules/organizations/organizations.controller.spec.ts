@@ -1,10 +1,10 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { jest } from '@jest/globals';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { rolePolicies, rolesMetadataKey } from '../auth/roles';
 import { RolesGuard } from '../auth/roles.guard';
 import { OrganizationsController } from './organizations.controller';
+import { CreateOrganizationInput } from './organizations.schemas';
 import { OrganizationsService } from './organizations.service';
 
 describe('OrganizationsController', () => {
@@ -28,21 +28,26 @@ describe('OrganizationsController', () => {
   });
 
   it('creates an organization through the guarded controller action', () => {
-    const createOrganization = jest.fn((input: typeof createOrganizationInput) => ({
-      id: 'organization-id',
-      ...input,
-    }));
+    const calls: CreateOrganizationInput[] = [];
+    const createOrganization = (input: CreateOrganizationInput) => {
+      calls.push(input);
+
+      return {
+        id: 'organization-id',
+        ...input,
+      };
+    };
     const controller = new OrganizationsController({
       createOrganization,
     } as unknown as OrganizationsService);
 
     const result = controller.createOrganization(createOrganizationInput);
 
-    expect(createOrganization).toHaveBeenCalledWith({
+    expect(calls).toEqual([{
       ...createOrganizationInput,
       status: 'active',
       plan: 'trial',
-    });
+    }]);
     expect(result).toEqual({
       id: 'organization-id',
       ...createOrganizationInput,
