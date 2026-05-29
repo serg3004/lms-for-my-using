@@ -187,7 +187,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
       },
     } as unknown as PrismaService;
 
-    const service = new AssessmentAttemptSService(prisma);
+    const service = new AssessmentAttemptService(prisma);
 
     await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(BadRequestException);
     expect(createAttemptCalled).toBe(false);
