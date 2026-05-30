@@ -26,16 +26,20 @@ function createContext(request: AuthenticatedRequest) {
   } as unknown as ExecutionContext;
 }
 
+function createAuthService(tokens: string[] = []) {
+  return {
+    getCurrentUser: async (token: string) => {
+      tokens.push(token);
+
+      return currentUser;
+    },
+  } as unknown as AuthService;
+}
+
 describe('AuthGuard', () => {
   it('attaches current user for a valid bearer token', async () => {
     const tokens: string[] = [];
-    const authService = {
-      getCurrentUser: async (token: string) => {
-        tokens.push(token);
-
-        return currentUser;
-      },
-    } as unknown as AuthService;
+    const authService = createAuthService(tokens);
     const request: AuthenticatedRequest = {
       headers: { authorization: 'Bearer token' },
     };
@@ -47,14 +51,47 @@ describe('AuthGuard', () => {
     expect(request.currentUser).toBe(currentUser);
   });
 
-  it('rejects requests without bearer token', async () => {
-    const authService = {
-      getCurrentUser: async () => currentUser,
-    } as unknown as AuthService;
-    const request: AuthenticatedRequest = { headers: {} };
+  it('uses the first authorization header when multiple values are provided', async () => {
+    const tokens: string[] = [];
+    const authService = createAuthService(tokens);
+    const request: AuthenticatedRequest = {
+      headers: { authorization: ['Bearer first-token', 'Bearer second-token'] },
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
+
+    expect(tokens).toEqual(['first-token']);
+    expect(request.currentUser).toBe(currentUser);
+  });
+
+  it('trims bearer tokens before validation', async () => {
+    const tokens: string[] = [];
+    const authService = createAuthService(tokens);
+    const request: AuthenticatedRequest = {
+      headers: { authorization: 'Bearer   padded-token   ' },
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
+
+    expect(tokens).toEqual(['padded-token']);
+  });
+
+  it.each([
+    ['missing authorization header', undefined],
+    ['empty authorization header', ''],
+    ['bearer without token', 'Bearer '],
+    ['wrong authorization scheme', 'Basic token'],
+    ['lowercase bearer scheme', 'bearer token'],
+  ])('rejects %s', async (_label, authorization) => {
+    const tokens: string[] = [];
+    const authService = createAuthService(tokens);
+    const request: AuthenticatedRequest = {
+      headers: { authorization },
+    };
 
     await expect(new AuthGuard(authService).canActivate(createContext(request))).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+    expect(tokens).toEqual([]);
   });
 });
