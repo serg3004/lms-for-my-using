@@ -18,28 +18,65 @@ const currentUser = {
   timezone: 'Asia/Almaty',
 };
 
+function createAuthService() {
+  const tokens: string[] = [];
+  let logoutCalls = 0;
+  const authService = {
+    getCurrentUser: async (accessToken: string) => {
+      tokens.push(accessToken);
+
+      return currentUser;
+    },
+    logout: () => {
+      logoutCalls += 1;
+
+      return { accepted: true };
+    },
+  } as unknown as AuthService;
+
+  return {
+    authService,
+    getTokens: () => tokens,
+    getLogoutCalls: () => logoutCalls,
+  };
+}
+
 describe('AuthController logout', () => {
   it('rejects logout without bearer token', async () => {
-    const controller = new AuthController({} as AuthService);
+    controller = new AuthController({} as AuthService);
 
     await expect(controller.logout(undefined)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('validates bearer token before accepting logout', async () => {
-    const tokens: string[] = [];
-    const authService = {
-      getCurrentUser: async (accessToken: string) => {
-        tokens.push(accessToken);
+  it('rejects logout with empty bearer token', async () => {
+    controller = new AuthController({} as AuthService);
 
-        return currentUser;
-      },
-      logout: () => ({ accepted: true }),
-    } as unknown as AuthService;
-    const controller = new AuthController(authService);
+    await expect(controller.logout('Bearer ')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects logout with an invalid authorization scheme', async () => {
+    const controller = new AuthController({} as AuthService);
+
+    await expect(controller.logout('Basic access-token')).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('validates bearer token before accepting logout', async () => {
+    const { authService, getTokens, getLogoutCalls } = createAuthService();
+    controller = new AuthController(authService);
 
     const result = await controller.logout('Bearer access-token');
 
-    expect(tokens).toEqual(['access-token']);
+    expect(getTokens()).toEqual(['access-token']);
+    expect(getLogoutCalls()).toBe(1);
     expect(result).toEqual({ accepted: true });
+  });
+
+  it('trims bearer token before validating logout', async () => {
+    const { authService, getTokens } = createAuthService();
+    const controller = new AuthController(authService);
+
+    await expect(controller.logout('Bearer   access-token   ')).resolves.toEqual({ accepted: true });
+
+    expect(getTokens()).toEqual(['access-token']);
   });
 });
