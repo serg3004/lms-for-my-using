@@ -8,6 +8,10 @@ const userJwtPayload = {
   email: 'user@example.com',
 };
 
+function base64UrlEncode(input: unknown) {
+  return Buffer.from(JSON.stringify(input)).toString('base64url');
+}
+
 describe('Auth tokens', () => {
   const originalJwtSecret = process.env.JWT_SECRET;
 
@@ -55,5 +59,23 @@ describe('Auth tokens', () => {
     const token = signJwt(userJwtPayload, jwtSecret);
 
     expect(() => verifyJwt(token, 'abcdef0123456789abcdef0123456789')).toThrow();
+  });
+
+  it('rejects a token with an unsupported header', () => {
+    const token = signJwt(userJwtPayload, jwtSecret);
+    const [, body, signature] = token.split('.');
+    const header = base64UrlEncode({ alg: 'none', typ: 'JWT' });
+
+    expect(() => verifyJwt(`${header}.${body}.${signature}`, jwtSecret)).toThrow(/Invalid JWT header/);
+  });
+
+  it('rejects a token with extra segments', () => {
+    const token = signJwt(userJwtPayload, jwtSecret);
+
+    expect(() => verifyJwt(`${token}.extra`, jwtSecret)).toThrow(/Invalid JWT/);
+  });
+
+  it('rejects malformed JWT JSON without leaking parser errors', () => {
+    expect(() => verifyJwt('not-json.body.signature', jwtSecret)).toThrow(/Invalid JWT header/);
   });
 });
