@@ -32,3 +32,9 @@
 [2026-05-30T15:48:03Z] CHANGE: hardened JWT structure/header/claims validation and added negative token tests
 [2026-05-30T15:48:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-30T15:48:05Z] ROLLBACK: revert PR or delete branch fix/auth-session-jwt-hardening
+[2026-05-30T16:24:00Z] BRANCH: test/auth-session-token-negative-cleanup
+[2026-05-30T16:24:01Z] TASK: PR 40 auth/session token negative tests cleanup
+[2026-05-30T16:24:02Z] READ: auth.tokens, auth.tokens.spec, auth.service, audit log
+[2026-05-30T16:24:03Z] CHANGE: cleaned JWT negative test helper and added signed malformed claims coverage
+[2026-05-30T16:24:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-30T16:24:05Z] ROLLBACK: revert PR or delete branch test/auth-session-token-negative-cleanup

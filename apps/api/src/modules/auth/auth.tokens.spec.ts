@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { signJwt, verifyJwt } from './auth.tokens';
 
 const jwtSecret = '0123456789abcdef0123456789abcdef';
@@ -10,6 +12,32 @@ const userJwtPayload = {
 
 function base64UrlEncode(input: unknown) {
   return Buffer.from(JSON.stringify(input)).toString('base64url');
+}
+
+function base64UrlEncodeRaw(input: string) {
+  return Buffer.from(input).toString('base64url');
+}
+
+function signTokenParts(header: unknown, body: unknown | string, isRawBody = false) {
+  const encodedHeader = base64UrlEncode(header);
+  const encodedBody = isRawBody ? base64UrlEncodeRaw(body as string) : base64UrlEncode(body);
+  const signature = createHmac('sha256', jwtSecret).update(`${encodedHeader}.${encodedBody}`).digest('base64url');
+
+  return `${encodedHeader}.${encodedBody}.${signature}`;
+}
+
+function expectSafeTokenError(token: string, expectedMessage: RegExp) {
+  try {
+    verifyJwt(token, jwtSecret);
+    throw new Error('Expected JWT verification to fail');
+  } catch (error) {
+    expect(error).toBeInstanceOf(Error);
+
+    const message = (error as Error).message;
+
+    expect(message).toMatch(expectedMessage);
+    expect(message).not.toMatch(/Unexpected|SyntaxError|position|JSON\.parse/);
+  }
 }
 
 describe('Auth tokens', () => {
@@ -66,16 +94,42 @@ describe('Auth tokens', () => {
     const [, body, signature] = token.split('.');
     const header = base64UrlEncode({ alg: 'none', typ: 'JWT' });
 
-    expect(() => verifyJwt(`${header}.${body}.${signature}`, jwtSecret)).toThrow(/Invalid JWT header/);
+    expectSafeTokenError(`${header}.${body}.${signature}`, /Invalid JWT header/);
   });
 
   it('rejects a token with extra segments', () => {
     const token = signJwt(userJwtPayload, jwtSecret);
 
-    expect(() => verifyJwt(`${token}.extra`, jwtSecret)).toThrow(/Invalid JWT/);
+    expectSafeTokenError(`${token}.extra`, /Invalid JWT/);
   });
 
   it('rejects malformed JWT JSON without leaking parser errors', () => {
-    expect(() => verifyJwt('not-json.body.signature', jwtSecret)).toThrow(/Invalid JWT header/);
+    expectSafeTokenError('not-json.body.signature', /Invalid JWT header/);
+  });
+
+  it('rejects malformed signed claims without leaking parser errors', () => {
+    const token = signTokenParts({ alg: 'HS256', typ: 'JWT' }, 'not-json', true);
+
+    expectSafeTokenError(token, /Invalid JWT claims/);
+  });
+
+  it('rejects signed claims with missing required fields', () => {
+    const token = signTokenParts({ alg: 'HS256', typ: 'JWT' }, { sub: userJwtPayload.sub });
+
+    expectSafeTokenError(token, /Invalid JWT claims/);
+  });
+
+  it('rejects signed claims with invalid token lifetime', () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = signTokenParts(
+      { alg: 'HS256', typ: 'JWT' },
+      {
+        ...userJwtPayload,
+        iat: now,
+        exp: now,
+      },
+    );
+
+    expectSafeTokenError(token, /JWT expired/);
   });
 });
