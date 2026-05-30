@@ -2,7 +2,7 @@ import { Injectable, ServiceUnavailableException, UnauthorizedException } from '
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { LoginInput } from './auth.schemas.js';
-import { signJwt, verifyJwt } from './auth.tokens.js';
+import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { verifyPassword } from './passwords.js';
 
 const currentUserSelect = {
@@ -38,6 +38,25 @@ export class AuthService {
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
     const user = await this.prisma.user.findFirst({
       where: {
+        organizationId: input.organizationId,
+        email: input.email,
+        status: 'active',
+        deletedAt: null,
+      },
+      select: currentUserSelect,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
+  }
+
+  async findActiveUserByCurrentUserClaims(input: Pick<JwtClaims, 'sub' | 'organizationId' | 'email'>) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: input.sub,
         organizationId: input.organizationId,
         email: input.email,
         status: 'active',
@@ -120,7 +139,8 @@ export class AuthService {
     try {
       const claims = verifyJwt(accessToken);
 
-      return this.findActiveUserByLoginIdentity({
+      return this.findActiveUserByCurrentUserClaims({
+        sub: claims.sub,
         organizationId: claims.organizationId,
         email: claims.email,
       });
