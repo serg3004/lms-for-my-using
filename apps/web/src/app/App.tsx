@@ -7,6 +7,7 @@ import { AdminDashboardPage } from './AdminDashboardPage.js';
 import { AdminLessonsPage } from './AdminLessonsPage.js';
 import { AdminMaterialsPage } from './AdminMaterialsPage.js';
 import { AdminOrgStructurePage } from './AdminOrgStructurePage.js';
+import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage.js';
 import { AdminRolesPage } from './AdminRolesPage.js';
 import { AdminUsersPage } from './AdminUsersPage.js';
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
@@ -76,6 +77,10 @@ export function App() {
 
   if (pathname === '/admin/assignments') {
     return <AdminAssignmentCompletionPage />;
+  }
+
+  if (pathname === '/admin/results') {
+    return <AdminResultsCertificatesPage />;
   }
 
   if (pathname === '/learn') {
