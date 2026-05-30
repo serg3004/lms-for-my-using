@@ -14,6 +14,7 @@ PROPOSED — есть рекомендуемое решение, но оно е�
 ACCEPTED — решение принято
 OUT OF MVP — не реализовывать в MVP
 DEFERRED — перенесено на P1/P2/Future
+DONE — реализовано и подтверждено в коде/тестах
 ```
 
 ---
@@ -23,10 +24,10 @@ DEFERRED — перенесено на P1/P2/Future
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
 | TV-001 | Backend framework | NestJS | PROPOSED | Лучше для modular monolith, DI, guards, RBAC, AI-agent readability. |
-| TV-002 | ORM / migration tool | Prisma | PROPOSED | Быстрый старт, понятные миграции, хорош для TypeScript. |
+| TV-002 | ORM / migration tool | Prisma | PROPOSED | Быстрый старт, понятные миграции, хорошо для TypeScript. |
 | TV-003 | Frontend setup | React + Vite + TypeScript | PROPOSED | Проще Next.js для MVP без SSR. |
 | TV-004 | UI library | shadcn/ui + Tailwind или простой custom UI | TODO VERIFY | Нужно выбрать до активной frontend-разработки. |
-| TV-005 | Auth strategy | JWT access + refresh token in httpOnly cookie | PROPOSED | Подходит для web и future mobile. |
+| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | PROPOSED | MVP использует stateless JWT access token. Refresh/session store deferred. |
 | TV-006 | Password hashing | Argon2id или bcrypt | PROPOSED | Выбрать библиотеку перед auth implementation. |
 | TV-007 | Local object storage | MinIO | PROPOSED | S3-compatible, удобно для local dev. |
 | TV-008 | Production object storage | Cloudflare R2 / AWS S3 / Wasabi | TODO VERIFY | Зависит от бюджета и региона. |
@@ -56,9 +57,9 @@ DEFERRED — перенесено на P1/P2/Future
 |---|---|---|---|---|
 | TV-019 | Использовать `organization_id` или `tenant_id`? | `organization_id` | PROPOSED | Более понятно для LMS/B2B. |
 | TV-020 | Делать ли отдельную таблицу departments? | Нет в MVP | PROPOSED | Использовать groups + type, departments можно P1. |
-| TV-021 | Хранить lesson content в JSONB или blocks table? | JSONB для MVP | PROPOSED | Быстрее старт. Blocks table можно позже. |
-| TV-022 | Soft delete для каких сущностей? | Users, courses, lessons, groups, files | TODO VERIFY | Прогресс, attempts, certificates лучше immutable/append-only. |
-| TV-023 | Нужна ли RLS в PostgreSQL в MVP? | Не обязательно | PROPOSED | Backend organization scope обязателен. RLS можно позже. |
+| TV-021 | Хранить lesson content в JSONB или blocks table? | JSONB для MVP | PROPOSED | Быстрые старт. Blocks table можно позже. |
+| TV-022 | Soft delete для каких сущностей? | Users, courses, lessons, groups, files | TODO VERIFY | Progress, attempts, certificates лучше immutable/append-only. |
+| TV-023 | Нужен ли RLS в PostgreSQL в MVP? | Не обязательно | PROPOSED | Backend organization scope обязателен. RLS можно позже. |
 | TV-024 | Хранить audit logs append-only? | Да | PROPOSED | Audit log нельзя редактировать обычными CRUD-операциями. |
 
 ---
@@ -70,7 +71,7 @@ DEFERRED — перенесено на P1/P2/Future
 | TV-025 | API base path | `/api/v1` | ACCEPTED | REST/JSON. |
 | TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 100. |
 | TV-027 | Error format | `{ error: { code, message, details, requestId } }` | PROPOSED | Удобно для frontend и debugging. |
-| TV-028 | DTO validation | class-validator или Zod | TODO VERIFY | Для NestJS обычно class-validator, для shared schemas возможен Zod. |
+| TV-028 | DTO validation | Zod | DONE | Runtime validation uses Zod schemas in auth/API areas touched so far. |
 | TV-029 | OpenAPI generation | После стабилизации первых endpoints | DEFERRED | Не блокирует MVP foundation. |
 
 ---
@@ -80,10 +81,10 @@ DEFERRED — перенесено на P1/P2/Future
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
 | TV-030 | Нужен ли invite flow в MVP? | P1 или простой admin-created user | PROPOSED | Для MVP можно seed admin + admin creates users. |
-| TV-031 | Нужен ли password reset в MVP? | P1 | PROPOSED | Можно добавить после auth core. |
+| TV-031 | Нужен ли password reset в MVP? | P1 | PROPOSED | Endpoints есть, но flow сейчас disabled/unavailable skeleton. |
 | TV-032 | Login rate limiting | Да | PROPOSED | Минимальная защита auth endpoint. |
 | TV-033 | Refresh token storage | httpOnly cookie | PROPOSED | Не хранить refresh token в localStorage. |
-| TV-034 | Access token storage | memory или short-lived | TODO VERIFY | Зависит от frontend implementation. |
+| TV-034 | Access token storage | memory или short-lived localStorage fallback | DONE | Current implementation uses stateless JWT access token. JWT verification, negative tests, current-user lookup by `sub`, bearer parsing tests, and logout validation are covered by PR 39–42. |
 | TV-035 | File access | Signed URLs after backend permission check | ACCEPTED | Никаких постоянных публичных URL. |
 | TV-036 | Antivirus scan for uploads | P1/P2 | DEFERRED | Для MVP можно allowlist + size limit. |
 
@@ -152,6 +153,7 @@ ACCEPTED:
 - Portability: Docker
 - MVP AI: out of scope
 - Mobile app: out of MVP
+- Auth current state: stateless JWT access token with hardened verification and current-user lookup bound to JWT subject
 ```
 
 ---
