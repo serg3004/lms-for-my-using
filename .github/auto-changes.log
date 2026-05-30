@@ -38,3 +38,9 @@
 [2026-05-30T16:24:03Z] CHANGE: cleaned JWT negative test helper and added signed malformed claims coverage
 [2026-05-30T16:24:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-30T16:24:05Z] ROLLBACK: revert PR or delete branch test/auth-session-token-negative-cleanup
+[2026-05-30T16:44:00Z] BRANCH: fix/current-user-lookup-hardening
+[2026-05-30T16:44:01Z] TASK: PR 41 current user lookup hardening
+[2026-05-30T16:44:02Z] READ: auth.service, auth.service.spec, auth.tokens.spec, Prisma schema, audit log
+[2026-05-30T16:44:03Z] CHANGE: bound current user lookup to JWT sub + organizationId + email and added positive/negative tests
+[2026-05-30T16:44:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-30T16:44:05Z] ROLLBACK: revert PR or delete branch fix/current-user-lookup-hardening
