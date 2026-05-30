@@ -8,3 +8,9 @@
 [2026-05-29T05:40:07Z] DOCS: updated audit log
 [2026-05-29T05:40:08Z] CHECK: local checks not run in GitHub API environment
 [2026-05-29T05:40:09Z] ROLLBACK: revert PR or delete branch feat/admin-layout-dashboard
+[2026-05-30T09:20:00Z] BRANCH: docs/update-mvp-logs-assessment-taking
+[2026-05-30T09:20:01Z] TASK: PR 36a docs update after PR 94 assessment taking flow
+[2026-05-30T09:20:02Z] READ: docs/PROJECT_LOG.md, docs/TODO_VERIFY.md, .github/auto-changes.log, README.md
+[2026-05-30T09:20:03Z] DOCS: recorded PR 94 assessment taking flow status in audit log
+[2026-05-30T09:20:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-30T09:20:05Z] ROLLBACK: revert docs PR
