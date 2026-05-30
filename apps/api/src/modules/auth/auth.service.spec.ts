@@ -1,5 +1,4 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { currentUserSchema, loginResponseSchema, loginSchema } from './auth.schemas.js';
@@ -23,22 +22,32 @@ const currentUser = {
   timezone: 'Asia/Almaty',
 };
 
+type PrismaUserFindFirstArgs = {
+  where: Record<string, unknown>;
+  select: Record<string, unknown>;
+};
+
 type PrismaMock = {
   user: {
-    findFirst: ReturnType<typeof jest.fn>;
+    findFirst: (args: PrismaUserFindFirstArgs) => Promise<typeof currentUser | null>;
   };
 };
 
 function createAuthService(userResult: typeof currentUser | null = currentUser) {
+  const findFirstCalls: PrismaUserFindFirstArgs[] = [];
   const prisma: PrismaMock = {
     user: {
-      findFirst: jest.fn().mockResolvedValue(userResult),
+      findFirst: async (args) => {
+        findFirstCalls.push(args);
+
+        return userResult;
+      },
     },
   };
 
   return {
     authService: new AuthService(prisma as unknown as PrismaService),
-    prisma,
+    findFirstCalls,
   };
 }
 
@@ -99,7 +108,7 @@ describe('AuthService current user lookup', () => {
 
   it('looks up current users by token subject, organization, and email', async () => {
     process.env.JWT_SECRET = jwtSecret;
-    const { authService, prisma } = createAuthService();
+    const { authService, findFirstCalls } = createAuthService();
     const token = signJwt(
       {
         sub: currentUser.id,
@@ -110,26 +119,28 @@ describe('AuthService current user lookup', () => {
     );
 
     await expect(authService.getCurrentUser(token)).resolves.toEqual(currentUser);
-    expect(prisma.user.findFirst).toHaveBeenCalledWith({
-      where: {
-        id: currentUser.id,
-        organizationId: currentUser.organizationId,
-        email: currentUser.email,
-        status: 'active',
-        deletedAt: null,
+    expect(findFirstCalls).toEqual([
+      {
+        where: {
+          id: currentUser.id,
+          organizationId: currentUser.organizationId,
+          email: currentUser.email,
+          status: 'active',
+          deletedAt: null,
+        },
+        select: expect.objectContaining({
+          id: true,
+          organizationId: true,
+          email: true,
+        }),
       },
-      select: expect.objectContaining({
-        id: true,
-        organizationId: true,
-        email: true,
-      }),
-    });
+    ]);
   });
 
   it('rejects tokens when the subject does not match an active user', async () => {
     process.env.JWT_SECRET = jwtSecret;
     const mismatchedUserId = '33333333-3333-3333-3333-333333333333';
-    const { authService, prisma } = createAuthService(null);
+    const { authService, findFirstCalls } = createAuthService(null);
     const token = signJwt(
       {
         sub: mismatchedUserId,
@@ -140,7 +151,7 @@ describe('AuthService current user lookup', () => {
     );
 
     await expect(authService.getCurrentUser(token)).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(prisma.user.findFirst).toHaveBeenCalledWith(
+    expect(findFirstCalls[0]).toEqual(
       expect.objectContaining({
         where: expect.objectContaining({
           id: mismatchedUserId,
