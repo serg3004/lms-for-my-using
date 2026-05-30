@@ -26,3 +26,9 @@
 [2026-05-30T12:15:03Z] CHANGE: added /admin/results page using existing results/progress/certificates APIs
 [2026-05-30T12:15:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-30T12:15:05Z] ROLLBACK: revert PR or delete branch feature/results-dashboard-certificates
+[2026-05-30T15:48:00Z] BRANCH: fix/auth-session-jwt-hardening
+[2026-05-30T15:48:01Z] TASK: PR 39 auth/session JWT hardening
+[2026-05-30T15:48:02Z] READ: auth.tokens, auth.tokens.spec, auth.service, auth.guard, env config, audit log
+[2026-05-30T15:48:03Z] CHANGE: hardened JWT structure/header/claims validation and added negative token tests
+[2026-05-30T15:48:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-30T15:48:05Z] ROLLBACK: revert PR or delete branch fix/auth-session-jwt-hardening
