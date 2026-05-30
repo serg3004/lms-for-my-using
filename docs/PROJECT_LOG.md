@@ -1,5 +1,46 @@
 # Project Log
 
+## 2026-05-30
+
+### Auth/session hardening series
+
+Implemented PR 39–42 scope across `fix/auth-session-jwt-hardening`, `test/auth-session-token-negative-cleanup`, `fix/current-user-lookup-hardening`, and `test/auth-guard-logout-behavior`.
+
+Changes:
+- Hardened custom JWT verification:
+  - strict 3-segment token structure validation;
+  - protected JWT header validation for `alg: HS256` and `typ: JWT`;
+  - safe JSON object parsing for JWT header and claims;
+  - integer validation for `iat` and `exp`;
+  - rejection of future `iat`;
+  - rejection of invalid token lifetime where `exp <= iat`.
+- Cleaned up JWT negative token tests and added signed malformed-claims coverage.
+- Bound current user lookup to JWT `sub` in addition to `organizationId`, `email`, `active` status, and `deletedAt: null`.
+- Added AuthGuard bearer parsing coverage for missing, empty, malformed, lowercase, padded, and multiple authorization header values.
+- Added logout bearer behavior tests for missing/empty/invalid bearer headers and token validation before logout acceptance.
+- Kept PR 42 test-only with no runtime auth changes.
+
+Current auth/session status:
+- Access tokens are stateless JWT access tokens signed with `HS256`.
+- Current user lookup is bound to the token subject/user id.
+- Logout is stateless and validates the bearer token before returning `{ accepted: true }`.
+- Password reset endpoints remain implemented as unavailable skeleton endpoints.
+
+Current PR check status:
+```text
+[Check] Lint: CI OK for merged PRs where reported
+[Check] Types: CI OK for merged PRs where reported
+[Check] Tests: CI OK for merged PRs where reported
+[Check] Build: CI OK for merged PRs where reported
+```
+
+Deferred:
+- Refresh token/httpOnly cookie implementation.
+- Login rate limiting.
+- Password reset real flow.
+- Token revocation/session store.
+- Auth/session docs beyond current README/project status sync.
+
 ## 2026-05-29
 
 ### Add admin layout and dashboard
