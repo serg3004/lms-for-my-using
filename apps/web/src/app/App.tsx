@@ -9,6 +9,7 @@ import { AdminOrgStructurePage } from './AdminOrgStructurePage.js';
 import { AdminRolesPage } from './AdminRolesPage.js';
 import { AdminUsersPage } from './AdminUsersPage.js';
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
+import { LearnerAssessmentTakingPage } from './LearnerAssessmentTakingPage.js';
 import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
 import { LearnerAssignmentDetailPage } from './LearnerAssignmentDetailPage.js';
 import { LearnerAssignmentsPage } from './LearnerAssignmentsPage.js';
@@ -24,6 +25,7 @@ import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
 
 const assessmentDetailPathPrefix = '/learn/assessments/';
+const assessmentTakingPathSuffix = '/take';
 const assignmentDetailPathPrefix = '/learn/assignments/';
 const certificateDetailPathPrefix = '/learn/certificates/';
 const courseDetailPathPrefix = '/learn/courses/';
@@ -100,6 +102,17 @@ export function App() {
 
     if (certificateId) {
       return <LearnerCertificateDetailPage certificateId={certificateId} />;
+    }
+  }
+
+  if (pathname.startsWith(assessmentDetailPathPrefix) && pathname.endsWith(assessmentTakingPathSuffix)) {
+    const assessmentId = pathname.slice(
+      assessmentDetailPathPrefix.length,
+      -assessmentTakingPathSuffix.length,
+    );
+
+    if (assessmentId) {
+      return <LearnerAssessmentTakingPage assessmentId={assessmentId} />;
     }
   }
 
