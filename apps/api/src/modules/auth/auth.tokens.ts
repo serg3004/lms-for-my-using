@@ -60,7 +60,7 @@ function isJwtHeader(value: Record<string, unknown>): boolean {
   return value.alg === jwtAlg && value.typ === jwtTyp;
 }
 
-function isJwtClaims(value: Record<string, unknown>): boolean {
+function isJwtClaims(value: Record<string, unknown>): value is JwtClaims {
   return (
     typeof value.sub === 'string' &&
     typeof value.organizationId === 'string' &&
