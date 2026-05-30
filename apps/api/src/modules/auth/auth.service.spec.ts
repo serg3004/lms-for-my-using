@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { currentUserSchema, loginResponseSchema, loginSchema } from './auth.schemas.js';
@@ -24,7 +25,7 @@ const currentUser = {
 
 type PrismaMock = {
   user: {
-    findFirst: jest.Mock;
+    findFirst: ReturnType<typeof jest.fn>;
   };
 };
 
