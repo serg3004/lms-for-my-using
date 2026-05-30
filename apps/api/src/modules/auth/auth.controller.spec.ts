@@ -43,13 +43,13 @@ function createAuthService() {
 
 describe('AuthController logout', () => {
   it('rejects logout without bearer token', async () => {
-    controller = new AuthController({} as AuthService);
+    const controller = new AuthController({} as AuthService);
 
     await expect(controller.logout(undefined)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('rejects logout with empty bearer token', async () => {
-    controller = new AuthController({} as AuthService);
+    const controller = new AuthController({} as AuthService);
 
     await expect(controller.logout('Bearer ')).rejects.toBeInstanceOf(UnauthorizedException);
   });
@@ -62,7 +62,7 @@ describe('AuthController logout', () => {
 
   it('validates bearer token before accepting logout', async () => {
     const { authService, getTokens, getLogoutCalls } = createAuthService();
-    controller = new AuthController(authService);
+    const controller = new AuthController(authService);
 
     const result = await controller.logout('Bearer access-token');
 
