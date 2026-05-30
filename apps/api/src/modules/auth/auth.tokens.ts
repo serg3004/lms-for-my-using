@@ -56,11 +56,11 @@ function parseJsonObject(input: string, errorMessage: string): Record<string, un
   }
 }
 
-function isJwtHeader(value: Record<string, unknown>): value is JwtHeader {
+function isJwtHeader(value: Record<string, unknown>): boolean {
   return value.alg === jwtAlg && value.typ === jwtTyp;
 }
 
-function isJwtClaims(value: Record<string, unknown>): value is JwtClaims {
+function isJwtClaims(value: Record<string, unknown>): boolean {
   return (
     typeof value.sub === 'string' &&
     typeof value.organizationId === 'string' &&
@@ -119,5 +119,5 @@ export function verifyJwt(token: string, secret = getJwtSecret()) {
     throw new Error('JWT expired');
   }
 
-  return claims;
+  return claims as JwtClaims;
 }
