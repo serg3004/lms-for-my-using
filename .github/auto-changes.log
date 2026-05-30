@@ -20,3 +20,9 @@
 [2026-05-30T10:45:03Z] CHANGE: added /admin/assignments page using existing assignments/progress APIs
 [2026-05-30T10:45:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-30T10:45:05Z] ROLLBACK: revert PR or delete branch feature/course-assignment-completion
+[2026-05-30T12:15:00Z] BRANCH: feature/results-dashboard-certificates
+[2026-05-30T12:15:01Z] TASK: PR 38 results dashboard and certificate issuance UI
+[2026-05-30T12:15:02Z] READ: certificates controller/schema, assessment attempts controller, assessments controller, progress controller, web App, audit log
+[2026-05-30T12:15:03Z] CHANGE: added /admin/results page using existing results/progress/certificates APIs
+[2026-05-30T12:15:04Z] CHECK: local checks not run in GitHub API environment
+[2026-05-30T12:15:05Z] ROLLBACK: revert PR or delete branch feature/results-dashboard-certificates
