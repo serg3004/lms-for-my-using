@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage.js';
@@ -25,6 +26,7 @@ import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage.js';
 import { LearnerLessonsPage } from './LearnerLessonsPage.js';
 import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
+import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 
 const assessmentDetailPathPrefix = '/learn/assessments/';
 const assessmentTakingPathSuffix = '/take';
@@ -35,83 +37,98 @@ const lessonsPathSuffix = '/lessons';
 const lessonDetailPathPrefix = '/learn/lessons/';
 const lessonMaterialsPathSuffix = '/materials';
 
+function renderWithBreadcrumbs(page: ReactNode, items: BreadcrumbItem[]) {
+  return (
+    <>
+      <Breadcrumbs items={items} />
+      {page}
+    </>
+  );
+}
+
 export function App() {
   const { t } = useTranslation();
   const pathname = window.location.pathname;
+
+  const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
+  const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
 
   if (pathname === '/login') {
     return <LoginPage />;
   }
 
   if (pathname === '/admin') {
-    return <AdminDashboardPage />;
+    return renderWithBreadcrumbs(<AdminDashboardPage />, [{ ...adminRoot, href: undefined }]);
   }
 
   if (pathname === '/admin/users') {
-    return <AdminUsersPage />;
+    return renderWithBreadcrumbs(<AdminUsersPage />, [adminRoot, { label: t('users.title', 'Users') }]);
   }
 
   if (pathname === '/admin/roles') {
-    return <AdminRolesPage />;
+    return renderWithBreadcrumbs(<AdminRolesPage />, [adminRoot, { label: t('roles.title', 'Roles') }]);
   }
 
   if (pathname === '/admin/org-structure') {
-    return <AdminOrgStructurePage />;
+    return renderWithBreadcrumbs(<AdminOrgStructurePage />, [adminRoot, { label: t('organization.title', 'Organization') }]);
   }
 
   if (pathname === '/admin/courses') {
-    return <AdminCourseBuilderPage />;
+    return renderWithBreadcrumbs(<AdminCourseBuilderPage />, [adminRoot, { label: t('courses.title') }]);
   }
 
   if (pathname === '/admin/lessons') {
-    return <AdminLessonsPage />;
+    return renderWithBreadcrumbs(<AdminLessonsPage />, [adminRoot, { label: t('lessons.title', 'Lessons') }]);
   }
 
   if (pathname === '/admin/materials') {
-    return <AdminMaterialsPage />;
+    return renderWithBreadcrumbs(<AdminMaterialsPage />, [adminRoot, { label: t('materials.title', 'Materials') }]);
   }
 
   if (pathname === '/admin/assessments') {
-    return <AdminAssessmentBuilderPage />;
+    return renderWithBreadcrumbs(<AdminAssessmentBuilderPage />, [adminRoot, { label: t('assessments.title') }]);
   }
 
   if (pathname === '/admin/assignments') {
-    return <AdminAssignmentCompletionPage />;
+    return renderWithBreadcrumbs(<AdminAssignmentCompletionPage />, [adminRoot, { label: t('assignments.title') }]);
   }
 
   if (pathname === '/admin/results') {
-    return <AdminResultsCertificatesPage />;
+    return renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [adminRoot, { label: t('results.title', 'Results') }]);
   }
 
   if (pathname === '/learn') {
-    return <LearnerHomePage />;
+    return renderWithBreadcrumbs(<LearnerHomePage />, [{ ...learnerRoot, href: undefined }]);
   }
 
   if (pathname === '/learn/courses') {
-    return <LearnerCoursesPage />;
+    return renderWithBreadcrumbs(<LearnerCoursesPage />, [learnerRoot, { label: t('courses.title') }]);
   }
 
   if (pathname === '/learn/progress') {
-    return <LearnerProgressPage />;
+    return renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t('progress.title') }]);
   }
 
   if (pathname === '/learn/assignments') {
-    return <LearnerAssignmentsPage />;
+    return renderWithBreadcrumbs(<LearnerAssignmentsPage />, [learnerRoot, { label: t('assignments.title') }]);
   }
 
   if (pathname === '/learn/assessments') {
-    return <LearnerAssessmentsPage />;
+    return renderWithBreadcrumbs(<LearnerAssessmentsPage />, [learnerRoot, { label: t('assessments.title') }]);
   }
 
   if (pathname === '/learn/certificates') {
-    return <LearnerCertificatesPage />;
+    return renderWithBreadcrumbs(<LearnerCertificatesPage />, [learnerRoot, { label: t('certificates.title') }]);
   }
 
   if (pathname.startsWith(certificateDetailPathPrefix)) {
     const certificateId = pathname.slice(certificateDetailPathPrefix.length);
 
     if (certificateId) {
-      return <LearnerCertificateDetailPage certificateId={certificateId} />;
+      return renderWithBreadcrumbs(
+        <LearnerCertificateDetailPage certificateId={certificateId} />,
+        [learnerRoot, { label: t('certificates.title'), href: '/learn/certificates' }, { label: t('certificates.detailTitle', 'Certificate') }],
+      );
     }
   }
 
@@ -122,7 +139,10 @@ export function App() {
     );
 
     if (assessmentId) {
-      return <LearnerAssessmentTakingPage assessmentId={assessmentId} />;
+      return renderWithBreadcrumbs(
+        <LearnerAssessmentTakingPage assessmentId={assessmentId} />,
+        [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.takeTitle', 'Taking') }],
+      );
     }
   }
 
@@ -130,7 +150,10 @@ export function App() {
     const assessmentId = pathname.slice(assessmentDetailPathPrefix.length);
 
     if (assessmentId) {
-      return <LearnerAssessmentDetailPage assessmentId={assessmentId} />;
+      return renderWithBreadcrumbs(
+        <LearnerAssessmentDetailPage assessmentId={assessmentId} />,
+        [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.detailTitle', 'Assessment') }],
+      );
     }
   }
 
@@ -138,7 +161,10 @@ export function App() {
     const assignmentId = pathname.slice(assignmentDetailPathPrefix.length);
 
     if (assignmentId) {
-      return <LearnerAssignmentDetailPage assignmentId={assignmentId} />;
+      return renderWithBreadcrumbs(
+        <LearnerAssignmentDetailPage assignmentId={assignmentId} />,
+        [learnerRoot, { label: t('assignments.title'), href: '/learn/assignments' }, { label: t('assignments.detailTitle', 'Assignment') }],
+      );
     }
   }
 
@@ -149,7 +175,10 @@ export function App() {
     );
 
     if (lessonId) {
-      return <LearnerLessonMaterialsPage lessonId={lessonId} />;
+      return renderWithBreadcrumbs(
+        <LearnerLessonMaterialsPage lessonId={lessonId} />,
+        [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('materials.title', 'Materials') }],
+      );
     }
   }
 
@@ -157,7 +186,10 @@ export function App() {
     const lessonId = pathname.slice(lessonDetailPathPrefix.length);
 
     if (lessonId) {
-      return <LearnerLessonDetailPage lessonId={lessonId} />;
+      return renderWithBreadcrumbs(
+        <LearnerLessonDetailPage lessonId={lessonId} />,
+        [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('lessons.detailTitle', 'Lesson') }],
+      );
     }
   }
 
@@ -165,7 +197,10 @@ export function App() {
     const courseId = pathname.slice(courseDetailPathPrefix.length, -lessonsPathSuffix.length);
 
     if (courseId) {
-      return <LearnerLessonsPage courseId={courseId} />;
+      return renderWithBreadcrumbs(
+        <LearnerLessonsPage courseId={courseId} />,
+        [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('lessons.title', 'Lessons') }],
+      );
     }
   }
 
@@ -173,7 +208,10 @@ export function App() {
     const courseId = pathname.slice(courseDetailPathPrefix.length);
 
     if (courseId) {
-      return <LearnerCourseDetailPage courseId={courseId} />;
+      return renderWithBreadcrumbs(
+        <LearnerCourseDetailPage courseId={courseId} />,
+        [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('courses.detailTitle', 'Course') }],
+      );
     }
   }
 
