@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { jest } from '@jest/globals';
+
 import {
   AuthCookieResponse,
   accessTokenCookieName,
@@ -22,6 +22,9 @@ const currentUser = {
   locale: 'ru',
   timezone: 'Asia/Almaty',
 };
+
+type CookieCall = [name: string, value: string, options: Record<string, unknown>];
+type ClearCookieCall = [name: string, options: Record<string, unknown>];
 
 function createAuthService() {
   const tokens: string[] = [];
@@ -52,17 +55,29 @@ function createAuthService() {
 }
 
 function createResponse() {
-  return {
-    cookie: jest.fn(),
-    clearCookie: jest.fn(),
+  const cookieCalls: CookieCall[] = [];
+  const clearCookieCalls: ClearCookieCall[] = [];
+  const response = {
+    cookie: (name: string, value: string, options: Record<string, unknown>) => {
+      cookieCalls.push([name, value, options]);
+    },
+    clearCookie: (name: string, options: Record<string, unknown>) => {
+      clearCookieCalls.push([name, options]);
+    },
   } satisfies AuthCookieResponse;
+
+  return {
+    response,
+    cookieCalls,
+    clearCookieColls: clearCookieColls,
+  };
 }
 
 describe('AuthController login', () => {
   it('sets httpOnly access cookie and csrf cookie on login', async () => {
     const { authService } = createAuthService();
-    controller = new AuthController(authService);
-    const response = createResponse();
+    const controller = new AuthController(authService);
+    const { response, cookieColls } = createResponse();
 
     const result = await controller.login(
       {
@@ -79,7 +94,7 @@ describe('AuthController login', () => {
       user: currentUser,
     });
     expect(result.csrfToken).toHaveLength(64);
-    expect(response.cookie).toHaveBeenCalledWith(
+    expect(cookieColls).toContainEqual([
       accessTokenCookieName,
       'login-token',
       expect.objectContaining({
@@ -87,8 +102,8 @@ describe('AuthController login', () => {
         sameSite: 'lax',
         secure: true,
       }),
-    );
-    expect(response.cookie).toHaveBeenCalledWith(
+    ]);
+    expect(cookieCalls).toContainEqual([
       csrfTokenCookieName,
       result.csrfToken,
       expect.objectContaining({
@@ -96,7 +111,7 @@ describe('AuthController login', () => {
         sameSite: 'lax',
         secure: true,
       }),
-    );
+    ]);
   });
 });
 
@@ -104,7 +119,7 @@ describe('AuthController logout', () => {
   it('rejects logout without bearer token', async () => {
     const controller = new AuthController({} as AuthService);
 
-    await expect(controller.logout({ headers: {}, method: 'POST' }, createResponse())).rejects.toBeInstanceOf(
+    await expect(controller.logout({ headers: {}, method: 'POST' }, createResponse().response)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
   });
@@ -113,7 +128,7 @@ describe('AuthController logout', () => {
     const controller = new AuthController({} as AuthService);
 
     await expect(
-      controller.logout({ headers: { authorization: 'Bearer ' }, method: 'POST' }, createResponse()),
+      controller.logout({ headers: { authorization: 'Bearer ' }, method: 'POST' }, createResponse().response),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -122,7 +137,7 @@ describe('AuthController logout', () => {
     const controller = new AuthController(authService);
 
     await expect(
-      controller.logout({ headers: { authorization: 'Bearer   access-token   ' }, method: 'POST' }, createResponse()),
+      controller.logout({ headers: { authorization: 'Bearer   access-token   ' }, method: 'POST' }, createResponse().response),
     ).resolves.toEqual({ accepted: true });
 
     expect(getTokens()).toEqual(['access-token']);
@@ -131,7 +146,7 @@ describe('AuthController logout', () => {
   it('validates bearer token before accepting logout', async () => {
     const { authService, getTokens, getLogoutCalls } = createAuthService();
     const controller = new AuthController(authService);
-    const response = createResponse();
+    const { response, clearCookieColls } = createResponse();
 
     const result = await controller.logout(
       { headers: { authorization: 'Bearer access-token' }, method: 'POST' },
@@ -140,7 +155,7 @@ describe('AuthController logout', () => {
 
     expect(getTokens()).toEqual(['access-token']);
     expect(getLogoutCalls()).toBe(1);
-    expect(response.clearCookie).toHaveBeenCalledTimes(2);
+    expect(clearCookieColls).toHaveLength(2);
     expect(result).toEqual({ accepted: true });
   });
 
@@ -148,7 +163,7 @@ describe('AuthController logout', () => {
     const controller = new AuthController({} as AuthService);
 
     await expect(
-      controller.logout({ headers: { authorization: 'Basic access-token' }, method: 'POST' }, createResponse()),
+      controller.logout({ headers: { authorization: 'Basic access-token' }, method: 'POST' }, createResponse().response),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
