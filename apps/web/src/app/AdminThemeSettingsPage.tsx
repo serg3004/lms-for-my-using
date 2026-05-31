@@ -41,7 +41,7 @@ const themeFieldGroups: ThemeFieldGroup[] = [
     fields: [
       { key: 'radiusSm', label: 'Small radius', type: 'text' },
       { key: 'radiusMd', label: 'Medium radius', type: 'text' },
-      { key: 'radiusLr', label: 'Large radius', type: 'text' },
+      { key: 'radiusLg', label: 'Large radius', type: 'text' },
       { key: 'spacePage', label: 'Page spacing', type: 'text' },
       { key: 'shadowCard', label: 'Card shadow', type: 'text' },
     ],
@@ -90,11 +90,9 @@ export function AdminThemeSettingsPage() {
   function applyPreset(presetId: string) {
     const preset = themePresets.find((themePreset) => themePreset.id === presetId);
 
-    if (!preset) {
-      return;
+    if (preset) {
+      syncThemeSettings(preset.settings);
     }
-
-    syncThemeSettings(preset.settings);
   }
 
   function saveTheme() {
@@ -114,6 +112,7 @@ export function AdminThemeSettingsPage() {
 
       saveThemeSettings(importedSettings);
       const storedSettings = getStoredThemeSettings();
+
       setThemeSettings(storedSettings);
       setSettingsJson(getSettingsJson(storedSettings));
       setStatusMessage(t('admin.themeSettings.imported', 'Theme settings imported.'));
