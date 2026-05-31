@@ -1,3 +1,35 @@
+.ui-breadcrumbs {
+  width: min(1120px, calc(100% - var(--space-page) * 2));
+  margin: 24px auto -8px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.ui-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ui-breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.ui-breadcrumbs li + li::before {
+  color: var(--color-border);
+  content: "/";
+}
+
+.ui-breadcrumbs span {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
 .ui-state {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -16,6 +48,46 @@
 
 .ui-state__action {
   margin-top: 16px;
+}
+
+.ui-skeleton-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.ui-skeleton-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  background: var(--color-surface-muted);
+}
+
+.ui-skeleton-line {
+  display: block;
+  width: 72%;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-muted),
+    var(--color-border),
+    var(--color-surface-muted)
+  );
+  background-size: 200% 100%;
+  animation: ui-skeleton-pulse 1.25s ease-in-out infinite;
+}
+
+.ui-skeleton-line--wide {
+  width: 92%;
+  height: 16px;
+}
+
+.ui-skeleton-line--short {
+  width: 42%;
 }
 
 .ui-status-badge {
@@ -37,4 +109,14 @@
 .ui-status-badge--danger {
   color: var(--color-danger);
   background: rgb(220 38 38 / 12%);
+}
+
+@keyframes ui-skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
