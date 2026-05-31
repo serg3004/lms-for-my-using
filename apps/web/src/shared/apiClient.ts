@@ -1,6 +1,7 @@
-import { clearAuthToken, getAuthToken, setAuthToken } from './authToken.js';
-
 const apiBasePath = '/api/v1';
+const csrfTokenCookieName = 'lms_csrf_token';
+const csrfHeaderName = 'x-csrf-token';
+const unsafeMethods = new Set(['DELETE', 'PATCH', 'POST', 'PUT']);
 
 type LoginInput = {
   organizationId: string;
@@ -156,17 +157,38 @@ function getErrorMessage(body: unknown) {
   return errorBody.error?.message ?? errorBody.message ?? 'Request failed';
 }
 
-function buildHeaders(hasBody: boolean) {
-  const headers = new Headers();
+function getCookieValue(cookieName: string) {
+  if (typeof document === 'undefined') {
+    return null;
+  }
 
-  if (hasBody) {
+  const cookiePrefix = `${cookieName}=`;
+  const cookie = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(cookiePrefix));
+
+  return cookie ? decodeURIComponent(cookie.slice(cookiePrefix.length)) : null;
+}
+
+function shouldAttachCsrfHeader(method: string | undefined) {
+  return unsafeMethods.has((method ?? 'GET').toUpperCase());
+}
+
+function buildHeaders(init: RequestInit) {
+  const hasBody = Boolean(init.body);
+  const headers = new Headers(init.headers);
+
+  if (hasBody && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const accessToken = getAuthToken();
+  if (shouldAttachCsrfHeader(init.method) && !headers.has(csrfHeaderName)) {
+    const csrfToken = getCookieValue(csrfTokenCookieName);
 
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
+    if (csrfToken) {
+      headers.set(csrfHeaderName, csrfToken);
+    }
   }
 
   return headers;
@@ -183,18 +205,14 @@ async function parseJsonResponse(response: Response) {
 }
 
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
-  const hasBody = Boolean(init.body);
   const response = await fetch(`${apiBasePath}${path}`, {
     ...init,
-    headers: buildHeaders(hasBody),
+    credentials: init.credentials ?? 'same-origin',
+    headers: buildHeaders(init),
   });
   const body = await parseJsonResponse(response);
 
   if (!response.ok) {
-    if (response.status === 401) {
-      clearAuthToken();
-    }
-
     throw new ApiClientError(getErrorMessage(body), response.status);
   }
 
@@ -202,14 +220,10 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 export async function login(input: LoginInput) {
-  const response = await apiRequest<LoginResponse>('/auth/login', {
+  return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
-
-  setAuthToken(response.accessToken);
-
-  return response;
 }
 
 export function getCurrentUser() {
