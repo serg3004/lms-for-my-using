@@ -17,16 +17,43 @@ type ThemeField = {
   type: 'color' | 'text';
 };
 
-const themeFields: ThemeField[] = [
-  { key: 'colorPrimary', label: 'Primary color', type: 'color' },
-  { key: 'colorPrimaryHover', label: 'Primary hover', type: 'color' },
-  { key: 'colorBackground', label: 'Background', type: 'color' },
-  { key: 'colorSurface', label: 'Surface', type: 'color' },
-  { key: 'colorSurfaceMuted', label: 'Muted surface', type: 'color' },
-  { key: 'colorBorder', label: 'Border', type: 'color' },
-  { key: 'colorText', label: 'Text', type: 'color' },
-  { key: 'colorTextMuted', label: 'Muted text', type: 'color' },
-  { key: 'shadowCard', label: 'Card shadow', type: 'text' },
+type ThemeFieldGroup = {
+  title: string;
+  fields: ThemeField[];
+};
+
+const themeFieldGroups: ThemeFieldGroup[] = [
+  {
+    title: 'Colors',
+    fields: [
+      { key: 'colorPrimary', label: 'Primary color', type: 'color' },
+      { key: 'colorPrimaryHover', label: 'Primary hover', type: 'color' },
+      { key: 'colorBackground', label: 'Background', type: 'color' },
+      { key: 'colorSurface', label: 'Surface', type: 'color' },
+      { key: 'colorSurfaceMuted', label: 'Muted surface', type: 'color' },
+      { key: 'colorBorder', label: 'Border', type: 'color' },
+      { key: 'colorText', label: 'Text', type: 'color' },
+      { key: 'colorTextMuted', label: 'Muted text', type: 'color' },
+    ],
+  },
+  {
+    title: 'Layout',
+    fields: [
+      { key: 'radiusSm', label: 'Small radius', type: 'text' },
+      { key: 'radiusMd', label: 'Medium radius', type: 'text' },
+      { key: 'radiusLr', label: 'Large radius', type: 'text' },
+      { key: 'spacePage', label: 'Page spacing', type: 'text' },
+      { key: 'shadowCard', label: 'Card shadow', type: 'text' },
+    ],
+  },
+  {
+    title: 'Admin sidebar',
+    fields: [
+      { key: 'adminSidebarBackground', label: 'Sidebar background', type: 'color' },
+      { key: 'adminSidebarText', label: 'Sidebar text', type: 'color' },
+      { key: 'adminSidebarTextMuted', label: 'Sidebar muted text', type: 'color' },
+    ],
+  },
 ];
 
 function getMatchingPresetId(settings: ThemeSettings) {
@@ -35,19 +62,29 @@ function getMatchingPresetId(settings: ThemeSettings) {
   return matchingPreset?.id ?? 'custom';
 }
 
+function getSettingsJson(settings: ThemeSettings) {
+  return JSON.stringify(settings, null, 2);
+}
+
 export function AdminThemeSettingsPage() {
   const { t } = useTranslation();
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => getStoredThemeSettings());
   const [statusMessage, setStatusMessage] = useState('');
+  const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
 
   const selectedPresetId = getMatchingPresetId(themeSettings);
 
-  function updateThemeSetting(key: keyof ThemeSettings, value: string) {
-    setThemeSettings((currentSettings) => ({
-      ...currentSettings,
-      [key]: value,
-    }));
+  function syncThemeSettings(settings: ThemeSettings) {
+    setThemeSettings(settings);
+    setSettingsJson(getSettingsJson(settings));
     setStatusMessage('');
+  }
+
+  function updateThemeSetting(key: keyof ThemeSettings, value: string) {
+    syncThemeSettings({
+      ...themeSettings,
+      [key]: value,
+    });
   }
 
   function applyPreset(presetId: string) {
@@ -57,8 +94,7 @@ export function AdminThemeSettingsPage() {
       return;
     }
 
-    setThemeSettings(preset.settings);
-    setStatusMessage('');
+    syncThemeSettings(preset.settings);
   }
 
   function saveTheme() {
@@ -68,8 +104,21 @@ export function AdminThemeSettingsPage() {
 
   function resetTheme() {
     resetThemeSettings();
-    setThemeSettings(defaultThemeSettings);
+    syncThemeSettings(defaultThemeSettings);
     setStatusMessage(t('admin.themeSettings.resetDone', 'Theme settings reset.'));
+  }
+
+  function importSettings() {
+    try {
+      const importedSettings = JSON.parse(settingsJson) as ThemeSettings;
+
+      saveThemeSettings(importedSettings);
+      setThemeSettings(getStoredThemeSettings());
+      setSettingsJson(getSettingsJson(getStoredThemeSettings()));
+      setStatusMessage(t('admin.themeSettings.imported', 'Theme settings imported.'));
+    } catch {
+      setStatusMessage(t('admin.themeSettings.importError', 'Unable to import theme settings.'));
+    }
   }
 
   return (
@@ -81,7 +130,7 @@ export function AdminThemeSettingsPage() {
             <p>
               {t(
                 'admin.themeSettings.subtitle',
-                'Tune the admin workspace colors locally without changing organization data.',
+                'Tune the admin workspace colors, layout tokens, and sidebar locally without changing organization data.',
               )}
             </p>
           </div>
@@ -104,17 +153,21 @@ export function AdminThemeSettingsPage() {
         </section>
 
         <section className="admin-theme-settings__grid">
-          <form className="admin-card admin-theme-settings__form">
-            <h2>{t('admin.themeSettings.colorsTitle', 'Theme tokens')}</h2>
-            {themeFields.map((field) => (
-              <label className="admin-theme-settings__field" key={field.key}>
-                {field.label}
-                <input
-                  type={field.type}
-                  value={themeSettings[field.key]}
-                  onChange={(event) => updateThemeSetting(field.key, event.target.value)}
-                />
-              </label>
+          <form className="admin-card admin-theme-settings__form" onSubmit={(event) => event.preventDefault()}>
+            {themeFieldGroups.map((group) => (
+              <fieldset className="admin-theme-settings__fieldset" key={group.title}>
+                <legend>{group.title}</legend>
+                {group.fields.map((field) => (
+                  <label className="admin-theme-settings__field" key={field.key}>
+                    {field.label}
+                    <input
+                      type={field.type}
+                      value={themeSettings[field.key]}
+                      onChange={(event) => updateThemeSetting(field.key, event.target.value)}
+                    />
+                  </label>
+                ))}
+              </fieldset>
             ))}
           </form>
 
@@ -125,12 +178,15 @@ export function AdminThemeSettingsPage() {
               style={{
                 color: themeSettings.colorText,
                 background: themeSettings.colorBackground,
+                borderRadius: themeSettings.radiusLg,
+                padding: themeSettings.spacePage,
               }}
             >
               <article
                 className="admin-theme-preview__card"
                 style={{
                   borderColor: themeSettings.colorBorder,
+                  borderRadius: themeSettings.radiusMd,
                   background: themeSettings.colorSurface,
                   boxShadow: themeSettings.shadowCard,
                 }}
@@ -146,19 +202,45 @@ export function AdminThemeSettingsPage() {
                 </span>
                 <h3>{t('admin.themeSettings.previewHeading', 'Workspace preview')}</h3>
                 <p style={{ color: themeSettings.colorTextMuted }}>
-                  {t('admin.themeSettings.previewText', 'Cards, controls, and muted text use the selected tokens.')}
+                  {t('admin.themeSettings.previewText', 'Cards, controls, layout spacing, and sidebar tokens use the selected settings.')}
                 </p>
                 <button
                   type="button"
                   style={{
+                    borderRadius: themeSettings.radiusSm,
                     background: themeSettings.colorPrimary,
                   }}
                 >
                   {t('admin.themeSettings.previewAction', 'Primary action')}
                 </button>
               </article>
+
+              <aside
+                className="admin-theme-preview__sidebar"
+                style={{
+                  color: themeSettings.adminSidebarText,
+                  background: themeSettings.adminSidebarBackground,
+                  borderRadius: themeSettings.radiusMd,
+                }}
+              >
+                <strong>{t('admin.themeSettings.sidebarPreviewTitle', 'Sidebar')}</strong>
+                <span style={{ color: themeSettings.adminSidebarTextMuted }}>
+                  {t('admin.themeSettings.sidebarPreviewText', 'Navigation text')}
+                </span>
+              </aside>
             </div>
           </aside>
+        </section>
+
+        <section className="admin-card admin-theme-settings__json">
+          <h2>{t('admin.themeSettings.jsonTitle', 'Import / export')}</h2>
+          <label>
+            {t('admin.themeSettings.jsonLabel', 'Theme JSON')}
+            <textarea value={settingsJson} rows={10} onChange={(event) => setSettingsJson(event.target.value)} />
+          </label>
+          <button type="button" onClick={importSettings}>
+            {t('admin.themeSettings.import', 'Import JSON')}
+          </button>
         </section>
 
         <footer className="admin-theme-settings__actions">
