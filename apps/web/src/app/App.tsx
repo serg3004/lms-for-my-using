@@ -147,7 +147,7 @@ function HomePage() {
 
 export function App() {
   const { t } = useTranslation();
-  const learnerRoot = { label: t('learner.navLink', href: '/learn' };
+  const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
   const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
   const learnerRootOnly = [{ ...learnerRoot, href: undefined }];
   const adminRootOnly = [{ ...adminRoot, href: undefined }];
@@ -184,11 +184,17 @@ export function App() {
     },
     {
       path: '/admin/lessons',
-      element: renderWithBreadcrumbs(<AdminLessonsPage />, [adminRoot, { label: t('lessons.title', 'Lessons') }]),
+      element: renderWithBreadcrumbs(<AdminLessonsPage />, [
+        adminRoot,
+        { label: t('lessons.title', 'Lessons') },
+      ]),
     },
     {
       path: '/admin/materials',
-      element: renderWithBreadcrumbs(<AdminMaterialsPage />, [adminRoot, { label: t('materials.title', 'Materials') }]),
+      element: renderWithBreadcrumbs(<AdminMaterialsPage />, [
+        adminRoot,
+        { label: t('materials.title', 'Materials') },
+      ]),
     },
     {
       path: '/admin/assessments',
@@ -200,7 +206,10 @@ export function App() {
     },
     {
       path: '/admin/results',
-      element: renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [adminRoot, { label: t('results.title', 'Results') }]),
+      element: renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [
+        adminRoot,
+        { label: t('results.title', 'Results') },
+      ]),
     },
     { path: '/learn', element: renderWithBreadcrumbs(<LearnerHomePage />, learnerRootOnly) },
     {
@@ -209,7 +218,7 @@ export function App() {
     },
     {
       path: '/learn/progress',
-      element: renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t')progress.title') }]),
+      element: renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t('progress.title') }]),
     },
     {
       path: '/learn/assignments',
