@@ -1,9 +1,10 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { PrismaService } from '../../database/prisma.service';
-import { AuthenticatedRequest } from './auth.guard';
-import { RolesGuard } from './roles.guard';
+import { PrismaService } from '../../database/prisma.service.js';
+import { AuthenticatedRequest } from './auth.guard.js';
+import { RolesGuard } from './roles.guard.js';
+import { UserRole } from './roles.js';
 
 const currentUser = {
   id: '22222222-2222-2222-2222-222222222222',
@@ -20,6 +21,16 @@ const currentUser = {
   timezone: 'Asia/Almaty',
 } as const;
 
+type MembershipFindManyArgs = {
+  where: {
+    organizationId: string;
+    userId: string;
+  };
+  select: {
+    role: true;
+  };
+};
+
 function createContext(request: AuthenticatedRequest, handler = () => undefined) {
   return {
     getHandler: () => handler,
@@ -30,24 +41,33 @@ function createContext(request: AuthenticatedRequest, handler = () => undefined)
   } as unknown as ExecutionContext;
 }
 
-function createReflector(roles: string[] | undefined) {
+function createReflector(roles: UserRole[] | undefined) {
   return {
     getAllAndOverride: () => roles,
   } as unknown as Reflector;
 }
 
+function createPrisma(roles: UserRole[]) {
+  const queries: MembershipFindManyArgs[] = [];
+  const prisma = {
+    membership: {
+      findMany: async (query: MembershipFindManyArgs) => {
+        queries.push(query);
+
+        return roles.map((role) => ({ role }));
+      },
+    },
+  } as unknown as PrismaService;
+
+  return {
+    prisma,
+    queries,
+  };
+}
+
 describe('RolesGuard', () => {
   it('allows a user with an allowed membership role', async () => {
-    const queries: unknown[] = [];
-    const prisma = {
-      membership: {
-        findFirst: async (query: unknown) => {
-          queries.push(query);
-
-          return { id: '33333333-3333-3333-3333-333333333333' };
-        },
-      },
-    } as unknown as PrismaService;
+    const { prisma, queries } = createPrisma(['admin']);
     const request: AuthenticatedRequest = {
       headers: {},
       currentUser,
@@ -56,15 +76,45 @@ describe('RolesGuard', () => {
     const result = await new RolesGuard(prisma, createReflector(['admin'])).canActivate(createContext(request));
 
     expect(result).toBe(true);
+    expect(queries).toEqual([
+      {
+        where: {
+          organizationId: currentUser.organizationId,
+          userId: currentUser.id,
+        },
+        select: { role: true },
+      },
+    ]);
+  });
+
+  it('reuses membership roles cached on the request', async () => {
+    const { prisma, queries } = createPrisma(['manager']);
+    const request: AuthenticatedRequest = {
+      headers: {},
+      currentUser,
+    };
+
+    await expect(new RolesGuard(prisma, createReflector(['manager'])).canActivate(createContext(request))).resolves.toBe(true);
+    await expect(new RolesGuard(prisma, createReflector(['admin', 'manager'])).canActivate(createContext(request))).resolves.toBe(true);
+
     expect(queries).toHaveLength(1);
   });
 
+  it('skips membership lookup when no roles are required', async () => {
+    const { prisma, queries } = createPrisma(['admin']);
+    const request: AuthenticatedRequest = {
+      headers: {},
+      currentUser,
+    };
+
+    const result = await new RolesGuard(prisma, createReflector(undefined)).canActivate(createContext(request));
+
+    expect(result).toBe(true);
+    expect(queries).toHaveLength(0);
+  });
+
   it('rejects a user without an allowed membership role', async () => {
-    const prisma = {
-      membership: {
-        findFirst: async () => null,
-      },
-    } as unknown as PrismaService;
+    const { prisma } = createPrisma(['learner']);
     const request: AuthenticatedRequest = {
       headers: {},
       currentUser,
@@ -76,11 +126,7 @@ describe('RolesGuard', () => {
   });
 
   it('rejects requests without current user when roles are required', async () => {
-    const prisma = {
-      membership: {
-        findFirst: async () => null,
-      },
-    } as unknown as PrismaService;
+    const { prisma } = createPrisma([]);
     const request: AuthenticatedRequest = { headers: {} };
 
     await expect(new RolesGuard(prisma, createReflector(['admin'])).canActivate(createContext(request))).rejects.toBeInstanceOf(
