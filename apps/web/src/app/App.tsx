@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage.js';
@@ -27,6 +28,7 @@ import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage.js';
 import { LearnerLessonsPage } from './LearnerLessonsPage.js';
 import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
+import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 
 const assessmentDetailPathPrefix = '/learn/assessments/';
@@ -49,7 +51,7 @@ function renderWithBreadcrumbs(page: ReactNode, items: BreadcrumbItem[]) {
 
 export function App() {
   const { t } = useTranslation();
-  const pathname = window.location.pathname;
+  const { pathname } = useLocation();
 
   const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
   const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
@@ -223,19 +225,23 @@ export function App() {
     }
   }
 
+  if (pathname !== '/') {
+    return <NotFoundPage />;
+  }
+
   return (
     <main>
       <h1>{t('app.title')}</h1>
       <p>{t('app.subtitle')}</p>
       <nav>
-        <a href="/login">{t('login.navLink')}</a>
-        <a href="/admin">{t('admin.navLink', 'Admin')}</a>
-        <a href="/learn">{t('learner.navLink')}</a>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
-        <a href="/learn/progress">{t('progress.navLink')}</a>
-        <a href="/learn/assignments">{t('assignments.navLink')}</a>
-        <a href="/learn/assessments">{t('assessments.navLink')}</a>
-        <a href="/learn/certificates">{t('certificates.navLink')}</a>
+        <Link to="/login">{t('login.navLink')}</Link>
+        <Link to="/admin">{t('admin.navLink', 'Admin')}</Link>
+        <Link to="/learn">{t('learner.navLink')}</Link>
+        <Link to="/learn/courses">{t('courses.navLink')}</Link>
+        <Link to="/learn/progress">{t('progress.navLink')}</Link>
+        <Link to="/learn/assignments">{t('assignments.navLink')}</Link>
+        <Link to="/learn/assessments">{t('assessments.navLink')}</Link>
+        <Link to="/learn/certificates">{t('certificates.navLink')}</Link>
       </nav>
     </main>
   );
