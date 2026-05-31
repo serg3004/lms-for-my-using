@@ -10,6 +10,7 @@ import { AdminMaterialsPage } from './AdminMaterialsPage.js';
 import { AdminOrgStructurePage } from './AdminOrgStructurePage.js';
 import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage.js';
 import { AdminRolesPage } from './AdminRolesPage.js';
+import { AdminThemeSettingsPage } from './AdminThemeSettingsPage.js';
 import { AdminUsersPage } from './AdminUsersPage.js';
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
 import { LearnerAssessmentTakingPage } from './LearnerAssessmentTakingPage.js';
@@ -71,6 +72,13 @@ export function App() {
 
   if (pathname === '/admin/org-structure') {
     return renderWithBreadcrumbs(<AdminOrgStructurePage />, [adminRoot, { label: t('organization.title', 'Organization') }]);
+  }
+
+  if (pathname === '/admin/theme-settings') {
+    return renderWithBreadcrumbs(<AdminThemeSettingsPage />, [
+      adminRoot,
+      { label: t('admin.themeSettings.title', 'Theme settings') },
+    ]);
   }
 
   if (pathname === '/admin/courses') {
