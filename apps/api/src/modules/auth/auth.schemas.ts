@@ -47,7 +47,7 @@ export const currentUserSchema = z.object({
 export const loginResponseSchema = z.object({
   accessToken: z.string().min(1),
   tokenType: z.literal('Bearer'),
-  csrfToken: z.string().min(1),
+  csrfToken: z.string().min(1).optional(),
   user: currentUserSchema,
 });
 
