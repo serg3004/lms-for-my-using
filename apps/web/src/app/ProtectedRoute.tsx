@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ApiClientError, getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
+import { LogoutButton } from './LogoutButton.js';
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -80,5 +81,11 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <LogoutButton />
+      {children}
+    </>
+  );
 }
+
