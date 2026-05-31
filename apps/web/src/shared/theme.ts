@@ -8,6 +8,13 @@ export type ThemeSettings = {
   colorText: string;
   colorTextMuted: string;
   shadowCard: string;
+  radiusSm: string;
+  radiusMd: string;
+  radiusLg: string;
+  spacePage: string;
+  adminSidebarBackground: string;
+  adminSidebarText: string;
+  adminSidebarTextMuted: string;
 };
 
 export type ThemePreset = {
@@ -28,6 +35,13 @@ export const defaultThemeSettings: ThemeSettings = {
   colorText: '#172033',
   colorTextMuted: '#64748b',
   shadowCard: '0 10px 30px rgb(15 23 42 / 8%)',
+  radiusSm: '6px',
+  radiusMd: '10px',
+  radiusLg: '16px',
+  spacePage: 'clamp(16px, 4vw, 48px)',
+  adminSidebarBackground: '#111827',
+  adminSidebarText: '#ffffff',
+  adminSidebarTextMuted: '#dbeafe',
 };
 
 export const themePresets: ThemePreset[] = [
@@ -46,6 +60,7 @@ export const themePresets: ThemePreset[] = [
       colorBackground: '#f0fdf4',
       colorSurfaceMuted: '#dcfce7',
       colorBorder: '#bbf7d0',
+      adminSidebarBackground: '#065f46',
     },
   },
   {
@@ -72,16 +87,29 @@ const themeVariables: Record<keyof ThemeSettings, string> = {
   colorText: '--color-text',
   colorTextMuted: '--color-text-muted',
   shadowCard: '--shadow-card',
+  radiusSm: '--radius-sm',
+  radiusMd: '--radius-md',
+  radiusLg: '--radius-lg',
+  spacePage: '--space-page',
+  adminSidebarBackground: '--admin-sidebar-background',
+  adminSidebarText: '--admin-sidebar-text',
+  adminSidebarTextMuted: '--admin-sidebar-text-muted',
 };
 
-function isThemeSettings(value: unknown): value is ThemeSettings {
+function normalizeThemeSettings(value: unknown): ThemeSettings {
   if (!value || typeof value !== 'object') {
-    return false;
+    return defaultThemeSettings;
   }
 
   const candidate = value as Partial<Record<keyof ThemeSettings, unknown>>;
 
-  return Object.keys(themeVariables).every((key) => typeof candidate[key as keyof ThemeSettings] === 'string');
+  return (Object.keys(themeVariables) as Array<keyof ThemeSettings>).reduce<ThemeSettings>(
+    (settings, key) => ({
+      ...settings,
+      [key]: typeof candidate[key] === 'string' ? candidate[key] : defaultThemeSettings[key],
+    }),
+    defaultThemeSettings,
+  );
 }
 
 export function applyThemeSettings(settings: ThemeSettings) {
@@ -108,9 +136,7 @@ export function getStoredThemeSettings() {
   }
 
   try {
-    const parsedTheme = JSON.parse(storedTheme);
-
-    return isThemeSettings(parsedTheme) ? parsedTheme : defaultThemeSettings;
+    return normalizeThemeSettings(JSON.parse(storedTheme));
   } catch {
     return defaultThemeSettings;
   }
