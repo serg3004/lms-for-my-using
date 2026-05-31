@@ -1,5 +1,14 @@
-import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 
+import {
+  AuthCookieResponse,
+  AuthHeaders,
+  assertValidCsrf,
+  clearAuthCookies,
+  createCsrfToken,
+  resolveAccessToken,
+  setAuthCookies,
+} from './auth.cookies.js';
 import { AuthService } from './auth.service.js';
 import {
   LoginInput,
@@ -8,38 +17,36 @@ import {
   passwordResetRequestSchema,
 } from './auth.schemas.js';
 
-const bearerPrefix = 'Bearer ';
-
-function parseBearerToken(authorizationHeader: string | undefined) {
-  if (!authorizationHeader?.startsWith(bearerPrefix)) {
-    throw new UnauthorizedException('Missing bearer token');
-  }
-
-  const token = authorizationHeader.slice(bearerPrefix.length).trim();
-
-  if (!token) {
-    throw new UnauthorizedException('Missing bearer token');
-  }
-
-  return token;
-}
+type AuthRequest = {
+  headers: AuthHeaders;
+  method?: string;
+};
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() body: unknown) {
+  async login(@Body() body: unknown, @Res({ passthrough: true }) response: AuthCookieResponse) {
     const input: LoginInput = loginSchema.parse(body);
+    const result = await this.authService.login(input);
+    const csrfToken = createCsrfToken();
 
-    return this.authService.login(input);
+    setAuthCookies(response, result.accessToken, csrfToken);
+
+    return {
+      ...result,
+      csrfToken,
+    };
   }
 
   @Post('logout')
-  async logout(@Headers('authorization') authorizationHeader: string | undefined) {
-    const accessToken = parseBearerToken(authorizationHeader);
+  async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
+    const accessToken = resolveAccessToken(request.headers);
 
-    await this.authService.getCurrentUser(accessToken);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    await this.authService.getCurrentUser(accessToken.token);
+    clearAuthCookies(response);
 
     return this.authService.logout();
   }
@@ -59,9 +66,9 @@ export class AuthController {
   }
 
   @Get('me')
-  getCurrentUser(@Headers('authorization') authorizationHeader: string | undefined) {
-    const accessToken = parseBearerToken(authorizationHeader);
+  getCurrentUser(@Req() request: AuthRequest) {
+    const accessToken = resolveAccessToken(request.headers);
 
-    return this.authService.getCurrentUser(accessToken);
+    return this.authService.getCurrentUser(accessToken.token);
   }
 }

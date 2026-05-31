@@ -1,5 +1,10 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
+import {
+  accessTokenCookieName,
+  csrfHeaderName,
+  csrfTokenCookieName,
+} from './auth.cookies';
 import { AuthGuard, AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
 
@@ -42,6 +47,7 @@ describe('AuthGuard', () => {
     const authService = createAuthService(tokens);
     const request: AuthenticatedRequest = {
       headers: { authorization: 'Bearer token' },
+      method: 'GET',
     };
 
     const result = await new AuthGuard(authService).canActivate(createContext(request));
@@ -56,6 +62,7 @@ describe('AuthGuard', () => {
     const authService = createAuthService(tokens);
     const request: AuthenticatedRequest = {
       headers: { authorization: ['Bearer first-token', 'Bearer second-token'] },
+      method: 'GET',
     };
 
     await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
@@ -69,11 +76,55 @@ describe('AuthGuard', () => {
     const authService = createAuthService(tokens);
     const request: AuthenticatedRequest = {
       headers: { authorization: 'Bearer   padded-token   ' },
+      method: 'GET',
     };
 
     await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
 
     expect(tokens).toEqual(['padded-token']);
+  });
+
+  it('uses access token cookie for safe requests', async () => {
+    const tokens: string[] = [];
+    const authService = createAuthService(tokens);
+    const request: AuthenticatedRequest = {
+      headers: { cookie: `${accessTokenCookieName}=cookie-token` },
+      method: 'GET',
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
+
+    expect(tokens).toEqual(['cookie-token']);
+    expect(request.currentUser).toBe(currentUser);
+  });
+
+  it('rejects unsafe cookie-auth requests without csrf token', async () => {
+    const authService = createAuthService();
+    const request: AuthenticatedRequest = {
+      headers: { cookie: `${accessTokenCookieName}=cookie-token` },
+      method: 'POST',
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('accepts unsafe cookie-auth requests with matching csrf token', async () => {
+    const tokens: string[] = [];
+    const authService = createAuthService(tokens);
+    const csrfToken = 'csrf-token';
+    const request: AuthenticatedRequest = {
+      headers: {
+        cookie: `${accessTokenCookieName}=cookie-token; ${csrfTokenCookieName}=${csrfToken}`,
+        [csrfHeaderName]: csrfToken,
+      },
+      method: 'POST',
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).resolves.toBe(true);
+
+    expect(tokens).toEqual(['cookie-token']);
   });
 
   it.each([
@@ -87,6 +138,7 @@ describe('AuthGuard', () => {
     const authService = createAuthService(tokens);
     const request: AuthenticatedRequest = {
       headers: { authorization },
+      method: 'GET',
     };
 
     await expect(new AuthGuard(authService).canActivate(createContext(request))).rejects.toBeInstanceOf(

@@ -22,6 +22,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({
     origin: apiEnv.FRONTEND_URL,
+    credentials: true,
   });
   app.use(createSecurityHeadersMiddleware());
   app.use(createSensitiveRouteRateLimitMiddleware());
