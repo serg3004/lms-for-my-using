@@ -113,8 +113,9 @@ export function AdminThemeSettingsPage() {
       const importedSettings = JSON.parse(settingsJson) as ThemeSettings;
 
       saveThemeSettings(importedSettings);
-      setThemeSettings(getStoredThemeSettings());
-      setSettingsJson(getSettingsJson(getStoredThemeSettings()));
+      const storedSettings = getStoredThemeSettings();
+      setThemeSettings(storedSettings);
+      setSettingsJson(getSettingsJson(storedSettings));
       setStatusMessage(t('admin.themeSettings.imported', 'Theme settings imported.'));
     } catch {
       setStatusMessage(t('admin.themeSettings.importError', 'Unable to import theme settings.'));
@@ -185,7 +186,7 @@ export function AdminThemeSettingsPage() {
               <article
                 className="admin-theme-preview__card"
                 style={{
-                  borderColor: themeSettings.colorBorder,
+                  borderColor: themeSettings.colorBorder
                   borderRadius: themeSettings.radiusMd,
                   background: themeSettings.colorSurface,
                   boxShadow: themeSettings.shadowCard,
@@ -202,7 +203,10 @@ export function AdminThemeSettingsPage() {
                 </span>
                 <h3>{t('admin.themeSettings.previewHeading', 'Workspace preview')}</h3>
                 <p style={{ color: themeSettings.colorTextMuted }}>
-                  {t('admin.themeSettings.previewText', 'Cards, controls, layout spacing, and sidebar tokens use the selected settings.')}
+                  {t(
+                    'admin.themeSettings.previewText',
+                    'Cards, controls, layout spacing, and sidebar tokens use the selected settings.',
+                  )}
                 </p>
                 <button
                   type="button"
