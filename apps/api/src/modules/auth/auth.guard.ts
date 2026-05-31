@@ -1,41 +1,16 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 
+import { AuthHeaders, assertValidCsrf, resolveAccessToken } from './auth.cookies.js';
 import { CurrentUser } from './auth.schemas.js';
 import { AuthService } from './auth.service.js';
 
-const bearerPrefix = 'Bearer ';
-
 export type AuthenticatedRequest = {
   body?: Record<string, unknown>;
-  headers: {
-    authorization?: string | string[];
-  };
+  headers: AuthHeaders;
+  method?: string;
   params?: Record<string, string | undefined>;
   currentUser?: CurrentUser;
 };
-
-function parseBearerToken(authorizationHeader: string | string[] | undefined) {
-  const authorization = Array.isArray(authorizationHeader)
-    ? authorizationHeader[0]
-    : authorizationHeader;
-
-  if (!authorization?.startsWith(bearerPrefix)) {
-    throw new UnauthorizedException('Missing bearer token');
-  }
-
-  const token = authorization.slice(bearerPrefix.length).trim();
-
-  if (!token) {
-    throw new UnauthorizedException('Missing bearer token');
-  }
-
-  return token;
-}
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -43,9 +18,10 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const accessToken = parseBearerToken(request.headers.authorization);
+    const accessToken = resolveAccessToken(request.headers);
 
-    request.currentUser = await this.authService.getCurrentUser(accessToken);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    request.currentUser = await this.authService.getCurrentUser(accessToken.token);
 
     return true;
   }
