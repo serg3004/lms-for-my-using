@@ -166,6 +166,8 @@ Expected web URL:
 http://localhost:5173
 ```
 
+In local development, the web app sends API requests to the relative `/api` path. Vite proxies these requests to the local API at `http://localhost:3000`.
+
 ## 9. Health check
 
 Check the API health endpoint:
@@ -227,7 +229,7 @@ Check:
 
 - API is running on `API_PORT`.
 - `FRONTEND_URL` matches the local web URL.
-- Browser devtools network tab shows the expected API URL.
+- Browser devtools network tab shows `/api/v1/...` requests from the web app, proxied by Vite to `http://localhost:3000`.
 
 ## 12. Explicit non-goals
 
