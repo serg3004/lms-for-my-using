@@ -186,7 +186,7 @@ export function AdminThemeSettingsPage() {
               <article
                 className="admin-theme-preview__card"
                 style={{
-                  borderColor: themeSettings.colorBorder:
+                  borderColor: themeSettings.colorBorder,
                   borderRadius: themeSettings.radiusMd,
                   background: themeSettings.colorSurface,
                   boxShadow: themeSettings.shadowCard,
