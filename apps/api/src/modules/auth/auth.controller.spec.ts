@@ -69,7 +69,7 @@ function createResponse() {
   return {
     response,
     cookieCalls,
-    clearCookieColls: clearCookieColls,
+    clearCookieCalls,
   };
 }
 
@@ -77,7 +77,7 @@ describe('AuthController login', () => {
   it('sets httpOnly access cookie and csrf cookie on login', async () => {
     const { authService } = createAuthService();
     const controller = new AuthController(authService);
-    const { response, cookieColls } = createResponse();
+    const { response, cookieCalls } = createResponse();
 
     const result = await controller.login(
       {
@@ -94,7 +94,7 @@ describe('AuthController login', () => {
       user: currentUser,
     });
     expect(result.csrfToken).toHaveLength(64);
-    expect(cookieColls).toContainEqual([
+    expect(cookieCalls).toContainEqual([
       accessTokenCookieName,
       'login-token',
       expect.objectContaining({
@@ -146,7 +146,7 @@ describe('AuthController logout', () => {
   it('validates bearer token before accepting logout', async () => {
     const { authService, getTokens, getLogoutCalls } = createAuthService();
     const controller = new AuthController(authService);
-    const { response, clearCookieColls } = createResponse();
+    const { response, clearCookieCalls } = createResponse();
 
     const result = await controller.logout(
       { headers: { authorization: 'Bearer access-token' }, method: 'POST' },
@@ -155,7 +155,7 @@ describe('AuthController logout', () => {
 
     expect(getTokens()).toEqual(['access-token']);
     expect(getLogoutCalls()).toBe(1);
-    expect(clearCookieColls).toHaveLength(2);
+    expect(clearCookieCalls).toHaveLength(2);
     expect(result).toEqual({ accepted: true });
   });
 
