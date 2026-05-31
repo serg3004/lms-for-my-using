@@ -16,6 +16,7 @@ const adminSections = [
   { key: 'users', href: '/admin/users' },
   { key: 'roles', href: '/admin/roles' },
   { key: 'orgStructure', href: '/admin/org-structure' },
+  { key: 'themeSettings', href: '/admin/theme-settings' },
   { key: 'courses', href: '/admin/courses' },
   { key: 'assessments', href: '/admin/assessments' },
   { key: 'reports', href: '/admin/reports' },
