@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-
+import { jest } from '@jest/globals';
 import {
   AuthCookieResponse,
   accessTokenCookieName,
@@ -61,7 +61,7 @@ function createResponse() {
 describe('AuthController login', () => {
   it('sets httpOnly access cookie and csrf cookie on login', async () => {
     const { authService } = createAuthService();
-    const controller = new AuthController(authService);
+    controller = new AuthController(authService);
     const response = createResponse();
 
     const result = await controller.login(
@@ -117,12 +117,15 @@ describe('AuthController logout', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('rejects logout with an invalid authorization scheme', async () => {
-    const controller = new AuthController({} as AuthService);
+  it('trims bearer token before validating logout', async () => {
+    const { authService, getTokens } = createAuthService();
+    const controller = new AuthController(authService);
 
     await expect(
-      controller.logout({ headers: { authorization: 'Basic access-token' }, method: 'POST' }, createResponse()),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+      controller.logout({ headers: { authorization: 'Bearer   access-token   ' }, method: 'POST' }, createResponse()),
+    ).resolves.toEqual({ accepted: true });
+
+    expect(getTokens()).toEqual(['access-token']);
   });
 
   it('validates bearer token before accepting logout', async () => {
@@ -141,14 +144,11 @@ describe('AuthController logout', () => {
     expect(result).toEqual({ accepted: true });
   });
 
-  it('trims bearer token before validating logout', async () => {
-    const { authService, getTokens } = createAuthService();
-    const controller = new AuthController(authService);
+  it('rejects logout with an invalid authorization scheme', async () => {
+    const controller = new AuthController({} as AuthService);
 
     await expect(
-      controller.logout({ headers: { authorization: 'Bearer   access-token   ' }, method: 'POST' }, createResponse()),
-    ).resolves.toEqual({ accepted: true });
-
-    expect(getTokens()).toEqual(['access-token']);
+      controller.logout({ headers: { authorization: 'Basic access-token' }, method: 'POST' }, createResponse()),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
