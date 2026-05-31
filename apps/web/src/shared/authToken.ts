@@ -2,7 +2,7 @@ export function getAuthToken() {
   return null;
 }
 
-export function setAuthToken(_accessToken: string) {
+export function setAuthToken() {
   // Access tokens are handled by HttpOnly cookies set by the API.
 }
 
