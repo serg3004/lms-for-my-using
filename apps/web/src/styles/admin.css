@@ -158,3 +158,75 @@
     width: 100%;
   }
 }
+
+.admin-theme-settings {
+  display: grid;
+  gap: 24px;
+}
+
+.admin-theme-settings__header,
+.admin-theme-settings__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-theme-settings__grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
+  gap: 24px;
+}
+
+.admin-theme-settings__form,
+.admin-theme-settings__field {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-theme-settings__field {
+  font-weight: 600;
+}
+
+.admin-theme-settings__secondary-action {
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.admin-theme-settings__secondary-action:hover {
+  color: #ffffff;
+}
+
+.admin-theme-preview__surface {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.admin-theme-preview__card {
+  border: 1px solid;
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.admin-theme-preview__badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+@media (max-width: 860px) {
+  .admin-theme-settings__header,
+  .admin-theme-settings__actions,
+  .admin-theme-settings__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-theme-settings__header,
+  .admin-theme-settings__actions {
+    flex-direction: column;
+  }
+}
