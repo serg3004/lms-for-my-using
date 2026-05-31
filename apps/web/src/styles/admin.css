@@ -21,12 +21,12 @@
   flex-direction: column;
   gap: 24px;
   padding: 24px;
-  color: #ffffff;
-  background: #111827;
+  color: var(--admin-sidebar-text);
+  background: var(--admin-sidebar-background);
 }
 
 .admin-brand {
-  color: #ffffff;
+  color: var(--admin-sidebar-text);
   font-size: 1.125rem;
   font-weight: 700;
 }
@@ -44,11 +44,11 @@
 .admin-nav-link {
   border-radius: var(--radius-md);
   padding: 0.75rem;
-  color: #dbeafe;
+  color: var(--admin-sidebar-text-muted);
 }
 
 .admin-nav-link:hover {
-  color: #ffffff;
+  color: var(--admin-sidebar-text);
   background: rgb(255 255 255 / 10%);
   text-decoration: none;
 }
@@ -136,29 +136,6 @@
   margin: 0.25rem 0 0;
 }
 
-@media (max-width: 860px) {
-  .admin-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-sidebar {
-    position: static;
-  }
-
-  .admin-topbar,
-  .admin-content-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-topbar {
-    flex-direction: column;
-  }
-
-  .admin-user-summary {
-    width: 100%;
-  }
-}
-
 .admin-theme-settings {
   display: grid;
   gap: 24px;
@@ -179,9 +156,24 @@
 }
 
 .admin-theme-settings__form,
-.admin-theme-settings__field {
+.admin-theme-settings__field,
+.admin-theme-settings__fieldset,
+.admin-theme-settings__json label {
   display: grid;
   gap: 12px;
+}
+
+.admin-theme-settings__fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.admin-theme-settings__fieldset legend {
+  margin-bottom: 4px;
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 .admin-theme-settings__field {
@@ -198,15 +190,25 @@
   color: #ffffff;
 }
 
+.admin-theme-settings__json {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-theme-settings__json textarea {
+  min-height: 220px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
 .admin-theme-preview__surface {
+  display: grid;
+  gap: 16px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 24px;
 }
 
 .admin-theme-preview__card {
   border: 1px solid;
-  border-radius: var(--radius-md);
   padding: 20px;
 }
 
@@ -218,15 +220,40 @@
   font-weight: 700;
 }
 
+.admin-theme-preview__sidebar {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+}
+
+.admin-theme-preview__sidebar span {
+  font-size: 0.875rem;
+}
+
 @media (max-width: 860px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: static;
+  }
+
+  .admin-topbar,
+  .admin-content-grid,
   .admin-theme-settings__header,
   .admin-theme-settings__actions,
   .admin-theme-settings__grid {
     grid-template-columns: 1fr;
   }
 
+  .admin-topbar,
   .admin-theme-settings__header,
   .admin-theme-settings__actions {
     flex-direction: column;
+  }
+
+  .admin-user-summary {
+    width: 100%;
   }
 }
