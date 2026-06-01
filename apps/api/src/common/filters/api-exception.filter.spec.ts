@@ -2,7 +2,8 @@ import {
   ArgumentsHost,
   BadRequestException,
   ConflictException,
-  TooManyRequestsException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { z } from 'zod';
 
@@ -109,13 +110,13 @@ describe('ApiExceptionFilter', () => {
     const filter = new ApiExceptionFilter();
     const host = createHost('/api/v1/auth/login');
 
-    filter.catch(new TooManyRequestsException('Too many requests'), host.host);
+    filter.catch(new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS), host.host);
 
     expect(host.getStatusCode()).toBe(429);
     expect(host.getJsonBody()).toMatchObject({
       statusCode: 429,
       error: {
-        code: 'TOO_MANY_REQUESTS',
+        code: 'TOO_MANY_REQUESTS,
         message: 'Too many requests',
       },
       path: '/api/v1/auth/login',
