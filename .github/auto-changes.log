@@ -56,3 +56,9 @@
 [2026-05-30T17:20:03Z] DOCS: synced auth/session status after PR 39-42
 [2026-05-30T17:20:04Z] CHECK: local checks not run in GitHub API environment
 [2026-05-30T17:20:05Z] ROLLBACK: revert PR or delete branch docs/auth-hardening-sync
+[2026-06-01T05:05:00Z] BRANCH: docs/backfill-auto-changes-116-120
+[2026-06-01T05:05:01Z] TASK: backfill audit log for merged PRs 116-120
+[2026-06-01T05:05:02Z] READ: .github/auto-changes.log, merged PR summaries 116-120
+[2026-06-01T05:05:03Z] CHANGE: recorded PR 116 local cookie auth, PR 117 learner RBAC, PR 118 certificate scope audit, PR 119 429 ApiErrorResponse, PR 120 login return flow
+[2026-06-01T05:05:04Z] CHECK: docs-only change; code checks not required
+[2026-06-01T05:05:05Z] ROLLBACK: revert docs PR or remove appended audit entries
