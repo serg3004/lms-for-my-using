@@ -1,7 +1,7 @@
 import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { LoginInput } from './auth.schemas.js';
+import { CurrentUser, LoginInput, UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { verifyPassword } from './passwords.js';
 
@@ -25,11 +25,13 @@ const loginUserSelect = {
   passwordHash: true,
 } as const;
 
-const passwordResetUnavailableMessage = 'Password reset is not available';
+const passwordResetUnavailableMessage = 'Password reset is not unavailable';
 
 const logoutAccepted = {
   accepted: true,
 } as const;
+
+type CurrentUserRecord = Omit<CurrentUser, 'roles'>;
 
 @Injectable()
 export class AuthService {
@@ -50,7 +52,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return user;
+    return this.withRoles(user);
   }
 
   async findActiveUserByCurrentUserClaims(input: Pick<JwtClaims, 'sub' | 'organizationId' | 'email'>) {
@@ -69,7 +71,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return user;
+    return this.withRoles(user);
   }
 
   async validateLogin(input: LoginInput) {
@@ -93,20 +95,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return {
-      id: user.id,
-      organizationId: user.organizationId,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      middleName: user.middleName,
-      position: user.position,
-      shift: user.shift,
-      phone: user.phone,
-      status: user.status,
-      locale: user.locale,
-      timezone: user.timezone,
-    };
+    const { passwordHash, ...currentUser } = user;
+
+    return this.withRoles(currentUser);
   }
 
   requestPasswordReset() {
@@ -147,5 +138,25 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  private async withRoles(user: CurrentUserRecord): Promise<CurrentUser> {
+    const memberships = await this.prisma.membership.findMany({
+      where: {
+        userId: user.id,
+        organizationId: user.organizationId,
+      },
+      select: {
+        role: true,
+      },
+      orderBy: {
+        role: 'asc',
+      },
+    });
+
+    return {
+      ...user,
+      roles: memberships.map((membership) => membership.role as UserRole),
+    };
   }
 }
