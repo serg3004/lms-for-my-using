@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +30,7 @@ import { LearnerProgressPage } from './LearnerProgressPage.js';
 import { LoginPage } from './LoginPage.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
+import { getCurrentUser, type CurrentUser, type UserRole } from '../shared/apiClient.js';
 
 const assessmentDetailPathPrefix = '/learn/assessments/';
 const assessmentTakingPathSuffix = '/take';
@@ -40,12 +41,93 @@ const lessonsPathSuffix = '/lessons';
 const lessonDetailPathPrefix = '/learn/lessons/';
 const lessonMaterialsPathSuffix = '/materials';
 
+type RootNavigationItem = {
+  labelKey: string;
+  fallbackLabel?: string;
+  href: string;
+};
+
+const learnerNavigationItems: RootNavigationItem[] = [
+  { labelKey: 'learner.navLink', href: '/learn' },
+  { labelKey: 'courses.navLink', href: '/learn/courses' },
+  { labelKey: 'progress.navLink', href: '/learn/progress' },
+  { labelKey: 'assignments.navLink', href: '/learn/assignments' },
+  { labelKey: 'assessments.navLink', href: '/learn/assessments' },
+  { labelKey: 'certificates.navLink', href: '/learn/certificates' },
+];
+
+const adminNavigationItem: RootNavigationItem = {
+  labelKey: 'admin.navLink',
+  fallbackLabel: 'Admin',
+  href: '/admin',
+};
+
+function isAdminNavigationRole(role: UserRole) {
+  return role === 'admin' || role === 'manager' || role === 'instructor';
+}
+
+export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null): RootNavigationItem[] {
+  if (!user) {
+    return [{ labelKey: 'login.navLink', href: '/login' }];
+  }
+
+  return user.roles.some(isAdminNavigationRole) ? [adminNavigationItem, ...learnerNavigationItems] : learnerNavigationItems;
+}
+
 function renderWithBreadcrumbs(page: ReactNode, items: BreadcrumbItem[]) {
   return (
     <>
       <Breadcrumbs items={items} />
       {page}
     </>
+  );
+}
+
+function RootNavigation() {
+  const { t } = useTranslation();
+  const [currentUser, setCurrentUser] = useState<Pick<CurrentUser, 'roles'> | null>(null);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCurrentUser() {
+      try {
+        const user = await getCurrentUser();
+
+        if (isMounted) {
+          setCurrentUser({ roles: user.roles });
+        }
+      } catch {
+        if (isMounted) {
+          setCurrentUser(null);
+        }
+      } finally {
+        if (isMounted) {
+          setHasCheckedAuth(true);
+        }
+      }
+    }
+
+    void loadCurrentUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!hasCheckedAuth) {
+    return null;
+  }
+
+  return (
+    <nav>
+      {getRootNavigationItems(currentUser).map((item) => (
+        <Link key={item.href} to={item.href}>
+          {item.fallbackLabel ? t(item.labelKey, item.fallbackLabel) : t(item.labelKey)}
+        </Link>
+      ))}
+    </nav>
   );
 }
 
@@ -233,16 +315,7 @@ export function App() {
     <main>
       <h1>{t('app.title')}</h1>
       <p>{t('app.subtitle')}</p>
-      <nav>
-        <Link to="/login">{t('login.navLink')}</Link>
-        <Link to="/admin">{t('admin.navLink', 'Admin')}</Link>
-        <Link to="/learn">{t('learner.navLink')}</Link>
-        <Link to="/learn/courses">{t('courses.navLink')}</Link>
-        <Link to="/learn/progress">{t('progress.navLink')}</Link>
-        <Link to="/learn/assignments">{t('assignments.navLink')}</Link>
-        <Link to="/learn/assessments">{t('assessments.navLink')}</Link>
-        <Link to="/learn/certificates">{t('certificates.navLink')}</Link>
-      </nav>
+      <RootNavigation />
     </main>
   );
 }
