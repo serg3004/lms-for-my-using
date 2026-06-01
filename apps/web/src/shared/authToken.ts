@@ -4,7 +4,8 @@ export function getAuthToken() {
   return cookieAuthCompatibilityToken;
 }
 
-export function setAuthToken(_token?: string | null) {
+export function setAuthToken(token?: string | null) {
+  void token;
   // Access tokens are handled by HttpOnly cookies set by the API.
 }
 
