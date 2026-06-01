@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssessmentSummary, getAssessment } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableAssessmentSummary = AssessmentSummary & {
+  courseTitle?: string | null;
+  lessonTitle?: string | null;
+  course?: { title?: string | null } | null;
+  lesson?: { title?: string | null } | null;
+};
 
 type AssessmentDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; assessment: AssessmentSummary }
+  | { status: 'loaded'; assessment: ReadableAssessmentSummary }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
@@ -18,6 +25,14 @@ function getCourseHref(courseId: string) {
 
 function getLessonHref(lessonId: string) {
   return `/learn/lessons/${encodeURIComponent(lessonId)}`;
+}
+
+function getCourseTitle(assessment: ReadableAssessmentSummary, fallback: string) {
+  return getReadableTitle(assessment.courseTitle ?? assessment.course?.title, fallback);
+}
+
+function getLessonTitle(assessment: ReadableAssessmentSummary, fallback: string) {
+  return getReadableTitle(assessment.lessonTitle ?? assessment.lesson?.title, fallback);
 }
 
 function formatBoolean(value: boolean, trueLabel: string, falseLabel: string) {
@@ -32,14 +47,6 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
     let isMounted = true;
 
     async function loadAssessment() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('assessments.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -111,25 +118,27 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
     );
   }
 
+  const courseTitle = getCourseTitle(loadState.assessment, 'Course');
+
   return (
     <main>
       <nav>
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
-        <a href={getCourseHref(loadState.assessment.courseId)}>{t('courseDetail.title')}</a>
+        <a href={getCourseHref(loadState.assessment.courseId)}>{courseTitle}</a>
       </nav>
 
       <article>
         <h1>{loadState.assessment.title}</h1>
         <p>{loadState.assessment.description?.trim() || loadState.assessment.slug}</p>
         <dl>
-          <dt>{t('assessments.assessmentId')}</dt>
-          <dd>{loadState.assessment.id}</dd>
           <dt>{t('assessments.courseId')}</dt>
-          <dd>{loadState.assessment.courseId}</dd>
+          <dd>{courseTitle}</dd>
           <dt>{t('assessments.lessonId')}</dt>
           <dd>
             {loadState.assessment.lessonId ? (
-              <a href={getLessonHref(loadState.assessment.lessonId)}>{loadState.assessment.lessonId}</a>
+              <a href={getLessonHref(loadState.assessment.lessonId)}>
+                {getLessonTitle(loadState.assessment, 'Lesson')}
+              </a>
             ) : (
               t('assessments.notAvailable')
             )}
