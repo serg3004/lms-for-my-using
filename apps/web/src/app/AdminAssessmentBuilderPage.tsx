@@ -2,7 +2,6 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -52,14 +51,6 @@ export function AdminAssessmentBuilderPage() {
   });
 
   async function loadAssessmentData(courseId?: string) {
-    if (!getAuthToken()) {
-      setLoadState({
-        status: 'error',
-        message: t('admin.assessmentBuilder.authRequired', 'Sign in to manage assessments.'),
-      });
-      return;
-    }
-
     try {
       const [courses, assessments] = await Promise.all([
         apiRequest<Course[]>('/courses'),
