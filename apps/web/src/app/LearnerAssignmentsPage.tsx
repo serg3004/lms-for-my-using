@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssignmentSummary, listAssignments } from '../shared/apiClient.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
   courseTitle?: string | null;
@@ -84,7 +85,7 @@ export function LearnerAssignmentsPage() {
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('assignments.loading')}</p>
+        <PageState message={t('assignments.loading')} variant="loading" />
       </main>
     );
   }
@@ -92,9 +93,12 @@ export function LearnerAssignmentsPage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('assignments.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('assignments.title')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -102,9 +106,12 @@ export function LearnerAssignmentsPage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('assignments.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn">{t('learner.navLink')}</a>
+        <PageState
+          title={t('assignments.title')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/learn">{t('learner.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -118,7 +125,7 @@ export function LearnerAssignmentsPage() {
       <h1>{t('assignments.title')}</h1>
 
       {loadState.assignments.length === 0 ? (
-        <p>{t('assignments.empty')}</p>
+        <EmptyState message={t('assignments.empty')} />
       ) : (
         <ul>
           {loadState.assignments.map((assignment, index) => (
@@ -130,12 +137,14 @@ export function LearnerAssignmentsPage() {
                   </a>
                 </h2>
                 <dl>
-                  <dt>{t('assignments.courseId')}</dt>
+                  <dt>Course</dt>
                   <dd>{getCourseTitle(assignment, 'Course')}</dd>
-                  <dt>{t('assignments.userId')}</dt>
+                  <dt>Audience</dt>
                   <dd>{getAssignmentAudience(assignment, t('assignments.notAvailable'))}</dd>
                   <dt>{t('assignments.status')}</dt>
-                  <dd>{assignment.status}</dd>
+                  <dd>
+                    <StatusBadge>{assignment.status}</StatusBadge>
+                  </dd>
                   <dt>{t('assignments.dueAt')}</dt>
                   <dd>{formatAssignmentDate(assignment.dueAt, t('assignments.notAvailable'))}</dd>
                 </dl>
