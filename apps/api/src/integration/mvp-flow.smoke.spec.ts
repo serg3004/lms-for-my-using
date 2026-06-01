@@ -1,6 +1,6 @@
-import { PrismaService } from '../database/prisma.service.js';
-import { CoursesService } from '../modules/courses/courses.service.js';
-import { ProgressService } from '../modules/progress/progress.service.js';
+import { PrismaService } from '../database/prisma.service';
+import { CoursesService } from '../modules/courses/courses.service';
+import { ProgressService } from '../modules/progress/progress.service';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const courseId = '22222222-2222-2222-2222-222222222222';
