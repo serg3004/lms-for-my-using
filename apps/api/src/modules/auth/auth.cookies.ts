@@ -5,7 +5,8 @@ export const accessTokenCookieName = 'lms_access_token';
 export const csrfTokenCookieName = 'lms_csrf_token';
 export const csrfHeaderName = 'x-csrf-token';
 
-const cookiePath = '/api/v1';
+const apiCookiePath = '/api/v1';
+const csrfCookiePath = '/';
 const accessTokenCookieMaxAgeMs = 60 * 60 * 1000;
 const csrfTokenByteLength = 32;
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -29,6 +30,10 @@ export type ResolvedAccessToken = {
   token: string;
   source: AccessTokenSource;
 };
+
+function shouldUseSecureCookies() {
+  return process.env.NODE_ENV === 'production';
+}
 
 function getFirstHeaderValue(value: HeaderValue) {
   return Array.isArray(value) ? value[0] : value;
@@ -120,29 +125,37 @@ export function assertValidCsrf(headers: AuthHeaders, method: string | undefined
 }
 
 export function setAuthCookies(response: AuthCookieResponse, accessToken: string, csrfToken: string) {
+  const secure = shouldUseSecureCookies();
+
   response.cookie(accessTokenCookieName, accessToken, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: true,
-    path: cookiePath,
+    secure,
+    path: apiCookiePath,
     maxAge: accessTokenCookieMaxAgeMs,
   });
   response.cookie(csrfTokenCookieName, csrfToken, {
     httpOnly: false,
     sameSite: 'lax',
-    secure: true,
-    path: cookiePath,
+    secure,
+    path: csrfCookiePath,
     maxAge: accessTokenCookieMaxAgeMs,
   });
 }
 
 export function clearAuthCookies(response: AuthCookieResponse) {
-  const options = {
-    sameSite: 'lax',
-    secure: true,
-    path: cookiePath,
-  };
+  const secure = shouldUseSecureCookies();
 
-  response.clearCookie(accessTokenCookieName, { ...options, httpOnly: true });
-  response.clearCookie(csrfTokenCookieName, { ...options, httpOnly: false });
+  response.clearCookie(accessTokenCookieName, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure,
+    path: apiCookiePath,
+  });
+  response.clearCookie(csrfTokenCookieName, {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure,
+    path: csrfCookiePath,
+  });
 }
