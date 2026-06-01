@@ -141,7 +141,7 @@ export class AuthService {
     try {
       const claims = verifyJwt(accessToken);
 
-      return this.findActiveUserByCurrentUserClaims {
+      return this.findActiveUserByCurrentUserClaims({
         sub: claims.sub,
         organizationId: claims.organizationId,
         email: claims.email,
@@ -157,7 +157,7 @@ export class AuthService {
         userId: user.id,
         organizationId: user.organizationId,
       },
-      select: {}
+      select: {
         role: true,
       },
       orderBy: {
