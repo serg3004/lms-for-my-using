@@ -2,18 +2,33 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssignmentSummary, getAssignment } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableAssignmentSummary = AssignmentSummary & {
+  courseTitle?: string | null;
+  course?: { title?: string | null } | null;
+  userName?: string | null;
+  groupName?: string | null;
+};
 
 type AssignmentDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; assignment: AssignmentSummary }
+  | { status: 'loaded'; assignment: ReadableAssignmentSummary }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
 function getCourseHref(courseId: string) {
   return `/learn/courses/${encodeURIComponent(courseId)}`;
+}
+
+function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string) {
+  return getReadableTitle(assignment.courseTitle ?? assignment.course?.title, fallback);
+}
+
+function getAssignmentAudience(assignment: ReadableAssignmentSummary, fallback: string) {
+  return getReadableTitle(assignment.userName ?? assignment.groupName, fallback);
 }
 
 function formatAssignmentDate(value: string | null, fallback: string) {
@@ -32,14 +47,6 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
     let isMounted = true;
 
     async function loadAssignment() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('assignments.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -111,24 +118,22 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
     );
   }
 
+  const courseTitle = getCourseTitle(loadState.assignment, 'Course');
+
   return (
     <main>
       <nav>
         <a href="/learn/assignments">{t('assignments.navLink')}</a>
-        <a href={getCourseHref(loadState.assignment.courseId)}>{t('courseDetail.title')}</a>
+        <a href={getCourseHref(loadState.assignment.courseId)}>{courseTitle}</a>
       </nav>
 
       <article>
         <h1>{t('assignments.detailTitle')}</h1>
         <dl>
-          <dt>{t('assignments.assignmentId')}</dt>
-          <dd>{loadState.assignment.id}</dd>
           <dt>{t('assignments.courseId')}</dt>
-          <dd>{loadState.assignment.courseId}</dd>
+          <dd>{courseTitle}</dd>
           <dt>{t('assignments.userId')}</dt>
-          <dd>{loadState.assignment.userId ?? t('assignments.notAvailable')}</dd>
-          <dt>{t('assignments.groupId')}</dt>
-          <dd>{loadState.assignment.groupId ?? t('assignments.notAvailable')}</dd>
+          <dd>{getAssignmentAudience(loadState.assignment, t('assignments.notAvailable'))}</dd>
           <dt>{t('assignments.status')}</dt>
           <dd>{loadState.assignment.status}</dd>
           <dt>{t('assignments.dueAt')}</dt>
