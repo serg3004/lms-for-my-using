@@ -22,17 +22,17 @@ Source of truth: `apps/api/src/modules/auth/roles.ts`.
 | Memberships create | yes | no | no | no |
 | Groups read | yes | yes | no | no |
 | Groups create | yes | yes | no | no |
-| Courses read | yes | yes | yes | no |
+| Courses read | yes | yes | yes | yes |
 | Courses create | yes | no | yes | no |
-| Lessons read | yes | yes | yes | no |
+| Lessons read | yes | yes | yes | yes |
 | Lessons create | yes | no | yes | no |
-| Course materials read | yes | yes | yes | no |
+| Course materials read | yes | yes | yes | yes |
 | Course materials create | yes | no | yes | no |
-| Assignments read | yes | yes | yes | no |
+| Assignments read | yes | yes | yes | yes |
 | Assignments create | yes | yes | yes | no |
-| Progress read | yes | yes | yes | no |
-| Progress create | yes | yes | yes | no |
-| Assessments read | yes | yes | yes | no |
+| Progress read | yes | yes | yes | yes |
+| Progress create | yes | yes | yes | yes |
+| Assessments read | yes | yes | yes | yes |
 | Assessments create | yes | no | yes | no |
 | Assessment questions read | yes | yes | yes | no |
 | Assessment questions create | yes | no | yes | no |
@@ -44,11 +44,26 @@ Source of truth: `apps/api/src/modules/auth/roles.ts`.
 | Certificates read | yes | yes | yes | yes |
 | Certificates create | yes | yes | yes | yes |
 
+## Learner MVP access
+
+Learners can read the resources used by the learner web routes:
+
+- courses and course details;
+- lessons and lesson details;
+- course materials;
+- assignments;
+- progress;
+- assessments;
+- assessment attempt results;
+- certificates.
+
+Learners can also create progress records for lesson completion and create assessment attempts. Learners still cannot create admin-authored content such as courses, lessons, materials, assignments, assessments, questions, or answer options.
+
 ## Guard model
 
 Most protected API controllers use:
 
-1. `AuthGuard` to require a bearer token.
+1. `AuthGuard` to require an access token.
 2. `RolesGuard` to enforce role policies.
 3. `OrganizationScopeGuard` on write operations where the request body contains `organizationId`.
 
@@ -57,5 +72,5 @@ Tenant isolation must be enforced by service queries using `organizationId` from
 ## Current limitations
 
 - This document mirrors the current MVP policy map only.
-- Learner-facing read policies are intentionally narrow until learner web flows are implemented.
+- Learner access is role-level and organization-scoped; fine-grained assignment/enrollment ownership checks remain service-level follow-up work.
 - Any policy change must update this document and related tests.
