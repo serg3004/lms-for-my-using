@@ -19,6 +19,7 @@ const currentUser = {
   status: 'active',
   locale: 'ru',
   timezone: 'Asia/Almaty',
+  roles: ['learner'],
 } as const;
 
 type MembershipFindManyArgs = {
