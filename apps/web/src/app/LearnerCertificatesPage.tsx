@@ -2,17 +2,26 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableCertificateSummary = CertificateSummary & {
+  courseTitle?: string | null;
+  course?: { title?: string | null } | null;
+};
 
 type CertificatesLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; certificates: CertificateSummary[] }
+  | { status: 'loaded'; certificates: ReadableCertificateSummary[] }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
 function getCertificateHref(certificateId: string) {
   return `/learn/certificates/${encodeURIComponent(certificateId)}`;
+}
+
+function getCourseTitle(certificate: ReadableCertificateSummary, fallback: string) {
+  return getReadableTitle(certificate.courseTitle ?? certificate.course?.title, fallback);
 }
 
 function formatCertificateDate(value: string | null, fallback: string) {
@@ -31,14 +40,6 @@ export function LearnerCertificatesPage() {
     let isMounted = true;
 
     async function loadCertificates() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('certificates.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -114,15 +115,17 @@ export function LearnerCertificatesPage() {
         <p>{t('certificates.empty')}</p>
       ) : (
         <ul>
-          {loadState.certificates.map((certificate) => (
+          {loadState.certificates.map((certificate, index) => (
             <li key={certificate.id}>
               <article>
                 <h2>
-                  <a href={getCertificateHref(certificate.id)}>{certificate.id}</a>
+                  <a href={getCertificateHref(certificate.id)}>
+                    {getListItemLabel('Certificate', index)}
+                  </a>
                 </h2>
                 <dl>
                   <dt>{t('certificates.courseId')}</dt>
-                  <dd>{certificate.courseId}</dd>
+                  <dd>{getCourseTitle(certificate, 'Course')}</dd>
                   <dt>{t('certificates.status')}</dt>
                   <dd>{certificate.status}</dd>
                   <dt>{t('certificates.issuedAt')}</dt>
