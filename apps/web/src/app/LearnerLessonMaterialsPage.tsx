@@ -8,7 +8,6 @@ import {
   getLesson,
   listCourseMaterials,
 } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 
 type LessonMaterialsLoadState =
   | { status: 'idle' }
@@ -18,7 +17,7 @@ type LessonMaterialsLoadState =
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
-function formatMaterialDescription(material: CourseMaterialSummary) {
+function formatDescription(material: CourseMaterialSummary) {
   return material.description?.trim() || material.slug;
 }
 
@@ -42,14 +41,6 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
     let isMounted = true;
 
     async function loadLessonMaterials() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('materials.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -141,7 +132,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
             <li key={material.id}>
               <article>
                 <h2>{material.title}</h2>
-                <p>{formatMaterialDescription(material)}</p>
+                <p>{formatDescription(material)}</p>
                 <dl>
                   <dt>{t('materials.kind')}</dt>
                   <dd>{material.kind}</dd>
