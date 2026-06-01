@@ -2,7 +2,6 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -33,14 +32,6 @@ export function AdminCourseBuilderPage() {
   });
 
   async function loadCourses() {
-    if (!getAuthToken()) {
-      setLoadState({
-        status: 'error',
-        message: t('admin.courseBuilder.authRequired', 'Sign in to manage courses.'),
-      });
-      return;
-    }
-
     try {
       const [organizations, courses] = await Promise.all([
         apiRequest<Organization[]>('/organizations'),
