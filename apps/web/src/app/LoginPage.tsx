@@ -1,4 +1,5 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, login } from '../shared/apiClient.js';
@@ -9,14 +10,28 @@ type LoginFormState = {
   password: string;
 };
 
+type LoginLocationState = {
+  from?: {
+    pathname?: unknown;
+  };
+};
+
 const initialLoginFormState: LoginFormState = {
   organizationId: '',
   email: '',
   password: '',
 };
 
+export function getLoginRedirectPath(locationState: unknown) {
+  const fromPath = (locationState as LoginLocationState | null)?.from?.pathname;
+
+  return typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//') ? fromPath : '/learn';
+}
+
 export function LoginPage() {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [formState, setFormState] = useState(initialLoginFormState);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +63,7 @@ export function LoginPage() {
         ...currentFormState,
         password: '',
       }));
-      window.location.assign('/learn');
+      navigate(getLoginRedirectPath(location.state), { replace: true });
     } catch (error) {
       const message =
         error instanceof ApiClientError ? error.message : t('login.errors.generic');
