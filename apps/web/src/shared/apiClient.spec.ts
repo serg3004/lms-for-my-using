@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 function mockFetch(response: Response) {
-  vi.stubGlob('fetch', vi.fn(async () => response));
+  vi.stubGlobal('fetch', vi.fn(async () => response));
 }
 
 describe('apiRequest', () => {
