@@ -82,7 +82,7 @@ describe('Auth validation', () => {
   it('accepts valid login input', () => {
     const input = loginSchema.parse({
       organizationId: '11111111-1111-1111-1111-111111111111',
-      email: 'USER@example.com',
+      email: 'USER@Example.com',
       password: 'secret-password',
     });
 
@@ -203,7 +203,7 @@ describe('AuthService current user lookup', () => {
 
     await expect(authService.getCurrentUser(token)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(findFirstCalls[0]).toEqual(
-      expect.objectContaining({}
+      expect.objectContaining({
         where: expect.objectContaining({
           id: mismatchedUserId,
           organizationId: currentUser.organizationId,
