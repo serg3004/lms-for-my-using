@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -57,14 +56,6 @@ export function AdminUsersPage() {
     let isMounted = true;
 
     async function loadUsers() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('admin.users.authRequired', 'Sign in to manage users.'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {

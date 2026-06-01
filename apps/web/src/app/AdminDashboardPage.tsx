@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import '../styles/admin.css';
 
 type LoadState =
@@ -36,14 +35,6 @@ export function AdminDashboardPage() {
     let isMounted = true;
 
     async function loadCurrentUser() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('admin.authRequired', 'Sign in to open the admin area.'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
