@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -25,11 +24,6 @@ export function AdminOrgStructurePage() {
 
   useEffect(() => {
     async function loadOrgStructure() {
-      if (!getAuthToken()) {
-        setLoadState({ status: 'error', message: t('admin.orgStructure.authRequired', 'Sign in to manage organization structure.') });
-        return;
-      }
-
       try {
         const [organizations, groups, users] = await Promise.all([
           apiRequest<Organization[]>('/organizations'),
