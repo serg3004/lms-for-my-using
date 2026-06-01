@@ -2,17 +2,26 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssessmentSummary, listAssessments } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableAssessmentSummary = AssessmentSummary & {
+  courseTitle?: string | null;
+  course?: { title?: string | null } | null;
+};
 
 type AssessmentsLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; assessments: AssessmentSummary[] }
+  | { status: 'loaded'; assessments: ReadableAssessmentSummary[] }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
 function getAssessmentHref(assessmentId: string) {
   return `/learn/assessments/${encodeURIComponent(assessmentId)}`;
+}
+
+function getCourseTitle(assessment: ReadableAssessmentSummary, fallback: string) {
+  return getReadableTitle(assessment.courseTitle ?? assessment.course?.title, fallback);
 }
 
 export function LearnerAssessmentsPage() {
@@ -23,14 +32,6 @@ export function LearnerAssessmentsPage() {
     let isMounted = true;
 
     async function loadAssessments() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('assessments.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -115,7 +116,7 @@ export function LearnerAssessmentsPage() {
                 <p>{assessment.description?.trim() || assessment.slug}</p>
                 <dl>
                   <dt>{t('assessments.courseId')}</dt>
-                  <dd>{assessment.courseId}</dd>
+                  <dd>{getCourseTitle(assessment, 'Course')}</dd>
                   <dt>{t('assessments.status')}</dt>
                   <dd>{assessment.status}</dd>
                   <dt>{t('assessments.passingScore')}</dt>

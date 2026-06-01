@@ -2,12 +2,21 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, getCertificate } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableCertificateSummary = CertificateSummary & {
+  courseTitle?: string | null;
+  userName?: string | null;
+  assessmentTitle?: string | null;
+  course?: { title?: string | null } | null;
+  user?: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
+  assessmentAttempt?: { assessment?: { title?: string | null } | null } | null;
+};
 
 type CertificateDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; certificate: CertificateSummary }
+  | { status: 'loaded'; certificate: ReadableCertificateSummary }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
@@ -24,6 +33,24 @@ function formatCertificateDate(value: string | null, fallback: string) {
   return new Date(value).toLocaleString();
 }
 
+function getCourseTitle(certificate: ReadableCertificateSummary, fallback: string) {
+  return getReadableTitle(certificate.courseTitle ?? certificate.course?.title, fallback);
+}
+
+function getUserDisplayName(certificate: ReadableCertificateSummary, fallback: string) {
+  const fullName = [certificate.user?.firstName, certificate.user?.lastName].filter(Boolean).join(' ');
+  const displayName = certificate.userName ?? (fullName || certificate.user?.email);
+
+  return getReadableTitle(displayName, fallback);
+}
+
+function getAssessmentTitle(certificate: ReadableCertificateSummary, fallback: string) {
+  return getReadableTitle(
+    certificate.assessmentTitle ?? certificate.assessmentAttempt?.assessment?.title,
+    fallback,
+  );
+}
+
 export function LearnerCertificateDetailPage({ certificateId }: { certificateId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CertificateDetailLoadState>({ status: 'idle' });
@@ -32,14 +59,6 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     let isMounted = true;
 
     async function loadCertificate() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('certificates.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -111,24 +130,24 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     );
   }
 
+  const courseTitle = getCourseTitle(loadState.certificate, 'Course');
+
   return (
     <main>
       <nav>
         <a href="/learn/certificates">{t('certificates.navLink')}</a>
-        <a href={getCourseHref(loadState.certificate.courseId)}>{t('courseDetail.title')}</a>
+        <a href={getCourseHref(loadState.certificate.courseId)}>{courseTitle}</a>
       </nav>
 
       <article>
         <h1>{t('certificates.detailTitle')}</h1>
         <dl>
-          <dt>{t('certificates.certificateId')}</dt>
-          <dd>{loadState.certificate.id}</dd>
           <dt>{t('certificates.courseId')}</dt>
-          <dd>{loadState.certificate.courseId}</dd>
+          <dd>{courseTitle}</dd>
           <dt>{t('certificates.userId')}</dt>
-          <dd>{loadState.certificate.userId}</dd>
+          <dd>{getUserDisplayName(loadState.certificate, t('certificates.notAvailable'))}</dd>
           <dt>{t('certificates.assessmentAttemptId')}</dt>
-          <dd>{loadState.certificate.assessmentAttemptId ?? t('certificates.notAvailable')}</dd>
+          <dd>{getAssessmentTitle(loadState.certificate, t('certificates.notAvailable'))}</dd>
           <dt>{t('certificates.status')}</dt>
           <dd>{loadState.certificate.status}</dd>
           <dt>{t('certificates.issuedAt')}</dt>

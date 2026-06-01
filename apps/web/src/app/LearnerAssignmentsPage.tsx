@@ -2,17 +2,32 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssignmentSummary, listAssignments } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableAssignmentSummary = AssignmentSummary & {
+  courseTitle?: string | null;
+  course?: { title?: string | null } | null;
+  userName?: string | null;
+  groupName?: string | null;
+};
 
 type AssignmentsLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; assignments: AssignmentSummary[] }
+  | { status: 'loaded'; assignments: ReadableAssignmentSummary[] }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
 function getAssignmentHref(assignmentId: string) {
   return `/learn/assignments/${encodeURIComponent(assignmentId)}`;
+}
+
+function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string) {
+  return getReadableTitle(assignment.courseTitle ?? assignment.course?.title, fallback);
+}
+
+function getAssignmentAudience(assignment: ReadableAssignmentSummary, fallback: string) {
+  return getReadableTitle(assignment.userName ?? assignment.groupName, fallback);
 }
 
 function formatAssignmentDate(value: string | null, fallback: string) {
@@ -31,14 +46,6 @@ export function LearnerAssignmentsPage() {
     let isMounted = true;
 
     async function loadAssignments() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('assignments.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -114,15 +121,19 @@ export function LearnerAssignmentsPage() {
         <p>{t('assignments.empty')}</p>
       ) : (
         <ul>
-          {loadState.assignments.map((assignment) => (
+          {loadState.assignments.map((assignment, index) => (
             <li key={assignment.id}>
               <article>
                 <h2>
-                  <a href={getAssignmentHref(assignment.id)}>{assignment.id}</a>
+                  <a href={getAssignmentHref(assignment.id)}>
+                    {getListItemLabel('Assignment', index)}
+                  </a>
                 </h2>
                 <dl>
                   <dt>{t('assignments.courseId')}</dt>
-                  <dd>{assignment.courseId}</dd>
+                  <dd>{getCourseTitle(assignment, 'Course')}</dd>
+                  <dt>{t('assignments.userId')}</dt>
+                  <dd>{getAssignmentAudience(assignment, t('assignments.notAvailable'))}</dd>
                   <dt>{t('assignments.status')}</dt>
                   <dd>{assignment.status}</dd>
                   <dt>{t('assignments.dueAt')}</dt>
