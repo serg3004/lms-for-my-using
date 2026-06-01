@@ -1,4 +1,10 @@
-import { ArgumentsHost, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { z } from 'zod';
 
 import { ApiExceptionFilter } from './api-exception.filter.js';
@@ -97,6 +103,23 @@ describe('ApiExceptionFilter', () => {
         message: 'Already exists',
       },
       path: '/api/v1/conflict',
+    });
+  });
+
+  it('formats rate limit exceptions as TOO_MANY_REQUESTS', () => {
+    const filter = new ApiExceptionFilter();
+    const host = createHost('/api/v1/auth/login');
+
+    filter.catch(new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS), host.host);
+
+    expect(host.getStatusCode()).toBe(429);
+    expect(host.getJsonBody()).toMatchObject({
+      statusCode: 429,
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many requests',
+      },
+      path: '/api/v1/auth/login',
     });
   });
 
