@@ -8,7 +8,6 @@ import {
   getLesson,
   markLessonCompleted,
 } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 
 type LessonDetailLoadState =
   | { status: 'idle' }
@@ -45,14 +44,6 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     let isMounted = true;
 
     async function loadLesson() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('lessonDetail.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
