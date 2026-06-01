@@ -168,9 +168,30 @@ http://localhost:5173
 
 In local development, the web app sends API requests to the relative `/api` path. Vite proxies these requests to the local API at `http://localhost:3000`.
 
-## 9. Health check
+## 9. Local cookie auth behavior
+
+Local MVP auth is cookie-first:
+
+- `POST /api/v1/auth/login` sets `lms_access_token` and `lms_csrf_token`.
+- In `NODE_ENV=development`, auth cookies are not marked `Secure`, so they work over local HTTP.
+- In `NODE_ENV=production`, auth cookies are marked `Secure`.
+- `lms_access_token` is `httpOnly` and scoped to `/api/v1`.
+- `lms_csrf_token` is readable by the web app and scoped to `/`, so frontend code can attach the `x-csrf-token` header for unsafe requests.
+- Unsafe cookie-auth requests such as `POST`, `PUT`, `PATCH`, and `DELETE` must send `x-csrf-token` matching the `lms_csrf_token` cookie.
+
+Quick browser verification:
+
+1. Open `http://localhost:5173/login`.
+2. Log in with a local/demo account.
+3. Confirm `GET /api/v1/auth/me` succeeds.
+4. Trigger a cookie-auth unsafe request, for example logout.
+5. Confirm the request includes `x-csrf-token` and succeeds.
+6. Confirm removing or changing the CSRF header causes a `403`.
+
+## 10. Health check
 
 Check the API health endpoint:
+
 
 ```bash
 curl http://localhost:3000/api/v1/health
@@ -178,13 +199,14 @@ curl http://localhost:3000/api/v1/health
 
 Expected response includes:
 
+
 ```json
 {
   "status": "ok"
 }
 ```
 
-## 10. Local verification checklist
+## 11. Local verification checklist
 
 Before using the local MVP:
 
@@ -196,8 +218,11 @@ Before using the local MVP:
 - API starts without env validation errors.
 - Web app starts.
 - `GET /api/v1/health` returns OK.
+- Login sets auth and CSRF cookies in local HTTP dev.
+- `GET /api/v1/auth/me` works after login.
+- Unsafe cookie-auth request with matching CSRF succeeds.
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### API fails with invalid environment
 
@@ -231,7 +256,23 @@ Check:
 - `FRONTEND_URL` matches the local web URL.
 - Browser devtools network tab shows `/api/v1/...` requests from the web app, proxied by Vite to `http://localhost:3000`.
 
-## 12. Explicit non-goals
+### Login works but `/auth/me` returns 401 locally
+
+Check:
+
+- The browser received `lms_access_token` after login.
+- `NODE_ENV` is not set to `production` for local HTTP development.
+- The API and web app are both reached through `localhost`, not mixed hosts such as `127.0.0.1` and `localhost`.
+
+### Unsafe request returns 403
+
+Check:
+
+- The browser received `lms_csrf_token` after login.
+- The frontend request includes `x-csrf-token`.
+- The header value matches the `lms_csrf_token` cookie.
+
+## 13. Explicit non-goals
 
 This runbook does not:
 
