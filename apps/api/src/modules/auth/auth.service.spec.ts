@@ -27,14 +27,24 @@ type PrismaUserFindFirstArgs = {
   select: Record<string, unknown>;
 };
 
+type PrismaMembershipFindManyArgs = {
+  where: Record<string, unknown>;
+  select: Record<string, unknown>;
+  orderBy: Record<string, unknown>;
+};
+
 type PrismaMock = {
   user: {
     findFirst: (args: PrismaUserFindFirstArgs) => Promise<typeof currentUser | null>;
+  };
+  membership: {}
+    findMany: (args: PrismaMembershipFindManyArgs) => Promise<Array<{ role: 'learner' | 'instructor' | 'manager' | 'admin' }>>;
   };
 };
 
 function createAuthService(userResult: typeof currentUser | null = currentUser) {
   const findFirstCalls: PrismaUserFindFirstArgs[] = [];
+  const membershipFindManyCalls: PrismaMembershipFindManyArgs[] = [];
   const prisma: PrismaMock = {
     user: {
       findFirst: async (args) => {
@@ -43,11 +53,23 @@ function createAuthService(userResult: typeof currentUser | null = currentUser) 
         return userResult;
       },
     },
+    membership: {
+      findMany: async (args) => {
+        membershipFindManyCalls.push(args);
+
+        return [{
+          role: 'learner',
+        }, {
+          role: 'instructor',
+        }];
+      },
+    },
   };
 
   return {
     authService: new AuthService(prisma as unknown as PrismaService),
     findFirstCalls,
+    membershipFindManyCalls,
   };
 }
 
@@ -66,18 +88,25 @@ describe('Auth validation', () => {
     });
   });
 
-  it('accepts current user with position and shift', () => {
-    const parsedCurrentUser = currentUserSchema.parse(currentUser);
+  it('accepts current user with position, shift, and roles', () => {
+    const parsedCurrentUser = currentUserSchema.parse({
+      ...currentUser,
+      roles: ['learner', 'instructor'],
+    });
 
     expect(parsedCurrentUser.position).toBe('Instructor');
     expect(parsedCurrentUser.shift).toBe('Day');
+    expect(parsedCurrentUser.roles).toEqual(['learner', 'instructor']);
   });
 
   it('accepts login response with bearer token', () => {
     const response = loginResponseSchema.parse({
       accessToken: 'token',
       tokenType: 'Bearer',
-      user: currentUser,
+      user: {
+        ...currentUser,
+        roles: ['learner'],
+      },
     });
 
     expect(response.tokenType).toBe('Bearer');
@@ -108,7 +137,7 @@ describe('AuthService current user lookup', () => {
 
   it('looks up current users by token subject, organization, and email', async () => {
     process.env.JWT_SECRET = jwtSecret;
-    const { authService, findFirstCalls } = createAuthService();
+    const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService();
     const token = signJwt(
       {
         sub: currentUser.id,
@@ -118,7 +147,10 @@ describe('AuthService current user lookup', () => {
       jwtSecret,
     );
 
-    await expect(authService.getCurrentUser(token)).resolves.toEqual(currentUser);
+    await expect(authService.getCurrentUser(token)).resolves.toEqual({
+      ...currentUser,
+      roles: ['learner', 'instructor'],
+    });
     expect(findFirstCalls).toEqual([
       {
         where: {
@@ -135,12 +167,26 @@ describe('AuthService current user lookup', () => {
         }),
       },
     ]);
+    expect(membershipFindManyCalls).toEqual([
+      {
+        where: {
+          userId: currentUser.id,
+          organizationId: currentUser.organizationId,
+        },
+        select: {
+          role: true,
+        },
+        orderBy: {
+          role: 'asc',
+        },
+      },
+    ]);
   });
 
   it('rejects tokens when the subject does not match an active user', async () => {
     process.env.JWT_SECRET = jwtSecret;
     const mismatchedUserId = '33333333-3333-3333-3333-333333333333';
-    const { authService, findFirstCalls } = createAuthService(null);
+    const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService(null);
     const token = signJwt(
       {
         sub: mismatchedUserId,
@@ -160,5 +206,6 @@ describe('AuthService current user lookup', () => {
         }),
       }),
     );
+    expect(membershipFindManyCalls).toHaveLength(0);
   });
 });
