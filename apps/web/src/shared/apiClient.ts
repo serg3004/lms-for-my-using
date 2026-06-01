@@ -133,28 +133,65 @@ type LoginResponse = {
   user: CurrentUser;
 };
 
-type ApiErrorResponse = {
-  error?: {
-    message?: string;
+type ApiErrorDetail = {
+  field?: string;
+  message: string;
+  code?: string;
+};
+
+export type ApiErrorResponse = {
+  statusCode: number;
+  error: {
+    code: string;
+    message: string;
+    details?: ApiErrorDetail[];
   };
-  message?: string;
+  path: string;
+  timestamp: string;
 };
 
 export class ApiClientError extends Error {
-  constructor(message: string, readonly status: number) {
+  readonly code: string;
+  readonly details: ApiErrorDetail[];
+  readonly response: ApiErrorResponse | null;
+
+  constructor(message: string, readonly status: number, response: ApiErrorResponse | null = null) {
     super(message);
     this.name = 'ApiClientError';
+    this.response = response;
+    this.code = response?.error.code ?? 'HTTP_ERROR';
+    this.details = response?.error.details ?? [];
   }
 }
 
-function getErrorMessage(body: unknown) {
-  if (!body || typeof body !== 'object') {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
+  if (!isRecord(value) || !isRecord(value.error)) {
+    return false;
+  }
+
+  return (
+    typeof value.statusCode === 'number' &&
+    typeof value.error.code === 'string' &&
+    typeof value.error.message === 'string' &&
+    typeof value.path === 'string' &&
+    typeof value.timestamp === 'string'
+  );
+}
+
+function getLegacyErrorMessage(body: unknown) {
+  if (!isRecord(body)) {
     return 'Request failed';
   }
 
-  const errorBody = body as ApiErrorResponse;
+  if (isRecord(body.error) && typeof body.error.message === 'string') {
+    return body.error.message;
+  }
 
-  return errorBody.error?.message ?? errorBody.message ?? 'Request failed';
+  return typeof body.message === 'string' ? body.message : 'Request failed';
 }
 
 function getCookieValue(cookieName: string) {
@@ -213,7 +250,9 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
   const body = await parseJsonResponse(response);
 
   if (!response.ok) {
-    throw new ApiClientError(getErrorMessage(body), response.status);
+    const errorResponse = isApiErrorResponse(body) ? body : null;
+
+    throw new ApiClientError(errorResponse?.error.message ?? getLegacyErrorMessage(body), response.status, errorResponse);
   }
 
   return body as TResponse;
