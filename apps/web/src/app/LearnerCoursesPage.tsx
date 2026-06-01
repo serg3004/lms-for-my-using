@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CourseSummary, listCourses } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type CoursesLoadState =
@@ -28,14 +27,6 @@ export function LearnerCoursesPage() {
     let isMounted = true;
 
     async function loadCourses() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('courses.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
