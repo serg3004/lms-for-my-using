@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -55,11 +54,6 @@ export function AdminAssignmentCompletionPage() {
   });
 
   async function loadData(nextCourseId?: string) {
-    if (!getAuthToken()) {
-      setLoadState({ status: 'error', message: 'Sign in to manage assignments.' });
-      return;
-    }
-
     try {
       const [courses, users, assignments, progressItems] = await Promise.all([
         apiRequest<Course[]>('/courses'),
