@@ -2,7 +2,6 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -62,14 +61,6 @@ export function AdminMaterialsPage() {
   });
 
   async function loadMaterials(courseId?: string) {
-    if (!getAuthToken()) {
-      setLoadState({
-        status: 'error',
-        message: t('admin.materials.authRequired', 'Sign in to manage materials.'),
-      });
-      return;
-    }
-
     try {
       const courses = await apiRequest<Course[]>('/courses');
       const nextCourseId = courseId || selectedCourseId || courses[0]?.id || '';
