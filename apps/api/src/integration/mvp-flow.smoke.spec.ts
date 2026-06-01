@@ -30,8 +30,9 @@ function createPrismaMock() {
 describe('backend MVP smoke flow', () => {
   it('covers course discovery, lesson progress, and course completion', async () => {
     const prisma = createPrismaMock();
-    const courses Service = new CoursesService(prisma as unknown as PrismaService);
+    const coursesService = new CoursesService(prisma as unknown as PrismaService);
     const progressService = new ProgressService(prisma as unknown as PrismaService);
+    const timestamp = new Date('2026-06-01T09:00:00.000Z');
     const course = {
       id: courseId,
       organizationId,
@@ -39,8 +40,8 @@ describe('backend MVP smoke flow', () => {
       slug: 'onboarding',
       description: null,
       status: 'published',
-      createdAt: new Date('2026-06-01T09:00:00.000Z'),
-      updatedAt: new Date('2026-06-01T09:00:00.000Z'),
+      createdAt: timestamp,
+      updatedAt: timestamp,
     };
 
     prisma.course.findMany.mockResolvedValue([course]);
@@ -55,9 +56,9 @@ describe('backend MVP smoke flow', () => {
       userId,
       status: 'completed',
       score: null,
-      completedAt: new Date('2026-06-01T09:00:00.000Z'),
-      createdAt: new Date('2026-06-01T09:00:00.000Z'),
-      updatedAt: new Date('2026-06-01T09:00:00.000Z'),
+      completedAt: timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp,
     });
     prisma.lesson.count.mockResolvedValue(1);
     prisma.progress.count.mockResolvedValue(1);
@@ -71,7 +72,7 @@ describe('backend MVP smoke flow', () => {
         lessonId,
         userId,
         status: 'completed',
-        completedAt: new Date('2026-06-01T09:00:00.000Z'),
+        completedAt: timestamp,
       }),
     ).resolves.toMatchObject({
       courseId,
