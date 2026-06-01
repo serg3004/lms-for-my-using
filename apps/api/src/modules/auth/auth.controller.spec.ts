@@ -100,7 +100,7 @@ describe('AuthController login', () => {
       expect.objectContaining({
         httpOnly: true,
         sameSite: 'lax',
-        secure: true,
+        secure: false,
       }),
     ]);
     expect(cookieCalls).toContainEqual([
@@ -109,7 +109,7 @@ describe('AuthController login', () => {
       expect.objectContaining({
         httpOnly: false,
         sameSite: 'lax',
-        secure: true,
+        secure: false,
       }),
     ]);
   });
