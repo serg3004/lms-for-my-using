@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -43,11 +42,6 @@ export function AdminResultsCertificatesPage() {
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({ status: 'idle' });
 
   async function loadData(nextAssessmentId?: string) {
-    if (!getAuthToken()) {
-      setLoadState({ status: 'error', message: 'Sign in to manage results and certificates.' });
-      return;
-    }
-
     try {
       const [courses, users, assessments, progressItems, certificates] = await Promise.all([
         apiRequest<Course[]>('/courses'),
