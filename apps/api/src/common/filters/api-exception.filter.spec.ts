@@ -116,7 +116,7 @@ describe('ApiExceptionFilter', () => {
     expect(host.getJsonBody()).toMatchObject({
       statusCode: 429,
       error: {
-        code: 'TOO_MANY_REQUESTS,
+        code: 'TOO_MANY_REQUESTS',
         message: 'Too many requests',
       },
       path: '/api/v1/auth/login',
