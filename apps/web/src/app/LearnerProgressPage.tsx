@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, ProgressSummary, listProgress } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
+import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+
+type ReadableProgressSummary = ProgressSummary & {
+  courseTitle?: string | null;
+  lessonTitle?: string | null;
+  course?: { title?: string | null } | null;
+  lesson?: { title?: string | null } | null;
+};
 
 type ProgressLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; progress: ProgressSummary[] }
+  | { status: 'loaded'; progress: ReadableProgressSummary[] }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
@@ -18,6 +25,14 @@ function getCourseHref(courseId: string) {
 
 function getLessonHref(lessonId: string) {
   return `/learn/lessons/${encodeURIComponent(lessonId)}`;
+}
+
+function getCourseTitle(item: ReadableProgressSummary, fallback: string) {
+  return getReadableTitle(item.courseTitle ?? item.course?.title, fallback);
+}
+
+function getLessonTitle(item: ReadableProgressSummary, fallback: string) {
+  return getReadableTitle(item.lessonTitle ?? item.lesson?.title, fallback);
 }
 
 function formatProgressDate(value: string | null, fallback: string) {
@@ -36,14 +51,6 @@ export function LearnerProgressPage() {
     let isMounted = true;
 
     async function loadProgress() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('progress.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
@@ -128,31 +135,35 @@ export function LearnerProgressPage() {
         <p>{t('progress.empty')}</p>
       ) : (
         <ul>
-          {loadState.progress.map((item) => (
-            <li key={item.id}>
-              <article>
-                <h2>{item.status}</h2>
-                <dl>
-                  <dt>{t('progress.courseId')}</dt>
-                  <dd>
-                    <a href={getCourseHref(item.courseId)}>{item.courseId}</a>
-                  </dd>
-                  <dt>{t('progress.lessonId')}</dt>
-                  <dd>
-                    {item.lessonId ? (
-                      <a href={getLessonHref(item.lessonId)}>{item.lessonId}</a>
-                    ) : (
-                      t('progress.notAvailable')
-                    )}
-                  </dd>
-                  <dt>{t('progress.score')}</dt>
-                  <dd>{item.score ?? t('progress.notAvailable')}</dd>
-                  <dt>{t('progress.completedAt')}</dt>
-                  <dd>{formatProgressDate(item.completedAt, t('progress.notAvailable'))}</dd>
-                </dl>
-              </article>
-            </li>
-          ))}
+          {loadState.progress.map((item, index) => {
+            const courseTitle = getCourseTitle(item, 'Course');
+
+            return (
+              <li key={item.id}>
+                <article>
+                  <h2>{getListItemLabel('Progress record', index)}</h2>
+                  <dl>
+                    <dt>Course</dt>
+                    <dd>
+                      <a href={getCourseHref(item.courseId)}>{courseTitle}</a>
+                    </dd>
+                    <dt>Lesson</dt>
+                    <dd>
+                      {item.lessonId ? (
+                        <a href={getLessonHref(item.lessonId)}>{getLessonTitle(item, 'Lesson')}</a>
+                      ) : (
+                        t('progress.notAvailable')
+                      )}
+                    </dd>
+                    <dt>{t('progress.score')}</dt>
+                    <dd>{item.score ?? t('progress.notAvailable')}</dd>
+                    <dt>{t('progress.completedAt')}</dt>
+                    <dd>{formatProgressDate(item.completedAt, t('progress.notAvailable'))}</dd>
+                  </dl>
+                </article>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>
