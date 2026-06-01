@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 
 import { apiRequest, getAssessment, type AssessmentSummary } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type Question = {
@@ -74,11 +73,6 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     let isMounted = true;
 
     async function loadAssessment() {
-      if (!getAuthToken()) {
-        setLoadState({ status: 'error', message: 'Sign in to take assessments.' });
-        return;
-      }
-
       try {
         const assessment = await getAssessment(assessmentId);
         const questions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessmentId)}/questions`);
@@ -193,7 +187,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
         <EmptyState message="No questions found for this assessment." />
       ) : (
         <form onSubmit={submitAttempt}>
-          {loadState.questions.map((question) => (
+         {loadState.questions.map((question) => (
             <fieldset key={question.id}>
               <legend>
                 {question.order}. {question.title}
