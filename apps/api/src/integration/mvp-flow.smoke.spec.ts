@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 import { PrismaService } from '../database/prisma.service';
 import { CoursesService } from '../modules/courses/courses.service';
 import { ProgressService } from '../modules/progress/progress.service';
@@ -9,22 +7,37 @@ const courseId = '22222222-2222-2222-2222-222222222222';
 const userId = '33333333-3333-3333-3333-333333333333';
 const lessonId = '44444444-4444-4444-4444-444444444444';
 
+type AsyncMock<T> = (() => Promise<T>) & {
+  setResolvedValue: (value: T) => void;
+};
+
+function createAsyncMock<T>(): AsyncMock<T> {
+  let resolvedValue: T;
+
+  const mock = async () => resolvedValue;
+  mock.setResolvedValue = (value: T) => {
+    resolvedValue = value;
+  };
+
+  return mock;
+}
+
 function createPrismaMock() {
   return {
     course: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
+      findMany: createAsyncMock<unknown[]>(),
+      findFirst: createAsyncMock<unknown>(),
     },
     lesson: {
-      count: jest.fn(),
-      findFirst: jest.fn(),
+      count: createAsyncMock<number>(),
+      findFirst: createAsyncMock<unknown>(),
     },
     progress: {
-      count: jest.fn(),
-      create: jest.fn(),
+      count: createAsyncMock<number>(),
+      create: createAsyncMock<unknown>(),
     },
     user: {
-      findFirst: jest.fn(),
+      findFirst: createAsyncMock<unknown>(),
     },
   };
 }
@@ -46,11 +59,11 @@ describe('backend MVP smoke flow', () => {
       updatedAt: timestamp,
     };
 
-    prisma.course.findMany.mockResolvedValue([course]);
-    prisma.course.findFirst.mockResolvedValue({ id: courseId });
-    prisma.user.findFirst.mockResolvedValue({ id: userId });
-    prisma.lesson.findFirst.mockResolvedValue({ id: lessonId });
-    prisma.progress.create.mockResolvedValue({
+    prisma.course.findMany.setResolvedValue([course]);
+    prisma.course.findFirst.setResolvedValue({ id: courseId });
+    prisma.user.findFirst.setResolvedValue({ id: userId });
+    prisma.lesson.findFirst.setResolvedValue({ id: lessonId });
+    prisma.progress.create.setResolvedValue({
       id: '55555555-5555-5555-5555-555555555555',
       organizationId,
       courseId,
@@ -62,8 +75,8 @@ describe('backend MVP smoke flow', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    prisma.lesson.count.mockResolvedValue(1);
-    prisma.progress.count.mockResolvedValue(1);
+    prisma.lesson.count.setResolvedValue(1);
+    prisma.progress.count.setResolvedValue(1);
 
     await expect(coursesService.listCourses(organizationId)).resolves.toEqual([course]);
 
@@ -97,8 +110,8 @@ describe('backend MVP smoke flow', () => {
     const prisma = createPrismaMock();
     const progressService = new ProgressService(prisma as unknown as PrismaService);
 
-    prisma.course.findFirst.mockResolvedValue({ id: courseId });
-    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.course.findFirst.setResolvedValue({ id: courseId });
+    prisma.user.findFirst.setResolvedValue(null);
 
     await expect(
       progressService.createProgress({
