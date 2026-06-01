@@ -2,7 +2,8 @@ import { ChangeEvent, FormEvent, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, login } from '../shared/apiClient.js';
+import { login } from '../shared/apiClient.js';
+import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 
 type LoginFormState = {
   organizationId: string;
@@ -65,9 +66,7 @@ export function LoginPage() {
       }));
       navigate(getLoginRedirectPath(location.state), { replace: true });
     } catch (error) {
-      const message =
-        error instanceof ApiClientError ? error.message : t('login.errors.generic');
-      setErrorMessage(message);
+      setErrorMessage(getLoginErrorMessage(error, t));
     } finally {
       setIsSubmitting(false);
     }
