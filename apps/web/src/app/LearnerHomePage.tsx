@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 
 type LoadState =
   | { status: 'idle' }
@@ -25,14 +24,6 @@ export function LearnerHomePage() {
     let isMounted = true;
 
     async function loadCurrentUser() {
-      if (!getAuthToken()) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('learner.authRequired'),
-        });
-        return;
-      }
-
       setLoadState({ status: 'loading' });
 
       try {
