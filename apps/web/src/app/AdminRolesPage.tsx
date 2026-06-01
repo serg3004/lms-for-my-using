@@ -2,7 +2,6 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { getAuthToken } from '../shared/authToken.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -66,14 +65,6 @@ export function AdminRolesPage() {
   });
 
   async function loadRoleData() {
-    if (!getAuthToken()) {
-      setLoadState({
-        status: 'unauthenticated',
-        message: t('admin.roles.authRequired', 'Sign in to manage role assignments.'),
-      });
-      return;
-    }
-
     setLoadState({ status: 'loading' });
 
     try {
