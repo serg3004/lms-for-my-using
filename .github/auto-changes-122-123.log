@@ -1,0 +1,6 @@
+[2026-06-01T06:45:00Z] BRANCH: docs/backfill-auto-changes-122-123
+[2026-06-01T06:45:01Z] TASK: backfill audit log for merged PRs 122-123
+[2026-06-01T06:45:02Z] READ: .github/auto-changes.log, merged PR summaries 122-123
+[2026-06-01T06:45:03Z] CHANGE: recorded PR 122 role-aware navigation and PR 123 normalized API error feedback UI audit details
+[2026-06-01T06:45:04Z] CHECK: docs-only change; code checks not required
+[2026-06-01T06:45:05Z] ROLLBACK: revert docs PR or remove appended audit entries
