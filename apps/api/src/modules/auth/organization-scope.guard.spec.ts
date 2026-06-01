@@ -1,7 +1,7 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { AuthenticatedRequest } from './auth.guard';
+import { AuthenticatedRequest } from './auth.guard.js';
 import { OrganizationScopeGuard } from './organization-scope.guard';
 
 const currentUser = {
@@ -17,6 +17,7 @@ const currentUser = {
   status: 'active',
   locale: 'ru',
   timezone: 'Asia/Almaty',
+  roles: ['learner'] as Array<'learner'>,
 } as const;
 
 function createContext(request: AuthenticatedRequest, handler = () => undefined) {

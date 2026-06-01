@@ -3,10 +3,11 @@ import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedRequest } from './auth.guard.js';
+import { type CurrentUser } from './auth.schemas.js';
 import { RolesGuard } from './roles.guard.js';
 import { UserRole } from './roles.js';
 
-const currentUser = {
+const currentUser: CurrentUser = {
   id: '22222222-2222-2222-2222-222222222222',
   organizationId: '11111111-1111-1111-1111-111111111111',
   email: 'user@example.com',
@@ -19,7 +20,8 @@ const currentUser = {
   status: 'active',
   locale: 'ru',
   timezone: 'Asia/Almaty',
-} as const;
+  roles: ['learner'],
+};
 
 type MembershipFindManyArgs = {
   where: {

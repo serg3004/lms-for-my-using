@@ -9,6 +9,8 @@ type LoginInput = {
   password: string;
 };
 
+export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
+
 export type CurrentUser = {
   id: string;
   organizationId: string;
@@ -22,6 +24,7 @@ export type CurrentUser = {
   status: string;
   locale: string;
   timezone: string;
+  roles: UserRole[];
 };
 
 export type CourseSummary = {

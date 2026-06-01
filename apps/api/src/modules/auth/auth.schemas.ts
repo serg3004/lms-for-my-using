@@ -9,6 +9,8 @@ const strongPasswordSchema = z
   .regex(/[0-9]/, 'Password must contain a number')
   .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
 
+export const userRoleSchema = z.enum(['learner', 'instructor', 'manager', 'admin']);
+
 export const loginSchema = z.object({
   organizationId: z.string().uuid(),
   email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
@@ -42,6 +44,7 @@ export const currentUserSchema = z.object({
   status: z.enum(['active', 'invited', 'suspended', 'archived']),
   locale: z.string(),
   timezone: z.string(),
+  roles: z.array(userRoleSchema),
 });
 
 export const loginResponseSchema = z.object({
@@ -56,3 +59,4 @@ export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
+export type UserRole = z.infer<typeof userRoleSchema>;
