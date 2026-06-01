@@ -1,7 +1,7 @@
 import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CurrentUser, LoginInput, UserRole } from './auth.schemas.js';
+import { type CurrentUser, type LoginInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { verifyPassword } from './passwords.js';
 
@@ -95,9 +95,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { passwordHash, ...currentUser } = user;
-
-    return this.withRoles(currentUser);
+    return this.withRoles({
+      id: user.id,
+      organizationId: user.organizationId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      middleName: user.middleName,
+      position: user.position,
+      shift: user.shift,
+      phone: user.phone,
+      status: user.status,
+      locale: user.locale,
+      timezone: user.timezone,
+    });
   }
 
   requestPasswordReset() {
@@ -130,7 +141,7 @@ export class AuthService {
     try {
       const claims = verifyJwt(accessToken);
 
-      return this.findActiveUserByCurrentUserClaims({
+      return this.findActiveUserByCurrentUserClaims {
         sub: claims.sub,
         organizationId: claims.organizationId,
         email: claims.email,
@@ -146,7 +157,7 @@ export class AuthService {
         userId: user.id,
         organizationId: user.organizationId,
       },
-      select: {
+      select: {}
         role: true,
       },
       orderBy: {
