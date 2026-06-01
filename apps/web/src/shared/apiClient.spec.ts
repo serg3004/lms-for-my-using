@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiClientError, apiRequest } from './apiClient';
+import { apiRequest } from './apiClient';
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 function mockFetch(response: Response) {
-  vi.stubGlobal('fetch', vi.fn(async () => response));
+  vi.stubGlob('fetch', vi.fn(async () => response));
 }
 
 describe('apiRequest', () => {
