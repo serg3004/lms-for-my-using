@@ -17,6 +17,7 @@ const currentUser = {
   status: 'active',
   locale: 'ru',
   timezone: 'Asia/Almaty',
+  roles: ['learner'],
 } as const;
 
 function createContext(request: AuthenticatedRequest, handler = () => undefined) {
