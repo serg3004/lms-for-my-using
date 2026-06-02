@@ -14,6 +14,18 @@ type ProtectedRouteProps = {
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden';
 
+export function getProtectedRouteAuthState(user: CurrentUser, canAccess?: (user: CurrentUser) => boolean): AuthState {
+  return canAccess && !canAccess(user) ? 'forbidden' : 'authenticated';
+}
+
+export function getProtectedRouteErrorState(error: unknown): AuthState {
+  if (error instanceof ApiClientError && error.status === 401) {
+    return 'unauthenticated';
+  }
+
+  return 'unauthenticated';
+}
+
 export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: ProtectedRouteProps) {
   const location = useLocation();
   const [authState, setAuthState] = useState<AuthState>('loading');
@@ -36,18 +48,13 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
           return;
         }
 
-        setAuthState(canAccess && !canAccess(user) ? 'forbidden' : 'authenticated');
+        setAuthState(getProtectedRouteAuthState(user, canAccess));
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
-        if (error instanceof ApiClientError && error.status === 401) {
-          setAuthState('unauthenticated');
-          return;
-        }
-
-        setAuthState('unauthenticated');
+        setAuthState(getProtectedRouteErrorState(error));
       }
     }
 
