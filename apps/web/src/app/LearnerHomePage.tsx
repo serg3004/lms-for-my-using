@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
+import { PageState } from '../shared/ui.js';
 
 type LoadState =
   | { status: 'idle' }
@@ -59,10 +60,12 @@ export function LearnerHomePage() {
     };
   }, [t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('learner.loading')}</p>
+        <PageState message={t('learner.loading')} variant="loading" />
       </main>
     );
   }
@@ -70,9 +73,7 @@ export function LearnerHomePage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('learner.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('learner.title')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -80,8 +81,7 @@ export function LearnerHomePage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('learner.title')}</h1>
-        <p role="alert">{loadState.message}</p>
+        <PageState title={t('learner.title')} message={loadState.message} variant="error" />
       </main>
     );
   }
