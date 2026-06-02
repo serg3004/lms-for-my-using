@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssignmentSummary, getAssignment } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
   courseTitle?: string | null;
@@ -90,10 +91,13 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
     };
   }, [assignmentId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const assignmentsAction = <a href="/learn/assignments">{t('assignments.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('assignments.loadingDetail')}</p>
+        <PageState message={t('assignments.loadingDetail')} variant="loading" />
       </main>
     );
   }
@@ -101,9 +105,7 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('assignments.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('assignments.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -111,9 +113,12 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('assignments.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/assignments">{t('assignments.navLink')}</a>
+        <PageState
+          title={t('assignments.detailTitle')}
+          message={loadState.message}
+          variant="error"
+          action={assignmentsAction}
+        />
       </main>
     );
   }
@@ -135,7 +140,9 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
           <dt>{t('assignments.audience', 'Audience')}</dt>
           <dd>{getAssignmentAudience(loadState.assignment, t('assignments.notAvailable'))}</dd>
           <dt>{t('assignments.status')}</dt>
-          <dd>{loadState.assignment.status}</dd>
+          <dd>
+            <StatusBadge>{loadState.assignment.status}</StatusBadge>
+          </dd>
           <dt>{t('assignments.dueAt')}</dt>
           <dd>{formatAssignmentDate(loadState.assignment.dueAt, t('assignments.notAvailable'))}</dd>
         </dl>
