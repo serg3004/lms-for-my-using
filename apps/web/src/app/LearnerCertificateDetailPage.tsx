@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, getCertificate } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
   courseTitle?: string | null;
@@ -102,10 +103,13 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     };
   }, [certificateId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const certificatesAction = <a href="/learn/certificates">{t('certificates.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('certificates.loadingDetail')}</p>
+        <PageState message={t('certificates.loadingDetail')} variant="loading" />
       </main>
     );
   }
@@ -113,9 +117,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('certificates.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('certificates.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -123,9 +125,12 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('certificates.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/certificates">{t('certificates.navLink')}</a>
+        <PageState
+          title={t('certificates.detailTitle')}
+          message={loadState.message}
+          variant="error"
+          action={certificatesAction}
+        />
       </main>
     );
   }
@@ -149,7 +154,9 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
           <dt>{t('certificates.assessment', 'Assessment')}</dt>
           <dd>{getAssessmentTitle(loadState.certificate, t('certificates.notAvailable'))}</dd>
           <dt>{t('certificates.status')}</dt>
-          <dd>{loadState.certificate.status}</dd>
+          <dd>
+            <StatusBadge>{loadState.certificate.status}</StatusBadge>
+          </dd>
           <dt>{t('certificates.issuedAt')}</dt>
           <dd>
             {formatCertificateDate(

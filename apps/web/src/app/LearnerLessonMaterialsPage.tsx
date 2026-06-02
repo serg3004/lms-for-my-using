@@ -8,6 +8,7 @@ import {
   getLesson,
   listCourseMaterials,
 } from '../shared/apiClient.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type LessonMaterialsLoadState =
   | { status: 'idle' }
@@ -86,10 +87,13 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
     };
   }, [lessonId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('materials.loading')}</p>
+        <PageState message={t('materials.loading')} variant="loading" />
       </main>
     );
   }
@@ -97,9 +101,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('materials.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('materials.title')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -107,9 +109,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('materials.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
+        <PageState title={t('materials.title')} message={loadState.message} variant="error" action={coursesAction} />
       </main>
     );
   }
@@ -125,7 +125,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
       <p>{loadState.lesson.title}</p>
 
       {loadState.materials.length === 0 ? (
-        <p>{t('materials.empty')}</p>
+        <EmptyState message={t('materials.empty')} />
       ) : (
         <ul>
           {loadState.materials.map((material) => (
@@ -137,7 +137,9 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
                   <dt>{t('materials.kind')}</dt>
                   <dd>{material.kind}</dd>
                   <dt>{t('materials.status')}</dt>
-                  <dd>{material.status}</dd>
+                  <dd>
+                    <StatusBadge>{material.status}</StatusBadge>
+                  </dd>
                   <dt>{t('materials.file')}</dt>
                   <dd>
                     {material.fileUrl ? (

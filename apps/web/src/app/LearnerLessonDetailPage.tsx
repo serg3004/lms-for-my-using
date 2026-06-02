@@ -8,6 +8,7 @@ import {
   getLesson,
   markLessonCompleted,
 } from '../shared/apiClient.js';
+import { PageState, StatusBadge } from '../shared/ui.js';
 
 type LessonDetailLoadState =
   | { status: 'idle' }
@@ -120,10 +121,13 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     }
   }
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('lessonDetail.loading')}</p>
+        <PageState message={t('lessonDetail.loading')} variant="loading" />
       </main>
     );
   }
@@ -131,9 +135,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('lessonDetail.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('lessonDetail.title')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -141,9 +143,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('lessonDetail.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
+        <PageState title={t('lessonDetail.title')} message={loadState.message} variant="error" action={coursesAction} />
       </main>
     );
   }
@@ -162,7 +162,9 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           <dt>{t('lessonDetail.order')}</dt>
           <dd>{loadState.lesson.order}</dd>
           <dt>{t('lessonDetail.status')}</dt>
-          <dd>{loadState.lesson.status}</dd>
+          <dd>
+            <StatusBadge>{loadState.lesson.status}</StatusBadge>
+          </dd>
           <dt>{t('lessonDetail.slug')}</dt>
           <dd>{loadState.lesson.slug}</dd>
         </dl>
