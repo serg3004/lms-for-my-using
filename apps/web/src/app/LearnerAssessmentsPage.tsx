@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssessmentSummary, listAssessments } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssessmentSummary = AssessmentSummary & {
   courseTitle?: string | null;
@@ -70,7 +71,7 @@ export function LearnerAssessmentsPage() {
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('assessments.loading')}</p>
+        <PageState message={t('assessments.loading')} variant="loading" />
       </main>
     );
   }
@@ -78,9 +79,12 @@ export function LearnerAssessmentsPage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('assessments.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('assessments.title')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -88,9 +92,12 @@ export function LearnerAssessmentsPage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('assessments.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn">{t('learner.navLink')}</a>
+        <PageState
+          title={t('assessments.title')}
+          message={loadState.message}
+          variant="error
+          action={<a href="/learn">{t('learner.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -104,7 +111,7 @@ export function LearnerAssessmentsPage() {
       <h1>{t('assessments.title')}</h1>
 
       {loadState.assessments.length === 0 ? (
-        <p>{t('assessments.empty')}</p>
+        <EmptyState message={t('assessments.empty')} />
       ) : (
         <ul>
           {loadState.assessments.map((assessment) => (
@@ -118,7 +125,9 @@ export function LearnerAssessmentsPage() {
                   <dt>{t('assessments.course', 'Course')}</dt>
                   <dd>{getCourseTitle(assessment, 'Course')}</dd>
                   <dt>{t('assessments.status')}</dt>
-                  <dd>{assessment.status}</dd>
+                  <dd>
+                    <StatusBadge>{assessment.status}</StatusBadge>
+                  </dd>
                   <dt>{t('assessments.passingScore')}</dt>
                   <dd>{assessment.passingScore}</dd>
                   <dt>{t('assessments.maxAttempts')}</dt>
