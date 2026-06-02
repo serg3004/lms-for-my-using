@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react';
 
-import { apiRequest, getAssessment, type AssessmentSummary } from '../shared/apiClient.js';
+import { getAssessment } from '../shared/api/assessments.js';
+import { apiRequest } from '../shared/apiClient.js';
+import type { AssessmentSummary } from '../shared/api/types.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type Question = {
