@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, ProgressSummary, listProgress } from '../shared/apiClient.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { EmptyState, PageState } from '../shared/ui.js';
 
 type ReadableProgressSummary = ProgressSummary & {
   courseTitle?: string | null;
@@ -94,10 +95,13 @@ export function LearnerProgressPage() {
     };
   }, [t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('progress.loading')}</p>
+        <PageState message={t('progress.loading')} variant="loading" />
       </main>
     );
   }
@@ -105,9 +109,12 @@ export function LearnerProgressPage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('progress.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('progress.title')}
+          message={loadState.message}
+          variant="error"
+          action={loginAction}
+        />
       </main>
     );
   }
@@ -115,9 +122,12 @@ export function LearnerProgressPage() {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('progress.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn">{t('learner.navLink')}</a>
+        <PageState
+          title={t('progress.title')}
+          message={loadState.message}
+          variant="error"
+          action={learnerAction}
+        />
       </main>
     );
   }
@@ -132,7 +142,7 @@ export function LearnerProgressPage() {
       <h1>{t('progress.title')}</h1>
 
       {loadState.progress.length === 0 ? (
-        <p>{t('progress.empty')}</p>
+        <EmptyState message={t('progress.empty')} />
       ) : (
         <ul>
           {loadState.progress.map((item, index) => {
