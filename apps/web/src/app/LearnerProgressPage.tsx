@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, ProgressSummary, listProgress } from '../shared/apiClient.js';
+import { listProgress } from '../shared/api/progress.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { ProgressSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 
