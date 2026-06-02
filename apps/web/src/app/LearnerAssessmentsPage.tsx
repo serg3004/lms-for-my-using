@@ -68,6 +68,9 @@ export function LearnerAssessmentsPage() {
     };
   }, [t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
@@ -83,7 +86,7 @@ export function LearnerAssessmentsPage() {
           title={t('assessments.title')}
           message={loadState.message}
           variant="error"
-          action={<a href="/login">{t('login.navLink')}</a>}
+          action={loginAction}
         />
       </main>
     );
@@ -95,8 +98,8 @@ export function LearnerAssessmentsPage() {
         <PageState
           title={t('assessments.title')}
           message={loadState.message}
-          variant="error
-          action={<a href="/learn">{t('learner.navLink')}</a>}
+          variant="error"
+          action={learnerAction}
         />
       </main>
     );
