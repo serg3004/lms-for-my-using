@@ -76,6 +76,9 @@ export function LearnerCertificatesPage() {
     };
   }, [t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
@@ -90,8 +93,8 @@ export function LearnerCertificatesPage() {
         <PageState
           title={t('certificates.title')}
           message={loadState.message}
-          variant="error
-          action={<a href="/login">{t('login.navLink')}</a>}
+          variant="error"
+          action={loginAction}
         />
       </main>
     );
@@ -104,7 +107,7 @@ export function LearnerCertificatesPage() {
           title={t('certificates.title')}
           message={loadState.message}
           variant="error"
-          action={<a href="/learn">{t('learner.navLink')}</a>}
+          action={learnerAction}
         />
       </main>
     );
