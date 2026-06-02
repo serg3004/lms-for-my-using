@@ -142,11 +142,11 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
       <article>
         <h1>{t('certificates.detailTitle')}</h1>
         <dl>
-          <dt>{t('certificates.courseId')}</dt>
+          <dt>{t('certificates.course', 'Course')}</dt>
           <dd>{courseTitle}</dd>
-          <dt>{t('certificates.userId')}</dt>
+          <dt>{t('certificates.learner', 'Learner')}</dt>
           <dd>{getUserDisplayName(loadState.certificate, t('certificates.notAvailable'))}</dd>
-          <dt>{t('certificates.assessmentAttemptId')}</dt>
+          <dt>{t('certificates.assessment', 'Assessment')}</dt>
           <dd>{getAssessmentTitle(loadState.certificate, t('certificates.notAvailable'))}</dd>
           <dt>{t('certificates.status')}</dt>
           <dd>{loadState.certificate.status}</dd>
