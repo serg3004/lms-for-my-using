@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CourseSummary, getCourse } from '../shared/apiClient.js';
+import { PageState, StatusBadge } from '../shared/ui.js';
 
 type CourseDetailLoadState =
   | { status: 'idle' }
@@ -70,10 +71,13 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     };
   }, [courseId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('courseDetail.loading')}</p>
+        <PageState message={t('courseDetail.loading')} variant="loading" />
       </main>
     );
   }
@@ -81,9 +85,12 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('courseDetail.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('courseDetail.title')}
+          message={loadState.message}
+          variant="error"
+          action={loginAction}
+        />
       </main>
     );
   }
@@ -91,9 +98,12 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('courseDetail.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
+        <PageState
+          title={t('courseDetail.title')}
+          message={loadState.message}
+          variant="error"
+          action={coursesAction}
+        />
       </main>
     );
   }
@@ -110,7 +120,9 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
         <p>{formatCourseDescription(loadState.course)}</p>
         <dl>
           <dt>{t('courseDetail.status')}</dt>
-          <dd>{loadState.course.status}</dd>
+          <dd>
+            <StatusBadge>{loadState.course.status}</StatusBadge>
+          </dd>
           <dt>{t('courseDetail.slug')}</dt>
           <dd>{loadState.course.slug}</dd>
         </dl>
