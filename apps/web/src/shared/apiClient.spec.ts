@@ -38,6 +38,60 @@ describe('apiRequest', () => {
     });
   });
 
+  it('keeps 401 authentication failures available for route guards', async () => {
+    const errorResponse = {
+      statusCode: 401,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required',
+      },
+      path: '/api/v1/auth/me',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    };
+
+    mockFetch(
+      new Response(JSON.stringify(errorResponse), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(apiRequest('/auth/me')).rejects.toMatchObject({
+      name: 'ApiClientError',
+      message: 'Authentication required',
+      status: 401,
+      code: 'UNAUTHORIZED',
+      response: errorResponse,
+    });
+  });
+
+  it('keeps 403 authorization failures available for access feedback', async () => {
+    const errorResponse = {
+      statusCode: 403,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Access denied',
+      },
+      path: '/api/v1/admin/users',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    };
+
+    mockFetch(
+      new Response(JSON.stringify(errorResponse), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await expect(apiRequest('/admin/users')).rejects.toMatchObject({
+      name: 'ApiClientError',
+      message: 'Access denied',
+      status: 403,
+      code: 'FORBIDDEN',
+      response: errorResponse,
+    });
+  });
+
   it('falls back to legacy error messages when response does not match ApiErrorResponse', async () => {
     mockFetch(
       new Response(JSON.stringify({ message: 'Legacy failure' }), {
