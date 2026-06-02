@@ -19,7 +19,7 @@ describe('LoginPage smoke', () => {
     expect(html).toContain('name="organizationId"');
     expect(html).toContain('name="email"');
     expect(html).toContain('name="password"');
-    expect(html).toContain("type="submit"');
+    expect(html).toContain('type="submit"');
   });
 
   it('maps API login errors to user-facing messages', () => {
