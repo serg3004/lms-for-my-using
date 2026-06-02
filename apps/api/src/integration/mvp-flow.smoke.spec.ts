@@ -191,7 +191,10 @@ describe('backend MVP smoke flow', () => {
         email,
         password,
       }),
-    ).resolves.toMatchObject({tokenType: 'Bearer', user: { id: userId, organizationId, email, roles: ['admin'] } });
+    ).resolves.toMatchObject({
+      tokenType: 'Bearer',
+      user: { id: userId, organizationId, email, roles: ['admin'] },
+    });
 
     await expect(
       coursesService.createCourse({
@@ -233,7 +236,7 @@ describe('backend MVP smoke flow', () => {
       }),
     ).resolves.toEqual(progress);
 
-    await expect(coursesService.getCourseCompletion(courseId, userId, organizationId)).resolves.toMatchObject {
+    await expect(coursesService.getCourseCompletion(courseId, userId, organizationId)).resolves.toMatchObject({
       courseId,
       userId,
       totalLessons: 1,
