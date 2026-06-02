@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssessmentSummary, getAssessment } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssessmentSummary = AssessmentSummary & {
   courseTitle?: string | null;
@@ -90,10 +91,13 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
     };
   }, [assessmentId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const assessmentsAction = <a href="/learn/assessments">{t('assessments.navLink')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('assessments.loadingDetail')}</p>
+        <PageState message={t('assessments.loadingDetail')} variant="loading" />
       </main>
     );
   }
@@ -101,9 +105,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('assessments.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('assessments.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -111,9 +113,12 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('assessments.detailTitle')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn/assessments">{t('assessments.navLink')}</a>
+        <PageState
+          title={t('assessments.detailTitle')}
+          message={loadState.message}
+          variant="error"
+          action={assessmentsAction}
+        />
       </main>
     );
   }
@@ -144,7 +149,9 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
             )}
           </dd>
           <dt>{t('assessments.status')}</dt>
-          <dd>{loadState.assessment.status}</dd>
+          <dd>
+            <StatusBadge>{loadState.assessment.status}</StatusBadge>
+          </dd>
           <dt>{t('assessments.passingScore')}</dt>
           <dd>{loadState.assessment.passingScore}</dd>
           <dt>{t('assessments.maxAttempts')}</dt>
