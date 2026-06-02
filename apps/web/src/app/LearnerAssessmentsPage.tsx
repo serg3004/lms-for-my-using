@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, AssessmentSummary, listAssessments } from '../shared/apiClient.js';
+import { listAssessments } from '../shared/api/assessments.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { AssessmentSummary } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 

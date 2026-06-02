@@ -2,7 +2,7 @@ import { ChangeEvent, FormEvent, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { login } from '../shared/apiClient.js';
+import { login } from '../shared/api/auth.js';
 import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 
 type LoginFormState = {
@@ -74,7 +74,7 @@ export function LoginPage() {
 
   return (
     <main>
-      <section>
+     <section>
         <h1>{t('login.title')}</h1>
         <p>{t('login.subtitle')}</p>
       </section>

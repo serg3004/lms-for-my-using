@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, LessonSummary, listLessons } from '../shared/apiClient.js';
+import { listLessons } from '../shared/api/lessons.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { LessonSummary } from '../shared/api/types.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type LessonsLoadState =

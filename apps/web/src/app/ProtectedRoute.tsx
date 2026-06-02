@@ -1,7 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { ApiClientError, getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser } from '../shared/api/auth.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { CurrentUser } from '../shared/api/types.js';
 import { LogoutButton } from './LogoutButton.js';
 
 type ProtectedRouteProps = {
@@ -88,4 +90,3 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
     </>
   );
 }
-

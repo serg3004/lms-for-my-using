@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, CurrentUser, getCurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser } from '../shared/api/auth.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { CurrentUser } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 
 type LoadState =
