@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, AssignmentSummary, listAssignments } from '../shared/apiClient.js';
+import { listAssignments } from '../shared/api/assignments.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import type { AssignmentSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
