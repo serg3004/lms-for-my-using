@@ -8,8 +8,6 @@ import { getLoginErrorMessage } from '../shared/apiErrorFeedback';
 import { ApiClientError } from '../shared/apiClient';
 import { LoginPage } from './LoginPage';
 
-const translate = (key: string) => key;
-
 describe('LoginPage smoke', () => {
   it('renders the login form shell', () => {
     const html = renderToStaticMarkup(
@@ -21,10 +19,10 @@ describe('LoginPage smoke', () => {
     expect(html).toContain('name="organizationId"');
     expect(html).toContain('name="email"');
     expect(html).toContain('name="password"');
-    expect(html).toContain('type="submit"');
+    expect(html).toContain("type="submit"');
   });
 
   it('maps API login errors to user-facing messages', () => {
-    expect(getLoginErrorMessage(new ApiClientError('Invalid credentials', 401), translate)).toBe('login.invalidCredentials');
+    expect(getLoginErrorMessage(new ApiClientError('Invalid credentials', 401), (key) => key)).toBe('Invalid credentials');
   });
 });
