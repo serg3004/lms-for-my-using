@@ -1,5 +1,6 @@
 import { apiRequest } from '../apiClient.js';
-import type { AssignmentSummary } from '../apiClient.js';
+
+import type { AssignmentSummary } from './types.js';
 
 const assignmentsPath = '/assignments';
 
