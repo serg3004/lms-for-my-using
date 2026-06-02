@@ -124,7 +124,7 @@ export function LearnerCertificatesPage() {
                   </a>
                 </h2>
                 <dl>
-                  <dt>{t('certificates.courseId')}</dt>
+                  <dt>{t('certificates.course', 'Course')}</dt>
                   <dd>{getCourseTitle(certificate, 'Course')}</dd>
                   <dt>{t('certificates.status')}</dt>
                   <dd>{certificate.status}</dd>
