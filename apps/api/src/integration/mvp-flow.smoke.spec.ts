@@ -140,18 +140,6 @@ describe('backend MVP smoke flow', () => {
       createdAt: timestamp,
       updatedAt: timestamp,
     };
-    const certificate = {
-      id: certificateId,
-      organizationId,
-      courseId,
-      userId,
-      assessmentAttemptId: null,
-      status: 'issued' as const,
-      issuedAt: timestamp,
-      revokedAt: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
     const user = {
       id: userId,
       organizationId,
@@ -167,6 +155,18 @@ describe('backend MVP smoke flow', () => {
       timezone: 'UTC',
       passwordHash,
     };
+    const certificate = {
+      id: certificateId,
+      organizationId,
+      courseId,
+      userId,
+      assessmentAttemptId: null,
+      status: 'issued' as const,
+      issuedAt: timestamp,
+      revokedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
 
     prisma.organization.findFirst.setResolvedValue({ id: organizationId });
     prisma.user.findFirst.setResolvedValue(user);
@@ -175,6 +175,7 @@ describe('backend MVP smoke flow', () => {
     prisma.course.findUnique.setResolvedValue(null);
     prisma.course.create.setResolvedValue(course);
     prisma.lesson.findUnique.setResolvedValue(null);
+    prisma.lesson.findFirst.setResolvedValue({ id: lessonId });
     prisma.lesson.create.setResolvedValue(lesson);
     prisma.assignment.create.setResolvedValue(assignment);
     prisma.progress.create.setResolvedValue(progress);
@@ -190,15 +191,7 @@ describe('backend MVP smoke flow', () => {
         email,
         password,
       }),
-    ).resolves.toMatchObject({
-      tokenType: 'Bearer',
-      user: {
-        id: userId,
-        organizationId,
-        email,
-        roles: ['admin'],
-      },
-    });
+    ).resolves.toMatchObject({tokenType: 'Bearer', user: { id: userId, organizationId, email, roles: ['admin'] } });
 
     await expect(
       coursesService.createCourse({
@@ -240,7 +233,7 @@ describe('backend MVP smoke flow', () => {
       }),
     ).resolves.toEqual(progress);
 
-    await expect(coursesService.getCourseCompletion(courseId, userId, organizationId)).resolves.toMatchObject({
+    await expect(coursesService.getCourseCompletion(courseId, userId, organizationId)).resolves.toMatchObject {
       courseId,
       userId,
       totalLessons: 1,
