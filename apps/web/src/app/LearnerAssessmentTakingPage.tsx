@@ -132,7 +132,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     setIsSubmitting(true);
 
     try {
-      const attempt = await apiRequest<Result>(`/assessments/${encodeURIComponent(assessmentId)}/attempts`, {
+      const attempt = await apiRequest<{ id: string }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts`, {
         method: 'POST',
         body: JSON.stringify({ answers: buildAnswers(loadState.questions, selectedAnswers) }),
       });
@@ -145,11 +145,19 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   }
 
   if (loadState.status === 'loading') {
-    return <PageState message="Loading assessment..." variant="loading" />;
+    return (
+      <main>
+        <PageState message="Loading assessment..." variant="loading" />
+      </main>
+    );
   }
 
   if (loadState.status === 'error') {
-    return <PageState message={loadState.message} title="Take assessment" variant="error" />;
+    return (
+      <main>
+        <PageState message={loadState.message} title="Take assessment" variant="error" />
+      </main>
+    );
   }
 
   if (result) {
@@ -187,7 +195,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
         <EmptyState message="No questions found for this assessment." />
       ) : (
         <form onSubmit={submitAttempt}>
-         {loadState.questions.map((question) => (
+          {loadState.questions.map((question) => (
             <fieldset key={question.id}>
               <legend>
                 {question.order}. {question.title}
