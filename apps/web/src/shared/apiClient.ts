@@ -3,139 +3,6 @@ const csrfTokenCookieName = 'lms_csrf_token';
 const csrfHeaderName = 'x-csrf-token';
 const unsafeMethods = new Set(['DELETE', 'PATCH', 'POST', 'PUT']);
 
-type LoginInput = {
-  organizationId: string;
-  email: string;
-  password: string;
-};
-
-export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
-
-export type CurrentUser = {
-  id: string;
-  organizationId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  middleName: string | null;
-  position: string | null;
-  shift: string | null;
-  phone: string | null;
-  status: string;
-  locale: string;
-  timezone: string;
-  roles: UserRole[];
-};
-
-export type CourseSummary = {
-  id: string;
-  organizationId: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type LessonSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  order: number;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type CourseMaterialSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  lessonId: string | null;
-  title: string;
-  slug: string;
-  description: string | null;
-  kind: string;
-  fileName: string | null;
-  fileUrl: string | null;
-  mimeType: string | null;
-  sizeBytes: number | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ProgressSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  lessonId: string | null;
-  userId: string;
-  status: string;
-  score: number | null;
-  completedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type AssignmentSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  userId: string | null;
-  groupId: string | null;
-  status: string;
-  dueAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type AssessmentSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  lessonId: string | null;
-  title: string;
-  slug: string;
-  description: string | null;
-  status: string;
-  passingScore: number;
-  maxAttempts: number;
-  availableAfterCourseCompletion: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type CertificateSummary = {
-  id: string;
-  organizationId: string;
-  courseId: string;
-  userId: string;
-  assessmentAttemptId: string | null;
-  status: string;
-  issuedAt: string;
-  revokedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type CreateLessonCompletionInput = {
-  organizationId: string;
-  courseId: string;
-  lessonId: string;
-  userId: string;
-};
-
-type LoginResponse = {
-  accessToken: string;
-  tokenType: 'Bearer';
-  user: CurrentUser;
-};
-
 type ApiErrorDetail = {
   field?: string;
   message: string;
@@ -261,72 +128,26 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
   return body as TResponse;
 }
 
-export async function login(input: LoginInput) {
-  return apiRequest<LoginResponse>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-}
+export type {
+  AssessmentSummary,
+  AssignmentSummary,
+  CertificateSummary,
+  CourseMaterialSummary,
+  CourseSummary,
+  CreateLessonCompletionInput,
+  CurrentUser,
+  LessonSummary,
+  LoginInput,
+  LoginResponse,
+  ProgressSummary,
+  UserRole,
+} from './api/types.js';
 
-export function getCurrentUser() {
-  return apiRequest<CurrentUser>('/auth/me');
-}
-
-export function listCourses() {
-  return apiRequest<CourseSummary[]>('/courses');
-}
-
-export function getCourse(courseId: string) {
-  return apiRequest<CourseSummary>(`/courses/${encodeURIComponent(courseId)}`);
-}
-
-export function listLessons(courseId: string) {
-  return apiRequest<LessonSummary[]>(`/courses/${encodeURIComponent(courseId)}/lessons`);
-}
-
-export function getLesson(lessonId: string) {
-  return apiRequest<LessonSummary>(`/lessons/${encodeURIComponent(lessonId)}`);
-}
-
-export function listCourseMaterials(courseId: string) {
-  return apiRequest<CourseMaterialSummary[]>(`/courses/${encodeURIComponent(courseId)}/materials`);
-}
-
-export function listProgress() {
-  return apiRequest<ProgressSummary[]>('/progress');
-}
-
-export function markLessonCompleted(input: CreateLessonCompletionInput) {
-  return apiRequest<ProgressSummary>('/progress', {
-    method: 'POST',
-    body: JSON.stringify({
-      ...input,
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-    }),
-  });
-}
-
-export function listAssignments() {
-  return apiRequest<AssignmentSummary[]>('/assignments');
-}
-
-export function getAssignment(assignmentId: string) {
-  return apiRequest<AssignmentSummary>(`/assignments/${encodeURIComponent(assignmentId)}`);
-}
-
-export function listAssessments() {
-  return apiRequest<AssessmentSummary[]>('/assessments');
-}
-
-export function getAssessment(assessmentId: string) {
-  return apiRequest<AssessmentSummary>(`/assessments/${encodeURIComponent(assessmentId)}`);
-}
-
-export function listCertificates() {
-  return apiRequest<CertificateSummary[]>('/certificates');
-}
-
-export function getCertificate(certificateId: string) {
-  return apiRequest<CertificateSummary>(`/certificates/${encodeURIComponent(certificateId)}`);
-}
+export { getCurrentUser, login } from './api/auth.js';
+export { getCourse, getCoursePath, listCourses } from './api/courses.js';
+export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
+export { listCourseMaterials } from './api/materials.js';
+export { listProgress } from './api/progress.js';
+export { getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
+export { getAssessment, getAssessmentPath, listAssessments } from './api/assessments.js';
+export { getCertificate, getCertificatePath, listCertificates } from './api/certificates.js';
