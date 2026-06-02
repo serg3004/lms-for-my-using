@@ -115,7 +115,7 @@ export function LearnerAssessmentsPage() {
                 </h2>
                 <p>{assessment.description?.trim() || assessment.slug}</p>
                 <dl>
-                  <dt>{t('assessments.courseId')}</dt>
+                  <dt>{t('assessments.course', 'Course')}</dt>
                   <dd>{getCourseTitle(assessment, 'Course')}</dd>
                   <dt>{t('assessments.status')}</dt>
                   <dd>{assessment.status}</dd>
