@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
   courseTitle?: string | null;
@@ -78,7 +79,7 @@ export function LearnerCertificatesPage() {
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('certificates.loading')}</p>
+        <PageState message={t('certificates.loading')} variant="loading" />
       </main>
     );
   }
@@ -86,9 +87,12 @@ export function LearnerCertificatesPage() {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('certificates.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState
+          title={t('certificates.title')}
+          message={loadState.message}
+          variant="error
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -96,9 +100,12 @@ export function LearnerCertificatesPage() {
   if (loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('certificates.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/learn">{t('learner.navLink')}</a>
+        <PageState
+          title={t('certificates.title')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/learn">{t('learner.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -112,7 +119,7 @@ export function LearnerCertificatesPage() {
       <h1>{t('certificates.title')}</h1>
 
       {loadState.certificates.length === 0 ? (
-        <p>{t('certificates.empty')}</p>
+        <EmptyState message={t('certificates.empty')} />
       ) : (
         <ul>
           {loadState.certificates.map((certificate, index) => (
@@ -127,7 +134,9 @@ export function LearnerCertificatesPage() {
                   <dt>{t('certificates.course', 'Course')}</dt>
                   <dd>{getCourseTitle(certificate, 'Course')}</dd>
                   <dt>{t('certificates.status')}</dt>
-                  <dd>{certificate.status}</dd>
+                  <dd>
+                    <StatusBadge>{certificate.status}</StatusBadge>
+                  </dd>
                   <dt>{t('certificates.issuedAt')}</dt>
                   <dd>
                     {formatCertificateDate(
