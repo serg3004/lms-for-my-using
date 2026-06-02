@@ -131,9 +131,9 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
         <h1>{loadState.assessment.title}</h1>
         <p>{loadState.assessment.description?.trim() || loadState.assessment.slug}</p>
         <dl>
-          <dt>{t('assessments.courseId')}</dt>
+          <dt>{t('assessments.course', 'Course')}</dt>
           <dd>{courseTitle}</dd>
-          <dt>{t('assessments.lessonId')}</dt>
+          <dt>{t('assessments.lesson', 'Lesson')}</dt>
           <dd>
             {loadState.assessment.lessonId ? (
               <a href={getLessonHref(loadState.assessment.lessonId)}>
