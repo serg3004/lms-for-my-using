@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, LessonSummary, listLessons } from '../shared/apiClient.js';
+import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type LessonsLoadState =
   | { status: 'idle' }
@@ -17,6 +18,10 @@ function formatLessonDescription(lesson: LessonSummary) {
 
 function getLessonDetailHref(lesson: LessonSummary) {
   return `/learn/lessons/${encodeURIComponent(lesson.id)}`;
+}
+
+function getCourseDetailHref(courseId: string) {
+  return `/learn/courses/${encodeURIComponent(courseId)}`;
 }
 
 export function LearnerLessonsPage({ courseId }: { courseId: string }) {
@@ -70,10 +75,13 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     };
   }, [courseId, t]);
 
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const courseAction = <a href={getCourseDetailHref(courseId)}>{t('courseDetail.title')}</a>;
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
       <main>
-        <p>{t('lessons.loading')}</p>
+        <PageState message={t('lessons.loading')} variant="loading" />
       </main>
     );
   }
@@ -81,9 +89,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'unauthenticated') {
     return (
       <main>
-        <h1>{t('lessons.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href="/login">{t('login.navLink')}</a>
+        <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -91,9 +97,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main>
-        <h1>{t('lessons.title')}</h1>
-        <p role="alert">{loadState.message}</p>
-        <a href={`/learn/courses/${encodeURIComponent(courseId)}`}>{t('courseDetail.title')}</a>
+        <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={courseAction} />
       </main>
     );
   }
@@ -102,11 +106,11 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     <main>
       <h1>{t('lessons.title')}</h1>
       <nav>
-        <a href={`/learn/courses/${encodeURIComponent(courseId)}`}>{t('courseDetail.title')}</a>
+        <a href={getCourseDetailHref(courseId)}>{t('courseDetail.title')}</a>
       </nav>
 
       {loadState.lessons.length === 0 ? (
-        <p>{t('lessons.empty')}</p>
+        <EmptyState message={t('lessons.empty')} />
       ) : (
         <ol>
           {loadState.lessons.map((lesson) => (
@@ -120,7 +124,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
                   {t('lessons.order')}: {lesson.order}
                 </p>
                 <p>
-                  {t('lessons.status')}: {lesson.status}
+                  {t('lessons.status')}: <StatusBadge>{lesson.status}</StatusBadge>
                 </p>
               </article>
             </li>
