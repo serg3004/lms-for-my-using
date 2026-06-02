@@ -130,9 +130,9 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
       <article>
         <h1>{t('assignments.detailTitle')}</h1>
         <dl>
-          <dt>{t('assignments.courseId')}</dt>
+          <dt>{t('assignments.course', 'Course')}</dt>
           <dd>{courseTitle}</dd>
-          <dt>{t('assignments.userId')}</dt>
+          <dt>{t('assignments.audience', 'Audience')}</dt>
           <dd>{getAssignmentAudience(loadState.assignment, t('assignments.notAvailable'))}</dd>
           <dt>{t('assignments.status')}</dt>
           <dd>{loadState.assignment.status}</dd>
