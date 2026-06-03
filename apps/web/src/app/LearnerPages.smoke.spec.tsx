@@ -22,12 +22,16 @@ import { LearnerAssessmentsPage } from './LearnerAssessmentsPage';
 import { LearnerAssignmentsPage } from './LearnerAssignmentsPage';
 import { LearnerCoursesPage } from './LearnerCoursesPage';
 
+function isIdleLoadState(value: unknown) {
+  return typeof value === 'object' && value !== null && 'status' in value && value.status === 'idle';
+}
+
 function useLoadingState() {
   reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
 }
 
 function useReadyState(value: unknown) {
-  reactMocks.useState.mockImplementationOnce(() => [value, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => [isIdleLoadState(initialState) ? value : initialState, vi.fn()]);
 }
 
 afterEach(() => {
