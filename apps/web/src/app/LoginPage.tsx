@@ -54,7 +54,8 @@ export function LoginPage() {
           return currentErrors;
         }
 
-        const { [field]: _removedError, ...nextErrors } = currentErrors;
+        const nextErrors = { ...currentErrors };
+        delete nextErrors[field];
 
         return nextErrors;
       });
