@@ -4,12 +4,15 @@ import { useTranslation } from 'react-i18next';
 
 import { login } from '../shared/api/auth.js';
 import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
+import { hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 
 type LoginFormState = {
   organizationId: string;
   email: string;
   password: string;
 };
+
+type LoginFormField = keyof LoginFormState;
 
 type LoginLocationState = {
   from?: {
@@ -34,6 +37,7 @@ export function LoginPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [formState, setFormState] = useState(initialLoginFormState);
+  const [validationErrors, setValidationErrors] = useState<FormValidationErrors<LoginFormField>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -45,12 +49,35 @@ export function LoginPage() {
         ...currentFormState,
         [field]: event.target.value,
       }));
+      setValidationErrors((currentErrors) => {
+        if (!currentErrors[field]) {
+          return currentErrors;
+        }
+
+        const nextErrors = { ...currentErrors };
+        delete nextErrors[field];
+
+        return nextErrors;
+      });
     };
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);
     setIsLoggedIn(false);
+
+    const nextValidationErrors = validateRequiredFields<LoginFormField>([
+      { name: 'organizationId', value: formState.organizationId, message: t('validation.required') },
+      { name: 'email', value: formState.email, message: t('validation.required') },
+      { name: 'password', value: formState.password, message: t('validation.required') },
+    ]);
+
+    setValidationErrors(nextValidationErrors);
+
+    if (hasValidationErrors(nextValidationErrors)) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -74,7 +101,7 @@ export function LoginPage() {
 
   return (
     <main>
-     <section>
+      <section>
         <h1>{t('login.title')}</h1>
         <p>{t('login.subtitle')}</p>
       </section>
@@ -83,6 +110,8 @@ export function LoginPage() {
         <label>
           {t('login.organizationId')}
           <input
+            aria-describedby={validationErrors.organizationId ? 'organizationId-error' : undefined}
+            aria-invalid={Boolean(validationErrors.organizationId)}
             autoComplete="organization"
             name="organizationId"
             onChange={updateField('organizationId')}
@@ -91,10 +120,17 @@ export function LoginPage() {
             value={formState.organizationId}
           />
         </label>
+        {validationErrors.organizationId ? (
+          <p id="organizationId-error" role="alert">
+            {validationErrors.organizationId}
+          </p>
+        ) : null}
 
         <label>
           {t('login.email')}
           <input
+            aria-describedby={validationErrors.email ? 'email-error' : undefined}
+            aria-invalid={Boolean(validationErrors.email)}
             autoComplete="email"
             name="email"
             onChange={updateField('email')}
@@ -103,10 +139,17 @@ export function LoginPage() {
             value={formState.email}
           />
         </label>
+        {validationErrors.email ? (
+          <p id="email-error" role="alert">
+            {validationErrors.email}
+          </p>
+        ) : null}
 
         <label>
           {t('login.password')}
           <input
+            aria-describedby={validationErrors.password ? 'password-error' : undefined}
+            aria-invalid={Boolean(validationErrors.password)}
             autoComplete="current-password"
             name="password"
             onChange={updateField('password')}
@@ -115,6 +158,11 @@ export function LoginPage() {
             value={formState.password}
           />
         </label>
+        {validationErrors.password ? (
+          <p id="password-error" role="alert">
+            {validationErrors.password}
+          </p>
+        ) : null}
 
         {errorMessage ? <p role="alert">{errorMessage}</p> : null}
         {isLoggedIn ? <p role="status">{t('login.success')}</p> : null}
