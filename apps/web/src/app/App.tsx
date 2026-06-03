@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+
+import { ProtectedRoute } from './ProtectedRoute.js';
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage.js';
 import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage.js';
@@ -131,13 +134,14 @@ function RootNavigation() {
   );
 }
 
-export function App() {
-  const { t } = useTranslation();
-  const { pathname } = useLocation();
+type BreadcrumbRoot = { label: string; href: string };
 
-  const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
-  const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
-
+function resolveAppPage(
+  pathname: string,
+  t: TFunction,
+  learnerRoot: BreadcrumbRoot,
+  adminRoot: BreadcrumbRoot,
+): ReactNode {
   if (pathname === '/login') {
     return <LoginPage />;
   }
@@ -317,5 +321,22 @@ export function App() {
       <p>{t('app.subtitle')}</p>
       <RootNavigation />
     </main>
+  );
+}
+
+export function App() {
+  const { t } = useTranslation();
+  const { pathname } = useLocation();
+
+  const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
+  const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
+
+  return (
+    <ProtectedRoute
+      protectedPathPrefixes={['/learn', '/admin']}
+      canAccess={(user) => !pathname.startsWith('/admin') || user.roles.some(isAdminNavigationRole)}
+    >
+      {resolveAppPage(pathname, t, learnerRoot, adminRoot)}
+    </ProtectedRoute>
   );
 }
