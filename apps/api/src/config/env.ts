@@ -97,7 +97,13 @@ export function loadLocalEnvFiles({
 }
 
 export function loadApiEnv(env = process.env): ApiEnv {
-  const parsedResult = apiEnvSchema.safeParse(env);
+  // Railway injects PORT; map it to API_PORT so the schema picks it up
+  const normalizedEnv: MutableEnv = { ...env };
+  if (!normalizedEnv['API_PORT'] && normalizedEnv['PORT']) {
+    normalizedEnv['API_PORT'] = normalizedEnv['PORT'];
+  }
+
+  const parsedResult = apiEnvSchema.safeParse(normalizedEnv);
 
   if (!parsedResult.success) {
     const message = parsedResult.error.issues
