@@ -64,6 +64,7 @@ export function loadLocalEnvFiles({
     return [];
   }
 
+  const configuredKeys = new Set(Object.keys(env));
   const loadedFiles: string[] = [];
 
   for (const file of files) {
@@ -84,7 +85,7 @@ export function loadLocalEnvFiles({
 
       const [key, value] = parsedLine;
 
-      if (env[key] === undefined) {
+      if (!configuredKeys.has(key)) {
         env[key] = value;
       }
     }
