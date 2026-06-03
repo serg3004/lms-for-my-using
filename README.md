@@ -15,6 +15,7 @@ Implemented backend foundation:
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
 - Protected direct user and organization creation endpoints
 - Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
+- Course materials currently support metadata/link references only; server-side file upload/storage is not implemented
 - Assessment attempts are allowed only for published assessments
 - Centralized API error format
 - Shared API error response type aligned with backend error envelope
@@ -34,8 +35,16 @@ Current auth/session implementation:
 - JWT verification validates token structure, protected header, claims shape, `iat`, and `exp`.
 - Current user lookup validates token `sub` against `User.id` plus `organizationId`, `email`, `active` status, and `deletedAt: null`.
 - Logout is stateless: `POST /api/v1/auth/logout` validates the bearer token before returning `{ accepted: true }`.
-- Password reset endpoints currently return unavailable skeleton behavior.
+- Password reset endpoints currently return unavailable skeleton behavior: they validate input but do not generate reset tokens, send email, mutate passwords, or invalidate sessions.
 - Refresh token/httpOnly cookie, rate limiting, token revocation/session store, and full password reset flow are deferred.
+
+## Storage/upload status
+
+Current storage/upload implementation:
+- Course material records can reference externally hosted files or links through metadata such as `fileName`, `fileUrl`, `mimeType`, and `sizeBytes`.
+- `POST /api/v1/courses/:courseId/materials` accepts metadata/link data only.
+- The API does not accept raw file bytes, multipart upload, presigned upload URLs, or server-side object storage writes.
+- Production-grade storage/upload is out of current MVP scope and should be planned separately with provider, auth, tenant isolation, validation, scanning, retention, audit, and tests.
 
 ## Implemented backend API
 
@@ -123,8 +132,10 @@ POST /api/v1/certificates
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
+- `docs/MVP_READINESS_DASHBOARD.md`
 - `docs/RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
+- `docs/API_STATUS.md`
 - `docs/PROJECT_LOG.md`
 - `docs/TODO_VERIFY.md`
 
@@ -140,6 +151,6 @@ No database migration has been applied to any real database yet.
 
 ## Planned next steps
 
-1. Auth error consistency and disabled password reset coverage.
-2. Auth/session docs cleanup if behavior changes again.
-3. Admin user management UI.
+1. Move selected API response types to shared.
+2. Verify/expand local demo seed data.
+3. Full learner/admin RBAC audit.
