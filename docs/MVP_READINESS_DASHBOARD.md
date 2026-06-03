@@ -12,6 +12,7 @@ It is a status document only. It does not replace the detailed source documents:
 - `docs/API_CONTRACTS.md`
 - `docs/API_STATUS.md`
 - `docs/STORAGE_UPLOAD_STATUS.md`
+- `docs/PASSWORD_RESET_STATUS.md`
 - `docs/RBAC_MATRIX.md`
 - `docs/TODO_VERIFY.md`
 
@@ -27,7 +28,7 @@ It is a status document only. It does not replace the detailed source documents:
 | API error response contract | Ready | Error envelope construction is centralized through the API response helper. |
 | CI quality gates | Ready | CI runs install, lint, Prisma generate, typecheck, tests, and build with concurrency, timeout, pnpm cache, and Prisma auto-install protection. |
 | Storage uploads | Documented as not implemented | Current storage upload status is documented in `docs/STORAGE_UPLOAD_STATUS.md`; material records support metadata/link references only. |
-| Password reset | Skeleton only | Password reset status still needs explicit clarification in PR 68. |
+| Password reset | Documented as skeleton only | Current password reset status is documented in `docs/PASSWORD_RESET_STATUS.md`; endpoints validate input but return `503 Service Unavailable`. |
 | Demo seed data | Needs follow-up | Local demo seed coverage is planned for PR 70. |
 | Full RBAC audit | Needs follow-up | Full learner/admin RBAC audit is planned for PR 71. |
 | Deployment | Not ready | Deployment foundation is planned for PR 77. |
@@ -63,6 +64,7 @@ Implemented baseline:
 - Web login, protected route, API client error, shared state UI, and learner page smoke coverage.
 - CI gates for lint, typecheck, tests, build, and Prisma generate.
 - Storage upload status documented as metadata/link-only for current MVP.
+- Password reset status documented as skeleton-only for current MVP.
 
 Known non-goals for current MVP:
 
@@ -75,6 +77,5 @@ Known non-goals for current MVP:
 
 ## Next planned doc/status work
 
-1. PR 68 — clarify password reset status.
-2. PR 70 — verify/expand local demo seed data.
-3. PR 71 — full learner/admin RBAC audit.
+1. PR 70 — verify/expand local demo seed data.
+2. PR 71 — full learner/admin RBAC audit.
