@@ -49,7 +49,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/v1/health || exit 1
 
-# Run migrations then start the app.
-# prisma is included because it is listed in devDependencies — for production
-# deployments use Railway's deploy command to run migrations separately.
-CMD ["node", "dist/main.js"]
+# prisma is in production dependencies so migrate deploy runs before startup
+CMD ["sh", "-c", "node node_modules/.bin/prisma migrate deploy && node dist/main.js"]
