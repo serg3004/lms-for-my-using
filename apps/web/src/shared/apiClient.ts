@@ -130,7 +130,7 @@ export type {
 
 export { getCurrentUser, login } from './api/auth.js';
 export { getCourse, getCoursePath, listCourses } from './api/courses.js';
-export { getLesson, getLessonPath, listLessons, markLessonComplete } from './api/lessons.js';
+export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
