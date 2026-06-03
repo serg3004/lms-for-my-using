@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { ZodError } from 'zod';
 
+import { createApiErrorResponse, type ApiErrorDetail, type ApiErrorResponse } from '../api-response.js';
+
 type HttpRequest = {
   url?: string;
 };
@@ -15,23 +17,6 @@ type HttpResponse = {
   status(statusCode: number): {
     json(body: ApiErrorResponse): void;
   };
-};
-
-type ApiErrorDetails = {
-  field?: string;
-  message: string;
-  code?: string;
-};
-
-type ApiErrorResponse = {
-  statusCode: number;
-  error: {
-    code: string;
-    message: string;
-    details?: ApiErrorDetails[];
-  };
-  path: string;
-  timestamp: string;
 };
 
 type ExceptionResponse =
@@ -51,7 +36,7 @@ type NormalizedApiError = {
   statusCode: number;
   code: string;
   message: string;
-  details?: ApiErrorDetails[];
+  details?: ApiErrorDetail[];
 };
 
 const defaultErrorMessage = 'Internal server error';
@@ -150,16 +135,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const request = http.getRequest<HttpRequest>();
     const normalizedError = this.normalizeException(exception);
 
-    response.status(normalizedError.statusCode).json({
-      statusCode: normalizedError.statusCode,
-      error: {
+    response.status(normalizedError.statusCode).json(
+      createApiErrorResponse({
+        statusCode: normalizedError.statusCode,
         code: normalizedError.code,
         message: normalizedError.message,
-        ...(normalizedError.details ? { details: normalizedError.details } : {}),
-      },
-      path: request.url ?? '',
-      timestamp: new Date().toISOString(),
-    });
+        details: normalizedError.details,
+        path: request.url ?? '',
+      }),
+    );
   }
 
   private normalizeException(exception: unknown): NormalizedApiError {

@@ -3,6 +3,7 @@ module.exports = {
   moduleNameMapper: {
     '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\.\\./common/filters/api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
+    '^\\.\\./api-response\\.js$': '<rootDir>/src/common/api-response.ts',
     '^\\./openapi\\.document\\.js$': '<rootDir>/src/modules/openapi/openapi.document.ts',
     '^\\.\\./modules/health/health\\.controller\\.js$': '<rootDir>/src/modules/health/health.controller.ts',
     '^\\.\\./modules/openapi/openapi\\.controller\\.js$': '<rootDir>/src/modules/openapi/openapi.controller.ts',
