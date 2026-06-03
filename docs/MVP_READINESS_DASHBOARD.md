@@ -11,6 +11,7 @@ It is a status document only. It does not replace the detailed source documents:
 - `docs/MVP_LOCAL_RUNBOOK.md`
 - `docs/API_CONTRACTS.md`
 - `docs/API_STATUS.md`
+- `docs/STORAGE_UPLOAD_STATUS.md`
 - `docs/RBAC_MATRIX.md`
 - `docs/TODO_VERIFY.md`
 
@@ -25,7 +26,7 @@ It is a status document only. It does not replace the detailed source documents:
 | Startup failure handling | Ready | API bootstrap failures are caught, redacted, logged, and mark the process as failed. |
 | API error response contract | Ready | Error envelope construction is centralized through the API response helper. |
 | CI quality gates | Ready | CI runs install, lint, Prisma generate, typecheck, tests, and build with concurrency, timeout, pnpm cache, and Prisma auto-install protection. |
-| Storage uploads | Not ready / documented separately | Current storage upload status still needs explicit documentation in PR 67. |
+| Storage uploads | Documented as not implemented | Current storage upload status is documented in `docs/STORAGE_UPLOAD_STATUS.md`; material records support metadata/link references only. |
 | Password reset | Skeleton only | Password reset status still needs explicit clarification in PR 68. |
 | Demo seed data | Needs follow-up | Local demo seed coverage is planned for PR 70. |
 | Full RBAC audit | Needs follow-up | Full learner/admin RBAC audit is planned for PR 71. |
@@ -61,11 +62,12 @@ Implemented baseline:
 - Backend MVP flow smoke coverage.
 - Web login, protected route, API client error, shared state UI, and learner page smoke coverage.
 - CI gates for lint, typecheck, tests, build, and Prisma generate.
+- Storage upload status documented as metadata/link-only for current MVP.
 
 Known non-goals for current MVP:
 
 - Production deployment automation.
-- Production-grade file storage.
+- Production-grade file storage/upload flow.
 - Full password reset delivery.
 - Advanced analytics.
 - Full admin CRUD expansion.
@@ -73,7 +75,6 @@ Known non-goals for current MVP:
 
 ## Next planned doc/status work
 
-1. PR 67 — document current storage upload status.
-2. PR 68 — clarify password reset status.
-3. PR 70 — verify/expand local demo seed data.
-4. PR 71 — full learner/admin RBAC audit.
+1. PR 68 — clarify password reset status.
+2. PR 70 — verify/expand local demo seed data.
+3. PR 71 — full learner/admin RBAC audit.
