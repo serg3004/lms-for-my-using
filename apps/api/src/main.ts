@@ -7,13 +7,14 @@ import {
   createSecurityHeadersMiddleware,
   createSensitiveRouteRateLimitMiddleware,
 } from './common/middleware/api-hardening.js';
-import { loadApiEnv } from './config/env.js';
+import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
   disable?: (setting: string) => void;
 };
 
 async function bootstrap(): Promise<void> {
+  loadLocalEnvFiles();
   const apiEnv = loadApiEnv();
   const app = await NestFactory.create(AppModule);
 
