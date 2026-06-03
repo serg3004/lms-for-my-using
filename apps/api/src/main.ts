@@ -7,6 +7,7 @@ import {
   createSecurityHeadersMiddleware,
   createSensitiveRouteRateLimitMiddleware,
 } from './common/middleware/api-hardening.js';
+import { handleStartupError } from './common/startup.js';
 import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
@@ -19,7 +20,9 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   const server = app.getHttpAdapter().getInstance() as ExpressLikeServer;
-  server.disable?.('x-powered-by');
+  if (server.disable) {
+    server.disable('x-powered-by');
+  }
 
   app.enableCors({
     origin: apiEnv.FRONTEND_URL,
@@ -33,4 +36,6 @@ async function bootstrap(): Promise<void> {
   await app.listen(apiEnv.API_PORT);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  handleStartupError(error);
+});
