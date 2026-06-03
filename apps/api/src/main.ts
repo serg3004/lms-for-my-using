@@ -7,6 +7,7 @@ import {
   createSecurityHeadersMiddleware,
   createSensitiveRouteRateLimitMiddleware,
 } from './common/middleware/api-hardening.js';
+import { handleStartupError } from './common/startup.js';
 import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
@@ -33,4 +34,6 @@ async function bootstrap(): Promise<void> {
   await app.listen(apiEnv.API_PORT);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  handleStartupError(error);
+});
