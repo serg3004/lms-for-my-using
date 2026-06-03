@@ -28,6 +28,23 @@ export type LoginResponse = {
   user: CurrentUser;
 };
 
+export type ApiErrorDetail = {
+  field?: string;
+  message: string;
+  code?: string;
+};
+
+export type ApiErrorResponse = {
+  statusCode: number;
+  error: {
+    code: string;
+    message: string;
+    details?: ApiErrorDetail[];
+  };
+  path: string;
+  timestamp: string;
+};
+
 export type CourseSummary = {
   id: string;
   organizationId: string;
