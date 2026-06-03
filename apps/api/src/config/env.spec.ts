@@ -1,6 +1,14 @@
-import { getJwtSecret, loadApiEnv } from './env';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+import { getJwtSecret, loadApiEnv, loadLocalEnvFiles } from './env';
 
 const validJwtSecret = '0123456789abcdef0123456789abcdef';
+
+function createTempEnvDirectory(): string {
+  return mkdtempSync(join(tmpdir(), 'lms-api-env-'));
+}
 
 describe('API environment validation', () => {
   it('loads a valid API environment', () => {
@@ -23,6 +31,48 @@ describe('API environment validation', () => {
     });
 
     expect(apiEnv.FRONTEND_URL).toBe('http://localhost:5173');
+  });
+
+  it('loads local env files without overriding already configured values', () => {
+    const cwd = createTempEnvDirectory();
+    const env: Record<string, string | undefined> = {
+      API_PORT: '4000',
+    };
+
+    try {
+      writeFileSync(
+        join(cwd, '.env'),
+        ['API_PORT=3000', 'FRONTEND_URL=http://localhost:5173', `JWT_SECRET=${validJwtSecret}`].join('\n'),
+      );
+      writeFileSync(join(cwd, '.env.local'), 'API_PORT=5000\n');
+
+      expect(loadLocalEnvFiles({ cwd, env })).toEqual(['.env', '.env.local']);
+      expect(env).toEqual({
+        API_PORT: '4000',
+        FRONTEND_URL: 'http://localhost:5173',
+        JWT_SECRET: validJwtSecret,
+      });
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('does not load local env files in production or CI', () => {
+    const cwd = createTempEnvDirectory();
+
+    try {
+      writeFileSync(join(cwd, '.env'), `JWT_SECRET=${validJwtSecret}`);
+
+      const productionEnv: Record<string, string | undefined> = { NODE_ENV: 'production' };
+      const ciEnv: Record<string, string | undefined> = { CI: 'true' };
+
+      expect(loadLocalEnvFiles({ cwd, env: productionEnv })).toEqual([]);
+      expect(loadLocalEnvFiles({ cwd, env: ciEnv })).toEqual([]);
+      expect(productionEnv).toEqual({ NODE_ENV: 'production' });
+      expect(ciEnv).toEqual({ CI: 'true' });
+    } finally {
+      rmSync(cwd, { recursive: true, force: true });
+    }
   });
 
   it('returns the configured JWT secret', () => {
