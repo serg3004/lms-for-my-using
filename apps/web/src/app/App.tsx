@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import type { TFunction } from 'i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
 
@@ -34,15 +33,6 @@ import { LoginPage } from './LoginPage.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 import { getCurrentUser, type CurrentUser, type UserRole } from '../shared/apiClient.js';
-
-const assessmentDetailPathPrefix = '/learn/assessments/';
-const assessmentTakingPathSuffix = '/take';
-const assignmentDetailPathPrefix = '/learn/assignments/';
-const certificateDetailPathPrefix = '/learn/certificates/';
-const courseDetailPathPrefix = '/learn/courses/';
-const lessonsPathSuffix = '/lessons';
-const lessonDetailPathPrefix = '/learn/lessons/';
-const lessonMaterialsPathSuffix = '/materials';
 
 type RootNavigationItem = {
   labelKey: string;
@@ -134,193 +124,182 @@ function RootNavigation() {
   );
 }
 
-type BreadcrumbRoot = { label: string; href: string };
+// Shared context hooks for route components
+function useAdminRoot() {
+  const { t } = useTranslation();
+  return { t, adminRoot: { label: t('admin.navLink', 'Admin'), href: '/admin' } };
+}
 
-function resolveAppPage(
-  pathname: string,
-  t: TFunction,
-  learnerRoot: BreadcrumbRoot,
-  adminRoot: BreadcrumbRoot,
-): ReactNode {
-  if (pathname === '/login') {
-    return <LoginPage />;
-  }
+function useLearnerRoot() {
+  const { t } = useTranslation();
+  return { t, learnerRoot: { label: t('learner.navLink'), href: '/learn' } };
+}
 
-  if (pathname === '/admin') {
-    return renderWithBreadcrumbs(<AdminDashboardPage />, [{ ...adminRoot, href: undefined }]);
-  }
+// Admin route components
+function AdminDashboardRoute() {
+  const { adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminDashboardPage />, [{ ...adminRoot, href: undefined }]);
+}
 
-  if (pathname === '/admin/users') {
-    return renderWithBreadcrumbs(<AdminUsersPage />, [adminRoot, { label: t('users.title', 'Users') }]);
-  }
+function AdminUsersRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminUsersPage />, [adminRoot, { label: t('users.title', 'Users') }]);
+}
 
-  if (pathname === '/admin/roles') {
-    return renderWithBreadcrumbs(<AdminRolesPage />, [adminRoot, { label: t('roles.title', 'Roles') }]);
-  }
+function AdminRolesRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminRolesPage />, [adminRoot, { label: t('roles.title', 'Roles') }]);
+}
 
-  if (pathname === '/admin/org-structure') {
-    return renderWithBreadcrumbs(<AdminOrgStructurePage />, [adminRoot, { label: t('organization.title', 'Organization') }]);
-  }
+function AdminOrgStructureRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminOrgStructurePage />, [adminRoot, { label: t('organization.title', 'Organization') }]);
+}
 
-  if (pathname === '/admin/theme-settings') {
-    return renderWithBreadcrumbs(<AdminThemeSettingsPage />, [
-      adminRoot,
-      { label: t('admin.themeSettings.title', 'Theme settings') },
-    ]);
-  }
+function AdminThemeSettingsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminThemeSettingsPage />, [adminRoot, { label: t('admin.themeSettings.title', 'Theme settings') }]);
+}
 
-  if (pathname === '/admin/courses') {
-    return renderWithBreadcrumbs(<AdminCourseBuilderPage />, [adminRoot, { label: t('courses.title') }]);
-  }
+function AdminCoursesRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminCourseBuilderPage />, [adminRoot, { label: t('courses.title') }]);
+}
 
-  if (pathname === '/admin/lessons') {
-    return renderWithBreadcrumbs(<AdminLessonsPage />, [adminRoot, { label: t('lessons.title', 'Lessons') }]);
-  }
+function AdminLessonsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminLessonsPage />, [adminRoot, { label: t('lessons.title', 'Lessons') }]);
+}
 
-  if (pathname === '/admin/materials') {
-    return renderWithBreadcrumbs(<AdminMaterialsPage />, [adminRoot, { label: t('materials.title', 'Materials') }]);
-  }
+function AdminMaterialsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminMaterialsPage />, [adminRoot, { label: t('materials.title', 'Materials') }]);
+}
 
-  if (pathname === '/admin/assessments') {
-    return renderWithBreadcrumbs(<AdminAssessmentBuilderPage />, [adminRoot, { label: t('assessments.title') }]);
-  }
+function AdminAssessmentsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminAssessmentBuilderPage />, [adminRoot, { label: t('assessments.title') }]);
+}
 
-  if (pathname === '/admin/assignments') {
-    return renderWithBreadcrumbs(<AdminAssignmentCompletionPage />, [adminRoot, { label: t('assignments.title') }]);
-  }
+function AdminAssignmentsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminAssignmentCompletionPage />, [adminRoot, { label: t('assignments.title') }]);
+}
 
-  if (pathname === '/admin/results') {
-    return renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [adminRoot, { label: t('results.title', 'Results') }]);
-  }
+function AdminResultsRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [adminRoot, { label: t('results.title', 'Results') }]);
+}
 
-  if (pathname === '/learn') {
-    return renderWithBreadcrumbs(<LearnerHomePage />, [{ ...learnerRoot, href: undefined }]);
-  }
+// Learner route components — static
+function LearnerHomeRoute() {
+  const { learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerHomePage />, [{ ...learnerRoot, href: undefined }]);
+}
 
-  if (pathname === '/learn/courses') {
-    return renderWithBreadcrumbs(<LearnerCoursesPage />, [learnerRoot, { label: t('courses.title') }]);
-  }
+function LearnerCoursesRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerCoursesPage />, [learnerRoot, { label: t('courses.title') }]);
+}
 
-  if (pathname === '/learn/progress') {
-    return renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t('progress.title') }]);
-  }
+function LearnerProgressRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t('progress.title') }]);
+}
 
-  if (pathname === '/learn/assignments') {
-    return renderWithBreadcrumbs(<LearnerAssignmentsPage />, [learnerRoot, { label: t('assignments.title') }]);
-  }
+function LearnerAssignmentsRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerAssignmentsPage />, [learnerRoot, { label: t('assignments.title') }]);
+}
 
-  if (pathname === '/learn/assessments') {
-    return renderWithBreadcrumbs(<LearnerAssessmentsPage />, [learnerRoot, { label: t('assessments.title') }]);
-  }
+function LearnerAssessmentsRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerAssessmentsPage />, [learnerRoot, { label: t('assessments.title') }]);
+}
 
-  if (pathname === '/learn/certificates') {
-    return renderWithBreadcrumbs(<LearnerCertificatesPage />, [learnerRoot, { label: t('certificates.title') }]);
-  }
+function LearnerCertificatesRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  return renderWithBreadcrumbs(<LearnerCertificatesPage />, [learnerRoot, { label: t('certificates.title') }]);
+}
 
-  if (pathname.startsWith(certificateDetailPathPrefix)) {
-    const certificateId = pathname.slice(certificateDetailPathPrefix.length);
+// Learner route components — dynamic (use useParams)
+function LearnerCertificateDetailRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { certificateId } = useParams<{ certificateId: string }>();
+  if (!certificateId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerCertificateDetailPage certificateId={certificateId} />,
+    [learnerRoot, { label: t('certificates.title'), href: '/learn/certificates' }, { label: t('certificates.detailTitle', 'Certificate') }],
+  );
+}
 
-    if (certificateId) {
-      return renderWithBreadcrumbs(
-        <LearnerCertificateDetailPage certificateId={certificateId} />,
-        [learnerRoot, { label: t('certificates.title'), href: '/learn/certificates' }, { label: t('certificates.detailTitle', 'Certificate') }],
-      );
-    }
-  }
+function LearnerAssessmentTakingRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { assessmentId } = useParams<{ assessmentId: string }>();
+  if (!assessmentId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerAssessmentTakingPage assessmentId={assessmentId} />,
+    [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.takeTitle', 'Taking') }],
+  );
+}
 
-  if (pathname.startsWith(assessmentDetailPathPrefix) && pathname.endsWith(assessmentTakingPathSuffix)) {
-    const assessmentId = pathname.slice(
-      assessmentDetailPathPrefix.length,
-      -assessmentTakingPathSuffix.length,
-    );
+function LearnerAssessmentDetailRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { assessmentId } = useParams<{ assessmentId: string }>();
+  if (!assessmentId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerAssessmentDetailPage assessmentId={assessmentId} />,
+    [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.detailTitle', 'Assessment') }],
+  );
+}
 
-    if (assessmentId) {
-      return renderWithBreadcrumbs(
-        <LearnerAssessmentTakingPage assessmentId={assessmentId} />,
-        [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.takeTitle', 'Taking') }],
-      );
-    }
-  }
+function LearnerAssignmentDetailRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { assignmentId } = useParams<{ assignmentId: string }>();
+  if (!assignmentId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerAssignmentDetailPage assignmentId={assignmentId} />,
+    [learnerRoot, { label: t('assignments.title'), href: '/learn/assignments' }, { label: t('assignments.detailTitle', 'Assignment') }],
+  );
+}
 
-  if (pathname.startsWith(assessmentDetailPathPrefix)) {
-    const assessmentId = pathname.slice(assessmentDetailPathPrefix.length);
+function LearnerLessonMaterialsRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { lessonId } = useParams<{ lessonId: string }>();
+  if (!lessonId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerLessonMaterialsPage lessonId={lessonId} />,
+    [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('materials.title', 'Materials') }],
+  );
+}
 
-    if (assessmentId) {
-      return renderWithBreadcrumbs(
-        <LearnerAssessmentDetailPage assessmentId={assessmentId} />,
-        [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.detailTitle', 'Assessment') }],
-      );
-    }
-  }
+function LearnerLessonDetailRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { lessonId } = useParams<{ lessonId: string }>();
+  if (!lessonId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerLessonDetailPage lessonId={lessonId} />,
+    [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('lessons.detailTitle', 'Lesson') }],
+  );
+}
 
-  if (pathname.startsWith(assignmentDetailPathPrefix)) {
-    const assignmentId = pathname.slice(assignmentDetailPathPrefix.length);
+function LearnerCourseLessonsRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { courseId } = useParams<{ courseId: string }>();
+  if (!courseId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerLessonsPage courseId={courseId} />,
+    [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('lessons.title', 'Lessons') }],
+  );
+}
 
-    if (assignmentId) {
-      return renderWithBreadcrumbs(
-        <LearnerAssignmentDetailPage assignmentId={assignmentId} />,
-        [learnerRoot, { label: t('assignments.title'), href: '/learn/assignments' }, { label: t('assignments.detailTitle', 'Assignment') }],
-      );
-    }
-  }
-
-  if (pathname.startsWith(lessonDetailPathPrefix) && pathname.endsWith(lessonMaterialsPathSuffix)) {
-    const lessonId = pathname.slice(
-      lessonDetailPathPrefix.length,
-      -lessonMaterialsPathSuffix.length,
-    );
-
-    if (lessonId) {
-      return renderWithBreadcrumbs(
-        <LearnerLessonMaterialsPage lessonId={lessonId} />,
-        [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('materials.title', 'Materials') }],
-      );
-    }
-  }
-
-  if (pathname.startsWith(lessonDetailPathPrefix)) {
-    const lessonId = pathname.slice(lessonDetailPathPrefix.length);
-
-    if (lessonId) {
-      return renderWithBreadcrumbs(
-        <LearnerLessonDetailPage lessonId={lessonId} />,
-        [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('lessons.detailTitle', 'Lesson') }],
-      );
-    }
-  }
-
-  if (pathname.startsWith(courseDetailPathPrefix) && pathname.endsWith(lessonsPathSuffix)) {
-    const courseId = pathname.slice(courseDetailPathPrefix.length, -lessonsPathSuffix.length);
-
-    if (courseId) {
-      return renderWithBreadcrumbs(
-        <LearnerLessonsPage courseId={courseId} />,
-        [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('lessons.title', 'Lessons') }],
-      );
-    }
-  }
-
-  if (pathname.startsWith(courseDetailPathPrefix)) {
-    const courseId = pathname.slice(courseDetailPathPrefix.length);
-
-    if (courseId) {
-      return renderWithBreadcrumbs(
-        <LearnerCourseDetailPage courseId={courseId} />,
-        [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('courses.detailTitle', 'Course') }],
-      );
-    }
-  }
-
-  if (pathname !== '/') {
-    return <NotFoundPage />;
-  }
-
-  return (
-    <main>
-      <h1>{t('app.title')}</h1>
-      <p>{t('app.subtitle')}</p>
-      <RootNavigation />
-    </main>
+function LearnerCourseDetailRoute() {
+  const { t, learnerRoot } = useLearnerRoot();
+  const { courseId } = useParams<{ courseId: string }>();
+  if (!courseId) return <NotFoundPage />;
+  return renderWithBreadcrumbs(
+    <LearnerCourseDetailPage courseId={courseId} />,
+    [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('courses.detailTitle', 'Course') }],
   );
 }
 
@@ -328,15 +307,54 @@ export function App() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
 
-  const learnerRoot = { label: t('learner.navLink'), href: '/learn' };
-  const adminRoot = { label: t('admin.navLink', 'Admin'), href: '/admin' };
-
   return (
     <ProtectedRoute
       protectedPathPrefixes={['/learn', '/admin']}
       canAccess={(user) => !pathname.startsWith('/admin') || user.roles.some(isAdminNavigationRole)}
     >
-      {resolveAppPage(pathname, t, learnerRoot, adminRoot)}
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+
+        <Route path="/admin" element={<AdminDashboardRoute />} />
+        <Route path="/admin/users" element={<AdminUsersRoute />} />
+        <Route path="/admin/roles" element={<AdminRolesRoute />} />
+        <Route path="/admin/org-structure" element={<AdminOrgStructureRoute />} />
+        <Route path="/admin/theme-settings" element={<AdminThemeSettingsRoute />} />
+        <Route path="/admin/courses" element={<AdminCoursesRoute />} />
+        <Route path="/admin/lessons" element={<AdminLessonsRoute />} />
+        <Route path="/admin/materials" element={<AdminMaterialsRoute />} />
+        <Route path="/admin/assessments" element={<AdminAssessmentsRoute />} />
+        <Route path="/admin/assignments" element={<AdminAssignmentsRoute />} />
+        <Route path="/admin/results" element={<AdminResultsRoute />} />
+
+        <Route path="/learn" element={<LearnerHomeRoute />} />
+        <Route path="/learn/courses" element={<LearnerCoursesRoute />} />
+        <Route path="/learn/progress" element={<LearnerProgressRoute />} />
+        <Route path="/learn/assignments" element={<LearnerAssignmentsRoute />} />
+        <Route path="/learn/assessments" element={<LearnerAssessmentsRoute />} />
+        <Route path="/learn/certificates" element={<LearnerCertificatesRoute />} />
+
+        <Route path="/learn/certificates/:certificateId" element={<LearnerCertificateDetailRoute />} />
+        <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
+        <Route path="/learn/assessments/:assessmentId" element={<LearnerAssessmentDetailRoute />} />
+        <Route path="/learn/assignments/:assignmentId" element={<LearnerAssignmentDetailRoute />} />
+        <Route path="/learn/lessons/:lessonId/materials" element={<LearnerLessonMaterialsRoute />} />
+        <Route path="/learn/lessons/:lessonId" element={<LearnerLessonDetailRoute />} />
+        <Route path="/learn/courses/:courseId/lessons" element={<LearnerCourseLessonsRoute />} />
+        <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
+
+        <Route
+          path="/"
+          element={
+            <main>
+              <h1>{t('app.title')}</h1>
+              <p>{t('app.subtitle')}</p>
+              <RootNavigation />
+            </main>
+          }
+        />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
     </ProtectedRoute>
   );
 }
