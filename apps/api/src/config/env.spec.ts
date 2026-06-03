@@ -35,7 +35,7 @@ describe('API environment validation', () => {
 
   it('loads local env files without overriding already configured values', () => {
     const cwd = createTempEnvDirectory();
-    const env = {
+    const env: Record<string, string | undefined> = {
       API_PORT: '4000',
     };
 
@@ -63,8 +63,8 @@ describe('API environment validation', () => {
     try {
       writeFileSync(join(cwd, '.env'), `JWT_SECRET=${validJwtSecret}`);
 
-      const productionEnv = { NODE_ENV: 'production' };
-      const ciEnv = { CI: 'true' };
+      const productionEnv: Record<string, string | undefined> = { NODE_ENV: 'production' };
+      const ciEnv: Record<string, string | undefined> = { CI: 'true' };
 
       expect(loadLocalEnvFiles({ cwd, env: productionEnv })).toEqual([]);
       expect(loadLocalEnvFiles({ cwd, env: ciEnv })).toEqual([]);
