@@ -1,24 +1,9 @@
+import type { ApiErrorDetail, ApiErrorResponse } from './api/types.js';
+
 const apiBasePath = '/api/v1';
 const csrfTokenCookieName = 'lms_csrf_token';
 const csrfHeaderName = 'x-csrf-token';
 const unsafeMethods = new Set(['DELETE', 'PATCH', 'POST', 'PUT']);
-
-type ApiErrorDetail = {
-  field?: string;
-  message: string;
-  code?: string;
-};
-
-export type ApiErrorResponse = {
-  statusCode: number;
-  error: {
-    code: string;
-    message: string;
-    details?: ApiErrorDetail[];
-  };
-  path: string;
-  timestamp: string;
-};
 
 export class ApiClientError extends Error {
   readonly code: string;
@@ -145,7 +130,7 @@ export type {
 
 export { getCurrentUser, login } from './api/auth.js';
 export { getCourse, getCoursePath, listCourses } from './api/courses.js';
-export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
+export { getLesson, getLessonPath, listLessons, markLessonComplete } from './api/lessons.js';
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
