@@ -1,4 +1,8 @@
-import { createCourseMaterialSchema } from './course-materials.schemas.js';
+import {
+  createCourseMaterialSchema,
+  updateCourseMaterialSchema,
+  updateCourseMaterialStatusSchema,
+} from './course-materials.schemas.js';
 
 describe('Course materials validation', () => {
   it('accepts valid course material input without lesson', () => {
@@ -45,5 +49,31 @@ describe('Course materials validation', () => {
         fileUrl: 'https://example.com/safety.pdf',
       }),
     ).toThrow();
+  });
+});
+
+describe('updateCourseMaterialStatusSchema', () => {
+  it('accepts valid status', () => {
+    expect(updateCourseMaterialStatusSchema.parse({ status: 'archived' })).toEqual({ status: 'archived' });
+  });
+
+  it('rejects unknown status', () => {
+    expect(() => updateCourseMaterialStatusSchema.parse({ status: 'draft' })).toThrow();
+  });
+});
+
+describe('updateCourseMaterialSchema', () => {
+  it('accepts partial update with title and fileUrl', () => {
+    expect(
+      updateCourseMaterialSchema.parse({ title: 'Updated Title', fileUrl: 'https://example.com/new.pdf' }),
+    ).toEqual({ title: 'Updated Title', fileUrl: 'https://example.com/new.pdf' });
+  });
+
+  it('accepts description null to clear it', () => {
+    expect(updateCourseMaterialSchema.parse({ description: null })).toEqual({ description: null });
+  });
+
+  it('accepts empty object (no-op update)', () => {
+    expect(updateCourseMaterialSchema.parse({})).toEqual({});
   });
 });

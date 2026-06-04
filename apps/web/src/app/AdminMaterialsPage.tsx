@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -25,6 +25,11 @@ type LoadState =
   | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; materials: Material[] }
   | { status: 'error'; message: string };
 
+type MaterialStatus = 'active' | 'archived';
+type MaterialKind = 'file' | 'link';
+
+const MATERIAL_STATUSES: MaterialStatus[] = ['active', 'archived'];
+
 function slugifyMaterialTitle(value: string) {
   return value
     .trim()
@@ -39,10 +44,9 @@ function sortLessons(lessons: Lesson[]) {
 }
 
 function formatSize(sizeBytes: number | null, fallback: string) {
-  if (sizeBytes === null) {
-    return fallback;
-  }
-
+  if (sizeBytes === null) return fallback;
+  if (sizeBytes >= 1_048_576) return `${(sizeBytes / 1_048_576).toFixed(1)} MB`;
+  if (sizeBytes >= 1024) return `${(sizeBytes / 1024).toFixed(0)} KB`;
   return `${sizeBytes} B`;
 }
 
@@ -51,8 +55,9 @@ export function AdminMaterialsPage() {
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
+
   const [title, setTitle] = useState('');
-  const [kind, setKind] = useState<'file' | 'link'>('link');
+  const [kind, setKind] = useState<MaterialKind>('link');
   const [fileUrl, setFileUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [description, setDescription] = useState('');
@@ -60,10 +65,22 @@ export function AdminMaterialsPage() {
     status: 'idle',
   });
 
+  const editDialogRef = useRef<HTMLDialogElement>(null);
+  const [editMaterial, setEditMaterial] = useState<Material | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editKind, setEditKind] = useState<MaterialKind>('link');
+  const [editFileUrl, setEditFileUrl] = useState('');
+  const [editFileName, setEditFileName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStatus, setEditStatus] = useState<MaterialStatus>('active');
+  const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
+    status: 'idle',
+  });
+
   const loadMaterials = useCallback(async (courseId?: string) => {
     try {
       const courses = await apiRequest<Course[]>('/courses');
-      const nextCourseId = courseId || selectedCourseId || courses[0]?.id || '';
+      const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');
       const [lessons, materials] = nextCourseId
         ? await Promise.all([
             apiRequest<Lesson[]>(`/courses/${encodeURIComponent(nextCourseId)}/lessons`),
@@ -87,7 +104,7 @@ export function AdminMaterialsPage() {
   }, [loadMaterials]);
 
   const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === selectedCourseId) : undefined;
+    return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === selectedCourseId) : undefined;
   }, [loadState, selectedCourseId]);
 
   async function handleCourseChange(courseId: string) {
@@ -149,6 +166,80 @@ export function AdminMaterialsPage() {
     }
   }
 
+  async function handleUpdateStatus(materialId: string, newStatus: string) {
+    try {
+      const updated = await apiRequest<Material>(`/materials/${encodeURIComponent(materialId)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setLoadState((prev) =>
+        prev.status === 'loaded'
+          ? { ...prev, materials: prev.materials.map((m) => (m.id === materialId ? updated : m)) }
+          : prev,
+      );
+    } catch {
+      await loadMaterials(selectedCourseId);
+    }
+  }
+
+  function openEditDialog(material: Material) {
+    setEditMaterial(material);
+    setEditTitle(material.title);
+    setEditKind(material.kind);
+    setEditFileUrl(material.fileUrl);
+    setEditFileName(material.fileName ?? '');
+    setEditDescription(material.description ?? '');
+    setEditStatus(material.status as MaterialStatus);
+    setEditState({ status: 'idle' });
+    editDialogRef.current?.showModal();
+  }
+
+  async function handleUpdateMaterial(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!editMaterial) {
+      return;
+    }
+
+    const newTitle = editTitle.trim();
+    const newFileUrl = editFileUrl.trim();
+
+    if (!newTitle || !newFileUrl) {
+      setEditState({
+        status: 'error',
+        message: t('admin.materials.invalidInput', 'Enter a material title and valid URL.'),
+      });
+      return;
+    }
+
+    setEditState({ status: 'saving' });
+
+    try {
+      const updated = await apiRequest<Material>(`/materials/${encodeURIComponent(editMaterial.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: newTitle,
+          description: editDescription.trim() || null,
+          kind: editKind,
+          fileName: editFileName.trim() || null,
+          fileUrl: newFileUrl,
+          status: editStatus,
+        }),
+      });
+      editDialogRef.current?.close();
+      setLoadState((prev) =>
+        prev.status === 'loaded'
+          ? { ...prev, materials: prev.materials.map((m) => (m.id === editMaterial.id ? updated : m)) }
+          : prev,
+      );
+    } catch {
+      setEditState({
+        status: 'error',
+        message: t('admin.materials.editError', 'Unable to update material.'),
+      });
+    }
+  }
+
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
@@ -188,7 +279,7 @@ export function AdminMaterialsPage() {
         <header className="admin-topbar">
           <div>
             <h1>{t('admin.materials.title', 'Materials')}</h1>
-            <p>{t('admin.materials.subtitle', 'Add URL-based course materials and review active materials.')}</p>
+            <p>{t('admin.materials.subtitle', 'Add URL-based course materials and manage their status.')}</p>
           </div>
           <a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>
         </header>
@@ -199,9 +290,9 @@ export function AdminMaterialsPage() {
             {loadState.courses.length === 0 ? (
               <EmptyState message={t('admin.materials.noCourses', 'Create a course before adding materials.')} />
             ) : (
-              <form onSubmit={handleCreateMaterial}>
-                <label>
-                  {t('admin.materials.course', 'Course')}
+              <form className="admin-form" onSubmit={handleCreateMaterial}>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.course', 'Course')}</label>
                   <select value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
                     {loadState.courses.map((course) => (
                       <option key={course.id} value={course.id}>
@@ -209,9 +300,9 @@ export function AdminMaterialsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  {t('admin.materials.lesson', 'Lesson')}
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.lesson', 'Lesson')}</label>
                   <select value={selectedLessonId} onChange={(event) => setSelectedLessonId(event.target.value)}>
                     <option value="">{t('admin.materials.noLesson', 'No lesson')}</option>
                     {loadState.lessons.map((lesson) => (
@@ -220,75 +311,175 @@ export function AdminMaterialsPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  {t('admin.materials.materialTitle', 'Material title')}
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.materialTitle', 'Material title')}</label>
                   <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
-                </label>
-                <label>
-                  {t('admin.materials.kind', 'Kind')}
-                  <select value={kind} onChange={(event) => setKind(event.target.value as 'file' | 'link')}>
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.kind', 'Kind')}</label>
+                  <select value={kind} onChange={(event) => setKind(event.target.value as MaterialKind)}>
                     <option value="link">{t('admin.materials.link', 'Link')}</option>
                     <option value="file">{t('admin.materials.file', 'File')}</option>
                   </select>
-                </label>
-                <label>
-                  {t('admin.materials.fileUrl', 'Material URL')}
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.fileUrl', 'Material URL')}</label>
                   <input value={fileUrl} onChange={(event) => setFileUrl(event.target.value)} maxLength={2048} />
-                </label>
-                <label>
-                  {t('admin.materials.fileName', 'File name')}
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.fileName', 'File name')}</label>
                   <input value={fileName} onChange={(event) => setFileName(event.target.value)} maxLength={255} />
-                </label>
-                <label>
-                  {t('admin.materials.description', 'Description')}
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.materials.description', 'Description')}</label>
                   <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </label>
-                {submitState.status === 'error' ? <p role="alert">{submitState.message}</p> : null}
-                <button type="submit" disabled={submitState.status === 'saving'}>
-                  {submitState.status === 'saving'
-                    ? t('admin.materials.saving', 'Saving...')
-                    : t('admin.materials.create', 'Add material')}
-                </button>
+                </div>
+                {submitState.status === 'error' ? (
+                  <p className="admin-form__error" role="alert">
+                    {submitState.message}
+                  </p>
+                ) : null}
+                <div className="admin-form__actions">
+                  <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
+                    {submitState.status === 'saving'
+                      ? t('admin.materials.saving', 'Saving...')
+                      : t('admin.materials.create', 'Add material')}
+                  </button>
+                </div>
               </form>
             )}
           </article>
 
           <article className="admin-card">
-            <h2>{t('admin.materials.materialsTitle', 'Active materials')}</h2>
+            <h2>{t('admin.materials.materialsTitle', 'Materials')}</h2>
             {loadState.materials.length === 0 ? (
               <EmptyState message={t('admin.materials.empty', 'No materials found for the selected course.')} />
             ) : (
               <table>
+                <thead>
+                  <tr>
+                    <th>{t('admin.materials.col.title', 'Title')}</th>
+                    <th>{t('admin.materials.col.kind', 'Kind')}</th>
+                    <th>{t('admin.materials.col.status', 'Status')}</th>
+                    <th>{t('admin.materials.col.size', 'Size')}</th>
+                    <th />
+                  </tr>
+                </thead>
                 <tbody>
                   {loadState.materials.map((material) => (
                     <tr key={material.id}>
                       <td>
-                        <a href={material.fileUrl}>{material.title}</a>
+                        <a href={material.fileUrl} target="_blank" rel="noreferrer">
+                          {material.title}
+                        </a>
                       </td>
-                      <td>{material.slug}</td>
                       <td>
                         <StatusBadge>{material.kind}</StatusBadge>
                       </td>
-                      <td>{formatSize(material.sizeBytes, t('admin.materials.unknownSize', 'Unknown'))}</td>
+                      <td>
+                        <select
+                          className="admin-status-select"
+                          value={material.status}
+                          onChange={(event) => void handleUpdateStatus(material.id, event.target.value)}
+                        >
+                          {MATERIAL_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>{formatSize(material.sizeBytes, t('admin.materials.unknownSize', '—'))}</td>
+                      <td>
+                        <button
+                          className="admin-btn admin-btn--sm admin-btn--secondary"
+                          type="button"
+                          onClick={() => openEditDialog(material)}
+                        >
+                          {t('admin.materials.edit', 'Edit')}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
           </article>
-
-          <article className="admin-card">
-            <h2>{t('admin.materials.lifecycleTitle', 'Delete and restore')}</h2>
-            <p>
-              {t(
-                'admin.materials.lifecycleUnavailable',
-                'Delete and restore actions require backend endpoints; this screen only uses the existing list/create material API.',
-              )}
-            </p>
-          </article>
         </section>
       </section>
+
+      <dialog ref={editDialogRef} className="admin-dialog">
+        <header className="admin-dialog__header">
+          <h2>{t('admin.materials.editTitle', 'Edit material')}</h2>
+          <button
+            className="admin-dialog__close"
+            type="button"
+            aria-label={t('admin.materials.close', 'Close')}
+            onClick={() => editDialogRef.current?.close()}
+          >
+            ×
+          </button>
+        </header>
+        <form className="admin-form" onSubmit={handleUpdateMaterial}>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.materialTitle', 'Material title')}</label>
+            <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={160} />
+          </div>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.kind', 'Kind')}</label>
+            <select value={editKind} onChange={(event) => setEditKind(event.target.value as MaterialKind)}>
+              <option value="link">{t('admin.materials.link', 'Link')}</option>
+              <option value="file">{t('admin.materials.file', 'File')}</option>
+            </select>
+          </div>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.fileUrl', 'Material URL')}</label>
+            <input value={editFileUrl} onChange={(event) => setEditFileUrl(event.target.value)} maxLength={2048} />
+          </div>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.fileName', 'File name')}</label>
+            <input value={editFileName} onChange={(event) => setEditFileName(event.target.value)} maxLength={255} />
+          </div>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.col.status', 'Status')}</label>
+            <select value={editStatus} onChange={(event) => setEditStatus(event.target.value as MaterialStatus)}>
+              {MATERIAL_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="admin-form__field">
+            <label>{t('admin.materials.description', 'Description')}</label>
+            <textarea
+              value={editDescription}
+              onChange={(event) => setEditDescription(event.target.value)}
+              maxLength={1000}
+            />
+          </div>
+          {editState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">
+              {editState.message}
+            </p>
+          ) : null}
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--primary" type="submit" disabled={editState.status === 'saving'}>
+              {editState.status === 'saving'
+                ? t('admin.materials.updating', 'Saving...')
+                : t('admin.materials.update', 'Save changes')}
+            </button>
+            <button
+              className="admin-btn admin-btn--secondary"
+              type="button"
+              onClick={() => editDialogRef.current?.close()}
+            >
+              {t('admin.materials.cancel', 'Cancel')}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </main>
   );
 }

@@ -26,3 +26,20 @@ export const createCourseMaterialSchema = z.object({
 });
 
 export type CreateCourseMaterialInput = z.infer<typeof createCourseMaterialSchema>;
+
+export const updateCourseMaterialStatusSchema = z.object({
+  status: courseMaterialStatusSchema,
+});
+export type UpdateCourseMaterialStatusInput = z.infer<typeof updateCourseMaterialStatusSchema>;
+
+export const updateCourseMaterialSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160),
+    description: z.string().trim().max(1000).nullable(),
+    kind: courseMaterialKindSchema,
+    fileName: z.string().trim().max(255).nullable(),
+    fileUrl: z.string().trim().url().max(2048),
+    status: courseMaterialStatusSchema,
+  })
+  .partial();
+export type UpdateCourseMaterialInput = z.infer<typeof updateCourseMaterialSchema>;
