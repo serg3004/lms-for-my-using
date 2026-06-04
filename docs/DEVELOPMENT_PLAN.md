@@ -577,7 +577,7 @@
 
 ---
 
-## PR 102 — feat: complete demo seed data
+## ✅ PR 102 — feat: complete demo seed data
 
 Что входит:
 - Организация `demo-company`
