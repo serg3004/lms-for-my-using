@@ -1,9 +1,16 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { getAssessment } from '../shared/api/assessments.js';
+import {
+  ApiClientError,
+  AssessmentAttemptResult,
+  AssessmentSummary,
+  createAssessmentAttempt,
+  getAssessment,
+  getAttemptResult,
+} from '../shared/apiClient.js';
 import { apiRequest } from '../shared/apiClient.js';
-import type { AssessmentSummary } from '../shared/api/types.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { PageState } from '../shared/ui.js';
 
 type Question = {
   id: string;
@@ -23,133 +30,139 @@ type Option = {
 type QuestionWithOptions = Question & { options: Option[] };
 type SelectedAnswers = Record<string, string | string[]>;
 
-type Result = {
-  id: string;
-  score: number;
-  maxScore: number;
-  percentage: number;
-  passed: boolean;
-};
-
 type LoadState =
   | { status: 'loading' }
   | { status: 'loaded'; assessment: AssessmentSummary; questions: QuestionWithOptions[] }
+  | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-function selectedIds(value: string | string[] | undefined) {
+type SubmitState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'done'; result: AssessmentAttemptResult }
+  | { status: 'error'; message: string };
+
+function selectedIds(value: string | string[] | undefined): string[] {
   return Array.isArray(value) ? value : [];
 }
 
-function buildAnswers(questions: QuestionWithOptions[], selectedAnswers: SelectedAnswers) {
-  return questions.map((question) => {
-    const value = selectedAnswers[question.id];
-
-    if (question.type === 'multiple_choice') {
-      return { questionId: question.id, selectedOptionIds: selectedIds(value) };
+function buildAnswers(questions: QuestionWithOptions[], selected: SelectedAnswers) {
+  return questions.map((q) => {
+    const value = selected[q.id];
+    if (q.type === 'multiple_choice') {
+      return { questionId: q.id, selectedOptionIds: selectedIds(value) };
     }
-
-    return { questionId: question.id, selectedOptionId: typeof value === 'string' ? value : undefined };
+    return { questionId: q.id, selectedOptionId: typeof value === 'string' ? value : undefined };
   });
 }
 
-function hasMissingAnswers(questions: QuestionWithOptions[], selectedAnswers: SelectedAnswers) {
-  return questions.some((question) => {
-    const value = selectedAnswers[question.id];
+function countAnswered(questions: QuestionWithOptions[], selected: SelectedAnswers): number {
+  return questions.filter((q) => {
+    const value = selected[q.id];
+    return q.type === 'multiple_choice' ? selectedIds(value).length > 0 : typeof value === 'string';
+  }).length;
+}
 
-    if (question.type === 'multiple_choice') {
-      return selectedIds(value).length === 0;
+function getSubmitErrorKey(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.status === 401) return 'assessments.sessionExpired';
+    if (error.status === 400) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('attempts limit')) return 'assessments.errorAttemptsLimit';
+      if (msg.includes('course must be completed')) return 'assessments.errorCourseNotComplete';
+      if (msg.includes('must be published')) return 'assessments.errorNotPublished';
     }
+  }
+  return 'assessments.errorSubmit';
+}
 
-    return !value || Array.isArray(value);
-  });
+function getOptionLabel(option: Option): string {
+  return option.text ?? option.imageUrl ?? option.id;
 }
 
 export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: string }) {
+  const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [selectedAnswers, setSelectedAnswers] = useState<SelectedAnswers>({});
-  const [result, setResult] = useState<Result | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selected, setSelected] = useState<SelectedAnswers>({});
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
+
+  const loadAssessment = useCallback(async () => {
+    setLoadState({ status: 'loading' });
+    try {
+      const assessment = await getAssessment(assessmentId);
+      const questions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessmentId)}/questions`);
+      const questionsWithOptions = await Promise.all(
+        questions
+          .slice()
+          .sort((a, b) => a.order - b.order)
+          .map(async (q) => ({
+            ...q,
+            options: await apiRequest<Option[]>(`/questions/${encodeURIComponent(q.id)}/options`),
+          })),
+      );
+      setLoadState({ status: 'loaded', assessment, questions: questionsWithOptions });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        setLoadState({ status: 'unauthenticated', message: t('assessments.sessionExpired') });
+        return;
+      }
+      setLoadState({ status: 'error', message: t('assessments.loadError') });
+    }
+  }, [assessmentId, t]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadAssessment() {
-      try {
-        const assessment = await getAssessment(assessmentId);
-        const questions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessmentId)}/questions`);
-        const questionsWithOptions = await Promise.all(
-          questions
-            .slice()
-            .sort((left, right) => left.order - right.order)
-            .map(async (question) => ({
-              ...question,
-              options: await apiRequest<Option[]>(`/questions/${encodeURIComponent(question.id)}/options`),
-            })),
-        );
-
-        if (isMounted) {
-          setLoadState({ status: 'loaded', assessment, questions: questionsWithOptions });
-        }
-      } catch {
-        if (isMounted) {
-          setLoadState({ status: 'error', message: 'Unable to load assessment.' });
-        }
-      }
-    }
-
     void loadAssessment();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [assessmentId]);
+  }, [loadAssessment]);
 
   function selectSingle(questionId: string, optionId: string) {
-    setSelectedAnswers((current) => ({ ...current, [questionId]: optionId }));
+    setSelected((prev) => ({ ...prev, [questionId]: optionId }));
   }
 
   function selectMultiple(questionId: string, optionId: string, checked: boolean) {
-    setSelectedAnswers((current) => {
-      const values = selectedIds(current[questionId]);
-      const nextValues = checked ? [...values, optionId] : values.filter((id) => id !== optionId);
-
-      return { ...current, [questionId]: nextValues };
+    setSelected((prev) => {
+      const current = selectedIds(prev[questionId]);
+      const next = checked ? [...current, optionId] : current.filter((id) => id !== optionId);
+      return { ...prev, [questionId]: next };
     });
   }
 
-  async function submitAttempt(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loadState.status !== 'loaded') {
+    if (loadState.status !== 'loaded') return;
+
+    const answeredCount = countAnswered(loadState.questions, selected);
+    if (answeredCount < loadState.questions.length) {
+      setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
     }
 
-    if (loadState.questions.length === 0 || hasMissingAnswers(loadState.questions, selectedAnswers)) {
-      setErrorMessage('Answer all questions before submitting.');
-      return;
-    }
-
-    setErrorMessage('');
-    setIsSubmitting(true);
+    setSubmitState({ status: 'submitting' });
 
     try {
-      const attempt = await apiRequest<{ id: string }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts`, {
-        method: 'POST',
-        body: JSON.stringify({ answers: buildAnswers(loadState.questions, selectedAnswers) }),
-      });
-      setResult(await apiRequest<Result>(`/attempts/${encodeURIComponent(attempt.id)}/result`));
-    } catch {
-      setErrorMessage('Unable to submit assessment attempt.');
-    } finally {
-      setIsSubmitting(false);
+      const attempt = await createAssessmentAttempt(assessmentId, buildAnswers(loadState.questions, selected));
+      const result = await getAttemptResult(attempt.id);
+      setSubmitState({ status: 'done', result });
+    } catch (error) {
+      setSubmitState({ status: 'error', message: t(getSubmitErrorKey(error)) });
     }
   }
+
+  const loginAction = <a href="/login">{t('login.navLink')}</a>;
+  const backLink = `/learn/assessments/${encodeURIComponent(assessmentId)}`;
 
   if (loadState.status === 'loading') {
     return (
       <main>
-        <PageState message="Loading assessment..." variant="loading" />
+        <PageState message={t('assessments.takeLoading')} variant="loading" />
+      </main>
+    );
+  }
+
+  if (loadState.status === 'unauthenticated') {
+    return (
+      <main>
+        <PageState title={t('assessments.takeTitle')} message={loadState.message} variant="error" action={loginAction} />
       </main>
     );
   }
@@ -157,90 +170,170 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   if (loadState.status === 'error') {
     return (
       <main>
-        <PageState message={loadState.message} title="Take assessment" variant="error" />
+        <PageState title={t('assessments.takeTitle')} message={loadState.message} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />
       </main>
     );
   }
 
-  if (result) {
+  const { assessment, questions } = loadState;
+  const answeredCount = countAnswered(questions, selected);
+
+  if (submitState.status === 'done') {
+    const { result } = submitState;
     return (
-      <main>
-        <nav>
-          <a href="/learn/assessments">Assessments</a>
-          <a href={`/learn/assessments/${encodeURIComponent(assessmentId)}`}>Assessment details</a>
+      <main className="learner-quiz">
+        <nav className="learner-breadcrumb">
+          <a href="/learn/assessments">{t('assessments.navLink')}</a>
+          <span>›</span>
+          <a href={backLink}>{assessment.title}</a>
         </nav>
-        <article>
-          <h1>Assessment result</h1>
-          <p>
-            {result.score}/{result.maxScore} · {result.percentage}%
-          </p>
-          <StatusBadge>{result.passed ? 'passed' : 'failed'}</StatusBadge>
-        </article>
+
+        <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
+          <span className="learner-quiz__result-label">
+            {result.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+          </span>
+          <span className="learner-quiz__result-score">
+            {t('assessments.resultScore', { score: result.score, maxScore: result.maxScore, percentage: result.percentage })}
+          </span>
+          <span className="learner-quiz__result-passing">
+            {t('assessments.resultPassingScore', { score: result.assessment.passingScore })}
+          </span>
+        </div>
+
+        {result.answers.length > 0 ? (
+          <section className="learner-quiz__breakdown">
+            <h2>{t('assessments.resultBreakdown')}</h2>
+            <ol className="learner-quiz__breakdown-list">
+              {result.answers
+                .slice()
+                .sort((a, b) => a.question.order - b.question.order)
+                .map((answer) => (
+                  <li key={answer.id} className={`learner-quiz__breakdown-item ${answer.isCorrect ? 'learner-quiz__breakdown-item--correct' : 'learner-quiz__breakdown-item--wrong'}`}>
+                    <div className="learner-quiz__breakdown-icon">{answer.isCorrect ? '✓' : '✗'}</div>
+                    <div className="learner-quiz__breakdown-body">
+                      <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
+                      <p className="learner-quiz__breakdown-answer">
+                        <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
+                        {answer.selectedOption ? getOptionLabel(answer.selectedOption) : '—'}
+                      </p>
+                      <p className="learner-quiz__breakdown-points">
+                        {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+            </ol>
+          </section>
+        ) : null}
+
+        <div className="learner-quiz__result-actions">
+          <a className="learner-btn learner-btn--primary" href={backLink}>{t('assessments.backToAssessment')}</a>
+          {!result.passed ? (
+            <button
+              className="learner-btn learner-btn--secondary"
+              type="button"
+              onClick={() => { setSelected({}); setSubmitState({ status: 'idle' }); }}
+            >
+              {t('assessments.retryBtn')}
+            </button>
+          ) : null}
+        </div>
       </main>
     );
   }
 
   return (
-    <main>
-      <nav>
-        <a href="/learn/assessments">Assessments</a>
-        <a href={`/learn/assessments/${encodeURIComponent(assessmentId)}`}>Assessment details</a>
+    <main className="learner-quiz">
+      <nav className="learner-breadcrumb">
+        <a href="/learn/assessments">{t('assessments.navLink')}</a>
+        <span>›</span>
+        <a href={backLink}>{assessment.title}</a>
       </nav>
 
-      <article>
-        <h1>{loadState.assessment.title}</h1>
-        <p>{loadState.assessment.description?.trim() || loadState.assessment.slug}</p>
-        <p>Passing score: {loadState.assessment.passingScore}%</p>
-      </article>
+      <header className="learner-quiz__header">
+        <h1>{assessment.title}</h1>
+        {assessment.description ? <p className="learner-quiz__description">{assessment.description}</p> : null}
+        <div className="learner-quiz__meta">
+          <span>{t('assessments.resultPassingScore', { score: assessment.passingScore })}</span>
+          {assessment.maxAttempts ? <span>{t('assessments.maxAttempts')}: {assessment.maxAttempts}</span> : null}
+        </div>
+      </header>
 
-      {loadState.questions.length === 0 ? (
-        <EmptyState message="No questions found for this assessment." />
+      {questions.length === 0 ? (
+        <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <form onSubmit={submitAttempt}>
-          {loadState.questions.map((question) => (
-            <fieldset key={question.id}>
-              <legend>
-                {question.order}. {question.title}
-              </legend>
-              {question.text ? <p>{question.text}</p> : null}
-              <p>Points: {question.points}</p>
+        <form className="learner-quiz__form" onSubmit={handleSubmit}>
+          <div className="learner-quiz__progress">
+            {t('assessments.answered', { answered: answeredCount, total: questions.length })}
+          </div>
 
-              {question.options.map((option) => {
-                const label = option.text || option.imageUrl || option.id;
+          <ol className="learner-quiz__questions">
+            {questions.map((question, index) => {
+              const isAnswered = question.type === 'multiple_choice'
+                ? selectedIds(selected[question.id]).length > 0
+                : typeof selected[question.id] === 'string';
 
-                if (question.type === 'multiple_choice') {
-                  return (
-                    <label key={option.id}>
-                      <input
-                        checked={selectedIds(selectedAnswers[question.id]).includes(option.id)}
-                        onChange={(event) => selectMultiple(question.id, option.id, event.target.checked)}
-                        type="checkbox"
-                      />
-                      {label}
-                    </label>
-                  );
-                }
+              return (
+                <li key={question.id} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+                  <div className="learner-quiz__question-header">
+                    <span className="learner-quiz__question-num">{index + 1}</span>
+                    <h3 className="learner-quiz__question-title">{question.title}</h3>
+                    <span className="learner-quiz__question-points">{question.points} pt</span>
+                  </div>
+                  {question.text ? <p className="learner-quiz__question-text">{question.text}</p> : null}
 
-                return (
-                  <label key={option.id}>
-                    <input
-                      checked={selectedAnswers[question.id] === option.id}
-                      name={question.id}
-                      onChange={() => selectSingle(question.id, option.id)}
-                      type="radio"
-                    />
-                    {label}
-                  </label>
-                );
-              })}
-            </fieldset>
-          ))}
+                  <ul className="learner-quiz__options">
+                    {question.options.map((option) => {
+                      const label = getOptionLabel(option);
+                      if (question.type === 'multiple_choice') {
+                        const checked = selectedIds(selected[question.id]).includes(option.id);
+                        return (
+                          <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
+                            <label className="learner-quiz__option-label">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => selectMultiple(question.id, option.id, e.target.checked)}
+                              />
+                              <span>{label}</span>
+                            </label>
+                          </li>
+                        );
+                      }
+                      const checked = selected[question.id] === option.id;
+                      return (
+                        <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
+                          <label className="learner-quiz__option-label">
+                            <input
+                              type="radio"
+                              name={question.id}
+                              checked={checked}
+                              onChange={() => selectSingle(question.id, option.id)}
+                            />
+                            <span>{label}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              );
+            })}
+          </ol>
 
-          {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+          {submitState.status === 'error' ? (
+            <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
+          ) : null}
 
-          <button disabled={isSubmitting} type="submit">
-            {isSubmitting ? 'Submitting...' : 'Submit assessment'}
-          </button>
+          <div className="learner-quiz__submit-row">
+            <button
+              className="learner-btn learner-btn--primary"
+              disabled={submitState.status === 'submitting'}
+              type="submit"
+            >
+              {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
+            </button>
+          </div>
         </form>
       )}
     </main>

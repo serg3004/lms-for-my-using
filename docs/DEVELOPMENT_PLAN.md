@@ -553,7 +553,7 @@
 
 ---
 
-## PR 100 — feat: learner assessment taking (real)
+## ✅ PR 100 — feat: learner assessment taking (real)
 
 Что входит:
 - Реальная форма: вопросы, варианты ответов, навигация

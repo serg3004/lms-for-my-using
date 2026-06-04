@@ -168,11 +168,14 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 export type {
+  AssessmentAttemptResult,
   AssessmentSummary,
   AssignmentSummary,
+  AttemptAnswerResult,
   CertificateSummary,
   CourseMaterialSummary,
   CourseSummary,
+  CreateAttemptAnswerInput,
   CreateLessonCompletionInput,
   CurrentUser,
   LessonSummary,
@@ -188,5 +191,5 @@ export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './ap
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
-export { getAssessment, getAssessmentPath, listAssessments } from './api/assessments.js';
+export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments } from './api/assessments.js';
 export { getCertificate, getCertificatePath, listCertificates } from './api/certificates.js';
