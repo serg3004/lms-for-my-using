@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
@@ -12,6 +12,7 @@ import {
   CreateUserInput,
   importUsersSchema,
   ImportUsersInput,
+  updateUserStatusSchema,
 } from './users.schemas.js';
 import { UsersService } from './users.service.js';
 
@@ -61,5 +62,14 @@ export class UsersController {
     const input: CreateUserInput = createUserSchema.parse(body);
 
     return this.usersService.createUser(input);
+  }
+
+  @Patch(':id/status')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  updateUserStatus(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateUserStatusSchema.parse(body);
+
+    return this.usersService.updateUserStatus(userId, request.currentUser!.organizationId, input.status);
   }
 }

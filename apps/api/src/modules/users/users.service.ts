@@ -7,6 +7,7 @@ import {
   CreateBulkUsersInput,
   CreateUserInput,
   ImportUsersInput,
+  UpdateUserStatusInput,
 } from './users.schemas.js';
 
 const userSelect = {
@@ -25,6 +26,10 @@ const userSelect = {
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
+  memberships: {
+    select: { role: true },
+    orderBy: { createdAt: 'asc' as const },
+  },
 } as const;
 
 type ImportUserData = Omit<CreateUserInput, 'organizationId'>;
@@ -238,6 +243,23 @@ export class UsersService {
       errorCount,
       rows: reportRows,
     };
+  }
+
+  async updateUserStatus(userId: string, organizationId: string, status: UpdateUserStatusInput['status']) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { status },
+      select: userSelect,
+    });
   }
 
   private async ensureOrganizationExists(organizationId: string) {

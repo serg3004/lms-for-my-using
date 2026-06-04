@@ -50,6 +50,11 @@ export const importUsersSchema = z.object({
   users: z.array(z.record(z.unknown())).min(1).max(usersImportMaxItems),
 });
 
+export const updateUserStatusSchema = z.object({
+  status: z.enum(['active', 'suspended']),
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type CreateBulkUsersInput = z.infer<typeof createBulkUsersSchema>;
 export type ImportUsersInput = z.infer<typeof importUsersSchema>;
+export type UpdateUserStatusInput = z.infer<typeof updateUserStatusSchema>;
