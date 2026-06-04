@@ -70,6 +70,7 @@ function createPrismaMock() {
     progress: {
       count: createAsyncMock<number>(),
       create: createAsyncMock<unknown>(),
+      findFirst: createAsyncMock<unknown>(),
       findMany: createAsyncMock<unknown[]>(),
     },
     user: {
@@ -178,6 +179,7 @@ describe('backend MVP smoke flow', () => {
     prisma.lesson.findFirst.setResolvedValue({ id: lessonId });
     prisma.lesson.create.setResolvedValue(lesson);
     prisma.assignment.create.setResolvedValue(assignment);
+    prisma.progress.findFirst.setResolvedValue(null);
     prisma.progress.create.setResolvedValue(progress);
     prisma.lesson.count.setResolvedValue(1);
     prisma.progress.count.setResolvedValue(1);

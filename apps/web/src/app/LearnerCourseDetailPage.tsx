@@ -1,22 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCourse } from '../shared/api/courses.js';
-import { ApiClientError } from '../shared/apiClient.js';
+import { listLessons } from '../shared/api/lessons.js';
+import { listProgress } from '../shared/api/progress.js';
+import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import type { CourseSummary } from '../shared/api/types.js';
-import { PageState, StatusBadge } from '../shared/ui.js';
+import { PageState } from '../shared/ui.js';
 
 type CourseDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; course: CourseSummary }
+  | { status: 'loaded'; course: CourseSummary; totalLessons: number; completedLessons: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
-
-function formatCourseDescription(course: CourseSummary) {
-  return course.description?.trim() || course.slug;
-}
 
 function getLessonsHref(courseId: string) {
   return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
@@ -26,52 +24,48 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CourseDetailLoadState>({ status: 'idle' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadCourseWithProgress = useCallback(async () => {
+    setLoadState({ status: 'loading' });
 
-    async function loadCourse() {
-      setLoadState({ status: 'loading' });
+    try {
+      const [course, lessons, progressList, currentUser] = await Promise.all([
+        getCourse(courseId),
+        listLessons(courseId),
+        listProgress(),
+        getCurrentUser(),
+      ]);
 
-      try {
-        const course = await getCourse(courseId);
+      const publishedLessons = lessons.filter((l) => l.status === 'published');
+      const completedLessonIds = new Set(
+        progressList
+          .filter(
+            (p) =>
+              p.courseId === courseId &&
+              p.userId === currentUser.id &&
+              p.status === 'completed' &&
+              p.lessonId !== null,
+          )
+          .map((p) => p.lessonId as string),
+      );
+      const completedLessons = publishedLessons.filter((l) => completedLessonIds.has(l.id)).length;
 
-        if (isMounted) {
-          setLoadState({ status: 'loaded', course });
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({
-            status: 'unauthenticated',
-            message: t('courseDetail.sessionExpired'),
-          });
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 404) {
-          setLoadState({
-            status: 'notFound',
-            message: t('courseDetail.notFound'),
-          });
-          return;
-        }
-
-        setLoadState({
-          status: 'error',
-          message: t('courseDetail.loadError'),
-        });
+      setLoadState({ status: 'loaded', course, totalLessons: publishedLessons.length, completedLessons });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        setLoadState({ status: 'unauthenticated', message: t('courseDetail.sessionExpired') });
+        return;
       }
+      if (error instanceof ApiClientError && error.status === 404) {
+        setLoadState({ status: 'notFound', message: t('courseDetail.notFound') });
+        return;
+      }
+      setLoadState({ status: 'error', message: t('courseDetail.loadError') });
     }
-
-    void loadCourse();
-
-    return () => {
-      isMounted = false;
-    };
   }, [courseId, t]);
+
+  useEffect(() => {
+    void loadCourseWithProgress();
+  }, [loadCourseWithProgress]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
@@ -110,24 +104,35 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     );
   }
 
+  const { course, totalLessons, completedLessons } = loadState;
+  const progressPercent = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+
   return (
-    <main>
-      <nav>
+    <main className="learner-course-detail">
+      <nav className="learner-breadcrumb">
         <a href="/learn/courses">{t('courses.navLink')}</a>
-        <a href={getLessonsHref(loadState.course.id)}>{t('lessons.navLink')}</a>
       </nav>
 
-      <article>
-        <h1>{loadState.course.title}</h1>
-        <p>{formatCourseDescription(loadState.course)}</p>
-        <dl>
-          <dt>{t('courseDetail.status')}</dt>
-          <dd>
-            <StatusBadge>{loadState.course.status}</StatusBadge>
-          </dd>
-          <dt>{t('courseDetail.slug')}</dt>
-          <dd>{loadState.course.slug}</dd>
-        </dl>
+      <article className="learner-course-detail__article">
+        <h1>{course.title}</h1>
+        {course.description ? <p className="learner-course-detail__description">{course.description}</p> : null}
+
+        {totalLessons > 0 ? (
+          <div className="learner-course-detail__progress">
+            <div className="learner-progress-summary">
+              <span className="learner-progress-summary__text">
+                {t('courseDetail.lessonsProgress', { completed: completedLessons, total: totalLessons })}
+              </span>
+              <div className="learner-progress-bar">
+                <div className="learner-progress-bar__fill" style={{ width: `${progressPercent}%` }} />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <a className="learner-btn learner-btn--primary" href={getLessonsHref(course.id)}>
+          {t('lessons.navLink')}
+        </a>
       </article>
     </main>
   );

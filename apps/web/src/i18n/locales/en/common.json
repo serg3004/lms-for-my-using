@@ -47,7 +47,8 @@
     "loadError": "Unable to load course details. Try again later.",
     "notFound": "Course not found.",
     "status": "Status",
-    "slug": "Slug"
+    "slug": "Slug",
+    "lessonsProgress": "{{completed}} of {{total}} lessons completed"
   },
   "lessons": {
     "navLink": "Lessons",
@@ -59,7 +60,8 @@
     "notFound": "Course not found.",
     "empty": "No lessons are available yet.",
     "order": "Order",
-    "status": "Status"
+    "status": "Status",
+    "progressSummary": "{{completed}} of {{total}} lessons completed"
   },
   "lessonDetail": {
     "title": "Lesson details",
@@ -71,6 +73,9 @@
     "order": "Order",
     "status": "Status",
     "slug": "Slug",
+    "materialsTitle": "Lesson materials",
+    "noMaterials": "No materials for this lesson.",
+    "alreadyCompleted": "Lesson completed",
     "completeAction": "Mark lesson completed",
     "completing": "Marking completed...",
     "completionSuccess": "Lesson marked as completed.",

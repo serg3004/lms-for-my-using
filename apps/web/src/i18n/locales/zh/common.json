@@ -47,7 +47,8 @@
     "loadError": "无法加载课程详情。请稍后重试。",
     "notFound": "未找到课程。",
     "status": "状态",
-    "slug": "Slug"
+    "slug": "Slug",
+    "lessonsProgress": "已完成 {{completed}} / {{total}} 个课时"
   },
   "lessons": {
     "navLink": "课时",
@@ -59,7 +60,8 @@
     "notFound": "未找到课程。",
     "empty": "暂无可用课时。",
     "order": "顺序",
-    "status": "状态"
+    "status": "状态",
+    "progressSummary": "已完成 {{completed}} / {{total}} 个课时"
   },
   "lessonDetail": {
     "title": "课时详情",
@@ -70,7 +72,14 @@
     "notFound": "未找到课时。",
     "order": "顺序",
     "status": "状态",
-    "slug": "Slug"
+    "slug": "Slug",
+    "materialsTitle": "课时资料",
+    "noMaterials": "本课时暂无资料。",
+    "alreadyCompleted": "课时已完成",
+    "completeAction": "完成课时",
+    "completing": "保存中...",
+    "completionSuccess": "课时已标记为完成。",
+    "completionError": "无法标记课时完成。请稍后重试。"
   },
   "materials": {
     "navLink": "资料",

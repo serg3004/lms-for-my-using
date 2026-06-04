@@ -47,7 +47,8 @@
     "loadError": "Курс мәліметтерін жүктеу мүмкін болмады. Кейінірек қайталаңыз.",
     "notFound": "Курс табылмады.",
     "status": "Статус",
-    "slug": "Slug"
+    "slug": "Slug",
+    "lessonsProgress": "{{completed}} / {{total}} сабақ аяқталды"
   },
   "lessons": {
     "navLink": "Сабақтар",
@@ -59,7 +60,8 @@
     "notFound": "Курс табылмады.",
     "empty": "Сабақтар әзірге қолжетімсіз.",
     "order": "Реті",
-    "status": "Статус"
+    "status": "Статус",
+    "progressSummary": "{{completed}} / {{total}} сабақ аяқталды"
   },
   "lessonDetail": {
     "title": "Сабақ мәліметтері",
@@ -70,7 +72,14 @@
     "notFound": "Сабақ табылмады.",
     "order": "Реті",
     "status": "Статус",
-    "slug": "Slug"
+    "slug": "Slug",
+    "materialsTitle": "Сабақ материалдары",
+    "noMaterials": "Бұл сабақ үшін материалдар жоқ.",
+    "alreadyCompleted": "Сабақ аяқталды",
+    "completeAction": "Сабақты аяқтау",
+    "completing": "Сақталуда...",
+    "completionSuccess": "Сабақ аяқталды деп белгіленді.",
+    "completionError": "Сабақты аяқталды деп белгілеу мүмкін болмады. Кейінірек қайталаңыз."
   },
   "materials": {
     "navLink": "Материалдар",
