@@ -20,3 +20,18 @@ export const createLessonSchema = z.object({
 });
 
 export type CreateLessonInput = z.infer<typeof createLessonSchema>;
+
+export const updateLessonStatusSchema = z.object({
+  status: lessonStatusSchema,
+});
+export type UpdateLessonStatusInput = z.infer<typeof updateLessonStatusSchema>;
+
+export const updateLessonSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160),
+    description: z.string().trim().max(1000).nullable(),
+    order: z.number().int().min(0),
+    status: lessonStatusSchema,
+  })
+  .partial();
+export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
