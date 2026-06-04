@@ -1,19 +1,46 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { getCurrentUser } from '../shared/apiClient.js';
+import type { CurrentUser } from '../shared/apiClient.js';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
-type Organization = { id: string; name: string };
-type Course = { id: string; title: string; slug: string; description: string | null; status: string };
+type CourseStatus = 'draft' | 'published' | 'archived';
 
-type LoadState =
+type AdminCourseSummary = {
+  id: string;
+  organizationId: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  status: CourseStatus;
+  createdAt: string;
+  updatedAt: string;
+  _count: { lessons: number };
+};
+
+type PageLoadState =
+  | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; organizations: Organization[]; courses: Course[] }
+  | { status: 'loaded'; courses: AdminCourseSummary[]; currentUser: CurrentUser }
+  | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-function slugifyCourseTitle(value: string) {
+type CreateFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
+
+const COURSE_STATUSES: CourseStatus[] = ['draft', 'published', 'archived'];
+
+function getStatusTone(status: CourseStatus) {
+  if (status === 'published') return 'success';
+  if (status === 'archived') return 'neutral';
+
+  return 'neutral';
+}
+
+function slugifyTitle(value: string) {
   return value
     .trim()
     .toLowerCase()
@@ -24,161 +51,287 @@ function slugifyCourseTitle(value: string) {
 
 export function AdminCourseBuilderPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
-    status: 'idle',
-  });
+  const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
+  const [showCreate, setShowCreate] = useState(false);
+  const [formTitle, setFormTitle] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  async function loadCourses() {
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
+    { label: t('admin.courseBuilder.title', 'Courses'), href: '/admin/courses', isCurrent: true },
+  ];
+
+  async function loadData() {
+    setPageState({ status: 'loading' });
+
     try {
-      const [organizations, courses] = await Promise.all([
-        apiRequest<Organization[]>('/organizations'),
-        apiRequest<Course[]>('/courses'),
+      const [courses, currentUser] = await Promise.all([
+        apiRequest<AdminCourseSummary[]>('/courses'),
+        getCurrentUser(),
       ]);
-      setLoadState({ status: 'loaded', organizations, courses });
+
+      setPageState({ status: 'loaded', courses, currentUser });
     } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.courseBuilder.loadError', 'Unable to load course builder.');
-      setLoadState({ status: 'error', message });
+      if (error instanceof ApiClientError && error.status === 401) {
+        setPageState({
+          status: 'unauthenticated',
+          message: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
+        });
+
+        return;
+      }
+
+      setPageState({
+        status: 'error',
+        message: t('admin.courseBuilder.loadError', 'Unable to load courses. Try again later.'),
+      });
     }
   }
 
   useEffect(() => {
-    void loadCourses();
-  }, [t]);
+    void loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function handleCreateCourse(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (loadState.status !== 'loaded' || loadState.organizations.length === 0) {
-      return;
+  useEffect(() => {
+    if (showCreate) {
+      dialogRef.current?.showModal();
+    } else {
+      dialogRef.current?.close();
     }
+  }, [showCreate]);
 
-    const courseTitle = title.trim();
-    const slug = slugifyCourseTitle(courseTitle);
+  function openCreate() {
+    setFormTitle('');
+    setFormDescription('');
+    setFormState({ status: 'idle' });
+    setShowCreate(true);
+  }
 
-    if (!courseTitle || !slug) {
-      setSubmitState({
+  function closeCreate() {
+    setShowCreate(false);
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (pageState.status !== 'loaded') return;
+
+    const title = formTitle.trim();
+    const slug = slugifyTitle(title);
+
+    if (!slug) {
+      setFormState({
         status: 'error',
-        message: t('admin.courseBuilder.invalidTitle', 'Enter a course title using letters or numbers.'),
+        message: t('admin.courseBuilder.invalidTitle', 'Enter a title using letters or numbers.'),
       });
+
       return;
     }
 
-    setSubmitState({ status: 'saving' });
+    setFormState({ status: 'submitting' });
 
     try {
-      await apiRequest<Course>('/courses', {
+      await apiRequest<AdminCourseSummary>('/courses', {
         method: 'POST',
         body: JSON.stringify({
-          organizationId: loadState.organizations[0].id,
-          title: courseTitle,
+          organizationId: pageState.currentUser.organizationId,
+          title,
           slug,
-          description: description.trim() || undefined,
+          description: formDescription.trim() || undefined,
           status: 'draft',
         }),
       });
-      setTitle('');
-      setDescription('');
-      setSubmitState({ status: 'idle' });
-      await loadCourses();
+
+      closeCreate();
+      void loadData();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
           ? t('admin.courseBuilder.courseExists', 'A course with this slug already exists.')
-          : t('admin.courseBuilder.saveError', 'Unable to create course.');
-      setSubmitState({ status: 'error', message });
+          : error instanceof ApiClientError
+            ? error.message
+            : t('admin.courseBuilder.saveError', 'Failed to create course. Try again.');
+
+      setFormState({ status: 'error', message });
     }
   }
 
-  if (loadState.status === 'loading') {
+  async function handleStatusChange(course: AdminCourseSummary, newStatus: CourseStatus) {
+    if (newStatus === course.status) return;
+
+    try {
+      const updated = await apiRequest<AdminCourseSummary>(`/courses/${course.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (pageState.status !== 'loaded') return;
+
+      setPageState({
+        ...pageState,
+        courses: pageState.courses.map((c) => (c.id === updated.id ? updated : c)),
+      });
+    } catch {
+      // Silently ignore — server error will be visible on next refresh
+    }
+  }
+
+  if (pageState.status === 'idle' || pageState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message={t('admin.courseBuilder.loading', 'Loading course builder...')} variant="loading" />
+        <PageState message={t('admin.courseBuilder.loading', 'Loading courses...')} variant="loading" />
       </main>
     );
   }
 
-  if (loadState.status === 'error') {
+  if (pageState.status === 'unauthenticated') {
     return (
       <main className="admin-state">
-        <PageState title={t('admin.courseBuilder.title', 'Course builder')} message={loadState.message} variant="error" />
+        <PageState
+          title={t('admin.courseBuilder.title', 'Courses')}
+          message={pageState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
+
+  if (pageState.status === 'error') {
+    return (
+      <main className="admin-state">
+        <PageState title={t('admin.courseBuilder.title', 'Courses')} message={pageState.message} variant="error" />
+      </main>
+    );
+  }
+
+  const { courses } = pageState;
 
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">
-          {t('admin.navLink', 'Admin')}
-        </a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/users">{t('admin.users.title', 'Users')}</a>
-          <a className="admin-nav-link" href="/admin/roles">{t('admin.roles.title', 'Roles')}</a>
-          <a className="admin-nav-link" href="/admin/org-structure">{t('admin.orgStructure.title', 'Organization structure')}</a>
-          <a className="admin-nav-link" href="/admin/courses" aria-current="page">{t('admin.courseBuilder.title', 'Course builder')}</a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.courseBuilder.title', 'Courses')}
+        subtitle={t('admin.courseBuilder.subtitle', 'Create and manage courses for your organization.')}
+        action={
+          <button className="admin-btn admin-btn--primary" onClick={openCreate} type="button">
+            {t('admin.courseBuilder.create', 'Create course')}
+          </button>
+        }
+      />
 
-      <section className="admin-shell">
-        <header className="admin-topbar">
-          <div>
-            <h1>{t('admin.courseBuilder.title', 'Course builder')}</h1>
-            <p>{t('admin.courseBuilder.subtitle', 'Create draft courses and review existing course shells.')}</p>
+      <AdminCard>
+        {courses.length === 0 ? (
+          <EmptyState message={t('admin.courseBuilder.empty', 'No courses found.')} />
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>{t('admin.courseBuilder.titleCol', 'Title')}</th>
+                <th>{t('admin.courseBuilder.slugCol', 'Slug')}</th>
+                <th>{t('admin.courseBuilder.lessonsCol', 'Lessons')}</th>
+                <th>{t('admin.courseBuilder.statusCol', 'Status')}</th>
+                <th>{t('admin.courseBuilder.changeStatus', 'Change status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {courses.map((course) => (
+                <tr key={course.id}>
+                  <td>{course.title}</td>
+                  <td>
+                    <code>{course.slug}</code>
+                  </td>
+                  <td>{course._count.lessons}</td>
+                  <td>
+                    <StatusBadge tone={getStatusTone(course.status)}>{course.status}</StatusBadge>
+                  </td>
+                  <td>
+                    <select
+                      className="admin-status-select"
+                      value={course.status}
+                      onChange={(e) => void handleStatusChange(course, e.target.value as CourseStatus)}
+                      aria-label={t('admin.courseBuilder.changeStatusFor', 'Change status for {{title}}', { title: course.title })}
+                    >
+                      {COURSE_STATUSES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </AdminCard>
+
+      <dialog className="admin-dialog" ref={dialogRef} onClose={closeCreate}>
+        <div className="admin-dialog__header">
+          <h2>{t('admin.courseBuilder.create', 'Create course')}</h2>
+          <button
+            className="admin-dialog__close"
+            onClick={closeCreate}
+            type="button"
+            aria-label={t('common.close', 'Close')}
+          >
+            ✕
+          </button>
+        </div>
+
+        <form className="admin-form" onSubmit={(e) => void handleCreate(e)}>
+          <div className="admin-form__field">
+            <label htmlFor="create-title">{t('admin.courseBuilder.courseTitle', 'Course title')} *</label>
+            <input
+              id="create-title"
+              required
+              maxLength={160}
+              type="text"
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+            />
+            {formTitle.trim() && (
+              <span className="admin-form__hint">
+                slug: <code>{slugifyTitle(formTitle)}</code>
+              </span>
+            )}
           </div>
-          <a href="/admin">{t('admin.courseBuilder.backToDashboard', 'Back to dashboard')}</a>
-        </header>
 
-        <section className="admin-content-grid">
-          <article className="admin-card">
-            <h2>{t('admin.courseBuilder.createTitle', 'Create draft course')}</h2>
-            {loadState.organizations.length === 0 ? (
-              <EmptyState message={t('admin.courseBuilder.noOrganizations', 'No organizations available.')} />
-            ) : (
-              <form onSubmit={handleCreateCourse}>
-                <label>
-                  {t('admin.courseBuilder.courseTitle', 'Course title')}
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
-                </label>
-                <label>
-                  {t('admin.courseBuilder.description', 'Description')}
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </label>
-                {submitState.status === 'error' ? <p role="alert">{submitState.message}</p> : null}
-                <button type="submit" disabled={submitState.status === 'saving'}>
-                  {submitState.status === 'saving'
-                    ? t('admin.courseBuilder.saving', 'Creating...')
-                    : t('admin.courseBuilder.create', 'Create draft')}
-                </button>
-              </form>
-            )}
-          </article>
+          <div className="admin-form__field">
+            <label htmlFor="create-description">{t('admin.courseBuilder.description', 'Description')}</label>
+            <textarea
+              id="create-description"
+              maxLength={1000}
+              rows={3}
+              value={formDescription}
+              onChange={(e) => setFormDescription(e.target.value)}
+            />
+          </div>
 
-          <article className="admin-card">
-            <h2>{t('admin.courseBuilder.coursesTitle', 'Courses')}</h2>
-            {loadState.courses.length === 0 ? (
-              <EmptyState message={t('admin.courseBuilder.empty', 'No courses found.')} />
-            ) : (
-              <table>
-                <tbody>
-                  {loadState.courses.map((course) => (
-                    <tr key={course.id}>
-                      <td>{course.title}</td>
-                      <td>{course.slug}</td>
-                      <td><StatusBadge>{course.status}</StatusBadge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </article>
-        </section>
-      </section>
-    </main>
+          {formState.status === 'error' && (
+            <p className="admin-form__error" role="alert">{formState.message}</p>
+          )}
+
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" onClick={closeCreate} type="button">
+              {t('common.cancel', 'Cancel')}
+            </button>
+            <button
+              className="admin-btn admin-btn--primary"
+              disabled={formState.status === 'submitting'}
+              type="submit"
+            >
+              {formState.status === 'submitting'
+                ? t('common.saving', 'Saving...')
+                : t('admin.courseBuilder.create', 'Create course')}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </AdminPageLayout>
   );
 }

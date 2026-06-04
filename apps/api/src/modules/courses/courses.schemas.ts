@@ -17,4 +17,9 @@ export const createCourseSchema = z.object({
   status: courseStatusSchema.default('draft'),
 });
 
+export const updateCourseStatusSchema = z.object({
+  status: courseStatusSchema,
+});
+
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
+export type UpdateCourseStatusInput = z.infer<typeof updateCourseStatusSchema>;

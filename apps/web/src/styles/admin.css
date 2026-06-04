@@ -360,7 +360,8 @@
 }
 
 .admin-form__field input,
-.admin-form__field select {
+.admin-form__field select,
+.admin-form__field textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.75rem;
@@ -369,10 +370,21 @@
   background: var(--color-background, var(--color-surface));
 }
 
+.admin-form__field textarea {
+  resize: vertical;
+}
+
 .admin-form__field input:focus,
-.admin-form__field select:focus {
+.admin-form__field select:focus,
+.admin-form__field textarea:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+.admin-form__hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, var(--color-text));
+  opacity: 0.7;
 }
 
 .admin-form__error {
@@ -387,6 +399,22 @@
   padding-top: 0.5rem;
 }
 
+/* ── Status select ───────────────────────────────────────────────────────── */
+
+.admin-status-select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.admin-status-select:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
 @media (max-width: 860px) {
   .admin-layout {
     grid-template-columns: 1fr;
