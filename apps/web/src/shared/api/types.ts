@@ -141,6 +141,11 @@ export type CertificateSummary = {
   updatedAt: string;
 };
 
+export type OrganizationSummary = {
+  id: string;
+  name: string;
+};
+
 export type CreateLessonCompletionInput = {
   organizationId: string;
   courseId: string;

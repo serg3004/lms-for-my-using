@@ -15,3 +15,15 @@ export function listCertificates() {
 export function getCertificate(certificateId: string) {
   return apiRequest<CertificateSummary>(getCertificatePath(certificateId));
 }
+
+export function issueCertificate(input: {
+  organizationId: string;
+  courseId: string;
+  userId: string;
+  assessmentAttemptId?: string;
+}) {
+  return apiRequest<CertificateSummary>(certificatesPath, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}

@@ -136,6 +136,23 @@
     "resultYourAnswer": "您的答案",
     "retryBtn": "再次尝试",
     "backToAssessment": "返回测验",
+    "viewCertificate": "查看证书",
     "availableAfterCourseCompletion": "课程完成后可用"
+  },
+  "certificates": {
+    "navLink": "证书",
+    "title": "证书",
+    "detailTitle": "证书详情",
+    "loading": "正在加载证书...",
+    "loadingDetail": "正在加载证书详情...",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载证书。请稍后重试。",
+    "notFound": "未找到证书。",
+    "empty": "暂无证书。",
+    "notAvailable": "不可用",
+    "printBtn": "打印证书",
+    "certType": "结业证书",
+    "presentedTo": "兹证明已成功完成以下课程",
+    "issuedOn": "颁发日期：{{date}}"
   }
 }

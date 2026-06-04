@@ -174,7 +174,8 @@
     "resultIncorrect": "incorrect",
     "resultYourAnswer": "Your answer",
     "retryBtn": "Try again",
-    "backToAssessment": "Back to assessment"
+    "backToAssessment": "Back to assessment",
+    "viewCertificate": "View certificate"
   },
   "certificates": {
     "navLink": "Certificates",
@@ -194,6 +195,10 @@
     "status": "Status",
     "issuedAt": "Issued at",
     "revokedAt": "Revoked at",
-    "notAvailable": "Not available"
+    "notAvailable": "Not available",
+    "printBtn": "Print certificate",
+    "certType": "Certificate of Completion",
+    "presentedTo": "This certificate is awarded for successfully completing the course",
+    "issuedOn": "Issued on {{date}}"
   }
 }
