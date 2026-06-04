@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser } from '../shared/apiClient.js';
@@ -63,7 +63,7 @@ export function AdminCourseBuilderPage() {
     { label: t('admin.courseBuilder.title', 'Courses'), href: '/admin/courses', isCurrent: true },
   ];
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setPageState({ status: 'loading' });
 
     try {
@@ -88,11 +88,11 @@ export function AdminCourseBuilderPage() {
         message: t('admin.courseBuilder.loadError', 'Unable to load courses. Try again later.'),
       });
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     if (showCreate) {

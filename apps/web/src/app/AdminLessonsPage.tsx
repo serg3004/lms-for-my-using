@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -37,7 +37,7 @@ export function AdminLessonsPage() {
     status: 'idle',
   });
 
-  async function loadLessons(courseId?: string) {
+  const loadLessons = useCallback(async (courseId?: string) => {
     try {
       const courses = await apiRequest<Course[]>('/courses');
       const nextCourseId = courseId || selectedCourseId || courses[0]?.id || '';
@@ -52,11 +52,11 @@ export function AdminLessonsPage() {
           : t('admin.lessons.loadError', 'Unable to load lesson editor.');
       setLoadState({ status: 'error', message });
     }
-  }
+  }, [t, selectedCourseId]);
 
   useEffect(() => {
     void loadLessons();
-  }, [t]);
+  }, [loadLessons]);
 
   const selectedCourse = useMemo(() => {
     return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === selectedCourseId) : undefined;

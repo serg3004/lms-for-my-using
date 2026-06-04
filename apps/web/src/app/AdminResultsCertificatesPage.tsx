@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
@@ -41,7 +41,7 @@ export function AdminResultsCertificatesPage() {
   const [assessmentAttemptId, setAssessmentAttemptId] = useState('');
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({ status: 'idle' });
 
-  async function loadData(nextAssessmentId?: string) {
+  const loadData = useCallback(async (nextAssessmentId?: string) => {
     try {
       const [courses, users, assessments, progressItems, certificates] = await Promise.all([
         apiRequest<Course[]>('/courses'),
@@ -66,11 +66,11 @@ export function AdminResultsCertificatesPage() {
           : 'Unable to load results dashboard.';
       setLoadState({ status: 'error', message });
     }
-  }
+  }, [assessmentId]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   const selectedCourse = useMemo(() => {
     return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === courseId) : undefined;

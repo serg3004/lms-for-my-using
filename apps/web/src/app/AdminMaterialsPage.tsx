@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -60,7 +60,7 @@ export function AdminMaterialsPage() {
     status: 'idle',
   });
 
-  async function loadMaterials(courseId?: string) {
+  const loadMaterials = useCallback(async (courseId?: string) => {
     try {
       const courses = await apiRequest<Course[]>('/courses');
       const nextCourseId = courseId || selectedCourseId || courses[0]?.id || '';
@@ -80,11 +80,11 @@ export function AdminMaterialsPage() {
           : t('admin.materials.loadError', 'Unable to load materials.');
       setLoadState({ status: 'error', message });
     }
-  }
+  }, [t, selectedCourseId]);
 
   useEffect(() => {
     void loadMaterials();
-  }, [t]);
+  }, [loadMaterials]);
 
   const selectedCourse = useMemo(() => {
     return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === selectedCourseId) : undefined;

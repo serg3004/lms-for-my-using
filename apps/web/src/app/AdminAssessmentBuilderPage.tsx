@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -50,7 +50,7 @@ export function AdminAssessmentBuilderPage() {
     status: 'idle',
   });
 
-  async function loadAssessmentData(courseId?: string) {
+  const loadAssessmentData = useCallback(async (courseId?: string) => {
     try {
       const [courses, assessments] = await Promise.all([
         apiRequest<Course[]>('/courses'),
@@ -70,11 +70,11 @@ export function AdminAssessmentBuilderPage() {
           : t('admin.assessmentBuilder.loadError', 'Unable to load assessment builder.');
       setLoadState({ status: 'error', message });
     }
-  }
+  }, [t, selectedCourseId]);
 
   useEffect(() => {
     void loadAssessmentData();
-  }, [t]);
+  }, [loadAssessmentData]);
 
   const selectedCourse = useMemo(() => {
     return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === selectedCourseId) : undefined;
