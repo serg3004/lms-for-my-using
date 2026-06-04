@@ -589,7 +589,7 @@
 
 ---
 
-## PR 103 — feat: Railway staging deploy + full MVP smoke
+## ✅ PR 103 — feat: Railway staging deploy + full MVP smoke
 
 Что входит:
 - Деплой на Railway staging
