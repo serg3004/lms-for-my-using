@@ -1,4 +1,4 @@
-import { createAssessmentSchema } from './assessments.schemas.js';
+import { createAssessmentSchema, updateAssessmentSchema, updateAssessmentStatusSchema } from './assessments.schemas.js';
 
 describe('Assessments validation', () => {
   it('accepts valid assessment input for future automatic grading', () => {
@@ -58,5 +58,32 @@ describe('Assessments validation', () => {
         passingScore: 101,
       }),
     ).toThrow();
+  });
+});
+
+describe('updateAssessmentStatusSchema', () => {
+  it('accepts valid status', () => {
+    expect(updateAssessmentStatusSchema.parse({ status: 'published' })).toEqual({ status: 'published' });
+  });
+
+  it('rejects unknown status', () => {
+    expect(() => updateAssessmentStatusSchema.parse({ status: 'active' })).toThrow();
+  });
+});
+
+describe('updateAssessmentSchema', () => {
+  it('accepts partial update', () => {
+    expect(updateAssessmentSchema.parse({ passingScore: 80, status: 'published' })).toEqual({
+      passingScore: 80,
+      status: 'published',
+    });
+  });
+
+  it('accepts maxAttempts null to remove limit', () => {
+    expect(updateAssessmentSchema.parse({ maxAttempts: null })).toEqual({ maxAttempts: null });
+  });
+
+  it('accepts empty object', () => {
+    expect(updateAssessmentSchema.parse({})).toEqual({});
   });
 });

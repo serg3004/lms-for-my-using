@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateAssessmentInput } from './assessments.schemas.js';
+import {
+  CreateAssessmentInput,
+  UpdateAssessmentInput,
+  UpdateAssessmentStatusInput,
+} from './assessments.schemas.js';
 
 const assessmentSelect = {
   id: true,
@@ -59,6 +63,44 @@ export class AssessmentsService {
     }
 
     return this.prisma.assessment.create({
+      data: input,
+      select: assessmentSelect,
+    });
+  }
+
+  async updateAssessmentStatus(
+    assessmentId: string,
+    organizationId: string,
+    status: UpdateAssessmentStatusInput['status'],
+  ) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    return this.prisma.assessment.update({
+      where: { id: assessmentId },
+      data: { status },
+      select: assessmentSelect,
+    });
+  }
+
+  async updateAssessment(assessmentId: string, organizationId: string, input: UpdateAssessmentInput) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    return this.prisma.assessment.update({
+      where: { id: assessmentId },
       data: input,
       select: assessmentSelect,
     });
