@@ -1,7 +1,7 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -30,6 +30,18 @@ type MaterialKind = 'file' | 'link';
 
 const MATERIAL_STATUSES: MaterialStatus[] = ['active', 'archived'];
 
+const ACCEPTED_FILE_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'video/mp4',
+  'video/webm',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+].join(',');
+
 function slugifyMaterialTitle(value: string) {
   return value
     .trim()
@@ -56,16 +68,23 @@ export function AdminMaterialsPage() {
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
 
+  // Create form
   const [title, setTitle] = useState('');
   const [kind, setKind] = useState<MaterialKind>('link');
   const [fileUrl, setFileUrl] = useState('');
   const [fileName, setFileName] = useState('');
+  const [mimeType, setMimeType] = useState('');
+  const [sizeBytes, setSizeBytes] = useState<number | null>(null);
   const [description, setDescription] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Edit dialog
   const editDialogRef = useRef<HTMLDialogElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
   const [editMaterial, setEditMaterial] = useState<Material | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editKind, setEditKind] = useState<MaterialKind>('link');
@@ -73,6 +92,7 @@ export function AdminMaterialsPage() {
   const [editFileName, setEditFileName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editStatus, setEditStatus] = useState<MaterialStatus>('active');
+  const [editUploadProgress, setEditUploadProgress] = useState<number | null>(null);
   const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
@@ -114,6 +134,45 @@ export function AdminMaterialsPage() {
     await loadMaterials(courseId);
   }
 
+  async function handleFileSelect(event: ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const setProgress = target === 'create' ? setUploadProgress : setEditUploadProgress;
+    const setUrl = target === 'create' ? setFileUrl : setEditFileUrl;
+    const setName = target === 'create' ? setFileName : setEditFileName;
+    const setError = target === 'create'
+      ? (msg: string) => setSubmitState({ status: 'error', message: msg })
+      : (msg: string) => setEditState({ status: 'error', message: msg });
+
+    if (target === 'create') {
+      setTitle((prev) => prev || file.name.replace(/\.[^.]+$/, ''));
+      setKind('file');
+    } else {
+      setEditKind('file');
+    }
+
+    setProgress(0);
+    try {
+      const result = await uploadFileWithProgress(file, setProgress);
+      setUrl(result.fileUrl);
+      setName(result.fileName);
+      if (target === 'create') {
+        setMimeType(result.mimeType);
+        setSizeBytes(result.sizeBytes);
+      }
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError && error.status === 503
+          ? t('admin.materials.uploadUnconfigured', 'File storage is not configured on this server.')
+          : t('admin.materials.uploadError', 'Upload failed. Try again.');
+      setError(message);
+    } finally {
+      setProgress(null);
+      event.target.value = '';
+    }
+  }
+
   async function handleCreateMaterial(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -147,6 +206,8 @@ export function AdminMaterialsPage() {
           kind,
           fileName: fileName.trim() || undefined,
           fileUrl: fileUrl.trim(),
+          mimeType: mimeType || undefined,
+          sizeBytes: sizeBytes ?? undefined,
           status: 'active',
         }),
       });
@@ -154,6 +215,8 @@ export function AdminMaterialsPage() {
       setTitle('');
       setFileUrl('');
       setFileName('');
+      setMimeType('');
+      setSizeBytes(null);
       setDescription('');
       setSubmitState({ status: 'idle' });
       await loadMaterials(selectedCourse.id);
@@ -190,6 +253,7 @@ export function AdminMaterialsPage() {
     setEditFileName(material.fileName ?? '');
     setEditDescription(material.description ?? '');
     setEditStatus(material.status as MaterialStatus);
+    setEditUploadProgress(null);
     setEditState({ status: 'idle' });
     editDialogRef.current?.showModal();
   }
@@ -279,7 +343,7 @@ export function AdminMaterialsPage() {
         <header className="admin-topbar">
           <div>
             <h1>{t('admin.materials.title', 'Materials')}</h1>
-            <p>{t('admin.materials.subtitle', 'Add URL-based course materials and manage their status.')}</p>
+            <p>{t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}</p>
           </div>
           <a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>
         </header>
@@ -313,19 +377,52 @@ export function AdminMaterialsPage() {
                   </select>
                 </div>
                 <div className="admin-form__field">
-                  <label>{t('admin.materials.materialTitle', 'Material title')}</label>
+                  <label>{t('admin.materials.materialTitle', 'Title')}</label>
                   <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
                 </div>
                 <div className="admin-form__field">
                   <label>{t('admin.materials.kind', 'Kind')}</label>
                   <select value={kind} onChange={(event) => setKind(event.target.value as MaterialKind)}>
-                    <option value="link">{t('admin.materials.link', 'Link')}</option>
-                    <option value="file">{t('admin.materials.file', 'File')}</option>
+                    <option value="link">{t('admin.materials.link', 'Link (URL)')}</option>
+                    <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
                   </select>
                 </div>
                 <div className="admin-form__field">
-                  <label>{t('admin.materials.fileUrl', 'Material URL')}</label>
-                  <input value={fileUrl} onChange={(event) => setFileUrl(event.target.value)} maxLength={2048} />
+                  <label>{t('admin.materials.fileUrl', 'URL')}</label>
+                  <div className="admin-upload">
+                    <div className="admin-upload__row">
+                      <input
+                        value={fileUrl}
+                        onChange={(event) => setFileUrl(event.target.value)}
+                        maxLength={2048}
+                        placeholder="https://..."
+                        disabled={uploadProgress !== null}
+                      />
+                      <button
+                        className="admin-btn admin-btn--secondary admin-btn--sm"
+                        type="button"
+                        disabled={uploadProgress !== null}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {t('admin.materials.uploadBtn', 'Upload file…')}
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept={ACCEPTED_FILE_TYPES}
+                        hidden
+                        onChange={(event) => void handleFileSelect(event, 'create')}
+                      />
+                    </div>
+                    {uploadProgress !== null ? (
+                      <div className="admin-upload__progress">
+                        <div className="admin-upload__bar">
+                          <div className="admin-upload__fill" style={{ width: `${uploadProgress}%` }} />
+                        </div>
+                        <span>{uploadProgress}%</span>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="admin-form__field">
                   <label>{t('admin.materials.fileName', 'File name')}</label>
@@ -341,7 +438,11 @@ export function AdminMaterialsPage() {
                   </p>
                 ) : null}
                 <div className="admin-form__actions">
-                  <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
+                  <button
+                    className="admin-btn admin-btn--primary"
+                    type="submit"
+                    disabled={submitState.status === 'saving' || uploadProgress !== null}
+                  >
                     {submitState.status === 'saving'
                       ? t('admin.materials.saving', 'Saving...')
                       : t('admin.materials.create', 'Add material')}
@@ -423,19 +524,51 @@ export function AdminMaterialsPage() {
         </header>
         <form className="admin-form" onSubmit={handleUpdateMaterial}>
           <div className="admin-form__field">
-            <label>{t('admin.materials.materialTitle', 'Material title')}</label>
+            <label>{t('admin.materials.materialTitle', 'Title')}</label>
             <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={160} />
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.kind', 'Kind')}</label>
             <select value={editKind} onChange={(event) => setEditKind(event.target.value as MaterialKind)}>
-              <option value="link">{t('admin.materials.link', 'Link')}</option>
-              <option value="file">{t('admin.materials.file', 'File')}</option>
+              <option value="link">{t('admin.materials.link', 'Link (URL)')}</option>
+              <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
             </select>
           </div>
           <div className="admin-form__field">
-            <label>{t('admin.materials.fileUrl', 'Material URL')}</label>
-            <input value={editFileUrl} onChange={(event) => setEditFileUrl(event.target.value)} maxLength={2048} />
+            <label>{t('admin.materials.fileUrl', 'URL')}</label>
+            <div className="admin-upload">
+              <div className="admin-upload__row">
+                <input
+                  value={editFileUrl}
+                  onChange={(event) => setEditFileUrl(event.target.value)}
+                  maxLength={2048}
+                  disabled={editUploadProgress !== null}
+                />
+                <button
+                  className="admin-btn admin-btn--secondary admin-btn--sm"
+                  type="button"
+                  disabled={editUploadProgress !== null}
+                  onClick={() => editFileInputRef.current?.click()}
+                >
+                  {t('admin.materials.replaceBtn', 'Replace file…')}
+                </button>
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept={ACCEPTED_FILE_TYPES}
+                  hidden
+                  onChange={(event) => void handleFileSelect(event, 'edit')}
+                />
+              </div>
+              {editUploadProgress !== null ? (
+                <div className="admin-upload__progress">
+                  <div className="admin-upload__bar">
+                    <div className="admin-upload__fill" style={{ width: `${editUploadProgress}%` }} />
+                  </div>
+                  <span>{editUploadProgress}%</span>
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.fileName', 'File name')}</label>
@@ -465,7 +598,11 @@ export function AdminMaterialsPage() {
             </p>
           ) : null}
           <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--primary" type="submit" disabled={editState.status === 'saving'}>
+            <button
+              className="admin-btn admin-btn--primary"
+              type="submit"
+              disabled={editState.status === 'saving' || editUploadProgress !== null}
+            >
               {editState.status === 'saving'
                 ? t('admin.materials.updating', 'Saving...')
                 : t('admin.materials.update', 'Save changes')}
