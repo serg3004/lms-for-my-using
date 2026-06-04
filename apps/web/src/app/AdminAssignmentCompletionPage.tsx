@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
@@ -53,7 +53,7 @@ export function AdminAssignmentCompletionPage() {
     status: 'idle',
   });
 
-  async function loadData(nextCourseId?: string) {
+  const loadData = useCallback(async (nextCourseId?: string) => {
     try {
       const [courses, users, assignments, progressItems] = await Promise.all([
         apiRequest<Course[]>('/courses'),
@@ -73,11 +73,11 @@ export function AdminAssignmentCompletionPage() {
           : 'Unable to load assignment management data.';
       setLoadState({ status: 'error', message });
     }
-  }
+  }, [courseId]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   const selectedCourse = useMemo(() => {
     return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === courseId) : undefined;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser } from '../shared/apiClient.js';
@@ -93,7 +93,7 @@ export function AdminUsersPage() {
     { label: t('admin.users.title', 'Users'), href: '/admin/users', isCurrent: true },
   ];
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setPageState({ status: 'loading' });
 
     try {
@@ -118,11 +118,11 @@ export function AdminUsersPage() {
         message: t('admin.users.loadError', 'Unable to load users. Try again later.'),
       });
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadData();
-  }, []);
+  }, [loadData]);
 
   useEffect(() => {
     if (showCreate) {

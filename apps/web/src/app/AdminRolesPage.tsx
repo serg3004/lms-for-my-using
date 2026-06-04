@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -64,7 +64,7 @@ export function AdminRolesPage() {
     status: 'idle',
   });
 
-  async function loadRoleData() {
+  const loadRoleData = useCallback(async () => {
     setLoadState({ status: 'loading' });
 
     try {
@@ -89,11 +89,11 @@ export function AdminRolesPage() {
         message: t('admin.roles.loadError', 'Unable to load role assignments. Try again later.'),
       });
     }
-  }
+  }, [t]);
 
   useEffect(() => {
     void loadRoleData();
-  }, [t]);
+  }, [loadRoleData]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
