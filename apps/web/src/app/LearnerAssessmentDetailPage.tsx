@@ -125,6 +125,8 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
 
   const courseTitle = getCourseTitle(loadState.assessment, 'Course');
 
+  const takeHref = `/learn/assessments/${encodeURIComponent(loadState.assessment.id)}/take`;
+
   return (
     <main>
       <nav>
@@ -165,6 +167,12 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
             )}
           </dd>
         </dl>
+
+        {loadState.assessment.status === 'published' ? (
+          <a className="learner-btn learner-btn--primary" href={takeHref}>
+            {t('assessments.startBtn')}
+          </a>
+        ) : null}
       </article>
     </main>
   );

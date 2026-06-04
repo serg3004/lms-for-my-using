@@ -147,3 +147,39 @@ export type CreateLessonCompletionInput = {
   lessonId: string;
   userId: string;
 };
+
+export type CreateAttemptAnswerInput = {
+  questionId: string;
+  selectedOptionId?: string;
+  selectedOptionIds?: string[];
+};
+
+export type AttemptAnswerResult = {
+  id: string;
+  questionId: string;
+  selectedOptionId: string | null;
+  selectedOptionIds: unknown;
+  isCorrect: boolean;
+  score: number;
+  question: { id: string; title: string; type: string; points: number; order: number };
+  selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
+};
+
+export type AssessmentAttemptResult = {
+  id: string;
+  organizationId: string;
+  assessmentId: string;
+  userId: string;
+  status: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  passed: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  assessment: { id: string; title: string; slug: string; passingScore: number };
+  user: { id: string; email: string; firstName: string; lastName: string };
+  answers: AttemptAnswerResult[];
+};
