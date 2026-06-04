@@ -543,7 +543,7 @@
 
 ---
 
-## PR 99 — feat: learner lesson completion flow
+## ✅ PR 99 — feat: learner lesson completion flow
 
 Что входит:
 - `LessonDetailPage` показывает описание урока и материалы

@@ -56,6 +56,21 @@ export class ProgressService {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
     }
 
+    const existing = await this.prisma.progress.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        courseId: input.courseId,
+        lessonId: input.lessonId ?? null,
+        userId: input.userId,
+        deletedAt: null,
+      },
+      select: progressSelect,
+    });
+
+    if (existing) {
+      return existing;
+    }
+
     return this.prisma.progress.create({
       data: input,
       select: progressSelect,
