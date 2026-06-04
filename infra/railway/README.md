@@ -103,8 +103,11 @@ railway logs --service web
 # Open shell in running container
 railway shell --service api
 
-# Run one-off command (e.g. seed)
+# Run demo seed (after first deploy)
 railway run --service api node dist/scripts/seed.js
+
+# Or via prisma:seed script locally against Railway DB
+# DATABASE_URL=<railway-db-url> node prisma/seed.mjs
 ```
 
 ---
