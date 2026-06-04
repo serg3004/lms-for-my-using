@@ -1,11 +1,16 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { createCourseMaterialSchema, CreateCourseMaterialInput } from './course-materials.schemas.js';
+import {
+  createCourseMaterialSchema,
+  CreateCourseMaterialInput,
+  updateCourseMaterialStatusSchema,
+  updateCourseMaterialSchema,
+} from './course-materials.schemas.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 
 @Controller()
@@ -36,5 +41,27 @@ export class CourseMaterialsController {
     });
 
     return this.courseMaterialsService.createCourseMaterial(input);
+  }
+
+  @Patch('materials/:id/status')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  updateCourseMaterialStatus(
+    @Param('id') materialId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = updateCourseMaterialStatusSchema.parse(body);
+    return this.courseMaterialsService.updateCourseMaterialStatus(
+      materialId,
+      request.currentUser!.organizationId,
+      input.status,
+    );
+  }
+
+  @Patch('materials/:id')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  updateCourseMaterial(@Param('id') materialId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateCourseMaterialSchema.parse(body);
+    return this.courseMaterialsService.updateCourseMaterial(materialId, request.currentUser!.organizationId, input);
   }
 }

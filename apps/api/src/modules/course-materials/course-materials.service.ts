@@ -1,7 +1,11 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateCourseMaterialInput } from './course-materials.schemas.js';
+import {
+  CreateCourseMaterialInput,
+  UpdateCourseMaterialInput,
+  UpdateCourseMaterialStatusInput,
+} from './course-materials.schemas.js';
 
 const courseMaterialSelect = {
   id: true,
@@ -78,6 +82,44 @@ export class CourseMaterialsService {
     }
 
     return this.prisma.courseMaterial.create({
+      data: input,
+      select: courseMaterialSelect,
+    });
+  }
+
+  async updateCourseMaterialStatus(
+    materialId: string,
+    organizationId: string,
+    status: UpdateCourseMaterialStatusInput['status'],
+  ) {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!material) {
+      throw new NotFoundException('Course material not found');
+    }
+
+    return this.prisma.courseMaterial.update({
+      where: { id: materialId },
+      data: { status },
+      select: courseMaterialSelect,
+    });
+  }
+
+  async updateCourseMaterial(materialId: string, organizationId: string, input: UpdateCourseMaterialInput) {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!material) {
+      throw new NotFoundException('Course material not found');
+    }
+
+    return this.prisma.courseMaterial.update({
+      where: { id: materialId },
       data: input,
       select: courseMaterialSelect,
     });
