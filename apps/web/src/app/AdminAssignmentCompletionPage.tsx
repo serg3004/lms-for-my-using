@@ -1,11 +1,19 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
-type User = { id: string; email: string; name: string | null; status: string };
+type User = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  middleName: string | null;
+  status: string;
+};
 type Assignment = {
   id: string;
   courseId: string;
@@ -29,20 +37,27 @@ type LoadState =
   | { status: 'loaded'; courses: Course[]; users: User[]; assignments: Assignment[]; progressItems: Progress[] }
   | { status: 'error'; message: string };
 
-function findCourseTitle(courses: Course[], courseId: string) {
-  return courses.find((course) => course.id === courseId)?.title ?? courseId;
+type AssignmentStatus = 'assigned' | 'completed' | 'cancelled';
+
+const ASSIGNMENT_STATUSES: AssignmentStatus[] = ['assigned', 'completed', 'cancelled'];
+
+function getUserLabel(user: User) {
+  const fullName = [user.lastName, user.firstName].filter(Boolean).join(' ');
+  return fullName || user.email;
 }
 
-function findUserLabel(users: User[], userId: string | null) {
-  if (!userId) {
-    return 'Group assignment';
-  }
+function findCourseTitle(courses: Course[], courseId: string) {
+  return courses.find((c) => c.id === courseId)?.title ?? courseId;
+}
 
-  const user = users.find((item) => item.id === userId);
-  return user?.name || user?.email || userId;
+function findUserLabel(users: User[], userId: string | null, fallback: string) {
+  if (!userId) return fallback;
+  const user = users.find((u) => u.id === userId);
+  return user ? getUserLabel(user) : userId;
 }
 
 export function AdminAssignmentCompletionPage() {
+  const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
@@ -61,7 +76,7 @@ export function AdminAssignmentCompletionPage() {
         apiRequest<Assignment[]>('/assignments'),
         apiRequest<Progress[]>('/progress'),
       ]);
-      const selectedCourseId = nextCourseId || courseId || courses[0]?.id || '';
+      const selectedCourseId = nextCourseId ?? (courseId || courses[0]?.id || '');
 
       setCourseId(selectedCourseId);
       setUserId((current) => current || users[0]?.id || '');
@@ -69,21 +84,21 @@ export function AdminAssignmentCompletionPage() {
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 401
-          ? 'Your session expired. Sign in again.'
-          : 'Unable to load assignment management data.';
+          ? t('admin.assignments.sessionExpired', 'Your session expired. Sign in again.')
+          : t('admin.assignments.loadError', 'Unable to load assignment management data.');
       setLoadState({ status: 'error', message });
     }
-  }, [courseId]);
+  }, [courseId, t]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
   const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === courseId) : undefined;
+    return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === courseId) : undefined;
   }, [courseId, loadState]);
 
-  async function createAssignment(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (loadState.status !== 'loaded' || !selectedCourse || !userId) {
@@ -109,13 +124,29 @@ export function AdminAssignmentCompletionPage() {
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
-          ? 'This course is already assigned to the selected learner.'
-          : 'Unable to create assignment.';
+          ? t('admin.assignments.alreadyAssigned', 'This course is already assigned to the selected learner.')
+          : t('admin.assignments.saveError', 'Unable to create assignment.');
       setSubmitState({ status: 'error', message });
     }
   }
 
-  async function recordCompletion(event: FormEvent<HTMLFormElement>) {
+  async function handleUpdateAssignmentStatus(assignmentId: string, newStatus: string) {
+    try {
+      const updated = await apiRequest<Assignment>(`/assignments/${encodeURIComponent(assignmentId)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setLoadState((prev) =>
+        prev.status === 'loaded'
+          ? { ...prev, assignments: prev.assignments.map((a) => (a.id === assignmentId ? updated : a)) }
+          : prev,
+      );
+    } catch {
+      await loadData(courseId);
+    }
+  }
+
+  async function handleRecordCompletion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (loadState.status !== 'loaded' || !selectedCourse || !userId) {
@@ -125,7 +156,10 @@ export function AdminAssignmentCompletionPage() {
     const scoreValue = score.trim() ? Number(score) : undefined;
 
     if (scoreValue !== undefined && (!Number.isInteger(scoreValue) || scoreValue < 0 || scoreValue > 100)) {
-      setSubmitState({ status: 'error', message: 'Score must be an integer from 0 to 100.' });
+      setSubmitState({
+        status: 'error',
+        message: t('admin.assignments.invalidScore', 'Score must be an integer from 0 to 100.'),
+      });
       return;
     }
 
@@ -147,14 +181,17 @@ export function AdminAssignmentCompletionPage() {
       setSubmitState({ status: 'idle' });
       await loadData(selectedCourse.id);
     } catch {
-      setSubmitState({ status: 'error', message: 'Unable to record course completion progress.' });
+      setSubmitState({
+        status: 'error',
+        message: t('admin.assignments.progressError', 'Unable to record course completion progress.'),
+      });
     }
   }
 
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message="Loading assignment management..." variant="loading" />
+        <PageState message={t('admin.assignments.loading', 'Loading assignment management...')} variant="loading" />
       </main>
     );
   }
@@ -162,7 +199,7 @@ export function AdminAssignmentCompletionPage() {
   if (loadState.status === 'error') {
     return (
       <main className="admin-state">
-        <PageState title="Course assignment management" message={loadState.message} variant="error" />
+        <PageState title={t('admin.assignments.title', 'Assignments')} message={loadState.message} variant="error" />
       </main>
     );
   }
@@ -171,14 +208,14 @@ export function AdminAssignmentCompletionPage() {
     <main className="admin-layout">
       <aside className="admin-sidebar">
         <a className="admin-brand" href="/admin">
-          Admin
+          {t('admin.navLink', 'Admin')}
         </a>
         <nav className="admin-nav">
           <a className="admin-nav-link" href="/admin/courses">
-            Course builder
+            {t('admin.courseBuilder.title', 'Course builder')}
           </a>
           <a className="admin-nav-link" href="/admin/assignments" aria-current="page">
-            Assignments
+            {t('admin.assignments.title', 'Assignments')}
           </a>
         </nav>
       </aside>
@@ -186,21 +223,26 @@ export function AdminAssignmentCompletionPage() {
       <section className="admin-shell">
         <header className="admin-topbar">
           <div>
-            <h1>Course assignment management</h1>
-            <p>Assign courses and record learner course completion progress.</p>
+            <h1>{t('admin.assignments.title', 'Assignments')}</h1>
+            <p>{t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}</p>
           </div>
-          <a href="/admin">Back to dashboard</a>
+          <a href="/admin">{t('admin.assignments.backToDashboard', 'Back to dashboard')}</a>
         </header>
 
         <section className="admin-content-grid">
           <article className="admin-card">
-            <h2>Create assignment</h2>
+            <h2>{t('admin.assignments.createTitle', 'Assign course')}</h2>
             {loadState.courses.length === 0 || loadState.users.length === 0 ? (
-              <EmptyState message="Create at least one course and user before assigning courses." />
+              <EmptyState
+                message={t(
+                  'admin.assignments.noData',
+                  'Create at least one course and user before assigning courses.',
+                )}
+              />
             ) : (
-              <form onSubmit={createAssignment}>
-                <label>
-                  Course
+              <form className="admin-form" onSubmit={handleCreateAssignment}>
+                <div className="admin-form__field">
+                  <label>{t('admin.assignments.course', 'Course')}</label>
                   <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
                     {loadState.courses.map((course) => (
                       <option key={course.id} value={course.id}>
@@ -208,68 +250,116 @@ export function AdminAssignmentCompletionPage() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  Learner
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.assignments.learner', 'Learner')}</label>
                   <select value={userId} onChange={(event) => setUserId(event.target.value)}>
                     {loadState.users.map((user) => (
                       <option key={user.id} value={user.id}>
-                        {user.name || user.email}
+                        {getUserLabel(user)}
                       </option>
                     ))}
                   </select>
-                </label>
-                <label>
-                  Due date
+                </div>
+                <div className="admin-form__field">
+                  <label>{t('admin.assignments.dueAt', 'Due date')}</label>
                   <input value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
-                </label>
-                {submitState.status === 'error' ? <p role="alert">{submitState.message}</p> : null}
-                <button type="submit" disabled={submitState.status === 'saving'}>
-                  {submitState.status === 'saving' ? 'Saving...' : 'Assign course'}
-                </button>
+                </div>
+                {submitState.status === 'error' ? (
+                  <p className="admin-form__error" role="alert">
+                    {submitState.message}
+                  </p>
+                ) : null}
+                <div className="admin-form__actions">
+                  <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
+                    {submitState.status === 'saving'
+                      ? t('admin.assignments.saving', 'Saving...')
+                      : t('admin.assignments.create', 'Assign course')}
+                  </button>
+                </div>
               </form>
             )}
           </article>
 
           <article className="admin-card">
-            <h2>Completion rules</h2>
-            <p>
-              MVP completion is recorded through progress status. Mark the learner as completed only after required lessons
-              and assessment conditions are satisfied outside this screen.
-            </p>
-            <form onSubmit={recordCompletion}>
-              <label>
-                Completion status
-                <select value={completionStatus} onChange={(event) => setCompletionStatus(event.target.value as 'in_progress' | 'completed')}>
-                  <option value="in_progress">In progress</option>
-                  <option value="completed">Completed</option>
+            <h2>{t('admin.assignments.progressTitle', 'Record progress')}</h2>
+            <form className="admin-form" onSubmit={handleRecordCompletion}>
+              <div className="admin-form__field">
+                <label>{t('admin.assignments.completionStatus', 'Status')}</label>
+                <select
+                  value={completionStatus}
+                  onChange={(event) => setCompletionStatus(event.target.value as 'in_progress' | 'completed')}
+                >
+                  <option value="in_progress">{t('admin.assignments.inProgress', 'In progress')}</option>
+                  <option value="completed">{t('admin.assignments.completed', 'Completed')}</option>
                 </select>
-              </label>
-              <label>
-                Score
+              </div>
+              <div className="admin-form__field">
+                <label>{t('admin.assignments.score', 'Score (0–100)')}</label>
                 <input value={score} onChange={(event) => setScore(event.target.value)} inputMode="numeric" />
-              </label>
-              <button type="submit" disabled={submitState.status === 'saving' || !selectedCourse || !userId}>
-                Record progress
-              </button>
+              </div>
+              {submitState.status === 'error' ? (
+                <p className="admin-form__error" role="alert">
+                  {submitState.message}
+                </p>
+              ) : null}
+              <div className="admin-form__actions">
+                <button
+                  className="admin-btn admin-btn--secondary"
+                  type="submit"
+                  disabled={submitState.status === 'saving' || !selectedCourse || !userId}
+                >
+                  {submitState.status === 'saving'
+                    ? t('admin.assignments.saving', 'Saving...')
+                    : t('admin.assignments.recordProgress', 'Record progress')}
+                </button>
+              </div>
             </form>
           </article>
 
           <article className="admin-card">
-            <h2>Assignments</h2>
+            <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
             {loadState.assignments.length === 0 ? (
-              <EmptyState message="No assignments found." />
+              <EmptyState message={t('admin.assignments.empty', 'No assignments found.')} />
             ) : (
               <table>
+                <thead>
+                  <tr>
+                    <th>{t('admin.assignments.col.course', 'Course')}</th>
+                    <th>{t('admin.assignments.col.learner', 'Learner')}</th>
+                    <th>{t('admin.assignments.col.status', 'Status')}</th>
+                    <th>{t('admin.assignments.col.dueAt', 'Due date')}</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {loadState.assignments.map((assignment) => (
                     <tr key={assignment.id}>
                       <td>{findCourseTitle(loadState.courses, assignment.courseId)}</td>
-                      <td>{findUserLabel(loadState.users, assignment.userId)}</td>
                       <td>
-                        <StatusBadge>{assignment.status}</StatusBadge>
+                        {findUserLabel(
+                          loadState.users,
+                          assignment.userId,
+                          t('admin.assignments.groupAssignment', 'Group'),
+                        )}
                       </td>
-                      <td>{assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString() : 'No due date'}</td>
+                      <td>
+                        <select
+                          className="admin-status-select"
+                          value={assignment.status}
+                          onChange={(event) => void handleUpdateAssignmentStatus(assignment.id, event.target.value)}
+                        >
+                          {ASSIGNMENT_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        {assignment.dueAt
+                          ? new Date(assignment.dueAt).toLocaleDateString()
+                          : t('admin.assignments.noDueDate', '—')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -278,20 +368,30 @@ export function AdminAssignmentCompletionPage() {
           </article>
 
           <article className="admin-card">
-            <h2>Course progress</h2>
+            <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
             {loadState.progressItems.length === 0 ? (
-              <EmptyState message="No course progress found." />
+              <EmptyState message={t('admin.assignments.progressEmpty', 'No course progress found.')} />
             ) : (
               <table>
+                <thead>
+                  <tr>
+                    <th>{t('admin.assignments.col.course', 'Course')}</th>
+                    <th>{t('admin.assignments.col.learner', 'Learner')}</th>
+                    <th>{t('admin.assignments.col.status', 'Status')}</th>
+                    <th>{t('admin.assignments.col.score', 'Score')}</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {loadState.progressItems.map((progress) => (
                     <tr key={progress.id}>
                       <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
-                      <td>{findUserLabel(loadState.users, progress.userId)}</td>
+                      <td>
+                        {findUserLabel(loadState.users, progress.userId, t('admin.assignments.groupAssignment', 'Group'))}
+                      </td>
                       <td>
                         <StatusBadge>{progress.status}</StatusBadge>
                       </td>
-                      <td>{progress.score ?? 'No score'}</td>
+                      <td>{progress.score !== null ? `${progress.score}%` : t('admin.assignments.noScore', '—')}</td>
                     </tr>
                   ))}
                 </tbody>

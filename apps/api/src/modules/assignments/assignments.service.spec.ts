@@ -1,4 +1,4 @@
-import { createAssignmentSchema } from './assignments.schemas.js';
+import { createAssignmentSchema, updateAssignmentStatusSchema } from './assignments.schemas.js';
 
 describe('Assignments validation', () => {
   it('accepts valid assignment input for user target', () => {
@@ -46,5 +46,15 @@ describe('Assignments validation', () => {
         groupId: '44444444-4444-4444-4444-444444444444',
       }),
     ).toThrow();
+  });
+});
+
+describe('updateAssignmentStatusSchema', () => {
+  it('accepts valid status', () => {
+    expect(updateAssignmentStatusSchema.parse({ status: 'completed' })).toEqual({ status: 'completed' });
+  });
+
+  it('rejects unknown status', () => {
+    expect(() => updateAssignmentStatusSchema.parse({ status: 'active' })).toThrow();
   });
 });

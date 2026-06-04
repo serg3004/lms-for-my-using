@@ -17,3 +17,8 @@ export const createAssignmentSchema = z
   });
 
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+
+export const updateAssignmentStatusSchema = z.object({
+  status: assignmentStatusSchema,
+});
+export type UpdateAssignmentStatusInput = z.infer<typeof updateAssignmentStatusSchema>;
