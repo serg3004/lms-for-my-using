@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateLessonInput } from './lessons.schemas.js';
+import { CreateLessonInput, UpdateLessonInput, UpdateLessonStatusInput } from './lessons.schemas.js';
 
 const lessonSelect = {
   id: true,
@@ -69,6 +69,40 @@ export class LessonsService {
     }
 
     return this.prisma.lesson.create({
+      data: input,
+      select: lessonSelect,
+    });
+  }
+
+  async updateLessonStatus(lessonId: string, organizationId: string, status: UpdateLessonStatusInput['status']) {
+    const lesson = await this.prisma.lesson.findFirst({
+      where: { id: lessonId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    return this.prisma.lesson.update({
+      where: { id: lessonId },
+      data: { status },
+      select: lessonSelect,
+    });
+  }
+
+  async updateLesson(lessonId: string, organizationId: string, input: UpdateLessonInput) {
+    const lesson = await this.prisma.lesson.findFirst({
+      where: { id: lessonId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    return this.prisma.lesson.update({
+      where: { id: lessonId },
       data: input,
       select: lessonSelect,
     });
