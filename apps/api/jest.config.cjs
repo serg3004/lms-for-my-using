@@ -42,6 +42,7 @@ module.exports = {
     '^\\./memberships\\.service\\.js$': '<rootDir>/src/modules/memberships/memberships.service.ts',
     '^\\./organizations\\.schemas\\.js$': '<rootDir>/src/modules/organizations/organizations.schemas.ts',
     '^\\./organizations\\.service\\.js$': '<rootDir>/src/modules/organizations/organizations.service.ts',
+    '^\\./upload\\.service\\.js$': '<rootDir>/src/modules/upload/upload.service.ts',
     '^\\./users\\.schemas\\.js$': '<rootDir>/src/modules/users/users.schemas.ts',
     '^\\./users\\.service\\.js$': '<rootDir>/src/modules/users/users.service.ts',
     '^\\.\\./auth/auth\\.controller\\.js$': '<rootDir>/src/modules/auth/auth.controller.ts',
