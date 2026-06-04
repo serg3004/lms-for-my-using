@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateAssignmentInput } from './assignments.schemas.js';
+import { CreateAssignmentInput, UpdateAssignmentStatusInput } from './assignments.schemas.js';
 
 const assignmentSelect = {
   id: true,
@@ -60,6 +60,27 @@ export class AssignmentsService {
 
     return this.prisma.assignment.create({
       data: input,
+      select: assignmentSelect,
+    });
+  }
+
+  async updateAssignmentStatus(
+    assignmentId: string,
+    organizationId: string,
+    status: UpdateAssignmentStatusInput['status'],
+  ) {
+    const assignment = await this.prisma.assignment.findFirst({
+      where: { id: assignmentId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Assignment not found');
+    }
+
+    return this.prisma.assignment.update({
+      where: { id: assignmentId },
+      data: { status },
       select: assignmentSelect,
     });
   }
