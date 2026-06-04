@@ -174,7 +174,8 @@
     "resultIncorrect": "неверно",
     "resultYourAnswer": "Ваш ответ",
     "retryBtn": "Попробовать снова",
-    "backToAssessment": "К тесту"
+    "backToAssessment": "К тесту",
+    "viewCertificate": "Посмотреть сертификат"
   },
   "certificates": {
     "navLink": "Сертификаты",
@@ -194,6 +195,10 @@
     "status": "Статус",
     "issuedAt": "Выдан",
     "revokedAt": "Отозван",
-    "notAvailable": "Недоступно"
+    "notAvailable": "Недоступно",
+    "printBtn": "Распечатать сертификат",
+    "certType": "Сертификат о прохождении",
+    "presentedTo": "Настоящим подтверждается успешное завершение курса",
+    "issuedOn": "Выдан {{date}}"
   }
 }

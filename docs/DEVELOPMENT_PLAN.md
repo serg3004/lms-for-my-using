@@ -563,7 +563,7 @@
 
 ---
 
-## PR 101 — feat: auto certificate issuance after assessment pass
+## ✅ PR 101 — feat: auto certificate issuance after assessment pass
 
 Что входит:
 - После успешного теста → автоматически `POST /api/v1/certificates`

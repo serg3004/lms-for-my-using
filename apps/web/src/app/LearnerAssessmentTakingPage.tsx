@@ -8,6 +8,7 @@ import {
   createAssessmentAttempt,
   getAssessment,
   getAttemptResult,
+  issueCertificate,
 } from '../shared/apiClient.js';
 import { apiRequest } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
@@ -39,7 +40,7 @@ type LoadState =
 type SubmitState =
   | { status: 'idle' }
   | { status: 'submitting' }
-  | { status: 'done'; result: AssessmentAttemptResult }
+  | { status: 'done'; result: AssessmentAttemptResult; certificateId: string | null }
   | { status: 'error'; message: string };
 
 function selectedIds(value: string | string[] | undefined): string[] {
@@ -142,7 +143,23 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     try {
       const attempt = await createAssessmentAttempt(assessmentId, buildAnswers(loadState.questions, selected));
       const result = await getAttemptResult(attempt.id);
-      setSubmitState({ status: 'done', result });
+
+      let certificateId: string | null = null;
+      if (result.passed) {
+        try {
+          const cert = await issueCertificate({
+            organizationId: result.organizationId,
+            courseId: loadState.assessment.courseId,
+            userId: result.userId,
+            assessmentAttemptId: result.id,
+          });
+          certificateId = cert.id;
+        } catch {
+          // Certificate issuance failed — don't block result display
+        }
+      }
+
+      setSubmitState({ status: 'done', result, certificateId });
     } catch (error) {
       setSubmitState({ status: 'error', message: t(getSubmitErrorKey(error)) });
     }
@@ -179,7 +196,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   const answeredCount = countAnswered(questions, selected);
 
   if (submitState.status === 'done') {
-    const { result } = submitState;
+    const { result, certificateId } = submitState;
     return (
       <main className="learner-quiz">
         <nav className="learner-breadcrumb">
@@ -227,7 +244,13 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
         ) : null}
 
         <div className="learner-quiz__result-actions">
-          <a className="learner-btn learner-btn--primary" href={backLink}>{t('assessments.backToAssessment')}</a>
+          {certificateId ? (
+            <a className="learner-btn learner-btn--primary" href={`/learn/certificates/${encodeURIComponent(certificateId)}`}>
+              {t('assessments.viewCertificate')}
+            </a>
+          ) : (
+            <a className="learner-btn learner-btn--primary" href={backLink}>{t('assessments.backToAssessment')}</a>
+          )}
           {!result.passed ? (
             <button
               className="learner-btn learner-btn--secondary"
