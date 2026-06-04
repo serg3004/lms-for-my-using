@@ -1,5 +1,7 @@
+import { NotFoundException } from '@nestjs/common';
+
 import { PrismaService } from '../../database/prisma.service.js';
-import { createCourseSchema } from './courses.schemas.js';
+import { createCourseSchema, updateCourseStatusSchema } from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -30,6 +32,40 @@ describe('Courses validation', () => {
         slug: 'Safety Basics',
       }),
     ).toThrow();
+  });
+
+  it('accepts valid status update', () => {
+    expect(updateCourseStatusSchema.parse({ status: 'published' })).toEqual({ status: 'published' });
+  });
+
+  it('rejects unknown status value', () => {
+    expect(() => updateCourseStatusSchema.parse({ status: 'unknown' })).toThrow();
+  });
+});
+
+describe('CoursesService updateCourseStatus', () => {
+  it('throws NotFoundException when course does not exist', async () => {
+    const prisma = {
+      course: {
+        findFirst: async () => null,
+      },
+    } as unknown as PrismaService;
+    const service = new CoursesService(prisma);
+
+    await expect(service.updateCourseStatus(courseId, organizationId, 'published')).rejects.toThrow(NotFoundException);
+  });
+
+  it('updates course status when course exists', async () => {
+    const updatedCourse = { id: courseId, status: 'published', _count: { lessons: 0 } };
+    const prisma = {
+      course: {
+        findFirst: async () => ({ id: courseId }),
+        update: async () => updatedCourse,
+      },
+    } as unknown as PrismaService;
+    const service = new CoursesService(prisma);
+
+    await expect(service.updateCourseStatus(courseId, organizationId, 'published')).resolves.toEqual(updatedCourse);
   });
 });
 

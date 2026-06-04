@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateCourseInput } from './courses.schemas.js';
+import { CreateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
 
 const courseSelect = {
   id: true,
@@ -12,6 +12,9 @@ const courseSelect = {
   status: true,
   createdAt: true,
   updatedAt: true,
+  _count: {
+    select: { lessons: true },
+  },
 } as const;
 
 const completedProgressStatus = 'completed' as const;
@@ -119,6 +122,23 @@ export class CoursesService {
 
     return this.prisma.course.create({
       data: input,
+      select: courseSelect,
+    });
+  }
+
+  async updateCourseStatus(courseId: string, organizationId: string, status: UpdateCourseStatusInput['status']) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    return this.prisma.course.update({
+      where: { id: courseId },
+      data: { status },
       select: courseSelect,
     });
   }

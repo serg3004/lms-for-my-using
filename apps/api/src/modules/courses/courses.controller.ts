@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { createCourseSchema, CreateCourseInput } from './courses.schemas.js';
+import { createCourseSchema, CreateCourseInput, updateCourseStatusSchema } from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
 
 @Controller('courses')
@@ -41,5 +41,13 @@ export class CoursesController {
     const input: CreateCourseInput = createCourseSchema.parse(body);
 
     return this.coursesService.createCourse(input);
+  }
+
+  @Patch(':id/status')
+  @Roles(...rolePolicies.coursesCreate)
+  updateCourseStatus(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateCourseStatusSchema.parse(body);
+
+    return this.coursesService.updateCourseStatus(courseId, request.currentUser!.organizationId, input.status);
   }
 }
