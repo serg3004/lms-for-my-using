@@ -133,9 +133,11 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           {lesson.description ? <p className="learner-lesson__description">{lesson.description}</p> : null}
         </header>
 
-        {materials.length > 0 ? (
-          <section className="learner-lesson__materials">
-            <h2>{t('lessonDetail.materialsTitle')}</h2>
+        <section className="learner-lesson__materials">
+          <h2>{t('lessonDetail.materialsTitle')}</h2>
+          {materials.length === 0 ? (
+            <p className="learner-lesson__no-materials">{t('lessonDetail.noMaterials')}</p>
+          ) : (
             <ul className="learner-materials-list">
               {materials.map((material) => (
                 <li key={material.id} className="learner-material-item">
@@ -162,8 +164,8 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
                 </li>
               ))}
             </ul>
-          </section>
-        ) : null}
+          )}
+        </section>
 
         <footer className="learner-lesson__footer">
           <button

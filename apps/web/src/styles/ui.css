@@ -400,6 +400,12 @@
   color: var(--color-text-muted);
 }
 
+.learner-lesson__no-materials {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .learner-lesson__footer {
   display: flex;
   flex-direction: column;
