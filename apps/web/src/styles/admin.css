@@ -415,6 +415,45 @@
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
+
+.admin-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-upload__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-upload__row input[type='text'] {
+  flex: 1;
+}
+
+.admin-upload__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.admin-upload__bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.admin-upload__fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.1s linear;
+}
+
 @media (max-width: 860px) {
   .admin-layout {
     grid-template-columns: 1fr;
