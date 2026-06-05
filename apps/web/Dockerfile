@@ -17,6 +17,7 @@ RUN pnpm install --frozen-lockfile --filter @lms/web
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY apps/web ./apps/web
 COPY package.json pnpm-workspace.yaml ./
 WORKDIR /app/apps/web

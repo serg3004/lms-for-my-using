@@ -65,3 +65,9 @@ jobs:
 
       - name: Build
         run: pnpm --recursive build
+
+      - name: Build API Docker image
+        run: docker build -f apps/api/Dockerfile -t lms-api:ci .
+
+      - name: Build Web Docker image
+        run: docker build -f apps/web/Dockerfile -t lms-web:ci .
