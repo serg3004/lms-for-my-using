@@ -13,10 +13,12 @@ This is a status document only. It does not change runtime behavior, dependencie
 | Base branch | `main` |
 | PR 104 baseline commit | `0d4cd5da1f9d8f8e1d7d2e7a8ae26902ffc936c9` |
 | PR 105 base commit | `6a25e71d5e1c3faae11d0893783a47773d660b35` |
+| PR 106 base commit | `33f058946090551cce16b490d50b5bedc3377ae5` |
 | Baseline workflow | `.github/workflows/ci.yml` |
-| Workflow name | `CI` |
-| Latest verified PR 104 `main` run | `26991697644` |
-| Latest verified PR 104 `main` result | `success` |
+| CodeQL workflow | `.github/workflows/codeql.yml` |
+| Workflow names | `CI`, `CodeQL` |
+| Latest verified PR 105 run | `26998484814` |
+| Latest verified PR 105 result | `success` |
 | Verified at | 2026-06-05 |
 
 ## Current CI gates
@@ -26,13 +28,14 @@ The current CI workflow runs one `Checks` job on `ubuntu-latest`.
 | Gate | Current status |
 | --- | --- |
 | Secret scan | Added in PR 105 via Gitleaks |
-| Install dependencies | Passing in PR 104 baseline |
+| Install dependencies | Passing in PR 105 |
 | Dependency audit | Added in PR 105 via `pnpm audit --audit-level high` |
-| Lint | Passing in PR 104 baseline |
-| Generate Prisma Client | Passing in PR 104 baseline |
-| Typecheck | Passing in PR 104 baseline |
-| Tests | Passing in PR 104 baseline |
-| Build | Passing in PR 104 baseline |
+| Lint | Passing in PR 105 |
+| Generate Prisma Client | Passing in PR 105 |
+| Typecheck | Passing in PR 105 |
+| Tests | Passing in PR 105 |
+| Build | Passing in PR 105 |
+| CodeQL | Added in PR 106 via GitHub CodeQL |
 
 ## Current workflow characteristics
 
@@ -49,13 +52,24 @@ Current CI includes:
 - 15 minute job timeout.
 - Prisma generate with auto-install disabled.
 
+Current CodeQL includes:
+
+- `pull_request` checks.
+- `push` checks for `main`.
+- JavaScript/TypeScript analysis.
+- `security-extended` query suite.
+- read-only `actions` and `contents` permissions.
+- `security-events: write` permission for code scanning upload.
+- 15 minute job timeout.
+
 ## Security audit baseline
 
 | Gate | Current baseline | Follow-up |
 | --- | --- | --- |
 | Dependency audit | Added in PR 105 | Monitor CI signal after merge |
 | Secret scan | Added in PR 105 | Monitor CI signal after merge |
-| CodeQL or Semgrep | Not present in CI | PR 106 |
+| CodeQL | Added in PR 106 | Monitor CI signal after merge |
+| Semgrep | Not present in CI | Optional post-staging hardening |
 | Dependabot or Renovate | Not present in repository config | Separate decision |
 | Branch protection verification | Not verified by this PR | Manual repository settings review |
 | Upload MIME/magic-byte hardening | Not changed by this PR | PR 107 |
@@ -64,7 +78,7 @@ Current CI includes:
 
 ## MVP readiness impact
 
-This baseline confirms that the current `main` branch has a green CI run for the existing quality gates and now adds supply-chain and secret-leak gates for new PRs.
+This baseline confirms that the current `main` branch has green CI for the existing quality gates and now adds supply-chain, secret-leak, and CodeQL static analysis gates for new PRs.
 
 It does not confirm:
 
@@ -82,10 +96,10 @@ Those items remain part of staging verification and smoke reporting.
 
 ## Recommended next PRs
 
-1. PR 106 — add CodeQL or Semgrep security scan.
-2. PR 107 — upload security hardening for MVP.
-3. PR 108 — auth/session production-readiness notes or minimal hardening.
+1. PR 107 — upload security hardening for MVP.
+2. PR 108 — auth/session production-readiness notes or minimal hardening.
+3. PR 109 — frontend maintainability cleanup for MVP-critical pages.
 
 ## Rollback
 
-This PR changes CI and this status document only. Rollback by reverting the PR 105 workflow and documentation changes.
+This PR changes CI and this status document only. Rollback by reverting the PR 106 workflow and documentation changes.
