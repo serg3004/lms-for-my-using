@@ -61,7 +61,7 @@ jobs:
         run: pnpm --recursive typecheck
 
       - name: Tests
-        run: pnpm --recursive test
+        run: pnpm --recursive test:coverage
 
       - name: Build
         run: pnpm --recursive build
