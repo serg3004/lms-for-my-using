@@ -8,6 +8,7 @@ import {
   getLesson,
   listCourseMaterials,
 } from '../shared/apiClient.js';
+import { getCourseLessonsHref, getLessonHref } from '../shared/learnerRoutes.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type LessonMaterialsLoadState =
@@ -20,14 +21,6 @@ type LessonMaterialsLoadState =
 
 function formatDescription(material: CourseMaterialSummary) {
   return material.description?.trim() || material.slug;
-}
-
-function getLessonHref(lessonId: string) {
-  return `/learn/lessons/${encodeURIComponent(lessonId)}`;
-}
-
-function getCourseLessonsHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
 }
 
 function getMaterialLabel(material: CourseMaterialSummary) {

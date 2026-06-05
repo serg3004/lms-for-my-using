@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { formatNullableDate } from '../shared/formatDate.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
@@ -23,14 +24,6 @@ function getCertificateHref(certificateId: string) {
 
 function getCourseTitle(certificate: ReadableCertificateSummary, fallback: string) {
   return getReadableTitle(certificate.courseTitle ?? certificate.course?.title, fallback);
-}
-
-function formatCertificateDate(value: string | null, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return new Date(value).toLocaleString();
 }
 
 export function LearnerCertificatesPage() {
@@ -142,7 +135,7 @@ export function LearnerCertificatesPage() {
                   </dd>
                   <dt>{t('certificates.issuedAt')}</dt>
                   <dd>
-                    {formatCertificateDate(
+                    {formatNullableDate(
                       certificate.issuedAt,
                       t('certificates.notAvailable'),
                     )}

@@ -5,6 +5,7 @@ import { listAssignments } from '../shared/api/assignments.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { AssignmentSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { formatNullableDate } from '../shared/formatDate.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
@@ -31,14 +32,6 @@ function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string)
 
 function getAssignmentAudience(assignment: ReadableAssignmentSummary, fallback: string) {
   return getReadableTitle(assignment.userName ?? assignment.groupName, fallback);
-}
-
-function formatAssignmentDate(value: string | null, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return new Date(value).toLocaleString();
 }
 
 export function LearnerAssignmentsPage() {
@@ -148,7 +141,7 @@ export function LearnerAssignmentsPage() {
                     <StatusBadge>{assignment.status}</StatusBadge>
                   </dd>
                   <dt>{t('assignments.dueAt')}</dt>
-                  <dd>{formatAssignmentDate(assignment.dueAt, t('assignments.notAvailable'))}</dd>
+                  <dd>{formatNullableDate(assignment.dueAt, t('assignments.notAvailable'))}</dd>
                 </dl>
               </article>
             </li>

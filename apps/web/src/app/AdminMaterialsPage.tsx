@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
+import { sortLessons } from '../shared/sortLessons.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -42,10 +43,6 @@ const ACCEPTED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ].join(',');
-
-function sortLessons(lessons: Lesson[]) {
-  return [...lessons].sort((left, right) => left.order - right.order || left.title.localeCompare(right.title));
-}
 
 function formatSize(sizeBytes: number | null, fallback: string) {
   if (sizeBytes === null) return fallback;

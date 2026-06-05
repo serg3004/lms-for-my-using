@@ -10,6 +10,7 @@ import {
   listCourseMaterials,
   markLessonCompleted,
 } from '../shared/apiClient.js';
+import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { PageState } from '../shared/ui.js';
 
 type LessonDetailLoadState =
@@ -26,9 +27,6 @@ type CompletionState =
   | { status: 'completed'; message: string }
   | { status: 'error'; message: string };
 
-function getCourseLessonsHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
-}
 
 function formatFileSize(bytes: number | null): string {
   if (bytes === null) return '';

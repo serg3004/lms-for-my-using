@@ -5,6 +5,7 @@ import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import type { LessonSummary } from '../shared/api/types.js';
+import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 
 type LessonsLoadState =
@@ -14,14 +15,6 @@ type LessonsLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
-
-function getLessonDetailHref(lesson: LessonSummary) {
-  return `/learn/lessons/${encodeURIComponent(lesson.id)}`;
-}
-
-function getCourseDetailHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}`;
-}
 
 export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
@@ -68,7 +61,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   }, [loadLessonsWithProgress]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
-  const courseAction = <a href={getCourseDetailHref(courseId)}>{t('courseDetail.title')}</a>;
+  const courseAction = <a href={getCourseHref(courseId)}>{t('courseDetail.title')}</a>;
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
@@ -101,7 +94,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   return (
     <main className="learner-lessons">
       <nav className="learner-breadcrumb">
-        <a href={getCourseDetailHref(courseId)}>{t('courseDetail.title')}</a>
+        <a href={getCourseHref(courseId)}>{t('courseDetail.title')}</a>
       </nav>
 
       <div className="learner-lessons__header">
@@ -133,7 +126,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
                   <span className="learner-lesson-card__order">{lesson.order}</span>
                   <div className="learner-lesson-card__body">
                     <h2 className="learner-lesson-card__title">
-                      <a href={getLessonDetailHref(lesson)}>{lesson.title}</a>
+                      <a href={getLessonHref(lesson.id)}>{lesson.title}</a>
                     </h2>
                     {lesson.description ? (
                       <p className="learner-lesson-card__desc">{lesson.description}</p>

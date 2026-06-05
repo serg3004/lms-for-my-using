@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssessmentSummary, getAssessment } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssessmentSummary = AssessmentSummary & {
@@ -19,14 +20,6 @@ type AssessmentDetailLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
-
-function getCourseHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}`;
-}
-
-function getLessonHref(lessonId: string) {
-  return `/learn/lessons/${encodeURIComponent(lessonId)}`;
-}
 
 function getCourseTitle(assessment: ReadableAssessmentSummary, fallback: string) {
   return getReadableTitle(assessment.courseTitle ?? assessment.course?.title, fallback);

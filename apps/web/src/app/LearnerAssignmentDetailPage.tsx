@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, AssignmentSummary, getAssignment } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { formatNullableDate } from '../shared/formatDate.js';
+import { getCourseHref } from '../shared/learnerRoutes.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
@@ -20,24 +22,12 @@ type AssignmentDetailLoadState =
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
-function getCourseHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}`;
-}
-
 function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string) {
   return getReadableTitle(assignment.courseTitle ?? assignment.course?.title, fallback);
 }
 
 function getAssignmentAudience(assignment: ReadableAssignmentSummary, fallback: string) {
   return getReadableTitle(assignment.userName ?? assignment.groupName, fallback);
-}
-
-function formatAssignmentDate(value: string | null, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return new Date(value).toLocaleString();
 }
 
 export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: string }) {
@@ -144,7 +134,7 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
             <StatusBadge>{loadState.assignment.status}</StatusBadge>
           </dd>
           <dt>{t('assignments.dueAt')}</dt>
-          <dd>{formatAssignmentDate(loadState.assignment.dueAt, t('assignments.notAvailable'))}</dd>
+          <dd>{formatNullableDate(loadState.assignment.dueAt, t('assignments.notAvailable'))}</dd>
         </dl>
       </article>
     </main>
