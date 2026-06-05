@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-06-03  
+**Обновлён:** 2026-06-05  
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -600,7 +600,264 @@
 
 ---
 
-# ЧАСТЬ 3 — После MVP
+# ЧАСТЬ 3 — CI, Staging, Production Hardening (PR 104–131)
+
+*Выполняется после завершения MVP (PR 84–103). Цель — стабильный CI, безопасный деплой, production-ready auth и тест-покрытие.*
+
+---
+
+## БЛОК 6 — CI и безопасность (PR 104–109)
+
+---
+
+## PR 104 — CI audit baseline ✅
+
+- Зафиксирован текущий commit SHA как baseline перед staging
+- Подтверждено: CI включает lint, Prisma generate, typecheck, tests, build
+- Результат: `docs/CI_AUDIT_BASELINE.md`
+
+---
+
+## PR 105 — dependency audit и secret scan в CI ✅
+
+- Добавлен `pnpm audit --audit-level high` в GitHub Actions
+- Добавлен Gitleaks secret scanning
+- Не затронут runtime-код, env/secrets
+
+---
+
+## PR 106 — CodeQL security scan ✅
+
+- Добавлен SAST: CodeQL для JS/TS с `security-extended` ruleset
+- Файл: `.github/workflows/codeql.yml`
+- Покрывает SQLi/XSS/auth/security smells автоматически
+
+---
+
+## PR 107 — upload security hardening ✅
+
+- Усилена проверка типа файла: extension + magic bytes, не только client-provided mimetype
+- Файл: `apps/api/src/modules/upload/upload.validation.ts` + тесты
+
+---
+
+## PR 108 — auth/session production readiness notes ✅
+
+- Зафиксированы production gaps: нет refresh/session store, нет token revocation, custom JWT, in-memory rate limit
+- Файл: `docs/AUTH_SESSION_PRODUCTION_READINESS.md`
+- Минимальные code changes только
+
+---
+
+## PR 109 — frontend maintainability cleanup ✅
+
+- Аудит размеров MVP-страниц, упрощён course list
+- Файл: `docs/FRONTEND_MVP_MAINTAINABILITY_AUDIT.md`
+- UI behavior не затронут
+
+---
+
+## БЛОК 7 — Staging (PR 110–117)
+
+---
+
+## PR 110 — MVP smoke test foundation 🔲
+
+- Backend/API smoke tests: `/api/v1/health`, auth happy path, unauthorized/protected routes
+- Frontend render smoke tests для всех MVP-critical страниц (Vitest/Jest)
+- Использовать существующий стек без новых зависимостей
+- Full Playwright E2E — отдельный PR 127
+
+---
+
+## PR 111 — Railway staging deploy execution 🔲
+
+- Проверить Railway/Docker/start scripts/config в repo
+- Repo-side fix только если deploy падает из-за кода/config
+- Пользователь настраивает Railway dashboard, PostgreSQL, env vars, secrets вручную
+- Критерий готовности: Railway build/deploy завершён, есть staging Web URL и API URL
+
+---
+
+## PR 112 — staging migration and seed verification 🔲
+
+- Выполнить/проверить `prisma migrate deploy` на staging
+- Выполнить/проверить seed: `railway run --service api node dist/scripts/seed.js`
+- Подтвердить demo credentials: `admin@demo.com`, `learner@demo.com`, `Demo1234!`, `demo-company`
+- Зафиксировать: commit SHA, migration status, seed status, ошибки если есть
+
+---
+
+## PR 113 — full learner MVP smoke verification 🔲
+
+- Проверить learner flow на staging: login → courses → course detail → lessons → lesson detail → materials → progress → assessment (5 вопросов) → result → certificate → print
+- Зафиксировать pass/fail по каждому шагу
+- Если найден blocker — создать отдельный fix PR по конкретной ошибке
+
+---
+
+## PR 114 — full admin MVP smoke verification 🔲
+
+- Проверить admin flow на staging: login → users → courses → lessons → materials → assignments → assessment builder → results/certificates
+- Upload smoke: valid file, invalid file rejected, too large rejected
+- Зафиксировать pass/fail по каждому шагу
+
+---
+
+## PR 115 — staging smoke report и MVP readiness checklist 🔲
+
+- Создать/обновить docs/status файл
+- Зафиксировать: date, commit SHA, Web URL, API URL, DB/migration status, seed status, результаты smoke, blockers, known limitations, rollback notes
+- Итог: MVP ready / not ready. Нет неподтверждённых "pass"
+
+---
+
+## PR 116 — fix staging blockers found during smoke 🔲
+
+- Fix только подтверждённых blockers из PR 113/114/115
+- Один независимый blocker = один маленький PR
+- После исправления повторить релевантный smoke step и зафиксировать retest
+- Не делать refactor без необходимости
+
+---
+
+## PR 117 — post-MVP production hardening backlog 🔲
+
+- Зафиксировать backlog с приоритетами P0/P1/P2 (не реализовывать):
+  - refresh/session store; token revocation; замена custom JWT на `jose`; Redis-backed rate limit; stronger upload scanning; malware scan; coverage threshold; full Playwright E2E; Dependabot/Renovate; branch protection; production observability; backup restore drill
+- Зафиксировать уже закрытое: dependency audit, secret scan, CodeQL, basic upload hardening
+- Для каждого пункта указать будущий PR/этап
+
+---
+
+## БЛОК 8 — Production hardening (PR 118–131)
+
+---
+
+## PR 118 — auth/session minimal tests and hardening 🔲
+
+- Tests for login/logout, unauthorized access, role guard behavior, Cookie/CSRF unsafe request behavior
+- Minimal hardening только если можно без env/schema/migration
+- Компенсирует docs-only PR 108
+
+---
+
+## PR 119 — real frontend cleanup одной большой страницы 🔲
+
+- Выбрать один файл: `AdminMaterialsPage.tsx` или `AdminAssessmentBuilderPage.tsx`
+- Вынести один локальный leaf component/helper
+- Сохранить UX/API/routes/auth behavior
+- Добавить/обновить тесты если затронута логика
+
+---
+
+## PR 120 — refresh/session store design + Prisma migration 🔲
+
+- Session/refresh token Prisma model и migration
+- Safe token storage design
+- Tests для session creation/expiration
+- Staging migration verification; существующий login flow не должен быть сломан
+
+---
+
+## PR 121 — token revocation and logout hardening 🔲
+
+- Revoke current refresh/session при logout
+- Optional logout-all endpoint
+- Tests для revoked session
+
+---
+
+## PR 122 — replace custom JWT with `jose` 🔲
+
+- Заменить custom JWT implementation на `jose`
+- Сохранить JWT payload contract
+- Tests для sign/verify/expired/invalid tokens
+- Dependency audit после добавления зависимости
+
+---
+
+## PR 123 — Redis-backed rate limit 🔲
+
+- Redis-backed limiter вместо in-memory
+- Env config задокументирован; safe fallback/error behavior
+- Tests для limit behavior; работает со staging Redis
+
+---
+
+## PR 124 — stronger upload scanning 🔲
+
+- Более глубокая валидация файлов: archive/Office validation, safer filename/metadata handling
+- Дополнительные negative tests
+- Upload tests green, staging upload smoke pass
+
+---
+
+## PR 125 — malware scan integration 🔲
+
+- Выбрать scanner/service; интеграция с upload flow
+- Error/timeout behavior; tests/mocks
+- Malicious/suspicious file rejected или quarantined; upload happy path сохраняется
+
+---
+
+## PR 126 — coverage threshold 🔲
+
+- Coverage config с threshold для backend/frontend/shared
+- CI gate; baseline threshold реалистичный — не ломать CI искусственно
+
+---
+
+## PR 127 — full Playwright E2E 🔲
+
+- Playwright setup; Learner E2E + Admin E2E
+- Test data strategy; CI job если стабильно
+
+---
+
+## PR 128 — Dependabot / Renovate 🔲
+
+- Config с grouping rules, schedule, security update behavior
+- Не создавать шум без правил группировки
+
+---
+
+## PR 129 — branch protection 🔲
+
+- Проверить и настроить: required CI, required CodeQL, no direct push, PR required
+- Зафиксировать статус — подтверждается пользователем
+
+---
+
+## PR 130 — production observability 🔲
+
+- Health/logging/error tracking plan или интеграция
+- Runtime error visibility, deployment status visibility
+- Basic alerts если инфра доступна
+
+---
+
+## PR 131 — backup restore drill 🔲
+
+- Backup и restore procedure
+- Test restore drill на non-production DB
+- Зафиксировать RPO/RTO assumptions
+
+---
+
+## Итоговая карта ЧАСТЬ 3
+
+```
+БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
+БЛОК 7: Staging                  PR 110–117   8 PR  🔲 НЕ НАЧАТО
+БЛОК 8: Production hardening     PR 118–131  14 PR  🔲 НЕ НАЧАТО
+──────────────────────────────────────────────────────────────
+ИТОГО ЧАСТЬ 3:                               28 PR
+```
+
+---
+
+# ЧАСТЬ 4 — После MVP
 
 *Реализовывать только после успешного запуска MVP на Railway*
 
@@ -622,15 +879,15 @@
 
 ---
 
-## Итоговая карта MVP
+## Итоговая карта MVP (ЧАСТЬ 2)
 
 ```
-БЛОК 0: Критические исправления   PR 84–86    3 PR
-БЛОК 1: Railway деплой             PR 87–90    4 PR
-БЛОК 2: Admin CRUD                 PR 91–96    6 PR
-БЛОК 3: Файлы (S3)                 PR 97–98    2 PR
-БЛОК 4: Learner flow               PR 99–101   3 PR
-БЛОК 5: Финал                      PR 102–103  2 PR
-──────────────────────────────────────────────────
-ИТОГО MVP:                         20 PR
+БЛОК 0: Критические исправления   PR 84–86    3 PR  ✅ СДЕЛАНО
+БЛОК 1: Railway деплой             PR 87–90    4 PR  ✅ СДЕЛАНО
+БЛОК 2: Admin CRUD                 PR 91–96    6 PR  ✅ СДЕЛАНО
+БЛОК 3: Файлы (S3)                 PR 97–98    2 PR  ✅ СДЕЛАНО
+БЛОК 4: Learner flow               PR 99–101   3 PR  ✅ СДЕЛАНО
+БЛОК 5: Финал                      PR 102–103  2 PR  ✅ СДЕЛАНО
+──────────────────────────────────────────────────────────────
+ИТОГО MVP:                                    20 PR  ✅ ВСЕ ГОТОВО
 ```
