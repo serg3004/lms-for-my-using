@@ -13,12 +13,42 @@ type CoursesLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
+type LearnerCourseListProps = {
+  courses: CourseSummary[];
+  emptyMessage: string;
+  statusLabel: string;
+};
+
 function formatCourseDescription(course: CourseSummary) {
   return course.description?.trim() || course.slug;
 }
 
 function getCourseDetailHref(course: CourseSummary) {
   return `/learn/courses/${encodeURIComponent(course.id)}`;
+}
+
+function LearnerCourseList({ courses, emptyMessage, statusLabel }: LearnerCourseListProps) {
+  if (courses.length === 0) {
+    return <EmptyState message={emptyMessage} />;
+  }
+
+  return (
+    <ul>
+      {courses.map((course) => (
+        <li key={course.id}>
+          <article>
+            <h2>
+              <a href={getCourseDetailHref(course)}>{course.title}</a>
+            </h2>
+            <p>{formatCourseDescription(course)}</p>
+            <p>
+              {statusLabel}: <StatusBadge>{course.status}</StatusBadge>
+            </p>
+          </article>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export function LearnerCoursesPage() {
@@ -79,7 +109,7 @@ export function LearnerCoursesPage() {
           title={t('courses.title')}
           message={loadState.message}
           variant="error"
-          action={<a href="/login">{t('login.navLink')}</a>}
+          action {<a href="/login">{t('login.navLink')}</a>}
         />
       </main>
     );
@@ -100,25 +130,11 @@ export function LearnerCoursesPage() {
         <a href="/learn">{t('learner.navLink')}</a>
       </nav>
 
-      {loadState.courses.length === 0 ? (
-        <EmptyState message={t('courses.empty')} />
-      ) : (
-        <ul>
-          {loadState.courses.map((course) => (
-            <li key={course.id}>
-              <article>
-                <h2>
-                  <a href={getCourseDetailHref(course)}>{course.title}</a>
-                </h2>
-                <p>{formatCourseDescription(course)}</p>
-                <p>
-                  {t('courses.status')}: <StatusBadge>{course.status}</StatusBadge>
-                </p>
-              </article>
-            </li>
-          ))}
-        </ul>
-      )}
+      <LearnerCourseList
+        courses={loadState.courses}
+        emptyMessage={t('courses.empty')}
+        statusLabel={t('courses.status')}
+      />
     </main>
   );
 }
