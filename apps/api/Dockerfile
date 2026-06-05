@@ -18,6 +18,7 @@ RUN pnpm install --frozen-lockfile --filter @lms/api
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY apps/api ./apps/api
 COPY package.json pnpm-workspace.yaml ./
 WORKDIR /app/apps/api
