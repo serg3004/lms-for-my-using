@@ -2,6 +2,7 @@ import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useR
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
+import { slugify } from '../shared/slugify.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -41,15 +42,6 @@ const ACCEPTED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ].join(',');
-
-function slugifyMaterialTitle(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
 
 function sortLessons(lessons: Lesson[]) {
   return [...lessons].sort((left, right) => left.order - right.order || left.title.localeCompare(right.title));
@@ -181,7 +173,7 @@ export function AdminMaterialsPage() {
     }
 
     const materialTitle = title.trim();
-    const slug = slugifyMaterialTitle(materialTitle);
+    const slug = slugify(materialTitle);
 
     if (!materialTitle || !slug || !fileUrl.trim()) {
       setSubmitState({
