@@ -40,6 +40,7 @@ Railway will automatically create the `DATABASE_URL` variable.
 2. Set **Root Directory**: `/` (repo root)
 3. Set **Dockerfile Path**: `apps/api/Dockerfile`
 4. Railway will detect `apps/api/railway.json` automatically
+5. **Important:** name this service exactly `api` — nginx resolves it as `api.railway.internal`
 
 **Required environment variables** (set in Railway dashboard):
 
