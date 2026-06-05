@@ -26,7 +26,9 @@ RUN pnpm run build
 FROM nginx:1.27-alpine AS runner
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-COPY infra/nginx/nginx.conf /etc/nginx/conf.d/default.conf
+COPY infra/nginx/nginx.conf /etc/nginx/templates/default.conf.template
+
+ENV API_HOST=api.railway.internal
 
 EXPOSE 80
 
