@@ -79,7 +79,7 @@ function getSubmitErrorKey(error: unknown): string {
   return 'assessments.errorSubmit';
 }
 
-function getOptionLabel(option: Option): string {
+function getOptionLabel(option: Pick<Option, 'id' | 'text' | 'imageUrl'>): string {
   return option.text ?? option.imageUrl ?? option.id;
 }
 
