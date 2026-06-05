@@ -17,6 +17,13 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
     groups:
       root-dev:
         dependency-type: development
@@ -29,6 +36,13 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
     groups:
       api-dev:
         dependency-type: development
@@ -45,6 +59,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    ignore:
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
     groups:
       web-dev:
         dependency-type: development
