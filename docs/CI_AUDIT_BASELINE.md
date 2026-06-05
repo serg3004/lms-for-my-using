@@ -87,3 +87,5 @@ Those items remain part of staging verification and smoke reporting.
 3. PR 108 — auth/session production-readiness notes or minimal hardening.
 
 ## Rollback
+
+This PR changes CI and this status document only. Rollback by reverting the PR 105 workflow and documentation changes.
