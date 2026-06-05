@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { currentUserSchema, loginResponseSchema, loginSchema } from './auth.schemas.js';
 import { AuthService } from './auth.service.js';
 import { signJwt } from './auth.tokens.js';
+import { hashPassword } from './passwords.js';
 
 const jwtSecret = '0123456789abcdef0123456789abcdef';
 
@@ -226,5 +227,103 @@ describe('AuthService current user lookup', () => {
       }),
     );
     expect(membershipFindManyCalls).toHaveLength(0);
+  });
+});
+
+describe('AuthService login', () => {
+  const orgId = '11111111-1111-1111-1111-111111111111';
+  const orgSlug = 'demo-company';
+
+  function createLoginPrisma(options: {
+    orgResult?: { id: string } | null;
+    userResult?: (typeof currentUser & { passwordHash: string }) | null;
+    roles?: string[];
+  }) {
+    const orgDefault = { id: orgId };
+    const rolesDefault = ['learner'];
+
+    return {
+      organization: {
+        findFirst: async () => options.orgResult ?? orgDefault,
+      },
+      user: {
+        findFirst: async () => options.userResult ?? null,
+      },
+      membership: {
+        findMany: async () => (options.roles ?? rolesDefault).map((role) => ({ role })),
+      },
+    } as unknown as PrismaService;
+  }
+
+  beforeEach(() => {
+    process.env.JWT_SECRET = jwtSecret;
+  });
+
+  afterEach(() => {
+    delete process.env.JWT_SECRET;
+  });
+
+  it('returns access token and user on valid credentials with UUID org id', async () => {
+    const password = 'Test1234!';
+    const passwordHash = await hashPassword(password);
+    const userWithHash = { ...currentUser, passwordHash };
+    const prisma = createLoginPrisma({ userResult: userWithHash, roles: ['learner'] });
+    const authService = new AuthService(prisma);
+
+    const result = await authService.login({
+      organizationId: orgId,
+      email: currentUser.email,
+      password,
+    });
+
+    expect(result.tokenType).toBe('Bearer');
+    expect(result.accessToken).toBeTruthy();
+    expect(result.user).toMatchObject({ id: currentUser.id, email: currentUser.email, roles: ['learner'] });
+  });
+
+  it('returns access token and user on valid credentials with org slug', async () => {
+    const password = 'Test1234!';
+    const passwordHash = await hashPassword(password);
+    const userWithHash = { ...currentUser, passwordHash };
+    const prisma = createLoginPrisma({ orgResult: { id: orgId }, userResult: userWithHash, roles: ['admin'] });
+    const authService = new AuthService(prisma);
+
+    const result = await authService.login({
+      organizationId: orgSlug,
+      email: currentUser.email,
+      password,
+    });
+
+    expect(result.tokenType).toBe('Bearer');
+    expect(result.user.roles).toEqual(['admin']);
+  });
+
+  it('rejects login when user does not exist', async () => {
+    const prisma = createLoginPrisma({ userResult: null });
+    const authService = new AuthService(prisma);
+
+    await expect(
+      authService.login({ organizationId: orgId, email: 'nobody@example.com', password: 'Test1234!' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects login with wrong password', async () => {
+    const passwordHash = await hashPassword('correct-password');
+    const userWithHash = { ...currentUser, passwordHash };
+    const prisma = createLoginPrisma({ userResult: userWithHash });
+    const authService = new AuthService(prisma);
+
+    await expect(
+      authService.login({ organizationId: orgId, email: currentUser.email, password: 'wrong-password' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects login when org slug does not resolve', async () => {
+    const prisma = createLoginPrisma({ orgResult: null });
+    const authService = new AuthService(prisma);
+
+    await expect(
+      authService.login({ organizationId: 'unknown-slug', email: currentUser.email, password: 'Test1234!' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
