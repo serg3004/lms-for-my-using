@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { MAX_UPLOAD_FILE_SIZE_BYTES, validateUploadFile } from './upload.validation.js';
+import { MAX_UPLOAD_FILE_SIZE_BYTES, validateUploadFile } from './upload.validation';
 
 function createFile(overrides: Partial<Express.Multer.File>): Express.Multer.File {
   const buffer = overrides.buffer ?? Buffer.from('%PDF-1.7');
