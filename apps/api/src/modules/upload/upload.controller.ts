@@ -6,20 +6,7 @@ import { AuthGuard } from '../auth/auth.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { UploadService } from './upload.service.js';
-
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
-
-const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'video/mp4',
-  'video/webm',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-]);
+import { MAX_UPLOAD_FILE_SIZE_BYTES, validateUploadFile } from './upload.validation.js';
 
 @Controller('upload')
 @UseGuards(AuthGuard, RolesGuard)
@@ -31,7 +18,7 @@ export class UploadController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+      limits: { fileSize: MAX_UPLOAD_FILE_SIZE_BYTES },
     }),
   )
   async uploadFile(@UploadedFile() file: Express.Multer.File | undefined) {
@@ -39,9 +26,7 @@ export class UploadController {
       throw new BadRequestException('No file provided');
     }
 
-    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-      throw new BadRequestException(`File type "${file.mimetype}" is not allowed`);
-    }
+    validateUploadFile(file);
 
     return this.uploadService.uploadFile(file, 'materials');
   }
