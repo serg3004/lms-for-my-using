@@ -29,6 +29,29 @@ const assessmentAnswerOptionSelect = {
   updatedAt: true,
 } as const;
 
+const learnerAssessmentQuestionSelect = {
+  id: true,
+  organizationId: true,
+  assessmentId: true,
+  type: true,
+  title: true,
+  text: true,
+  imageUrl: true,
+  points: true,
+  order: true,
+  options: {
+    where: { deletedAt: null },
+    orderBy: { order: 'asc' },
+    select: {
+      id: true,
+      questionId: true,
+      text: true,
+      imageUrl: true,
+      order: true,
+    },
+  },
+} as const;
+
 @Injectable()
 export class AssessmentQuestionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -44,6 +67,20 @@ export class AssessmentQuestionsService {
       },
       orderBy: { order: 'asc' },
       select: assessmentQuestionSelect,
+    });
+  }
+
+  async listLearnerQuizQuestions(assessmentId: string, organizationId: string) {
+    await this.ensurePublishedAssessmentExists(assessmentId, organizationId);
+
+    return this.prisma.assessmentQuestion.findMany({
+      where: {
+        assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
+      orderBy: { order: 'asc' },
+      select: learnerAssessmentQuestionSelect,
     });
   }
 
@@ -129,6 +166,22 @@ export class AssessmentQuestionsService {
 
     if (!question) {
       throw new NotFoundException('Assessment question not found');
+    }
+  }
+
+  private async ensurePublishedAssessmentExists(assessmentId: string, organizationId: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        organizationId,
+        status: 'published',
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
     }
   }
 }

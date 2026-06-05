@@ -17,6 +17,26 @@ const certificateSelect = {
   revokedAt: true,
   createdAt: true,
   updatedAt: true,
+  organization: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+  course: {
+    select: {
+      id: true,
+      title: true,
+    },
+  },
+  user: {
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+    },
+  },
 } as const;
 
 type CertificateRow = {
@@ -30,6 +50,20 @@ type CertificateRow = {
   revokedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  organization?: {
+    id: string;
+    name: string;
+  };
+  course?: {
+    id: string;
+    title: string;
+  };
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 type CertificatePrisma = PrismaService & {

@@ -160,6 +160,29 @@ export class AssessmentAttemptsService {
         })),
       });
 
+      if (passed) {
+        await tx.certificate.upsert({
+          where: {
+            organizationId_courseId_userId: {
+              organizationId,
+              courseId: assessment.courseId,
+              userId,
+            },
+          },
+          update: {
+            assessmentAttemptId: attempt.id,
+            status: 'issued',
+            revokedAt: null,
+          },
+          create: {
+            organizationId,
+            courseId: assessment.courseId,
+            userId,
+            assessmentAttemptId: attempt.id,
+          },
+        });
+      }
+
       return attempt.id;
     });
 

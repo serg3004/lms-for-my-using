@@ -24,8 +24,10 @@ type Question = {
 
 type Option = {
   id: string;
+  questionId: string;
   text: string | null;
   imageUrl: string | null;
+  order: number;
 };
 
 type QuestionWithOptions = Question & { options: Option[] };
@@ -91,15 +93,8 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     setLoadState({ status: 'loading' });
     try {
       const assessment = await getAssessment(assessmentId);
-      const questions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessmentId)}/questions`);
-      const questionsWithOptions = await Promise.all(
-        questions
-          .slice()
-          .sort((a, b) => a.order - b.order)
-          .map(async (q) => ({
-            ...q,
-            options: await apiRequest<Option[]>(`/questions/${encodeURIComponent(q.id)}/options`),
-          })),
+      const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
+        `/assessments/${encodeURIComponent(assessmentId)}/quiz`,
       );
       setLoadState({ status: 'loaded', assessment, questions: questionsWithOptions });
     } catch (error) {

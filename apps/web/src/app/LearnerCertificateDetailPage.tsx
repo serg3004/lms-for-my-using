@@ -4,12 +4,8 @@ import { useTranslation } from 'react-i18next';
 import {
   ApiClientError,
   CertificateSummary,
-  CourseSummary,
-  OrganizationSummary,
   getCertificate,
-  getOrganization,
 } from '../shared/apiClient.js';
-import { getCourse } from '../shared/api/courses.js';
 import { PageState } from '../shared/ui.js';
 
 type CertificateDetailLoadState =
@@ -18,9 +14,6 @@ type CertificateDetailLoadState =
   | {
       status: 'loaded';
       certificate: CertificateSummary;
-      course: CourseSummary;
-      organization: OrganizationSummary;
-      learnerName: string;
     }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
@@ -44,17 +37,9 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     try {
       const certificate = await getCertificate(certificateId);
 
-      const [course, organization] = await Promise.all([
-        getCourse(certificate.courseId),
-        getOrganization(certificate.organizationId),
-      ]);
-
       setLoadState({
         status: 'loaded',
         certificate,
-        course,
-        organization,
-        learnerName: '',
       });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
@@ -100,7 +85,9 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     );
   }
 
-  const { certificate, course, organization } = loadState;
+  const { certificate } = loadState;
+  const organizationName = certificate.organization?.name ?? certificate.organizationId;
+  const courseTitle = certificate.course?.title ?? certificate.courseId;
 
   return (
     <main className="learner-cert-page">
@@ -109,22 +96,22 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
       </nav>
 
       <div className="learner-cert-card" id="certificate">
-        <div className="learner-cert-card__org">{organization.name}</div>
+        <div className="learner-cert-card__org">{organizationName}</div>
 
-        <div className="learner-cert-card__seal" aria-hidden="true">★</div>
+        <div className="learner-cert-card__seal" aria-hidden="true">*</div>
 
         <p className="learner-cert-card__type">{t('certificates.certType')}</p>
 
         <p className="learner-cert-card__presented">{t('certificates.presentedTo')}</p>
 
-        <h1 className="learner-cert-card__course">{course.title}</h1>
+        <h1 className="learner-cert-card__course">{courseTitle}</h1>
 
         <p className="learner-cert-card__issued">
           {t('certificates.issuedOn', { date: formatIssuedAt(certificate.issuedAt) })}
         </p>
 
         <div className="learner-cert-card__footer">
-          <span className="learner-cert-card__footer-org">{organization.name}</span>
+          <span className="learner-cert-card__footer-org">{organizationName}</span>
           <span className="learner-cert-card__footer-id">#{certificate.id.slice(0, 8).toUpperCase()}</span>
         </div>
       </div>

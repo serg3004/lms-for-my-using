@@ -31,6 +31,8 @@ const logoutAccepted = {
   accepted: true,
 } as const;
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type CurrentUserRecord = Omit<CurrentUser, 'roles'>;
 
 @Injectable()
@@ -38,9 +40,11 @@ export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
+    const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
+
     const user = await this.prisma.user.findFirst({
       where: {
-        organizationId: input.organizationId,
+        organizationId,
         email: input.email,
         status: 'active',
         deletedAt: null,
@@ -75,9 +79,11 @@ export class AuthService {
   }
 
   async validateLogin(input: LoginInput) {
+    const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
+
     const user = await this.prisma.user.findFirst({
       where: {
-        organizationId: input.organizationId,
+        organizationId,
         email: input.email,
         status: 'active',
         deletedAt: null,
@@ -149,6 +155,31 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  private async resolveLoginOrganizationId(organizationIdOrSlug: string) {
+    const normalizedOrganizationIdOrSlug = organizationIdOrSlug.trim().toLowerCase();
+
+    if (uuidPattern.test(normalizedOrganizationIdOrSlug)) {
+      return normalizedOrganizationIdOrSlug;
+    }
+
+    const organization = await this.prisma.organization.findFirst({
+      where: {
+        slug: normalizedOrganizationIdOrSlug,
+        status: 'active',
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!organization) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return organization.id;
   }
 
   private async withRoles(user: CurrentUserRecord): Promise<CurrentUser> {

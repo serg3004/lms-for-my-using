@@ -11,8 +11,16 @@ const strongPasswordSchema = z
 
 export const userRoleSchema = z.enum(['learner', 'instructor', 'manager', 'admin']);
 
+const organizationLoginSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+  .transform((organizationId) => organizationId.toLowerCase());
+
 export const loginSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: organizationLoginSchema,
   email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
   password: z.string().min(1).max(255),
 });
