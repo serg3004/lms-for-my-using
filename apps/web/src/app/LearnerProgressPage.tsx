@@ -5,6 +5,8 @@ import { listProgress } from '../shared/api/progress.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { ProgressSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { formatNullableDate } from '../shared/formatDate.js';
+import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 
 type ReadableProgressSummary = ProgressSummary & {
@@ -22,28 +24,12 @@ type ProgressLoadState =
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
-function getCourseHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}`;
-}
-
-function getLessonHref(lessonId: string) {
-  return `/learn/lessons/${encodeURIComponent(lessonId)}`;
-}
-
 function getCourseTitle(item: ReadableProgressSummary, fallback: string) {
   return getReadableTitle(item.courseTitle ?? item.course?.title, fallback);
 }
 
 function getLessonTitle(item: ReadableProgressSummary, fallback: string) {
   return getReadableTitle(item.lessonTitle ?? item.lesson?.title, fallback);
-}
-
-function formatProgressDate(value: string | null, fallback: string) {
-  if (!value) {
-    return fallback;
-  }
-
-  return new Date(value).toLocaleString();
 }
 
 export function LearnerProgressPage() {
@@ -170,7 +156,7 @@ export function LearnerProgressPage() {
                     <dt>{t('progress.score')}</dt>
                     <dd>{item.score ?? t('progress.notAvailable')}</dd>
                     <dt>{t('progress.completedAt')}</dt>
-                    <dd>{formatProgressDate(item.completedAt, t('progress.notAvailable'))}</dd>
+                    <dd>{formatNullableDate(item.completedAt, t('progress.notAvailable'))}</dd>
                   </dl>
                 </article>
               </li>

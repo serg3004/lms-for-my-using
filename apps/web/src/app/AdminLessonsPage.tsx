@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
+import { sortLessons } from '../shared/sortLessons.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -18,9 +19,6 @@ type LessonStatus = 'draft' | 'published' | 'archived';
 
 const LESSON_STATUSES: LessonStatus[] = ['draft', 'published', 'archived'];
 
-function sortLessons(lessons: Lesson[]) {
-  return [...lessons].sort((left, right) => left.order - right.order || left.title.localeCompare(right.title));
-}
 
 export function AdminLessonsPage() {
   const { t } = useTranslation();

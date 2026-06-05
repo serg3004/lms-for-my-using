@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
+import { sortLessons } from '../shared/sortLessons.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -27,10 +28,6 @@ type LoadState =
 type AssessmentStatus = 'draft' | 'published' | 'archived';
 
 const ASSESSMENT_STATUSES: AssessmentStatus[] = ['draft', 'published', 'archived'];
-
-function sortLessons(lessons: Lesson[]) {
-  return [...lessons].sort((left, right) => left.order - right.order || left.title.localeCompare(right.title));
-}
 
 export function AdminAssessmentBuilderPage() {
   const { t } = useTranslation();
