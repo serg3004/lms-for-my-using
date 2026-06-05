@@ -109,7 +109,7 @@ export function LearnerCoursesPage() {
           title={t('courses.title')}
           message={loadState.message}
           variant="error"
-          action {<a href="/login">{t('login.navLink')}</a>}
+          action={<a href="/login">{t('login.navLink')}</a>}
         />
       </main>
     );
