@@ -127,6 +127,21 @@ describe('AuthGuard', () => {
     expect(tokens).toEqual(['cookie-token']);
   });
 
+  it('rejects unsafe cookie-auth requests with mismatched csrf token', async () => {
+    const authService = createAuthService();
+    const request: AuthenticatedRequest = {
+      headers: {
+        cookie: `${accessTokenCookieName}=cookie-token; ${csrfTokenCookieName}=correct-csrf-token`,
+        [csrfHeaderName]: 'tampered-csrf-tok',
+      },
+      method: 'POST',
+    };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it.each([
     ['missing authorization header', undefined],
     ['empty authorization header', ''],
