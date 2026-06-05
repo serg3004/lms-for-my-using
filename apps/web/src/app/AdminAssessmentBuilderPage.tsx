@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { slugify } from '../shared/slugify.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -26,15 +27,6 @@ type LoadState =
 type AssessmentStatus = 'draft' | 'published' | 'archived';
 
 const ASSESSMENT_STATUSES: AssessmentStatus[] = ['draft', 'published', 'archived'];
-
-function slugifyAssessmentTitle(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 120);
-}
 
 function sortLessons(lessons: Lesson[]) {
   return [...lessons].sort((left, right) => left.order - right.order || left.title.localeCompare(right.title));
@@ -112,7 +104,7 @@ export function AdminAssessmentBuilderPage() {
     }
 
     const assessmentTitle = title.trim();
-    const slug = slugifyAssessmentTitle(assessmentTitle);
+    const slug = slugify(assessmentTitle, 120);
     const scoreValue = Number(passingScore);
     const attemptsValue = maxAttempts.trim() ? Number(maxAttempts) : undefined;
 
@@ -338,7 +330,7 @@ export function AdminAssessmentBuilderPage() {
                   <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} />
                   {title.trim() ? (
                     <span className="admin-form__hint">
-                      slug: {slugifyAssessmentTitle(title)}
+                      slug: {slugify(title, 120)}
                     </span>
                   ) : null}
                 </div>

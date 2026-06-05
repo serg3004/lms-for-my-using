@@ -19,9 +19,14 @@ describe('slugify', () => {
     expect(slugify('---title---')).toBe('title');
   });
 
-  it('truncates to 80 characters', () => {
+  it('truncates to 80 characters by default', () => {
     const long = 'a'.repeat(100);
     expect(slugify(long)).toHaveLength(80);
+  });
+
+  it('truncates to a custom maxLength', () => {
+    const long = 'a'.repeat(200);
+    expect(slugify(long, 120)).toHaveLength(120);
   });
 
   it('returns empty string for blank input', () => {
