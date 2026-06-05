@@ -11,7 +11,7 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json ./apps/api/package.json
-RUN pnpm install --frozen-lockfile --filter @lms/api
+RUN PRISMA_GENERATE_SKIP_AUTOINSTALL=true pnpm install --frozen-lockfile --filter @lms/api
 
 # ---- Build: generate Prisma client and compile TypeScript ----
 FROM base AS builder
