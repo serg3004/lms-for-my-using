@@ -139,6 +139,20 @@ export type CertificateSummary = {
   revokedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  organization?: {
+    id: string;
+    name: string;
+  };
+  course?: {
+    id: string;
+    title: string;
+  };
+  user?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
 };
 
 export type OrganizationSummary = {

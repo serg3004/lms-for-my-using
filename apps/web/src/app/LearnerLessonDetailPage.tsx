@@ -48,7 +48,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     try {
       const lesson = await getLesson(lessonId);
       const allMaterials = await listCourseMaterials(lesson.courseId);
-      const materials = allMaterials.filter((m) => m.lessonId === lesson.id && m.status === 'published');
+      const materials = allMaterials.filter((m) => m.lessonId === lesson.id && m.status === 'active');
 
       setLoadState({ status: 'loaded', lesson, materials });
     } catch (error) {

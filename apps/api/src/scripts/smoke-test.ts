@@ -196,26 +196,46 @@ async function run() {
     if (!assessmentId) { fail('Skipped — no assessmentId'); return; }
 
     const { status: qStatus, body: qBody } = await request(
-      `/assessments/${assessmentId}/questions`,
+      `/assessments/${assessmentId}/quiz`,
       { cookies: learnerCookies },
     );
 
     if (qStatus !== 200 || !Array.isArray(qBody)) {
-      fail('GET /assessments/:id/questions', { status: qStatus });
+      fail('GET /assessments/:id/quiz as learner', { status: qStatus });
       return;
     }
 
-    const questions = qBody as AnyRecord[];
-    ok(`GET /assessments/:id/questions → ${questions.length} question(s)`);
-    if (questions.length === 5) ok('Question count is exactly 5 (matches demo seed)');
+    const learnerQuestions = qBody as AnyRecord[];
+    ok(`GET /assessments/:id/quiz as learner → ${learnerQuestions.length} question(s)`);
+    if (learnerQuestions.length === 5) ok('Question count is exactly 5 (matches demo seed)');
 
-    // Build answers: for each question, pick the correct option
+    const leaksCorrectAnswer = learnerQuestions.some((question) =>
+      Array.isArray((question as AnyRecord)['options']) &&
+      ((question as AnyRecord)['options'] as AnyRecord[]).some((option) => 'isCorrect' in option),
+    );
+    if (!leaksCorrectAnswer) ok('Learner quiz response does not expose isCorrect');
+    else fail('Learner quiz response exposes isCorrect');
+
+    const { status: adminQStatus, body: adminQBody } = await request(
+      `/assessments/${assessmentId}/questions`,
+      { cookies: adminCookies },
+    );
+
+    if (adminQStatus !== 200 || !Array.isArray(adminQBody)) {
+      fail('GET /assessments/:id/questions as admin', { status: adminQStatus });
+      return;
+    }
+
+    const questions = adminQBody as AnyRecord[];
+
+    // Build answers: the smoke script uses admin-only data as an answer key,
+    // while the learner-facing quiz endpoint stays safe.
     const answers: AnyRecord[] = [];
     for (const q of questions) {
       const qId = (q as AnyRecord)['id'] as string;
       const { status: oStatus, body: oBody } = await request(
         `/questions/${qId}/options`,
-        { cookies: learnerCookies },
+        { cookies: adminCookies },
       );
       if (oStatus !== 200 || !Array.isArray(oBody)) {
         fail(`GET /questions/${qId.slice(0, 8)}…/options`, { status: oStatus });

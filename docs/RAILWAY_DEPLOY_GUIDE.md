@@ -95,8 +95,10 @@ Expected output:
 ✅ Demo seed complete.
 
 Credentials (password: Demo1234!):
-  Admin:   admin@demo.com   org: demo-company
-  Learner: learner@demo.com org: demo-company
+  Organization UUID: 10000000-0000-4000-8000-000000000001
+  Organization slug: demo-company
+  Admin:   admin@demo.com
+  Learner: learner@demo.com
 
 Demo state:
   Course: Workplace Safety Fundamentals (3 lessons)
@@ -114,7 +116,7 @@ Run the automated smoke test against staging:
 
 ```bash
 # From repo root
-BASE_URL=https://<web-url> \
+BASE_URL=https://<web-url>/api/v1 \
   node --import tsx/esm apps/api/src/scripts/smoke-test.ts
 ```
 
@@ -198,9 +200,9 @@ All migrations have been successfully applied.
 ```
 Then re-run the seed.
 
-### Certificate page shows "Organization not found"
+### Certificate page shows "Certificate not found"
 
-The API `GET /organizations/:id` endpoint requires authentication. Verify the user is logged in and the session cookie is valid.
+Verify the learner is logged in and the certificate belongs to the same user. Certificate detail data is returned by `GET /certificates/:id`.
 
 ---
 

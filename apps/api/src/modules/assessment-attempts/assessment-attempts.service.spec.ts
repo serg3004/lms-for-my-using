@@ -33,6 +33,9 @@ type AssessmentAttemptTransaction = {
   assessmentAttemptAnswer: {
     createMany: () => Promise<{ count: number }>;
   };
+  certificate: {
+    upsert: () => Promise<{ id: string }>;
+  };
 };
 
 describe('Assessment attempts validation', () => {
@@ -137,6 +140,9 @@ function createBasePrismaMock(status: AssessmentStatus) {
         },
         assessmentAttemptAnswer: {
           createMany: async () => ({ count: 1 }),
+        },
+        certificate: {
+          upsert: async () => ({ id: 'certificate-id' }),
         },
       }),
   } as unknown as PrismaService;

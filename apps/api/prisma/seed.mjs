@@ -105,14 +105,14 @@ async function main() {
   await prisma.membership.createMany({
     data: [
       {
-        id: `${id.admin.slice(0, 35)}m`,
+        id: '10000000-0000-4000-8000-0000000000f1',
         organizationId: id.org,
         userId: id.admin,
         role: 'admin',
         assignedBy: id.admin,
       },
       {
-        id: `${id.learner.slice(0, 35)}m`,
+        id: '10000000-0000-4000-8000-0000000000f2',
         organizationId: id.org,
         userId: id.learner,
         role: 'learner',
@@ -340,8 +340,10 @@ async function main() {
   console.log('✅ Demo seed complete.');
   console.log('');
   console.log('Credentials (password: Demo1234!):');
-  console.log('  Admin:   admin@demo.com   org: demo-company');
-  console.log('  Learner: learner@demo.com org: demo-company');
+  console.log('  Organization UUID: 10000000-0000-4000-8000-000000000001');
+  console.log('  Organization slug: demo-company');
+  console.log('  Admin:   admin@demo.com');
+  console.log('  Learner: learner@demo.com');
   console.log('');
   console.log('Demo state:');
   console.log('  Course: Workplace Safety Fundamentals (3 lessons)');

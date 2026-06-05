@@ -93,6 +93,20 @@ describe('Auth validation', () => {
     });
   });
 
+  it('accepts organization slug login input', () => {
+    const input = loginSchema.parse({
+      organizationId: 'Demo-Company',
+      email: 'USER@Example.com',
+      password: 'secret-password',
+    });
+
+    expect(input).toEqual({
+      organizationId: 'demo-company',
+      email: 'user@example.com',
+      password: 'secret-password',
+    });
+  });
+
   it('accepts current user with position, shift, and roles', () => {
     const parsedCurrentUser = currentUserSchema.parse({
       ...currentUser,

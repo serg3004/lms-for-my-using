@@ -24,6 +24,12 @@ export class AssessmentQuestionsController {
     return this.assessmentQuestionsService.listQuestions(assessmentId, request.currentUser!.organizationId);
   }
 
+  @Get('assessments/:assessmentId/quiz')
+  @Roles(...rolePolicies.assessmentsRead)
+  listLearnerQuizQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentQuestionsService.listLearnerQuizQuestions(assessmentId, request.currentUser!.organizationId);
+  }
+
   @Get('questions/:id')
   @Roles(...rolePolicies.assessmentQuestionsRead)
   getQuestion(@Param('id') questionId: string, @Req() request: AuthenticatedRequest) {
