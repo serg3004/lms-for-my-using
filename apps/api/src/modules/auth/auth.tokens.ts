@@ -1,11 +1,9 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { SignJWT, errors as joseErrors, jwtVerify } from 'jose';
 
 import { getJwtSecret } from '../../config/env.js';
 
 const jwtAlg = 'HS256';
-const jwtTyp = 'JWT';
-const defaultTokenExpiresInSeconds = 60 * 60;
-const maxClockSkewInSeconds = 60;
+const defaultExpiresIn = '1h';
 
 export type JwtSignPayload = {
   sub: string;
@@ -18,106 +16,51 @@ export type JwtClaims = JwtSignPayload & {
   exp: number;
 };
 
-type JwtHeader = {
-  alg: typeof jwtAlg;
-  typ: typeof jwtTyp;
-};
-
-function base64UrlEncode(input: Buffer | string) {
-  return Buffer.from(input).toString('base64url');
+function toKey(secret: string): Uint8Array {
+  return new TextEncoder().encode(secret);
 }
 
-function base64UrlDecode(input: string) {
-  return Buffer.from(input, 'base64url').toString('utf8');
-}
-
-function sign(input: string, secret: string) {
-  return createHmac('sha256', secret).update(input).digest();
-}
-
-function hasValidSignature(signingInput: string, signature: string, secret: string) {
-  const expectedSignature = sign(signingInput, secret);
-  const actualSignature = Buffer.from(signature, 'base64url');
-
-  return actualSignature.length === expectedSignature.length && timingSafeEqual(actualSignature, expectedSignature);
-}
-
-function parseJsonObject(input: string, errorMessage: string): Record<string, unknown> {
-  try {
-    const value: unknown = JSON.parse(base64UrlDecode(input));
-
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      throw new Error(errorMessage);
-    }
-
-    return value as Record<string, unknown>;
-  } catch {
-    throw new Error(errorMessage);
-  }
-}
-
-function isJwtHeader(value: Record<string, unknown>): boolean {
-  return value.alg === jwtAlg && value.typ === jwtTyp;
-}
-
-function isJwtClaims(value: Record<string, unknown>): value is JwtClaims {
+function hasValidClaims(payload: Record<string, unknown>): payload is JwtClaims {
   return (
-    typeof value.sub === 'string' &&
-    typeof value.organizationId === 'string' &&
-    typeof value.email === 'string' &&
-    Number.isInteger(value.iat) &&
-    Number.isInteger(value.exp)
+    typeof payload.sub === 'string' &&
+    typeof payload.organizationId === 'string' &&
+    typeof payload.email === 'string' &&
+    typeof payload.iat === 'number' &&
+    typeof payload.exp === 'number'
   );
 }
 
-export function signJwt(payload: JwtSignPayload, secret = getJwtSecret()) {
-  const now = Math.floor(Date.now() / 1000);
-  const header = base64UrlEncode(JSON.stringify({ alg: jwtAlg, typ: jwtTyp } satisfies JwtHeader));
-  const claims: JwtClaims = { ...payload, iat: now, exp: now + defaultTokenExpiresInSeconds };
-  const body = base64UrlEncode(JSON.stringify(claims));
-  const signature = base64UrlEncode(sign(`${header}.${body}`, secret));
+export async function signJwt(payload: JwtSignPayload, secret?: string): Promise<string> {
+  const resolvedSecret = secret ?? getJwtSecret();
 
-  return `${header}.${body}.${signature}`;
+  return new SignJWT({ organizationId: payload.organizationId, email: payload.email })
+    .setProtectedHeader({ alg: jwtAlg })
+    .setSubject(payload.sub)
+    .setIssuedAt()
+    .setExpirationTime(defaultExpiresIn)
+    .sign(toKey(resolvedSecret));
 }
 
-export function verifyJwt(token: string, secret = getJwtSecret()) {
-  const parts = token.split('.');
+export async function verifyJwt(token: string, secret?: string): Promise<JwtClaims> {
+  const resolvedSecret = secret ?? getJwtSecret();
 
-  if (parts.length !== 3) {
+  try {
+    const { payload } = await jwtVerify(token, toKey(resolvedSecret), { algorithms: [jwtAlg] });
+
+    if (!hasValidClaims(payload as Record<string, unknown>)) {
+      throw new Error('Invalid JWT claims');
+    }
+
+    return payload as unknown as JwtClaims;
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Invalid JWT claims') throw error;
+    if (error instanceof joseErrors.JWTExpired) throw new Error('JWT expired');
+    if (error instanceof joseErrors.JOSEAlgNotAllowed) throw new Error('Invalid JWT header');
+    if (error instanceof joseErrors.JWSInvalid) {
+      const msg = error.message.toLowerCase();
+      throw new Error(msg.includes('header') || msg.includes('protected') ? 'Invalid JWT header' : 'Invalid JWT');
+    }
+    if (error instanceof joseErrors.JWTInvalid) throw new Error('Invalid JWT claims');
     throw new Error('Invalid JWT');
   }
-
-  const [header, body, signature] = parts;
-
-  if (!header || !body || !signature) {
-    throw new Error('Invalid JWT');
-  }
-
-  const parsedHeader = parseJsonObject(header, 'Invalid JWT header');
-
-  if (!isJwtHeader(parsedHeader)) {
-    throw new Error('Invalid JWT header');
-  }
-
-  if (!hasValidSignature(`${header}.${body}`, signature, secret)) {
-    throw new Error('Invalid JWT signature');
-  }
-
-  const claims = parseJsonObject(body, 'Invalid JWT claims');
-
-  if (!isJwtClaims(claims)) {
-    throw new Error('Invalid JWT claims');
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-
-  if (claims.iat > now + maxClockSkewInSeconds) {
-    throw new Error('JWT issued in the future');
-  }
-
-  if (claims.exp <= now || claims.exp <= claims.iat) {
-    throw new Error('JWT expired');
-  }
-
-  return claims as JwtClaims;
 }

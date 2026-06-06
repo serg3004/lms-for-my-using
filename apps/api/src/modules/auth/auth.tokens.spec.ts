@@ -26,18 +26,22 @@ function signTokenParts(header: unknown, body: unknown | string, isRawBody = fal
   return `${encodedHeader}.${encodedBody}.${signature}`;
 }
 
-function expectSafeTokenError(token: string, expectedMessage: RegExp) {
+async function expectSafeTokenError(token: string, expectedMessage: RegExp) {
+  let caughtError: unknown;
+
   try {
-    verifyJwt(token, jwtSecret);
+    await verifyJwt(token, jwtSecret);
     throw new Error('Expected JWT verification to fail');
   } catch (error) {
-    expect(error).toBeInstanceOf(Error);
-
-    const message = (error as Error).message;
-
-    expect(message).toMatch(expectedMessage);
-    expect(message).not.toMatch(/Unexpected|SyntaxError|position|JSON\.parse/);
+    caughtError = error;
   }
+
+  expect(caughtError).toBeInstanceOf(Error);
+
+  const message = (caughtError as Error).message;
+
+  expect(message).toMatch(expectedMessage);
+  expect(message).not.toMatch(/Unexpected|SyntaxError|position|JSON\.parse/);
 }
 
 describe('Auth tokens', () => {
@@ -52,74 +56,73 @@ describe('Auth tokens', () => {
     process.env.JWT_SECRET = originalJwtSecret;
   });
 
-  it('signs and verifies a JWT', () => {
-    const token = signJwt(userJwtPayload, jwtSecret);
-
-    const claims = verifyJwt(token, jwtSecret);
+  it('signs and verifies a JWT', async () => {
+    const token = await signJwt(userJwtPayload, jwtSecret);
+    const claims = await verifyJwt(token, jwtSecret);
 
     expect(claims.sub).toBe(userJwtPayload.sub);
     expect(claims.organizationId).toBe(userJwtPayload.organizationId);
     expect(claims.email).toBe(userJwtPayload.email);
   });
 
-  it('signs and verifies a JWT with the configured JWT secret', () => {
+  it('signs and verifies a JWT with the configured JWT secret', async () => {
     process.env.JWT_SECRET = jwtSecret;
 
-    const token = signJwt(userJwtPayload);
+    const token = await signJwt(userJwtPayload);
 
-    expect(verifyJwt(token).sub).toBe(userJwtPayload.sub);
+    expect((await verifyJwt(token)).sub).toBe(userJwtPayload.sub);
   });
 
-  it('fails signing when the configured JWT secret is missing', () => {
+  it('fails signing when the configured JWT secret is missing', async () => {
     delete process.env.JWT_SECRET;
 
-    expect(() => signJwt(userJwtPayload)).toThrow(/JWT_SECRET/);
+    await expect(signJwt(userJwtPayload)).rejects.toThrow(/JWT_SECRET/);
   });
 
-  it('fails verification when the configured JWT secret is too short', () => {
+  it('fails verification when the configured JWT secret is too short', async () => {
     process.env.JWT_SECRET = 'short-secret';
-    const token = signJwt(userJwtPayload, jwtSecret);
+    const token = await signJwt(userJwtPayload, jwtSecret);
 
-    expect(() => verifyJwt(token)).toThrow(/JWT_SECRET/);
+    await expect(verifyJwt(token)).rejects.toThrow(/JWT_SECRET/);
   });
 
-  it('rejects a token signed with a different secret', () => {
-    const token = signJwt(userJwtPayload, jwtSecret);
+  it('rejects a token signed with a different secret', async () => {
+    const token = await signJwt(userJwtPayload, jwtSecret);
 
-    expect(() => verifyJwt(token, 'abcdef0123456789abcdef0123456789')).toThrow();
+    await expect(verifyJwt(token, 'abcdef0123456789abcdef0123456789')).rejects.toThrow();
   });
 
-  it('rejects a token with an unsupported header', () => {
-    const token = signJwt(userJwtPayload, jwtSecret);
+  it('rejects a token with an unsupported header', async () => {
+    const token = await signJwt(userJwtPayload, jwtSecret);
     const [, body, signature] = token.split('.');
     const header = base64UrlEncode({ alg: 'none', typ: 'JWT' });
 
-    expectSafeTokenError(`${header}.${body}.${signature}`, /Invalid JWT header/);
+    await expectSafeTokenError(`${header}.${body}.${signature}`, /Invalid JWT header/);
   });
 
-  it('rejects a token with extra segments', () => {
-    const token = signJwt(userJwtPayload, jwtSecret);
+  it('rejects a token with extra segments', async () => {
+    const token = await signJwt(userJwtPayload, jwtSecret);
 
-    expectSafeTokenError(`${token}.extra`, /Invalid JWT/);
+    await expectSafeTokenError(`${token}.extra`, /Invalid JWT/);
   });
 
-  it('rejects malformed JWT JSON without leaking parser errors', () => {
-    expectSafeTokenError('not-json.body.signature', /Invalid JWT header/);
+  it('rejects malformed JWT JSON without leaking parser errors', async () => {
+    await expectSafeTokenError('not-json.body.signature', /Invalid JWT header/);
   });
 
-  it('rejects malformed signed claims without leaking parser errors', () => {
+  it('rejects malformed signed claims without leaking parser errors', async () => {
     const token = signTokenParts({ alg: 'HS256', typ: 'JWT' }, 'not-json', true);
 
-    expectSafeTokenError(token, /Invalid JWT claims/);
+    await expectSafeTokenError(token, /Invalid JWT claims/);
   });
 
-  it('rejects signed claims with missing required fields', () => {
+  it('rejects signed claims with missing required fields', async () => {
     const token = signTokenParts({ alg: 'HS256', typ: 'JWT' }, { sub: userJwtPayload.sub });
 
-    expectSafeTokenError(token, /Invalid JWT claims/);
+    await expectSafeTokenError(token, /Invalid JWT claims/);
   });
 
-  it('rejects signed claims with invalid token lifetime', () => {
+  it('rejects signed claims with invalid token lifetime', async () => {
     const now = Math.floor(Date.now() / 1000);
     const token = signTokenParts(
       { alg: 'HS256', typ: 'JWT' },
@@ -130,6 +133,6 @@ describe('Auth tokens', () => {
       },
     );
 
-    expectSafeTokenError(token, /JWT expired/);
+    await expectSafeTokenError(token, /JWT expired/);
   });
 });

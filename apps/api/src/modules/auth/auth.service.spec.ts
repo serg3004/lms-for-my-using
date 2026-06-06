@@ -158,7 +158,7 @@ describe('AuthService current user lookup', () => {
   it('looks up current users by token subject, organization, and email', async () => {
     process.env.JWT_SECRET = jwtSecret;
     const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService();
-    const token = signJwt(
+    const token = await signJwt(
       {
         sub: currentUser.id,
         organizationId: currentUser.organizationId,
@@ -207,7 +207,7 @@ describe('AuthService current user lookup', () => {
     process.env.JWT_SECRET = jwtSecret;
     const mismatchedUserId = '33333333-3333-3333-3333-333333333333';
     const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService(null);
-    const token = signJwt(
+    const token = await signJwt(
       {
         sub: mismatchedUserId,
         organizationId: currentUser.organizationId,
