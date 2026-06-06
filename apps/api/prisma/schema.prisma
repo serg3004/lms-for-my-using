@@ -115,6 +115,7 @@ model Organization {
   assessmentAttemptAnswers        AssessmentAttemptAnswer[]
   certificates                    Certificate[]
   memberships                     Membership[]
+  sessions                        Session[]
 
   @@map("organizations")
 }
@@ -145,6 +146,7 @@ model User {
   progress            Progress[]
   assessmentAttempts  AssessmentAttempt[]
   certificates        Certificate[]
+  sessions            Session[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -468,4 +470,21 @@ model Membership {
   @@index([userId])
   @@index([assignedBy])
   @@map("memberships")
+}
+
+model Session {
+  id             String    @id @default(uuid()) @db.Uuid
+  jti            String    @unique
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId])
+  @@index([expiresAt])
+  @@map("sessions")
 }

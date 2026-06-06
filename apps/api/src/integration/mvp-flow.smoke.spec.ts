@@ -73,6 +73,10 @@ function createPrismaMock() {
       findFirst: createAsyncMock<unknown>(),
       findMany: createAsyncMock<unknown[]>(),
     },
+    session: {
+      create: createAsyncMock<unknown>(),
+      findFirst: createAsyncMock<unknown>(),
+    },
     user: {
       findFirst: createAsyncMock<unknown>(),
     },
@@ -172,6 +176,8 @@ describe('backend MVP smoke flow', () => {
     prisma.organization.findFirst.setResolvedValue({ id: organizationId });
     prisma.user.findFirst.setResolvedValue(user);
     prisma.membership.findMany.setResolvedValue([{ role: 'admin' }]);
+    prisma.session.create.setResolvedValue({ id: 'session-id' });
+    prisma.session.findFirst.setResolvedValue({ id: 'session-id' });
     prisma.course.findFirst.setResolvedValue({ id: courseId });
     prisma.course.findUnique.setResolvedValue(null);
     prisma.course.create.setResolvedValue(course);

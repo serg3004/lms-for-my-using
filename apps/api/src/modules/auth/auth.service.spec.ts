@@ -36,6 +36,8 @@ type PrismaMembershipFindManyArgs = {
 
 type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
 
+type SessionRecord = { id: string };
+
 type PrismaMock = {
   user: {
     findFirst: (args: PrismaUserFindFirstArgs) => Promise<typeof currentUser | null>;
@@ -43,11 +45,18 @@ type PrismaMock = {
   membership: {
     findMany: (args: PrismaMembershipFindManyArgs) => Promise<Array<{ role: UserRole }>>;
   };
+  session: {
+    findFirst: (args: { where: Record<string, unknown> }) => Promise<SessionRecord | null>;
+  };
 };
 
-function createAuthService(userResult: typeof currentUser | null = currentUser) {
+function createAuthService(
+  userResult: typeof currentUser | null = currentUser,
+  sessionResult: SessionRecord | null = { id: 'session-id' },
+) {
   const findFirstCalls: PrismaUserFindFirstArgs[] = [];
   const membershipFindManyCalls: PrismaMembershipFindManyArgs[] = [];
+  const sessionFindFirstCalls: unknown[] = [];
   const prisma: PrismaMock = {
     user: {
       findFirst: async (args) => {
@@ -60,14 +69,14 @@ function createAuthService(userResult: typeof currentUser | null = currentUser) 
       findMany: async (args) => {
         membershipFindManyCalls.push(args);
 
-        return [
-          {
-            role: 'learner',
-          },
-          {
-            role: 'instructor',
-          },
-        ];
+        return [{ role: 'learner' }, { role: 'instructor' }];
+      },
+    },
+    session: {
+      findFirst: async (args) => {
+        sessionFindFirstCalls.push(args);
+
+        return sessionResult;
       },
     },
   };
@@ -76,6 +85,7 @@ function createAuthService(userResult: typeof currentUser | null = currentUser) 
     authService: new AuthService(prisma as unknown as PrismaService),
     findFirstCalls,
     membershipFindManyCalls,
+    sessionFindFirstCalls,
   };
 }
 
@@ -158,7 +168,7 @@ describe('AuthService current user lookup', () => {
   it('looks up current users by token subject, organization, and email', async () => {
     process.env.JWT_SECRET = jwtSecret;
     const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService();
-    const token = await signJwt(
+    const { token } = await signJwt(
       {
         sub: currentUser.id,
         organizationId: currentUser.organizationId,
@@ -207,7 +217,7 @@ describe('AuthService current user lookup', () => {
     process.env.JWT_SECRET = jwtSecret;
     const mismatchedUserId = '33333333-3333-3333-3333-333333333333';
     const { authService, findFirstCalls, membershipFindManyCalls } = createAuthService(null);
-    const token = await signJwt(
+    const { token } = await signJwt(
       {
         sub: mismatchedUserId,
         organizationId: currentUser.organizationId,
@@ -227,6 +237,43 @@ describe('AuthService current user lookup', () => {
       }),
     );
     expect(membershipFindManyCalls).toHaveLength(0);
+  });
+
+  it('rejects token when session is not found', async () => {
+    process.env.JWT_SECRET = jwtSecret;
+    const { authService } = createAuthService(currentUser, null);
+    const { token } = await signJwt(
+      {
+        sub: currentUser.id,
+        organizationId: currentUser.organizationId,
+        email: currentUser.email,
+      },
+      jwtSecret,
+    );
+
+    await expect(authService.getCurrentUser(token)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('passes session jti and expiry filter to session lookup', async () => {
+    process.env.JWT_SECRET = jwtSecret;
+    const { authService, sessionFindFirstCalls } = createAuthService();
+    const { token } = await signJwt(
+      {
+        sub: currentUser.id,
+        organizationId: currentUser.organizationId,
+        email: currentUser.email,
+      },
+      jwtSecret,
+    );
+
+    await authService.getCurrentUser(token);
+
+    expect(sessionFindFirstCalls[0]).toMatchObject({
+      where: expect.objectContaining({
+        revokedAt: null,
+        expiresAt: expect.objectContaining({ gt: expect.any(Date) }),
+      }),
+    });
   });
 });
 
@@ -251,6 +298,9 @@ describe('AuthService login', () => {
       },
       membership: {
         findMany: async () => (options.roles ?? rolesDefault).map((role) => ({ role })),
+      },
+      session: {
+        create: async () => ({ id: 'session-id' }),
       },
     } as unknown as PrismaService;
   }
@@ -298,6 +348,37 @@ describe('AuthService login', () => {
     expect(result.user.roles).toEqual(['admin']);
   });
 
+  it('creates a session record on login', async () => {
+    const password = 'Test1234!';
+    const passwordHash = await hashPassword(password);
+    const userWithHash = { ...currentUser, passwordHash };
+    const sessionCreateCalls: unknown[] = [];
+    const prisma = {
+      organization: { findFirst: async () => ({ id: orgId }) },
+      user: { findFirst: async () => userWithHash },
+      membership: { findMany: async () => [{ role: 'learner' }] },
+      session: {
+        create: async (args: unknown) => {
+          sessionCreateCalls.push(args);
+
+          return { id: 'session-id' };
+        },
+      },
+    } as unknown as PrismaService;
+    const authService = new AuthService(prisma);
+
+    await authService.login({ organizationId: orgId, email: currentUser.email, password });
+
+    expect(sessionCreateCalls).toHaveLength(1);
+    expect(sessionCreateCalls[0]).toMatchObject({
+      data: expect.objectContaining({
+        userId: currentUser.id,
+        organizationId: currentUser.organizationId,
+        expiresAt: expect.any(Date),
+      }),
+    });
+  });
+
   it('rejects login when user does not exist', async () => {
     const prisma = createLoginPrisma({ userResult: null });
     const authService = new AuthService(prisma);
@@ -342,6 +423,7 @@ describe('AuthService login', () => {
         },
       },
       membership: { findMany: async () => [{ role: 'learner' }] },
+      session: { create: async () => ({ id: 'session-id' }) },
     } as unknown as PrismaService;
     const authService = new AuthService(prisma);
 

@@ -4,6 +4,7 @@ import { getJwtSecret } from '../../config/env.js';
 
 const jwtAlg = 'HS256';
 const defaultExpiresIn = '1h';
+const defaultExpiresInMs = 60 * 60 * 1000;
 
 export type JwtSignPayload = {
   sub: string;
@@ -12,8 +13,15 @@ export type JwtSignPayload = {
 };
 
 export type JwtClaims = JwtSignPayload & {
+  jti: string;
   iat: number;
   exp: number;
+};
+
+export type SignJwtResult = {
+  token: string;
+  jti: string;
+  expiresAt: Date;
 };
 
 function toKey(secret: string): Uint8Array {
@@ -25,20 +33,26 @@ function hasValidClaims(payload: Record<string, unknown>): payload is JwtClaims 
     typeof payload.sub === 'string' &&
     typeof payload.organizationId === 'string' &&
     typeof payload.email === 'string' &&
+    typeof payload.jti === 'string' &&
     typeof payload.iat === 'number' &&
     typeof payload.exp === 'number'
   );
 }
 
-export async function signJwt(payload: JwtSignPayload, secret?: string): Promise<string> {
+export async function signJwt(payload: JwtSignPayload, secret?: string): Promise<SignJwtResult> {
   const resolvedSecret = secret ?? getJwtSecret();
+  const jti = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + defaultExpiresInMs);
 
-  return new SignJWT({ organizationId: payload.organizationId, email: payload.email })
+  const token = await new SignJWT({ organizationId: payload.organizationId, email: payload.email })
     .setProtectedHeader({ alg: jwtAlg })
     .setSubject(payload.sub)
+    .setJti(jti)
     .setIssuedAt()
     .setExpirationTime(defaultExpiresIn)
     .sign(toKey(resolvedSecret));
+
+  return { token, jti, expiresAt };
 }
 
 export async function verifyJwt(token: string, secret?: string): Promise<JwtClaims> {

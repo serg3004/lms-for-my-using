@@ -57,7 +57,7 @@ describe('Auth tokens', () => {
   });
 
   it('signs and verifies a JWT', async () => {
-    const token = await signJwt(userJwtPayload, jwtSecret);
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
     const claims = await verifyJwt(token, jwtSecret);
 
     expect(claims.sub).toBe(userJwtPayload.sub);
@@ -68,7 +68,7 @@ describe('Auth tokens', () => {
   it('signs and verifies a JWT with the configured JWT secret', async () => {
     process.env.JWT_SECRET = jwtSecret;
 
-    const token = await signJwt(userJwtPayload);
+    const { token } = await signJwt(userJwtPayload);
 
     expect((await verifyJwt(token)).sub).toBe(userJwtPayload.sub);
   });
@@ -81,19 +81,19 @@ describe('Auth tokens', () => {
 
   it('fails verification when the configured JWT secret is too short', async () => {
     process.env.JWT_SECRET = 'short-secret';
-    const token = await signJwt(userJwtPayload, jwtSecret);
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
 
     await expect(verifyJwt(token)).rejects.toThrow(/JWT_SECRET/);
   });
 
   it('rejects a token signed with a different secret', async () => {
-    const token = await signJwt(userJwtPayload, jwtSecret);
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
 
     await expect(verifyJwt(token, 'abcdef0123456789abcdef0123456789')).rejects.toThrow();
   });
 
   it('rejects a token with an unsupported header', async () => {
-    const token = await signJwt(userJwtPayload, jwtSecret);
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
     const [, body, signature] = token.split('.');
     const header = base64UrlEncode({ alg: 'none', typ: 'JWT' });
 
@@ -101,7 +101,7 @@ describe('Auth tokens', () => {
   });
 
   it('rejects a token with extra segments', async () => {
-    const token = await signJwt(userJwtPayload, jwtSecret);
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
 
     await expectSafeTokenError(`${token}.extra`, /Invalid JWT/);
   });
