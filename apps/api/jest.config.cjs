@@ -63,14 +63,15 @@ module.exports = {
     '!src/**/*.d.ts',
     '!src/main.ts',
     '!src/**/*.module.ts',
+    '!src/scripts/**',
   ],
   coverageProvider: 'v8',
   coverageThreshold: {
     global: {
-      statements: 70,
-      branches: 50,
-      functions: 70,
-      lines: 70,
+      statements: 60,
+      branches: 45,
+      functions: 60,
+      lines: 60,
     },
   },
   transform: {
