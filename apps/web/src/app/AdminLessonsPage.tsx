@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -208,33 +209,25 @@ export function AdminLessonsPage() {
     );
   }
 
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
+    { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons', isCurrent: true },
+  ];
+
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">
-          {t('admin.navLink', 'Admin')}
-        </a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/courses">
-            {t('admin.courseBuilder.title', 'Course builder')}
-          </a>
-          <a className="admin-nav-link" href="/admin/lessons" aria-current="page">
-            {t('admin.lessons.title', 'Lesson editor')}
-          </a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.navLink', 'Admin')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.lessons.title', 'Lesson editor')}
+        subtitle={t('admin.lessons.subtitle', 'Create and edit lessons, control display order and status.')}
+        action={<a href="/admin">{t('admin.lessons.backToDashboard', 'Back to dashboard')}</a>}
+      />
 
-      <section className="admin-shell">
-        <header className="admin-topbar">
-          <div>
-            <h1>{t('admin.lessons.title', 'Lesson editor')}</h1>
-            <p>{t('admin.lessons.subtitle', 'Create and edit lessons, control display order and status.')}</p>
-          </div>
-          <a href="/admin">{t('admin.lessons.backToDashboard', 'Back to dashboard')}</a>
-        </header>
-
-        <section className="admin-content-grid">
-          <article className="admin-card">
+      <section className="admin-content-grid">
+        <AdminCard>
             <h2>{t('admin.lessons.createTitle', 'Create lesson')}</h2>
             {loadState.courses.length === 0 ? (
               <EmptyState message={t('admin.lessons.noCourses', 'Create a course before adding lessons.')} />
@@ -276,9 +269,9 @@ export function AdminLessonsPage() {
                 </div>
               </form>
             )}
-          </article>
+        </AdminCard>
 
-          <article className="admin-card">
+        <AdminCard>
             <h2>{t('admin.lessons.lessonsTitle', 'Lessons')}</h2>
             {loadState.lessons.length === 0 ? (
               <EmptyState message={t('admin.lessons.empty', 'No lessons found for the selected course.')} />
@@ -326,8 +319,7 @@ export function AdminLessonsPage() {
                 </tbody>
               </table>
             )}
-          </article>
-        </section>
+        </AdminCard>
       </section>
 
       <dialog ref={editDialogRef} className="admin-dialog">
@@ -390,6 +382,6 @@ export function AdminLessonsPage() {
           </div>
         </form>
       </dialog>
-    </main>
+    </AdminPageLayout>
   );
 }
