@@ -125,7 +125,16 @@ export class AuthService {
     throw new ServiceUnavailableException(passwordResetUnavailableMessage);
   }
 
-  logout() {
+  async logout(accessToken: string) {
+    try {
+      const claims = await verifyJwt(accessToken);
+      await this.prisma.session.updateMany({
+        where: { jti: claims.jti, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    } catch {
+      // invalid token or session already revoked — logout is still accepted
+    }
     return logoutAccepted;
   }
 

@@ -28,11 +28,11 @@ type CookieCall = [name: string, value: string, options: Record<string, unknown>
 type ClearCookieCall = [name: string, options: Record<string, unknown>];
 
 function createAuthService() {
-  const tokens: string[] = [];
-  let logoutCalls = 0;
+  const getCurrentUserTokens: string[] = [];
+  const logoutTokens: string[] = [];
   const authService = {
     getCurrentUser: async (accessToken: string) => {
-      tokens.push(accessToken);
+      getCurrentUserTokens.push(accessToken);
 
       return currentUser;
     },
@@ -41,8 +41,8 @@ function createAuthService() {
       tokenType: 'Bearer',
       user: currentUser,
     }),
-    logout: () => {
-      logoutCalls += 1;
+    logout: async (accessToken: string) => {
+      logoutTokens.push(accessToken);
 
       return { accepted: true };
     },
@@ -50,8 +50,8 @@ function createAuthService() {
 
   return {
     authService,
-    getTokens: () => tokens,
-    getLogoutCalls: () => logoutCalls,
+    getTokens: () => getCurrentUserTokens,
+    getLogoutTokens: () => logoutTokens,
   };
 }
 
@@ -134,18 +134,18 @@ describe('AuthController logout', () => {
   });
 
   it('trims bearer token before validating logout', async () => {
-    const { authService, getTokens } = createAuthService();
+    const { authService, getLogoutTokens } = createAuthService();
     const controller = new AuthController(authService);
 
     await expect(
       controller.logout({ headers: { authorization: 'Bearer   access-token   ' }, method: 'POST' }, createResponse().response),
     ).resolves.toEqual({ accepted: true });
 
-    expect(getTokens()).toEqual(['access-token']);
+    expect(getLogoutTokens()).toEqual(['access-token']);
   });
 
-  it('validates bearer token before accepting logout', async () => {
-    const { authService, getTokens, getLogoutCalls } = createAuthService();
+  it('passes token to logout and clears cookies', async () => {
+    const { authService, getLogoutTokens } = createAuthService();
     const controller = new AuthController(authService);
     const { response, clearCookieCalls } = createResponse();
 
@@ -154,8 +154,7 @@ describe('AuthController logout', () => {
       response,
     );
 
-    expect(getTokens()).toEqual(['access-token']);
-    expect(getLogoutCalls()).toBe(1);
+    expect(getLogoutTokens()).toEqual(['access-token']);
     expect(clearCookieCalls).toHaveLength(2);
     expect(result).toEqual({ accepted: true });
   });
@@ -183,7 +182,7 @@ describe('AuthController logout', () => {
   });
 
   it('accepts cookie-based logout with valid CSRF header', async () => {
-    const { authService, getTokens, getLogoutCalls } = createAuthService();
+    const { authService, getLogoutTokens } = createAuthService();
     const controller = new AuthController(authService);
     const { response, clearCookieCalls } = createResponse();
     const csrfToken = 'csrf-token-value';
@@ -199,8 +198,7 @@ describe('AuthController logout', () => {
       response,
     );
 
-    expect(getTokens()).toEqual(['cookie-token']);
-    expect(getLogoutCalls()).toBe(1);
+    expect(getLogoutTokens()).toEqual(['cookie-token']);
     expect(clearCookieCalls).toHaveLength(2);
     expect(result).toEqual({ accepted: true });
   });
