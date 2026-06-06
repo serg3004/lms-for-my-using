@@ -89,7 +89,7 @@ describe('Auth tokens', () => {
   it('rejects a token signed with a different secret', async () => {
     const token = await signJwt(userJwtPayload, jwtSecret);
 
-    await expect(verifyJwt(token, 'abcdef0123456789abcdef0123456789')).rejects.toThrow();
+    await expect(verifyJwt(token, 'wrong-test-secret-intentionally-bad!')).rejects.toThrow();
   });
 
   it('rejects a token with an unsupported header', async () => {
