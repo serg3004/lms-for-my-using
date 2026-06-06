@@ -1,4 +1,4 @@
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+const GUARDS_METADATA = '__guards__';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard';

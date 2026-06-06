@@ -1,4 +1,4 @@
-import { GUARDS_METADATA } from '@nestjs/common/constants';
+const GUARDS_METADATA = '__guards__';
 
 import { AuthGuard } from '../auth/auth.guard';
 import { rolePolicies, rolesMetadataKey } from '../auth/roles';
