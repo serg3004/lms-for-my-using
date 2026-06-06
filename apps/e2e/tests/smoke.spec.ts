@@ -3,7 +3,14 @@ import { expect, test } from '@playwright/test';
 const apiBaseUrl = process.env.E2E_API_URL ?? 'https://api-production-2938.up.railway.app';
 
 test('API health check returns ok', async ({ request }) => {
-  const response = await request.get(`${apiBaseUrl}/api/v1/health`);
+  // Poll up to 60 s to allow Railway cold starts and in-flight deployments
+  const deadline = Date.now() + 60_000;
+  let response = await request.get(`${apiBaseUrl}/api/v1/health`, { timeout: 15_000 });
+
+  while (response.status() !== 200 && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 5_000));
+    response = await request.get(`${apiBaseUrl}/api/v1/health`, { timeout: 15_000 });
+  }
 
   expect(response.status()).toBe(200);
   expect(await response.json()).toMatchObject({ status: 'ok' });
@@ -27,6 +34,8 @@ test('unauthenticated access to /learn redirects to /login', async ({ page }) =>
 
 test('submitting empty login form shows field validation errors', async ({ page }) => {
   await page.goto('/login');
+  // Disable HTML5 native validation so React's own validation fires
+  await page.locator('form').evaluate((f: HTMLFormElement) => f.setAttribute('novalidate', ''));
   await page.locator('button[type="submit"]').click();
 
   await expect(page.locator('[role="alert"]').first()).toBeVisible();
