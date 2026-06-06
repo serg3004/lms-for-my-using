@@ -131,13 +131,23 @@ export class AuthService {
 
   async login(input: LoginInput) {
     const user = await this.validateLogin(input);
+    const { token, jti, expiresAt } = await signJwt({
+      sub: user.id,
+      organizationId: user.organizationId,
+      email: user.email,
+    });
+
+    await this.prisma.session.create({
+      data: {
+        jti,
+        userId: user.id,
+        organizationId: user.organizationId,
+        expiresAt,
+      },
+    });
 
     return {
-      accessToken: await signJwt({
-        sub: user.id,
-        organizationId: user.organizationId,
-        email: user.email,
-      }),
+      accessToken: token,
       tokenType: 'Bearer',
       user,
     };
@@ -147,6 +157,8 @@ export class AuthService {
     try {
       const claims = await verifyJwt(accessToken);
 
+      await this.validateSession(claims.jti);
+
       return this.findActiveUserByCurrentUserClaims({
         sub: claims.sub,
         organizationId: claims.organizationId,
@@ -154,6 +166,20 @@ export class AuthService {
       });
     } catch {
       throw new UnauthorizedException('Invalid token');
+    }
+  }
+
+  private async validateSession(jti: string) {
+    const session = await this.prisma.session.findFirst({
+      where: {
+        jti,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!session) {
+      throw new Error('Session not found or expired');
     }
   }
 
