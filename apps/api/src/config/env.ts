@@ -20,6 +20,7 @@ const apiEnvSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
   FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
+  REDIS_URL: z.string().url().optional(),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

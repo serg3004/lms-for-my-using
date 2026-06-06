@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import Redis from 'ioredis';
 
 import { AppModule } from './app.module.js';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
 import {
+  createRedisRateLimitStore,
   createSecurityHeadersMiddleware,
   createSensitiveRouteRateLimitMiddleware,
 } from './common/middleware/api-hardening.js';
@@ -28,8 +30,10 @@ async function bootstrap(): Promise<void> {
     origin: apiEnv.FRONTEND_URL,
     credentials: true,
   });
+  const rateLimitStore = apiEnv.REDIS_URL ? createRedisRateLimitStore(new Redis(apiEnv.REDIS_URL)) : undefined;
+
   app.use(createSecurityHeadersMiddleware());
-  app.use(createSensitiveRouteRateLimitMiddleware());
+  app.use(createSensitiveRouteRateLimitMiddleware(rateLimitStore));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ApiExceptionFilter());
 

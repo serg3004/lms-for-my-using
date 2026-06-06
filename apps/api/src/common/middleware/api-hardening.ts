@@ -4,7 +4,7 @@ type NextFunction = () => void;
 
 type ApiRequest = IncomingMessage & {
   ip?: string;
-  socket: IncomingMessage['socket'] &{
+  socket: IncomingMessage['socket'] & {
     remoteAddress?: string;
   };
 };
@@ -31,6 +31,15 @@ type RateLimitEntry = {
   resetAt: number;
 };
 
+export type RateLimitStore = {
+  increment(key: string, windowMs: number): Promise<number>;
+};
+
+export type MinimalRedis = {
+  incr(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<number>;
+};
+
 function getRequestPath(request: ApiRequest): string {
   const url = request.url ?? '';
 
@@ -48,6 +57,40 @@ function isRateLimitedRoute(request: ApiRequest): boolean {
   return request.method === 'POST' && sensitiveRateLimitedRoutes.has(getRequestPath(request));
 }
 
+export function createInMemoryRateLimitStore(now = () => Date.now()): RateLimitStore {
+  const attempts = new Map<string, RateLimitEntry>();
+
+  return {
+    async increment(key: string, windowMs: number): Promise<number> {
+      const currentTime = now();
+      const entry = attempts.get(key);
+
+      if (!entry || entry.resetAt <= currentTime) {
+        attempts.set(key, { count: 1, resetAt: currentTime + windowMs });
+        return 1;
+      }
+
+      entry.count += 1;
+      return entry.count;
+    },
+  };
+}
+
+export function createRedisRateLimitStore(redis: MinimalRedis): RateLimitStore {
+  return {
+    async increment(key: string, windowMs: number): Promise<number> {
+      const windowSeconds = Math.ceil(windowMs / 1000);
+      const count = await redis.incr(key);
+
+      if (count === 1) {
+        await redis.expire(key, windowSeconds);
+      }
+
+      return count;
+    },
+  };
+}
+
 export function createSecurityHeadersMiddleware(): Middleware {
   return (_request, response, next) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -61,36 +104,30 @@ export function createSecurityHeadersMiddleware(): Middleware {
   };
 }
 
-export function createSensitiveRouteRateLimitMiddleware(now = () => Date.now()): Middleware {
-  const attempts = new Map<string, RateLimitEntry>();
+export function createSensitiveRouteRateLimitMiddleware(store?: RateLimitStore): Middleware {
+  const resolvedStore = store ?? createInMemoryRateLimitStore();
 
-  return (request, response, next) => {
+  return async (request, response, next) => {
     if (!isRateLimitedRoute(request)) {
       next();
       return;
     }
 
-    const currentTime = now();
-    const key = `${getClientKey(request)}:${getRequestPath(request)}`;
-    const currentEntry = attempts.get(key);
+    const key = `ratelimit:${getClientKey(request)}:${getRequestPath(request)}`;
 
-    if (!currentEntry || currentEntry.resetAt <= currentTime) {
-      attempts.set(key, {
-        count: 1,
-        resetAt: currentTime + RATE_LIMIT_WINDOW_MS,
-      });
-      next();
-      return;
+    try {
+      const count = await resolvedStore.increment(key, RATE_LIMIT_WINDOW_MS);
+
+      if (count > RATE_LIMIT_MAX_REQUESTS) {
+        response.statusCode = TOO_MANY_REQUESTS_STATUS;
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
+        return;
+      }
+    } catch {
+      // store unavailable — fail open to avoid blocking all traffic
     }
 
-    if (currentEntry.count >= RATE_LIMIT_MAX_REQUESTS) {
-      response.statusCode = TOO_MANY_REQUESTS_STATUS;
-      response.setHeader('Content-Type', 'application/json');
-      response.end(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
-      return;
-    }
-
-    currentEntry.count += 1;
     next();
   };
 }
