@@ -45,10 +45,9 @@ export class AuthController {
     const accessToken = resolveAccessToken(request.headers);
 
     assertValidCsrf(request.headers, request.method, accessToken.source);
-    await this.authService.getCurrentUser(accessToken.token);
     clearAuthCookies(response);
 
-    return this.authService.logout();
+    return this.authService.logout(accessToken.token);
   }
 
   @Post('password-reset/request')

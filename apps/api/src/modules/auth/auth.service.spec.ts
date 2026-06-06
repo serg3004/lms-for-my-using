@@ -437,3 +437,58 @@ describe('AuthService login', () => {
     });
   });
 });
+
+describe('AuthService logout', () => {
+  beforeEach(() => {
+    process.env.JWT_SECRET = jwtSecret;
+  });
+
+  afterEach(() => {
+    delete process.env.JWT_SECRET;
+  });
+
+  it('revokes the session matching the token jti', async () => {
+    const { token, jti } = await signJwt(
+      { sub: currentUser.id, organizationId: currentUser.organizationId, email: currentUser.email },
+      jwtSecret,
+    );
+    const updateManyCalls: unknown[] = [];
+    const prisma = {
+      session: {
+        updateMany: async (args: unknown) => {
+          updateManyCalls.push(args);
+
+          return { count: 1 };
+        },
+      },
+    } as unknown as PrismaService;
+    const authService = new AuthService(prisma);
+
+    const result = await authService.logout(token);
+
+    expect(result).toEqual({ accepted: true });
+    expect(updateManyCalls[0]).toMatchObject({
+      where: { jti, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it('returns accepted even with an invalid token', async () => {
+    const authService = new AuthService({} as unknown as PrismaService);
+
+    await expect(authService.logout('not.a.valid.jwt')).resolves.toEqual({ accepted: true });
+  });
+
+  it('returns accepted when no session rows are updated', async () => {
+    const { token } = await signJwt(
+      { sub: currentUser.id, organizationId: currentUser.organizationId, email: currentUser.email },
+      jwtSecret,
+    );
+    const prisma = {
+      session: { updateMany: async () => ({ count: 0 }) },
+    } as unknown as PrismaService;
+    const authService = new AuthService(prisma);
+
+    await expect(authService.logout(token)).resolves.toEqual({ accepted: true });
+  });
+});
