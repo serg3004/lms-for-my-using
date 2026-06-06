@@ -326,4 +326,32 @@ describe('AuthService login', () => {
       authService.login({ organizationId: 'unknown-slug', email: currentUser.email, password: 'Test1234!' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('queries only active non-deleted users on login', async () => {
+    const password = 'Test1234!';
+    const passwordHash = await hashPassword(password);
+    const userWithHash = { ...currentUser, passwordHash };
+    const findFirstCalls: unknown[] = [];
+    const prisma = {
+      organization: { findFirst: async () => ({ id: orgId }) },
+      user: {
+        findFirst: async (args: unknown) => {
+          findFirstCalls.push(args);
+
+          return userWithHash;
+        },
+      },
+      membership: { findMany: async () => [{ role: 'learner' }] },
+    } as unknown as PrismaService;
+    const authService = new AuthService(prisma);
+
+    await authService.login({ organizationId: orgId, email: currentUser.email, password });
+
+    expect(findFirstCalls[0]).toMatchObject({
+      where: expect.objectContaining({
+        status: 'active',
+        deletedAt: null,
+      }),
+    });
+  });
 });

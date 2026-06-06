@@ -1,8 +1,9 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import {
   AuthCookieResponse,
   accessTokenCookieName,
+  csrfHeaderName,
   csrfTokenCookieName,
 } from './auth.cookies';
 import { AuthController } from './auth.controller';
@@ -165,5 +166,72 @@ describe('AuthController logout', () => {
     await expect(
       controller.logout({ headers: { authorization: 'Basic access-token' }, method: 'POST' }, createResponse().response),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects cookie-based logout without CSRF header', async () => {
+    const controller = new AuthController({} as AuthService);
+
+    await expect(
+      controller.logout(
+        {
+          headers: { cookie: `${accessTokenCookieName}=cookie-token; ${csrfTokenCookieName}=csrf-value` },
+          method: 'POST',
+        },
+        createResponse().response,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('accepts cookie-based logout with valid CSRF header', async () => {
+    const { authService, getTokens, getLogoutCalls } = createAuthService();
+    const controller = new AuthController(authService);
+    const { response, clearCookieCalls } = createResponse();
+    const csrfToken = 'csrf-token-value';
+
+    const result = await controller.logout(
+      {
+        headers: {
+          cookie: `${accessTokenCookieName}=cookie-token; ${csrfTokenCookieName}=${csrfToken}`,
+          [csrfHeaderName]: csrfToken,
+        },
+        method: 'POST',
+      },
+      response,
+    );
+
+    expect(getTokens()).toEqual(['cookie-token']);
+    expect(getLogoutCalls()).toBe(1);
+    expect(clearCookieCalls).toHaveLength(2);
+    expect(result).toEqual({ accepted: true });
+  });
+});
+
+describe('AuthController getCurrentUser', () => {
+  it('returns current user for valid bearer token', async () => {
+    const { authService, getTokens } = createAuthService();
+    const controller = new AuthController(authService);
+
+    const result = await controller.getCurrentUser({ headers: { authorization: 'Bearer access-token' } });
+
+    expect(result).toEqual(currentUser);
+    expect(getTokens()).toEqual(['access-token']);
+  });
+
+  it('throws UnauthorizedException for GET /auth/me without authorization', () => {
+    const controller = new AuthController({} as AuthService);
+
+    expect(() => controller.getCurrentUser({ headers: {} })).toThrow(UnauthorizedException);
+  });
+
+  it('returns current user when authenticated via cookie', async () => {
+    const { authService, getTokens } = createAuthService();
+    const controller = new AuthController(authService);
+
+    const result = await controller.getCurrentUser({
+      headers: { cookie: `${accessTokenCookieName}=cookie-token` },
+    });
+
+    expect(result).toEqual(currentUser);
+    expect(getTokens()).toEqual(['cookie-token']);
   });
 });
