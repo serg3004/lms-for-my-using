@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -263,39 +264,27 @@ export function AdminAssessmentBuilderPage() {
     );
   }
 
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
+    { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons' },
+    { label: t('admin.materials.title', 'Materials'), href: '/admin/materials' },
+    { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments', isCurrent: true },
+  ];
+
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">
-          {t('admin.navLink', 'Admin')}
-        </a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/courses">
-            {t('admin.courseBuilder.title', 'Course builder')}
-          </a>
-          <a className="admin-nav-link" href="/admin/lessons">
-            {t('admin.lessons.title', 'Lesson editor')}
-          </a>
-          <a className="admin-nav-link" href="/admin/materials">
-            {t('admin.materials.title', 'Materials')}
-          </a>
-          <a className="admin-nav-link" href="/admin/assessments" aria-current="page">
-            {t('admin.assessmentBuilder.title', 'Assessment builder')}
-          </a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.navLink', 'Admin')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.assessmentBuilder.title', 'Assessment builder')}
+        subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')}
+        action={<a href="/admin">{t('admin.assessmentBuilder.backToDashboard', 'Back to dashboard')}</a>}
+      />
 
-      <section className="admin-shell">
-        <header className="admin-topbar">
-          <div>
-            <h1>{t('admin.assessmentBuilder.title', 'Assessment builder')}</h1>
-            <p>{t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')}</p>
-          </div>
-          <a href="/admin">{t('admin.assessmentBuilder.backToDashboard', 'Back to dashboard')}</a>
-        </header>
-
-        <section className="admin-content-grid">
-          <article className="admin-card">
+      <section className="admin-content-grid">
+        <AdminCard>
             <h2>{t('admin.assessmentBuilder.createTitle', 'Create assessment')}</h2>
             {loadState.courses.length === 0 ? (
               <EmptyState message={t('admin.assessmentBuilder.noCourses', 'Create a course before adding assessments.')} />
@@ -384,9 +373,9 @@ export function AdminAssessmentBuilderPage() {
                 </div>
               </form>
             )}
-          </article>
+        </AdminCard>
 
-          <article className="admin-card">
+        <AdminCard>
             <h2>{t('admin.assessmentBuilder.assessmentsTitle', 'Assessments')}</h2>
             {loadState.assessments.length === 0 ? (
               <EmptyState message={t('admin.assessmentBuilder.empty', 'No assessments found.')} />
@@ -432,8 +421,7 @@ export function AdminAssessmentBuilderPage() {
                 </tbody>
               </table>
             )}
-          </article>
-        </section>
+        </AdminCard>
       </section>
 
       <dialog ref={editDialogRef} className="admin-dialog">
@@ -523,6 +511,6 @@ export function AdminAssessmentBuilderPage() {
           </div>
         </form>
       </dialog>
-    </main>
+    </AdminPageLayout>
   );
 }

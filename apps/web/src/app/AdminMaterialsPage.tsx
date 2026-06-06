@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -309,36 +310,26 @@ export function AdminMaterialsPage() {
     );
   }
 
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
+    { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons' },
+    { label: t('admin.materials.title', 'Materials'), href: '/admin/materials', isCurrent: true },
+  ];
+
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">
-          {t('admin.navLink', 'Admin')}
-        </a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/courses">
-            {t('admin.courseBuilder.title', 'Course builder')}
-          </a>
-          <a className="admin-nav-link" href="/admin/lessons">
-            {t('admin.lessons.title', 'Lesson editor')}
-          </a>
-          <a className="admin-nav-link" href="/admin/materials" aria-current="page">
-            {t('admin.materials.title', 'Materials')}
-          </a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.navLink', 'Admin')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.materials.title', 'Materials')}
+        subtitle={t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}
+        action={<a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>}
+      />
 
-      <section className="admin-shell">
-        <header className="admin-topbar">
-          <div>
-            <h1>{t('admin.materials.title', 'Materials')}</h1>
-            <p>{t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}</p>
-          </div>
-          <a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>
-        </header>
-
-        <section className="admin-content-grid">
-          <article className="admin-card">
+      <section className="admin-content-grid">
+        <AdminCard>
             <h2>{t('admin.materials.createTitle', 'Add material')}</h2>
             {loadState.courses.length === 0 ? (
               <EmptyState message={t('admin.materials.noCourses', 'Create a course before adding materials.')} />
@@ -439,9 +430,9 @@ export function AdminMaterialsPage() {
                 </div>
               </form>
             )}
-          </article>
+        </AdminCard>
 
-          <article className="admin-card">
+        <AdminCard>
             <h2>{t('admin.materials.materialsTitle', 'Materials')}</h2>
             {loadState.materials.length === 0 ? (
               <EmptyState message={t('admin.materials.empty', 'No materials found for the selected course.')} />
@@ -495,8 +486,7 @@ export function AdminMaterialsPage() {
                 </tbody>
               </table>
             )}
-          </article>
-        </section>
+        </AdminCard>
       </section>
 
       <dialog ref={editDialogRef} className="admin-dialog">
@@ -606,6 +596,6 @@ export function AdminMaterialsPage() {
           </div>
         </form>
       </dialog>
-    </main>
+    </AdminPageLayout>
   );
 }
