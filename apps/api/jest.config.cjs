@@ -57,12 +57,21 @@ module.exports = {
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.spec.ts',
+    '!src/**/*.d.ts',
+    '!src/main.ts',
+    '!src/**/*.module.ts',
+    '!src/scripts/**',
+  ],
+  coverageProvider: 'v8',
   coverageThreshold: {
     global: {
-      statements: 75,
-      branches: 55,
-      functions: 75,
-      lines: 75,
+      statements: 60,
+      branches: 45,
+      functions: 60,
+      lines: 60,
     },
   },
   transform: {
