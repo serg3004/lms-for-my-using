@@ -43,6 +43,8 @@ COPY --from=deployer /standalone/package.json ./package.json
 COPY --from=builder  /app/apps/api/dist ./dist
 COPY --from=builder  /app/apps/api/prisma ./prisma
 
+RUN node node_modules/.bin/prisma generate
+
 USER lms
 ENV NODE_ENV=production
 EXPOSE 3000
