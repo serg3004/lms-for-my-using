@@ -133,7 +133,7 @@ export class AuthService {
     const user = await this.validateLogin(input);
 
     return {
-      accessToken: signJwt({
+      accessToken: await signJwt({
         sub: user.id,
         organizationId: user.organizationId,
         email: user.email,
@@ -145,7 +145,7 @@ export class AuthService {
 
   async getCurrentUser(accessToken: string) {
     try {
-      const claims = verifyJwt(accessToken);
+      const claims = await verifyJwt(accessToken);
 
       return this.findActiveUserByCurrentUserClaims({
         sub: claims.sub,
