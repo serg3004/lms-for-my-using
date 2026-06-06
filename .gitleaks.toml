@@ -1,0 +1,10 @@
+title = "LMS gitleaks configuration"
+
+[allowlist]
+  description = "Test fixture files contain intentional fake credentials"
+  paths = [
+    '''\.spec\.ts$''',
+    '''\.spec\.js$''',
+    '''\.test\.ts$''',
+    '''\.test\.js$''',
+  ]
