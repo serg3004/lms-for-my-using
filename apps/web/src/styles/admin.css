@@ -25,6 +25,33 @@
   background: var(--admin-sidebar-background);
 }
 
+.admin-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-sidebar-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  background: rgb(255 255 255 / 12%);
+  color: var(--admin-sidebar-text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.admin-sidebar-close:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
 .admin-brand {
   color: var(--admin-sidebar-text);
   font-size: 1.125rem;
@@ -33,6 +60,49 @@
 
 .admin-brand:hover {
   text-decoration: none;
+}
+
+.admin-mobile-bar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--admin-sidebar-background);
+  color: var(--admin-sidebar-text);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.admin-mobile-brand {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--admin-sidebar-text);
+}
+
+.admin-hamburger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0;
+  background: rgb(255 255 255 / 10%);
+  color: var(--admin-sidebar-text);
+  font-size: 1.25rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.admin-hamburger:hover {
+  background: rgb(255 255 255 / 20%);
+}
+
+.admin-drawer-backdrop {
+  display: none;
 }
 
 .admin-nav {
@@ -456,11 +526,44 @@
 
 @media (max-width: 860px) {
   .admin-layout {
-    grid-template-columns: 1fr;
+    display: block;
+  }
+
+  .admin-mobile-bar {
+    display: flex;
   }
 
   .admin-sidebar {
-    position: static;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(280px, 85vw);
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    gap: 20px;
+  }
+
+  .admin-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .admin-sidebar-close {
+    display: flex;
+  }
+
+  .admin-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 48%);
+  }
+
+  .admin-shell {
+    padding: 20px 16px;
   }
 
   .admin-topbar,
