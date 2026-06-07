@@ -41,6 +41,7 @@ export function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const updateField =
     (field: keyof LoginFormState) =>
@@ -100,77 +101,101 @@ export function LoginPage() {
   }
 
   return (
-    <main>
-      <section>
-        <h1>{t('login.title')}</h1>
-        <p>{t('login.subtitle')}</p>
-      </section>
+    <main className="login-page">
+      <div className="login-card">
+        <header className="login-header">
+          <h1>{t('login.title')}</h1>
+          <p>{t('login.subtitle')}</p>
+        </header>
 
-      <form onSubmit={handleSubmit}>
-        <label>
-          {t('login.organizationId')}
-          <input
-            aria-describedby={validationErrors.organizationId ? 'organizationId-error' : undefined}
-            aria-invalid={Boolean(validationErrors.organizationId)}
-            autoComplete="organization"
-            name="organizationId"
-            onChange={updateField('organizationId')}
-            required
-            type="text"
-            value={formState.organizationId}
-          />
-        </label>
-        {validationErrors.organizationId ? (
-          <p id="organizationId-error" role="alert">
-            {validationErrors.organizationId}
-          </p>
-        ) : null}
+        <form className="login-form" onSubmit={handleSubmit}>
+          <label htmlFor="organizationId">
+            {t('login.organizationId')}
+            <input
+              aria-describedby={validationErrors.organizationId ? 'organizationId-error' : undefined}
+              aria-invalid={Boolean(validationErrors.organizationId)}
+              autoComplete="organization"
+              id="organizationId"
+              name="organizationId"
+              onChange={updateField('organizationId')}
+              required
+              type="text"
+              value={formState.organizationId}
+            />
+          </label>
+          {validationErrors.organizationId ? (
+            <p className="login-form__field-error" id="organizationId-error" role="alert">
+              {validationErrors.organizationId}
+            </p>
+          ) : null}
 
-        <label>
-          {t('login.email')}
-          <input
-            aria-describedby={validationErrors.email ? 'email-error' : undefined}
-            aria-invalid={Boolean(validationErrors.email)}
-            autoComplete="email"
-            name="email"
-            onChange={updateField('email')}
-            required
-            type="email"
-            value={formState.email}
-          />
-        </label>
-        {validationErrors.email ? (
-          <p id="email-error" role="alert">
-            {validationErrors.email}
-          </p>
-        ) : null}
+          <label htmlFor="email">
+            {t('login.email')}
+            <input
+              aria-describedby={validationErrors.email ? 'email-error' : undefined}
+              aria-invalid={Boolean(validationErrors.email)}
+              autoComplete="email"
+              id="email"
+              name="email"
+              onChange={updateField('email')}
+              required
+              type="email"
+              value={formState.email}
+            />
+          </label>
+          {validationErrors.email ? (
+            <p className="login-form__field-error" id="email-error" role="alert">
+              {validationErrors.email}
+            </p>
+          ) : null}
 
-        <label>
-          {t('login.password')}
-          <input
-            aria-describedby={validationErrors.password ? 'password-error' : undefined}
-            aria-invalid={Boolean(validationErrors.password)}
-            autoComplete="current-password"
-            name="password"
-            onChange={updateField('password')}
-            required
-            type="password"
-            value={formState.password}
-          />
-        </label>
-        {validationErrors.password ? (
-          <p id="password-error" role="alert">
-            {validationErrors.password}
-          </p>
-        ) : null}
+          <label htmlFor="password">
+            {t('login.password')}
+            <div className="login-form__password-wrapper">
+              <input
+                aria-describedby={validationErrors.password ? 'password-error' : undefined}
+                aria-invalid={Boolean(validationErrors.password)}
+                autoComplete="current-password"
+                id="password"
+                name="password"
+                onChange={updateField('password')}
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={formState.password}
+              />
+              <button
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                className="login-form__toggle-password"
+                onClick={() => setShowPassword((prev) => !prev)}
+                tabIndex={0}
+                type="button"
+              >
+                {showPassword ? '🙈' : '👁'}
+              </button>
+            </div>
+          </label>
+          {validationErrors.password ? (
+            <p className="login-form__field-error" id="password-error" role="alert">
+              {validationErrors.password}
+            </p>
+          ) : null}
 
-        {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-        {isLoggedIn ? <p role="status">{t('login.success')}</p> : null}
+          {errorMessage ? (
+            <p className="login-form__error" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
+          {isLoggedIn ? (
+            <p className="login-form__success" role="status">
+              {t('login.success')}
+            </p>
+          ) : null}
 
-        <button disabled={isSubmitting} type="submit">
-          {isSubmitting ? t('login.submitting') : t('login.submit')}
-        </button>
-      </form>
+          <button className="login-form__submit" disabled={isSubmitting} type="submit">
+            {isSubmitting ? t('login.submitting') : t('login.submit')}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
