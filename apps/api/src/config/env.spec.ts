@@ -129,8 +129,8 @@ describe('API environment validation', () => {
     }
   });
 
-  it('returns the configured JWT secret', () => {
-    expect(getJwtSecret({ DATABASE_URL: validDatabaseUrl, JWT_SECRET: validJwtSecret })).toBe(validJwtSecret);
+  it('returns the configured JWT secret without requiring DATABASE_URL', () => {
+    expect(getJwtSecret({ JWT_SECRET: validJwtSecret })).toBe(validJwtSecret);
   });
 
   it('rejects a missing JWT secret', () => {
@@ -140,7 +140,6 @@ describe('API environment validation', () => {
   it('rejects a short JWT secret', () => {
     expect(() =>
       getJwtSecret({
-        DATABASE_URL: validDatabaseUrl,
         JWT_SECRET: 'short-secret',
       }),
     ).toThrow(/JWT_SECRET/);

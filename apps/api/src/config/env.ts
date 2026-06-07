@@ -119,6 +119,14 @@ export function loadApiEnv(env = process.env): ApiEnv {
   return parsedResult.data;
 }
 
+const jwtSecretSchema = z.string().min(JWT_SECRET_MIN_LENGTH);
+
 export function getJwtSecret(env = process.env): string {
-  return loadApiEnv(env).JWT_SECRET;
+  const result = jwtSecretSchema.safeParse(env['JWT_SECRET']);
+
+  if (!result.success) {
+    throw new Error(`Invalid API environment: JWT_SECRET: ${result.error.issues[0]?.message ?? 'Invalid value'}`);
+  }
+
+  return result.data;
 }
