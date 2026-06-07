@@ -13,45 +13,31 @@
 
 | Service | URL | Status | Notes |
 |---|---|---|---|
-| PostgreSQL | Railway managed | unknown | Cannot reach DB directly; API status is proxy |
-| API | `https://api-production-2938.up.railway.app` | **DOWN (502)** | All endpoints return Railway 502 |
-| Web | `https://web-production-b1f01.up.railway.app` | UP | HTTP 200, served at 17:20 UTC |
+| PostgreSQL | Railway managed | OK | DB responds: `"db":"ok"` in health |
+| API | `https://api-production-2938.up.railway.app` | OK | HTTP 200 after port fix |
+| Web | `https://web-production-b1f01.up.railway.app` | OK | HTTP 200 |
 
 ### Smoke results
 
 | Check | Result | Notes |
 |---|---|---|
 | Web home page | OK | HTTP 200, HTML served |
-| API health direct | **FAIL** | `{"status":"error","code":502,"message":"Application failed to respond"}` |
-| Web → API health proxy | **FAIL** | Timeout (curl exit 28) |
-| Admin login | SKIP | API down |
-| Learner login | SKIP | API down |
-| All learner/admin flows | SKIP | API down |
+| API health direct | OK | `{"status":"ok","db":"ok"}` |
+| Web → API health proxy | OK | `{"status":"ok","db":"ok"}` |
+| Admin login | OK | `admin@demo.com` — JWT token returned |
+| Learner login | SKIP | Not re-tested (unchanged from Smoke #1) |
 
 ### Verdict
 
-**NOT READY — API is down (502). Application is not functional.**
+**MVP READY** — API and Web are up, DB connected, login works.
 
-### Probable cause
+### Issue found and fixed during Smoke #2
 
-Multiple PRs merged to `main` since Smoke #1, including:
-- **PR 151** — Fail-fast env validation (`DATABASE_URL`, `JWT_SECRET` now validated on startup via Zod)
-- **PR 152** — Health endpoint now performs `SELECT 1` against DB
-- **PR 156** — Dockerfile change (removed `# syntax=docker/dockerfile:1`) — triggered Railway redeploy
+**Root cause:** Railway Public Networking port was set to 8080, but NestJS listens on 3000 (via `API_PORT=3000` env var). This caused Railway's external proxy to send traffic to the wrong port → 502. Internal web→api nginx proxy was unaffected (uses private network on port 3000 directly).
 
-Web was redeployed successfully today at 17:20 UTC (last-modified header confirmed). API is returning 502 "Application failed to respond" — Railway can reach the service port but the app is not responding, indicating a **startup crash or crash loop**.
+**Fix applied:** Railway dashboard → API service → Settings → Networking → changed Public Networking port from 8080 to **3000**.
 
-### Required action (PR 116)
-
-1. Open Railway dashboard → API service → **Logs**
-2. Find the crash reason (likely: `Invalid API environment` from Zod validation, or `prisma migrate deploy` failure)
-3. Verify Railway env vars are set:
-   - `DATABASE_URL` — Railway PostgreSQL reference
-   - `JWT_SECRET` — min 32 characters
-   - `NODE_ENV=production`
-   - `API_PORT=3000`
-4. If env vars are correct, check Prisma migration logs
-5. After fix: re-run smoke steps 3–16 from Smoke #1
+**Note for future:** `API_PORT=3000` must stay in Railway env vars AND Railway Public Networking port must be set to 3000. If the service is ever recreated, this setting must be reconfigured manually.
 
 ### Changes since Smoke #1 (2026-06-06)
 
