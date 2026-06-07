@@ -1461,10 +1461,132 @@
 
 ---
 
+---
+
+# ЧАСТЬ 4в — UI/UX редизайн (PR 163–165)
+
+*Добавлено 2026-06-07. Источник: lms_redesign_proposal_1.html — дизайн-предложение с двумя референсными экранами (Learner Courses + Admin Dashboard). Паттерны переносятся на все 27 страниц приложения.*
+
+---
+
+## PR 163 — Design system: CSS-токены, типографика и shared UI-компоненты 🔲
+
+**Проблема:** Все 27 страниц используют базовый HTML-стиль без единой дизайн-системы. Нет CSS-токенов, нет шрифта, нет переиспользуемых UI-компонентов. Без этого PR 164 и PR 165 невозможны.
+
+**Что делаем:**
+- Подключить шрифт Manrope (self-hosted, без googleapis.com — согласно PR 158)
+- Создать CSS custom properties (токены): цвета (`--c-bg`, `--c-surface`, `--c-primary` и т.д.), тени, радиусы, отступы
+- Реализовать базовые shared UI-компоненты:
+  - `Button` (primary, secondary, ghost)
+  - `Badge` / `Tag` (статусы: published, draft, overdue, done, new)
+  - `Card` (surface + border + shadow)
+  - `Input` + `SearchInput` (с focus ring)
+  - `ProgressBar`
+  - `Avatar` (градиентный круг с инициалами)
+  - `PageHeader` (заголовок + subtitle + actions slot)
+  - `EmptyState` (иконка + текст + опциональный action)
+  - `Spinner` / loading state
+- Создать Learner layout: `LearnerTopNav` (бренд + навигационные ссылки + аватар + logout)
+- Создать Admin layout: `AdminSidebar` (dark sidebar с секциями, nav items, user pill внизу) + `AdminShell`
+- Обновить `adminPage.tsx` — интегрировать новые токены и компоненты
+- Добавить render-тесты на новые shared компоненты
+- Убедиться что `vite build` проходит
+
+**Критерии готовности:**
+- CSS-токены определены в `:root` и используются во всех новых компонентах
+- Шрифт Manrope подключён без внешних CDN-запросов
+- Все перечисленные shared компоненты реализованы и экспортированы из `shared/ui.tsx`
+- `LearnerTopNav` и `AdminSidebar` рендерятся без ошибок — покрыто render-тестами
+- `vite build` завершается без ошибок
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 164 — Admin UI редизайн: все 11 admin-страниц 🔲
+
+**Зависимость:** PR 163 должен быть смержен первым.
+
+**Страницы (11):**
+1. `AdminDashboardPage` — KPI-карточки (пользователи, курсы, сертификаты, просроченные), лента активности, quick links, таблица просроченных заданий
+2. `AdminUsersPage` — таблица пользователей с поиском, фильтрами, пагинацией, действиями
+3. `AdminRolesPage` — список ролей в карточках, управление правами
+4. `AdminOrgStructurePage` — структура организации, дерево/список подразделений
+5. `AdminCourseBuilderPage` — список курсов + редактор: sidebar с модулями/уроками, content area
+6. `AdminLessonsPage` — таблица/карточки уроков с поиском и фильтрами
+7. `AdminMaterialsPage` — таблица/карточки материалов, загрузка файлов
+8. `AdminAssessmentBuilderPage` — конструктор тестов: список вопросов, редактор вопроса, preview
+9. `AdminAssignmentCompletionPage` — таблица назначений с фильтрами по статусу (assigned/done/overdue)
+10. `AdminResultsCertificatesPage` — таблица результатов и выданных сертификатов, export CSV
+11. `AdminThemeSettingsPage` — настройки внешнего вида организации, preview
+
+**Что делаем для каждой страницы:**
+- Применить `AdminSidebar` + `AdminShell` layout из PR 163
+- Применить CSS-токены и shared компоненты (Card, Button, Badge, Table, Input)
+- Реализовать page-specific UI согласно описанию выше
+- Убедиться что все существующие функции (CRUD, API-вызовы) сохранены
+- Обновить или добавить render smoke-тесты
+
+**Критерии готовности:**
+- Все 11 admin-страниц используют новый layout и дизайн-систему
+- `AdminDashboardPage` отображает KPI-секцию и activity feed (с реальными данными или empty state)
+- Ни одна страница не утратила существующую функциональность
+- Desktop layout (≥1024px) — все страницы визуально консистентны
+- Render smoke-тест для каждой страницы — зелёный
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 165 — Learner + Login UI редизайн: 16 страниц 🔲
+
+**Зависимость:** PR 163 должен быть смержен первым.
+
+**Страницы (16):**
+1. `LoginPage` — centered card layout (max-width 480px), show/hide password, autocomplete, aria-labels, error role="alert"
+2. `LearnerHomePage` — приветствие, быстрые действия, прогресс-сводка
+3. `LearnerCoursesPage` — grid карточек курсов с градиентными обложками, прогресс-баром, поиском, фильтрами (Все / В процессе / Завершённые / Не начаты), stat pills
+4. `LearnerCourseDetailPage` — заголовок курса, описание, список уроков с прогрессом, кнопка продолжить
+5. `LearnerLessonsPage` — список уроков с иконками, статусами, прогрессом
+6. `LearnerLessonDetailPage` — контент урока, навигация prev/next, прогресс в курсе
+7. `LearnerLessonMaterialsPage` — список материалов урока с иконками типа файла, download
+8. `LearnerAssessmentsPage` — список тестов с статусами (не начат / пройден / провален)
+9. `LearnerAssessmentDetailPage` — описание теста, кол-во вопросов, попытки, кнопка начать
+10. `LearnerAssessmentTakingPage` — один вопрос на экране, прогресс-бар вопросов, выбор варианта, кнопка далее
+11. `LearnerAssignmentsPage` — список назначений с дедлайнами и статусами, overdue выделены
+12. `LearnerAssignmentDetailPage` — детали назначения, связанный курс, статус, дедлайн
+13. `LearnerCertificatesPage` — grid сертификатов с датой выдачи, кнопка скачать/печать
+14. `LearnerCertificateDetailPage` — красивый сертификат с именем, курсом, датой, кнопка print
+15. `LearnerProgressPage` — общий прогресс по всем курсам, статистика, charts или прогресс-бары
+16. `NotFoundPage` — 404 с кнопкой вернуться
+
+**Что делаем для каждой страницы:**
+- Применить `LearnerTopNav` из PR 163
+- Применить CSS-токены и shared компоненты
+- Реализовать page-specific UI согласно описанию выше
+- Убедиться что все существующие функции сохранены
+- Обновить render smoke-тесты
+
+**Критерии готовности:**
+- Все 16 страниц используют новый layout и дизайн-систему
+- `LearnerCoursesPage` отображает карточки с прогресс-барами, поиском и фильтрами
+- `LearnerAssessmentTakingPage` отображает один вопрос с вариантами — функциональность не нарушена
+- `LoginPage` соответствует критериям PR 155 (max-width, aria, show/hide password)
+- Render smoke-тест для каждой страницы — зелёный
+- lint, typecheck, tests, build — зелёные
+
+---
+
 ## Итоговая карта ЧАСТЬ 4б
 
 ```
 Качество, безопасность, production  PR 151–162  12 PR  🔲 НЕ НАЧАТО
+```
+
+---
+
+## Итоговая карта ЧАСТЬ 4в
+
+```
+UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НАЧАТО
 ```
 
 ---
