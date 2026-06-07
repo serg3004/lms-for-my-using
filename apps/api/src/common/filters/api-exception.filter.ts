@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { ZodError } from 'zod';
 
@@ -129,11 +130,20 @@ function isPrismaKnownRequestError(exception: unknown): exception is PrismaLikeE
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ApiExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const http = host.switchToHttp();
     const response = http.getResponse<HttpResponse>();
     const request = http.getRequest<HttpRequest>();
     const normalizedError = this.normalizeException(exception);
+
+    if (normalizedError.statusCode >= 500) {
+      this.logger.error(
+        { err: exception instanceof Error ? { message: exception.message, name: exception.name } : String(exception) },
+        `${normalizedError.code}: ${normalizedError.message}`,
+      );
+    }
 
     response.status(normalizedError.statusCode).json(
       createApiErrorResponse({

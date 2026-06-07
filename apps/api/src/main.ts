@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Redis } from 'ioredis';
+import { Logger } from 'nestjs-pino';
 
 import { AppModule } from './app.module.js';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter.js';
@@ -19,7 +20,14 @@ type ExpressLikeServer = {
 async function bootstrap(): Promise<void> {
   loadLocalEnvFiles();
   const apiEnv = loadApiEnv();
-  const app = await NestFactory.create(AppModule);
+
+  if (apiEnv.SENTRY_DSN) {
+    const Sentry = await import('@sentry/node');
+    Sentry.init({ dsn: apiEnv.SENTRY_DSN, environment: apiEnv.NODE_ENV });
+  }
+
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
 
   const server = app.getHttpAdapter().getInstance() as ExpressLikeServer;
   if (server.disable) {
