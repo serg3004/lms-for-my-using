@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 export type AdminNavItem = {
   label: string;
@@ -14,12 +14,57 @@ type AdminPageLayoutProps = {
 };
 
 export function AdminPageLayout({ brandLabel, sidebarLabel, navItems, children }: AdminPageLayoutProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
   return (
     <main className="admin-layout">
-      <aside className="admin-sidebar" aria-label={sidebarLabel}>
-        <a className="admin-brand" href="/admin">
-          {brandLabel}
-        </a>
+      <div className="admin-mobile-bar">
+        <button
+          aria-expanded={isOpen}
+          aria-label="Open navigation"
+          className="admin-hamburger"
+          onClick={() => setIsOpen(true)}
+          type="button"
+        >
+          ☰
+        </button>
+        <span className="admin-mobile-brand">{brandLabel}</span>
+      </div>
+
+      {isOpen && (
+        <div
+          aria-hidden="true"
+          className="admin-drawer-backdrop"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <aside
+        aria-label={sidebarLabel}
+        className={`admin-sidebar${isOpen ? ' admin-sidebar--open' : ''}`}
+      >
+        <div className="admin-sidebar-header">
+          <a className="admin-brand" href="/admin">
+            {brandLabel}
+          </a>
+          <button
+            aria-label="Close navigation"
+            className="admin-sidebar-close"
+            onClick={() => setIsOpen(false)}
+            type="button"
+          >
+            ✕
+          </button>
+        </div>
         <nav className="admin-nav">
           {navItems.map((item) => (
             <a
