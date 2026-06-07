@@ -17,6 +17,7 @@ import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
+import { PrismaService } from '../database/prisma.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
 
@@ -179,7 +180,11 @@ describe('API integration scaffold', () => {
         IntegrationAuthTestController,
         SmokeTestController,
       ],
-      providers: [IntegrationAuthGuard, IntegrationOrganizationScopeGuard],
+      providers: [
+        IntegrationAuthGuard,
+        IntegrationOrganizationScopeGuard,
+        { provide: PrismaService, useValue: { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) } },
+      ],
     }).compile();
 
     app = moduleReference.createNestApplication();

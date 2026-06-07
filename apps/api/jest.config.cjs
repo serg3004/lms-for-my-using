@@ -54,6 +54,7 @@ module.exports = {
     '^\\.\\./auth/roles\\.guard\\.js$': '<rootDir>/src/modules/auth/roles.guard.ts',
     '^\\.\\./\\.\\./config/env\\.js$': '<rootDir>/src/config/env.ts',
     '^\\.\\./\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
+    '^\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
