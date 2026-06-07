@@ -36,6 +36,7 @@ async function bootstrap(): Promise<void> {
   app.use(createSensitiveRouteRateLimitMiddleware(rateLimitStore));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ApiExceptionFilter());
+  app.enableShutdownHooks();
 
   await app.listen(apiEnv.API_PORT);
 }
