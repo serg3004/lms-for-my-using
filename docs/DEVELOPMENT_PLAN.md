@@ -1148,12 +1148,18 @@
 - Реализовать отчёт по прогрессу пользователей
 - Реализовать отчёт по выданным сертификатам
 - Реализовать отчёт по просроченным назначениям (если данные доступны)
-- Добавить CSV export если это часть MVP
-- Добавить тесты для access control и empty/data states
+- Добавить CSV export: корректная обработка спецсимволов (запятые, кавычки, переносы строк) и пустых значений
+- Проверить, что export не раскрывает лишние персональные данные (только поля, нужные для отчёта)
+- Добавить print styles для report/certificate views (`@media print`)
+- Проверить empty state export: при пустых данных — понятное сообщение, не пустой CSV
+- Добавить тесты для access control, empty/data states и CSV data transformation
 
 **Критерии готовности:**
 - Минимум один отчёт отображает реальные данные из БД (нет hardcoded mock-данных)
-- Empty state показывает понятное сообщение, а не пустую таблицу
+- CSV корректно обрабатывает спецсимволы и пустые значения — покрыто тестом
+- Export не содержит лишних sensitive данных — проверено по sample ответа
+- Empty state показывает понятное сообщение, а не пустую таблицу или пустой файл
+- Print view не ломает certificate/report — проверено в браузере (Ctrl+P)
 - Learner не имеет доступа к admin-отчётам
 - Документация явно перечисляет, какие отчёты готовы, а какие нет
 
@@ -1398,10 +1404,67 @@
 
 ---
 
+---
+
+## PR 161 — Observability: structured logs, Sentry и error tracking 🔲
+
+**Проблема:** PR 130 обозначен как "production observability" но содержит только 3 строки без конкретных требований. Нет structured logs, secrets не исключаются из логов, нет Sentry/error tracking конфигурации.
+
+**Что делаем:**
+- Выбрать logging strategy для NestJS API (winston, pino или NestJS built-in logger)
+- Добавить structured JSON logs в production mode, human-readable в dev
+- Исключить secrets, tokens, passwords из всех логов
+- Добавить request/error correlation (request ID в логах) без избыточной архитектуры
+- Подключить Sentry или другой error tracking только через env-gated config (`SENTRY_DSN`)
+- Добавить env validation для observability config если вводятся новые env-переменные
+- Проверить, что startup errors логируются безопасно (без DATABASE_URL в plain text)
+- Проверить, что failed requests не раскрывают приватные данные в логах
+- Добавить тест или documented verification на sanitization логов
+- Задокументировать локальное и production поведение логов
+
+**Критерии готовности:**
+- API пишет структурированные JSON-логи в production — проверено в Railway logs
+- Логи не содержат secrets/tokens/passwords — проверено вручную по sample логов
+- Startup errors логируются понятно без sensitive данных
+- Sentry (или аналог) включается только через env — без `SENTRY_DSN` приложение стартует без ошибок
+- Тест или documented checklist на sanitization логов присутствует
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 162 — Final production readiness verification и release gate 🔲
+
+**Проблема:** После выполнения отдельных PR 151–161 нельзя автоматически считать продукт готовым — часть изменений затрагивает API, DB, frontend, UX, observability и legal readiness одновременно. Нужна явная финальная проверка, что всё вместе работает и не создало регрессий.
+
+**Что делаем:**
+- Обновить production readiness checklist в документации
+- Проверить, что все P0/P1 пункты из аудита закрыты или явно перенесены с причиной
+- Запустить полный набор проверок: API lint/typecheck/tests/build, Web lint/typecheck/tests/build
+- Проверить Prisma generate актуален
+- Проверить production build web
+- Проверить базовые smoke flows вручную или через smoke tests: login, learner navigation, admin navigation, health endpoint, certificates/results
+- Проверить env examples актуальны и синхронизированы со схемой
+- Проверить README и deployment docs актуальны
+- Зафиксировать known limitations честно — без маркировки под "готово"
+- Убедиться, что нет критических blockers перед release
+
+**Критерии готовности:**
+- Все P0 пункты закрыты или явно помечены как blocker с причиной
+- Все P1 пункты закрыты или явно перенесены с причиной
+- API lint/typecheck/tests/build — зелёные
+- Web lint/typecheck/tests/build — зелёные
+- Prisma generate выполнен и актуален
+- Smoke flows проверены: login, health, learner, admin, certificates
+- Known limitations задокументированы честно
+- Нет failed critical checks
+- Release readiness статус не выставлен как «готово», если есть critical blockers
+
+---
+
 ## Итоговая карта ЧАСТЬ 4б
 
 ```
-Качество, безопасность, production  PR 151–160  10 PR  🔲 НЕ НАЧАТО
+Качество, безопасность, production  PR 151–162  12 PR  🔲 НЕ НАЧАТО
 ```
 
 ---
