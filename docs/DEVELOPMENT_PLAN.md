@@ -1167,6 +1167,245 @@
 
 ---
 
+# ЧАСТЬ 4б — Качество, безопасность и production-готовность (PR 151–160)
+
+*Добавлено 2026-06-07 на основе аудита готовности репозитория. Источник: lms_audit_pr_work_plan_final.md.*
+
+---
+
+## PR 151 — Fail-fast env validation с тестами 🔲
+
+**Проблема:** PR 62/90 добавили базовую загрузку env, но запуск API без `DATABASE_URL` или с невалидным `NODE_ENV` не завершается с exit code 1 и читаемым сообщением — нет тестов на эти сценарии.
+
+**Что делаем:**
+- Расширить Zod-схему env для API: обязательный `DATABASE_URL`, явная валидация `NODE_ENV` (`development` | `production` | `test`)
+- При невалидном env — завершение с exit code 1 и читаемым сообщением до инициализации Nest
+- Проверить соответствие `.env.example` и `.env.production.example` фактической Zod-схеме
+- Убедиться, что локальные env-файлы не подгружаются в production/CI
+- Добавить тесты: happy path и негативный сценарий невалидного env
+
+**Критерии готовности:**
+- Запуск API без `DATABASE_URL` завершается с exit code 1 и читаемым сообщением — покрыто тестом
+- Запуск API с невалидным `NODE_ENV` завершается с exit code 1 — покрыто тестом
+- `grep` по `.env.example` не находит ключей, отсутствующих в Zod-схеме, и наоборот
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 152 — DB health check: реальная проверка БД 🔲
+
+**Проблема:** `GET /health` возвращает формальный `ok` без проверки соединения с БД — создаёт иллюзию готовности сервиса при недоступной базе.
+
+**Что делаем:**
+- Доработать health endpoint: проверять доступность БД через Prisma (`$queryRaw\`SELECT 1\``)
+- Возвращать явное поле `db: "ok"` при успехе
+- При недоступной БД — возвращать HTTP 503, не 200
+- Добавить graceful shutdown через NestJS lifecycle hooks (`app.enableShutdownHooks()`)
+- Response body health не содержит DATABASE_URL, stack trace или внутренних путей
+- Добавить тест успешного health check и mock-сценарий недоступной БД
+
+**Критерии готовности:**
+- GET /health при доступной БД возвращает HTTP 200 с полем `db: "ok"` — покрыто тестом
+- GET /health при недоступной БД возвращает HTTP 503, не 200 — покрыто mock-сценарием
+- Response body не содержит DATABASE_URL или stack trace — проверено вручную
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 153 — Security audit: публичные endpoints, CORS и формат ошибок 🔲
+
+**Проблема:** Публичные API endpoints не инвентаризированы, формат ошибок может раскрывать stack trace и SQL-текст, CORS не проверен на ограничение по origin. PR 53/118/139 покрывают части, но не проводили сквозной аудит.
+
+**Что делаем:**
+- Инвентаризировать все публичные API endpoints и зафиксировать список
+- Проверить, что каждый публичный endpoint покрыт Zod-валидацией на вход
+- Убедиться, что response body ошибок не содержит stack trace, SQL-текст или внутренние пути
+- Проверить CORS: разрешён только явно указанный frontend origin
+- Проверить CSRF-поведение для небезопасных методов (POST/PATCH/DELETE)
+- Добавить тесты: POST с невалидным body → 400 с понятным сообщением, не 500
+
+**Критерии готовности:**
+- Список публичных endpoints зафиксирован в документации или комментарии PR
+- POST с невалидным body на любой публичный endpoint возвращает 400, не 500 — покрыто тестом
+- Response body ошибок не содержит stack trace, SQL-текст или внутренние пути — проверено по sample ответов
+- CORS разрешает только явно указанный frontend origin — проверено
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 154 — KK локаль: аудит и синхронизация ключей 🔲
+
+**Проблема:** PR 132 покрывает только RU локаль. KK локализация не проверена на полноту — отсутствующие ключи и непереведённые строки не обнаруживаются автоматически.
+
+**Что делаем:**
+- Проверить `kk` локаль на непереведённые или отсутствующие ключи относительно `ru`
+- Синхронизировать ключи между `ru` и `kk` — все ключи `ru` должны присутствовать в `kk`
+- Добавить script-check или тест на missing translation keys
+- Проверить fallback язык — явно задан в конфигурации i18n
+- Проверить loading и error тексты в ProtectedRoute и login flow на обоих языках
+
+**Критерии готовности:**
+- Скрипт или тест проверки ключей не находит ключей, присутствующих в `ru`, но отсутствующих в `kk`
+- Fallback язык явно задан в конфигурации i18n
+- Loading и error тексты в ProtectedRoute и login отображаются на активном языке
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 155 — Login page UX: layout, доступность и responsive 🔲
+
+**Проблема:** Login page функционально работает, но не готова как качественный вход в LMS: нет ограничения ширины формы, не реализован show/hide пароля, accessibility-сценарии не закрыты.
+
+**Что делаем:**
+- Добавить dedicated layout для login page, ограничить ширину формы на desktop (max-width: 400–480px)
+- Проверить mobile поведение формы (viewport 375px)
+- Добавить show/hide password
+- Проверить и исправить: labels, `aria-invalid`, `aria-describedby`, `role="alert"`, `role="status"`
+- Исправить `autocomplete` для полей organization/email/password
+- Проверить focus states и touch targets (≥44×44px)
+- Убедиться, что login redirect не сломан
+- Обновить render/unit тесты login page
+
+**Критерии готовности:**
+- Login form имеет max-width ≤480px на desktop — проверено в браузере
+- На viewport 375px форма не выходит за границы экрана и все поля доступны — проверено в браузере
+- Каждое поле имеет явный `<label>` или `aria-label` — проверено в DevTools
+- Сообщение об ошибке читается screen reader: есть `role="alert"` или `aria-live` — проверено в DevTools
+- Show/hide password кнопка работает корректно
+- Touch targets не менее 44×44px — проверено в DevTools mobile mode
+- Render тест login page зелёный
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 156 — Admin mobile: hamburger и drawer навигация 🔲
+
+**Проблема:** PR 143 упоминает mobile viewport вскользь, но не определяет конкретную реализацию. Admin sidebar на малых экранах не адаптирован: нет hamburger-кнопки и drawer.
+
+**Что делаем:**
+- Добавить mobile hamburger control в `AdminPageLayout`
+- Реализовать drawer/sidebar open-close state
+- Добавить закрытие по overlay и клавише Escape
+- Проверить focus management при открытии/закрытии drawer
+- Убедиться, что desktop sidebar (≥1024px) не изменился визуально
+- Добавить responsive wrappers для admin таблиц: `overflow-x: auto` внутри контейнера
+- Обновить или добавить smoke/render тесты на наличие mobile navigation controls
+
+**Критерии готовности:**
+- На viewport ≤768px admin sidebar скрыт по умолчанию и открывается через hamburger — проверено в браузере
+- Drawer закрывается кликом по overlay и нажатием Escape — проверено в браузере
+- Desktop layout (viewport ≥1024px) не изменён визуально — проверено в браузере
+- Admin таблицы на viewport 375px не вызывают горизонтальный скролл страницы — проверено в браузере
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 157 — Frontend: lazy loading, bundle split и env-driven API base 🔲
+
+**Проблема:** Frontend импортирует страницы статически — learner/admin код попадает в общий bundle без необходимости. API base path захардкожен в коде.
+
+**Что делаем:**
+- Перевести route pages на `React.lazy` там, где это безопасно
+- Добавить `Suspense` fallback с локализованным loading текстом
+- Убедиться, что protected routes и redirects не ломаются
+- Настроить Vite build split/manual chunks для admin и learner зон
+- Перевести API base URL на `VITE_API_BASE_URL` из env
+- Сохранить dev proxy для локального режима
+- Задокументировать frontend env-переменные
+
+**Критерии готовности:**
+- Admin и learner pages присутствуют как отдельные chunks в `dist/assets/` после `vite build` — проверено по именам файлов
+- При медленной загрузке показывается Suspense fallback, а не пустой экран — проверено в браузере (throttle)
+- ProtectedRoute и login redirect работают корректно — покрыто тестами
+- `VITE_API_BASE_URL` читается из env, не захардкожен — `grep -r "api/v1" src/` не находит прямых строк вне env-конфига
+- `vite build` завершается без ошибок
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 158 — SEO/meta, favicon, manifest и шрифт 🔲
+
+**Проблема:** `index.html` минимален: нет `noindex` для приватной LMS, нет favicon, placeholder title и нет корректного подключения шрифта Inter без внешних CDN.
+
+**Что делаем:**
+- Добавить `<meta name="robots" content="noindex,nofollow">` для приватной LMS
+- Уточнить title и description (убрать "Vite App" и placeholder-текст)
+- Добавить favicon
+- Добавить web manifest (или явно зафиксировать решение не добавлять с обоснованием)
+- Добавить theme-color
+- Подключить Inter self-hosted (без запросов к fonts.googleapis.com)
+- Добавить CSS font-family fallback (system fonts → sans-serif)
+- Не добавлять внешние CDN без осознанного решения по privacy
+
+**Критерии готовности:**
+- `<meta name="robots" content="noindex,nofollow">` присутствует в `index.html` — проверено grep
+- Title и description не содержат placeholder-текст — проверено вручную
+- Favicon отображается во вкладке браузера — проверено в браузере
+- Inter подключается без запросов к fonts.googleapis.com — проверено в Network DevTools
+- CSS font-family содержит системный fallback
+- `vite build` завершается без ошибок
+- lint, typecheck, build — зелёные
+
+---
+
+## PR 159 — Accessibility baseline 🔲
+
+**Проблема:** В проекте есть отдельные a11y элементы, но нет подтверждённого baseline по всему приложению: нет skip link, heading hierarchy не проверена, icon-only кнопки могут не иметь aria-label.
+
+**Что делаем:**
+- Добавить skip-to-content link
+- Проверить наличие `<main>` landmark на ключевых страницах
+- Проверить heading hierarchy (h1 → h2 → h3) на admin и learner страницах
+- Проверить focus-visible состояния на всех интерактивных элементах
+- Найти и исправить кнопки без текстового названия (icon-only buttons) — добавить `aria-label`
+- Проверить таблицы admin pages: добавить `caption` или `aria-label`
+- Проверить loading/error states на наличие `aria-live` или `role="alert"`
+- Проверить цветовой контраст для основных текстовых элементов
+- Добавить render тесты на ключевые a11y элементы
+- Зафиксировать оставшиеся manual a11y проверки в `docs/A11Y_MANUAL_CHECKLIST.md`
+
+**Критерии готовности:**
+- Skip-to-content link присутствует и переводит фокус на `<main>` — проверено Tab в браузере
+- Каждая ключевая страница содержит ровно один `<main>` — проверено в DevTools
+- Ни одна страница не имеет пропуска уровней заголовков (h1 → h3 без h2) — проверено axe или вручную
+- Все icon-only кнопки имеют `aria-label` — проверено grep по компонентам
+- Все таблицы имеют `caption` или `aria-label` — покрыто render тестом
+- Loading/error states содержат `aria-live="polite"` или `role="alert"` — покрыто render тестом
+- `docs/A11Y_MANUAL_CHECKLIST.md` содержит список оставшихся manual проверок
+- lint, typecheck, tests, build — зелёные
+
+---
+
+## PR 160 — LICENSE, legal/IP и project naming 🔲
+
+**Проблема:** В репозитории нет `LICENSE` файла. Неясны права на код и обязательства по third-party dependencies. Название `lms-for-my-using` не подходит для production/публичного контура.
+
+**Что делаем:**
+- Определить юридическую модель: private/internal (all rights reserved) или open-source license
+- Добавить `LICENSE` или `NOTICE` файл согласно выбранной модели
+- Добавить раздел «License» в README с явным указанием модели
+- Принять явное решение по переименованию `lms-for-my-using` перед production — зафиксировать в документации
+- Проверить third-party dependency licenses на базовом уровне (`npm licenses list`)
+- Перечислить юридические вопросы вне scope PR, которые остаются за владельцем проекта
+
+**Критерии готовности:**
+- Файл `LICENSE` или `NOTICE` существует в корне репозитория
+- README содержит раздел «License» с явным указанием модели (не placeholder)
+- Решение по `lms-for-my-using` rename явно зафиксировано: переименовать до production или оставить с обоснованием
+- `npm licenses list` не выявляет зависимостей с GPL/AGPL-лицензиями, конфликтующих с выбранной моделью
+- Нет ложного open-source статуса, если проект private/internal
+- lint, typecheck, build — зелёные (если затронуты package/config файлы)
+
+---
+
+## Итоговая карта ЧАСТЬ 4б
+
+```
+Качество, безопасность, production  PR 151–160  10 PR  🔲 НЕ НАЧАТО
+```
+
+---
+
 # ЧАСТЬ 5 — После MVP
 
 *Реализовывать только после успешного запуска MVP на Railway*
