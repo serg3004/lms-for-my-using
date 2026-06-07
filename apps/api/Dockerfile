@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # ---- Base: Node + pnpm ----
 FROM node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
