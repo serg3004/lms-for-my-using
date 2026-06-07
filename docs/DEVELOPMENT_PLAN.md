@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-06-05  
+**Обновлён:** 2026-06-07  
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -742,12 +742,12 @@
 
 ---
 
-## PR 119 — real frontend cleanup одной большой страницы 🔲
+## PR 119 — frontend cleanup: рефактор admin pages ✅
 
-- Выбрать один файл: `AdminMaterialsPage.tsx` или `AdminAssessmentBuilderPage.tsx`
-- Вынести один локальный leaf component/helper
-- Сохранить UX/API/routes/auth behavior
-- Добавить/обновить тесты если затронута логика
+- `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssessmentBuilderPage` переведены на `AdminPageLayout` / `AdminPageHeader` / `AdminCard`
+- Удалён дублирующийся inline sidebar HTML из каждой страницы
+- navItems с `isCurrent` для подсветки активного пункта меню
+- UX/API/routes/auth behavior не затронуты
 
 ---
 
@@ -801,17 +801,21 @@
 
 ---
 
-## PR 126 — coverage threshold 🔲
+## PR 126 — coverage threshold ✅
 
-- Coverage config с threshold для backend/frontend/shared
-- CI gate; baseline threshold реалистичный — не ломать CI искусственно
+- `collectCoverageFrom` добавлен в `apps/api/jest.config.cjs`, исключены `scripts/`, `*.module.ts`, `main.ts`
+- Пороги: statements 60%, branches 45%, functions 60%, lines 60%
+- CI gate активен — падает при снижении ниже порога
+- Фактический coverage: ~69% statements, ~79% branches, ~72% functions
 
 ---
 
-## PR 127 — full Playwright E2E 🔲
+## PR 127 — full Playwright E2E ❌ УДАЛЕНО
 
-- Playwright setup; Learner E2E + Admin E2E
-- Test data strategy; CI job если стабильно
+- Playwright написан, 2 smoke теста, CI job добавлен
+- **Удалён** (`apps/e2e/`, `.github/workflows/e2e.yml`) по решению владельца
+- Причина: Railway cold start race condition — CI стартует раньше чем деплой завершается; flaky тесты добавляли 5–6 минут ожидания без реальной пользы
+- Вместо E2E — unit tests + ручная проверка после деплоя
 
 ---
 
@@ -849,15 +853,321 @@
 
 ```
 БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
-БЛОК 7: Staging                  PR 110–117   8 PR  🔲 НЕ НАЧАТО
-БЛОК 8: Production hardening     PR 118–131  14 PR  🔲 НЕ НАЧАТО
+БЛОК 7: Staging                  PR 110–117   8 PR  🔲 НЕ НАЧАТО (частично устарело)
+БЛОК 8: Production hardening     PR 118–131  14 PR  ⚠️ 119✅ 126✅ 127❌ остальные 🔲
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 3:                               28 PR
 ```
 
+> Примечание: PR 151/152/153 удалены как дубли (покрываются PR 127, 129, 131).
+
 ---
 
-# ЧАСТЬ 4 — После MVP
+# ЧАСТЬ 4 — Новые фичи и архитектура (PR 132–150)
+
+*Добавлено 2026-06-07. Выполнять после стабилизации hardening (PR 118–131).*
+
+---
+
+## PR 132 — Frontend i18n: русский MVP-интерфейс 🔲
+
+- Убрать дубль `Log out` в навигации
+- Перевести все видимые UI-тексты через i18n keys
+- Default язык — `ru`
+- Привести навигацию learner и admin к единому виду
+- Заменить `Course / Lesson` на реальные названия там, где данные уже есть
+
+**Критерии готовности:**
+- `Log out` присутствует в навигации ровно один раз
+- Grep по исходникам не находит hardcoded EN-строк в JSX вне i18n-ключей
+- Приложение запускается с `lang=ru` по умолчанию
+
+---
+
+## PR 133 — Demo content cleanup 🔲
+
+- Исправить идемпотентность seed (upsert вместо create там, где нужно)
+- Заменить все `example.com` ссылки на корректные demo-заглушки
+- Привести названия курсов, уроков и материалов к нормальным русским названиям
+- Применить seed на Railway staging
+
+**Критерии готовности:**
+- Двойной запуск `npx prisma db seed` не увеличивает количество записей
+- Grep по `seed.mjs` не находит `example.com`
+- Staging содержит актуальные demo-данные
+
+---
+
+## PR 134 — Repeatable staging smoke script 🔲
+
+- Написать скрипт (`scripts/smoke.sh` или `scripts/smoke.ts`): API health, Web health, Web→API proxy
+- URL и токены — через env-переменные, без хардкода
+- Написать инструкцию запуска в `scripts/SMOKE.md`
+- Проверить скрипт против реального staging
+
+**Критерии готовности:**
+- Скрипт запускается одной командой и завершается с exit code 0 на staging
+- Все три проверки (API, Web, proxy) явно присутствуют в скрипте
+- `scripts/SMOKE.md` содержит инструкцию с примером команды запуска
+
+---
+
+## PR 135 — Storage/upload: аудит и план внедрения 🔲
+
+- Прочитать текущий upload module и зафиксировать фактическое состояние
+- Сверить `STORAGE_UPLOAD_STATUS.md` с реальным кодом
+- Проверить MinIO/S3 placeholders: что реализовано, что заглушка
+- Написать `STORAGE_PLAN.md` с конкретными шагами, env-переменными, оценкой трудозатрат
+
+**Критерии готовности:**
+- `STORAGE_UPLOAD_STATUS.md` содержит статус каждого метода upload: `implemented` / `stub` / `missing`
+- `STORAGE_PLAN.md` содержит пошаговый план с конкретными env-переменными (без значений) и оценкой в часах
+
+---
+
+## PR 136 — Password reset flow 🔲
+
+- Реализовать request password reset flow
+- Реализовать confirm password reset flow
+- Хранить reset token только в хешированном виде с TTL и флагом одноразовости
+- Не раскрывать, существует ли email в системе (одинаковый ответ для существующего и несуществующего)
+- Добавить Zod-валидацию входных данных
+- Добавить тесты happy path и negative cases
+
+**Критерии готовности:**
+- POST /auth/reset-password-request возвращает одинаковый ответ для существующего и несуществующего email
+- POST /auth/reset-password с валидным токеном меняет пароль
+- Повторное использование токена возвращает 400/410
+- Истёкший токен отклоняется
+- Старый пароль после reset возвращает 401
+
+---
+
+## PR 137 — Refresh token flow и session lifecycle 🔲
+
+*Требует завершённого PR 120.*
+
+- Спроектировать access token + refresh token lifecycle
+- Добавить refresh endpoint
+- Хранить refresh token в httpOnly cookie
+- Оставить access token короткоживущим
+- Реализовать rotation refresh token
+- Добавить тесты: refresh, expired refresh, revoked refresh, invalid refresh
+
+**Критерии готовности:**
+- POST /auth/refresh с валидным refresh token возвращает новый access token
+- POST /auth/refresh с истёкшим/revoked токеном возвращает 401
+- Refresh token недоступен из JavaScript (`document.cookie` не содержит refresh token)
+- Существующие POST /auth/login и GET /auth/me не сломаны
+
+---
+
+## PR 138 — Roles in JWT: архитектурное решение 🔲
+
+- Проанализировать текущую модель ролей и membership
+- Выбрать один подход: DB-backed roles или roles в JWT
+- Зафиксировать решение как `docs/ADR_ROLES_IN_JWT.md`
+- Если роли в JWT — обновить sign/verify/current-user flow и покрыть тестами
+- Если DB-backed — зафиксировать как осознанный trade-off
+
+**Критерии готовности:**
+- Файл `docs/ADR_ROLES_IN_JWT.md` существует с явным выбором и обоснованием
+- Role guard behavior покрыт тестами в обоих случаях
+
+---
+
+## PR 139 — Rate limiting: кастомный middleware или Nest Throttler 🔲
+
+- Сравнить текущий custom rate limiter с `@nestjs/throttler`
+- Выбрать: оставить custom middleware или мигрировать на ThrottlerModule
+- Зафиксировать решение в `docs/ADR_RATE_LIMITING.md`
+- Покрыть тестами auth/register/reset endpoints (429 при превышении)
+- Зафиксировать fallback behavior при недоступном Redis
+
+**Критерии готовности:**
+- `docs/ADR_RATE_LIMITING.md` содержит явный выбор с обоснованием
+- Auth/register/reset endpoints возвращают 429 после превышения лимита
+
+---
+
+## PR 140 — OpenAPI generation через Nest Swagger 🔲
+
+- Добавить `@nestjs/swagger`
+- Подключить Swagger/OpenAPI generation в backend
+- Описать основные DTO/response/error contracts
+- Настроить генерацию OpenAPI документа
+- Удалить или пометить deprecated устаревший ручной OpenAPI-файл
+
+**Критерии готовности:**
+- GET /api-json (или аналог) возвращает валидный OpenAPI JSON
+- Все публичные и защищённые endpoints присутствуют в спецификации
+- Auth requirements (Bearer token) отражены в спецификации
+
+---
+
+## PR 141 — Frontend data loading architecture 🔲
+
+- Выбрать подход: `@tanstack/react-query` или внутренний data-loading hook
+- Зафиксировать выбор в `docs/ADR_DATA_LOADING.md`
+- Вынести общий паттерн загрузки данных
+- Применить к минимум 3 страницам с повторяющимся паттерном
+- Добавить тесты для loading/success/error states
+
+**Критерии готовности:**
+- `docs/ADR_DATA_LOADING.md` содержит выбор и обоснование
+- Минимум 3 страницы используют новый паттерн
+- Grep подтверждает отсутствие дублирующего `useEffect + try/catch` в этих файлах
+
+---
+
+## PR 142 — UI foundation: design system decision 🔲
+
+- Проанализировать текущие `global.css`, `ui.css`, `admin.css`
+- Выбрать направление: Tailwind/shadcn или CSS design system
+- Зафиксировать решение в `docs/ADR_DESIGN_SYSTEM.md`
+- Привести базовые UI primitives (button, input, badge) к единому виду
+- Добавить минимальные render tests для базовых компонентов
+
+**Критерии готовности:**
+- `docs/ADR_DESIGN_SYSTEM.md` содержит явный выбор с обоснованием
+- Button, input, badge имеют единообразный внешний вид во всех местах использования
+- Каждый базовый primitive покрыт минимум одним render тестом
+
+---
+
+## PR 143 — Shared application layout 🔲
+
+- Создать или актуализировать общий Layout компонент
+- Вынести sidebar/topbar из отдельных страниц в Layout
+- Реализовать role-aware navigation для learner и admin
+- Определить поведение для manager/instructor (если роли есть, но зоны не готовы)
+- Убрать дублирующуюся навигацию на страницах, где это безопасно
+
+**Критерии готовности:**
+- Grep по страницам не находит дублирующих навигационных компонентов вне Layout
+- Learner видит только learner-навигацию, admin — только admin-навигацию
+- Mobile viewport (≤768px) не ломает layout
+
+---
+
+## PR 144 — Manager workspace 🔲
+
+- Определить реальные MVP-сценарии manager
+- Добавить routes для manager workspace
+- Реализовать dashboard, team progress view, overdue view
+- Если API не хватает — явно включить backend changes или вынести отдельный PR
+- Добавить тесты render/data states и access control
+
+**Критерии готовности:**
+- Manager при логине попадает в отдельную зону, недоступную learner и admin
+- Данные в dashboard берутся из реального API (нет hardcoded mock-данных)
+- ProtectedRoute корректно ограничивает доступ для других ролей
+
+---
+
+## PR 145 — Instructor workspace 🔲
+
+- Определить границы instructor MVP
+- Добавить instructor routes
+- Реализовать список курсов инструктора или явно зафиксировать отсутствие backend ownership model
+- Не смешивать instructor workspace с admin-only behavior
+- Добавить access tests и обновить role/navigation docs
+
+**Критерии готовности:**
+- Instructor видит только свои курсы, не чужие
+- Instructor не имеет доступа к admin-only routes
+- Role/navigation docs обновлены и соответствуют реальным routes
+
+---
+
+## PR 146 — Curator role: решение по доменной модели 🔲
+
+- Решить, нужна ли роль `curator` (в Prisma enum её нет)
+- Если нужна — подготовить Prisma migration, обновить guards, policies, seed, tests
+- Если не нужна — убрать curator из roadmap/docs и заменить на существующую роль
+- Зафиксировать решение в `docs/ADR_CURATOR_ROLE.md`
+
+**Критерии готовности:**
+- `docs/ADR_CURATOR_ROLE.md` существует с явным решением и обоснованием
+- Нет расхождения между Prisma enum и документацией по ролям
+
+---
+
+## PR 147 — DB-backed organization theme 🔲
+
+- Спроектировать `OrganizationTheme` модель
+- Добавить Prisma migration
+- Добавить API: GET /theme и PATCH /theme (только для admin)
+- Подключить frontend к реальным данным темы
+- Добавить fallback default theme при отсутствии записи в БД
+- Добавить тесты для API и применения темы во frontend
+
+**Критерии готовности:**
+- `prisma migrate deploy` выполняется без ошибок
+- PATCH /theme от learner возвращает 403
+- Frontend применяет тему из API (нет hardcoded цветов/токенов в компонентах)
+- При отсутствии записи в БД отображается default theme
+
+---
+
+## PR 148 — Admin appearance page alignment 🔲
+
+*Требует завершённого PR 147.*
+
+- Выбрать canonical route: `/admin/theme-settings` или `/admin/appearance`
+- Привести navigation и docs к выбранному route
+- Подключить страницу к DB-backed theme из PR 147
+- Убрать fake save — если backend не готов, кнопка Save явно неактивна или отсутствует
+
+**Критерии готовности:**
+- В codebase существует ровно один canonical route для appearance
+- Save реально сохраняет настройки в БД
+- Нет кнопки Save, которая не делает ничего или показывает фиктивный success
+
+---
+
+## PR 149 — Certificate PDF generation/download 🔲
+
+- Выбрать способ PDF generation (puppeteer, pdfkit, браузерный print-to-pdf)
+- Реализовать backend или frontend PDF generation — без fake download
+- Добавить endpoint или UI action для скачивания
+- Проверить access: пользователь видит только свои сертификаты
+- Добавить тесты для access control и not found cases
+
+**Критерии готовности:**
+- GET /certificates/:id/pdf возвращает валидный PDF (Content-Type: application/pdf)
+- GET /certificates/:id/pdf чужого сертификата возвращает 403
+- GET /certificates/:id/pdf несуществующего сертификата возвращает 404
+- PDF содержит имя пользователя, название курса и дату выдачи
+
+---
+
+## PR 150 — Reports and analytics MVP 🔲
+
+- Определить минимальный reports MVP
+- Реализовать отчёт по прогрессу пользователей
+- Реализовать отчёт по выданным сертификатам
+- Реализовать отчёт по просроченным назначениям (если данные доступны)
+- Добавить CSV export если это часть MVP
+- Добавить тесты для access control и empty/data states
+
+**Критерии готовности:**
+- Минимум один отчёт отображает реальные данные из БД (нет hardcoded mock-данных)
+- Empty state показывает понятное сообщение, а не пустую таблицу
+- Learner не имеет доступа к admin-отчётам
+- Документация явно перечисляет, какие отчёты готовы, а какие нет
+
+---
+
+## Итоговая карта ЧАСТЬ 4
+
+```
+Новые фичи и архитектура         PR 132–150  19 PR  🔲 НЕ НАЧАТО
+```
+
+---
+
+# ЧАСТЬ 5 — После MVP
 
 *Реализовывать только после успешного запуска MVP на Railway*
 
