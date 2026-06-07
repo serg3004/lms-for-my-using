@@ -55,6 +55,7 @@ module.exports = {
     '^\\.\\./\\.\\./config/env\\.js$': '<rootDir>/src/config/env.ts',
     '^\\.\\./\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
     '^\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
+    '^\\.\\./common/middleware/api-hardening\\.js$': '<rootDir>/src/common/middleware/api-hardening.ts',
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
