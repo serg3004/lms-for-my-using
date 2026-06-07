@@ -137,6 +137,46 @@ describe('ApiExceptionFilter', () => {
         message: 'Internal server error',
       },
     });
+    expect(JSON.stringify(host.getJsonBody())).not.toContain('secret database detail');
+  });
+
+  it('normalizes Prisma P2002 unique constraint errors to 409 without leaking DB message', () => {
+    const filter = new ApiExceptionFilter();
+    const host = createHost();
+    const prismaError = {
+      code: 'P2002',
+      message: 'Unique constraint failed on the fields: (`email`)',
+      name: 'PrismaClientKnownRequestError',
+    };
+
+    filter.catch(prismaError, host.host);
+
+    expect(host.getStatusCode()).toBe(409);
+    expect(host.getJsonBody()).toMatchObject({
+      statusCode: 409,
+      error: { code: 'CONFLICT', message: 'Unique constraint failed' },
+    });
+    expect(JSON.stringify(host.getJsonBody())).not.toContain('email');
+  });
+
+  it('normalizes unknown Prisma errors to 400 without leaking DB error message', () => {
+    const filter = new ApiExceptionFilter();
+    const host = createHost();
+    const prismaError = {
+      code: 'P2015',
+      message: "A related record could not be found. {model_name='User'} {where: id = 'abc'}",
+      name: 'PrismaClientKnownRequestError',
+    };
+
+    filter.catch(prismaError, host.host);
+
+    expect(host.getStatusCode()).toBe(400);
+    expect(host.getJsonBody()).toMatchObject({
+      statusCode: 400,
+      error: { code: 'DATABASE_ERROR', message: 'Database request failed' },
+    });
+    expect(JSON.stringify(host.getJsonBody())).not.toContain('User');
+    expect(JSON.stringify(host.getJsonBody())).not.toContain('abc');
   });
 
   it('formats bad request message arrays', () => {
