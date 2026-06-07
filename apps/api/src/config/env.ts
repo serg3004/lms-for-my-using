@@ -23,6 +23,8 @@ const apiEnvSchema = z.object({
   FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
   REDIS_URL: z.string().url().optional(),
+  SENTRY_DSN: z.string().url().optional(),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

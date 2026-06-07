@@ -27,6 +27,7 @@ describe('API environment validation', () => {
       API_PORT: 3001,
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
+      LOG_LEVEL: 'info',
     });
   });
 
