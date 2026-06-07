@@ -1,38 +1,91 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
-
-import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage.js';
-import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage.js';
-import { AdminCourseBuilderPage } from './AdminCourseBuilderPage.js';
-import { AdminDashboardPage } from './AdminDashboardPage.js';
-import { AdminLessonsPage } from './AdminLessonsPage.js';
-import { AdminMaterialsPage } from './AdminMaterialsPage.js';
-import { AdminOrgStructurePage } from './AdminOrgStructurePage.js';
-import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage.js';
-import { AdminRolesPage } from './AdminRolesPage.js';
-import { AdminThemeSettingsPage } from './AdminThemeSettingsPage.js';
-import { AdminUsersPage } from './AdminUsersPage.js';
-import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage.js';
-import { LearnerAssessmentTakingPage } from './LearnerAssessmentTakingPage.js';
-import { LearnerAssessmentsPage } from './LearnerAssessmentsPage.js';
-import { LearnerAssignmentDetailPage } from './LearnerAssignmentDetailPage.js';
-import { LearnerAssignmentsPage } from './LearnerAssignmentsPage.js';
-import { LearnerCertificateDetailPage } from './LearnerCertificateDetailPage.js';
-import { LearnerCertificatesPage } from './LearnerCertificatesPage.js';
-import { LearnerCourseDetailPage } from './LearnerCourseDetailPage.js';
-import { LearnerCoursesPage } from './LearnerCoursesPage.js';
-import { LearnerHomePage } from './LearnerHomePage.js';
-import { LearnerLessonDetailPage } from './LearnerLessonDetailPage.js';
-import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage.js';
-import { LearnerLessonsPage } from './LearnerLessonsPage.js';
-import { LearnerProgressPage } from './LearnerProgressPage.js';
-import { LoginPage } from './LoginPage.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 import { getCurrentUser, type CurrentUser, type UserRole } from '../shared/apiClient.js';
+
+// Lazy-loaded page chunks — each route loads its own JS chunk on first visit
+const AdminAssessmentBuilderPage = lazy(() =>
+  import('./AdminAssessmentBuilderPage.js').then((m) => ({ default: m.AdminAssessmentBuilderPage })),
+);
+const AdminAssignmentCompletionPage = lazy(() =>
+  import('./AdminAssignmentCompletionPage.js').then((m) => ({ default: m.AdminAssignmentCompletionPage })),
+);
+const AdminCourseBuilderPage = lazy(() =>
+  import('./AdminCourseBuilderPage.js').then((m) => ({ default: m.AdminCourseBuilderPage })),
+);
+const AdminDashboardPage = lazy(() =>
+  import('./AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })),
+);
+const AdminLessonsPage = lazy(() =>
+  import('./AdminLessonsPage.js').then((m) => ({ default: m.AdminLessonsPage })),
+);
+const AdminMaterialsPage = lazy(() =>
+  import('./AdminMaterialsPage.js').then((m) => ({ default: m.AdminMaterialsPage })),
+);
+const AdminOrgStructurePage = lazy(() =>
+  import('./AdminOrgStructurePage.js').then((m) => ({ default: m.AdminOrgStructurePage })),
+);
+const AdminResultsCertificatesPage = lazy(() =>
+  import('./AdminResultsCertificatesPage.js').then((m) => ({ default: m.AdminResultsCertificatesPage })),
+);
+const AdminRolesPage = lazy(() =>
+  import('./AdminRolesPage.js').then((m) => ({ default: m.AdminRolesPage })),
+);
+const AdminThemeSettingsPage = lazy(() =>
+  import('./AdminThemeSettingsPage.js').then((m) => ({ default: m.AdminThemeSettingsPage })),
+);
+const AdminUsersPage = lazy(() =>
+  import('./AdminUsersPage.js').then((m) => ({ default: m.AdminUsersPage })),
+);
+const LearnerAssessmentDetailPage = lazy(() =>
+  import('./LearnerAssessmentDetailPage.js').then((m) => ({ default: m.LearnerAssessmentDetailPage })),
+);
+const LearnerAssessmentTakingPage = lazy(() =>
+  import('./LearnerAssessmentTakingPage.js').then((m) => ({ default: m.LearnerAssessmentTakingPage })),
+);
+const LearnerAssessmentsPage = lazy(() =>
+  import('./LearnerAssessmentsPage.js').then((m) => ({ default: m.LearnerAssessmentsPage })),
+);
+const LearnerAssignmentDetailPage = lazy(() =>
+  import('./LearnerAssignmentDetailPage.js').then((m) => ({ default: m.LearnerAssignmentDetailPage })),
+);
+const LearnerAssignmentsPage = lazy(() =>
+  import('./LearnerAssignmentsPage.js').then((m) => ({ default: m.LearnerAssignmentsPage })),
+);
+const LearnerCertificateDetailPage = lazy(() =>
+  import('./LearnerCertificateDetailPage.js').then((m) => ({ default: m.LearnerCertificateDetailPage })),
+);
+const LearnerCertificatesPage = lazy(() =>
+  import('./LearnerCertificatesPage.js').then((m) => ({ default: m.LearnerCertificatesPage })),
+);
+const LearnerCourseDetailPage = lazy(() =>
+  import('./LearnerCourseDetailPage.js').then((m) => ({ default: m.LearnerCourseDetailPage })),
+);
+const LearnerCoursesPage = lazy(() =>
+  import('./LearnerCoursesPage.js').then((m) => ({ default: m.LearnerCoursesPage })),
+);
+const LearnerHomePage = lazy(() =>
+  import('./LearnerHomePage.js').then((m) => ({ default: m.LearnerHomePage })),
+);
+const LearnerLessonDetailPage = lazy(() =>
+  import('./LearnerLessonDetailPage.js').then((m) => ({ default: m.LearnerLessonDetailPage })),
+);
+const LearnerLessonMaterialsPage = lazy(() =>
+  import('./LearnerLessonMaterialsPage.js').then((m) => ({ default: m.LearnerLessonMaterialsPage })),
+);
+const LearnerLessonsPage = lazy(() =>
+  import('./LearnerLessonsPage.js').then((m) => ({ default: m.LearnerLessonsPage })),
+);
+const LearnerProgressPage = lazy(() =>
+  import('./LearnerProgressPage.js').then((m) => ({ default: m.LearnerProgressPage })),
+);
+const LoginPage = lazy(() =>
+  import('./LoginPage.js').then((m) => ({ default: m.LoginPage })),
+);
 
 type RootNavigationItem = {
   labelKey: string;
@@ -312,49 +365,51 @@ export function App() {
       protectedPathPrefixes={['/learn', '/admin']}
       canAccess={(user) => !pathname.startsWith('/admin') || user.roles.some(isAdminNavigationRole)}
     >
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
 
-        <Route path="/admin" element={<AdminDashboardRoute />} />
-        <Route path="/admin/users" element={<AdminUsersRoute />} />
-        <Route path="/admin/roles" element={<AdminRolesRoute />} />
-        <Route path="/admin/org-structure" element={<AdminOrgStructureRoute />} />
-        <Route path="/admin/theme-settings" element={<AdminThemeSettingsRoute />} />
-        <Route path="/admin/courses" element={<AdminCoursesRoute />} />
-        <Route path="/admin/lessons" element={<AdminLessonsRoute />} />
-        <Route path="/admin/materials" element={<AdminMaterialsRoute />} />
-        <Route path="/admin/assessments" element={<AdminAssessmentsRoute />} />
-        <Route path="/admin/assignments" element={<AdminAssignmentsRoute />} />
-        <Route path="/admin/results" element={<AdminResultsRoute />} />
+          <Route path="/admin" element={<AdminDashboardRoute />} />
+          <Route path="/admin/users" element={<AdminUsersRoute />} />
+          <Route path="/admin/roles" element={<AdminRolesRoute />} />
+          <Route path="/admin/org-structure" element={<AdminOrgStructureRoute />} />
+          <Route path="/admin/theme-settings" element={<AdminThemeSettingsRoute />} />
+          <Route path="/admin/courses" element={<AdminCoursesRoute />} />
+          <Route path="/admin/lessons" element={<AdminLessonsRoute />} />
+          <Route path="/admin/materials" element={<AdminMaterialsRoute />} />
+          <Route path="/admin/assessments" element={<AdminAssessmentsRoute />} />
+          <Route path="/admin/assignments" element={<AdminAssignmentsRoute />} />
+          <Route path="/admin/results" element={<AdminResultsRoute />} />
 
-        <Route path="/learn" element={<LearnerHomeRoute />} />
-        <Route path="/learn/courses" element={<LearnerCoursesRoute />} />
-        <Route path="/learn/progress" element={<LearnerProgressRoute />} />
-        <Route path="/learn/assignments" element={<LearnerAssignmentsRoute />} />
-        <Route path="/learn/assessments" element={<LearnerAssessmentsRoute />} />
-        <Route path="/learn/certificates" element={<LearnerCertificatesRoute />} />
+          <Route path="/learn" element={<LearnerHomeRoute />} />
+          <Route path="/learn/courses" element={<LearnerCoursesRoute />} />
+          <Route path="/learn/progress" element={<LearnerProgressRoute />} />
+          <Route path="/learn/assignments" element={<LearnerAssignmentsRoute />} />
+          <Route path="/learn/assessments" element={<LearnerAssessmentsRoute />} />
+          <Route path="/learn/certificates" element={<LearnerCertificatesRoute />} />
 
-        <Route path="/learn/certificates/:certificateId" element={<LearnerCertificateDetailRoute />} />
-        <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
-        <Route path="/learn/assessments/:assessmentId" element={<LearnerAssessmentDetailRoute />} />
-        <Route path="/learn/assignments/:assignmentId" element={<LearnerAssignmentDetailRoute />} />
-        <Route path="/learn/lessons/:lessonId/materials" element={<LearnerLessonMaterialsRoute />} />
-        <Route path="/learn/lessons/:lessonId" element={<LearnerLessonDetailRoute />} />
-        <Route path="/learn/courses/:courseId/lessons" element={<LearnerCourseLessonsRoute />} />
-        <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
+          <Route path="/learn/certificates/:certificateId" element={<LearnerCertificateDetailRoute />} />
+          <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
+          <Route path="/learn/assessments/:assessmentId" element={<LearnerAssessmentDetailRoute />} />
+          <Route path="/learn/assignments/:assignmentId" element={<LearnerAssignmentDetailRoute />} />
+          <Route path="/learn/lessons/:lessonId/materials" element={<LearnerLessonMaterialsRoute />} />
+          <Route path="/learn/lessons/:lessonId" element={<LearnerLessonDetailRoute />} />
+          <Route path="/learn/courses/:courseId/lessons" element={<LearnerCourseLessonsRoute />} />
+          <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
 
-        <Route
-          path="/"
-          element={
-            <main>
-              <h1>{t('app.title')}</h1>
-              <p>{t('app.subtitle')}</p>
-              <RootNavigation />
-            </main>
-          }
-        />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+          <Route
+            path="/"
+            element={
+              <main>
+                <h1>{t('app.title')}</h1>
+                <p>{t('app.subtitle')}</p>
+                <RootNavigation />
+              </main>
+            }
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </ProtectedRoute>
   );
 }
