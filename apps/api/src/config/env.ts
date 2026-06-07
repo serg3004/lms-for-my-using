@@ -17,6 +17,8 @@ type LocalEnvLoadOptions = {
 };
 
 const apiEnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  DATABASE_URL: z.string().url(),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
   FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
   JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
@@ -117,6 +119,14 @@ export function loadApiEnv(env = process.env): ApiEnv {
   return parsedResult.data;
 }
 
+const jwtSecretSchema = z.string().min(JWT_SECRET_MIN_LENGTH);
+
 export function getJwtSecret(env = process.env): string {
-  return loadApiEnv(env).JWT_SECRET;
+  const result = jwtSecretSchema.safeParse(env['JWT_SECRET']);
+
+  if (!result.success) {
+    throw new Error(`Invalid API environment: JWT_SECRET: ${result.error.issues[0]?.message ?? 'Invalid value'}`);
+  }
+
+  return result.data;
 }
