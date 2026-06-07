@@ -13,6 +13,8 @@
     "submit": "Sign in",
     "submitting": "Signing in...",
     "success": "Signed in. Opening learner area.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "errors": {
       "generic": "Unable to sign in. Try again."
     }
