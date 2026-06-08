@@ -3,6 +3,7 @@ updates:
   # GitHub Actions — weekly, all grouped
   - package-ecosystem: github-actions
     directory: /
+    open-pull-requests-limit: 1
     schedule:
       interval: weekly
       day: monday
@@ -14,6 +15,7 @@ updates:
   # npm/pnpm root workspace
   - package-ecosystem: npm
     directory: /
+    open-pull-requests-limit: 1
     schedule:
       interval: weekly
       day: monday
@@ -24,18 +26,34 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "globals"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript-eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "turbo"
+        update-types: ["version-update:semver-major"]
     groups:
       root-dev:
         dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
 
   # API workspace
   - package-ecosystem: npm
     directory: /apps/api
+    open-pull-requests-limit: 1
     schedule:
       interval: weekly
-      day: monday
+      day: tuesday
     ignore:
       - dependency-name: "prisma"
         update-types: ["version-update:semver-major"]
@@ -43,22 +61,43 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@nestjs/cli"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@nestjs/testing"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       api-dev:
         dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
       api-prod:
         dependency-type: production
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
 
   # Web workspace
   - package-ecosystem: npm
     directory: /apps/web
+    open-pull-requests-limit: 1
     schedule:
       interval: weekly
-      day: monday
+      day: wednesday
     ignore:
       - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
@@ -66,12 +105,30 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "i18next"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       web-dev:
         dependency-type: development
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
       web-prod:
         dependency-type: production
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
