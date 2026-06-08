@@ -76,6 +76,7 @@ module.exports = {
       lines: 60,
     },
   },
+  transformIgnorePatterns: ['node_modules/(?!(jose)/)'],
   transform: {
     '^.+\\.ts$': [
       'ts-jest',
