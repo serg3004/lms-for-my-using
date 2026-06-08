@@ -48,13 +48,13 @@ importers:
         version: 3.1061.0
       '@nestjs/common':
         specifier: ^11.1.24
-        version: 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^11.1.24
-        version: 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.24)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.25)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/platform-express':
         specifier: ^11.1.24
-        version: 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)
+        version: 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -69,7 +69,7 @@ importers:
         version: 6.2.3
       nestjs-pino:
         specifier: ^4.6.1
-        version: 4.6.1(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
+        version: 4.6.1(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
       pino-http:
         specifier: ^11.0.0
         version: 11.0.0
@@ -91,7 +91,7 @@ importers:
         version: 10.4.9
       '@nestjs/testing':
         specifier: ^11.1.24
-        version: 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)(@nestjs/platform-express@11.1.24)
+        version: 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)(@nestjs/platform-express@11.1.25)
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
@@ -120,8 +120,8 @@ importers:
   apps/web:
     dependencies:
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.7.0(vite@8.0.16(@types/node@22.19.19)(jiti@2.7.0)(terser@5.48.0))
+        specifier: ^6.0.2
+        version: 6.0.2(vite@8.0.16(@types/node@22.19.19)(jiti@2.7.0)(terser@5.48.0))
       i18next:
         specifier: ^26.3.1
         version: 26.3.1(typescript@6.0.3)
@@ -306,8 +306,8 @@ packages:
     resolution: {integrity: sha512-YjS0qFuECClRh4qhEyW8XagW0fwEPBeZ1cfsW/gU73Kh/ExFILxbzxOfPCmzF/2DwEvhvsHYt0b0qnvStwKYrg==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/util-locate-window@3.965.6':
-    resolution: {integrity: sha512-ZfHjfwSzeXj+Lg9AK5ZNmeDkXev6V+w2tn1t4kgDdRtUaRCthepTQiFwbD06EF9oNGH4LaLg+Mb6U16Ypv5bSw==}
+  '@aws-sdk/util-locate-window@3.965.5':
+    resolution: {integrity: sha512-WhlJNNINQB+9qtLtZJcpQdgZw3SCDCpXdUJP7cToGwHbCWCnRckGlc6Bx/OhWwIYFNAn+FIydY8SZ0QmVu3xTQ==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/xml-builder@3.972.27':
@@ -472,20 +472,8 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
-  '@babel/plugin-transform-react-jsx-self@7.27.1':
-    resolution: {integrity: sha512-6UzkCs+ejGdZ5mFFC/OCUrv028ab2fp1znZmCZjAOBKiBK2jXD1O+BPSfX8X2qjJ75fZBMSnQn3Rq2mrBJK2mw==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-
-  '@babel/plugin-transform-react-jsx-source@7.27.1':
-    resolution: {integrity: sha512-zbwoTsBruTeKB9hSq73ha66iFeJHuaFkUbwvqElnygoNbj/jHRsSeokowZFN3CZ64IvEqcmmkVe89OPXc7ldAw==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-
-  '@babel/runtime@7.29.7':
-    resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
+  '@babel/runtime@7.29.2':
+    resolution: {integrity: sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==}
     engines: {node: '>=6.9.0'}
 
   '@babel/template@7.28.6':
@@ -724,8 +712,8 @@ packages:
       '@swc/core':
         optional: true
 
-  '@nestjs/common@11.1.24':
-    resolution: {integrity: sha512-9zHxaDDM+oXW9As6UsP5yYB+UqczBmpeSCIFWdPEtEukMnZhxODG1BBjaUcdBB8Sc1uzojSJSJlp3yFp853t1g==}
+  '@nestjs/common@11.1.25':
+    resolution: {integrity: sha512-eObNI89zpPEHQWr9BxD5yQe6hcDjzT6sj/jng1tWBL4GXEgZzrVYOnFA4pzk1ZvDNHa3z7GD2Yy0Z06Ihv9y6g==}
     peerDependencies:
       class-transformer: '>=0.4.1'
       class-validator: '>=0.13.2'
@@ -737,8 +725,8 @@ packages:
       class-validator:
         optional: true
 
-  '@nestjs/core@11.1.24':
-    resolution: {integrity: sha512-K4bzT+lEdd0Hhcsw3jtk56QAW6s6skK3ViN7hIROSN0kUf4ROwWEAKopJID6yhPQxB45kDtP2wEcjzE8171J3g==}
+  '@nestjs/core@11.1.25':
+    resolution: {integrity: sha512-tkpoJlSB1CPGWHzEw3AyiUZhazngzhzKw14DbF9Rb5Ny50GP0zV6diTFkahob+HqzDDVjK/2DTt41OMFa4lK5w==}
     engines: {node: '>= 20'}
     peerDependencies:
       '@nestjs/common': ^11.0.0
@@ -755,8 +743,8 @@ packages:
       '@nestjs/websockets':
         optional: true
 
-  '@nestjs/platform-express@11.1.24':
-    resolution: {integrity: sha512-CeMKbRBm05aOBiWhIHWO2xDeHbxynBF9ySQv3gRjObz2N5+uJnYriAYkHvVqvC4JIydmMPmT5VdICFNlNz3qyA==}
+  '@nestjs/platform-express@11.1.25':
+    resolution: {integrity: sha512-a4f4WIGG8oCF4lwh7SlVOZXif0EwC4fsM/JZY5/X7OkHd8rp7Dxnx+sB2lwKAtnP6A29os/IPdH2Rll+wVJ6Qg==}
     peerDependencies:
       '@nestjs/common': ^11.0.0
       '@nestjs/core': ^11.0.0
@@ -766,8 +754,8 @@ packages:
     peerDependencies:
       typescript: '>=4.8.2'
 
-  '@nestjs/testing@11.1.24':
-    resolution: {integrity: sha512-+4M4UAnhtprBQN0J2uI6IP0wDqhy9aH8XCMu5SO8oCi0oB04YXA4a4PAEkxmsPn7gHW4dj1u4GFteNQOWgvTJw==}
+  '@nestjs/testing@11.1.25':
+    resolution: {integrity: sha512-rvTXbeT6e2IMMShT7aKtbjSE3i3nbS8hejszpjQd5IR1Sh674U/KJ8EioqyI01vcGDbph2fopdzRMsyaeZuyPg==}
     peerDependencies:
       '@nestjs/common': ^11.0.0
       '@nestjs/core': ^11.0.0
@@ -781,11 +769,6 @@ packages:
 
   '@nodable/entities@2.1.1':
     resolution: {integrity: sha512-Pig3HxDIoMgjdEH8OCf/dkcTmLFjJRjWuq8jSnklu284/TKOPibSRERmOykiwmyXTtv61mP+44f3GMx0tLAyjg==}
-
-  '@nuxt/opencollective@0.4.1':
-    resolution: {integrity: sha512-GXD3wy50qYbxCJ652bDrDzgMr3NFEkIS374+IgFQKkCvk9yiYcLvX2XDYr7UyQxf4wK0e+yqDYRubZ0DtOxnmQ==}
-    engines: {node: ^14.18.0 || >=16.10.0, npm: '>=5.10.0'}
-    hasBin: true
 
   '@opentelemetry/api-logs@0.214.0':
     resolution: {integrity: sha512-40lSJeqYO8Uz2Yj7u94/SJWE/wONa7rmMKjI1ZcIjgf3MHNHv1OZUCrCETGuaRF62d5pQD1wKIW+L4lmSMTzZA==}
@@ -947,9 +930,6 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
-
-  '@rolldown/pluginutils@1.0.0-beta.27':
-    resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
@@ -1238,11 +1218,18 @@ packages:
     resolution: {integrity: sha512-U3gxVaDVnuZKhSspW/MzMxE1kq7zOdc072FcSNoqA1I9p8HyKbBFfEHoWckBAMgNMph4MamwS5iTVzFmrnt8TQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@vitejs/plugin-react@4.7.0':
-    resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
-    engines: {node: ^14.18.0 || >=16.0.0}
+  '@vitejs/plugin-react@6.0.2':
+    resolution: {integrity: sha512-DlSMqo4WhThw4vB8Mpn0Woe9J+Jfq1geJ61AKW0QEgLzGMNwtIMdxbDUzLxcun8W7NbJO0e2Jg/Nxm3cCSVzzg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
-      vite: '>=6.4.2'
+      '@rolldown/plugin-babel': ^0.1.7 || ^0.2.0
+      babel-plugin-react-compiler: ^1.0.0
+      vite: ^8.0.0
+    peerDependenciesMeta:
+      '@rolldown/plugin-babel':
+        optional: true
+      babel-plugin-react-compiler:
+        optional: true
 
   '@vitest/coverage-v8@4.1.8':
     resolution: {integrity: sha512-lt3kovsyHwYe00wq4D1ti0Z974fWj4NLp6siqiyEufUpyFwK9Yhi7rBhac9JL5aA0zoMrJqc4vYPZRUnI7l7nw==}
@@ -2187,10 +2174,6 @@ packages:
     resolution: {integrity: sha512-ej4AhfhfL2Q2zpMmLo7U1Uv9+PyhIZpgQLGT1F9miIGmiCJIoCgSmczFdrc97mWT4kVY72KA+WnnhJ5pghSvSg==}
     engines: {node: '>= 0.4'}
 
-  hasown@2.0.4:
-    resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
-    engines: {node: '>= 0.4'}
-
   help-me@5.0.0:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
@@ -3059,10 +3042,6 @@ packages:
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
 
-  react-refresh@0.17.0:
-    resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
-    engines: {node: '>=0.10.0'}
-
   react-router-dom@7.17.0:
     resolution: {integrity: sha512-fyU2yjGups/hE6Xz0I5ZYbVL8Gx29eCjgpHaRaTaVU+OOAdfRX05KsvyRm0GO8YQwOkhpU3MurW1jyMUJn+zSw==}
     engines: {node: '>=20.0.0'}
@@ -3841,7 +3820,7 @@ snapshots:
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
-      '@aws-sdk/types': 3.973.11
+      '@aws-sdk/types': 3.973.10
       tslib: 2.8.1
 
   '@aws-crypto/crc32c@5.2.0':
@@ -3855,7 +3834,7 @@ snapshots:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
       '@aws-sdk/types': 3.973.11
-      '@aws-sdk/util-locate-window': 3.965.6
+      '@aws-sdk/util-locate-window': 3.965.5
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
@@ -3865,7 +3844,7 @@ snapshots:
       '@aws-crypto/supports-web-crypto': 5.2.0
       '@aws-crypto/util': 5.2.0
       '@aws-sdk/types': 3.973.11
-      '@aws-sdk/util-locate-window': 3.965.6
+      '@aws-sdk/util-locate-window': 3.965.5
       '@smithy/util-utf8': 2.3.0
       tslib: 2.8.1
 
@@ -4088,7 +4067,7 @@ snapshots:
       '@smithy/types': 4.14.3
       tslib: 2.8.1
 
-  '@aws-sdk/util-locate-window@3.965.6':
+  '@aws-sdk/util-locate-window@3.965.5':
     dependencies:
       tslib: 2.8.1
 
@@ -4270,17 +4249,7 @@ snapshots:
       '@babel/core': 7.29.0
       '@babel/helper-plugin-utils': 7.28.6
 
-  '@babel/plugin-transform-react-jsx-self@7.27.1(@babel/core@7.29.0)':
-    dependencies:
-      '@babel/core': 7.29.0
-      '@babel/helper-plugin-utils': 7.28.6
-
-  '@babel/plugin-transform-react-jsx-source@7.27.1(@babel/core@7.29.0)':
-    dependencies:
-      '@babel/core': 7.29.0
-      '@babel/helper-plugin-utils': 7.28.6
-
-  '@babel/runtime@7.29.7': {}
+  '@babel/runtime@7.29.2': {}
 
   '@babel/template@7.28.6':
     dependencies:
@@ -4666,7 +4635,7 @@ snapshots:
       - uglify-js
       - webpack-cli
 
-  '@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)':
+  '@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
       file-type: 21.3.4
       iterare: 1.2.1
@@ -4678,10 +4647,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@nestjs/core@11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.24)(reflect-metadata@0.2.2)(rxjs@7.8.2)':
+  '@nestjs/core@11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.25)(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
-      '@nestjs/common': 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nuxt/opencollective': 0.4.1
+      '@nestjs/common': 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
       fast-safe-stringify: 2.1.1
       iterare: 1.2.1
       path-to-regexp: 8.4.2
@@ -4690,12 +4658,12 @@ snapshots:
       tslib: 2.8.1
       uid: 2.0.2
     optionalDependencies:
-      '@nestjs/platform-express': 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)
+      '@nestjs/platform-express': 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)
 
-  '@nestjs/platform-express@11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)':
+  '@nestjs/platform-express@11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)':
     dependencies:
-      '@nestjs/common': 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core': 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.24)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/common': 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.25)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       cors: 2.8.6
       express: 5.2.1
       multer: 2.1.1
@@ -4715,19 +4683,15 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@nestjs/testing@11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)(@nestjs/platform-express@11.1.24)':
+  '@nestjs/testing@11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)(@nestjs/platform-express@11.1.25)':
     dependencies:
-      '@nestjs/common': 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@nestjs/core': 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.24)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/common': 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@11.1.25)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       tslib: 2.8.1
     optionalDependencies:
-      '@nestjs/platform-express': 11.1.24(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.24)
+      '@nestjs/platform-express': 11.1.25(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.25)
 
   '@nodable/entities@2.1.1': {}
-
-  '@nuxt/opencollective@0.4.1':
-    dependencies:
-      consola: 3.4.2
 
   '@opentelemetry/api-logs@0.214.0':
     dependencies:
@@ -4851,8 +4815,6 @@ snapshots:
 
   '@rolldown/binding-win32-x64-msvc@1.0.3':
     optional: true
-
-  '@rolldown/pluginutils@1.0.0-beta.27': {}
 
   '@rolldown/pluginutils@1.0.1': {}
 
@@ -5195,17 +5157,10 @@ snapshots:
       '@typescript-eslint/types': 8.59.4
       eslint-visitor-keys: 5.0.1
 
-  '@vitejs/plugin-react@4.7.0(vite@8.0.16(@types/node@22.19.19)(jiti@2.7.0)(terser@5.48.0))':
+  '@vitejs/plugin-react@6.0.2(vite@8.0.16(@types/node@22.19.19)(jiti@2.7.0)(terser@5.48.0))':
     dependencies:
-      '@babel/core': 7.29.0
-      '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.0)
-      '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.29.0)
-      '@rolldown/pluginutils': 1.0.0-beta.27
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.17.0
+      '@rolldown/pluginutils': 1.0.1
       vite: 8.0.16(@types/node@22.19.19)(jiti@2.7.0)(terser@5.48.0)
-    transitivePeerDependencies:
-      - supports-color
 
   '@vitest/coverage-v8@4.1.8(vitest@4.1.8)':
     dependencies:
@@ -6199,7 +6154,7 @@ snapshots:
       get-proto: 1.0.1
       gopd: 1.2.0
       has-symbols: 1.1.0
-      hasown: 2.0.4
+      hasown: 2.0.3
       math-intrinsics: 1.1.0
 
   get-package-type@0.1.0: {}
@@ -6273,10 +6228,6 @@ snapshots:
   has-symbols@1.1.0: {}
 
   hasown@2.0.3:
-    dependencies:
-      function-bind: 1.1.2
-
-  hasown@2.0.4:
     dependencies:
       function-bind: 1.1.2
 
@@ -7015,9 +6966,9 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  nestjs-pino@4.6.1(@nestjs/common@11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2):
+  nestjs-pino@4.6.1(@nestjs/common@11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2))(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2):
     dependencies:
-      '@nestjs/common': 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/common': 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
       pino: 10.3.1
       pino-http: 11.0.0
       rxjs: 7.8.2
@@ -7277,7 +7228,7 @@ snapshots:
 
   react-i18next@17.0.8(i18next@26.3.1(typescript@6.0.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3):
     dependencies:
-      '@babel/runtime': 7.29.7
+      '@babel/runtime': 7.29.2
       html-parse-stringify: 3.0.1
       i18next: 26.3.1(typescript@6.0.3)
       react: 19.2.7
@@ -7287,8 +7238,6 @@ snapshots:
       typescript: 6.0.3
 
   react-is@18.3.1: {}
-
-  react-refresh@0.17.0: {}
 
   react-router-dom@7.17.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
