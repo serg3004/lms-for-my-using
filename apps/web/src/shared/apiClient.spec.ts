@@ -142,7 +142,10 @@ describe('apiRequest', () => {
     await apiRequest('/auth/me');
 
     const requestInit = fetchMock.mock.calls[0]?.[1];
-    const headers = requestInit.headers as Headers;
+
+    expect(requestInit).toBeDefined();
+
+    const headers = requestInit?.headers as Headers;
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/auth/me',
