@@ -3,11 +3,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest } from './apiClient';
 
 afterEach(() => {
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 function mockFetch(response: Response) {
-  vi.stubGlobal('fetch', vi.fn(async () => response));
+  const fetchMock = vi.fn<typeof fetch>(async () => response);
+  vi.stubGlobal('fetch', fetchMock);
+
+  return fetchMock;
+}
+
+function createStorageStub() {
+  const storage = new Map<string, string>();
+
+  return {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+    clear: () => storage.clear(),
+  };
 }
 
 describe('apiRequest', () => {
@@ -119,6 +134,42 @@ describe('apiRequest', () => {
       code: 'HTTP_ERROR',
       response: null,
     });
+  });
+
+  it('does not attach legacy bearer tokens from browser storage', async () => {
+    const localStorage = createStorageStub();
+    const sessionStorage = createStorageStub();
+
+    localStorage.setItem('authToken', 'legacy-auth-token');
+    localStorage.setItem('token', 'legacy-token');
+    sessionStorage.setItem('authToken', 'legacy-session-auth-token');
+    sessionStorage.setItem('token', 'legacy-session-token');
+
+    vi.stubGlobal('localStorage', localStorage);
+    vi.stubGlobal('sessionStorage', sessionStorage);
+
+    const fetchMock = mockFetch(
+      new Response(JSON.stringify({ id: 'user-1', roles: ['learner'] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await apiRequest('/auth/me');
+
+    const requestInit = fetchMock.mock.calls[0]?.[1];
+
+    expect(requestInit).toBeDefined();
+
+    const headers = requestInit?.headers as Headers;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/me',
+      expect.objectContaining({
+        credentials: 'same-origin',
+      }),
+    );
+    expect(headers.has('Authorization')).toBe(false);
   });
 
   it('returns successful JSON responses', async () => {
