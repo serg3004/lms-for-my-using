@@ -1,6 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -34,12 +36,17 @@ function findUserLabel(users: User[], userId: string) {
 }
 
 export function AdminResultsCertificatesPage() {
+  const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentId, setAssessmentId] = useState('');
   const [assessmentAttemptId, setAssessmentAttemptId] = useState('');
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({ status: 'idle' });
+
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.results.title', 'Results'), href: '/admin/results', isCurrent: true },
+  ];
 
   const loadData = useCallback(async (nextAssessmentId?: string) => {
     try {
@@ -62,11 +69,11 @@ export function AdminResultsCertificatesPage() {
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 401
-          ? 'Your session expired. Sign in again.'
-          : 'Unable to load results dashboard.';
+          ? t('admin.results.sessionExpired', 'Your session expired. Sign in again.')
+          : t('admin.results.loadError', 'Unable to load results dashboard.');
       setLoadState({ status: 'error', message });
     }
-  }, [assessmentId]);
+  }, [assessmentId, t]);
 
   useEffect(() => {
     void loadData();
@@ -107,8 +114,8 @@ export function AdminResultsCertificatesPage() {
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
-          ? 'Certificate is already issued for this learner and course.'
-          : 'Unable to issue certificate.';
+          ? t('admin.results.alreadyIssued', 'Certificate is already issued for this learner and course.')
+          : t('admin.results.issueError', 'Unable to issue certificate.');
       setSubmitState({ status: 'error', message });
     }
   }
@@ -116,7 +123,7 @@ export function AdminResultsCertificatesPage() {
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message="Loading results dashboard..." variant="loading" />
+        <PageState message={t('admin.results.loading', 'Loading results dashboard...')} variant="loading" />
       </main>
     );
   }
@@ -124,159 +131,140 @@ export function AdminResultsCertificatesPage() {
   if (loadState.status === 'error') {
     return (
       <main className="admin-state">
-        <PageState title="Results dashboard" message={loadState.message} variant="error" />
+        <PageState title={t('admin.results.title', 'Results')} message={loadState.message} variant="error" />
       </main>
     );
   }
 
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">
-          Admin
-        </a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/assignments">
-            Assignments
-          </a>
-          <a className="admin-nav-link" href="/admin/results" aria-current="page">
-            Results
-          </a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.results.title', 'Results')}
+        subtitle={t('admin.results.subtitle', 'Review learner progress, assessment results, and issue certificates.')}
+      />
 
-      <section className="admin-shell">
-        <header className="admin-topbar">
-          <div>
-            <h1>Results dashboard</h1>
-            <p>Review learner progress, assessment results, and issue certificates.</p>
-          </div>
-          <a href="/admin">Back to dashboard</a>
-        </header>
-
-        <section className="admin-content-grid">
-          <article className="admin-card">
-            <h2>Issue certificate</h2>
-            {loadState.courses.length === 0 || loadState.users.length === 0 ? (
-              <EmptyState message="Create at least one course and user before issuing certificates." />
-            ) : (
-              <form onSubmit={issueCertificate}>
-                <label>
-                  Course
-                  <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-                    {loadState.courses.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Learner
-                  <select value={userId} onChange={(event) => setUserId(event.target.value)}>
-                    {loadState.users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name || user.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Assessment attempt ID
-                  <input value={assessmentAttemptId} onChange={(event) => setAssessmentAttemptId(event.target.value)} />
-                </label>
-                {submitState.status === 'error' ? <p role="alert">{submitState.message}</p> : null}
-                <button type="submit" disabled={submitState.status === 'saving'}>
-                  {submitState.status === 'saving' ? 'Issuing...' : 'Issue certificate'}
-                </button>
-              </form>
-            )}
-          </article>
-
-          <article className="admin-card">
-            <h2>Assessment results</h2>
-            {loadState.assessments.length === 0 ? (
-              <EmptyState message="No assessments found." />
-            ) : (
-              <>
-                <label>
-                  Assessment
-                  <select value={assessmentId} onChange={(event) => void handleAssessmentChange(event.target.value)}>
-                    {loadState.assessments.map((assessment) => (
-                      <option key={assessment.id} value={assessment.id}>
-                        {assessment.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {loadState.assessmentResults.length === 0 ? (
-                  <EmptyState message="No assessment results found." />
-                ) : (
-                  <table>
-                    <tbody>
-                      {loadState.assessmentResults.map((result) => (
-                        <tr key={result.id}>
-                          <td>{findUserLabel(loadState.users, result.userId)}</td>
-                          <td>
-                            {result.score}/{result.maxScore} ´ {result.percentage}%
-                          </td>
-                          <td>
-                            <StatusBadge>{result.passed ? 'passed' : 'failed'}</StatusBadge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </>
-            )}
-          </article>
-
-          <article className="admin-card">
-            <h2>Course progress</h2>
-            {loadState.progressItems.length === 0 ? (
-              <EmptyState message="No progress records found." />
-            ) : (
-              <table>
-                <tbody>
-                  {loadState.progressItems.map((progress) => (
-                    <tr key={progress.id}>
-                      <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
-                      <td>{findUserLabel(loadState.users, progress.userId)}</td>
-                      <td>
-                        <StatusBadge>{progress.status}</StatusBadge>
-                      </td>
-                      <td>{progress.score ?? 'No score'}</td>
-                    </tr>
+      <section className="admin-content-grid">
+        <AdminCard>
+          <h2>{t('admin.results.issueCertTitle', 'Issue certificate')}</h2>
+          {loadState.courses.length === 0 || loadState.users.length === 0 ? (
+            <EmptyState message={t('admin.results.noData', 'Create at least one course and user before issuing certificates.')} />
+          ) : (
+            <form onSubmit={issueCertificate}>
+              <label>
+                {t('admin.results.course', 'Course')}
+                <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+                  {loadState.courses.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            )}
-          </article>
-
-          <article className="admin-card">
-            <h2>Issued certificates</h2>
-            {loadState.certificates.length === 0 ? (
-              <EmptyState message="No certificates issued yet." />
-            ) : (
-              <table>
-                <tbody>
-                  {loadState.certificates.map((certificate) => (
-                    <tr key={certificate.id}>
-                      <td>{findCourseTitle(loadState.courses, certificate.courseId)}</td>
-                      <td>{findUserLabel(loadState.users, certificate.userId)}</td>
-                      <td>
-                        <StatusBadge>{certificate.status}</StatusBadge>
-                      </td>
-                      <td>{new Date(certificate.issuedAt).toLocaleDateString()}</td>
-                    </tr>
+                </select>
+              </label>
+              <label>
+                {t('admin.results.learner', 'Learner')}
+                <select value={userId} onChange={(event) => setUserId(event.target.value)}>
+                  {loadState.users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name || user.email}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            )}
-          </article>
-        </section>
+                </select>
+              </label>
+              <label>
+                {t('admin.results.attemptId', 'Assessment attempt ID')}
+                <input value={assessmentAttemptId} onChange={(event) => setAssessmentAttemptId(event.target.value)} />
+              </label>
+              {submitState.status === 'error' ? <p role="alert">{submitState.message}</p> : null}
+              <button type="submit" disabled={submitState.status === 'saving'}>
+                {submitState.status === 'saving'
+                  ? t('admin.results.issuing', 'Issuing...')
+                  : t('admin.results.issue', 'Issue certificate')}
+              </button>
+            </form>
+          )}
+        </AdminCard>
+
+        <AdminCard>
+          <h2>{t('admin.results.assessmentResultsTitle', 'Assessment results')}</h2>
+          {loadState.assessments.length === 0 ? (
+            <EmptyState message={t('admin.results.noAssessments', 'No assessments found.')} />
+          ) : (
+            <>
+              <label>
+                {t('admin.results.assessment', 'Assessment')}
+                <select value={assessmentId} onChange={(event) => void handleAssessmentChange(event.target.value)}>
+                  {loadState.assessments.map((assessment) => (
+                    <option key={assessment.id} value={assessment.id}>
+                      {assessment.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {loadState.assessmentResults.length === 0 ? (
+                <EmptyState message={t('admin.results.noResults', 'No assessment results found.')} />
+              ) : (
+                <table>
+                  <tbody>
+                    {loadState.assessmentResults.map((result) => (
+                      <tr key={result.id}>
+                        <td>{findUserLabel(loadState.users, result.userId)}</td>
+                        <td>{result.score}/{result.maxScore} · {result.percentage}%</td>
+                        <td>
+                          <StatusBadge>{result.passed ? 'passed' : 'failed'}</StatusBadge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </>
+          )}
+        </AdminCard>
+
+        <AdminCard>
+          <h2>{t('admin.results.progressTitle', 'Course progress')}</h2>
+          {loadState.progressItems.length === 0 ? (
+            <EmptyState message={t('admin.results.noProgress', 'No progress records found.')} />
+          ) : (
+            <table>
+              <tbody>
+                {loadState.progressItems.map((progress) => (
+                  <tr key={progress.id}>
+                    <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
+                    <td>{findUserLabel(loadState.users, progress.userId)}</td>
+                    <td><StatusBadge>{progress.status}</StatusBadge></td>
+                    <td>{progress.score ?? t('admin.results.noScore', 'No score')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </AdminCard>
+
+        <AdminCard>
+          <h2>{t('admin.results.certificatesTitle', 'Issued certificates')}</h2>
+          {loadState.certificates.length === 0 ? (
+            <EmptyState message={t('admin.results.noCertificates', 'No certificates issued yet.')} />
+          ) : (
+            <table>
+              <tbody>
+                {loadState.certificates.map((certificate) => (
+                  <tr key={certificate.id}>
+                    <td>{findCourseTitle(loadState.courses, certificate.courseId)}</td>
+                    <td>{findUserLabel(loadState.users, certificate.userId)}</td>
+                    <td><StatusBadge>{certificate.status}</StatusBadge></td>
+                    <td>{new Date(certificate.issuedAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </AdminCard>
       </section>
-    </main>
+    </AdminPageLayout>
   );
 }
