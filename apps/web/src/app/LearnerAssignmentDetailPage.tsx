@@ -86,37 +86,37 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('assignments.loadingDetail')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('assignments.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assignments.detailTitle')}
           message={loadState.message}
           variant="error"
           action={assignmentsAction}
         />
-      </main>
+      </>
     );
   }
 
   const courseTitle = getCourseTitle(loadState.assignment, 'Course');
 
   return (
-    <main>
+    <>
       <nav>
         <a href="/learn/assignments">{t('assignments.navLink')}</a>
         <a href={getCourseHref(loadState.assignment.courseId)}>{courseTitle}</a>
@@ -137,6 +137,6 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
           <dd>{formatNullableDate(loadState.assignment.dueAt, t('assignments.notAvailable'))}</dd>
         </dl>
       </article>
-    </main>
+    </>
   );
 }

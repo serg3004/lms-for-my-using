@@ -79,40 +79,40 @@ export function LearnerAssignmentsPage() {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('assignments.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assignments.title')}
           message={loadState.message}
           variant="error"
           action={<a href="/login">{t('login.navLink')}</a>}
         />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assignments.title')}
           message={loadState.message}
           variant="error"
           action={<a href="/learn">{t('learner.navLink')}</a>}
         />
-      </main>
+      </>
     );
   }
 
   return (
-    <main>
+    <>
       <nav>
         <a href="/learn">{t('learner.navLink')}</a>
       </nav>
@@ -148,6 +148,6 @@ export function LearnerAssignmentsPage() {
           ))}
         </ul>
       )}
-    </main>
+    </>
   );
 }

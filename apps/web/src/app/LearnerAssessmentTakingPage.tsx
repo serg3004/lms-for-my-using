@@ -165,25 +165,25 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
   if (loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('assessments.takeLoading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('assessments.takeTitle')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState title={t('assessments.takeTitle')} message={loadState.message} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />
-      </main>
+      </>
     );
   }
 
@@ -193,7 +193,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
     return (
-      <main className="learner-quiz">
+      <div className="learner-quiz">
         <nav className="learner-breadcrumb">
           <a href="/learn/assessments">{t('assessments.navLink')}</a>
           <span>›</span>
@@ -256,12 +256,12 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
             </button>
           ) : null}
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="learner-quiz">
+    <div className="learner-quiz">
       <nav className="learner-breadcrumb">
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
         <span>›</span>
@@ -354,6 +354,6 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
           </div>
         </form>
       )}
-    </main>
+    </div>
   );
 }

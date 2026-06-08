@@ -75,40 +75,40 @@ export function LearnerAssessmentsPage() {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('assessments.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assessments.title')}
           message={loadState.message}
           variant="error"
           action={loginAction}
         />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assessments.title')}
           message={loadState.message}
           variant="error"
           action={learnerAction}
         />
-      </main>
+      </>
     );
   }
 
   return (
-    <main>
+    <>
       <nav>
         <a href="/learn">{t('learner.navLink')}</a>
       </nav>
@@ -143,6 +143,6 @@ export function LearnerAssessmentsPage() {
           ))}
         </ul>
       )}
-    </main>
+    </>
   );
 }

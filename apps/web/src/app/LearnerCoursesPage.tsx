@@ -96,35 +96,35 @@ export function LearnerCoursesPage() {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('courses.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState
           title={t('courses.title')}
           message={loadState.message}
           variant="error"
           action={<a href="/login">{t('login.navLink')}</a>}
         />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState title={t('courses.title')} message={loadState.message} variant="error" />
-      </main>
+      </>
     );
   }
 
   return (
-    <main>
+    <>
       <h1>{t('courses.title')}</h1>
       <nav>
         <a href="/learn">{t('learner.navLink')}</a>
@@ -135,6 +135,6 @@ export function LearnerCoursesPage() {
         emptyMessage={t('courses.empty')}
         statusLabel={t('courses.status')}
       />
-    </main>
+    </>
   );
 }

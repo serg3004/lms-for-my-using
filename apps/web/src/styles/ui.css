@@ -1314,6 +1314,14 @@
   }
 }
 
+/* ── Learner shell (main content area) ───────────────────────────────────── */
+
+.learner-shell {
+  width: min(1120px, calc(100% - var(--space-page) * 2));
+  margin: 0 auto;
+  padding: 32px 0 48px;
+}
+
 /* ── Print ───────────────────────────────────────────────────────────────── */
 
 @media print {

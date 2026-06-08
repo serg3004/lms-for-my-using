@@ -85,30 +85,30 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('materials.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('materials.title')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState title={t('materials.title')} message={loadState.message} variant="error" action={coursesAction} />
-      </main>
+      </>
     );
   }
 
   return (
-    <main>
+    <>
       <nav>
         <a href={getLessonHref(loadState.lesson.id)}>{t('lessonDetail.title')}</a>
         <a href={getCourseLessonsHref(loadState.lesson.courseId)}>{t('lessons.navLink')}</a>
@@ -151,6 +151,6 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
           ))}
         </ul>
       )}
-    </main>
+    </>
   );
 }

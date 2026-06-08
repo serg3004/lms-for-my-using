@@ -89,30 +89,30 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('assessments.loadingDetail')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('assessments.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState
           title={t('assessments.detailTitle')}
           message={loadState.message}
           variant="error"
           action={assessmentsAction}
         />
-      </main>
+      </>
     );
   }
 
@@ -121,7 +121,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
   const takeHref = `/learn/assessments/${encodeURIComponent(loadState.assessment.id)}/take`;
 
   return (
-    <main>
+    <>
       <nav>
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
         <a href={getCourseHref(loadState.assessment.courseId)}>{courseTitle}</a>
@@ -167,6 +167,6 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </a>
         ) : null}
       </article>
-    </main>
+    </>
   );
 }
