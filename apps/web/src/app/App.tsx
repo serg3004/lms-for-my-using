@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Link, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 import { getCurrentUser, type CurrentUser, type UserRole } from '../shared/apiClient.js';
+import { LearnerPageLayout } from '../shared/learnerLayout.js';
 
 // Lazy-loaded page chunks — each route loads its own JS chunk on first visit
 const AdminAssessmentBuilderPage = lazy(() =>
@@ -183,11 +184,6 @@ function useAdminRoot() {
   return { t, adminRoot: { label: t('admin.navLink', 'Admin'), href: '/admin' } };
 }
 
-function useLearnerRoot() {
-  const { t } = useTranslation();
-  return { t, learnerRoot: { label: t('learner.navLink'), href: '/learn' } };
-}
-
 // Admin route components
 function AdminDashboardRoute() {
   const { adminRoot } = useAdminRoot();
@@ -244,116 +240,82 @@ function AdminResultsRoute() {
   return renderWithBreadcrumbs(<AdminResultsCertificatesPage />, [adminRoot, { label: t('results.title', 'Results') }]);
 }
 
+function LearnerLayoutRoute() {
+  return <LearnerPageLayout><Outlet /></LearnerPageLayout>;
+}
+
 // Learner route components — static
 function LearnerHomeRoute() {
-  const { learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerHomePage />, [{ ...learnerRoot, href: undefined }]);
+  return <LearnerHomePage />;
 }
 
 function LearnerCoursesRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerCoursesPage />, [learnerRoot, { label: t('courses.title') }]);
+  return <LearnerCoursesPage />;
 }
 
 function LearnerProgressRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerProgressPage />, [learnerRoot, { label: t('progress.title') }]);
+  return <LearnerProgressPage />;
 }
 
 function LearnerAssignmentsRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerAssignmentsPage />, [learnerRoot, { label: t('assignments.title') }]);
+  return <LearnerAssignmentsPage />;
 }
 
 function LearnerAssessmentsRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerAssessmentsPage />, [learnerRoot, { label: t('assessments.title') }]);
+  return <LearnerAssessmentsPage />;
 }
 
 function LearnerCertificatesRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
-  return renderWithBreadcrumbs(<LearnerCertificatesPage />, [learnerRoot, { label: t('certificates.title') }]);
+  return <LearnerCertificatesPage />;
 }
 
 // Learner route components — dynamic (use useParams)
 function LearnerCertificateDetailRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { certificateId } = useParams<{ certificateId: string }>();
   if (!certificateId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerCertificateDetailPage certificateId={certificateId} />,
-    [learnerRoot, { label: t('certificates.title'), href: '/learn/certificates' }, { label: t('certificates.detailTitle', 'Certificate') }],
-  );
+  return <LearnerCertificateDetailPage certificateId={certificateId} />;
 }
 
 function LearnerAssessmentTakingRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { assessmentId } = useParams<{ assessmentId: string }>();
   if (!assessmentId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerAssessmentTakingPage assessmentId={assessmentId} />,
-    [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.takeTitle', 'Taking') }],
-  );
+  return <LearnerAssessmentTakingPage assessmentId={assessmentId} />;
 }
 
 function LearnerAssessmentDetailRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { assessmentId } = useParams<{ assessmentId: string }>();
   if (!assessmentId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerAssessmentDetailPage assessmentId={assessmentId} />,
-    [learnerRoot, { label: t('assessments.title'), href: '/learn/assessments' }, { label: t('assessments.detailTitle', 'Assessment') }],
-  );
+  return <LearnerAssessmentDetailPage assessmentId={assessmentId} />;
 }
 
 function LearnerAssignmentDetailRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { assignmentId } = useParams<{ assignmentId: string }>();
   if (!assignmentId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerAssignmentDetailPage assignmentId={assignmentId} />,
-    [learnerRoot, { label: t('assignments.title'), href: '/learn/assignments' }, { label: t('assignments.detailTitle', 'Assignment') }],
-  );
+  return <LearnerAssignmentDetailPage assignmentId={assignmentId} />;
 }
 
 function LearnerLessonMaterialsRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { lessonId } = useParams<{ lessonId: string }>();
   if (!lessonId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerLessonMaterialsPage lessonId={lessonId} />,
-    [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('materials.title', 'Materials') }],
-  );
+  return <LearnerLessonMaterialsPage lessonId={lessonId} />;
 }
 
 function LearnerLessonDetailRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { lessonId } = useParams<{ lessonId: string }>();
   if (!lessonId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerLessonDetailPage lessonId={lessonId} />,
-    [learnerRoot, { label: t('lessons.title', 'Lessons') }, { label: t('lessons.detailTitle', 'Lesson') }],
-  );
+  return <LearnerLessonDetailPage lessonId={lessonId} />;
 }
 
 function LearnerCourseLessonsRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { courseId } = useParams<{ courseId: string }>();
   if (!courseId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerLessonsPage courseId={courseId} />,
-    [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('lessons.title', 'Lessons') }],
-  );
+  return <LearnerLessonsPage courseId={courseId} />;
 }
 
 function LearnerCourseDetailRoute() {
-  const { t, learnerRoot } = useLearnerRoot();
   const { courseId } = useParams<{ courseId: string }>();
   if (!courseId) return <NotFoundPage />;
-  return renderWithBreadcrumbs(
-    <LearnerCourseDetailPage courseId={courseId} />,
-    [learnerRoot, { label: t('courses.title'), href: '/learn/courses' }, { label: t('courses.detailTitle', 'Course') }],
-  );
+  return <LearnerCourseDetailPage courseId={courseId} />;
 }
 
 export function App() {
@@ -381,21 +343,22 @@ export function App() {
           <Route path="/admin/assignments" element={<AdminAssignmentsRoute />} />
           <Route path="/admin/results" element={<AdminResultsRoute />} />
 
-          <Route path="/learn" element={<LearnerHomeRoute />} />
-          <Route path="/learn/courses" element={<LearnerCoursesRoute />} />
-          <Route path="/learn/progress" element={<LearnerProgressRoute />} />
-          <Route path="/learn/assignments" element={<LearnerAssignmentsRoute />} />
-          <Route path="/learn/assessments" element={<LearnerAssessmentsRoute />} />
-          <Route path="/learn/certificates" element={<LearnerCertificatesRoute />} />
-
-          <Route path="/learn/certificates/:certificateId" element={<LearnerCertificateDetailRoute />} />
-          <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
-          <Route path="/learn/assessments/:assessmentId" element={<LearnerAssessmentDetailRoute />} />
-          <Route path="/learn/assignments/:assignmentId" element={<LearnerAssignmentDetailRoute />} />
-          <Route path="/learn/lessons/:lessonId/materials" element={<LearnerLessonMaterialsRoute />} />
-          <Route path="/learn/lessons/:lessonId" element={<LearnerLessonDetailRoute />} />
-          <Route path="/learn/courses/:courseId/lessons" element={<LearnerCourseLessonsRoute />} />
-          <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
+          <Route element={<LearnerLayoutRoute />}>
+            <Route path="/learn" element={<LearnerHomeRoute />} />
+            <Route path="/learn/courses" element={<LearnerCoursesRoute />} />
+            <Route path="/learn/progress" element={<LearnerProgressRoute />} />
+            <Route path="/learn/assignments" element={<LearnerAssignmentsRoute />} />
+            <Route path="/learn/assessments" element={<LearnerAssessmentsRoute />} />
+            <Route path="/learn/certificates" element={<LearnerCertificatesRoute />} />
+            <Route path="/learn/certificates/:certificateId" element={<LearnerCertificateDetailRoute />} />
+            <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
+            <Route path="/learn/assessments/:assessmentId" element={<LearnerAssessmentDetailRoute />} />
+            <Route path="/learn/assignments/:assignmentId" element={<LearnerAssignmentDetailRoute />} />
+            <Route path="/learn/lessons/:lessonId/materials" element={<LearnerLessonMaterialsRoute />} />
+            <Route path="/learn/lessons/:lessonId" element={<LearnerLessonDetailRoute />} />
+            <Route path="/learn/courses/:courseId/lessons" element={<LearnerCourseLessonsRoute />} />
+            <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
+          </Route>
 
           <Route
             path="/"

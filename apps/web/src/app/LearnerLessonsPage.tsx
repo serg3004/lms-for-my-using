@@ -65,25 +65,25 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('lessons.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={courseAction} />
-      </main>
+      </>
     );
   }
 
@@ -92,7 +92,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   const publishedLessons = lessons.filter((l) => l.status === 'published');
 
   return (
-    <main className="learner-lessons">
+    <div className="learner-lessons">
       <nav className="learner-breadcrumb">
         <a href={getCourseHref(courseId)}>{t('courseDetail.title')}</a>
       </nav>
@@ -143,6 +143,6 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
           })}
         </ol>
       )}
-    </main>
+    </div>
   );
 }

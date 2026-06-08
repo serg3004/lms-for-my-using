@@ -63,25 +63,25 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('certificates.loadingDetail')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState title={t('certificates.detailTitle')} message={loadState.message} variant="error" action={loginAction} />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState title={t('certificates.detailTitle')} message={loadState.message} variant="error" action={certificatesAction} />
-      </main>
+      </>
     );
   }
 
@@ -90,7 +90,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
   const courseTitle = certificate.course?.title ?? certificate.courseId;
 
   return (
-    <main className="learner-cert-page">
+    <div className="learner-cert-page">
       <nav className="learner-breadcrumb no-print">
         <a href="/learn/certificates">{t('certificates.navLink')}</a>
       </nav>
@@ -128,6 +128,6 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
           {t('certificates.navLink')}
         </a>
       </div>
-    </main>
+    </div>
   );
 }

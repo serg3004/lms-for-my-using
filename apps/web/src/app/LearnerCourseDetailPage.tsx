@@ -72,35 +72,35 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
-      <main>
+      <>
         <PageState message={t('courseDetail.loading')} variant="loading" />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <main>
+      <>
         <PageState
           title={t('courseDetail.title')}
           message={loadState.message}
           variant="error"
           action={loginAction}
         />
-      </main>
+      </>
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <main>
+      <>
         <PageState
           title={t('courseDetail.title')}
           message={loadState.message}
           variant="error"
           action={coursesAction}
         />
-      </main>
+      </>
     );
   }
 
@@ -108,7 +108,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const progressPercent = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
 
   return (
-    <main className="learner-course-detail">
+    <div className="learner-course-detail">
       <nav className="learner-breadcrumb">
         <a href="/learn/courses">{t('courses.navLink')}</a>
       </nav>
@@ -134,6 +134,6 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
           {t('lessons.navLink')}
         </a>
       </article>
-    </main>
+    </div>
   );
 }
