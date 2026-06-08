@@ -39,6 +39,10 @@ function hasValidClaims(payload: Record<string, unknown>): payload is JwtClaims 
   );
 }
 
+function toJwtVerificationError(message: string, cause: unknown) {
+  return new Error(message, { cause });
+}
+
 export async function signJwt(payload: JwtSignPayload, secret?: string): Promise<SignJwtResult> {
   const resolvedSecret = secret ?? getJwtSecret();
   const jti = crypto.randomUUID();
@@ -67,14 +71,31 @@ export async function verifyJwt(token: string, secret?: string): Promise<JwtClai
 
     return payload as unknown as JwtClaims;
   } catch (error) {
-    if (error instanceof Error && error.message === 'Invalid JWT claims') throw error;
-    if (error instanceof joseErrors.JWTExpired) throw new Error('JWT expired');
-    if (error instanceof joseErrors.JOSEAlgNotAllowed) throw new Error('Invalid JWT header');
+    if (error instanceof Error && error.message === 'Invalid JWT claims') {
+      throw toJwtVerificationError('Invalid JWT claims', error);
+    }
+
+    if (error instanceof joseErrors.JWTExpired) {
+      throw toJwtVerificationError('JWT expired', error);
+    }
+
+    if (error instanceof joseErrors.JOSEAlgNotAllowed) {
+      throw toJwtVerificationError('Invalid JWT header', error);
+    }
+
     if (error instanceof joseErrors.JWSInvalid) {
       const msg = error.message.toLowerCase();
-      throw new Error(msg.includes('header') || msg.includes('protected') ? 'Invalid JWT header' : 'Invalid JWT');
+
+      throw toJwtVerificationError(
+        msg.includes('header') || msg.includes('protected') ? 'Invalid JWT header' : 'Invalid JWT',
+        error,
+      );
     }
-    if (error instanceof joseErrors.JWTInvalid) throw new Error('Invalid JWT claims');
-    throw new Error('Invalid JWT');
+
+    if (error instanceof joseErrors.JWTInvalid) {
+      throw toJwtVerificationError('Invalid JWT claims', error);
+    }
+
+    throw toJwtVerificationError('Invalid JWT', error);
   }
 }
