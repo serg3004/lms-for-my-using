@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest } from './apiClient';
 
 afterEach(() => {
-  window.localStorage.clear();
-  window.sessionStorage.clear();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -13,6 +12,17 @@ function mockFetch(response: Response) {
   vi.stubGlobal('fetch', fetchMock);
 
   return fetchMock;
+}
+
+function createStorageStub() {
+  const storage = new Map<string, string>();
+
+  return {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+    clear: () => storage.clear(),
+  };
 }
 
 describe('apiRequest', () => {
@@ -127,10 +137,16 @@ describe('apiRequest', () => {
   });
 
   it('does not attach legacy bearer tokens from browser storage', async () => {
-    window.localStorage.setItem('authToken', 'legacy-auth-token');
-    window.localStorage.setItem('token', 'legacy-token');
-    window.sessionStorage.setItem('authToken', 'legacy-session-auth-token');
-    window.sessionStorage.setItem('token', 'legacy-session-token');
+    const localStorage = createStorageStub();
+    const sessionStorage = createStorageStub();
+
+    localStorage.setItem('authToken', 'legacy-auth-token');
+    localStorage.setItem('token', 'legacy-token');
+    sessionStorage.setItem('authToken', 'legacy-session-auth-token');
+    sessionStorage.setItem('token', 'legacy-session-token');
+
+    vi.stubGlobal('localStorage', localStorage);
+    vi.stubGlobal('sessionStorage', sessionStorage);
 
     const fetchMock = mockFetch(
       new Response(JSON.stringify({ id: 'user-1', roles: ['learner'] }), {
