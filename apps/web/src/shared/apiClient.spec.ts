@@ -109,7 +109,7 @@ describe('apiRequest', () => {
       name: 'ApiClientError',
       message: 'Legacy failure',
       status: 400,
-      code: 'HTTP_ERROB',
+      code: 'HTTP_ERROR',
       response: null,
     });
   });
@@ -121,7 +121,7 @@ describe('apiRequest', () => {
       name: 'ApiClientError',
       message: 'Request failed',
       status: 503,
-      code: 'HTTP_ERROB',
+      code: 'HTTP_ERROR',
       response: null,
     });
   });
