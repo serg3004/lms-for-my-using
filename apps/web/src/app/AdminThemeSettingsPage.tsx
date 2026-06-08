@@ -9,6 +9,7 @@ import {
   saveThemeSettings,
   themePresets,
 } from '../shared/theme.js';
+import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import '../styles/admin.css';
 
 type ThemeField = {
@@ -72,6 +73,10 @@ export function AdminThemeSettingsPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
 
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.themeSettings.title', 'Theme settings'), href: '/admin/theme-settings', isCurrent: true },
+  ];
+
   const selectedPresetId = getMatchingPresetId(themeSettings);
 
   function syncThemeSettings(settings: ThemeSettings) {
@@ -122,21 +127,20 @@ export function AdminThemeSettingsPage() {
   }
 
   return (
-    <main>
-      <section className="admin-theme-settings">
-        <header className="admin-theme-settings__header">
-          <div>
-            <h1>{t('admin.themeSettings.title', 'Theme settings')}</h1>
-            <p>
-              {t(
-                'admin.themeSettings.subtitle',
-                'Tune the admin workspace colors, layout tokens, and sidebar locally without changing organization data.',
-              )}
-            </p>
-          </div>
-          <a href="/admin">{t('admin.themeSettings.backToAdmin', 'Back to admin')}</a>
-        </header>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        title={t('admin.themeSettings.title', 'Theme settings')}
+        subtitle={t(
+          'admin.themeSettings.subtitle',
+          'Tune the admin workspace colors, layout tokens, and sidebar locally without changing organization data.',
+        )}
+      />
 
+      <section className="admin-theme-settings">
         <section className="admin-card">
           <h2>{t('admin.themeSettings.presetsTitle', 'Presets')}</h2>
           <label>
@@ -256,6 +260,6 @@ export function AdminThemeSettingsPage() {
           {statusMessage ? <p role="status">{statusMessage}</p> : null}
         </footer>
       </section>
-    </main>
+    </AdminPageLayout>
   );
 }

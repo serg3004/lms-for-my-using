@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { apiRequest } from '../shared/apiClient.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
@@ -22,6 +23,10 @@ export function AdminOrgStructurePage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
 
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.orgStructure.title', 'Organization structure'), href: '/admin/org-structure', isCurrent: true },
+  ];
+
   useEffect(() => {
     async function loadOrgStructure() {
       try {
@@ -40,42 +45,54 @@ export function AdminOrgStructurePage() {
   }, [t]);
 
   if (loadState.status === 'loading') {
-    return <PageState message={t('admin.orgStructure.loading', 'Loading organization structure...')} variant="loading" />;
+    return (
+      <main className="admin-state">
+        <PageState message={t('admin.orgStructure.loading', 'Loading organization structure...')} variant="loading" />
+      </main>
+    );
   }
 
   if (loadState.status === 'error') {
-    return <PageState title={t('admin.orgStructure.title', 'Organization structure')} message={loadState.message} variant="error" />;
+    return (
+      <main className="admin-state">
+        <PageState title={t('admin.orgStructure.title', 'Organization structure')} message={loadState.message} variant="error" />
+      </main>
+    );
   }
 
   const positions = unique(loadState.users.map((user) => user.position));
   const shifts = unique(loadState.users.map((user) => user.shift));
 
   return (
-    <main className="admin-layout">
-      <aside className="admin-sidebar">
-        <a className="admin-brand" href="/admin">{t('admin.navLink', 'Admin')}</a>
-        <nav className="admin-nav">
-          <a className="admin-nav-link" href="/admin/users">{t('admin.users.title', 'Users')}</a>
-          <a className="admin-nav-link" href="/admin/roles">{t('admin.roles.title', 'Roles')}</a>
-          <a className="admin-nav-link" href="/admin/org-structure" aria-current="page">{t('admin.orgStructure.title', 'Organization structure')}</a>
-        </nav>
-      </aside>
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
+      navItems={navItems}
+    >
+      <AdminPageHeader title={t('admin.orgStructure.title', 'Organization structure')} />
 
-      <section className="admin-shell">
-        <h1>{t('admin.orgStructure.title', 'Organization structure')}</h1>
-        <section className="admin-content-grid">
-          <article className="admin-card">
-            <h2>{t('admin.orgStructure.organizationsTitle', 'Organizations')}</h2>
-            {loadState.organizations.map((item) => <p key={item.id}>{item.name} · {item.slug} · <StatusBadge>{item.status}</StatusBadge></p>)}
-          </article>
-          <article className="admin-card">
-            <h2>{t('admin.orgStructure.groupsTitle', 'Groups')}</h2>
-            {loadState.groups.map((item) => <p key={item.id}>{item.name} · {item.slug} · <StatusBadge>{item.status}</StatusBadge></p>)}
-          </article>
-          <article className="admin-card"><h2>{t('admin.orgStructure.positionsTitle', 'Positions')}</h2>{positions.map((item) => <p key={item}>{item}</p>)}</article>
-          <article className="admin-card"><h2>{t('admin.orgStructure.shiftsTitle', 'Shifts')}</h2>{shifts.map((item) => <p key={item}>{item}</p>)}</article>
-        </section>
+      <section className="admin-content-grid">
+        <AdminCard>
+          <h2>{t('admin.orgStructure.organizationsTitle', 'Organizations')}</h2>
+          {loadState.organizations.map((item) => (
+            <p key={item.id}>{item.name} · {item.slug} · <StatusBadge>{item.status}</StatusBadge></p>
+          ))}
+        </AdminCard>
+        <AdminCard>
+          <h2>{t('admin.orgStructure.groupsTitle', 'Groups')}</h2>
+          {loadState.groups.map((item) => (
+            <p key={item.id}>{item.name} · {item.slug} · <StatusBadge>{item.status}</StatusBadge></p>
+          ))}
+        </AdminCard>
+        <AdminCard>
+          <h2>{t('admin.orgStructure.positionsTitle', 'Positions')}</h2>
+          {positions.map((item) => <p key={item}>{item}</p>)}
+        </AdminCard>
+        <AdminCard>
+          <h2>{t('admin.orgStructure.shiftsTitle', 'Shifts')}</h2>
+          {shifts.map((item) => <p key={item}>{item}</p>)}
+        </AdminCard>
       </section>
-    </main>
+    </AdminPageLayout>
   );
 }
