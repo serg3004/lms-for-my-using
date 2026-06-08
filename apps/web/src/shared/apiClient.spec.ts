@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 function mockFetch(response: Response) {
-  const fetchMock = vi.fn(async () => response);
+  const fetchMock = vi.fn<typeof fetch>(async () => response);
   vi.stubGlobal('fetch', fetchMock);
 
   return fetchMock;
@@ -141,7 +141,7 @@ describe('apiRequest', () => {
 
     await apiRequest('/auth/me');
 
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const requestInit = fetchMock.mock.calls[0]?.[1];
     const headers = requestInit.headers as Headers;
 
     expect(fetchMock).toHaveBeenCalledWith(
