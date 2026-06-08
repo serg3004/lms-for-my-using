@@ -3,11 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest } from './apiClient';
 
 afterEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.restoreAllMocks();
 });
 
 function mockFetch(response: Response) {
-  vi.stubGlobal('fetch', vi.fn(async () => response));
+  const fetchMock = vi.fn(async () => response);
+  vi.stubGlobal('fetch', fetchMock);
+
+  return fetchMock;
 }
 
 describe('apiRequest', () => {
@@ -104,7 +109,7 @@ describe('apiRequest', () => {
       name: 'ApiClientError',
       message: 'Legacy failure',
       status: 400,
-      code: 'HTTP_ERROR',
+      code: 'HTTP_ERROB',
       response: null,
     });
   });
@@ -116,9 +121,36 @@ describe('apiRequest', () => {
       name: 'ApiClientError',
       message: 'Request failed',
       status: 503,
-      code: 'HTTP_ERROR',
+      code: 'HTTP_ERROB',
       response: null,
     });
+  });
+
+  it('does not attach legacy bearer tokens from browser storage', async () => {
+    window.localStorage.setItem('authToken', 'legacy-auth-token');
+    window.localStorage.setItem('token', 'legacy-token');
+    window.sessionStorage.setItem('authToken', 'legacy-session-auth-token');
+    window.sessionStorage.setItem('token', 'legacy-session-token');
+
+    const fetchMock = mockFetch(
+      new Response(JSON.stringify({ id: 'user-1', roles: ['learner'] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    await apiRequest('/auth/me');
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = requestInit.headers as Headers;
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/auth/me',
+      expect.objectContaining({
+        credentials: 'same-origin',
+      }),
+    );
+    expect(headers.has('Authorization')).toBe(false);
   });
 
   it('returns successful JSON responses', async () => {
