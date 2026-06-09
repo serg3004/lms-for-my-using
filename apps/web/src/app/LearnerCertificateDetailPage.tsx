@@ -6,6 +6,7 @@ import {
   CertificateSummary,
   getCertificate,
 } from '../shared/apiClient.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
 import { PageState } from '../shared/ui.js';
 
 type CertificateDetailLoadState =
@@ -86,8 +87,8 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
   }
 
   const { certificate } = loadState;
-  const organizationName = certificate.organization?.name ?? certificate.organizationId;
-  const courseTitle = certificate.course?.title ?? certificate.courseId;
+  const organizationName = getReadableTitle(certificate.organization?.name, t('certificates.organizationFallback', 'Organization'));
+  const courseTitle = getReadableTitle(certificate.course?.title, t('certificates.courseFallback', 'Course'));
 
   return (
     <div className="learner-cert-page">
@@ -112,7 +113,6 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
 
         <div className="learner-cert-card__footer">
           <span className="learner-cert-card__footer-org">{organizationName}</span>
-          <span className="learner-cert-card__footer-id">#{certificate.id.slice(0, 8).toUpperCase()}</span>
         </div>
       </div>
 
