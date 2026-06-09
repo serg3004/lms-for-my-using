@@ -122,12 +122,15 @@ describe('API hardening middleware', () => {
     const request = createRequest({ url: '/api/v1/auth/login?next=%2Flearn' });
 
     for (let attempt = 0; attempt < 21; attempt += 1) {
-      await middleware(request as never, createResponse() as never, createNextTracker().next);
+      const nextTracker = createNextTracker();
+
+      await middleware(request as never, createResponse() as never, nextTracker.next.bind(nextTracker));
     }
 
     const response = createResponse();
+    const blockedNextTracker = createNextTracker();
 
-    await middleware(request as never, response as never, createNextTracker().next);
+    await middleware(request as never, response as never, blockedNextTracker.next.bind(blockedNextTracker));
 
     expect(JSON.parse(response.body)).toMatchObject({
       statusCode: 429,
