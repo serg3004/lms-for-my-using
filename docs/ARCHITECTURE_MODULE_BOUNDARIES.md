@@ -44,6 +44,7 @@ Current modules include:
 - `openapi`
 - `organizations`
 - `progress`
+- `upload`
 - `users`
 
 Each API domain module should own its own:
@@ -57,7 +58,7 @@ Each API domain module should own its own:
 Cross-cutting concerns should stay outside domain modules:
 
 | Concern | Preferred location |
-|---|---|
+|-t-|---|
 | Prisma client/module | `apps/api/src/database` |
 | Auth guards, role policies, shared decorators | `apps/api/src/common` or `apps/api/src/modules/auth` when auth-specific |
 | Env/config | `apps/api/src/config` |
