@@ -1,4 +1,4 @@
-import { apiRequest } from '../apiClient.js';
+import { ApiClientError, apiRequest } from '../apiClient.js';
 
 import type { CertificateSummary } from './types.js';
 
@@ -16,14 +16,18 @@ export function getCertificate(certificateId: string) {
   return apiRequest<CertificateSummary>(getCertificatePath(certificateId));
 }
 
-export function issueCertificate(input: {
+export async function issueCertificate(input: {
   organizationId: string;
   courseId: string;
   userId: string;
   assessmentAttemptId?: string;
 }) {
-  return apiRequest<CertificateSummary>(certificatesPath, {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
+  const certificates = await listCertificates();
+  const certificate = certificates.find((item) => item.assessmentAttemptId === input.assessmentAttemptId);
+
+  if (certificate) {
+    return certificate;
+  }
+
+  throw new ApiClientError('Certificate not found', 404);
 }
