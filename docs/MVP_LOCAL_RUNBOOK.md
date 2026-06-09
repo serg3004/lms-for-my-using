@@ -168,7 +168,32 @@ http://localhost:5173
 
 In local development, the web app sends API requests to the relative `/api` path. Vite proxies these requests to the local API at `http://localhost:3000`.
 
-## 9. Local cookie auth behavior
+## 9. Demo environment
+
+Current Railway web URL:
+
+```text
+https://web-production-b1f01.up.railway.app
+```
+
+Routes:
+
+- Login: `https://web-production-b1f01.up.railway.app/login`
+- Admin: `https://web-production-b1f01.up.railway.app/admin`
+- Learner: `https://web-production-b1f01.up.railway.app/learn`
+- Learner courses: `https://web-production-b1f01.up.railway.app/learn/courses`
+- Learner certificates: `https://web-production-b1f01.up.railway.app/learn/certificates`
+
+Demo users:
+
+| Role | Organization | Email | Password |
+|---|---|---|---|
+| Admin | `demo-company` | `admin@demo.com` | `Demo1234!` |
+| Learner | `demo-company` | `learner@demo.com` | `Demo1234!` |
+
+If login fails, verify the demo seed has run on the target Railway API service.
+
+## 10. Local cookie auth behavior
 
 Local MVP auth is cookie-first:
 
@@ -188,10 +213,9 @@ Quick browser verification:
 5. Confirm the request includes `x-csrf-token` and succeeds.
 6. Confirm removing or changing the CSRF header causes a `403`.
 
-## 10. Health check
+## 11. Health check
 
 Check the API health endpoint:
-
 
 ```bash
 curl http://localhost:3000/api/v1/health
@@ -199,14 +223,13 @@ curl http://localhost:3000/api/v1/health
 
 Expected response includes:
 
-
 ```json
 {
   "status": "ok"
 }
 ```
 
-## 11. Local verification checklist
+## 12. Local verification checklist
 
 Before using the local MVP:
 
@@ -222,7 +245,7 @@ Before using the local MVP:
 - `GET /api/v1/auth/me` works after login.
 - Unsafe cookie-auth request with matching CSRF succeeds.
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 ### API fails with invalid environment
 
@@ -272,7 +295,7 @@ Check:
 - The frontend request includes `x-csrf-token`.
 - The header value matches the `lms_csrf_token` cookie.
 
-## 13. Explicit non-goals
+## 14. Explicit non-goals
 
 This runbook does not:
 
