@@ -30,9 +30,20 @@ Error shape:
     "code": "VALIDATION_ERROR",
     "message": "Validation failed"
   },
-  "path": "/api/v1/example"
+  "path": "/api/v1/example",
+  "timestamp": "2026-01-01T00:00:00.000Z"
 }
 ```
+
+Error response rules:
+
+- Error responses should use the shared `ApiErrorResponse` shape from `apps/api/src/common/api-response.ts`.
+- `statusCode` must match the HTTP status code.
+- `error.code` must be stable and machine-readable.
+- `error.message` must be safe to show to API clients.
+- `error.details` is optional and should be used for field-level validation details.
+- `path` should preserve the request path that produced the error.
+- `timestamp` must be an ISO timestamp.
 
 Zod validation errors return `400 Bad Request` with `VALIDATION_ERROR`.
 
@@ -75,7 +86,7 @@ Implementation rules:
 Suggested rollout order:
 
 1. Add shared backend query schema helpers and shared response DTO type.
-2. Migrate low-risk admin lists first: users, groups, memberships.
+2. Migrate low-risk admin lists: users, groups, memberships.
 3. Migrate learning content lists: courses, lessons, materials.
 4. Migrate learner-facing lists: assignments, progress, assessments, certificates.
 5. Sync manual OpenAPI and frontend domain modules after each endpoint batch.
@@ -126,7 +137,7 @@ Suggested rollout order:
 | POST | `/assessments/:assessmentId/attempts` | Admin/manager/instructor/learner create scope. |
 | GET | `/certificates` | Admin/manager/instructor/learner read scope. |
 | GET | `/certificates/:id` | Admin/manager/instructor/learner read scope. |
-| POST | `/certificates` | Admin/manager/instructor/learner create scope. |
+| POST | `/certificates` | Admin/manager/instructor create scope. Certificates can also be auto-issued after passed assessment attempts. |
 
 ## Contract change rules
 
@@ -135,3 +146,4 @@ Suggested rollout order:
 - Database-backed changes must use Prisma and must not use unsafe raw SQL.
 - Prisma schema or migration changes require explicit approval before implementation.
 - List endpoint pagination/filter/sort changes must follow the list query consistency plan above.
+- Runtime response-shape changes must update backend tests and frontend API clients in the same PR.
