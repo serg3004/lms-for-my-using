@@ -42,7 +42,7 @@ Source of truth: `apps/api/src/modules/auth/roles.ts`.
 | Assessment attempts create | yes | yes | yes | yes |
 | Assessment attempt results read | yes | yes | yes | yes |
 | Certificates read | yes | yes | yes | yes |
-| Certificates create | yes | yes | yes | yes |
+| Certificates create | yes | yes | yes | no |
 
 ## Learner MVP access
 
@@ -57,7 +57,7 @@ Learners can read the resources used by the learner web routes:
 - assessment attempt results;
 - certificates.
 
-Learners can also create progress records for lesson completion and create assessment attempts. Learners still cannot create admin-authored content such as courses, lessons, materials, assignments, assessments, questions, or answer options.
+Learners can also create progress records for lesson completion and create assessment attempts. Certificates are auto-issued from passed assessment attempts and then read by the learner UI. Learners still cannot create admin-authored content such as courses, lessons, materials, assignments, assessments, questions, answer options, or certificates.
 
 ## Admin/instructor/manager MVP access
 
@@ -81,7 +81,7 @@ Tenant isolation must be enforced by service queries using `organizationId` from
 
 ## Audit status
 
-Last audit: 2026-06-03.
+Last audit: 2026-06-09.
 
 Checked surfaces:
 
@@ -89,11 +89,14 @@ Checked surfaces:
 - API enforcement: `AuthGuard`, `RolesGuard`, `OrganizationScopeGuard`
 - Representative learner/admin controllers: courses, lessons, assignments, progress, materials, assessments, assessment attempts, certificates, users, groups, memberships
 - Web route/navigation surface: `apps/web/src/app/App.tsx`
+- Learner web API wrappers: `apps/web/src/shared/api/*`
 
 Findings:
 
 - The documented policy matrix matches the current `rolePolicies` export.
-- Learner-facing read/create permissions required by current learner pages are intentionally allowed.
+- Learner-facing reads required by current learner pages are intentionally allowed.
+- Learner writes are limited to lesson progress and assessment attempts.
+- Certificate creation is not a learner permission; passed attempts auto-issue certificates and learner UI reads them.
 - Learner admin-authored content creation remains denied by `rolePolicies`.
 - Write endpoints with body `organizationId` use `OrganizationScopeGuard` in the checked controller set.
 - Web navigation hides `/admin` for pure learner users, but frontend routing is not the authorization boundary.
@@ -102,7 +105,8 @@ Findings:
 Regression coverage:
 
 - `apps/api/src/modules/auth/roles.spec.ts` checks learner read/create expectations.
-- `apps/api/src/modules/auth/roles.spec.ts` now checks the full audited matrix against `rolePolicies`.
+- `apps/api/src/modules/auth/roles.spec.ts` checks the full audited matrix against `rolePolicies`.
+- `apps/web/src/shared/api/certificates.spec.ts` checks learner certificate access uses read-only auto-issued certificates.
 
 ## Current limitations
 
