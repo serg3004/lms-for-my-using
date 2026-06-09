@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --passWithNoTests",
+    "smoke:mvp": "node dist/scripts/smoke-test.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node prisma/seed.mjs"
