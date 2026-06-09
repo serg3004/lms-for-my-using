@@ -18,6 +18,9 @@ const AdminAssignmentCompletionPage = lazy(() =>
 const AdminCourseBuilderPage = lazy(() =>
   import('./AdminCourseBuilderPage.js').then((m) => ({ default: m.AdminCourseBuilderPage })),
 );
+const AdminCoursesPage = lazy(() =>
+  import('./AdminCoursesPage.js').then((m) => ({ default: m.AdminCoursesPage })),
+);
 const AdminDashboardPage = lazy(() =>
   import('./AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })),
 );
@@ -212,7 +215,16 @@ function AdminThemeSettingsRoute() {
 
 function AdminCoursesRoute() {
   const { t, adminRoot } = useAdminRoot();
-  return renderWithBreadcrumbs(<AdminCourseBuilderPage />, [adminRoot, { label: t('courses.title') }]);
+  return renderWithBreadcrumbs(<AdminCoursesPage />, [adminRoot, { label: t('courses.title') }]);
+}
+
+function AdminCourseBuilderRoute() {
+  const { t, adminRoot } = useAdminRoot();
+  return renderWithBreadcrumbs(<AdminCourseBuilderPage />, [
+    adminRoot,
+    { label: t('courses.title'), href: '/admin/courses' },
+    { label: t('admin.courses.builder', 'Builder') },
+  ]);
 }
 
 function AdminLessonsRoute() {
@@ -337,6 +349,7 @@ export function App() {
           <Route path="/admin/org-structure" element={<AdminOrgStructureRoute />} />
           <Route path="/admin/theme-settings" element={<AdminThemeSettingsRoute />} />
           <Route path="/admin/courses" element={<AdminCoursesRoute />} />
+          <Route path="/admin/courses/:courseId" element={<AdminCourseBuilderRoute />} />
           <Route path="/admin/lessons" element={<AdminLessonsRoute />} />
           <Route path="/admin/materials" element={<AdminMaterialsRoute />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsRoute />} />
