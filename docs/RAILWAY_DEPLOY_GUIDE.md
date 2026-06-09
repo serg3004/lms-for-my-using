@@ -14,7 +14,7 @@ Complete step-by-step guide for deploying the LMS MVP to Railway staging.
 
 ## Architecture
 
-```
+```text
 Railway Project
 ├── web   (nginx + React SPA)   → public URL
 ├── api   (NestJS)              → internal :3000
@@ -23,6 +23,31 @@ Railway Project
 
 `web` proxies `/api/*` to `api:3000` via nginx.
 `api` connects to `DB` via `DATABASE_URL` (Railway internal).
+
+---
+
+## Current demo web URL
+
+```text
+https://web-production-b1f01.up.railway.app
+```
+
+Routes:
+
+- Login: `https://web-production-b1f01.up.railway.app/login`
+- Admin: `https://web-production-b1f01.up.railway.app/admin`
+- Learner: `https://web-production-b1f01.up.railway.app/learn`
+- Learner courses: `https://web-production-b1f01.up.railway.app/learn/courses`
+- Learner certificates: `https://web-production-b1f01.up.railway.app/learn/certificates`
+
+Demo credentials:
+
+| Role | Organization | Email | Password |
+|---|---|---|---|
+| Admin | `demo-company` | `admin@demo.com` | `Demo1234!` |
+| Learner | `demo-company` | `learner@demo.com` | `Demo1234!` |
+
+If the credentials fail, re-run the demo seed for the `api` service.
 
 ---
 
@@ -91,7 +116,8 @@ railway run --service api node dist/scripts/seed.js
 ```
 
 Expected output:
-```
+
+```text
 ✅ Demo seed complete.
 
 Credentials (password: Demo1234!):
@@ -121,6 +147,7 @@ BASE_URL=https://<web-url>/api/v1 \
 ```
 
 Or after building:
+
 ```bash
 BASE_URL=https://<api-url>/api/v1 \
   railway run --service api node dist/scripts/smoke-test.js
@@ -176,6 +203,7 @@ railway logs --service api --tail 50
 ```
 
 Common causes:
+
 - `DATABASE_URL` not set or incorrect
 - `JWT_SECRET` missing
 - Migration failed on startup (check logs for `PrismaClientInitializationError`)
@@ -195,9 +223,11 @@ Common causes:
 ### Seed fails with "relation does not exist"
 
 Migrations haven't run yet. Wait for API to finish starting, check logs for:
-```
+
+```text
 All migrations have been successfully applied.
 ```
+
 Then re-run the seed.
 
 ### Certificate page shows "Certificate not found"
