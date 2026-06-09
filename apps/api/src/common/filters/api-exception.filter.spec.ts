@@ -2,8 +2,11 @@ import {
   ArgumentsHost,
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { z } from 'zod';
 
@@ -106,9 +109,78 @@ describe('ApiExceptionFilter', () => {
     });
   });
 
+  it.each([
+    [new BadRequestException('Bad request'), 400, 'BAD_REQUEST'],
+    [new UnauthorizedException('Missing bearer token'), 401, 'UNAUTHORIZED'],
+    [new ForbiddenException('Forbidden resource'), 403, 'FORBIDDEN'],
+    [new NotFoundException('User not found'), 404, 'NOT_FOUND'],
+  ] as const)('normalizes common auth, organization, and user errors to ApiErrorResponse', (exception, expectedStatus, expectedCode) => {
+    const filter = new ApiExceptionFilter();
+    const host = createHost('/api/v1/users/user-1');
+
+    filter.catch(exception, host.host);
+
+    expect(host.getStatusCode()).toBe(expectedStatus);
+    expect(host.getJsonBody()).toMatchObject({
+      statusCode: expectedStatus,
+      error: {
+        code: expectedCode,
+        message: exception.message,
+      },
+      path: '/api/v1/users/user-1',
+    });
+    expect(host.getJsonBody()?.timestamp).toEqual(expect.any(String));
+  });
+
+  it('preserves already normalized ApiErrorResponse payloads from HTTP exceptions', () => {
+    const filter = new ApiExceptionFilter();
+    const host = createHost('/api/v1/auth/me');
+
+    filter.catch(
+      new HttpException(
+        {
+          statusCode: 401,
+          error: {
+            code: 'SESSION_EXPIRED',
+            message: 'Session expired',
+            details: [
+              {
+                field: 'accessToken',
+                message: 'Token is expired',
+                code: 'expired',
+              },
+            ],
+          },
+          path: '/ignored',
+          timestamp: '2026-01-01T00:00:00.000Z',
+        },
+        HttpStatus.UNAUTHORIZED,
+      ),
+      host.host,
+    );
+
+    expect(host.getStatusCode()).toBe(401);
+    expect(host.getJsonBody()).toMatchObject({
+      statusCode: 401,
+      error: {
+        code: 'SESSION_EXPIRED',
+        message: 'Session expired',
+        details: [
+          {
+            field: 'accessToken',
+            message: 'Token is expired',
+            code: 'expired',
+          },
+        ],
+      },
+      path: '/api/v1/auth/me',
+    });
+    expect(host.getJsonBody()?.timestamp).toEqual(expect.any(String));
+  });
+
   it('formats rate limit exceptions as TOO_MANY_REQUESTS', () => {
     const filter = new ApiExceptionFilter();
-    const host = createHost('/api/v1/auth/login');
+    const Host = createHost('/api/v1/auth/login');
 
     filter.catch(new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS), host.host);
 
