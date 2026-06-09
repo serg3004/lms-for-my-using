@@ -4,83 +4,168 @@
 
 This document records the current storage and upload status for the MVP baseline.
 
-It is a status document only. It does not introduce upload endpoints, storage providers, secrets, environment variables, Prisma changes, or runtime behavior.
+It is documentation only. It does not introduce endpoints, storage providers, secrets, environment variables, Prisma changes, or runtime behavior.
 
 ## Current status
 
-Storage upload is **not implemented** in the current MVP baseline.
+Storage upload is **implemented for MVP material uploads**.
 
-Current course material support is metadata/link based:
+Current implementation:
 
-- Course materials are managed through `GET /api/v1/courses/:courseId/materials`.
-- A single material can be read through `GET /api/v1/materials/:id`.
-- Materials can be created through `POST /api/v1/courses/:courseId/materials`.
-- Material `kind` supports `file` and `link`.
-- Material records can include `fileName`, `fileUrl`, `mimeType`, and `sizeBytes`.
-- `fileUrl` is accepted as a URL string supplied by the caller.
-- There is no multipart upload endpoint.
-- There is no server-side object storage adapter.
-- There is no signed URL / presigned upload flow.
-- There is no local disk upload storage policy.
-- There is no antivirus, file scanning, retention, or cleanup workflow.
+- `POST /api/v1/upload` accepts a multipart `file` field.
+- The endpoint is protected by `AuthGuard` and `RolesGuard`.
+- Upload access follows `rolePolicies.courseMaterialsCreate`.
+- The upload endpoint uses Multer `memoryStorage`.
+- Files are validated before storage.
+- Files are uploaded to S3-compatible object storage when S3 env variables are configured.
+- If `S3_PUBLIC_URL` is configured, the returned `fileUrl` uses that public base URL.
+- If `S3_PUBLIC_URL` is not configured, the returned `fileUrl` is a presigned GET URL.
+- If S3 is not configured, the upload service returns `503 Service Unavailable`.
+- The upload endpoint does **not** create a course material record by itself.
+- Course material creation remains a separate API flow that stores metadata/link fields.
 
 ## Current API contract
 
-The current API can reference already-hosted files or links through course material metadata.
-
-The current API does **not** accept raw file bytes. Clients must not assume that the LMS API stores uploaded file contents.
-
 ```text
-GET  /api/v1/courses/:courseId/materials
-POST /api/v1/courses/:courseId/materials
-GET  /api/v1/materials/:id
+POST /api/v1/upload
 ```
 
-For `POST /api/v1/courses/:courseId/materials`, the caller must provide metadata that satisfies the course material schema, including a valid `fileUrl`.
+Request:
 
-## MVP implication
+- authenticated request;
+- multipart form-data;
+- field name: `file`.
 
-Storage upload is **not required** for the current controlled technical pilot.
+Successful response:
 
-For the pilot, acceptable material references are:
+```json
+{
+  "fileUrl": "https://...",
+  "fileName": "example.pdf",
+  "mimeType": "application/pdf",
+  "sizeBytes": 12345
+}
+```
 
-- HTTPS links to externally hosted documents.
-- Test/demo URLs that do not contain secrets or personal data.
-- Metadata-only file placeholders where content delivery is explicitly out of scope.
+The returned object can be used by clients when creating course material metadata through:
+
+```text
+POST /api/v1/courses/:courseId/materials
+```
+
+## Storage configuration
+
+The upload service is enabled only when all required S3-compatible variables are available:
+
+```text
+S3_ENDPOINT
+S3_BUCKET
+S3_ACCESS_KEY_ID
+S3_SECRET_ACCESS_KEY
+```
+
+Optional variables:
+
+```text
+S3_REGION
+S3_FORCE_PATH_STYLE
+S3_PUBLIC_URL
+```
+
+Rules:
+
+- do not commit real S3 credentials;
+- do not document real bucket secrets;
+- use environment variables in deployment settings;
+- use safe local/demo values only in examples.
+
+## Validation and limits
+
+Current upload validation includes:
+
+- maximum file size: `50 MB`;
+- maximum file name length: `255` bytes;
+- empty files are rejected;
+- unsupported MIME types are rejected;
+- declared MIME type must match file magic bytes where supported;
+- path traversal in file names is rejected;
+- null/control characters in file names are rejected;
+- zip-based Office files are checked for:
+  - maximum entry count;
+  - maximum compression ratio;
+  - maximum uncompressed size.
+
+Allowed MIME types:
+
+- `application/pdf`;
+- `image/jpeg`;
+- `image/png`;
+- `image/gif`;
+- `image/webp`;
+- `video/mp4`;
+- `video/webm`;
+- `application/vnd.openxmlformats-officedocument.wordprocessingml.document`;
+- `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`.
 
 ## Security constraints
 
-Until a storage implementation is designed and reviewed:
+Current security constraints:
 
-- Do not accept multipart uploads.
-- Do not commit storage credentials.
-- Do not add real bucket names, access keys, tokens, or provider secrets.
-- Do not store user-supplied files on local disk in production.
-- Do not expose arbitrary file paths.
-- Do not proxy private file downloads through unaudited endpoints.
-- Do not treat `fileUrl` as proof that the target file is safe.
+- no real storage credentials in repository files;
+- no local disk persistence for uploaded files in production;
+- no unauthenticated uploads;
+- no learner upload permission by default;
+- no direct trust in user supplied filenames;
+- no arbitrary server file path exposure;
+- no raw file bytes accepted outside the reviewed upload endpoint.
+
+Still not implemented:
+
+- antivirus/malware scanning;
+- content moderation;
+- file replacement/archive/delete workflow;
+- retention and cleanup workflow;
+- orphaned object cleanup;
+- upload/download audit events;
+- per-tenant object key policy documentation beyond current folder prefix behavior;
+- private download proxy endpoint.
+
+## MVP implication
+
+Upload is available for controlled MVP material uploads when object storage is configured.
+
+For environments without S3-compatible storage, material references can still use external HTTPS links through the course material metadata flow.
+
+## Operational checks
+
+Before using uploads in staging or production:
+
+- [ ] S3-compatible env variables are configured in deployment settings.
+- [ ] No real storage secrets are committed to the repository.
+- [ ] Upload endpoint returns `503` when storage is intentionally not configured.
+- [ ] Valid files under `50 MB` upload successfully.
+- [ ] Invalid MIME types are rejected.
+- [ ] Oversized files are rejected.
+- [ ] Path traversal filenames are rejected.
+- [ ] Returned `fileUrl` works according to the selected `S3_PUBLIC_URL` / presigned URL mode.
 
 ## Future implementation checklist
 
-Before enabling uploads, create a separate implementation plan covering:
+Before treating upload as production-ready, create separate implementation plans for:
 
-1. Storage provider decision: local development adapter, production object storage, or both.
-2. Upload API contract: multipart upload vs. signed URL flow.
-3. File constraints: maximum size, allowed MIME types, allowed extensions.
-4. Authorization: who can upload, view, replace, archive, or delete materials.
-5. Tenant isolation: object key strategy and access boundaries.
-6. Validation: content type checks, size checks, and filename normalization.
-7. Security scanning: malware scanning and unsafe content handling.
-8. Lifecycle: retention, cleanup, archival, and orphaned object handling.
-9. Audit logging: upload, replace, delete, and download events.
-10. Local development: safe `.env.example` keys without real secrets.
-11. Tests: happy path, forbidden access, invalid file, oversized file, tenant isolation, and cleanup behavior.
-12. Documentation: operator setup, rollback, backup, and incident response.
+1. Upload audit logging.
+2. Malware scanning or an explicit compensating control.
+3. Retention and cleanup policy.
+4. Object key tenant isolation policy.
+5. Private downloads and authorization checks.
+6. Replace/archive/delete material file workflows.
+7. Backup and restore expectations for object storage.
+8. Incident response for unsafe uploaded content.
 
 ## Related docs
 
 - `docs/MVP_READINESS_DASHBOARD.md`
 - `docs/API_STATUS.md`
 - `docs/API_CONTRACTS.md`
-- `docs/MVP_DEFINITION_OF_DONE.md`
-- `docs/PILOT_CHECKLIST.md`
+- `docs/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/MVP_LOCAL_RUNBOOK.md`
