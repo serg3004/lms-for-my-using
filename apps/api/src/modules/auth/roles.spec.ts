@@ -36,6 +36,10 @@ describe('rolePolicies', () => {
     expect(rolePolicies.progressCreate).toContain('learner');
   });
 
+  it('allows learners to create assessment attempts for learner quizzes', () => {
+    expect(rolePolicies.assessmentAttemptsCreate).toContain('learner');
+  });
+
   it.each([
     'coursesCreate',
     'lessonsCreate',
@@ -44,6 +48,7 @@ describe('rolePolicies', () => {
     'assessmentsCreate',
     'assessmentQuestionsCreate',
     'assessmentAnswerOptionsCreate',
+    'certificatesCreate',
   ] as const)('does not allow learners to create admin-authored content via %s', (policyName) => {
     expect(rolePolicies[policyName]).not.toContain('learner');
   });
@@ -76,7 +81,7 @@ describe('rolePolicies', () => {
     ['assessmentAttemptResultsRead', ['admin', 'manager', 'instructor', 'learner']],
     ['assessmentAttemptsCreate', ['admin', 'manager', 'instructor', 'learner']],
     ['certificatesRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['certificatesCreate', ['admin', 'manager', 'instructor', 'learner']],
+    ['certificatesCreate', ['admin', 'manager', 'instructor']],
   ] satisfies readonly [PolicyName, readonly UserRole[]][])(
     'matches the audited learner/admin RBAC matrix for %s',
     (policyName, allowedRoles) => {
