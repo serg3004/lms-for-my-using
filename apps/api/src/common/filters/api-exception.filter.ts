@@ -23,8 +23,8 @@ type HttpResponse = {
 type ExceptionResponse =
   | string
   | {
+      error?: string | unknown;
       message?: string | string[];
-      error?: string;
       statusCode?: number;
     };
 
@@ -71,9 +71,51 @@ function getHttpErrorCode(statusCode: number) {
   }
 }
 
+function isApiErrorDetail(value: unknown): value is ApiErrorDetail {
+  return (
+    isRecord(value) &&
+    typeof value.message === 'string' &&
+    (value.field === undefined || typeof value.field === 'string') &&
+    (value.code === undefined || typeof value.code === 'string')
+  );
+}
+
+function normalizeApiErrorDetails(value: unknown): ApiErrorDetail[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const details = value.filter(isApiErrorDetail);
+
+  return details.length > 0 ? details : undefined;
+}
+
+function normalizeApiErrorPayload(statusCode: number, value: unknown): NormalizedApiError | undefined {
+  if (!isRecord(value) || typeof value.code !== 'string' || typeof value.message !== 'string') {
+    return undefined;
+  }
+
+  const details = normalizeApiErrorDetails(value.details);
+
+  return {
+    statusCode,
+    code: value.code,
+    message: value.message,
+    ...(details ? { details } : {}),
+  };
+}
+
 function normalizeHttpException(exception: HttpException): NormalizedApiError {
   const statusCode = exception.getStatus();
   const response = getExceptionResponse(exception);
+
+  if (isRecord(response)) {
+    const normalizedResponse = normalizeApiErrorPayload(statusCode, response.error);
+
+    if (normalizedResponse) {
+      return normalizedResponse;
+    }
+  }
 
   if (typeof response === 'string') {
     return {
