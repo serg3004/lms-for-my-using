@@ -256,6 +256,60 @@ export function Avatar({ firstName, lastName, size = 'md' }: AvatarProps) {
   );
 }
 
+// ── StatCard ─────────────────────────────────────────────────────────────────
+
+type StatCardProps = {
+  label: string;
+  value: string | number;
+  trend?: ReactNode;
+};
+
+export function StatCard({ label, value, trend }: StatCardProps) {
+  return (
+    <div className="stat-card">
+      <div className="stat-card__label">{label}</div>
+      <div className="stat-card__value">{value}</div>
+      {trend ? <div className="stat-card__trend">{trend}</div> : null}
+    </div>
+  );
+}
+
+// ── StatsGrid ────────────────────────────────────────────────────────────────
+
+type StatsGridProps = {
+  children: ReactNode;
+};
+
+export function StatsGrid({ children }: StatsGridProps) {
+  return <div className="stats-grid">{children}</div>;
+}
+
+// ── SectionHeader ─────────────────────────────────────────────────────────────
+
+type SectionHeaderProps = {
+  title: string;
+  actions?: ReactNode;
+};
+
+export function SectionHeader({ title, actions }: SectionHeaderProps) {
+  return (
+    <div className="section-header">
+      <h2>{title}</h2>
+      {actions ? <div className="section-header__right">{actions}</div> : null}
+    </div>
+  );
+}
+
+// ── TableWrap ─────────────────────────────────────────────────────────────────
+
+type TableWrapProps = {
+  children: ReactNode;
+};
+
+export function TableWrap({ children }: TableWrapProps) {
+  return <div className="admin-table-wrap">{children}</div>;
+}
+
 // ── Spinner ──────────────────────────────────────────────────────────────────
 
 type SpinnerSize = 'sm' | 'md' | 'lg';
