@@ -18,6 +18,36 @@ export function getLesson(lessonId: string) {
   return apiRequest<LessonSummary>(getLessonPath(lessonId));
 }
 
+export type CreateLessonInput = {
+  organizationId: string;
+  title: string;
+  slug: string;
+  description?: string;
+  order?: number;
+  status?: string;
+};
+
+export type UpdateLessonInput = {
+  title?: string;
+  description?: string | null;
+  order?: number;
+  status?: string;
+};
+
+export function createLesson(courseId: string, input: CreateLessonInput) {
+  return apiRequest<LessonSummary>(getCourseLessonsPath(courseId), {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateLesson(lessonId: string, input: UpdateLessonInput) {
+  return apiRequest<LessonSummary>(getLessonPath(lessonId), {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
 export function markLessonCompleted(input: CreateLessonCompletionInput) {
   return apiRequest<ProgressSummary>('/progress', {
     method: 'POST',

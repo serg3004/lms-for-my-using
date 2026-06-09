@@ -275,7 +275,33 @@ describe('learner page smoke rendering', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
+      course: {
+        id: 'course-1',
+        organizationId: 'org-1',
+        title: 'Workplace Safety',
+        slug: 'workplace-safety',
+        description: null,
+        status: 'published',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        _count: { lessons: 1 },
+      },
+      allLessons: [
+        {
+          id: 'lesson-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          title: 'Fire Safety Basics',
+          slug: 'fire-safety-basics',
+          description: 'Learn fire safety',
+          order: 1,
+          status: 'published',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
       materials: [],
+      completedIds: new Set(),
     });
 
     const html = renderToStaticMarkup(<LearnerLessonDetailPage lessonId="lesson-1" />);

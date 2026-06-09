@@ -133,19 +133,18 @@ describe('admin page smoke rendering', () => {
     useFirstCallReadyState({
       status: 'loaded',
       currentUser,
-      courses: [
-        {
-          id: 'course-1',
-          organizationId: 'org-1',
-          title: 'Workplace Safety',
-          slug: 'workplace-safety',
-          description: null,
-          status: 'published',
-          createdAt: ts,
-          updatedAt: ts,
-          _count: { lessons: 3 },
-        },
-      ],
+      course: {
+        id: 'course-1',
+        organizationId: 'org-1',
+        title: 'Workplace Safety',
+        slug: 'workplace-safety',
+        description: null,
+        status: 'published',
+        createdAt: ts,
+        updatedAt: ts,
+        _count: { lessons: 3 },
+      },
+      lessons: [],
     });
 
     const html = renderToStaticMarkup(<AdminCourseBuilderPage />);

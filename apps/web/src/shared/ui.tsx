@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
 
 export type BreadcrumbItem = {
   label: string;
@@ -120,10 +120,11 @@ type BadgeVariant = 'neutral' | 'published' | 'draft' | 'overdue' | 'done' | 'ne
 type BadgeProps = {
   variant?: BadgeVariant;
   children: ReactNode;
+  style?: CSSProperties;
 };
 
-export function Badge({ variant = 'neutral', children }: BadgeProps) {
-  return <span className={`ds-badge ds-badge--${variant}`}>{children}</span>;
+export function Badge({ variant = 'neutral', children, style }: BadgeProps) {
+  return <span className={`ds-badge ds-badge--${variant}`} style={style}>{children}</span>;
 }
 
 // ── Card ─────────────────────────────────────────────────────────────────────
@@ -133,9 +134,10 @@ type CardProps = {
   compact?: boolean;
   flat?: boolean;
   className?: string;
+  style?: CSSProperties;
 };
 
-export function Card({ children, compact, flat, className }: CardProps) {
+export function Card({ children, compact, flat, className, style }: CardProps) {
   const cls = [
     'ds-card',
     compact ? 'ds-card--compact' : null,
@@ -144,7 +146,7 @@ export function Card({ children, compact, flat, className }: CardProps) {
   ]
     .filter(Boolean)
     .join(' ');
-  return <div className={cls}>{children}</div>;
+  return <div className={cls} style={style}>{children}</div>;
 }
 
 // ── Input ────────────────────────────────────────────────────────────────────
