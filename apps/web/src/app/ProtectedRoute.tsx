@@ -14,6 +14,10 @@ type ProtectedRouteProps = {
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden';
 
+export function isProtectedRoutePath(pathname: string, protectedPathPrefixes: readonly string[]) {
+  return protectedPathPrefixes.some((pathPrefix) => pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`));
+}
+
 export function getProtectedRouteAuthState(user: CurrentUser, canAccess?: (user: CurrentUser) => boolean): AuthState {
   return canAccess && !canAccess(user) ? 'forbidden' : 'authenticated';
 }
@@ -29,7 +33,7 @@ export function getProtectedRouteErrorState(error: unknown): AuthState {
 export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: ProtectedRouteProps) {
   const location = useLocation();
   const [authState, setAuthState] = useState<AuthState>('loading');
-  const isProtectedPath = protectedPathPrefixes.some((pathPrefix) => location.pathname.startsWith(pathPrefix));
+  const isProtectedPath = isProtectedRoutePath(location.pathname, protectedPathPrefixes);
 
   useEffect(() => {
     if (!isProtectedPath) {

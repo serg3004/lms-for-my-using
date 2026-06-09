@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiClientError } from '../shared/apiClient';
 import type { CurrentUser } from '../shared/api/types';
-import { getProtectedRouteAuthState, getProtectedRouteErrorState, ProtectedRoute } from './ProtectedRoute';
+import {
+  getProtectedRouteAuthState,
+  getProtectedRouteErrorState,
+  isProtectedRoutePath,
+  ProtectedRoute,
+} from './ProtectedRoute';
 
 const currentUser: CurrentUser = {
   id: 'user-1',
@@ -46,6 +51,18 @@ describe('ProtectedRoute', () => {
     );
 
     expect(html).toContain('Public content');
+  });
+
+  it('matches only exact protected roots and their child paths', () => {
+    expect(isProtectedRoutePath('/learn', ['/learn', '/admin'])).toBe(true);
+    expect(isProtectedRoutePath('/learn/courses', ['/learn', '/admin'])).toBe(true);
+    expect(isProtectedRoutePath('/admin', ['/learn', '/admin'])).toBe(true);
+    expect(isProtectedRoutePath('/admin/users', ['/learn', '/admin'])).toBe(true);
+  });
+
+  it('does not match sibiling paths with a protected prefix', () => {
+    expect(isProtectedRoutePath('/learning', ['/learn', '/admin'])).toBe(false);
+    expect(isProtectedRoutePath('/admin-tools', ['/learn', '/admin'])).toBe(false);
   });
 
   it('resolves authenticated state when access is allowed', () => {
