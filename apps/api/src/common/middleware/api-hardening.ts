@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import { createApiErrorResponse } from '../api-response.js';
+
 type NextFunction = () => void;
 
 type ApiRequest = IncomingMessage & {
@@ -18,6 +20,8 @@ type Middleware = (request: ApiRequest, response: ApiResponse, next: NextFunctio
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 20;
 const TOO_MANY_REQUESTS_STATUS = 429;
+const TOO_MANY_REQUESTS_CODE = 'TOO_MANY_REQUESTS';
+const TOO_MANY_REQUESTS_MESSAGE = 'Too many requests';
 
 const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/login',
@@ -113,7 +117,8 @@ export function createSensitiveRouteRateLimitMiddleware(store?: RateLimitStore):
       return;
     }
 
-    const key = `ratelimit:${getClientKey(request)}:${getRequestPath(request)}`;
+    const requestPath = getRequestPath(request);
+    const key = `ratelimit:${getClientKey(request)}:${requestPath}`;
 
     try {
       const count = await resolvedStore.increment(key, RATE_LIMIT_WINDOW_MS);
@@ -121,7 +126,16 @@ export function createSensitiveRouteRateLimitMiddleware(store?: RateLimitStore):
       if (count > RATE_LIMIT_MAX_REQUESTS) {
         response.statusCode = TOO_MANY_REQUESTS_STATUS;
         response.setHeader('Content-Type', 'application/json');
-        response.end(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
+        response.end(
+          JSON.stringify(
+            createApiErrorResponse({
+              statusCode: TOO_MANY_REQUESTS_STATUS,
+              code: TOO_MANY_REQUESTS_CODE,
+              message: TOO_MANY_REQUESTS_MESSAGE,
+              path: request.url ?? requestPath,
+            }),
+          ),
+        );
         return;
       }
     } catch {
