@@ -76,22 +76,63 @@ describe('API hardening middleware', () => {
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const nextTracker = createNextTracker();
+
       await middleware(request as never, createResponse() as never, nextTracker.next.bind(nextTracker));
     }
 
     const response = createResponse();
     const nextTracker = createNextTracker();
+
     await middleware(request as never, response as never, nextTracker.next.bind(nextTracker));
 
+    const body = JSON.parse(response.body) as {
+      statusCode: number;
+      error: {
+        code: string;
+        message: string;
+      };
+      path: string;
+      timestamp: string;
+    };
+
     expect(response.statusCode).toBe(429);
-    expect(response.body).toBe(JSON.stringify({ error: 'TOO_MANY_REQUESTS' }));
+    expect(response.headers.get('Content-Type')).toBe('application/json');
+    expect(body).toMatchObject({
+      statusCode: 429,
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many requests',
+      },
+      path: '/api/v1/auth/login',
+    });
+    expect(body.timestamp).toEqual(expect.any(String));
     expect(nextTracker.calls).toBe(0);
 
     currentTime += 60_001;
     const nextAfterReset = createNextTracker();
+
     await middleware(request as never, createResponse() as never, nextAfterReset.next.bind(nextAfterReset));
 
     expect(nextAfterReset.calls).toBe(1);
+  });
+
+  it('keeps the request query in the normalized rate limit error path', async () => {
+    const store = createInMemoryRateLimitStore(() => 1_000);
+    const middleware = createSensitiveRouteRateLimitMiddleware(store);
+    const request = createRequest({ url: '/api/v1/auth/login?next=%2Flearn' });
+
+    for (let attempt = 0; attempt < 21; attempt += 1) {
+      await middleware(request as never, createResponse() as never, createNextTracker().next);
+    }
+
+    const response = createResponse();
+
+    await middleware(request as never, response as never, createNextTracker().next);
+
+    expect(JSON.parse(response.body)).toMatchObject({
+      statusCode: 429,
+      path: '/api/v1/auth/login?next=%2Flearn',
+    });
   });
 
   it('skips non-sensitive routes', async () => {
@@ -111,7 +152,6 @@ describe('Redis rate limit store', () => {
   it('increments the counter and sets TTL on first request', async () => {
     let counter = 0;
     const expireCalls: Array<{ key: string; seconds: number }> = [];
-
     const redis: MinimalRedis = {
       incr: async () => {
         counter += 1;
@@ -122,8 +162,8 @@ describe('Redis rate limit store', () => {
         return 1;
       },
     };
-
     const store = createRedisRateLimitStore(redis);
+
     const count = await store.increment('test-key', 60_000);
 
     expect(count).toBe(1);
@@ -133,7 +173,6 @@ describe('Redis rate limit store', () => {
   it('does not reset TTL on subsequent increments', async () => {
     let counter = 0;
     const expireCalls: number[] = [];
-
     const redis: MinimalRedis = {
       incr: async () => {
         counter += 1;
@@ -144,8 +183,8 @@ describe('Redis rate limit store', () => {
         return 1;
       },
     };
-
     const store = createRedisRateLimitStore(redis);
+
     await store.increment('key', 60_000);
     await store.increment('key', 60_000);
     await store.increment('key', 60_000);
@@ -161,7 +200,6 @@ describe('Redis rate limit store', () => {
       },
       expire: async () => 1,
     };
-
     const store = createRedisRateLimitStore(redis);
     const middleware = createSensitiveRouteRateLimitMiddleware(store);
     const request = createRequest();
