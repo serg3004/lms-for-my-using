@@ -14,7 +14,7 @@ import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
 import type { CourseSummary, ProgressSummary } from '../shared/api/types.js';
 import { getLesson } from '../shared/api/lessons.js';
-import { getLessonHref, getCourseHref, getCourseLessonsHref } from '../shared/learnerRoutes.js';
+import { getLessonHref, getCourseHref } from '../shared/learnerRoutes.js';
 import { Badge, Button, ProgressBar, PageState } from '../shared/ui.js';
 import '../styles/ui.css';
 
