@@ -1,46 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
-import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { Badge, Button, Card, PageState } from '../shared/ui.js';
+import { getCourse, updateCourse, deleteCourse } from '../shared/api/courses.js';
+import { listLessons, createLesson, updateLesson } from '../shared/api/lessons.js';
+import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
 import '../styles/admin.css';
+import '../styles/ui.css';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
-
-type AdminCourseSummary = {
-  id: string;
-  organizationId: string;
-  title: string;
-  slug: string;
-  description: string | null;
-  status: CourseStatus;
-  createdAt: string;
-  updatedAt: string;
-  _count: { lessons: number };
-};
+type LessonStatus = 'draft' | 'published' | 'archived';
 
 type PageLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; courses: AdminCourseSummary[]; currentUser: CurrentUser }
+  | { status: 'loaded'; course: CourseSummary; lessons: LessonSummary[]; currentUser: CurrentUser }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-type CreateFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
+type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string };
+type LessonFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
 
-const COURSE_STATUSES: CourseStatus[] = ['draft', 'published', 'archived'];
-
-function getStatusTone(status: CourseStatus) {
-  if (status === 'published') return 'success';
-  if (status === 'archived') return 'neutral';
-
-  return 'neutral';
-}
-
-function slugifyTitle(value: string) {
+function slugify(value: string) {
   return value
     .trim()
     .toLowerCase()
@@ -49,139 +34,165 @@ function slugifyTitle(value: string) {
     .slice(0, 80);
 }
 
+function lessonStatusBadge(status: string): { variant: 'published' | 'draft' | 'neutral'; label: string } {
+  if (status === 'published') return { variant: 'published', label: 'Готов' };
+  if (status === 'archived') return { variant: 'neutral', label: 'Архив' };
+  return { variant: 'draft', label: 'Черновик' };
+}
+
+function courseStatusBadge(status: string): { variant: 'published' | 'draft' | 'neutral'; label: string } {
+  if (status === 'published') return { variant: 'published', label: 'Опубликован' };
+  if (status === 'archived') return { variant: 'neutral', label: 'Архив' };
+  return { variant: 'draft', label: 'Черновик' };
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export function AdminCourseBuilderPage() {
   const { t } = useTranslation();
+  const { courseId } = useParams<{ courseId: string }>();
+
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
-  const [showCreate, setShowCreate] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+
+  const [showAddLesson, setShowAddLesson] = useState(false);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonDesc, setLessonDesc] = useState('');
+  const [lessonFormState, setLessonFormState] = useState<LessonFormState>({ status: 'idle' });
+
+  const [showDelete, setShowDelete] = useState(false);
+
+  const addLessonDialogRef = useRef<HTMLDialogElement>(null);
+  const deleteDialogRef = useRef<HTMLDialogElement>(null);
 
   const navItems: AdminNavItem[] = [
-    { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
-    { label: t('admin.courseBuilder.title', 'Courses'), href: '/admin/courses', isCurrent: true },
+    { label: t('admin.title', 'Admin'), href: '/admin' },
+    { label: t('admin.courses.title', 'Courses'), href: '/admin/courses' },
+    { label: t('admin.courses.builder', 'Builder'), href: `/admin/courses/${courseId}`, isCurrent: true },
   ];
 
   const loadData = useCallback(async () => {
+    if (!courseId) return;
     setPageState({ status: 'loading' });
-
     try {
-      const [courses, currentUser] = await Promise.all([
-        apiRequest<AdminCourseSummary[]>('/courses'),
+      const [course, lessons, currentUser] = await Promise.all([
+        getCourse(courseId) as Promise<CourseSummary>,
+        listLessons(courseId),
         getCurrentUser(),
       ]);
-
-      setPageState({ status: 'loaded', courses, currentUser });
+      setFormTitle(course.title);
+      setFormDescription(course.description ?? '');
+      setPageState({ status: 'loaded', course, lessons, currentUser });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
-        setPageState({
-          status: 'unauthenticated',
-          message: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
-        });
-
+        setPageState({ status: 'unauthenticated', message: 'Сессия истекла. Войдите снова.' });
         return;
       }
-
-      setPageState({
-        status: 'error',
-        message: t('admin.courseBuilder.loadError', 'Unable to load courses. Try again later.'),
-      });
+      setPageState({ status: 'error', message: 'Не удалось загрузить курс.' });
     }
-  }, [t]);
+  }, [courseId]);
+
+  useEffect(() => { void loadData(); }, [loadData]);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (showAddLesson) addLessonDialogRef.current?.showModal();
+    else addLessonDialogRef.current?.close();
+  }, [showAddLesson]);
 
   useEffect(() => {
-    if (showCreate) {
-      dialogRef.current?.showModal();
-    } else {
-      dialogRef.current?.close();
-    }
-  }, [showCreate]);
+    if (showDelete) deleteDialogRef.current?.showModal();
+    else deleteDialogRef.current?.close();
+  }, [showDelete]);
 
-  function openCreate() {
-    setFormTitle('');
-    setFormDescription('');
-    setFormState({ status: 'idle' });
-    setShowCreate(true);
-  }
-
-  function closeCreate() {
-    setShowCreate(false);
-  }
-
-  async function handleCreate(e: React.FormEvent) {
+  async function handleSaveCourse(e: React.FormEvent) {
     e.preventDefault();
-
-    if (pageState.status !== 'loaded') return;
-
-    const title = formTitle.trim();
-    const slug = slugifyTitle(title);
-
-    if (!slug) {
-      setFormState({
-        status: 'error',
-        message: t('admin.courseBuilder.invalidTitle', 'Enter a title using letters or numbers.'),
-      });
-
-      return;
-    }
-
-    setFormState({ status: 'submitting' });
-
+    if (!courseId) return;
+    setSaveState({ status: 'saving' });
     try {
-      await apiRequest<AdminCourseSummary>('/courses', {
-        method: 'POST',
-        body: JSON.stringify({
-          organizationId: pageState.currentUser.organizationId,
-          title,
-          slug,
-          description: formDescription.trim() || undefined,
-          status: 'draft',
-        }),
-      });
-
-      closeCreate();
+      await updateCourse(courseId, { title: formTitle.trim(), description: formDescription.trim() || undefined });
+      setSaveState({ status: 'saved' });
+      setTimeout(() => setSaveState({ status: 'idle' }), 2000);
       void loadData();
     } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 409
-          ? t('admin.courseBuilder.courseExists', 'A course with this slug already exists.')
-          : error instanceof ApiClientError
-            ? error.message
-            : t('admin.courseBuilder.saveError', 'Failed to create course. Try again.');
-
-      setFormState({ status: 'error', message });
+      setSaveState({
+        status: 'error',
+        message: error instanceof ApiClientError ? error.message : 'Не удалось сохранить.',
+      });
     }
   }
 
-  async function handleStatusChange(course: AdminCourseSummary, newStatus: CourseStatus) {
-    if (newStatus === course.status) return;
-
+  async function handlePublish() {
+    if (!courseId || pageState.status !== 'loaded') return;
+    const newStatus: CourseStatus =
+      pageState.course.status === 'published' ? 'archived' : 'published';
     try {
-      const updated = await apiRequest<AdminCourseSummary>(`/courses/${course.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (pageState.status !== 'loaded') return;
-
-      setPageState({
-        ...pageState,
-        courses: pageState.courses.map((c) => (c.id === updated.id ? updated : c)),
-      });
+      await updateCourse(courseId, { status: newStatus });
+      void loadData();
     } catch {
-      // Silently ignore — server error will be visible on next refresh
+      // silently ignore
+    }
+  }
+
+  async function handleDeleteCourse() {
+    if (!courseId) return;
+    try {
+      await deleteCourse(courseId);
+      window.location.assign('/admin/courses');
+    } catch {
+      setShowDelete(false);
+    }
+  }
+
+  async function handleAddLesson(e: React.FormEvent) {
+    e.preventDefault();
+    if (!courseId || pageState.status !== 'loaded') return;
+    const title = lessonTitle.trim();
+    const slug = slugify(title);
+    if (!slug) {
+      setLessonFormState({ status: 'error', message: 'Введите название урока.' });
+      return;
+    }
+    setLessonFormState({ status: 'submitting' });
+    try {
+      await createLesson(courseId, {
+        organizationId: pageState.currentUser.organizationId,
+        title,
+        slug,
+        description: lessonDesc.trim() || undefined,
+        order: pageState.lessons.length,
+        status: 'draft',
+      });
+      setShowAddLesson(false);
+      setLessonTitle('');
+      setLessonDesc('');
+      setLessonFormState({ status: 'idle' });
+      void loadData();
+    } catch (error) {
+      setLessonFormState({
+        status: 'error',
+        message: error instanceof ApiClientError ? error.message : 'Не удалось создать урок.',
+      });
+    }
+  }
+
+  async function handleToggleLessonStatus(lesson: LessonSummary) {
+    const newStatus: LessonStatus = lesson.status === 'published' ? 'draft' : 'published';
+    try {
+      await updateLesson(lesson.id, { status: newStatus });
+      void loadData();
+    } catch {
+      // silently ignore
     }
   }
 
   if (pageState.status === 'idle' || pageState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message={t('admin.courseBuilder.loading', 'Loading courses...')} variant="loading" />
+        <PageState message="Загрузка курса..." variant="loading" />
       </main>
     );
   }
@@ -189,12 +200,7 @@ export function AdminCourseBuilderPage() {
   if (pageState.status === 'unauthenticated') {
     return (
       <main className="admin-state">
-        <PageState
-          title={t('admin.courseBuilder.title', 'Courses')}
-          message={pageState.message}
-          variant="error"
-          action={<a href="/login">{t('login.navLink')}</a>}
-        />
+        <PageState message={pageState.message} variant="error" action={<a href="/login">Войти</a>} />
       </main>
     );
   }
@@ -202,12 +208,13 @@ export function AdminCourseBuilderPage() {
   if (pageState.status === 'error') {
     return (
       <main className="admin-state">
-        <PageState title={t('admin.courseBuilder.title', 'Courses')} message={pageState.message} variant="error" />
+        <PageState message={pageState.message} variant="error" />
       </main>
     );
   }
 
-  const { courses } = pageState;
+  const { course, lessons } = pageState;
+  const { variant: statusVariant, label: statusLabel } = courseStatusBadge(course.status);
 
   return (
     <AdminPageLayout
@@ -216,120 +223,254 @@ export function AdminCourseBuilderPage() {
       navItems={navItems}
     >
       <AdminPageHeader
-        title={t('admin.courseBuilder.title', 'Courses')}
-        subtitle={t('admin.courseBuilder.subtitle', 'Create and manage courses for your organization.')}
+        title={course.title}
+        subtitle={`${lessons.length} уроков · обновлён ${formatDate(course.updatedAt)}`}
         action={
-          <button className="admin-btn admin-btn--primary" onClick={openCreate} type="button">
-            {t('admin.courseBuilder.create', 'Create course')}
-          </button>
+          <Button variant="secondary" size="sm" type="button" onClick={() => window.location.assign('/admin/courses')}>
+            ← К списку
+          </Button>
         }
       />
 
-      <AdminCard>
-        {courses.length === 0 ? (
-          <EmptyState message={t('admin.courseBuilder.empty', 'No courses found.')} />
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>{t('admin.courseBuilder.titleCol', 'Title')}</th>
-                <th>{t('admin.courseBuilder.slugCol', 'Slug')}</th>
-                <th>{t('admin.courseBuilder.lessonsCol', 'Lessons')}</th>
-                <th>{t('admin.courseBuilder.statusCol', 'Status')}</th>
-                <th>{t('admin.courseBuilder.changeStatus', 'Change status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((course) => (
-                <tr key={course.id}>
-                  <td>{course.title}</td>
-                  <td>
-                    <code>{course.slug}</code>
-                  </td>
-                  <td>{course._count.lessons}</td>
-                  <td>
-                    <StatusBadge tone={getStatusTone(course.status)}>{course.status}</StatusBadge>
-                  </td>
-                  <td>
-                    <select
-                      className="admin-status-select"
-                      value={course.status}
-                      onChange={(e) => void handleStatusChange(course, e.target.value as CourseStatus)}
-                      aria-label={t('admin.courseBuilder.changeStatusFor', 'Change status for {{title}}', { title: course.title })}
-                    >
-                      {COURSE_STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </AdminCard>
+      <div className="edit-layout">
+        {/* Left: main content */}
+        <div>
+          <Card style={{ marginBottom: '20px' }}>
+            <div className="ds-card__title">Основная информация</div>
+            <form onSubmit={(e) => void handleSaveCourse(e)}>
+              <div className="ds-field">
+                <label className="ds-field__label" htmlFor="cb-title">Название курса</label>
+                <input
+                  id="cb-title"
+                  className="ds-input"
+                  type="text"
+                  maxLength={160}
+                  required
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                />
+              </div>
+              <div className="ds-field">
+                <label className="ds-field__label" htmlFor="cb-desc">Описание</label>
+                <textarea
+                  id="cb-desc"
+                  className="ds-input"
+                  rows={4}
+                  maxLength={1000}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                />
+              </div>
+              {saveState.status === 'error' ? (
+                <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--color-danger)' }} role="alert">
+                  {saveState.message}
+                </p>
+              ) : null}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  disabled={saveState.status === 'saving'}
+                >
+                  {saveState.status === 'saving' ? 'Сохранение...' : 'Сохранить'}
+                </Button>
+                {saveState.status === 'saved' ? (
+                  <span style={{ fontSize: '13px', color: 'var(--color-success)' }}>Сохранено ✓</span>
+                ) : null}
+              </div>
+            </form>
+          </Card>
 
-      <dialog className="admin-dialog" ref={dialogRef} onClose={closeCreate}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div className="ds-card__title" style={{ marginBottom: 0 }}>Уроки</div>
+              <Button
+                variant="secondary"
+                size="sm"
+                type="button"
+                onClick={() => {
+                  setLessonTitle('');
+                  setLessonDesc('');
+                  setLessonFormState({ status: 'idle' });
+                  setShowAddLesson(true);
+                }}
+              >
+                + Добавить урок
+              </Button>
+            </div>
+
+            {lessons.length === 0 ? (
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '14px' }}>
+                Уроков пока нет. Добавьте первый урок.
+              </p>
+            ) : (
+              <div className="lesson-list">
+                {lessons
+                  .slice()
+                  .sort((a, b) => a.order - b.order)
+                  .map((lesson, idx) => {
+                    const { variant, label } = lessonStatusBadge(lesson.status);
+                    return (
+                      <div key={lesson.id} className="lesson-row">
+                        <span className="lesson-row__drag" aria-hidden="true">⠿</span>
+                        <span className="lesson-row__num">{idx + 1}</span>
+                        <span className="lesson-row__title">{lesson.title}</span>
+                        <Badge variant={variant} style={{ marginRight: '4px' }}>{label}</Badge>
+                        <div className="lesson-row__actions">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            type="button"
+                            title={lesson.status === 'published' ? 'Снять с публикации' : 'Опубликовать'}
+                            onClick={() => void handleToggleLessonStatus(lesson)}
+                          >
+                            ✏
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Right: sidebar */}
+        <div>
+          <Card style={{ marginBottom: '16px' }}>
+            <div className="ds-card__title">Публикация</div>
+            <div className="info-row">
+              <span className="info-row__label">Статус</span>
+              <Badge variant={statusVariant}>{statusLabel}</Badge>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">Уроков</span>
+              <span style={{ fontSize: 'var(--text-sm)' }}>{lessons.length}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">Создан</span>
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                {formatDate(course.createdAt)}
+              </span>
+            </div>
+            <div style={{ marginTop: '16px', display: 'grid', gap: '8px' }}>
+              <Button
+                variant={course.status === 'published' ? 'secondary' : 'primary'}
+                type="button"
+                style={{ width: '100%' }}
+                onClick={() => void handlePublish()}
+              >
+                {course.status === 'published' ? 'Снять с публикации' : 'Опубликовать'}
+              </Button>
+              <Button
+                variant="danger"
+                type="button"
+                style={{ width: '100%' }}
+                onClick={() => setShowDelete(true)}
+              >
+                Удалить курс
+              </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <div className="ds-card__title">Статистика</div>
+            <div className="info-row">
+              <span className="info-row__label">Записано</span>
+              <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">Завершили</span>
+              <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">Средний балл</span>
+              <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Add lesson dialog */}
+      <dialog className="admin-dialog" ref={addLessonDialogRef} onClose={() => setShowAddLesson(false)}>
         <div className="admin-dialog__header">
-          <h2>{t('admin.courseBuilder.create', 'Create course')}</h2>
+          <h2>Добавить урок</h2>
           <button
             className="admin-dialog__close"
-            onClick={closeCreate}
             type="button"
-            aria-label={t('common.close', 'Close')}
+            aria-label="Закрыть"
+            onClick={() => setShowAddLesson(false)}
           >
             ✕
           </button>
         </div>
-
-        <form className="admin-form" onSubmit={(e) => void handleCreate(e)}>
+        <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
           <div className="admin-form__field">
-            <label htmlFor="create-title">{t('admin.courseBuilder.courseTitle', 'Course title')} *</label>
+            <label htmlFor="lesson-title">Название урока *</label>
             <input
-              id="create-title"
+              id="lesson-title"
               required
               maxLength={160}
               type="text"
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
+              value={lessonTitle}
+              onChange={(e) => setLessonTitle(e.target.value)}
             />
-            {formTitle.trim() && (
-              <span className="admin-form__hint">
-                slug: <code>{slugifyTitle(formTitle)}</code>
-              </span>
-            )}
           </div>
-
           <div className="admin-form__field">
-            <label htmlFor="create-description">{t('admin.courseBuilder.description', 'Description')}</label>
+            <label htmlFor="lesson-desc">Описание</label>
             <textarea
-              id="create-description"
+              id="lesson-desc"
               maxLength={1000}
               rows={3}
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
+              value={lessonDesc}
+              onChange={(e) => setLessonDesc(e.target.value)}
             />
           </div>
-
-          {formState.status === 'error' && (
-            <p className="admin-form__error" role="alert">{formState.message}</p>
-          )}
-
+          {lessonFormState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">{lessonFormState.message}</p>
+          ) : null}
           <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--secondary" onClick={closeCreate} type="button">
-              {t('common.cancel', 'Cancel')}
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowAddLesson(false)}>
+              Отмена
             </button>
             <button
               className="admin-btn admin-btn--primary"
-              disabled={formState.status === 'submitting'}
               type="submit"
+              disabled={lessonFormState.status === 'submitting'}
             >
-              {formState.status === 'submitting'
-                ? t('common.saving', 'Saving...')
-                : t('admin.courseBuilder.create', 'Create course')}
+              {lessonFormState.status === 'submitting' ? 'Сохранение...' : 'Добавить'}
             </button>
           </div>
         </form>
+      </dialog>
+
+      {/* Delete course dialog */}
+      <dialog className="admin-dialog" ref={deleteDialogRef} onClose={() => setShowDelete(false)}>
+        <div className="admin-dialog__header">
+          <h2>Удалить курс</h2>
+          <button
+            className="admin-dialog__close"
+            type="button"
+            aria-label="Закрыть"
+            onClick={() => setShowDelete(false)}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="admin-form">
+          <p style={{ margin: 0, color: 'var(--color-text)' }}>
+            Удалить «{course.title}»? Это действие необратимо.
+          </p>
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowDelete(false)}>
+              Отмена
+            </button>
+            <button className="admin-btn admin-btn--danger" type="button" onClick={() => void handleDeleteCourse()}>
+              Удалить
+            </button>
+          </div>
+        </div>
       </dialog>
     </AdminPageLayout>
   );
