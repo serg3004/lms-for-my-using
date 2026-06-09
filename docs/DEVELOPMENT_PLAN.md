@@ -199,6 +199,75 @@
 
 > **Факт:** `api-response.ts` создан — инфраструктура есть. Системного аудита всех ответов не проводилось.
 
+
+## PR 64a — API response contract baseline
+### Проблема – краткое понимание
+PR 64 слишком широкий: в репозитории есть 17 API-зон, и массовое изменение response contract одним PR может сломать frontend, tests и реальные demo flows.
+
+### Что делаем – перечисли
+- фиксируем общий API error response contract в `docs/API_CONTRACTS.md`;
+- документируем поля `statusCode`, `error.code`, `error.message`, `error.details`, `path`, `timestamp`;
+- фиксируем правила изменения response shape;
+- не меняем runtime-код.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] `docs/API_CONTRACTS.md` обновлён;
+- [ ] error response shape описан;
+- [ ] runtime-код не изменён;
+- [ ] CI зелёный.
+
+## PR 64b — common error responses + auth/organizations/users
+### Проблема – краткое понимание
+Ошибки API должны возвращаться в едином формате, особенно в базовых зонах: auth, organizations, users. Сейчас часть поведения может отличаться по middleware/controller/filter.
+
+### Что делаем – перечисли
+- проверить `auth`, `organizations`, `users`;
+- проверить validation/auth/forbidden/not found/rate limit errors;
+- привести ответы к `ApiErrorResponse`;
+- добавить backend regression tests;
+- проверить frontend apiClient parsing.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] auth errors используют общий формат;
+- [ ] organizations/users errors используют общий формат;
+- [ ] tests покрывают 400/401/403/404/429, где применимо;
+- [ ] frontend parsing не сломан;
+- [ ] CI зелёный.
+
+## PR 64c — learning content API response consistency
+### Проблема – краткое понимание
+Learning content зоны должны иметь согласованные list/detail/create responses, чтобы frontend не строил guesses по разным форматам.
+
+### Что делаем – перечисли
+- проверить `courses`, `lessons`, `course-materials`, `assignments`, `progress`;
+- сверить list/detail/create response shapes;
+- не менять публичный response shape без tests и frontend sync;
+- добавить regression tests на найденные расхождения.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] learning content endpoints проверены;
+- [ ] найденные расхождения исправлены или задокументированы;
+- [ ] backend tests добавлены;
+- [ ] frontend clients синхронизированы, если response shape изменён;
+- [ ] CI зелёный.
+
+## PR 64d — assessments/certificates/upload API response consistency
+### Проблема – краткое понимание
+Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
+
+### Что делаем – перечисли
+- проверить `assessments`, `assessment-questions`, `assessment-attempts`, `certificates`, `upload`;
+- сверить success/error response shapes;
+- синхронизировать OpenAPI/docs при изменении contract;
+- добавить regression tests.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] assessment/certificate/upload endpoints проверены;
+- [ ] response contract согласован;
+- [ ] OpenAPI/docs обновлены при необходимости;
+- [ ] backend tests добавлены;
+- [ ] frontend clients не сломаны;
+- [ ] CI зелёный.
 ---
 
 ## PR 65 — CI and quality gates hardening ⚠️
@@ -1790,3 +1859,72 @@ Prod-readiness backend PR 162        1 PR  🔲 НЕ НАЧАТО
 ```
 
 > Приоритет выполнения: PR 167–169 (Admin CRUD) → PR 171–172 (Workspace) → PR 162 (Prod-readiness) → PR 170 (S3, откладывается до инфра-решения по хранилищу).
+
+## PR 64a — API response contract baseline
+### Проблема – краткое понимание
+PR 64 слишком широкий: в репозитории есть 17 API-зон, и массовое изменение response contract одним PR может сломать frontend, tests и реальные demo flows.
+
+### Что делаем – перечисли
+- фиксируем общий API error response contract в `docs/API_CONTRACTS.md`;
+- документируем поля `statusCode`, `error.code`, `error.message`, `error.details`, `path`, `timestamp`;
+- фиксируем правила изменения response shape;
+- не меняем runtime-код.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] `docs/API_CONTRACTS.md` обновлён;
+- [ ] error response shape описан;
+- [ ] runtime-код не изменён;
+- [ ] CI зелёный.
+
+## PR 64b — common error responses + auth/organizations/users
+### Проблема – краткое понимание
+Ошибки API должны возвращаться в едином формате, особенно в базовых зонах: auth, organizations, users.
+
+### Что делаем – перечисли
+- проверить `auth`, `organizations`, `users`;
+- проверить validation/auth/forbidden/not found/rate limit errors;
+- привести ответы к `ApiErrorResponse`;
+- добавить backend regression tests;
+- проверить frontend apiClient parsing.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] auth errors используют общий формат;
+- [ ] organizations/users errors используют общий формат;
+- [ ] tests покрывают 400/401/403/404/429, где применимо;
+- [ ] frontend parsing не сломан;
+- [ ] CI зелёный.
+
+## PR 64c — learning content API response consistency
+### Проблема – краткое понимание
+Learning content зоны должны иметь согласованные list/detail/create responses, чтобы frontend не строил guesses по разным форматам.
+
+### Что делаем – перечисли
+- проверить `courses`, `lessons`, `course-materials`, `assignments`, `progress`;
+- сверить list/detail/create response shapes;
+- не менять публичный response shape без tests и frontend sync;
+- добавить regression tests на найденные расхождения.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] learning content endpoints проверены;
+- [ ] найденные расхождения исправлены или задокументированы;
+- [ ] backend tests добавлены;
+- [ ] frontend clients синхронизированы, если response shape изменён;
+- [ ] CI зелёный.
+
+## PR 64d — assessments/certificates/upload API response consistency
+### Проблема – краткое понимание
+Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
+
+### Что делаем – перечисли
+- проверить `assessments`, `assessment-questions`, `assessment-attempts`, `certificates`, `upload`;
+- сверить success/error response shapes;
+- синхронизировать OpenAPI/docs при изменении contract;
+- добавить regression tests.
+
+### Критерии готовности – кратко перечисли (чек – лист)
+- [ ] assessment/certificate/upload endpoints проверены;
+- [ ] response contract согласован;
+- [ ] OpenAPI/docs обновлены при необходимости;
+- [ ] backend tests добавлены;
+- [ ] frontend clients не сломаны;
+- [ ] CI зелёный.
