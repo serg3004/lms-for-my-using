@@ -9,6 +9,7 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
 RUN pnpm install --frozen-lockfile --filter @lms/web
 
 # ---- Build: Vite production build ----
@@ -17,6 +18,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY apps/web ./apps/web
+COPY packages/shared ./packages/shared
 COPY package.json pnpm-workspace.yaml ./
 WORKDIR /app/apps/web
 RUN pnpm run build
