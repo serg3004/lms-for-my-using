@@ -16,7 +16,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "@lms/shared": ["../../packages/shared/src/index.ts"]
+      "@lms/shared": ["../../packages/shared/src/types/api-response.contract.d.ts"]
     }
   },
   "include": ["src"],
