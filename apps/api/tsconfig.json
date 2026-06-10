@@ -9,7 +9,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@lms/shared": ["../../packages/shared/src/index.ts"]
+      "@lms/shared": ["../../packages/shared/src/types/api-response.contract.d.ts"]
     },
     "strict": true,
     "skipLibCheck": true,
