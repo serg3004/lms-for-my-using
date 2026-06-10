@@ -8,7 +8,6 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "baseUrl": ".",
     "paths": {
       "@lms/shared": ["../../packages/shared/src/index.ts"]
     },
