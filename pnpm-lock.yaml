@@ -46,6 +46,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1063.0
         version: 3.1063.0
+      '@lms/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^11.1.25
         version: 11.1.25(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -122,6 +125,9 @@ importers:
       '@fontsource-variable/manrope':
         specifier: ^5.2.8
         version: 5.2.8
+      '@lms/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@vitejs/plugin-react':
         specifier: ^6.0.2
         version: 6.0.2(vite@8.0.16(@types/node@25.9.2)(jiti@2.7.0)(terser@5.48.0))
