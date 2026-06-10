@@ -1,3 +1,5 @@
+export type { ApiErrorDetail, ApiErrorResponse } from '@lms/shared';
+
 export type LoginInput = {
   organizationId: string;
   email: string;
@@ -26,23 +28,6 @@ export type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';
   user: CurrentUser;
-};
-
-export type ApiErrorDetail = {
-  field?: string;
-  message: string;
-  code?: string;
-};
-
-export type ApiErrorResponse = {
-  statusCode: number;
-  error: {
-    code: string;
-    message: string;
-    details?: ApiErrorDetail[];
-  };
-  path: string;
-  timestamp: string;
 };
 
 export type CourseSummary = {
