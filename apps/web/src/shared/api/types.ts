@@ -1,4 +1,4 @@
-export type { ApiErrorDetail, ApiErrorResponse } from '@lms/shared';
+export type { ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
 
 export type LoginInput = {
   organizationId: string;
