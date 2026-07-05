@@ -19,6 +19,19 @@ export default [
         ...globals.node,
       },
     },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@lms/shared',
+              message: 'Use explicit subpath exports such as @lms/shared/types/api to avoid pulling shared runtime dependencies.',
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ['apps/web/src/**/*.{ts,tsx}'],
