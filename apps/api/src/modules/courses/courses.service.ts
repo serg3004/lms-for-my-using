@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
+import { CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
 
 const courseSelect = {
   id: true,
@@ -126,6 +126,43 @@ export class CoursesService {
     });
   }
 
+  async updateCourse(courseId: string, organizationId: string, input: UpdateCourseInput) {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        id: courseId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: { id: true, slug: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    if (input.slug !== course.slug) {
+      const existingCourse = await this.prisma.course.findUnique({
+        where: {
+          organizationId_slug: {
+            organizationId,
+            slug: input.slug,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (existingCourse) {
+        throw new ConflictException('Course slug already exists in organization');
+      }
+    }
+
+    return this.prisma.course.update({
+      where: { id: courseId },
+      data: input,
+      select: courseSelect,
+    });
+  }
+
   async updateCourseStatus(courseId: string, organizationId: string, status: UpdateCourseStatusInput['status']) {
     const course = await this.prisma.course.findFirst({
       where: { id: courseId, organizationId, deletedAt: null },
@@ -140,6 +177,23 @@ export class CoursesService {
       where: { id: courseId },
       data: { status },
       select: courseSelect,
+    });
+  }
+
+  async deleteCourse(courseId: string, organizationId: string) {
+    const course = await this.prisma.course.findFirst({
+      where: { id: courseId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException('Course not found');
+    }
+
+    await this.prisma.course.update({
+      where: { id: courseId },
+      data: { deletedAt: new Date() },
+      select: { id: true },
     });
   }
 
