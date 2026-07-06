@@ -72,6 +72,7 @@ function useAdminUsersState(form: unknown, mode: 'create' | 'edit') {
     .mockReturnValueOnce([form, setter])
     .mockReturnValueOnce([mode, setter])
     .mockReturnValueOnce([null, setter])
+    .mockReturnValueOnce([false, setter])
     .mockReturnValueOnce([false, setter]);
 }
 
