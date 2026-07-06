@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { updateCourseSchema } from './courses.schemas.js';
