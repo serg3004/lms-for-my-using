@@ -1,6 +1,5 @@
 import type { FormEvent } from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useCallback, useEffect, useState } from 'react';
 
 import { getCurrentUser } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
@@ -38,168 +37,76 @@ type PageLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
-
-type CreateFormFields = {
-  firstName: string;
-  lastName: string;
-  middleName: string;
+type UserForm = {
+  id?: string;
   email: string;
   password: string;
-  role: UserRole | '';
-};
-
-type EditFormFields = {
-  id: string;
   firstName: string;
   lastName: string;
   middleName: string;
   position: string;
   shift: string;
   phone: string;
-  email: string;
   status: UserStatus;
   locale: string;
   timezone: string;
   role: UserRole | '';
 };
 
-type UserNameFields = Pick<EditFormFields, 'firstName' | 'lastName' | 'middleName'>;
-
-const EMPTY_CREATE_FORM: CreateFormFields = {
+const EMPTY_FORM: UserForm = {
+  email: '',
+  password: '',
   firstName: '',
   lastName: '',
   middleName: '',
-  email: '',
-  password: '',
+  position: '',
+  shift: '',
+  phone: '',
+  status: 'active',
+  locale: 'ru',
+  timezone: 'Asia/Almaty',
   role: '',
 };
 
-const USER_ROLES: UserRole[] = ['learner', 'instructor', 'manager', 'admin'];
-const USER_STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
+const ROLES: UserRole[] = ['learner', 'instructor', 'manager', 'admin'];
+const STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
 
-function getUserDisplayName(user: AdminUserSummary) {
-  const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
-
-  return fullName || user.email;
+function userName(user: AdminUserSummary) {
+  return [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ') || user.email;
 }
 
-function formatOptionalDate(value: string | null, fallback: string) {
-  if (!value) return fallback;
-
-  return new Date(value).toLocaleString();
-}
-
-function getStatusTone(status: UserStatus) {
-  return status === 'active' ? 'success' : 'neutral';
-}
-
-function getUserRole(user: AdminUserSummary): UserRole | '' {
+function userRole(user: AdminUserSummary): UserRole | '' {
   return user.memberships[0]?.role ?? '';
 }
 
-function getUserRoles(user: AdminUserSummary): string {
-  if (user.memberships.length === 0) return '—';
-
-  return user.memberships.map((m) => m.role).join(', ');
-}
-
-function createEditForm(user: AdminUserSummary): EditFormFields {
+function editForm(user: AdminUserSummary): UserForm {
   return {
     id: user.id,
+    email: user.email,
+    password: '',
     firstName: user.firstName,
     lastName: user.lastName,
     middleName: user.middleName ?? '',
     position: user.position ?? '',
     shift: user.shift ?? '',
     phone: user.phone ?? '',
-    email: user.email,
     status: user.status,
     locale: user.locale,
     timezone: user.timezone,
-    role: getUserRole(user),
+    role: userRole(user),
   };
 }
 
-function UserNameFields({
-  form,
-  onChange,
-}: {
-  form: UserNameFields;
-  onChange: (fields: Partial<UserNameFields>) => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <div className="admin-form__row">
-      <div className="admin-form__field">
-        <label htmlFor="user-lastName">{t('admin.users.lastName', 'Last name')} *</label>
-        <input
-          id="user-lastName"
-          required
-          type="text"
-          value={form.lastName}
-          onChange={(e) => onChange({ lastName: e.target.value })}
-        />
-      </div>
-      <div className="admin-form__field">
-        <label htmlFor="user-firstName">{t('admin.users.firstName', 'First name')} *</label>
-        <input
-          id="user-firstName"
-          required
-          type="text"
-          value={form.firstName}
-          onChange={(e) => onChange({ firstName: e.target.value })}
-        />
-      </div>
-      <div className="admin-form__field">
-        <label htmlFor="user-middleName">{t('admin.users.middleName', 'Middle name')}</label>
-        <input
-          id="user-middleName"
-          type="text"
-          value={form.middleName}
-          onChange={(e) => onChange({ middleName: e.target.value })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function RoleSelect({
-  value,
-  onChange,
-}: {
-  value: UserRole | '';
-  onChange: (role: UserRole | '') => void;
-}) {
-  const { t } = useTranslation();
-
-  return (
-    <select id="user-role" value={value} onChange={(e) => onChange(e.target.value as UserRole | '')}>
-      <option value="">{t('admin.users.noRole', '— No role —')}</option>
-      {USER_ROLES.map((role) => (
-        <option key={role} value={role}>
-          {role}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 export function AdminUsersPage() {
-  const { t } = useTranslation();
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
-  const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState<CreateFormFields>(EMPTY_CREATE_FORM);
-  const [createFormState, setCreateFormState] = useState<FormState>({ status: 'idle' });
-  const [editForm, setEditForm] = useState<EditFormFields | null>(null);
-  const [editFormState, setEditFormState] = useState<FormState>({ status: 'idle' });
-  const createDialogRef = useRef<HTMLDialogElement>(null);
-  const editDialogRef = useRef<HTMLDialogElement>(null);
+  const [form, setForm] = useState<UserForm>(EMPTY_FORM);
+  const [mode, setMode] = useState<'create' | 'edit' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const narItems: AdminNavItem[] = [
-    { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
-    { label: t('admin.users.title', 'Users'), href: '/admin/users', isCurrent: true },
+  const navItems: AdminNavItem[] = [
+    { label: 'Admin dashboard', href: '/admin' },
+    { label: 'Users', href: '/admin/users', isCurrent: true },
   ];
 
   const loadData = useCallback(async () => {
@@ -212,260 +119,182 @@ export function AdminUsersPage() {
       ]);
 
       setPageState({ status: 'loaded', users, currentUser });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setPageState({
-          status: 'unauthenticated',
-          message: t('admin.users.sessionExpired', 'Your session expired. Sign in again.'),
-        });
-
+    } catch (loadError) {
+      if (loadError instanceof ApiClientError && loadError.status === 401) {
+        setPageState({ status: 'unauthenticated', message: 'Your session expired. Sign in again.' });
         return;
       }
 
-      setPageState({
-        status: 'error',
-        message: t('admin.users.loadError', 'Unable to load users. Try again later.'),
-      });
+      setPageState({ status: 'error', message: 'Unable to load users. Try again later.' });
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (showCreate) {
-      createDialogRef.current?.showModal();
-    } else {
-      createDialogRef.current?.close();
-    }
-  }, [showCreate]);
-
-  useEffect(() => {
-    if (editForm) {
-      editDialogRef.current?.showModal();
-    } else {
-      editDialogRef.current?.close();
-    }
-  }, [editForm]);
-
   function openCreate() {
-    setCreateForm(EMPTY_CREATE_FORM);
-    setCreateFormState({ status: 'idle' });
-    setShowCreate(true);
-  }
-
-  function closeCreate() {
-    setShowCreate(false);
+    setForm(EMPTY_FORM);
+    setError(null);
+    setMode('create');
   }
 
   function openEdit(user: AdminUserSummary) {
-    setEditForm(createEditForm(user));
-    setEditFormState({ status: 'idle' });
+    setForm(editForm(user));
+    setError(null);
+    setMode('edit');
   }
 
-  function closeEdit() {
-    setEditForm(null);
-  }
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
+    if (pageState.status !== 'loaded' || !mode) return;
 
-    if (pageState.status !== 'loaded') return;
-
-    setCreateFormState({ status: 'submitting' });
-
-    const { organizationId } = pageState.currentUser;
+    setIsSaving(true);
+    setError(null);
 
     try {
-      const created = await apiRequest<AdminUserSummary>('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          organizationId,
-          email: createForm.email,
-          password: createForm.password,
-          firstName: createForm.firstName,
-          lastName: createForm.lastName,
-          middleName: createForm.middleName || undefined,
-        }),
-      });
-
-      if (createForm.role) {
-        await apiRequest('/memberships', {
+      if (mode === 'create') {
+        const created = await apiRequest<AdminUserSummary>('/users', {
           method: 'POST',
           body: JSON.stringify({
-            organizationId,
-            userId: created.id,
-            role: createForm.role,
+            organizationId: pageState.currentUser.organizationId,
+            email: form.email,
+            password: form.password,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            middleName: form.middleName || undefined,
           }),
+        });
+
+        if (form.role) {
+          await apiRequest('/memberships', {
+            method: 'POST',
+            body: JSON.stringify({
+              organizationId: pageState.currentUser.organizationId,
+              userId: created.id,
+              role: form.role,
+            }),
+          });
+        }
+
+        await loadData();
+      } else if (form.id) {
+        const updated = await apiRequest<AdminUserSummary>(`/users/${form.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            email: form.email,
+            firstName: form.firstName,
+            lastName: form.lastName,
+            middleName: form.middleName || undefined,
+            position: form.position || undefined,
+            shift: form.shift || undefined,
+            phone: form.phone || undefined,
+            status: form.status,
+            locale: form.locale,
+            timezone: form.timezone,
+            role: form.role || null,
+          }),
+        });
+
+        setPageState({
+          ...pageState,
+          users: pageState.users.map((user) => (user.id === updated.id ? updated : user)),
         });
       }
 
-      closeCreate();
-      void loadData();
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError
-          ? error.message
-          : t('admin.users.createError', 'Failed to create user. Try again.');
-
-      setCreateFormState({ status: 'error', message });
+      setMode(null);
+    } catch (saveError) {
+      setError(saveError instanceof ApiClientError ? saveError.message : 'Failed to save user. Try again.');
+    } finally {
+      setIsSaving(false);
     }
   }
 
-  async function handleEdit(e: FormEvent) {
-    e.preventDefault();
-
-    if (!editForm || pageState.status !== 'loaded') return;
-
-    setEditFormState({ status: 'submitting' });
-
-    try {
-      const updated = await apiRequest<AdminUserSummary>(`/users/${editForm.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          email: editForm.email,
-          firstName: editForm.firstName,
-          lastName: editForm.lastName,
-          middleName: editForm.middleName || undefined,
-          position: editForm.position || undefined,
-          shift: editForm.shift || undefined,
-          phone: editForm.phone || undefined,
-          status: editForm.status,
-          locale: editForm.locale,
-          timezone: editForm.timezone,
-          role: editForm.role || null,
-        }),
-      });
-
-      setPageState({
-        ...pageState,
-        users: pageState.users.map((user) => (user.id === updated.id ? updated : user)),
-      });
-      closeEdit();
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError
-          ? error.message
-          : t('admin.users.updateError', 'Failed to update user. Try again.');
-
-      setEditFormState({ status: 'error', message });
-    }
-  }
-
-  async function handleStatusToggle(user: AdminUserSummary) {
-    const newStatus = user.status === 'active' ? 'suspended' : 'active';
+  async function toggleStatus(user: AdminUserSummary) {
+    const status = user.status === 'active' ? 'suspended' : 'active';
 
     try {
       const updated = await apiRequest<AdminUserSummary>(`/users/${user.id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status }),
       });
 
       if (pageState.status !== 'loaded') return;
 
       setPageState({
         ...pageState,
-        users: pageState.users.map((u) => (u.id === updated.id ? updated : u)),
+        users: pageState.users.map((item) => (item.id === updated.id ? updated : item)),
       });
     } catch {
-      // Silently ignore — server error will be visible on next refresh
+      await loadData();
     }
   }
 
   if (pageState.status === 'idle' || pageState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message={t('admin.users.loading', 'Loading users...')} variant="loading" />
+        <PageState message="Loading users..." variant="loading" />
       </main>
     );
   }
 
-  if (pageState.status === 'unauthenticated') {
+  if (pageState.status === 'unauthenticated' || pageState.status === 'error') {
     return (
       <main className="admin-state">
-        <PageState
-          title={t('admin.users.title', 'Users')}
-          message={pageState.message}
-          variant="error"
-          action={<a href="/login">{t('login.navLink')}</a>}
-        />
+        <PageState title="Users" message={pageState.message} variant="error" />
       </main>
     );
   }
-
-  if (pageState.status === 'error') {
-    return (
-      <main className="admin-state">
-        <PageState title={t('admin.users.title', 'Users')} message={pageState.message} variant="error" />
-      </main>
-    );
-  }
-
-  const { users } = pageState;
 
   return (
-    <AdminPageLayout
-      brandLabel={t('admin.navLink', 'Admin')}
-      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
-      navItems={navItems}
-    >
+    <AdminPageLayout brandLabel="Admin" sidebarLabel="Admin navigation" navItems={navItems}>
       <AdminPageHeader
-        title={t('admin.users.title', 'Users')}
-        subtitle={t('admin.users.subtitle', 'Manage organization users and their roles.')}
+        title="Users"
+        subtitle="Manage organization users and their roles."
         action={
           <button className="admin-btn admin-btn--primary" onClick={openCreate} type="button">
-            {t('admin.users.createUser', 'Create user')}
+            Create user
           </button>
         }
       />
 
       <AdminCard>
-        {users.length === 0 ? (
-          <EmptyState message={t('admin.users.empty', 'No users found.')} />
+        {pageState.users.length === 0 ? (
+          <EmptyState message="No users found." />
         ) : (
           <table>
             <thead>
               <tr>
-                <th>{t('admin.users.name', 'Name')}</th>
-                <th>{t('admin.users.email', 'Email')}</th>
-                <th>{t('admin.users.roles', 'Roles')}</th>
-                <th>{t('admin.users.status', 'Status')}</th>
-                <th>{t('admin.users.lastLoginAt', 'Last login')}</th>
-                <th>{t('admin.users.actions', 'Actions')}</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last login</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {pageState.users.map((user) => (
                 <tr key={user.id}>
-                  <td>{getUserDisplayName(user)}</td>
+                  <td>{userName(user)}</td>
                   <td>{user.email}</td>
-                  <td>{getUserRoles(user)}</td>
+                  <td>{user.memberships.map((membership) => membership.role).join(', ') || '—'}</td>
                   <td>
-                    <StatusBadge tone={getStatusTone(user.status)}>{user.status}</StatusBadge>
+                    <StatusBadge tone={user.status === 'active' ? 'success' : 'neutral'}>{user.status}</StatusBadge>
                   </td>
-                  <td>{formatOptionalDate(user.lastLoginAt, t('admin.users.neverLoggedIn', 'Never'))}</td>
+                  <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
                   <td>
-                    <div className="admin-actions">
-                      <button
-                        className="admin-btn admin-btn--sm admin-btn--secondary"
-                        onClick={() => openEdit(user)}
-                        type="button"
-                      >
-                        {t('common.edit', 'Edit')}
-                      </button>
-                      <button
-                        className={`admin-btn admin-btn--sm ${
-                          user.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'
-                        }`}
-                        onClick={() => void handleStatusToggle(user)}
-                        type="button"
-                      >
-                       {user.status === 'active'
-                        ? t('admin.users.deactivate', 'Deactivate')
-                        : t('admin.users.activate', 'Activate')}
-                      </button>
-                    </div>
+                    <button className="admin-btn admin-btn--sm admin-btn--secondary" onClick={() => openEdit(user)} type="button">
+                      Edit
+                    </button>{' '}
+                    <button
+                      className={`admin-btn admin-btn--sm ${user.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'}`}
+                      onClick={() => void toggleStatus(user)}
+                      type="button"
+                    >
+                      {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -474,188 +303,99 @@ export function AdminUsersPage() {
         )}
       </AdminCard>
 
-      <dialog className="admin-dialog" ref={createDialogRef} onClose={closeCreate}>
-        <div className="admin-dialog__header">
-          <h2>{t('admin.users.createUser', 'Create user')}</h2>
-          <button className="admin-dialog__close" onClick={closeCreate} type="button" aria-label={t('common.close', 'Close')}>
-            ✕
-          </button>
-        </div>
-
-        <form className="admin-form" onSubmit={(e) => void handleCreate(e)}>
-          <UserNameFields
-            form={createForm}
-            onChange={(fields) => setCreateForm({ ...createForm, ...fields })}
-          />
-
-          <div className="admin-form__field">
-            <label htmlFor="create-email">{t('admin.users.email', 'Email')} *</label>
-            <input
-              id="create-email"
-              required
-              type="email"
-              value={createForm.email}
-              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-            />
-          </div>
-
-          <div className="admin-form__field">
-            <label htmlFor="create-password">{t('admin.users.password', 'Password')} *</label>
-            <input
-              id="create-password"
-              required
-              minLength={8}
-              type="password"
-              value={createForm.password}
-              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-            />
-          </div>
-
-          <div className="admin-form__field">
-            <label htmlFor="create-role">{t('admin.users.role', 'Role')}</label>
-            <RoleSelect value={createForm.role} onChange={(role) => setCreateForm({ ...createForm, role })} />
-          </div>
-
-          {createFormState.status === 'error' && (
-            <p className="admin-form__error" role="alert">{createFormState.message}</p>
-          )}
-
-          <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--secondary" onClick={closeCreate} type="button">
-              {t('common.cancel', 'Cancel')}
-            </button>
-            <button
-              className="admin-btn admin-btn--primary"
-              disabled={createFormState.status === 'submitting'}
-              type="submit"
-            >
-              {createFormState.status === 'submitting'
-                ? t('common.saving', 'Saving...')
-                : t('admin.users.createUser', 'Create user')}
-            </button>
-          </div>
-        </form>
-      </dialog>
-
-      <dialog className="admin-dialog" ref={editDialogRef} onClose={closeEdit}>
-        <div className="admin-dialog__header">
-          <h2>{t('admin.users.editUser', 'Edit user')}</h2>
-          <button className="admin-dialog__close" onClick={closeEdit} type="button" aria-label={t('common.close', 'Close')}>
-            ✕
-          </button>
-        </div>
-
-        {editForm && (
-          <form className="admin-form" onSubmit={(e) => void handleEdit(e)}>
-            <UserNameFields form={editForm} onChange={(fields) => setEditForm({ ...editForm, ...fields })} />
-
-            <div className="admin-form__field">
-              <label htmlFor="edit-email">{t('admin.users.email', 'Email')} *</label>
-              <input
-                id="edit-email"
-                required
-                type="email"
-                value={editForm.email}
-                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-              />
-            </div>
+      {mode && (
+        <AdminCard>
+          <form className="admin-form" onSubmit={(event) => void handleSubmit(event)}>
+            <h2>{mode === 'create' ? 'Create user' : 'Edit user'}</h2>
 
             <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label htmlFor="edit-position">{t('admin.users.position', 'Position')}</label>
-                <input
-                  id="edit-position"
-                  type="text"
-                  value={editForm.position}
-                  onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
-                />
-              </div>
-              <div className="admin-form__field">
-                <label htmlFor="edit-shift">{t('admin.users.shift', 'Shift')}</label>
-                <input
-                  id="edit-shift"
-                  type="text"
-                  value={editForm.shift}
-                  onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })}
-                />
-              </div>
+              <label>
+                Last name *
+                <input required value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} />
+              </label>
+              <label>
+                First name *
+                <input required value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} />
+              </label>
+              <label>
+                Middle name
+                <input value={form.middleName} onChange={(event) => setForm({ ...form, middleName: event.target.value })} />
+              </label>
             </div>
 
-            <div className="admin-form__field">
-              <label htmlFor="edit-phone">{t('admin.users.phone', 'Phone')}</label>
-              <input
-                id="edit-phone"
-                type="text"
-                value={editForm.phone}
-                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-              />
-            </div>
+            <label>
+              Email *
+              <input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            </label>
 
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label htmlFor="edit-status">{t('admin.users.status', 'Status')}</label>
-                <select
-                  id="edit-status"
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as UserStatus })}
-                >
-                  {USER_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="admin-form__field">
-                <label htmlFor="edit-role">{t('admin.users.role', 'Role')}</label>
-                <RoleSelect value={editForm.role} onChange={(role) => setEditForm({ ...editForm, role })} />
-              </div>
-            </div>
-
-            <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label htmlFor="edit-locale">{t('admin.users.locale', 'Locale')}</label>
-                <input
-                  id="edit-locale"
-                  required
-                  type="text"
-                  value={editForm.locale}
-                  onChange={(e) => setEditForm({ ...editForm, locale: e.target.value })}
-                />
-              </div>
-              <div className="admin-form__field">
-                <label htmlFor="edit-timezone">{t('admin.users.timezone', 'Timezone')}</label>
-                <input
-                  id="edit-timezone"
-                  required
-                  type="text"
-                  value={editForm.timezone}
-                  onChange={(e) => setEditForm({ ...editForm, timezone: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {editFormState.status === 'error' && (
-              <p className="admin-form__error" role="alert">{editFormState.message}</p>
+            {mode === 'create' && (
+              <label>
+                Password *
+                <input required minLength={8} type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+              </label>
             )}
 
+            {mode === 'edit' && (
+              <>
+                <div className="admin-form__row">
+                  <label>
+                    Position
+                    <input value={form.position} onChange={(event) => setForm({ ...form, position: event.target.value })} />
+                  </label>
+                  <label>
+                    Shift
+                    <input value={form.shift} onChange={(event) => setForm({ ...form, shift: event.target.value })} />
+                  </label>
+                  <label>
+                    Phone
+                    <input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
+                  </label>
+                </div>
+
+                <div className="admin-form__row">
+                  <label>
+                    Status
+                    <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as UserStatus })}>
+                      {STATUSES.map((status) => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Locale
+                    <input required value={form.locale} onChange={(event) => setForm({ ...form, locale: event.target.value })} />
+                  </label>
+                  <label>
+                    Timezone
+                    <input required value={form.timezone} onChange={(event) => setForm({ ...form, timezone: event.target.value })} />
+                  </label>
+                </div>
+              </>
+            )}
+
+            <label>
+              Role
+              <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value as UserRole | '' })}>
+                <option value="">— No role —</option>
+                {ROLES.map((role) => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+            </label>
+
+            {error && <p className="admin-form__error" role="alert">{error}</p>}
+
             <div className="admin-form__actions">
-              <button className="admin-btn admin-btn--secondary" onClick={closeEdit} type="button">
-                {t('common.cancel', 'Cancel')}
+              <button className="admin-btn admin-btn--secondary" onClick={() => setMode(null)} type="button">
+                Cancel
               </button>
-              <button
-                className="admin-btn admin-btn--primary"
-                disabled={editFormState.status === 'submitting'}
-                type="submit"
-              >
-                {editFormState.status === 'submitting'
-                  ? t('common.saving', 'Saving...')
-                  : t('common.save', 'Save')}
+              <button className="admin-btn admin-btn--primary" disabled={isSaving} type="submit">
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </form>
-        )}
-      </dialog>
+        </AdminCard>
+      )}
     </AdminPageLayout>
   );
 }
