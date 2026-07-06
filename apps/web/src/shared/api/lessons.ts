@@ -48,7 +48,20 @@ export function updateLesson(lessonId: string, input: UpdateLessonInput) {
   });
 }
 
-export function markLessonCompleted(input: CreateLessonCompletionInput) {
+export function reorderLessons(courseId: string, lessonIds: string[]) {
+  return apiRequest<LessonSummary[]>(`${getCourseLessonsPath(courseId)}/order`, {
+    method: 'PATCH',
+    body: JSON.stringify({ lessonIds }),
+  });
+}
+
+export function deleteLesson(lessonId: string) {
+  return apiRequest<void>(getLessonPath(lessonId), {
+    method: 'DELETE',
+  });
+}
+
+export function markLessonComplete(input: CreateLessonCompletionInput) {
   return apiRequest<ProgressSummary>('/progress', {
     method: 'POST',
     body: JSON.stringify({
