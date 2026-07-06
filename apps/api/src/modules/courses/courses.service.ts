@@ -140,7 +140,7 @@ export class CoursesService {
       throw new NotFoundException('Course not found');
     }
 
-    if (input.slug !== course.slug) {
+    if (input.slug && input.slug !== course.slug) {
       const existingCourse = await this.prisma.course.findUnique({
         where: {
           organizationId_slug: {
