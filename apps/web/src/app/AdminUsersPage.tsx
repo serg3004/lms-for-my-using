@@ -1,3 +1,4 @@
+import type { FormEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +10,7 @@ import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
 
 type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
+type UserStatus = 'active' | 'invited' | 'suspended' | 'archived';
 
 type AdminUserSummary = {
   id: string;
@@ -20,7 +22,7 @@ type AdminUserSummary = {
   position: string | null;
   shift: string | null;
   phone: string | null;
-  status: string;
+  status: UserStatus;
   locale: string;
   timezone: string;
   lastLoginAt: string | null;
@@ -36,7 +38,7 @@ type PageLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
-type CreateFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
+type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
 
 type CreateFormFields = {
   firstName: string;
@@ -47,7 +49,24 @@ type CreateFormFields = {
   role: UserRole | '';
 };
 
-const EMPTY_FORM: CreateFormFields = {
+type EditFormFields = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName: string;
+  position: string;
+  shift: string;
+  phone: string;
+  email: string;
+  status: UserStatus;
+  locale: string;
+  timezone: string;
+  role: UserRole | '';
+};
+
+type UserNameFields = Pick<EditFormFields, 'firstName' | 'lastName' | 'middleName'>;
+
+const EMPTY_CREATE_FORM: CreateFormFields = {
   firstName: '',
   lastName: '',
   middleName: '',
@@ -57,6 +76,7 @@ const EMPTY_FORM: CreateFormFields = {
 };
 
 const USER_ROLES: UserRole[] = ['learner', 'instructor', 'manager', 'admin'];
+const USER_STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
 
 function getUserDisplayName(user: AdminUserSummary) {
   const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
@@ -70,8 +90,12 @@ function formatOptionalDate(value: string | null, fallback: string) {
   return new Date(value).toLocaleString();
 }
 
-function getStatusTone(status: string) {
+function getStatusTone(status: UserStatus) {
   return status === 'active' ? 'success' : 'neutral';
+}
+
+function getUserRole(user: AdminUserSummary): UserRole | '' {
+  return user.memberships[0]?.role ?? '';
 }
 
 function getUserRoles(user: AdminUserSummary): string {
@@ -80,15 +104,100 @@ function getUserRoles(user: AdminUserSummary): string {
   return user.memberships.map((m) => m.role).join(', ');
 }
 
+function createEditForm(user: AdminUserSummary): EditFormFields {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    middleName: user.middleName ?? '',
+    position: user.position ?? '',
+    shift: user.shift ?? '',
+    phone: user.phone ?? '',
+    email: user.email,
+    status: user.status,
+    locale: user.locale,
+    timezone: user.timezone,
+    role: getUserRole(user),
+  };
+}
+
+function UserNameFields({
+  form,
+  onChange,
+}: {
+  form: UserNameFields;
+  onChange: (fields: Partial<UserNameFields>) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="admin-form__row">
+      <div className="admin-form__field">
+        <label htmlFor="user-lastName">{t('admin.users.lastName', 'Last name')} *</label>
+        <input
+          id="user-lastName"
+          required
+          type="text"
+          value={form.lastName}
+          onChange={(e) => onChange({ lastName: e.target.value })}
+        />
+      </div>
+      <div className="admin-form__field">
+        <label htmlFor="user-firstName">{t('admin.users.firstName', 'First name')} *</label>
+        <input
+          id="user-firstName"
+          required
+          type="text"
+          value={form.firstName}
+          onChange={(e) => onChange({ firstName: e.target.value })}
+        />
+      </div>
+      <div className="admin-form__field">
+        <label htmlFor="user-middleName">{t('admin.users.middleName', 'Middle name')}</label>
+        <input
+          id="user-middleName"
+          type="text"
+          value={form.middleName}
+          onChange={(e) => onChange({ middleName: e.target.value })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RoleSelect({
+  value,
+  onChange,
+}: {
+  value: UserRole | '';
+  onChange: (role: UserRole | '') => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <select id="user-role" value={value} onChange={(e) => onChange(e.target.value as UserRole | '')}>
+      <option value="">{t('admin.users.noRole', '— No role —')}</option>
+      {USER_ROLES.map((role) => (
+        <option key={role} value={role}>
+          {role}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function AdminUsersPage() {
   const { t } = useTranslation();
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<CreateFormFields>(EMPTY_FORM);
-  const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [createForm, setCreateForm] = useState<CreateFormFields>(EMPTY_CREATE_FORM);
+  const [createFormState, setCreateFormState] = useState<FormState>({ status: 'idle' });
+  const [editForm, setEditForm] = useState<EditFormFields | null>(null);
+  const [editFormState, setEditFormState] = useState<FormState>({ status: 'idle' });
+  const createDialogRef = useRef<HTMLDialogElement>(null);
+  const editDialogRef = useRef<HTMLDialogElement>(null);
 
-  const navItems: AdminNavItem[] = [
+  const narItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
     { label: t('admin.users.title', 'Users'), href: '/admin/users', isCurrent: true },
   ];
@@ -126,15 +235,23 @@ export function AdminUsersPage() {
 
   useEffect(() => {
     if (showCreate) {
-      dialogRef.current?.showModal();
+      createDialogRef.current?.showModal();
     } else {
-      dialogRef.current?.close();
+      createDialogRef.current?.close();
     }
   }, [showCreate]);
 
+  useEffect(() => {
+    if (editForm) {
+      editDialogRef.current?.showModal();
+    } else {
+      editDialogRef.current?.close();
+    }
+  }, [editForm]);
+
   function openCreate() {
-    setForm(EMPTY_FORM);
-    setFormState({ status: 'idle' });
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateFormState({ status: 'idle' });
     setShowCreate(true);
   }
 
@@ -142,12 +259,21 @@ export function AdminUsersPage() {
     setShowCreate(false);
   }
 
-  async function handleCreate(e: React.FormEvent) {
+  function openEdit(user: AdminUserSummary) {
+    setEditForm(createEditForm(user));
+    setEditFormState({ status: 'idle' });
+  }
+
+  function closeEdit() {
+    setEditForm(null);
+  }
+
+  async function handleCreate(e: FormEvent) {
     e.preventDefault();
 
     if (pageState.status !== 'loaded') return;
 
-    setFormState({ status: 'submitting' });
+    setCreateFormState({ status: 'submitting' });
 
     const { organizationId } = pageState.currentUser;
 
@@ -156,21 +282,21 @@ export function AdminUsersPage() {
         method: 'POST',
         body: JSON.stringify({
           organizationId,
-          email: form.email,
-          password: form.password,
-          firstName: form.firstName,
-          lastName: form.lastName,
-          middleName: form.middleName || undefined,
+          email: createForm.email,
+          password: createForm.password,
+          firstName: createForm.firstName,
+          lastName: createForm.lastName,
+          middleName: createForm.middleName || undefined,
         }),
       });
 
-      if (form.role) {
+      if (createForm.role) {
         await apiRequest('/memberships', {
           method: 'POST',
           body: JSON.stringify({
             organizationId,
             userId: created.id,
-            role: form.role,
+            role: createForm.role,
           }),
         });
       }
@@ -183,7 +309,47 @@ export function AdminUsersPage() {
           ? error.message
           : t('admin.users.createError', 'Failed to create user. Try again.');
 
-      setFormState({ status: 'error', message });
+      setCreateFormState({ status: 'error', message });
+    }
+  }
+
+  async function handleEdit(e: FormEvent) {
+    e.preventDefault();
+
+    if (!editForm || pageState.status !== 'loaded') return;
+
+    setEditFormState({ status: 'submitting' });
+
+    try {
+      const updated = await apiRequest<AdminUserSummary>(`/users/${editForm.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          email: editForm.email,
+          firstName: editForm.firstName,
+          lastName: editForm.lastName,
+          middleName: editForm.middleName || undefined,
+          position: editForm.position || undefined,
+          shift: editForm.shift || undefined,
+          phone: editForm.phone || undefined,
+          status: editForm.status,
+          locale: editForm.locale,
+          timezone: editForm.timezone,
+          role: editForm.role || null,
+        }),
+      });
+
+      setPageState({
+        ...pageState,
+        users: pageState.users.map((user) => (user.id === updated.id ? updated : user)),
+      });
+      closeEdit();
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : t('admin.users.updateError', 'Failed to update user. Try again.');
+
+      setEditFormState({ status: 'error', message });
     }
   }
 
@@ -280,15 +446,26 @@ export function AdminUsersPage() {
                   </td>
                   <td>{formatOptionalDate(user.lastLoginAt, t('admin.users.neverLoggedIn', 'Never'))}</td>
                   <td>
-                    <button
-                      className={`admin-btn admin-btn--sm ${user.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'}`}
-                      onClick={() => void handleStatusToggle(user)}
-                      type="button"
-                    >
-                      {user.status === 'active'
+                    <div className="admin-actions">
+                      <button
+                        className="admin-btn admin-btn--sm admin-btn--secondary"
+                        onClick={() => openEdit(user)}
+                        type="button"
+                      >
+                        {t('common.edit', 'Edit')}
+                      </button>
+                      <button
+                        className={`admin-btn admin-btn--sm ${
+                          user.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'
+                        }`}
+                        onClick={() => void handleStatusToggle(user)}
+                        type="button"
+                      >
+                       {user.status === 'active'
                         ? t('admin.users.deactivate', 'Deactivate')
                         : t('admin.users.activate', 'Activate')}
-                    </button>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -297,7 +474,7 @@ export function AdminUsersPage() {
         )}
       </AdminCard>
 
-      <dialog className="admin-dialog" ref={dialogRef} onClose={closeCreate}>
+      <dialog className="admin-dialog" ref={createDialogRef} onClose={closeCreate}>
         <div className="admin-dialog__header">
           <h2>{t('admin.users.createUser', 'Create user')}</h2>
           <button className="admin-dialog__close" onClick={closeCreate} type="button" aria-label={t('common.close', 'Close')}>
@@ -306,38 +483,10 @@ export function AdminUsersPage() {
         </div>
 
         <form className="admin-form" onSubmit={(e) => void handleCreate(e)}>
-          <div className="admin-form__row">
-            <div className="admin-form__field">
-              <label htmlFor="create-lastName">{t('admin.users.lastName', 'Last name')} *</label>
-              <input
-                id="create-lastName"
-                required
-                type="text"
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-              />
-            </div>
-            <div className="admin-form__field">
-              <label htmlFor="create-firstName">{t('admin.users.firstName', 'First name')} *</label>
-              <input
-                id="create-firstName"
-                required
-                type="text"
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="admin-form__field">
-            <label htmlFor="create-middleName">{t('admin.users.middleName', 'Middle name')}</label>
-            <input
-              id="create-middleName"
-              type="text"
-              value={form.middleName}
-              onChange={(e) => setForm({ ...form, middleName: e.target.value })}
-            />
-          </div>
+          <UserNameFields
+            form={createForm}
+            onChange={(fields) => setCreateForm({ ...createForm, ...fields })}
+          />
 
           <div className="admin-form__field">
             <label htmlFor="create-email">{t('admin.users.email', 'Email')} *</label>
@@ -345,8 +494,8 @@ export function AdminUsersPage() {
               id="create-email"
               required
               type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              value={createForm.email}
+              onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
             />
           </div>
 
@@ -357,27 +506,18 @@ export function AdminUsersPage() {
               required
               minLength={8}
               type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              value={createForm.password}
+              onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
             />
           </div>
 
           <div className="admin-form__field">
             <label htmlFor="create-role">{t('admin.users.role', 'Role')}</label>
-            <select
-              id="create-role"
-              value={form.role}
-              onChange={(e) => setForm({ ...form, role: e.target.value as UserRole | '' })}
-            >
-              <option value="">{t('admin.users.noRole', '— No role —')}</option>
-              {USER_ROLES.map((role) => (
-                <option key={role} value={role}>{role}</option>
-              ))}
-            </select>
+            <RoleSelect value={createForm.role} onChange={(role) => setCreateForm({ ...createForm, role })} />
           </div>
 
-          {formState.status === 'error' && (
-            <p className="admin-form__error" role="alert">{formState.message}</p>
+          {createFormState.status === 'error' && (
+            <p className="admin-form__error" role="alert">{createFormState.message}</p>
           )}
 
           <div className="admin-form__actions">
@@ -386,15 +526,135 @@ export function AdminUsersPage() {
             </button>
             <button
               className="admin-btn admin-btn--primary"
-              disabled={formState.status === 'submitting'}
+              disabled={createFormState.status === 'submitting'}
               type="submit"
             >
-              {formState.status === 'submitting'
+              {createFormState.status === 'submitting'
                 ? t('common.saving', 'Saving...')
                 : t('admin.users.createUser', 'Create user')}
             </button>
           </div>
         </form>
+      </dialog>
+
+      <dialog className="admin-dialog" ref={editDialogRef} onClose={closeEdit}>
+        <div className="admin-dialog__header">
+          <h2>{t('admin.users.editUser', 'Edit user')}</h2>
+          <button className="admin-dialog__close" onClick={closeEdit} type="button" aria-label={t('common.close', 'Close')}>
+            ✕
+          </button>
+        </div>
+
+        {editForm && (
+          <form className="admin-form" onSubmit={(e) => void handleEdit(e)}>
+            <UserNameFields form={editForm} onChange={(fields) => setEditForm({ ...editForm, ...fields })} />
+
+            <div className="admin-form__field">
+              <label htmlFor="edit-email">{t('admin.users.email', 'Email')} *</label>
+              <input
+                id="edit-email"
+                required
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+            </div>
+
+            <div className="admin-form__row">
+              <div className="admin-form__field">
+                <label htmlFor="edit-position">{t('admin.users.position', 'Position')}</label>
+                <input
+                  id="edit-position"
+                  type="text"
+                  value={editForm.position}
+                  onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+                />
+              </div>
+              <div className="admin-form__field">
+                <label htmlFor="edit-shift">{t('admin.users.shift', 'Shift')}</label>
+                <input
+                  id="edit-shift"
+                  type="text"
+                  value={editForm.shift}
+                  onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="admin-form__field">
+              <label htmlFor="edit-phone">{t('admin.users.phone', 'Phone')}</label>
+              <input
+                id="edit-phone"
+                type="text"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+
+            <div className="admin-form__row">
+              <div className="admin-form__field">
+                <label htmlFor="edit-status">{t('admin.users.status', 'Status')}</label>
+                <select
+                  id="edit-status"
+                  value={editForm.status}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value as UserStatus })}
+                >
+                  {USER_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="admin-form__field">
+                <label htmlFor="edit-role">{t('admin.users.role', 'Role')}</label>
+                <RoleSelect value={editForm.role} onChange={(role) => setEditForm({ ...editForm, role })} />
+              </div>
+            </div>
+
+            <div className="admin-form__row">
+              <div className="admin-form__field">
+                <label htmlFor="edit-locale">{t('admin.users.locale', 'Locale')}</label>
+                <input
+                  id="edit-locale"
+                  required
+                  type="text"
+                  value={editForm.locale}
+                  onChange={(e) => setEditForm({ ...editForm, locale: e.target.value })}
+                />
+              </div>
+              <div className="admin-form__field">
+                <label htmlFor="edit-timezone">{t('admin.users.timezone', 'Timezone')}</label>
+                <input
+                  id="edit-timezone"
+                  required
+                  type="text"
+                  value={editForm.timezone}
+                  onChange={(e) => setEditForm({ ...editForm, timezone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {editFormState.status === 'error' && (
+              <p className="admin-form__error" role="alert">{editFormState.message}</p>
+            )}
+
+            <div className="admin-form__actions">
+              <button className="admin-btn admin-btn--secondary" onClick={closeEdit} type="button">
+                {t('common.cancel', 'Cancel')}
+              </button>
+              <button
+                className="admin-btn admin-btn--primary"
+                disabled={editFormState.status === 'submitting'}
+                type="submit"
+              >
+                {editFormState.status === 'submitting'
+                  ? t('common.saving', 'Saving...')
+                  : t('common.save', 'Save')}
+              </button>
+            </div>
+          </form>
+        )}
       </dialog>
     </AdminPageLayout>
   );
