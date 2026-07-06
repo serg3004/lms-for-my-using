@@ -1,11 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { createLessonSchema, CreateLessonInput, updateLessonStatusSchema, updateLessonSchema } from './lessons.schemas.js';
+import {
+  createLessonSchema,
+  CreateLessonInput,
+  reorderLessonsSchema,
+  ReorderLessonsInput,
+  updateLessonStatusSchema,
+  updateLessonSchema,
+} from './lessons.schemas.js';
 import { LessonsService } from './lessons.service.js';
 
 @Controller()
@@ -38,6 +45,14 @@ export class LessonsController {
     return this.lessonsService.createLesson(input);
   }
 
+  @Patch('courses/:courseId/lessons/order')
+  @Roles(...rolePolicies.lessonsCreate)
+  reorderLessons(@Param('courseId') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input: ReorderLessonsInput = reorderLessonsSchema.parse(body);
+
+    return this.lessonsService.reorderLessons(courseId, request.currentUser!.organizationId, input.lessonIds);
+  }
+
   @Patch('lessons/:id/status')
   @Roles(...rolePolicies.lessonsCreate)
   updateLessonStatus(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
@@ -50,5 +65,11 @@ export class LessonsController {
   updateLesson(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateLessonSchema.parse(body);
     return this.lessonsService.updateLesson(lessonId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete('lessons/:id')
+  @Roles(...rolePolicies.lessonsCreate)
+  deleteLesson(@Param('id') lessonId: string, @Req() request: AuthenticatedRequest) {
+    return this.lessonsService.deleteLesson(lessonId, request.currentUser!.organizationId);
   }
 }
