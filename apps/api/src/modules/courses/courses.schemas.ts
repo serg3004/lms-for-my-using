@@ -17,11 +17,7 @@ export const createCourseSchema = z.object({
   status: courseStatusSchema.default('draft'),
 });
 
-export const updateCourseSchema = createCourseSchema
-  .omit({ organizationId: true })
-  .extend({
-    status: courseStatusSchema.optional(),
-  });
+export const updateCourseSchema = createCourseSchema.omit({ organizationId: true }).partial();
 
 export const updateCourseStatusSchema = z.object({
   status: courseStatusSchema,
