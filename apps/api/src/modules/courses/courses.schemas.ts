@@ -17,9 +17,12 @@ export const createCourseSchema = z.object({
   status: courseStatusSchema.default('draft'),
 });
 
+export const updateCourseSchema = createCourseSchema.omit({ organizationId: true }).partial();
+
 export const updateCourseStatusSchema = z.object({
   status: courseStatusSchema,
 });
 
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
+export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type UpdateCourseStatusInput = z.infer<typeof updateCourseStatusSchema>;
