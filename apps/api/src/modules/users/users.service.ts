@@ -7,6 +7,7 @@ import {
   CreateBulkUsersInput,
   CreateUserInput,
   ImportUsersInput,
+  UpdateUserInput,
   UpdateUserStatusInput,
 } from './users.schemas.js';
 
@@ -76,6 +77,64 @@ export class UsersService {
     }
 
     return user;
+  }
+
+
+  async updateUser(userId: string, organizationId: string, input: UpdateUserInput) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (input.email !== user.email) {
+      const existingEmails = await this.findExistingEmails(organizationId, [input.email]);
+
+      if (existingEmails.size > 0) {
+        throw new ConflictException('User email already exists in organization');
+      }
+    }
+
+    const { role, ...userData } = input;
+
+    return this.prisma.$transaction(async (transaction) => {
+      await transaction.user.update({
+        where: { id: userId },
+        data: userData,
+        select: { id: true },
+      });
+
+      if (role !== undefined) {
+        await transaction.membership.deleteMany({
+          where: {
+            organizationId,
+            userId,
+          },
+        });
+
+        if (role !== null) {
+          await transaction.membership.create({
+            data: {
+              organizationId,
+              userId,
+              role,
+            },
+          });
+        }
+      }
+
+      return transaction.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: userSelect,
+      });
+    });
   }
 
   async createUser(input: CreateUserInput) {
