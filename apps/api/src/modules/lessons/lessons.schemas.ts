@@ -35,3 +35,8 @@ export const updateLessonSchema = z
   })
   .partial();
 export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
+
+export const reorderLessonsSchema = z.object({
+  lessonIds: z.array(z.string().uuid()).min(1),
+});
+export type ReorderLessonsInput = z.infer<typeof reorderLessonsSchema>;
