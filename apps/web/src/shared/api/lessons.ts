@@ -61,13 +61,13 @@ export function deleteLesson(lessonId: string) {
   });
 }
 
-export function markLessonComplete(input: CreateLessonCompletionInput) {
+export function markLessonCompleted(input: CreateLessonCompletionInput) {
   return apiRequest<ProgressSummary>('/progress', {
     method: 'POST',
     body: JSON.stringify({
       ...input,
       status: 'completed',
-      completedAt: new Date().toISOString(),
+      completedAt: new Date().toISTString(),
     }),
   });
 }
