@@ -29,7 +29,7 @@ FROM nginx:1.27-alpine AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/nginx.conf /etc/nginx/templates/default.conf.template
 
-ENV API_HOST=api.railway.internal
+ENV API_UPSTREAM_URL=http://api.railway.internal:3000
 
 EXPOSE 80
 
