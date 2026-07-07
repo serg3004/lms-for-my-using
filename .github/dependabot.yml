@@ -12,10 +12,15 @@ updates:
         patterns:
           - "*"
 
-  # npm/pnpm root workspace
+  # npm/pnpm monorepo workspace
+  # Keep all workspace manifests in one update config so Dependabot updates
+  # the root pnpm-lock.yaml together with package.json changes.
   - package-ecosystem: npm
-    directory: /
-    open-pull-requests-limit: 1
+    directories:
+      - /
+      - /apps/api
+      - /apps/web
+    open-pull-requests-limit: 2
     schedule:
       interval: weekly
       day: monday
@@ -38,68 +43,15 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "turbo"
         update-types: ["version-update:semver-major"]
-    groups:
-      root-dev:
-        dependency-type: development
-        update-types:
-          - "minor"
-          - "patch"
-        patterns:
-          - "*"
-
-  # API workspace
-  - package-ecosystem: npm
-    directory: /apps/api
-    open-pull-requests-limit: 1
-    schedule:
-      interval: weekly
-      day: tuesday
-    ignore:
-      - dependency-name: "prisma"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@prisma/client"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "zod"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "@nestjs/cli"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@nestjs/testing"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "eslint"
-        update-types: ["version-update:semver-major"]
       - dependency-name: "jest"
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/jest"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
-    groups:
-      api-dev:
-        dependency-type: development
-        update-types:
-          - "minor"
-          - "patch"
-        patterns:
-          - "*"
-      api-prod:
-        dependency-type: production
-        update-types:
-          - "minor"
-          - "patch"
-        patterns:
-          - "*"
-
-  # Web workspace
-  - package-ecosystem: npm
-    directory: /apps/web
-    open-pull-requests-limit: 1
-    schedule:
-      interval: weekly
-      day: wednesday
-    ignore:
-      - dependency-name: "zod"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-i18next"
         update-types: ["version-update:semver-major"]
@@ -115,18 +67,16 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "vitest"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
     groups:
-      web-dev:
-        dependency-type: development
+      workspace-prod:
+        dependency-type: production
         update-types:
           - "minor"
           - "patch"
         patterns:
           - "*"
-      web-prod:
-        dependency-type: production
+      workspace-dev:
+        dependency-type: development
         update-types:
           - "minor"
           - "patch"
