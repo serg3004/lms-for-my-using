@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This dashboard summarizes the current MVP readiness state after the backend smoke, web smoke, OpenAPI, env loading, startup safety, response contract, and CI hardening work.
+This dashboard summarizes the current MVP readiness state after backend smoke, web smoke, OpenAPI, env loading, startup safety, response contract, CI hardening, upload, and dependency maintenance work.
 
 It is a status document only. It does not replace the detailed source documents:
 
@@ -15,23 +15,25 @@ It is a status document only. It does not replace the detailed source documents:
 - `docs/PASSWORD_RESET_STATUS.md`
 - `docs/RBAC_MATRIX.md`
 - `docs/TODO_VERIFY.md`
+- `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
 
 ## Overall status
 
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Backend MVP flow | Ready for controlled pilot validation | Backend smoke covers login, course setup, lesson, assignment, progress, completion, and certificate issuing. |
-| Web smoke coverage | Ready for controlled pilot validation | Web tests cover login, route protection, API client auth errors, shared UI states, and learner page smoke rendering. |
+| Web smoke coverage | Ready for controlled pilot validation | Web tests cover login, route protection, API client auth errors, shared UI states, admin pages, and learner page smoke rendering. |
 | API documentation | Synced baseline | Manual OpenAPI paths are synced with current controllers. |
 | Local env loading | Ready | API explicitly loads local `.env` / `.env.local` before env validation and skips this in production/CI. |
 | Startup failure handling | Ready | API bootstrap failures are caught, redacted, logged, and mark the process as failed. |
 | API error response contract | Ready | Error envelope construction is centralized through the API response helper. |
 | CI quality gates | Ready | CI runs install, lint, Prisma generate, typecheck, tests, and build with concurrency, timeout, pnpm cache, and Prisma auto-install protection. |
-| Storage uploads | Documented as not implemented | Current storage upload status is documented in `docs/STORAGE_UPLOAD_STATUS.md`; material records support metadata/link references only. |
+| Dependency automation | Ready | Dependabot npm updates use workspace-level `directories` so nested manifests stay aligned with the shared root `pnpm-lock.yaml`. |
+| Storage uploads | Ready for controlled MVP usage with object storage configured | `POST /api/v1/upload` supports authenticated material uploads to S3-compatible storage, validates files, and returns material metadata input fields. |
 | Password reset | Documented as skeleton only | Current password reset status is documented in `docs/PASSWORD_RESET_STATUS.md`; endpoints validate input but return `503 Service Unavailable`. |
 | Demo seed data | Needs follow-up | Local demo seed coverage is planned for PR 70. |
 | Full RBAC audit | Needs follow-up | Full learner/admin RBAC audit is planned for PR 71. |
-| Deployment | Not ready | Deployment foundation is planned for PR 77. |
+| Deployment | Not ready as a fully automated production process | Deployment foundation exists, but production deployment automation remains outside the current MVP baseline. |
 
 ## Pilot go / no-go summary
 
@@ -40,7 +42,8 @@ Go for a controlled technical pilot only if:
 - CI is green for the pilot branch.
 - Local env follows `docs/MVP_LOCAL_RUNBOOK.md`.
 - Pilot data uses disposable credentials and no real secrets.
-- Known limitations are accepted: no production deployment automation, no production-grade storage upload flow, password reset skeleton behavior, and no completed full RBAC audit yet.
+- S3-compatible storage variables are configured when upload testing is in scope.
+- Known limitations are accepted: password reset skeleton behavior, no completed full RBAC audit yet, no production deployment automation, and storage upload hardening gaps listed in `docs/STORAGE_UPLOAD_STATUS.md`.
 
 No-go if:
 
@@ -48,6 +51,7 @@ No-go if:
 - Required env setup is unclear.
 - Seed/demo data contains real secrets or personal data.
 - Tenant isolation or auth behavior is not verified for the pilot scenario.
+- Upload testing is required but object storage env variables are not configured.
 - A required limitation is not explicitly accepted by the pilot owner.
 
 ## Current MVP baseline
@@ -61,15 +65,16 @@ Implemented baseline:
 - Explicit local env loading.
 - Safe API startup error logging.
 - Backend MVP flow smoke coverage.
-- Web login, protected route, API client error, shared state UI, and learner page smoke coverage.
+- Web login, protected route, API client error, shared state UI, admin page, and learner page smoke coverage.
 - CI gates for lint, typecheck, tests, build, and Prisma generate.
-- Storage upload status documented as metadata/link-only for current MVP.
+- Storage upload flow for controlled material uploads when S3-compatible object storage is configured.
+- Dependabot workspace-level pnpm update policy and documentation.
 - Password reset status documented as skeleton-only for current MVP.
 
 Known non-goals for current MVP:
 
 - Production deployment automation.
-- Production-grade file storage/upload flow.
+- Production-grade file storage hardening beyond the documented MVP upload constraints.
 - Full password reset delivery.
 - Advanced analytics.
 - Full admin CRUD expansion.
@@ -79,3 +84,4 @@ Known non-goals for current MVP:
 
 1. PR 70 — verify/expand local demo seed data.
 2. PR 71 — full learner/admin RBAC audit.
+3. Update this dashboard after PR 70 and PR 71 are completed.
