@@ -427,26 +427,32 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 67 — document current storage upload status 📋
+## PR 67 — document current storage upload status ✅
 
 - Проверить S3/MinIO status
 - Если upload не реализован — явно задокументировать как placeholder/planned
 - Обновить README/API_STATUS/OpenAPI
 
+> **Факт:** S3/MinIO upload полностью реализован. `upload.service.ts` использует `@aws-sdk/client-s3` с реальным S3Client. При отсутствии env-переменных (`S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`) — `isConfigured()` возвращает false, методы бросают `ServiceUnavailableException('File storage is not configured')`. Endpoint `/upload` защищён auth + roles guards. Тесты: `upload.service.spec.ts`, `upload.validation.spec.ts`.
+
 ---
 
-## PR 68 — clarify password reset status 📋
+## PR 68 — clarify password reset status ✅
 
 - Явно отметить password reset как disabled/skeleton
 - Не делать полную реализацию без отдельного security PR
 - Добавить coverage/docs на ServiceUnavailable behavior
 
+> **Факт:** Password reset явно задокументирован как disabled. `auth.service.ts:120-126` — оба метода бросают `ServiceUnavailableException`. `auth.password-reset.spec.ts` — 5 тестов документируют disabled flow: нормализация email, оба метода бросают, схема валидирует сильный пароль. Всё покрыто.
+
 ---
 
-## PR 69 — move selected api response types to shared ⚠️
+## PR 69 — move selected api response types to shared ✅
 
 - Перенести 1–2 простых API response types в shared
 - Обновить frontend/backend imports
+
+> **Факт:** Уже сделано. `packages/shared/src/types/api.ts` содержит `ApiErrorDetail`, `ApiError`, `ApiErrorResponse`, `PaginatedResponse<T>` и экспортируется через `packages/shared/src/index.ts`. Backend (`apps/api/src/common/api-response.ts`) импортирует из `@lms/shared/types/api`. Frontend (`apps/web/src/shared/api/types.ts:1`) ре-экспортирует из `@lms/shared/types/api`. Оба конца используют shared.
 
 ---
 
@@ -465,6 +471,8 @@ Assessments, certificates и upload являются критичными для
 - Проверить learner/admin scopes, ownership и org scope
 - Создать follow-up PRs для конкретных дыр
 
+> **Факт:** Базовая инфраструктура есть. Backend: `roles.ts` определяет 21 `rolePolicies` (организации, пользователи, курсы, уроки, материалы, назначения, прогресс, тесты, сертификаты). `RolesGuard` + `@Roles()` применяются на контроллерах. Frontend: `ProtectedRoute` с `canAccess`, `isAdminNavigationRole`. **Сам аудит (сопоставление frontend вызовов vs. backend политик, ownership/org-scope в Prisma) не проводился.**
+
 ---
 
 ## PR 72 — frontend form validation standard ⚠️
@@ -474,7 +482,7 @@ Assessments, certificates и upload являются критичными для
 - Reusable form field patterns
 - Применить к ключевым admin/learner формам
 
-> **Факт:** `formValidation.ts` создан (23 строки), применён только в `LoginPage`.
+> **Факт:** `formValidation.ts` (24 строки): `validateRequiredFields`, `hasValidationErrors`. Применён только в `LoginPage.tsx`. Admin формы (создание курсов, пользователей и др.) — не покрыты.
 
 ---
 
@@ -483,7 +491,7 @@ Assessments, certificates и upload являются критичными для
 - PageHeader, DataTable, FormField, Toolbar, ConfirmDialog, EmptyState
 - Сделать добавление новых admin CRUD pages быстрее
 
-> **Факт:** `adminPage.tsx` создан — есть `AdminPageLayout`, `AdminPageHeader`, `AdminCard`. Нет: DataTable, FormField, Toolbar, ConfirmDialog.
+> **Факт:** `adminPage.tsx` реализован: `AdminPageLayout` (полный sidebar с мобильным drawer, nav-секции), `AdminPageHeader` (title/subtitle/action), `AdminCard`. Отсутствуют: DataTable, FormField, Toolbar, ConfirmDialog, EmptyState.
 
 ---
 
@@ -493,14 +501,16 @@ Assessments, certificates и upload являются критичными для
 - Определить pagination, search/filter/sort conventions
 - Зафиксировать contract перед массовым ростом данных
 
+> **Факт:** Схема определена — `paginationQuerySchema` (`page`, `pageSize`, max 100) в `packages/shared/src/schemas/pagination.schema.ts`; `PaginatedResponse<T>` в `packages/shared/src/types/api.ts`; план rollout в `docs/API_CONTRACTS.md`. **Реализации в list endpoints нет** — grep по `skip`/`take` в Prisma вызовах вернул пустой результат. Contract готов, implementation pending.
+
 ---
 
-## PR 75 — frontend happy-path smoke tests ⚠️
+## PR 75 — frontend happy-path smoke tests ✅
 
 - Login page renders, Admin shell opens
 - Learner course page loads, Protected redirect works
 
-> **Факт:** Smoke тесты для всех admin и learner страниц существуют (`AdminPages.smoke.spec.tsx`, `LearnerPages.smoke.spec.tsx`). Покрывают loading state и happy path для каждой страницы. Полноценный automated foundation есть, но как отдельный пункт "protected redirect" явно не вынесен.
+> **Факт:** Все цели покрыты. `LoginPage.spec.ts` + `LoginPage.render.spec.tsx` — login renders. `AdminPages.smoke.spec.tsx` — 14 тестов: dashboard, users, course builder, lessons, materials, assessments, results, assignments (loading + happy path). `LearnerPages.smoke.spec.tsx` — 20 тестов: courses, assignments, assessments, certificates, course/lesson/assessment detail, certificate detail, progress (loading + happy path). `ProtectedRoute.spec.tsx` — 7 тестов: path matching, auth/forbidden/unauthenticated states, unprotected paths.
 
 ---
 
