@@ -486,12 +486,12 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 73 — reusable admin page toolkit ⚠️
+## PR 73 — reusable admin page toolkit ✅
 
 - PageHeader, DataTable, FormField, Toolbar, ConfirmDialog, EmptyState
 - Сделать добавление новых admin CRUD pages быстрее
 
-> **Факт:** `adminPage.tsx` реализован: `AdminPageLayout` (полный sidebar с мобильным drawer, nav-секции), `AdminPageHeader` (title/subtitle/action), `AdminCard`. Отсутствуют: DataTable, FormField, Toolbar, ConfirmDialog, EmptyState.
+> **Факт:** Весь тулкит реализован и применён к существующим страницам. `adminPage.tsx` добавлены: `FormField` (label + children-slot + error, `admin-form__field`) и `ConfirmDialog` (controlled `<dialog>`, `variant: danger|default`). `ui.tsx` добавлены: `DataTable<T>` (generic, columns + rows + keyExtractor + emptyMessage, встроенный `TableWrap` + `EmptyState`) и `Toolbar` (left/right slots). Применено: `AdminCoursesPage` — таблица → `DataTable`, delete-диалог → `ConfirmDialog`, поля формы → `FormField`; `AdminUsersPage` — таблица → `DataTable`, поля формы → `FormField`; `AdminCourseBuilderPage` — поля форм → `FormField`, delete-диалог → `ConfirmDialog`. 10 новых тестов. Итого 153 web-теста, все проходят.
 
 ---
 

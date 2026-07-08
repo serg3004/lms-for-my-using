@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, Input, ProgressBar, SearchInput, Spinner } from './ui';
+import { Avatar, Badge, Button, Card, DataTable, Input, ProgressBar, SearchInput, Spinner, Toolbar } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
 
@@ -150,6 +150,70 @@ describe('design system — Spinner', () => {
   it('applies size class', () => {
     const html = renderToStaticMarkup(<Spinner size="sm" />);
     expect(html).toContain('ds-spinner--sm');
+  });
+});
+
+describe('design system — DataTable', () => {
+  type Item = { id: string; name: string; score: number };
+
+  const columns = [
+    { key: 'name', label: 'Name', render: (row: Item) => row.name },
+    { key: 'score', label: 'Score', render: (row: Item) => row.score },
+  ];
+
+  it('renders column headers and row data', () => {
+    const rows: Item[] = [
+      { id: '1', name: 'Alice', score: 90 },
+      { id: '2', name: 'Bob', score: 75 },
+    ];
+
+    const html = renderToStaticMarkup(
+      <DataTable columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
+    );
+
+    expect(html).toContain('<th>Name</th>');
+    expect(html).toContain('<th>Score</th>');
+    expect(html).toContain('Alice');
+    expect(html).toContain('90');
+    expect(html).toContain('Bob');
+  });
+
+  it('renders empty state when rows array is empty', () => {
+    const html = renderToStaticMarkup(
+      <DataTable columns={columns} rows={[]} keyExtractor={(r) => r.id} emptyMessage="Nothing here." />,
+    );
+
+    expect(html).toContain('Nothing here.');
+    expect(html).not.toContain('<table');
+  });
+
+  it('uses default empty message when none provided', () => {
+    const html = renderToStaticMarkup(
+      <DataTable columns={columns} rows={[]} keyExtractor={(r) => r.id} />,
+    );
+
+    expect(html).toContain('No items.');
+  });
+});
+
+describe('design system — Toolbar', () => {
+  it('renders left and right slots', () => {
+    const html = renderToStaticMarkup(
+      <Toolbar left={<span>Search</span>} right={<button type="button">Create</button>} />,
+    );
+
+    expect(html).toContain('admin-toolbar');
+    expect(html).toContain('admin-toolbar__left');
+    expect(html).toContain('admin-toolbar__right');
+    expect(html).toContain('Search');
+    expect(html).toContain('Create');
+  });
+
+  it('renders nothing for missing slots', () => {
+    const html = renderToStaticMarkup(<Toolbar right={<button type="button">Go</button>} />);
+
+    expect(html).not.toContain('admin-toolbar__left');
+    expect(html).toContain('admin-toolbar__right');
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Avatar } from './ui.js';
 
@@ -178,4 +178,92 @@ type AdminCardProps = {
 
 export function AdminCard({ children }: AdminCardProps) {
   return <article className="admin-card">{children}</article>;
+}
+
+// ── FormField ─────────────────────────────────────────────────────────────────
+
+type FormFieldProps = {
+  id: string;
+  label: string;
+  required?: boolean;
+  hint?: string;
+  error?: string;
+  children: ReactNode;
+};
+
+export function FormField({ id, label, required, hint, error, children }: FormFieldProps) {
+  return (
+    <div className="admin-form__field">
+      <label htmlFor={id}>
+        {label}{required ? ' *' : ''}
+      </label>
+      {children}
+      {hint && !error ? <span className="admin-form__hint">{hint}</span> : null}
+      {error ? (
+        <p className="admin-form__field-error" id={`${id}-error`} role="alert">{error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+// ── ConfirmDialog ─────────────────────────────────────────────────────────────
+
+type ConfirmDialogProps = {
+  open: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: 'danger' | 'default';
+};
+
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  variant = 'default',
+}: ConfirmDialogProps) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (open) ref.current?.showModal();
+    else ref.current?.close();
+  }, [open]);
+
+  return (
+    <dialog className="admin-dialog" ref={ref} onClose={onCancel}>
+      <div className="admin-dialog__header">
+        <h2>{title}</h2>
+        <button
+          aria-label={cancelLabel}
+          className="admin-dialog__close"
+          onClick={onCancel}
+          type="button"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="admin-form">
+        <p style={{ margin: 0, color: 'var(--color-text)' }}>{message}</p>
+        <div className="admin-form__actions">
+          <button className="admin-btn admin-btn--secondary" onClick={onCancel} type="button">
+            {cancelLabel}
+          </button>
+          <button
+            className={`admin-btn ${variant === 'danger' ? 'admin-btn--danger' : 'admin-btn--primary'}`}
+            onClick={onConfirm}
+            type="button"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </dialog>
+  );
 }

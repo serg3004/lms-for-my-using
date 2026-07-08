@@ -325,6 +325,67 @@ export function Spinner({ size = 'md', label = 'Loading…' }: SpinnerProps) {
   return <span aria-label={label} className={`ds-spinner ds-spinner--${size}`} role="status" />;
 }
 
+// ── DataTable ────────────────────────────────────────────────────────────────
+
+export type Column<T> = {
+  key: string;
+  label: string;
+  render: (row: T) => ReactNode;
+};
+
+type DataTableProps<T> = {
+  columns: Column<T>[];
+  rows: T[];
+  keyExtractor: (row: T) => string;
+  emptyMessage?: string;
+};
+
+export function DataTable<T>({ columns, rows, keyExtractor, emptyMessage = 'No items.' }: DataTableProps<T>) {
+  if (rows.length === 0) {
+    return <EmptyState message={emptyMessage} />;
+  }
+
+  return (
+    <TableWrap>
+      <table>
+        <thead>
+          <tr>
+            {columns.map((col) => (
+              <th key={col.key}>{col.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={keyExtractor(row)}>
+              {columns.map((col) => (
+                <td key={col.key}>{col.render(row)}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableWrap>
+  );
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+
+type ToolbarProps = {
+  left?: ReactNode;
+  right?: ReactNode;
+  className?: string;
+};
+
+export function Toolbar({ left, right, className }: ToolbarProps) {
+  return (
+    <div className={['admin-toolbar', className].filter(Boolean).join(' ')}>
+      {left ? <div className="admin-toolbar__left">{left}</div> : null}
+      {right ? <div className="admin-toolbar__right">{right}</div> : null}
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Legacy components — unchanged for backward compatibility
    ───────────────────────────────────────────────────────────────────────── */
