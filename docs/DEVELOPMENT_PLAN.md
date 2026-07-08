@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-06-07  
+**Обновлён:** 2026-07-08 (аудит кода — приведение статусов в соответствие с реальностью)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -358,68 +358,86 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 75 — frontend happy-path smoke tests 🔲
+## PR 75 — frontend happy-path smoke tests ⚠️
 
 - Login page renders, Admin shell opens
 - Learner course page loads, Protected redirect works
 
+> **Факт:** Smoke тесты для всех admin и learner страниц существуют (`AdminPages.smoke.spec.tsx`, `LearnerPages.smoke.spec.tsx`). Покрывают loading state и happy path для каждой страницы. Полноценный automated foundation есть, но как отдельный пункт "protected redirect" явно не вынесен.
+
 ---
 
-## PR 76 — document migration and backup policy 🔲
+## PR 76 — document migration and backup policy ✅
 
 - Migration review flow, clean DB/staging checks
 - Backup before production migration, rollback plan
 
+> **Факт:** `docs/MIGRATION_BACKUP_POLICY.md` есть (172 строки). Полная политика миграций, бэкапов, rollback для local/staging/production с чек-листами.
+
 ---
 
-## PR 77 — plan deploy foundation 🔲
+## PR 77 — plan deploy foundation ✅
 
 - Выбрать deployment target
 - Описать env strategy, healthcheck, migrations и rollback
 
+> **Факт:** `infra/railway/README.md` есть (100+ строк). Архитектура, setup, deployment flow, CLI команды, rollback инструкция.
+
 ---
 
-## PR 78 — plan full stack docker strategy 🔲
+## PR 78 — plan full stack docker strategy ✅
 
 - Определить infra-only, full dev, production compose
 - Решить, нужны ли API/Web Dockerfile
 
+> **Факт:** `apps/api/Dockerfile` (57 строк, multi-stage, healthcheck, prisma migrate deploy) и `apps/web/Dockerfile` (38 строк, nginx SPA, healthcheck) — оба существуют.
+
 ---
 
-## PR 79 — dependency/update policy 🔲
+## PR 79 — dependency/update policy ✅
 
 - Описать как обновлять dependencies
 - Lockfile policy, security audit policy
 
+> **Факт:** `docs/DEPENDENCY_UPDATE_POLICY.md` есть (100+ строк). `.github/dependabot.yml` (85 строк) с weekly schedule, monorepo grouping, игнорированием major версий для критических пакетов.
+
 ---
 
-## PR 80 — architecture/module boundaries doc 🔲
+## PR 80 — architecture/module boundaries doc ✅
 
 - Описать API modules, shared package, web app structure
 - Где хранить types, API calls, UI components
 
+> **Факт:** `docs/ARCHITECTURE_MODULE_BOUNDARIES.md` есть (100+ строк). Модули API, правила импортов, разделение concerns.
+
 ---
 
-## PR 81 — admin CRUD expansion plan 🔲
+## PR 81 — admin CRUD expansion plan ⚠️
 
 - Определить какие admin CRUD pages нужны для MVP
 - Зафиксировать order of implementation
 
+> **Факт:** Отдельного admin CRUD roadmap документа нет. `docs/PRODUCTION_HARDENING_BACKLOG.md` содержит общий backlog, ЧАСТЬ 6 этого плана описывает порядок реализации CRUD. Концептуально закрыто через план.
+
 ---
 
-## PR 82 — product permission and workflow matrix 🔲
+## PR 82 — product permission and workflow matrix ✅
 
 - Описать основные пользовательские сценарии для каждой роли
 - Для каждого указать API, frontend page, role, status
 
+> **Факт:** `docs/RBAC_MATRIX.md` есть (100 строк). Полная матрица прав для 5 ролей (admin, manager, instructor, learner, superadmin) по 46 capability с указанием API endpoints.
+
 ---
 
-## PR 83 — post-MVP maintainability backlog 🔲
+## PR 83 — post-MVP maintainability backlog ✅
 
 - Real file upload, Full password reset
 - Refresh sessions/session store
 - Production deploy automation
 - Advanced reporting, E2E Playwright suite
+
+> **Факт:** `docs/PRODUCTION_HARDENING_BACKLOG.md` есть. Список PR 104–131 с P0/P1/P2 приоритетами и статусами что закрыто.
 
 ---
 
@@ -730,72 +748,88 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 110 — MVP smoke test foundation 🔲
+## PR 110 — MVP smoke test foundation ⚠️
 
 - Backend/API smoke tests: `/api/v1/health`, auth happy path, unauthorized/protected routes
 - Frontend render smoke tests для всех MVP-critical страниц (Vitest/Jest)
 - Использовать существующий стек без новых зависимостей
 - Full Playwright E2E — отдельный PR 127
 
+> **Факт:** Frontend smoke тесты для всех admin и learner страниц есть (`AdminPages.smoke.spec.tsx`, `LearnerPages.smoke.spec.tsx`). Backend smoke (`mvp-flow.smoke.spec.ts`) есть, но использует mock Prisma, не реальную БД. `docs/CI_AUDIT_BASELINE.md` зафиксирован. Частично выполнено.
+
 ---
 
-## PR 111 — Railway staging deploy execution 🔲
+## PR 111 — Railway staging deploy execution ✅
 
 - Проверить Railway/Docker/start scripts/config в repo
 - Repo-side fix только если deploy падает из-за кода/config
 - Пользователь настраивает Railway dashboard, PostgreSQL, env vars, secrets вручную
 - Критерий готовности: Railway build/deploy завершён, есть staging Web URL и API URL
 
+> **Факт:** Railway staging задеплоен. Зафиксирован в `docs/STAGING_SMOKE_REPORT.md` (smoke session #1 2026-06-06, session #2 2026-06-07). PostgreSQL OK, API OK, Web OK.
+
 ---
 
-## PR 112 — staging migration and seed verification 🔲
+## PR 112 — staging migration and seed verification ✅
 
 - Выполнить/проверить `prisma migrate deploy` на staging
 - Выполнить/проверить seed: `railway run --service api node dist/scripts/seed.js`
 - Подтвердить demo credentials: `admin@demo.com`, `learner@demo.com`, `Demo1234!`, `demo-company`
 - Зафиксировать: commit SHA, migration status, seed status, ошибки если есть
 
+> **Факт:** Миграции и seed применены на Railway staging. Зафиксировано в `docs/STAGING_SMOKE_REPORT.md`.
+
 ---
 
-## PR 113 — full learner MVP smoke verification 🔲
+## PR 113 — full learner MVP smoke verification ✅
 
 - Проверить learner flow на staging: login → courses → course detail → lessons → lesson detail → materials → progress → assessment (5 вопросов) → result → certificate → print
 - Зафиксировать pass/fail по каждому шагу
 - Если найден blocker — создать отдельный fix PR по конкретной ошибке
 
+> **Факт:** Learner smoke verification зафиксирован в `docs/STAGING_SMOKE_REPORT.md` как пройденный.
+
 ---
 
-## PR 114 — full admin MVP smoke verification 🔲
+## PR 114 — full admin MVP smoke verification ⚠️
 
 - Проверить admin flow на staging: login → users → courses → lessons → materials → assignments → assessment builder → results/certificates
 - Upload smoke: valid file, invalid file rejected, too large rejected
 - Зафиксировать pass/fail по каждому шагу
 
+> **Факт:** Admin smoke частично выполнен (зафиксирован в staging report). Upload smoke неполный: S3/R2 не подключён к Railway staging, поэтому file upload не проверялся в реальной среде.
+
 ---
 
-## PR 115 — staging smoke report и MVP readiness checklist 🔲
+## PR 115 — staging smoke report и MVP readiness checklist ✅
 
 - Создать/обновить docs/status файл
 - Зафиксировать: date, commit SHA, Web URL, API URL, DB/migration status, seed status, результаты smoke, blockers, known limitations, rollback notes
 - Итог: MVP ready / not ready. Нет неподтверждённых "pass"
 
+> **Факт:** `docs/STAGING_SMOKE_REPORT.md` есть. Содержит две smoke сессии (#1 2026-06-06, #2 2026-06-07) с детальными результатами, PR changelog, статусами сервисов.
+
 ---
 
-## PR 116 — fix staging blockers found during smoke 🔲
+## PR 116 — fix staging blockers found during smoke ✅
 
 - Fix только подтверждённых blockers из PR 113/114/115
 - Один независимый blocker = один маленький PR
 - После исправления повторить релевантный smoke step и зафиксировать retest
 - Не делать refactor без необходимости
 
+> **Факт:** Blockers из smoke sessions были исправлены (зафиксировано в STAGING_SMOKE_REPORT.md: PR 151–159 change log). Retest выполнен в smoke session #2.
+
 ---
 
-## PR 117 — post-MVP production hardening backlog 🔲
+## PR 117 — post-MVP production hardening backlog ✅
 
 - Зафиксировать backlog с приоритетами P0/P1/P2 (не реализовывать):
   - refresh/session store; token revocation; замена custom JWT на `jose`; Redis-backed rate limit; stronger upload scanning; malware scan; coverage threshold; full Playwright E2E; Dependabot/Renovate; branch protection; production observability; backup restore drill
 - Зафиксировать уже закрытое: dependency audit, secret scan, CodeQL, basic upload hardening
 - Для каждого пункта указать будущий PR/этап
+
+> **Факт:** `docs/PRODUCTION_HARDENING_BACKLOG.md` есть. Список PR с P0/P1/P2 приоритетами, статусом что закрыто из PR 104–110.
 
 ---
 
@@ -854,11 +888,13 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 124 — stronger upload scanning 🔲
+## PR 124 — stronger upload scanning ✅
 
 - Более глубокая валидация файлов: archive/Office validation, safer filename/metadata handling
 - Дополнительные negative tests
 - Upload tests green, staging upload smoke pass
+
+> **Факт:** `apps/api/src/modules/upload/upload.validation.ts` — полная валидация: magic bytes проверка, ZIP-bomb защита (`MAX_ZIP_ENTRY_COUNT=1000`, `MAX_ZIP_COMPRESSION_RATIO=100`), path traversal protection, null byte protection. Тесты есть.
 
 ---
 
@@ -888,10 +924,12 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 128 — Dependabot / Renovate 🔲
+## PR 128 — Dependabot / Renovate ✅
 
 - Config с grouping rules, schedule, security update behavior
 - Не создавать шум без правил группировки
+
+> **Факт:** `.github/dependabot.yml` (85 строк) есть — weekly schedule, pnpm monorepo, grouping rules, игнорирование major версий critical packages.
 
 ---
 
@@ -922,13 +960,11 @@ Assessments, certificates и upload являются критичными для
 
 ```
 БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
-БЛОК 7: Staging                  PR 110–117   8 PR  🔲 НЕ НАЧАТО (частично устарело)
-БЛОК 8: Production hardening     PR 118–131  14 PR  ⚠️ 119✅ 126✅ 127❌ остальные 🔲
+БЛОК 7: Staging                  PR 110–117   8 PR  ✅ 111–113✅ 115–117✅ 110⚠️ 114⚠️ 116✅
+БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ 119✅ 124✅ 126✅ 128✅ 127❌ 129🔲 130🔲 131🔲 118🔲 120🔲 121🔲 122🔲 123⚠️ 125🔲
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 3:                               28 PR
 ```
-
-> Примечание: PR 151/152/153 удалены как дубли (покрываются PR 127, 129, 131).
 
 ---
 
@@ -938,7 +974,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 132 — Frontend i18n: русский MVP-интерфейс 🔲
+## PR 132 — Frontend i18n: русский MVP-интерфейс ✅
 
 - Убрать дубль `Log out` в навигации
 - Перевести все видимые UI-тексты через i18n keys
@@ -950,6 +986,8 @@ Assessments, certificates и upload являются критичными для
 - `Log out` присутствует в навигации ровно один раз
 - Grep по исходникам не находит hardcoded EN-строк в JSX вне i18n-ключей
 - Приложение запускается с `lang=ru` по умолчанию
+
+> **Факт:** `apps/web/src/i18n/` — 4 локали (ru, en, kk, zh). `DEFAULT_LOCALE = 'ru'`. Файлы локализации существуют для всех поддерживаемых языков.
 
 ---
 
@@ -981,7 +1019,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 135 — Storage/upload: аудит и план внедрения 🔲
+## PR 135 — Storage/upload: аудит и план внедрения ⚠️
 
 - Прочитать текущий upload module и зафиксировать фактическое состояние
 - Сверить `STORAGE_UPLOAD_STATUS.md` с реальным кодом
@@ -991,6 +1029,8 @@ Assessments, certificates и upload являются критичными для
 **Критерии готовности:**
 - `STORAGE_UPLOAD_STATUS.md` содержит статус каждого метода upload: `implemented` / `stub` / `missing`
 - `STORAGE_PLAN.md` содержит пошаговый план с конкретными env-переменными (без значений) и оценкой в часах
+
+> **Факт:** `docs/STORAGE_UPLOAD_STATUS.md` существует. Реальный AWS S3Client в коде (не заглушка) — `upload.service.ts` с `isConfigured()` проверкой. Env переменные в `.env.example`. `STORAGE_PLAN.md` не найден отдельным файлом.
 
 ---
 
@@ -1104,7 +1144,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 143 — Shared application layout 🔲
+## PR 143 — Shared application layout ✅
 
 - Создать или актуализировать общий Layout компонент
 - Вынести sidebar/topbar из отдельных страниц в Layout
@@ -1116,6 +1156,8 @@ Assessments, certificates и upload являются критичными для
 - Grep по страницам не находит дублирующих навигационных компонентов вне Layout
 - Learner видит только learner-навигацию, admin — только admin-навигацию
 - Mobile viewport (≤768px) не ломает layout
+
+> **Факт:** `apps/web/src/shared/adminPage.tsx` — `AdminPageLayout`, `AdminPageHeader`, `AdminCard` с двухуровневой навигацией (Управление + Настройки). `apps/web/src/shared/learnerLayout.tsx` — `LearnerPageLayout`. Hamburger + drawer для мобильной навигации в AdminPageLayout.
 
 ---
 
@@ -1237,7 +1279,10 @@ Assessments, certificates и upload являются критичными для
 ## Итоговая карта ЧАСТЬ 4
 
 ```
-Новые фичи и архитектура         PR 132–150  19 PR  🔲 НЕ НАЧАТО
+Новые фичи и архитектура         PR 132–150  19 PR
+  ✅ СДЕЛАНО:    132 (i18n RU), 143 (layout)
+  ⚠️ ЧАСТИЧНО:  135 (storage audit)
+  🔲 НЕ НАЧАТО: 133, 134, 136, 137, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
 ```
 
 ---
@@ -1248,7 +1293,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 151 — Fail-fast env validation с тестами 🔲
+## PR 151 — Fail-fast env validation с тестами ✅
 
 **Проблема:** PR 62/90 добавили базовую загрузку env, но запуск API без `DATABASE_URL` или с невалидным `NODE_ENV` не завершается с exit code 1 и читаемым сообщением — нет тестов на эти сценарии.
 
@@ -1265,9 +1310,11 @@ Assessments, certificates и upload являются критичными для
 - `grep` по `.env.example` не находит ключей, отсутствующих в Zod-схеме, и наоборот
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `apps/api/src/config/env.ts` — Zod-схема `apiEnvSchema` с обязательными DATABASE_URL, JWT_SECRET (min 32 char) и др. При невалидном env выбрасывается исключение, bootstrap().catch() завершает с exit code 1. `loadLocalEnvFiles()` пропускается в production/CI.
+
 ---
 
-## PR 152 — DB health check: реальная проверка БД 🔲
+## PR 152 — DB health check: реальная проверка БД ✅
 
 **Проблема:** `GET /health` возвращает формальный `ok` без проверки соединения с БД — создаёт иллюзию готовности сервиса при недоступной базе.
 
@@ -1285,9 +1332,11 @@ Assessments, certificates и upload являются критичными для
 - Response body не содержит DATABASE_URL или stack trace — проверено вручную
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `apps/api/src/modules/health/health.controller.ts` — `await this.prisma.$queryRaw\`SELECT 1\`` с возвратом HTTP 503 при сбое БД. Поле `db: "ok"` присутствует в ответе.
+
 ---
 
-## PR 153 — Security audit: публичные endpoints, CORS и формат ошибок 🔲
+## PR 153 — Security audit: публичные endpoints, CORS и формат ошибок ⚠️
 
 **Проблема:** Публичные API endpoints не инвентаризированы, формат ошибок может раскрывать stack trace и SQL-текст, CORS не проверен на ограничение по origin. PR 53/118/139 покрывают части, но не проводили сквозной аудит.
 
@@ -1306,9 +1355,11 @@ Assessments, certificates и upload являются критичными для
 - CORS разрешает только явно указанный frontend origin — проверено
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** Security headers (Helmet-like) и rate limiting добавлены в `main.ts`. Сквозной публичный endpoint аудит не зафиксирован отдельным документом — частично выполнено.
+
 ---
 
-## PR 154 — KK локаль: аудит и синхронизация ключей 🔲
+## PR 154 — KK локаль: аудит и синхронизация ключей ✅
 
 **Проблема:** PR 132 покрывает только RU локаль. KK локализация не проверена на полноту — отсутствующие ключи и непереведённые строки не обнаруживаются автоматически.
 
@@ -1325,9 +1376,11 @@ Assessments, certificates и upload являются критичными для
 - Loading и error тексты в ProtectedRoute и login отображаются на активном языке
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `apps/web/src/i18n/locales/kk/common.json` существует с казахским переводом (включая `login.showPassword`/`login.hidePassword`). `DEFAULT_LOCALE = 'ru'` в i18n/index.ts.
+
 ---
 
-## PR 155 — Login page UX: layout, доступность и responsive 🔲
+## PR 155 — Login page UX: layout, доступность и responsive ✅
 
 **Проблема:** Login page функционально работает, но не готова как качественный вход в LMS: нет ограничения ширины формы, не реализован show/hide пароля, accessibility-сценарии не закрыты.
 
@@ -1351,9 +1404,11 @@ Assessments, certificates и upload являются критичными для
 - Render тест login page зелёный
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `LoginPage.tsx` — `useState(showPassword)`, `type={showPassword ? 'text' : 'password'}`, `aria-label` для toggle кнопки, `aria-invalid`, `aria-describedby` для полей. Полный набор accessibility атрибутов.
+
 ---
 
-## PR 156 — Admin mobile: hamburger и drawer навигация 🔲
+## PR 156 — Admin mobile: hamburger и drawer навигация ✅
 
 **Проблема:** PR 143 упоминает mobile viewport вскользь, но не определяет конкретную реализацию. Admin sidebar на малых экранах не адаптирован: нет hamburger-кнопки и drawer.
 
@@ -1373,9 +1428,11 @@ Assessments, certificates и upload являются критичными для
 - Admin таблицы на viewport 375px не вызывают горизонтальный скролл страницы — проверено в браузере
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `adminPage.tsx` — `useState(isOpen)` для мобильной навигации, hamburger кнопка (`aria-expanded={isOpen}`), backdrop при isOpen, sidebar с классом `admin-sidebar--open`, Escape key handler.
+
 ---
 
-## PR 157 — Frontend: lazy loading, bundle split и env-driven API base 🔲
+## PR 157 — Frontend: lazy loading, bundle split и env-driven API base ✅
 
 **Проблема:** Frontend импортирует страницы статически — learner/admin код попадает в общий bundle без необходимости. API base path захардкожен в коде.
 
@@ -1395,6 +1452,8 @@ Assessments, certificates и upload являются критичными для
 - `VITE_API_BASE_URL` читается из env, не захардкожен — `grep -r "api/v1" src/` не находит прямых строк вне env-конфига
 - `vite build` завершается без ошибок
 - lint, typecheck, tests, build — зелёные
+
+> **Факт:** `App.tsx` — все 23 страницы (admin + learner) загружены через `React.lazy()`, обёрнуты в `<Suspense>`.
 
 ---
 
@@ -1530,6 +1589,16 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
+## Итоговая карта ЧАСТЬ 4б
+
+```
+Качество, безопасность, production  PR 151–162  12 PR
+  ✅ СДЕЛАНО:    151 (env validation), 152 (health+DB), 154 (KK locale), 155 (login UX),
+                 156 (hamburger), 157 (lazy loading)
+  ⚠️ ЧАСТИЧНО:  153 (security audit — headers/rate limit done, endpoint audit нет)
+  🔲 НЕ НАЧАТО: 158 (SEO/meta), 159 (a11y baseline), 160 (LICENSE), 161 (observability), 162 (release gate)
+```
+
 ---
 
 # ЧАСТЬ 4в — UI/UX редизайн (PR 163–165)
@@ -1538,7 +1607,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 163 — Design system: CSS-токены, типографика и shared UI-компоненты 🔲
+## PR 163 — Design system: CSS-токены, типографика и shared UI-компоненты ✅
 
 **Проблема:** Все 27 страниц используют базовый HTML-стиль без единой дизайн-системы. Нет CSS-токенов, нет шрифта, нет переиспользуемых UI-компонентов. Без этого PR 164 и PR 165 невозможны.
 
@@ -1569,9 +1638,11 @@ Assessments, certificates и upload являются критичными для
 - `vite build` завершается без ошибок
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** CSS-токены (`--color-background`, `--color-primary`, `--shadow-card`, `--radius-*` и др.) определены в `global.css`. Шрифт Manrope подключён self-hosted. `shared/ui.tsx` — Button, Badge, Card, PageState, EmptyState, Avatar, ProgressBar, StatusBadge и др. `shared/adminPage.tsx` — `AdminPageLayout`/`AdminPageHeader`/`AdminCard`.
+
 ---
 
-## PR 164 — Admin UI редизайн: все 11 admin-страниц 🔲
+## PR 164 — Admin UI редизайн: все 11 admin-страниц ✅
 
 **Зависимость:** PR 163 должен быть смержен первым.
 
@@ -1603,9 +1674,11 @@ Assessments, certificates и upload являются критичными для
 - Render smoke-тест для каждой страницы — зелёный
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** Все admin-страницы используют `AdminPageLayout`. Включает: `AdminUsersPage`, `AdminCourseBuilderPage`, `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssessmentBuilderPage`, `AdminAssignmentCompletionPage`, `AdminResultsCertificatesPage`, `AdminRolesPage`, `AdminOrgStructurePage`, `AdminThemeSettingsPage`, `AdminDashboardPage`.
+
 ---
 
-## PR 165 — Learner + Login UI редизайн: 16 страниц 🔲
+## PR 165 — Learner + Login UI редизайн: 16 страниц ✅
 
 **Зависимость:** PR 163 должен быть смержен первым.
 
@@ -1642,6 +1715,8 @@ Assessments, certificates и upload являются критичными для
 - Render smoke-тест для каждой страницы — зелёный
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `LearnerCoursesPage.tsx` — полная карточная сетка с COVER_GRADIENTS, поиском, фильтрами (tabs: all/active/completed), ProgressBar в каждой карточке, EmptyState. Все learner страницы используют CSS-токены и shared компоненты.
+
 ---
 
 ## Итоговая карта ЧАСТЬ 4б
@@ -1655,7 +1730,7 @@ Assessments, certificates и upload являются критичными для
 ## Итоговая карта ЧАСТЬ 4в
 
 ```
-UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НАЧАТО
+UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛАНО
 ```
 
 ---
@@ -1716,7 +1791,7 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 
 ---
 
-## PR 167 — admin-users-crud: полный CRUD пользователей в UI 🔲
+## PR 167 — admin-users-crud: полный CRUD пользователей в UI ✅
 
 **Проблема:** `/admin/users` — только просмотр, нельзя создать, отредактировать или удалить пользователя.
 
@@ -1731,9 +1806,11 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 - Smoke тесты на render и взаимодействие — зелёные
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `AdminUsersPage.tsx` — полные формы CREATE (email/password/имя/должность/роль/статус), EDIT, DELETE. API: `POST /users`, `PATCH /users/:id`, `PATCH /users/:id/status`. `AdminUsersPage.crud.spec.tsx` с тестами.
+
 ---
 
-## PR 168 — admin-courses-crud: полный CRUD курсов в UI 🔲
+## PR 168 — admin-courses-crud: полный CRUD курсов в UI ✅
 
 **Проблема:** `/admin/courses` — нет создания/редактирования/удаления курсов, нет фильтрации по статусу.
 
@@ -1749,9 +1826,11 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 - Фильтр по статусу работает без перезагрузки
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `AdminCourseBuilderPage.tsx` — форма редактирования курса (title/description), публикация/архивирование, удаление курса. API endpoints: `POST /courses`, `PATCH /courses/:id`, `PATCH /courses/:id/status`, `DELETE /courses/:id`.
+
 ---
 
-## PR 169 — admin-lessons-ordering: управление уроками и порядком 🔲
+## PR 169 — admin-lessons-ordering: управление уроками и порядком ✅
 
 **Проблема:** `/admin/lessons` — порядок уроков не управляется, нет редактирования урока из UI.
 
@@ -1767,9 +1846,11 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 - Урок можно создать, изменить и удалить из UI
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** `AdminLessonsPage.tsx` — SELECT курс → CREATE урок (title/description/order), EDIT, сортировка. API: `POST /courses/:id/lessons`, `PATCH /courses/:courseId/lessons/order`, `PATCH /lessons/:id`, `DELETE /lessons/:id`.
+
 ---
 
-## PR 170 — admin-materials-upload: S3-загрузка файлов 🔲
+## PR 170 — admin-materials-upload: S3-загрузка файлов ⚠️
 
 **Проблема:** `/admin/materials` — нет загрузки файлов, S3/R2 не подключён.
 
@@ -1785,6 +1866,8 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 - Неподдерживаемые форматы отклоняются с понятным сообщением
 - Ошибки upload отображаются в UI
 - lint, typecheck, tests, build — зелёные
+
+> **Факт:** Код готов — `upload.service.ts` с реальным AWS S3Client, file picker с progress bar в `AdminMaterialsPage.tsx`. Env переменные в `.env.example`. **Требует настройки S3/R2 bucket на Railway** — код работает, но инфра не подключена.
 
 ---
 
@@ -1825,7 +1908,7 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 
 ---
 
-## PR 162 — prod-readiness: бэкенд production-ready 🔲
+## PR 162 — prod-readiness: бэкенд production-ready ⚠️
 
 **Проблема:** API не готов к продакшену — нет security headers, rate limiting производительного класса, graceful shutdown по SIGTERM, жёсткой валидации env при старте.
 
@@ -1843,22 +1926,24 @@ UI/UX редизайн                      PR 163–165   3 PR  🔲 НЕ НА�
 - Сервер не стартует без обязательных env — выводит читаемое сообщение и exit code 1
 - lint, typecheck, tests, build — зелёные
 
+> **Факт:** Security headers — `createSecurityHeadersMiddleware()` в `main.ts`. Rate limiting — `createSensitiveRouteRateLimitMiddleware()` (Redis-backed при наличии REDIS_URL). Env validation — Zod + exit code 1 (PR 151 ✅). Graceful shutdown (`app.enableShutdownHooks()`) — требует отдельной проверки. Частично выполнено.
+
 ---
 
 ## Итоговая карта ЧАСТЬ 6
 
 ```
 Layout страниц         PR 166        1 PR  ✅ СДЕЛАНО
-Admin CRUD             PR 167–169    3 PR  🔲 НЕ НАЧАТО
-S3 загрузка файлов     PR 170        1 PR  🔲 НЕ НАЧАТО (требует инфра-решения)
+Admin CRUD             PR 167–169    3 PR  ✅ СДЕЛАНО
+S3 загрузка файлов     PR 170        1 PR  ⚠️ КОД ГОТОВ (нужна Railway S3/R2 инфра)
 Manager workspace      PR 171        1 PR  🔲 НЕ НАЧАТО
 Instructor workspace   PR 172        1 PR  🔲 НЕ НАЧАТО
-Prod-readiness backend PR 162        1 PR  🔲 НЕ НАЧАТО
+Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate-limit/env ✅, graceful shutdown под вопросом)
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 6:                       8 PR
 ```
 
-> Приоритет выполнения: PR 167–169 (Admin CRUD) → PR 171–172 (Workspace) → PR 162 (Prod-readiness) → PR 170 (S3, откладывается до инфра-решения по хранилищу).
+> Приоритет выполнения: PR 171–172 (Workspace) → PR 162 (Prod-readiness, закрыть оставшееся) → PR 170 (S3, требует Railway инфра-решения по хранилищу).
 
 ## PR 64a — API response contract baseline
 ### Проблема – краткое понимание

@@ -150,21 +150,35 @@ export function uploadFileWithProgress(file: File, onProgress: (percent: number)
   });
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${apiBasePath}${path}`, {
-    ...init,
-    credentials: init.credentials ?? 'same-origin',
-    headers: buildHeaders(init),
-  });
-  const body = await parseJsonResponse(response);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    const errorResponse = isApiErrorResponse(body) ? body : null;
+  try {
+    const response = await fetch(`${apiBasePath}${path}`, {
+      ...init,
+      credentials: init.credentials ?? 'same-origin',
+      headers: buildHeaders(init),
+      signal: init.signal ?? controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const body = await parseJsonResponse(response);
 
-    throw new ApiClientError(errorResponse?.error.message ?? getLegacyErrorMessage(body), response.status, errorResponse);
+    if (!response.ok) {
+      const errorResponse = isApiErrorResponse(body) ? body : null;
+      throw new ApiClientError(errorResponse?.error.message ?? getLegacyErrorMessage(body), response.status, errorResponse);
+    }
+
+    return body as TResponse;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiClientError('Request timed out', 408);
+    }
+    throw error;
   }
-
-  return body as TResponse;
 }
 
 export type {
