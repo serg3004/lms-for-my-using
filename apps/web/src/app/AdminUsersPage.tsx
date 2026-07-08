@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getCurrentUser } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import '../styles/admin.css';
@@ -68,6 +69,8 @@ const EMPTY_FORM: UserForm = {
   role: '',
 };
 
+type UserFormField = 'firstName' | 'lastName' | 'email' | 'password';
+
 const ROLES: UserRole[] = ['learner', 'instructor', 'manager', 'admin'];
 const STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
 
@@ -103,6 +106,7 @@ export function AdminUsersPage() {
   const [mode, setMode] = useState<'create' | 'edit' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<FormValidationErrors<UserFormField>>({});
 
   const navItems: AdminNavItem[] = [
     { label: 'Admin dashboard', href: '/admin' },
@@ -136,12 +140,14 @@ export function AdminUsersPage() {
   function openCreate() {
     setForm(EMPTY_FORM);
     setError(null);
+    setValidationErrors({});
     setMode('create');
   }
 
   function openEdit(user: AdminUserSummary) {
     setForm(editForm(user));
     setError(null);
+    setValidationErrors({});
     setMode('edit');
   }
 
@@ -149,6 +155,18 @@ export function AdminUsersPage() {
     event.preventDefault();
 
     if (pageState.status !== 'loaded' || !mode) return;
+
+    const requiredFields: Array<{ name: UserFormField; value: string; message: string }> = [
+      { name: 'lastName', value: form.lastName, message: 'Last name is required' },
+      { name: 'firstName', value: form.firstName, message: 'First name is required' },
+      { name: 'email', value: form.email, message: 'Email is required' },
+    ];
+    if (mode === 'create') {
+      requiredFields.push({ name: 'password', value: form.password, message: 'Password is required' });
+    }
+    const nextErrors = validateRequiredFields(requiredFields);
+    setValidationErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
 
     setIsSaving(true);
     setError(null);
@@ -309,30 +327,85 @@ export function AdminUsersPage() {
             <h2>{mode === 'create' ? 'Create user' : 'Edit user'}</h2>
 
             <div className="admin-form__row">
-              <label>
-                Last name *
-                <input required value={form.lastName} onChange={(event) => setForm({ ...form, lastName: event.target.value })} />
-              </label>
-              <label>
-                First name *
-                <input required value={form.firstName} onChange={(event) => setForm({ ...form, firstName: event.target.value })} />
-              </label>
-              <label>
-                Middle name
-                <input value={form.middleName} onChange={(event) => setForm({ ...form, middleName: event.target.value })} />
-              </label>
+              <div className="admin-form__field">
+                <label htmlFor="user-lastName">Last name *</label>
+                <input
+                  id="user-lastName"
+                  aria-describedby={validationErrors.lastName ? 'user-lastName-error' : undefined}
+                  aria-invalid={Boolean(validationErrors.lastName)}
+                  value={form.lastName}
+                  onChange={(event) => {
+                    setForm({ ...form, lastName: event.target.value });
+                    setValidationErrors((e) => clearFieldError(e, 'lastName'));
+                  }}
+                />
+                {validationErrors.lastName ? (
+                  <p className="admin-form__field-error" id="user-lastName-error" role="alert">{validationErrors.lastName}</p>
+                ) : null}
+              </div>
+              <div className="admin-form__field">
+                <label htmlFor="user-firstName">First name *</label>
+                <input
+                  id="user-firstName"
+                  aria-describedby={validationErrors.firstName ? 'user-firstName-error' : undefined}
+                  aria-invalid={Boolean(validationErrors.firstName)}
+                  value={form.firstName}
+                  onChange={(event) => {
+                    setForm({ ...form, firstName: event.target.value });
+                    setValidationErrors((e) => clearFieldError(e, 'firstName'));
+                  }}
+                />
+                {validationErrors.firstName ? (
+                  <p className="admin-form__field-error" id="user-firstName-error" role="alert">{validationErrors.firstName}</p>
+                ) : null}
+              </div>
+              <div className="admin-form__field">
+                <label htmlFor="user-middleName">Middle name</label>
+                <input
+                  id="user-middleName"
+                  value={form.middleName}
+                  onChange={(event) => setForm({ ...form, middleName: event.target.value })}
+                />
+              </div>
             </div>
 
-            <label>
-              Email *
-              <input required type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-            </label>
+            <div className="admin-form__field">
+              <label htmlFor="user-email">Email *</label>
+              <input
+                id="user-email"
+                type="email"
+                aria-describedby={validationErrors.email ? 'user-email-error' : undefined}
+                aria-invalid={Boolean(validationErrors.email)}
+                value={form.email}
+                onChange={(event) => {
+                  setForm({ ...form, email: event.target.value });
+                  setValidationErrors((e) => clearFieldError(e, 'email'));
+                }}
+              />
+              {validationErrors.email ? (
+                <p className="admin-form__field-error" id="user-email-error" role="alert">{validationErrors.email}</p>
+              ) : null}
+            </div>
 
             {mode === 'create' && (
-              <label>
-                Password *
-                <input required minLength={8} type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-              </label>
+              <div className="admin-form__field">
+                <label htmlFor="user-password">Password *</label>
+                <input
+                  id="user-password"
+                  type="password"
+                  minLength={8}
+                  aria-describedby={validationErrors.password ? 'user-password-error' : undefined}
+                  aria-invalid={Boolean(validationErrors.password)}
+                  value={form.password}
+                  onChange={(event) => {
+                    setForm({ ...form, password: event.target.value });
+                    setValidationErrors((e) => clearFieldError(e, 'password'));
+                  }}
+                />
+                {validationErrors.password ? (
+                  <p className="admin-form__field-error" id="user-password-error" role="alert">{validationErrors.password}</p>
+                ) : null}
+              </div>
             )}
 
             {mode === 'edit' && (

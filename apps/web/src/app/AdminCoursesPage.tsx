@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, EmptyState, PageState, SectionHeader, StatCard, StatsGrid, TableWrap } from '../shared/ui.js';
 import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
@@ -65,6 +66,7 @@ export function AdminCoursesPage() {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
+  const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title'>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const deleteDialogRef = useRef<HTMLDialogElement>(null);
@@ -115,6 +117,7 @@ export function AdminCoursesPage() {
     setFormTitle('');
     setFormDescription('');
     setFormState({ status: 'idle' });
+    setCreateErrors({});
     setShowCreate(true);
   }
 
@@ -123,9 +126,15 @@ export function AdminCoursesPage() {
     if (pageState.status !== 'loaded') return;
 
     const title = formTitle.trim();
+    const nextErrors = validateRequiredFields([
+      { name: 'title', value: title, message: t('admin.courses.titleRequired', 'Course title is required') },
+    ]);
+    setCreateErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
+
     const slug = slugifyTitle(title);
     if (!slug) {
-      setFormState({ status: 'error', message: t('admin.courses.invalidTitle', 'Enter a title using letters or numbers.') });
+      setCreateErrors({ title: t('admin.courses.invalidTitle', 'Enter a title using letters or numbers.') });
       return;
     }
 
@@ -315,13 +324,20 @@ export function AdminCoursesPage() {
             <label htmlFor="course-title">{t('admin.courses.form.title', 'Course title')} *</label>
             <input
               id="course-title"
-              required
+              aria-describedby={createErrors.title ? 'course-title-error' : undefined}
+              aria-invalid={Boolean(createErrors.title)}
               maxLength={160}
               type="text"
               value={formTitle}
-              onChange={(e) => setFormTitle(e.target.value)}
+              onChange={(e) => {
+                setFormTitle(e.target.value);
+                setCreateErrors((err) => clearFieldError(err, 'title'));
+              }}
             />
-            {formTitle.trim() ? (
+            {createErrors.title ? (
+              <p className="admin-form__field-error" id="course-title-error" role="alert">{createErrors.title}</p>
+            ) : null}
+            {!createErrors.title && formTitle.trim() ? (
               <span className="admin-form__hint">slug: <code>{slugifyTitle(formTitle)}</code></span>
             ) : null}
           </div>

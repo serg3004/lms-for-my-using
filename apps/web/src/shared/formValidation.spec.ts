@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasValidationErrors, validateRequiredFields } from './formValidation.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields } from './formValidation.js';
 
 describe('formValidation', () => {
   it('returns required field errors for blank values', () => {
@@ -18,5 +18,19 @@ describe('formValidation', () => {
     ]);
 
     expect(hasValidationErrors(errors)).toBe(false);
+  });
+});
+
+describe('clearFieldError', () => {
+  it('removes the specified field error', () => {
+    const errors = { firstName: 'Required', email: 'Required' };
+    const result = clearFieldError(errors, 'firstName');
+    expect(result).toEqual({ email: 'Required' });
+  });
+
+  it('returns the same object reference when field has no error', () => {
+    const errors = { email: 'Required' };
+    const result = clearFieldError(errors, 'firstName' as 'email');
+    expect(result).toBe(errors);
   });
 });
