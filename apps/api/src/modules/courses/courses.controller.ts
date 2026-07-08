@@ -1,11 +1,17 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { createCourseSchema, CreateCourseInput, updateCourseStatusSchema } from './courses.schemas.js';
+import {
+  createCourseSchema,
+  CreateCourseInput,
+  updateCourseSchema,
+  UpdateCourseInput,
+  updateCourseStatusSchema,
+} from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
 
 @Controller('courses')
@@ -43,11 +49,25 @@ export class CoursesController {
     return this.coursesService.createCourse(input);
   }
 
+  @Patch(':id')
+  @Roles(...rolePolicies.coursesCreate)
+  updateCourse(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input: UpdateCourseInput = updateCourseSchema.parse(body);
+
+    return this.coursesService.updateCourse(courseId, request.currentUser!.organizationId, input);
+  }
+
   @Patch(':id/status')
   @Roles(...rolePolicies.coursesCreate)
   updateCourseStatus(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateCourseStatusSchema.parse(body);
 
     return this.coursesService.updateCourseStatus(courseId, request.currentUser!.organizationId, input.status);
+  }
+
+  @Delete(':id')
+  @Roles(...rolePolicies.coursesCreate)
+  deleteCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+    return this.coursesService.deleteCourse(courseId, request.currentUser!.organizationId);
   }
 }

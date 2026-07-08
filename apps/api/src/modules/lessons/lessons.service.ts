@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateLessonInput, UpdateLessonInput, UpdateLessonStatusInput } from './lessons.schemas.js';
@@ -105,6 +105,62 @@ export class LessonsService {
       where: { id: lessonId },
       data: input,
       select: lessonSelect,
+    });
+  }
+
+  async reorderLessons(courseId: string, organizationId: string, lessonIds: string[]) {
+    await this.ensureCourseExists(courseId, organizationId);
+
+    const lessons = await this.prisma.lesson.findMany({
+      where: {
+        courseId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    const existingIds = new Set(lessons.map((lesson) => lesson.id));
+
+    if (lessonIds.length !== existingIds.size || lessonIds.some((lessonId) => !existingIds.has(lessonId))) {
+      throw new BadRequestException('Lesson order must include every active course lesson exactly once');
+    }
+
+    const seenIds = new Set<string>();
+    for (const lessonId of lessonIds) {
+      if (seenIds.has(lessonId)) {
+        throw new BadRequestException('Lesson order contains duplicate lesson ids');
+      }
+
+      seenIds.add(lessonId);
+    }
+
+    await this.prisma.$transaction(
+      lessonIds.map((lessonId, order) =>
+        this.prisma.lesson.update({
+          where: { id: lessonId },
+          data: { order },
+          select: { id: true },
+        }),
+      ),
+    );
+
+    return this.listLessons(courseId, organizationId);
+  }
+
+  async deleteLesson(lessonId: string, organizationId: string) {
+    const lesson = await this.prisma.lesson.findFirst({
+      where: { id: lessonId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException('Lesson not found');
+    }
+
+    await this.prisma.lesson.update({
+      where: { id: lessonId },
+      data: { deletedAt: new Date() },
+      select: { id: true },
     });
   }
 

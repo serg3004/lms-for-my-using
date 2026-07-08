@@ -9,6 +9,7 @@ FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
 RUN pnpm install --frozen-lockfile --filter @lms/web
 
 # ---- Build: Vite production build ----
@@ -17,6 +18,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY apps/web ./apps/web
+COPY packages/shared ./packages/shared
 COPY package.json pnpm-workspace.yaml ./
 WORKDIR /app/apps/web
 RUN pnpm run build
@@ -27,7 +29,7 @@ FROM nginx:1.27-alpine AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/nginx.conf /etc/nginx/templates/default.conf.template
 
-ENV API_HOST=api.railway.internal
+ENV API_UPSTREAM_URL=http://api.railway.internal:3000
 
 EXPOSE 80
 

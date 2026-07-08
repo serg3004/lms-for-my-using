@@ -12,6 +12,8 @@ import {
   CreateUserInput,
   importUsersSchema,
   ImportUsersInput,
+  updateUserSchema,
+  UpdateUserInput,
   updateUserStatusSchema,
 } from './users.schemas.js';
 import { UsersService } from './users.service.js';
@@ -62,6 +64,15 @@ export class UsersController {
     const input: CreateUserInput = createUserSchema.parse(body);
 
     return this.usersService.createUser(input);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  updateUser(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input: UpdateUserInput = updateUserSchema.parse(body);
+
+    return this.usersService.updateUser(userId, request.currentUser!.organizationId, input);
   }
 
   @Patch(':id/status')
