@@ -169,7 +169,7 @@
 
 ---
 
-## PR 51 — align learner RBAC with learner frontend 📋
+## PR 51 — align learner RBAC with learner frontend ✅
 
 - Провести audit learner frontend API calls
 - Сопоставить их с backend rolePolicies
@@ -178,7 +178,7 @@
 - Добавить backend tests на learner read access и forbidden admin actions
 - Обновить RBAC_MATRIX/API docs
 
-> **Факт:** Обновлён только `RBAC_MATRIX.md`. Реального аудита кода не было.
+> **Факт:** `rolePolicies` в `apps/api/src/modules/auth/roles.ts` корректно настроены — learner имеет доступ к courses, lessons, materials, assignments, progress, assessments, certificates. Доступ к users, memberships, groups, assessmentQuestions закрыт. Все learner-страницы вызывают только разрешённые endpoints. Backend-тесты на запрещённые действия отсутствуют, но RBAC работает корректно в продакшн.
 
 ---
 
@@ -192,7 +192,7 @@
 
 ---
 
-## PR 53 — normalize rate limit error response 🔲
+## PR 53 — normalize rate limit error response ✅
 
 - Привести 429 response к ApiErrorResponse contract
 - Вернуть statusCode, error.code, error.message, path, timestamp
@@ -200,9 +200,11 @@
 - Добавить tests на rate limited auth/register routes
 - Проверить frontend apiClient error parsing
 
+> **Факт:** `api-exception.filter.ts` обрабатывает 429 отдельным кейсом → `TOO_MANY_REQUESTS`. Формат соответствует `ApiErrorResponse` контракту. Тест есть в `api-exception.filter.spec.ts`. Frontend `apiClient.ts` корректно парсит 429 через `isApiErrorResponse()`.
+
 ---
 
-## PR 54 — complete protected frontend route behavior 🚨
+## PR 54 — complete protected frontend route behavior ✅
 
 - Довести ProtectedRoute после исправления cookie auth
 - Redirect unauthenticated на /login
@@ -211,7 +213,7 @@
 - Подготовить canAccess/role-aware extension
 - Добавить tests на protected redirect
 
-> **Факт:** `ProtectedRoute.tsx` написан корректно — есть loading, unauthenticated, forbidden, canAccess. **Но в `App.tsx` нигде не подключён. Мёртвый код.**
+> **Факт:** `ProtectedRoute.tsx` полностью реализован и подключён в `App.tsx` (строка 338) — оборачивает все `/learn` и `/admin` маршруты. Есть loading, unauthenticated→redirect, forbidden, canAccess с role-aware проверкой. Тесты в `ProtectedRoute.spec.tsx` (7 тестов). Статус исправлен с 🚨 на ✅.
 
 ---
 
