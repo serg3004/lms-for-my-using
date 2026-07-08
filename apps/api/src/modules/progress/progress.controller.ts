@@ -3,7 +3,7 @@ import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/comm
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
+import { Roles, isLearnerOnly, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { createProgressSchema, CreateProgressInput } from './progress.schemas.js';
 import { ProgressService } from './progress.service.js';
@@ -16,22 +16,28 @@ export class ProgressController {
   @Get()
   @Roles(...rolePolicies.progressRead)
   listProgress(@Req() request: AuthenticatedRequest) {
-    return this.progressService.listProgress(request.currentUser!.organizationId);
+    const currentUser = request.currentUser!;
+    const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
+    return this.progressService.listProgress(currentUser.organizationId, userId);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.progressRead)
   getProgress(@Param('id') progressId: string, @Req() request: AuthenticatedRequest) {
-    return this.progressService.getProgress(progressId, request.currentUser!.organizationId);
+    const currentUser = request.currentUser!;
+    const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
+    return this.progressService.getProgress(progressId, currentUser.organizationId, userId);
   }
 
   @Post()
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.progressCreate)
   @OrganizationScope('body', 'organizationId')
-  createProgress(@Body() body: unknown) {
+  createProgress(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const currentUser = request.currentUser!;
     const input: CreateProgressInput = createProgressSchema.parse(body);
+    const safeInput = isLearnerOnly(currentUser.roles) ? { ...input, userId: currentUser.id } : input;
 
-    return this.progressService.createProgress(input);
+    return this.progressService.createProgress(safeInput);
   }
 }

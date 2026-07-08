@@ -19,10 +19,11 @@ const assignmentSelect = {
 export class AssignmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAssignments(organizationId: string) {
+  async listAssignments(organizationId: string, userId?: string) {
     return this.prisma.assignment.findMany({
       where: {
         organizationId,
+        ...(userId !== undefined ? { userId } : {}),
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
