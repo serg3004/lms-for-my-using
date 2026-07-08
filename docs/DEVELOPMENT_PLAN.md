@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-07-08 (аудит кода — приведение статусов в соответствие с реальностью)
+**Обновлён:** 2026-07-08 (добавлена Часть 0 — ретроспективное описание фундамента до плана ChatGPT)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -13,6 +13,132 @@
 🚨 ЗАЯВЛЕНО/НЕ СДЕЛАНО    — ChatGPT отчитался, но в коде не реализовано
 🔲 НЕ НАЧАТО              — запланировано, работы не велись
 📋 ТОЛЬКО ДОКИ            — создан .md файл, код не написан
+```
+
+---
+
+# ЧАСТЬ 0 — Фундамент проекта (GitHub PR #1–#48, до плана ChatGPT)
+
+> Восстановлено ретроспективно из git-истории.
+> GitHub PR #39–#45 подтверждены явными ссылками в commit-сообщениях.
+> Остальные группы восстановлены по темам коммитов.
+> PR 49 в плане ChatGPT — продолжение этой нумерации.
+
+---
+
+## [Блок 0.1] Монорепо и CI (GitHub PR ~#1–#21)
+
+**GitHub PR #21** (`docs/sync-after-tooling`) ✅
+
+- Turborepo + pnpm workspace (apps/api, apps/web, packages/shared)
+- NestJS API skeleton
+- React + Vite + TypeScript + i18n web skeleton
+- Shared package
+- Prisma foundation + начальная миграция
+- GitHub Actions CI (lint + typecheck + test)
+- Docker Compose (локальная разработка)
+- ESLint flat config
+- Env validation (Zod) в NestJS bootstrap
+- Базовые test scripts
+
+---
+
+## [Блок 0.2] API — Organizations, Users, Auth (GitHub PR ~#22–#35)
+
+✅
+
+- Organizations CRUD module + тесты
+- Users CRUD module + тесты
+- Memberships + roles API
+- Auth foundation: JWT, password hashing, auth guard
+- RBAC foundation (rolePolicies)
+- Organization scope guard
+- User fields: position, shift
+- JWT login + current user endpoint
+- Groups API
+
+---
+
+## [Блок 0.3] API — Learning Content (GitHub PR ~#36–#38)
+
+✅
+
+- Courses API skeleton (CRUD)
+- Lessons API skeleton (CRUD)
+- Course Materials API skeleton (CRUD)
+
+---
+
+## [Блок 0.4] API — Assignments, Progress, Assessments (GitHub PR #39–#45)
+
+**GitHub PR #39** — Assignments API skeleton ✅
+**GitHub PR #40** — Progress API skeleton ✅
+**GitHub PR #41** — Assessments API skeleton ✅
+**GitHub PR #42** — Assessment questions API skeleton ✅
+**GitHub PR #43** — Assessment media support ✅
+**GitHub PR #44** — Assessment attempts + automatic grading ✅
+**GitHub PR #45** — Sync assessment attempts Prisma models ✅
+
+---
+
+## [Блок 0.5] API — Бизнес-логика (GitHub PR ~#46–#48)
+
+✅
+
+- Course completion calculation + gate (блокировка попыток до прохождения курса)
+- Assessment results service + endpoints + reports
+- Users bulk create + CSV import
+- Organization registration (first admin flow)
+- Certificates module (полный: schema, service, endpoints, role policies)
+- Централизованный API exception filter (единый error contract)
+- OpenAPI / Swagger skeleton endpoint
+- Password reset skeleton (заглушки, не реализован)
+
+---
+
+## [Блок 0.6] MVP Seed Data (GitHub PR #63)
+
+**GitHub PR #63** (`chore/mvp-seed-data`) ✅
+
+- MVP seed data для демо
+- Definition of Done + pilot checklist
+- Local runbook (MVP_LOCAL_RUNBOOK)
+- Backend MVP smoke flow тесты
+
+---
+
+## [Блок 0.7] Web Frontend (параллельно с #39–#63)
+
+✅
+
+- Web auth shell (login / logout)
+- Learner flows: courses, course detail, lessons, lesson detail,
+  materials, progress, assignments, assessments, certificates
+- Lesson completion action
+- Admin: layout + dashboard, users, roles, org structure,
+  course builder, lesson editor, materials, assessment builder,
+  assessment taking flow, results + certificates UI
+- React Router + ProtectedRoute
+- CSS foundation (custom properties, Manrope font)
+- UX consistency pass (cookie auth, hidden technical IDs,
+  normalized error feedback, role-aware navigation)
+- API domain modules (apiClient разбит по доменам)
+- API hardening middleware
+
+---
+
+## Итоговая карта Части 0
+
+```
+Блок 0.1: #21 ✅
+Блок 0.2: ~#22–#35 ✅
+Блок 0.3: ~#36–#38 ✅
+Блок 0.4: #39✅ #40✅ #41✅ #42✅ #43✅ #44✅ #45✅
+Блок 0.5: ~#46–#48 ✅
+Блок 0.6: #63 ✅
+Блок 0.7: web ✅
+
+Итого: весь фундамент реализован и работает
 ```
 
 ---
