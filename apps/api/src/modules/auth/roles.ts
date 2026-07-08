@@ -39,3 +39,7 @@ export const rolePolicies = {
 export function Roles(...roles: UserRole[]) {
   return SetMetadata(rolesMetadataKey, roles);
 }
+
+export function isLearnerOnly(roles: readonly UserRole[]): boolean {
+  return !roles.some((r) => r === 'admin' || r === 'manager' || r === 'instructor');
+}

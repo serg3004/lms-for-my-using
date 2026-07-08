@@ -464,14 +464,14 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 71 — full learner/admin RBAC audit 🔲
+## PR 71 — full learner/admin RBAC audit ✅
 
 - Сначала audit, не fixes
 - Сопоставить frontend API calls и backend role policies
 - Проверить learner/admin scopes, ownership и org scope
 - Создать follow-up PRs для конкретных дыр
 
-> **Факт:** Базовая инфраструктура есть. Backend: `roles.ts` определяет 21 `rolePolicies` (организации, пользователи, курсы, уроки, материалы, назначения, прогресс, тесты, сертификаты). `RolesGuard` + `@Roles()` применяются на контроллерах. Frontend: `ProtectedRoute` с `canAccess`, `isAdminNavigationRole`. **Сам аудит (сопоставление frontend вызовов vs. backend политик, ownership/org-scope в Prisma) не проводился.**
+> **Факт:** Аудит проведён, дыры закрыты в той же ветке. Добавлен `isLearnerOnly(roles)` хелпер в `roles.ts`. Исправлено: `GET /progress` и `GET /progress/:id` — learner получает только свои записи; `POST /progress` — learner не может создать запись для чужого userId; `GET /assignments` — learner видит только свои прямые назначения. Frontend изменений не потребовал — backend теперь фильтрует корректно. 289 тестов, все проходят. Полная матрица endpoint-ов: `docs/RBAC_AUDIT.md`. Остаток: PR 71a — групповые назначения через groupId/membership (follow-up, низкий приоритет).
 
 ---
 

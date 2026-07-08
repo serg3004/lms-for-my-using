@@ -3,7 +3,7 @@ import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nest
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
+import { Roles, isLearnerOnly, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { AssignmentsService } from './assignments.service.js';
 import {
@@ -20,7 +20,9 @@ export class AssignmentsController {
   @Get()
   @Roles(...rolePolicies.assignmentsRead)
   listAssignments(@Req() request: AuthenticatedRequest) {
-    return this.assignmentsService.listAssignments(request.currentUser!.organizationId);
+    const currentUser = request.currentUser!;
+    const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
+    return this.assignmentsService.listAssignments(currentUser.organizationId, userId);
   }
 
   @Get(':id')

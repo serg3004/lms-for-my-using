@@ -1,4 +1,4 @@
-import { rolePolicies, type UserRole } from './roles.js';
+import { isLearnerOnly, rolePolicies, type UserRole } from './roles.js';
 
 type PolicyName = keyof typeof rolePolicies;
 
@@ -15,6 +15,32 @@ function expectPolicy(policyName: PolicyName, allowedRoles: readonly UserRole[])
     }
   }
 }
+
+describe('isLearnerOnly', () => {
+  it('returns true for a user with only the learner role', () => {
+    expect(isLearnerOnly(['learner'])).toBe(true);
+  });
+
+  it('returns false for admin', () => {
+    expect(isLearnerOnly(['admin'])).toBe(false);
+  });
+
+  it('returns false for manager', () => {
+    expect(isLearnerOnly(['manager'])).toBe(false);
+  });
+
+  it('returns false for instructor', () => {
+    expect(isLearnerOnly(['instructor'])).toBe(false);
+  });
+
+  it('returns false for admin who also has learner role', () => {
+    expect(isLearnerOnly(['learner', 'admin'])).toBe(false);
+  });
+
+  it('returns false for instructor who also has learner role', () => {
+    expect(isLearnerOnly(['learner', 'instructor'])).toBe(false);
+  });
+});
 
 describe('rolePolicies', () => {
   const learnerReadPolicies = [
