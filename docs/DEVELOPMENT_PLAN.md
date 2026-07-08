@@ -157,7 +157,7 @@
 
 ---
 
-## PR 50 — remove stale frontend token checks ⚠️
+## PR 50 — remove stale frontend token checks ✅
 
 - Убрать getAuthToken() checks из learner/admin страниц
 - Полагаться на ProtectedRoute и apiClient 401 handling
@@ -165,7 +165,7 @@
 - Проверить learner courses/assignments/assessments/certificates pages
 - Добавить smoke/unit tests на cookie-first frontend auth behavior
 
-> **Факт:** `authToken.ts` переделан в заглушку (`getAuthToken` возвращает строку `'cookie-auth'`), но файл не удалён. Задача выполнена наполовину.
+> **Факт:** файл `authToken.ts` полностью удалён, `getAuthToken` нигде не используется в исходниках. Все страницы полагаются на `ProtectedRoute` и cookie auth. Статус исправлен с ⚠️ на ✅ после повторной проверки кода.
 
 ---
 
