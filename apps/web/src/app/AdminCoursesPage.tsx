@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { Badge, Button, EmptyState, PageState, SectionHeader, StatCard, StatsGrid, TableWrap } from '../shared/ui.js';
+import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { Badge, Button, DataTable, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
 import '../styles/admin.css';
 import '../styles/ui.css';
@@ -69,7 +69,6 @@ export function AdminCoursesPage() {
   const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title'>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const deleteDialogRef = useRef<HTMLDialogElement>(null);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin'), href: '/admin' },
@@ -107,11 +106,6 @@ export function AdminCoursesPage() {
     if (showCreate) dialogRef.current?.showModal();
     else dialogRef.current?.close();
   }, [showCreate]);
-
-  useEffect(() => {
-    if (deletingId) deleteDialogRef.current?.showModal();
-    else deleteDialogRef.current?.close();
-  }, [deletingId]);
 
   function openCreate() {
     setFormTitle('');
@@ -205,6 +199,60 @@ export function AdminCoursesPage() {
   const archived = courses.filter((c) => c.status === 'archived').length;
   const deletingCourse = courses.find((c) => c.id === deletingId);
 
+  const courseColumns: Column<AdminCourseSummary>[] = [
+    {
+      key: 'course',
+      label: t('admin.courses.col.course', 'Course'),
+      render: (course) => (
+        <>
+          <div className="td-title">{course.title}</div>
+          {course.description ? (
+            <div className="td-meta">{course.description.slice(0, 80)}{course.description.length > 80 ? '…' : ''}</div>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      label: t('admin.courses.col.status', 'Status'),
+      render: (course) => (
+        <Badge variant={statusToBadgeVariant(course.status)}>
+          {course.status === 'published' ? t('admin.courses.status.published', 'Published')
+            : course.status === 'archived' ? t('admin.courses.status.archived', 'Archived')
+            : t('admin.courses.status.draft', 'Draft')}
+        </Badge>
+      ),
+    },
+    {
+      key: 'lessons',
+      label: t('admin.courses.col.lessons', 'Lessons'),
+      render: (course) => course._count.lessons,
+    },
+    {
+      key: 'updated',
+      label: t('admin.courses.col.updated', 'Updated'),
+      render: (course) => (
+        <span style={{ whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+          {formatRelativeDate(course.updatedAt)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      render: (course) => (
+        <div className="td-actions">
+          <Button variant="ghost" size="sm" type="button" onClick={() => window.location.assign(`/admin/courses/${course.id}`)}>
+            ✏ {t('common.edit', 'Edit')}
+          </Button>
+          <Button variant="ghost" size="sm" type="button" style={{ color: 'var(--color-danger)' }} onClick={() => setDeletingId(course.id)}>
+            ✕
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <AdminPageLayout
       brandLabel={t('admin.navLink', 'Admin')}
@@ -241,69 +289,12 @@ export function AdminCoursesPage() {
         }
       />
 
-      <TableWrap>
-        {courses.length === 0 ? (
-          <div style={{ padding: '24px' }}>
-            <EmptyState message={t('admin.courses.empty', 'No courses yet. Create your first course.')} />
-          </div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>{t('admin.courses.col.course', 'Course')}</th>
-                <th>{t('admin.courses.col.status', 'Status')}</th>
-                <th>{t('admin.courses.col.lessons', 'Lessons')}</th>
-                <th>{t('admin.courses.col.updated', 'Updated')}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {courses.map((course) => (
-                <tr key={course.id}>
-                  <td>
-                    <div className="td-title">{course.title}</div>
-                    {course.description ? (
-                      <div className="td-meta">{course.description.slice(0, 80)}{course.description.length > 80 ? '…' : ''}</div>
-                    ) : null}
-                  </td>
-                  <td>
-                    <Badge variant={statusToBadgeVariant(course.status)}>
-                      {course.status === 'published' ? t('admin.courses.status.published', 'Published')
-                        : course.status === 'archived' ? t('admin.courses.status.archived', 'Archived')
-                        : t('admin.courses.status.draft', 'Draft')}
-                    </Badge>
-                  </td>
-                  <td>{course._count.lessons}</td>
-                  <td style={{ whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                    {formatRelativeDate(course.updatedAt)}
-                  </td>
-                  <td>
-                    <div className="td-actions">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        onClick={() => window.location.assign(`/admin/courses/${course.id}`)}
-                      >
-                        ✏ {t('common.edit', 'Edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        type="button"
-                        style={{ color: 'var(--color-danger)' }}
-                        onClick={() => setDeletingId(course.id)}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </TableWrap>
+      <DataTable
+        columns={courseColumns}
+        rows={courses}
+        keyExtractor={(c) => c.id}
+        emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
+      />
 
       {/* Create course dialog */}
       <dialog className="admin-dialog" ref={dialogRef} onClose={() => setShowCreate(false)}>
@@ -320,8 +311,13 @@ export function AdminCoursesPage() {
         </div>
 
         <form className="admin-form" onSubmit={(e) => void handleCreate(e)}>
-          <div className="admin-form__field">
-            <label htmlFor="course-title">{t('admin.courses.form.title', 'Course title')} *</label>
+          <FormField
+            id="course-title"
+            label={t('admin.courses.form.title', 'Course title')}
+            required
+            error={createErrors.title}
+            hint={!createErrors.title && formTitle.trim() ? `slug: ${slugifyTitle(formTitle)}` : undefined}
+          >
             <input
               id="course-title"
               aria-describedby={createErrors.title ? 'course-title-error' : undefined}
@@ -334,16 +330,9 @@ export function AdminCoursesPage() {
                 setCreateErrors((err) => clearFieldError(err, 'title'));
               }}
             />
-            {createErrors.title ? (
-              <p className="admin-form__field-error" id="course-title-error" role="alert">{createErrors.title}</p>
-            ) : null}
-            {!createErrors.title && formTitle.trim() ? (
-              <span className="admin-form__hint">slug: <code>{slugifyTitle(formTitle)}</code></span>
-            ) : null}
-          </div>
+          </FormField>
 
-          <div className="admin-form__field">
-            <label htmlFor="course-description">{t('admin.courses.form.description', 'Description')}</label>
+          <FormField id="course-description" label={t('admin.courses.form.description', 'Description')}>
             <textarea
               id="course-description"
               maxLength={1000}
@@ -351,7 +340,7 @@ export function AdminCoursesPage() {
               value={formDescription}
               onChange={(e) => setFormDescription(e.target.value)}
             />
-          </div>
+          </FormField>
 
           {formState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{formState.message}</p>
@@ -372,35 +361,18 @@ export function AdminCoursesPage() {
         </form>
       </dialog>
 
-      {/* Delete confirmation dialog */}
-      <dialog className="admin-dialog" ref={deleteDialogRef} onClose={() => setDeletingId(null)}>
-        <div className="admin-dialog__header">
-          <h2>{t('admin.courses.deleteTitle', 'Delete course')}</h2>
-          <button
-            className="admin-dialog__close"
-            onClick={() => setDeletingId(null)}
-            type="button"
-            aria-label={t('common.close', 'Close')}
-          >
-            ✕
-          </button>
-        </div>
-        <div className="admin-form">
-          <p style={{ margin: 0, color: 'var(--color-text)' }}>
-            {t('admin.courses.deleteConfirm', 'Delete "{{title}}"? This action cannot be undone.', {
-              title: deletingCourse?.title ?? '',
-            })}
-          </p>
-          <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--secondary" onClick={() => setDeletingId(null)} type="button">
-              {t('common.cancel', 'Cancel')}
-            </button>
-            <button className="admin-btn admin-btn--danger" onClick={() => void handleDelete()} type="button">
-              {t('common.delete', 'Delete')}
-            </button>
-          </div>
-        </div>
-      </dialog>
+      <ConfirmDialog
+        open={deletingId !== null}
+        title={t('admin.courses.deleteTitle', 'Delete course')}
+        message={t('admin.courses.deleteConfirm', 'Delete "{{title}}"? This action cannot be undone.', {
+          title: deletingCourse?.title ?? '',
+        })}
+        confirmLabel={t('common.delete', 'Delete')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setDeletingId(null)}
+      />
     </AdminPageLayout>
   );
 }

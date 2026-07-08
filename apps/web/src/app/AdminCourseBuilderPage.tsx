@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, Card, PageState } from '../shared/ui.js';
 import { getCourse, updateCourse, deleteCourse } from '../shared/api/courses.js';
 import { listLessons, createLesson, updateLesson } from '../shared/api/lessons.js';
@@ -70,7 +70,6 @@ export function AdminCourseBuilderPage() {
   const [showDelete, setShowDelete] = useState(false);
 
   const addLessonDialogRef = useRef<HTMLDialogElement>(null);
-  const deleteDialogRef = useRef<HTMLDialogElement>(null);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin'), href: '/admin' },
@@ -106,10 +105,6 @@ export function AdminCourseBuilderPage() {
     else addLessonDialogRef.current?.close();
   }, [showAddLesson]);
 
-  useEffect(() => {
-    if (showDelete) deleteDialogRef.current?.showModal();
-    else deleteDialogRef.current?.close();
-  }, [showDelete]);
 
   async function handleSaveCourse(e: React.FormEvent) {
     e.preventDefault();
@@ -251,11 +246,9 @@ export function AdminCourseBuilderPage() {
           <Card style={{ marginBottom: '20px' }}>
             <div className="ds-card__title">Основная информация</div>
             <form onSubmit={(e) => void handleSaveCourse(e)}>
-              <div className="ds-field">
-                <label className="ds-field__label" htmlFor="cb-title">Название курса</label>
+              <FormField id="cb-title" label="Название курса" required error={courseErrors.title}>
                 <input
                   id="cb-title"
-                  className="ds-input"
                   type="text"
                   maxLength={160}
                   aria-describedby={courseErrors.title ? 'cb-title-error' : undefined}
@@ -266,21 +259,16 @@ export function AdminCourseBuilderPage() {
                     setCourseErrors((err) => clearFieldError(err, 'title'));
                   }}
                 />
-                {courseErrors.title ? (
-                  <p className="admin-form__field-error" id="cb-title-error" role="alert">{courseErrors.title}</p>
-                ) : null}
-              </div>
-              <div className="ds-field">
-                <label className="ds-field__label" htmlFor="cb-desc">Описание</label>
+              </FormField>
+              <FormField id="cb-desc" label="Описание">
                 <textarea
                   id="cb-desc"
-                  className="ds-input"
                   rows={4}
                   maxLength={1000}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                 />
-              </div>
+              </FormField>
               {saveState.status === 'error' ? (
                 <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--color-danger)' }} role="alert">
                   {saveState.message}
@@ -427,8 +415,7 @@ export function AdminCourseBuilderPage() {
           </button>
         </div>
         <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
-          <div className="admin-form__field">
-            <label htmlFor="lesson-title">Название урока *</label>
+          <FormField id="lesson-title" label="Название урока" required error={lessonErrors.title}>
             <input
               id="lesson-title"
               maxLength={160}
@@ -441,12 +428,8 @@ export function AdminCourseBuilderPage() {
                 setLessonErrors((err) => clearFieldError(err, 'title'));
               }}
             />
-            {lessonErrors.title ? (
-              <p className="admin-form__field-error" id="lesson-title-error" role="alert">{lessonErrors.title}</p>
-            ) : null}
-          </div>
-          <div className="admin-form__field">
-            <label htmlFor="lesson-desc">Описание</label>
+          </FormField>
+          <FormField id="lesson-desc" label="Описание">
             <textarea
               id="lesson-desc"
               maxLength={1000}
@@ -454,7 +437,7 @@ export function AdminCourseBuilderPage() {
               value={lessonDesc}
               onChange={(e) => setLessonDesc(e.target.value)}
             />
-          </div>
+          </FormField>
           {lessonFormState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{lessonFormState.message}</p>
           ) : null}
@@ -473,33 +456,16 @@ export function AdminCourseBuilderPage() {
         </form>
       </dialog>
 
-      {/* Delete course dialog */}
-      <dialog className="admin-dialog" ref={deleteDialogRef} onClose={() => setShowDelete(false)}>
-        <div className="admin-dialog__header">
-          <h2>Удалить курс</h2>
-          <button
-            className="admin-dialog__close"
-            type="button"
-            aria-label="Закрыть"
-            onClick={() => setShowDelete(false)}
-          >
-            ✕
-          </button>
-        </div>
-        <div className="admin-form">
-          <p style={{ margin: 0, color: 'var(--color-text)' }}>
-            Удалить «{course.title}»? Это действие необратимо.
-          </p>
-          <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowDelete(false)}>
-              Отмена
-            </button>
-            <button className="admin-btn admin-btn--danger" type="button" onClick={() => void handleDeleteCourse()}>
-              Удалить
-            </button>
-          </div>
-        </div>
-      </dialog>
+      <ConfirmDialog
+        open={showDelete}
+        title="Удалить курс"
+        message={`Удалить «${course.title}»? Это действие необратимо.`}
+        confirmLabel="Удалить"
+        cancelLabel="Отмена"
+        variant="danger"
+        onConfirm={() => void handleDeleteCourse()}
+        onCancel={() => setShowDelete(false)}
+      />
     </AdminPageLayout>
   );
 }

@@ -5,8 +5,8 @@ import { getCurrentUser } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { DataTable, PageState, StatusBadge, type Column } from '../shared/ui.js';
 import '../styles/admin.css';
 
 type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
@@ -265,6 +265,42 @@ export function AdminUsersPage() {
     );
   }
 
+  const userColumns: Column<AdminUserSummary>[] = [
+    { key: 'name', label: 'Name', render: (u) => userName(u) },
+    { key: 'email', label: 'Email', render: (u) => u.email },
+    { key: 'role', label: 'Role', render: (u) => u.memberships.map((m) => m.role).join(', ') || '—' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (u) => (
+        <StatusBadge tone={u.status === 'active' ? 'success' : 'neutral'}>{u.status}</StatusBadge>
+      ),
+    },
+    {
+      key: 'lastLogin',
+      label: 'Last login',
+      render: (u) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never',
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (u) => (
+        <>
+          <button className="admin-btn admin-btn--sm admin-btn--secondary" onClick={() => openEdit(u)} type="button">
+            Edit
+          </button>{' '}
+          <button
+            className={`admin-btn admin-btn--sm ${u.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'}`}
+            onClick={() => void toggleStatus(u)}
+            type="button"
+          >
+            {u.status === 'active' ? 'Deactivate' : 'Activate'}
+          </button>
+        </>
+      ),
+    },
+  ];
+
   return (
     <AdminPageLayout brandLabel="Admin" sidebarLabel="Admin navigation" navItems={navItems}>
       <AdminPageHeader
@@ -277,49 +313,12 @@ export function AdminUsersPage() {
         }
       />
 
-      <AdminCard>
-        {pageState.users.length === 0 ? (
-          <EmptyState message="No users found." />
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Last login</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageState.users.map((user) => (
-                <tr key={user.id}>
-                  <td>{userName(user)}</td>
-                  <td>{user.email}</td>
-                  <td>{user.memberships.map((membership) => membership.role).join(', ') || '—'}</td>
-                  <td>
-                    <StatusBadge tone={user.status === 'active' ? 'success' : 'neutral'}>{user.status}</StatusBadge>
-                  </td>
-                  <td>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'}</td>
-                  <td>
-                    <button className="admin-btn admin-btn--sm admin-btn--secondary" onClick={() => openEdit(user)} type="button">
-                      Edit
-                    </button>{' '}
-                    <button
-                      className={`admin-btn admin-btn--sm ${user.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'}`}
-                      onClick={() => void toggleStatus(user)}
-                      type="button"
-                    >
-                      {user.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </AdminCard>
+      <DataTable
+        columns={userColumns}
+        rows={pageState.users}
+        keyExtractor={(u) => u.id}
+        emptyMessage="No users found."
+      />
 
       {mode && (
         <AdminCard>
@@ -327,8 +326,7 @@ export function AdminUsersPage() {
             <h2>{mode === 'create' ? 'Create user' : 'Edit user'}</h2>
 
             <div className="admin-form__row">
-              <div className="admin-form__field">
-                <label htmlFor="user-lastName">Last name *</label>
+              <FormField id="user-lastName" label="Last name" required error={validationErrors.lastName}>
                 <input
                   id="user-lastName"
                   aria-describedby={validationErrors.lastName ? 'user-lastName-error' : undefined}
@@ -339,12 +337,8 @@ export function AdminUsersPage() {
                     setValidationErrors((e) => clearFieldError(e, 'lastName'));
                   }}
                 />
-                {validationErrors.lastName ? (
-                  <p className="admin-form__field-error" id="user-lastName-error" role="alert">{validationErrors.lastName}</p>
-                ) : null}
-              </div>
-              <div className="admin-form__field">
-                <label htmlFor="user-firstName">First name *</label>
+              </FormField>
+              <FormField id="user-firstName" label="First name" required error={validationErrors.firstName}>
                 <input
                   id="user-firstName"
                   aria-describedby={validationErrors.firstName ? 'user-firstName-error' : undefined}
@@ -355,22 +349,17 @@ export function AdminUsersPage() {
                     setValidationErrors((e) => clearFieldError(e, 'firstName'));
                   }}
                 />
-                {validationErrors.firstName ? (
-                  <p className="admin-form__field-error" id="user-firstName-error" role="alert">{validationErrors.firstName}</p>
-                ) : null}
-              </div>
-              <div className="admin-form__field">
-                <label htmlFor="user-middleName">Middle name</label>
+              </FormField>
+              <FormField id="user-middleName" label="Middle name">
                 <input
                   id="user-middleName"
                   value={form.middleName}
                   onChange={(event) => setForm({ ...form, middleName: event.target.value })}
                 />
-              </div>
+              </FormField>
             </div>
 
-            <div className="admin-form__field">
-              <label htmlFor="user-email">Email *</label>
+            <FormField id="user-email" label="Email" required error={validationErrors.email}>
               <input
                 id="user-email"
                 type="email"
@@ -382,14 +371,10 @@ export function AdminUsersPage() {
                   setValidationErrors((e) => clearFieldError(e, 'email'));
                 }}
               />
-              {validationErrors.email ? (
-                <p className="admin-form__field-error" id="user-email-error" role="alert">{validationErrors.email}</p>
-              ) : null}
-            </div>
+            </FormField>
 
             {mode === 'create' && (
-              <div className="admin-form__field">
-                <label htmlFor="user-password">Password *</label>
+              <FormField id="user-password" label="Password" required error={validationErrors.password}>
                 <input
                   id="user-password"
                   type="password"
@@ -402,10 +387,7 @@ export function AdminUsersPage() {
                     setValidationErrors((e) => clearFieldError(e, 'password'));
                   }}
                 />
-                {validationErrors.password ? (
-                  <p className="admin-form__field-error" id="user-password-error" role="alert">{validationErrors.password}</p>
-                ) : null}
-              </div>
+              </FormField>
             )}
 
             {mode === 'edit' && (
