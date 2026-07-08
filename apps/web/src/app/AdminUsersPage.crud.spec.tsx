@@ -65,15 +65,16 @@ afterEach(() => {
   reactMocks.useState.mockReset();
 });
 
-function useAdminUsersState(form: unknown, mode: 'create' | 'edit') {
+function useAdminUsersState(form: unknown, mode: 'create' | 'edit', validationErrors: Record<string, string> = {}) {
   const setter = vi.fn();
   reactMocks.useState
-    .mockReturnValueOnce([pageState, setter])
-    .mockReturnValueOnce([form, setter])
-    .mockReturnValueOnce([mode, setter])
-    .mockReturnValueOnce([null, setter])
-    .mockReturnValueOnce([false, setter])
-    .mockReturnValueOnce([false, setter]);
+    .mockReturnValueOnce([pageState, setter])   // AdminUsersPage: pageState
+    .mockReturnValueOnce([form, setter])        // AdminUsersPage: form
+    .mockReturnValueOnce([mode, setter])        // AdminUsersPage: mode
+    .mockReturnValueOnce([null, setter])        // AdminUsersPage: error
+    .mockReturnValueOnce([false, setter])       // AdminUsersPage: isSaving
+    .mockReturnValueOnce([validationErrors, setter]) // AdminUsersPage: validationErrors
+    .mockReturnValueOnce([false, setter]);      // AdminPageLayout: isOpen
 }
 
 describe('AdminUsersPage CRUD form modes', () => {
@@ -84,6 +85,15 @@ describe('AdminUsersPage CRUD form modes', () => {
 
     expect(html).toContain('Create user');
     expect(html).toContain('Password *');
+  });
+
+  it('renders field-level validation errors when validationErrors state has errors', () => {
+    useAdminUsersState(emptyForm, 'create', { firstName: 'First name is required', email: 'Email is required' });
+
+    const html = renderToStaticMarkup(<AdminUsersPage />);
+
+    expect(html).toContain('First name is required');
+    expect(html).toContain('Email is required');
   });
 
   it('renders edit form with additional profile fields', () => {

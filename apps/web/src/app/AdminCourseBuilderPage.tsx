@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, Card, PageState } from '../shared/ui.js';
 import { getCourse, updateCourse, deleteCourse } from '../shared/api/courses.js';
@@ -63,6 +64,8 @@ export function AdminCourseBuilderPage() {
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonDesc, setLessonDesc] = useState('');
   const [lessonFormState, setLessonFormState] = useState<LessonFormState>({ status: 'idle' });
+  const [courseErrors, setCourseErrors] = useState<FormValidationErrors<'title'>>({});
+  const [lessonErrors, setLessonErrors] = useState<FormValidationErrors<'title'>>({});
 
   const [showDelete, setShowDelete] = useState(false);
 
@@ -111,6 +114,11 @@ export function AdminCourseBuilderPage() {
   async function handleSaveCourse(e: React.FormEvent) {
     e.preventDefault();
     if (!courseId) return;
+    const nextCourseErrors = validateRequiredFields([
+      { name: 'title', value: formTitle, message: 'Course title is required' },
+    ]);
+    setCourseErrors(nextCourseErrors);
+    if (hasValidationErrors(nextCourseErrors)) return;
     setSaveState({ status: 'saving' });
     try {
       await updateCourse(courseId, { title: formTitle.trim(), description: formDescription.trim() || undefined });
@@ -151,9 +159,14 @@ export function AdminCourseBuilderPage() {
     e.preventDefault();
     if (!courseId || pageState.status !== 'loaded') return;
     const title = lessonTitle.trim();
+    const nextLessonErrors = validateRequiredFields([
+      { name: 'title', value: title, message: 'Lesson title is required' },
+    ]);
+    setLessonErrors(nextLessonErrors);
+    if (hasValidationErrors(nextLessonErrors)) return;
     const slug = slugify(title);
     if (!slug) {
-      setLessonFormState({ status: 'error', message: 'Введите название урока.' });
+      setLessonErrors({ title: 'Enter a title using letters or numbers.' });
       return;
     }
     setLessonFormState({ status: 'submitting' });
@@ -245,10 +258,17 @@ export function AdminCourseBuilderPage() {
                   className="ds-input"
                   type="text"
                   maxLength={160}
-                  required
+                  aria-describedby={courseErrors.title ? 'cb-title-error' : undefined}
+                  aria-invalid={Boolean(courseErrors.title)}
                   value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
+                  onChange={(e) => {
+                    setFormTitle(e.target.value);
+                    setCourseErrors((err) => clearFieldError(err, 'title'));
+                  }}
                 />
+                {courseErrors.title ? (
+                  <p className="admin-form__field-error" id="cb-title-error" role="alert">{courseErrors.title}</p>
+                ) : null}
               </div>
               <div className="ds-field">
                 <label className="ds-field__label" htmlFor="cb-desc">Описание</label>
@@ -293,6 +313,7 @@ export function AdminCourseBuilderPage() {
                   setLessonTitle('');
                   setLessonDesc('');
                   setLessonFormState({ status: 'idle' });
+                  setLessonErrors({});
                   setShowAddLesson(true);
                 }}
               >
@@ -410,12 +431,19 @@ export function AdminCourseBuilderPage() {
             <label htmlFor="lesson-title">Название урока *</label>
             <input
               id="lesson-title"
-              required
               maxLength={160}
               type="text"
+              aria-describedby={lessonErrors.title ? 'lesson-title-error' : undefined}
+              aria-invalid={Boolean(lessonErrors.title)}
               value={lessonTitle}
-              onChange={(e) => setLessonTitle(e.target.value)}
+              onChange={(e) => {
+                setLessonTitle(e.target.value);
+                setLessonErrors((err) => clearFieldError(err, 'title'));
+              }}
             />
+            {lessonErrors.title ? (
+              <p className="admin-form__field-error" id="lesson-title-error" role="alert">{lessonErrors.title}</p>
+            ) : null}
           </div>
           <div className="admin-form__field">
             <label htmlFor="lesson-desc">Описание</label>

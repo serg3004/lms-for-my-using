@@ -21,3 +21,13 @@ export function validateRequiredFields<TField extends string>(fields: readonly R
 export function hasValidationErrors<TField extends string>(errors: FormValidationErrors<TField>) {
   return Object.keys(errors).length > 0;
 }
+
+export function clearFieldError<TField extends string>(
+  errors: FormValidationErrors<TField>,
+  field: TField,
+): FormValidationErrors<TField> {
+  if (!errors[field]) return errors;
+  const next = { ...errors };
+  delete next[field];
+  return next;
+}

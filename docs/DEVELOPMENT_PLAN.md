@@ -475,14 +475,14 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 72 — frontend form validation standard ⚠️
+## PR 72 — frontend form validation standard ✅
 
 - Единый подход к form validation, единые error messages
 - Disabled/loading submit states
 - Reusable form field patterns
 - Применить к ключевым admin/learner формам
 
-> **Факт:** `formValidation.ts` (24 строки): `validateRequiredFields`, `hasValidationErrors`. Применён только в `LoginPage.tsx`. Admin формы (создание курсов, пользователей и др.) — не покрыты.
+> **Факт:** `formValidation.ts` расширен — добавлен `clearFieldError` (сброс ошибки конкретного поля при вводе). Паттерн из `LoginPage` применён к трём admin-формам: `AdminUsersPage` (firstName, lastName, email, password), `AdminCoursesPage` (title), `AdminCourseBuilderPage` (title курса и урока). Каждая форма: `validateRequiredFields` перед API-вызовом → field-level `<p role="alert">` под полем → `clearFieldError` в `onChange` → `disabled` кнопка во время сохранения. `AdminUsersPage.crud.spec.tsx` обновлён (7 useState mock), добавлен тест проверки рендера ошибок. Все 143 web-теста проходят.
 
 ---
 
