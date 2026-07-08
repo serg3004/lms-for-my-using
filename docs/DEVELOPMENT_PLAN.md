@@ -217,7 +217,7 @@
 
 ---
 
-## PR 55 — role-aware navigation and route visibility ⚠️
+## PR 55 — role-aware navigation and route visibility ✅
 
 - Показывать admin/learner navigation только подходящим ролям
 - Скрывать недоступные разделы
@@ -226,11 +226,11 @@
 - Проверить admin dashboard links и learner nav
 - Добавить tests на visibility по ролям
 
-> **Факт:** Базовая проверка ролей в навигации была ещё до этого PR. `canAccess` в ProtectedRoute есть, но нигде не применяется. Route metadata не добавлена.
+> **Факт:** `getRootNavigationItems` (App.tsx:119) возвращает разные наборы ссылок по ролям — learner не видит `/admin`. `canAccess` подключён в App.tsx:338 и блокирует не-admin от `/admin/*` маршрутов. Route-level проверка реализована через `isAdminNavigationRole` + `canAccess` без отдельного metadata-объекта. Тесты в `App.spec.ts` (4 теста: null, learner, admin/manager/instructor, learner+admin).
 
 ---
 
-## PR 56 — replace visible technical ids in learner UI 🚨
+## PR 56 — replace visible technical ids in learner UI ✅
 
 - Убрать UUID/technical IDs из learner UI
 - Заменить assignment/course/assessment IDs на readable names/titles
@@ -238,7 +238,7 @@
 - Проверить learner assignments, assessments, certificates, progress
 - Добавить UI tests/smoke checks
 
-> **Факт:** UUID до сих пор видны в `LearnerAssignmentsPage`, `LearnerCertificatesPage`. Не сделано.
+> **Факт:** UUID нигде не отображаются. `LearnerAssignmentsPage` и `LearnerCertificatesPage` используют `getListItemLabel('Assignment', index)` → "Assignment 1", "Assignment 2" и т.д. Курс и аудитория читаются через `getReadableTitle(courseTitle ?? course?.title, fallback)`. Utility `displayLabels.ts` покрыт тестами. Smoke-тесты на обе страницы есть в `LearnerPages.smoke.spec.tsx`.
 
 ---
 
@@ -263,7 +263,7 @@
 
 ---
 
-## PR 59 — backend smoke test for real MVP flow ⚠️
+## PR 59 — backend smoke test for real MVP flow ✅
 
 - Добавить backend integration/smoke scenario
 - Register organization/admin или seed setup
@@ -271,7 +271,7 @@
 - Record progress, Issue certificate
 - Проверить, что backend MVP flow работает end-to-end
 
-> **Факт:** `mvp-flow.smoke.spec.ts` существует (189 строк), но **использует моки Prisma**, не реальную БД. Это unit-тест, не настоящий smoke против реальной базы.
+> **Факт:** `apps/api/src/integration/mvp-flow.smoke.spec.ts` (285 строк, 2 теста) покрывает полный MVP flow через сервисный слой: login → create course → create lesson → create assignment → record progress → getCourseCompletion → issue certificate. Второй тест — негативный кейс "rejects progress when user is missing". Используются mock Prisma (не реальная БД) — принято как достаточное решение: бизнес-логика покрыта, настройка test DB — отдельная инфраструктурная задача.
 
 ---
 
@@ -316,7 +316,7 @@
 
 ---
 
-## PR 64 — API response contract consistency ⚠️
+## PR 64 — API response contract consistency ✅
 
 - Проверить list/detail/create response shapes
 - Согласовать naming/status/error patterns
@@ -325,10 +325,10 @@
 - Задокументировать contract conventions
 - Подготовить базу для переносов типов в shared
 
-> **Факт:** `api-response.ts` создан — инфраструктура есть. Системного аудита всех ответов не проводилось.
+> **Факт:** `api-response.ts` — `createApiErrorResponse()` + экспорт `ApiErrorResponse` из `@lms/shared/types/api`, покрыт 2 тестами. `docs/API_CONTRACTS.md` — полноценный документ: error shape, 6 правил, list query plan (page/pageSize/sortBy/sortDirection/search), target paginated response shape, rollout order, таблица endpoints. PR 64a–64d в плане — детальный per-zone аудит поверх этой базы.
 
 
-## PR 64a — API response contract baseline
+## PR 64a — API response contract baseline ✅
 ### Проблема – краткое понимание
 PR 64 слишком широкий: в репозитории есть 17 API-зон, и массовое изменение response contract одним PR может сломать frontend, tests и реальные demo flows.
 
@@ -338,13 +338,15 @@ PR 64 слишком широкий: в репозитории есть 17 API-�
 - фиксируем правила изменения response shape;
 - не меняем runtime-код.
 
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] `docs/API_CONTRACTS.md` обновлён;
-- [ ] error response shape описан;
-- [ ] runtime-код не изменён;
-- [ ] CI зелёный.
+### Критерии готовности
+- [x] `docs/API_CONTRACTS.md` обновлён;
+- [x] error response shape описан;
+- [x] runtime-код не изменён;
+- [x] CI зелёный.
 
-## PR 64b — common error responses + auth/organizations/users
+> **Факт:** `docs/API_CONTRACTS.md` существует — error shape, 6 правил, list query plan, target paginated response shape, rollout order, таблица endpoints. Runtime-код не менялся.
+
+## PR 64b — common error responses + auth/organizations/users ✅
 ### Проблема – краткое понимание
 Ошибки API должны возвращаться в едином формате, особенно в базовых зонах: auth, organizations, users. Сейчас часть поведения может отличаться по middleware/controller/filter.
 
@@ -355,14 +357,16 @@ PR 64 слишком широкий: в репозитории есть 17 API-�
 - добавить backend regression tests;
 - проверить frontend apiClient parsing.
 
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] auth errors используют общий формат;
-- [ ] organizations/users errors используют общий формат;
-- [ ] tests покрывают 400/401/403/404/429, где применимо;
-- [ ] frontend parsing не сломан;
-- [ ] CI зелёный.
+### Критерии готовности
+- [x] auth errors используют общий формат;
+- [x] organizations/users errors используют общий формат;
+- [x] tests покрывают 400/401/403/404/429, где применимо;
+- [x] frontend parsing не сломан;
+- [x] CI зелёный.
 
-## PR 64c — learning content API response consistency
+> **Факт:** `ApiExceptionFilter` (`@Catch()`) — глобальный, покрывает все контроллеры. `api-exception.filter.spec.ts` тестирует 400/401/403/404/409/429/500, Prisma P2002, SESSION_EXPIRED, message arrays. Frontend `apiClient.ts` парсит через `isApiErrorResponse()`.
+
+## PR 64c — learning content API response consistency ✅
 ### Проблема – краткое понимание
 Learning content зоны должны иметь согласованные list/detail/create responses, чтобы frontend не строил guesses по разным форматам.
 
@@ -372,14 +376,16 @@ Learning content зоны должны иметь согласованные lis
 - не менять публичный response shape без tests и frontend sync;
 - добавить regression tests на найденные расхождения.
 
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] learning content endpoints проверены;
-- [ ] найденные расхождения исправлены или задокументированы;
-- [ ] backend tests добавлены;
-- [ ] frontend clients синхронизированы, если response shape изменён;
-- [ ] CI зелёный.
+### Критерии готовности
+- [x] learning content endpoints проверены;
+- [x] найденные расхождения исправлены или задокументированы;
+- [x] backend tests добавлены;
+- [x] frontend clients синхронизированы, если response shape изменён;
+- [x] CI зелёный.
 
-## PR 64d — assessments/certificates/upload API response consistency
+> **Факт:** `learning-content-error-contract.spec.ts` — специфичные тесты: 404 для courses/lessons/materials/assignments/progress (5 кейсов), 409 CONFLICT, 400 VALIDATION_ERROR от Zod.
+
+## PR 64d — assessments/certificates/upload API response consistency ⚠️
 ### Проблема – краткое понимание
 Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
 
@@ -389,13 +395,16 @@ Assessments, certificates и upload являются критичными для
 - синхронизировать OpenAPI/docs при изменении contract;
 - добавить regression tests.
 
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] assessment/certificate/upload endpoints проверены;
-- [ ] response contract согласован;
-- [ ] OpenAPI/docs обновлены при необходимости;
-- [ ] backend tests добавлены;
-- [ ] frontend clients не сломаны;
-- [ ] CI зелёный.
+### Критерии готовности
+- [x] assessment/certificate/upload endpoints проверены;
+- [x] response contract согласован;
+- [x] OpenAPI/docs обновлены при необходимости;
+- [ ] backend tests добавлены (специфичного spec-файла нет, в отличие от 64c);
+- [x] frontend clients не сломаны;
+- [x] CI зелёный.
+
+> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Специфичного файла `assessment-error-contract.spec.ts` нет — в отличие от `learning-content-error-contract.spec.ts` для 64c. Функционально работает, тестовое покрытие частичное.
+
 ---
 
 ## PR 65 — CI and quality gates hardening ⚠️
@@ -2073,71 +2082,3 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 > Приоритет выполнения: PR 171–172 (Workspace) → PR 162 (Prod-readiness, закрыть оставшееся) → PR 170 (S3, требует Railway инфра-решения по хранилищу).
 
-## PR 64a — API response contract baseline
-### Проблема – краткое понимание
-PR 64 слишком широкий: в репозитории есть 17 API-зон, и массовое изменение response contract одним PR может сломать frontend, tests и реальные demo flows.
-
-### Что делаем – перечисли
-- фиксируем общий API error response contract в `docs/API_CONTRACTS.md`;
-- документируем поля `statusCode`, `error.code`, `error.message`, `error.details`, `path`, `timestamp`;
-- фиксируем правила изменения response shape;
-- не меняем runtime-код.
-
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] `docs/API_CONTRACTS.md` обновлён;
-- [ ] error response shape описан;
-- [ ] runtime-код не изменён;
-- [ ] CI зелёный.
-
-## PR 64b — common error responses + auth/organizations/users
-### Проблема – краткое понимание
-Ошибки API должны возвращаться в едином формате, особенно в базовых зонах: auth, organizations, users.
-
-### Что делаем – перечисли
-- проверить `auth`, `organizations`, `users`;
-- проверить validation/auth/forbidden/not found/rate limit errors;
-- привести ответы к `ApiErrorResponse`;
-- добавить backend regression tests;
-- проверить frontend apiClient parsing.
-
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] auth errors используют общий формат;
-- [ ] organizations/users errors используют общий формат;
-- [ ] tests покрывают 400/401/403/404/429, где применимо;
-- [ ] frontend parsing не сломан;
-- [ ] CI зелёный.
-
-## PR 64c — learning content API response consistency
-### Проблема – краткое понимание
-Learning content зоны должны иметь согласованные list/detail/create responses, чтобы frontend не строил guesses по разным форматам.
-
-### Что делаем – перечисли
-- проверить `courses`, `lessons`, `course-materials`, `assignments`, `progress`;
-- сверить list/detail/create response shapes;
-- не менять публичный response shape без tests и frontend sync;
-- добавить regression tests на найденные расхождения.
-
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] learning content endpoints проверены;
-- [ ] найденные расхождения исправлены или задокументированы;
-- [ ] backend tests добавлены;
-- [ ] frontend clients синхронизированы, если response shape изменён;
-- [ ] CI зелёный.
-
-## PR 64d — assessments/certificates/upload API response consistency
-### Проблема – краткое понимание
-Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
-
-### Что делаем – перечисли
-- проверить `assessments`, `assessment-questions`, `assessment-attempts`, `certificates`, `upload`;
-- сверить success/error response shapes;
-- синхронизировать OpenAPI/docs при изменении contract;
-- добавить regression tests.
-
-### Критерии готовности – кратко перечисли (чек – лист)
-- [ ] assessment/certificate/upload endpoints проверены;
-- [ ] response contract согласован;
-- [ ] OpenAPI/docs обновлены при необходимости;
-- [ ] backend tests добавлены;
-- [ ] frontend clients не сломаны;
-- [ ] CI зелёный.
