@@ -407,14 +407,14 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 65 — CI and quality gates hardening ⚠️
+## PR 65 — CI and quality gates hardening ✅
 
 - Убедиться, что CI стабильно запускает lint/typecheck/tests/build/prisma generate
 - Добавить missing web/api test scripts coverage
 - Проверить pnpm frozen lockfile после dependency changes
 - Добавить branch/PR checklist в docs
 
-> **Факт:** `ci.yml` обновлён (+9 строк). Полнота hardening не ясна.
+> **Факт:** `ci.yml` — полноценный пайплайн: secret scan (Gitleaks), `pnpm install --frozen-lockfile`, `pnpm audit --audit-level high`, lint, prisma:generate, typecheck, `test:coverage` (web + api), build, Docker builds для API и Web. `codeql.yml` — отдельный CodeQL с `security-extended`. `docs/CI_AUDIT_BASELINE.md` документирует все gates. `.github/pull_request_template.md` добавлен для стандартизации PR от всех агентов (Claude, Codex, GPT).
 
 ---
 
