@@ -475,7 +475,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 72 — frontend form validation standard ✅
+## PR 72 — frontend form validation standard ⚠️
 
 - Единый подход к form validation, единые error messages
 - Disabled/loading submit states
@@ -483,15 +483,19 @@ Assessments, certificates и upload являются критичными для
 - Применить к ключевым admin/learner формам
 
 > **Факт:** `formValidation.ts` расширен — добавлен `clearFieldError` (сброс ошибки конкретного поля при вводе). Паттерн из `LoginPage` применён к трём admin-формам: `AdminUsersPage` (firstName, lastName, email, password), `AdminCoursesPage` (title), `AdminCourseBuilderPage` (title курса и урока). Каждая форма: `validateRequiredFields` перед API-вызовом → field-level `<p role="alert">` под полем → `clearFieldError` в `onChange` → `disabled` кнопка во время сохранения. `AdminUsersPage.crud.spec.tsx` обновлён (7 useState mock), добавлен тест проверки рендера ошибок. Все 143 web-теста проходят.
+>
+> **Долг:** Паттерн применён только к 3 страницам. `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssignmentCompletionPage`, `AdminAssessmentBuilderPage` — используют прямой `useState` для ошибок и не вызывают `validateRequiredFields`/`clearFieldError`. Стандарт не распространён на все admin-формы. Некритично для MVP — формы работают корректно, но поведение ошибок неоднородное.
 
 ---
 
-## PR 73 — reusable admin page toolkit ✅
+## PR 73 — reusable admin page toolkit ⚠️
 
 - PageHeader, DataTable, FormField, Toolbar, ConfirmDialog, EmptyState
 - Сделать добавление новых admin CRUD pages быстрее
 
 > **Факт:** Весь тулкит реализован и применён к существующим страницам. `adminPage.tsx` добавлены: `FormField` (label + children-slot + error, `admin-form__field`) и `ConfirmDialog` (controlled `<dialog>`, `variant: danger|default`). `ui.tsx` добавлены: `DataTable<T>` (generic, columns + rows + keyExtractor + emptyMessage, встроенный `TableWrap` + `EmptyState`) и `Toolbar` (left/right slots). Применено: `AdminCoursesPage` — таблица → `DataTable`, delete-диалог → `ConfirmDialog`, поля формы → `FormField`; `AdminUsersPage` — таблица → `DataTable`, поля формы → `FormField`; `AdminCourseBuilderPage` — поля форм → `FormField`, delete-диалог → `ConfirmDialog`. 10 новых тестов. Итого 153 web-теста, все проходят.
+>
+> **Долг:** `DataTable` используется только в `AdminUsersPage`. `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssignmentCompletionPage`, `AdminAssessmentBuilderPage` — используют plain `<table>` напрямую. `FormField` также не применён в этих страницах. Компоненты тулкита готовы, но страницы написанные позже не были на него переведены. Некритично для MVP — визуально работает, но при изменении стиля таблиц/форм потребуется обновлять каждую страницу вручную.
 
 ---
 
@@ -502,6 +506,8 @@ Assessments, certificates и upload являются критичными для
 - Shared: `paginationQuerySchema` в `@lms/shared`, `PaginatedResponse<T>` в `@lms/shared/types/api`, компонент `Pagination` в `shared/ui.tsx`
 
 > **Факт:** Полностью реализовано. API — все 5 сервисов (users, courses, assignments, progress, certificates) принимают `page`/`pageSize`, возвращают `PaginatedResponse<T>` через Prisma `skip`/`take`+`count`. Web — display-страницы получили `<Pagination>` + `page` state; reference-страницы используют `pageSize=200` + `.items`. `paginationQuerySchema` определена локально в `apps/api/src/common/pagination.schema.ts` (TypeScript не резолвит `@lms/shared` через pnpm virtual store). `api-response.ts` — типы вынесены из shared в локальные определения. Все тесты проходят (347 API, 155 web).
+>
+> **Примечание:** `GET /assessments` намеренно вне пагинации — возвращает plain array всех тестов организации (`findMany` без `skip/take`). Фронт ожидает `Assessment[]`, не `PaginatedResponse`. Это согласованное решение (аналогично `GET /courses/:id/lessons`). Потенциальный риск при сотнях тестов в одной организации — добавить серверный лимит если понадобится.
 
 ---
 
@@ -755,11 +761,11 @@ Assessments, certificates и upload являются критичными для
 - Отмена назначения
 - Подключить к `GET/POST /api/v1/assignments`
 
-> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем/группой, статусом. Создание: переключатель "Assign to" (User/Group) — при выборе пользователя отправляет `userId`, при выборе группы — `groupId` (`POST /assignments`). Группы загружаются из `GET /groups`. Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). В таблице назначений группа отображается по имени. Прогресс пользователей по курсу виден на той же странице.
+> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем/группой, статусом. Создание: переключатель "Assign to" (User/Group) — при выборе пользователя отправляет `userId`, при выборе группы — `groupId` (`POST /assignments`). Группы загружаются из `GET /groups`. Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). В таблице назначений группа отображается по имени. Прогресс пользователей по курсу виден на той же странице. GH PR #361 (`claude/pr-95-group-assignment`), смержено в main.
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ✅
+## PR 96 — feat: admin assessment builder UI ⚠️
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -768,7 +774,9 @@ Assessments, certificates и upload являются критичными для
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
 
-> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points) ✅. Добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`) ✅. Ветка `claude/pr-96-assessment-questions`.
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main.
+>
+> **Долг:** Нет редактирования и удаления вопросов/вариантов — только добавление. Если вопрос создан с ошибкой, исправить через UI нельзя. Добавить `PATCH /questions/:id` и `DELETE /questions/:id` + аналогично для options, когда понадобится.
 
 ---
 
