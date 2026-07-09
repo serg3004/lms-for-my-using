@@ -25,6 +25,18 @@ web -> api -> db                OK
 MVP smoke test                 OK (Passed: 17, Failed: 0)
 ```
 
+## Post-merge production verification checklist
+
+After a GitHub PR is merged, verify Railway production separately:
+
+1. Wait for Railway to finish the production deploy.
+2. Check `GET /api/v1/health` through the web URL.
+3. Check `GET /api/v1/health` through the direct API URL.
+4. Run the MVP smoke test through the web URL.
+5. Record the result in this document only after production is verified.
+
+Do not treat green GitHub checks as production verification.
+
 ## Fixes applied
 
 - PR #341: allow web nginx to proxy `/api/` to a full `API_UPSTREAM_URL` value.
