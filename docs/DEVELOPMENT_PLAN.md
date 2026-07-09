@@ -755,7 +755,7 @@ Assessments, certificates и upload являются критичными для
 - Отмена назначения
 - Подключить к `GET/POST /api/v1/assignments`
 
-> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем, статусом. Создание: выбор курса + пользователя + дата дедлайна (`POST /assignments`). Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). Прогресс пользователей по курсу виден на той же странице. Назначение на группу (`groupId`) в форме отсутствует — только на пользователя.
+> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем/группой, статусом. Создание: переключатель "Assign to" (User/Group) — при выборе пользователя отправляет `userId`, при выборе группы — `groupId` (`POST /assignments`). Группы загружаются из `GET /groups`. Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). В таблице назначений группа отображается по имени. Прогресс пользователей по курсу виден на той же странице.
 
 ---
 

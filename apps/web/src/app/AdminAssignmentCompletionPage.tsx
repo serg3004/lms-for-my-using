@@ -16,6 +16,7 @@ type User = {
   middleName: string | null;
   status: string;
 };
+type Group = { id: string; organizationId: string; name: string; status: string };
 type Assignment = {
   id: string;
   courseId: string;
@@ -36,7 +37,7 @@ type Progress = {
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'loaded'; courses: Course[]; users: User[]; assignments: Assignment[]; progressItems: Progress[] }
+  | { status: 'loaded'; courses: Course[]; users: User[]; groups: Group[]; assignments: Assignment[]; progressItems: Progress[] }
   | { status: 'error'; message: string };
 
 type AssignmentStatus = 'assigned' | 'completed' | 'cancelled';
@@ -58,11 +59,19 @@ function findUserLabel(users: User[], userId: string | null, fallback: string) {
   return user ? getUserLabel(user) : userId;
 }
 
+function findGroupLabel(groups: Group[], groupId: string | null, fallback: string) {
+  if (!groupId) return fallback;
+  const group = groups.find((g) => g.id === groupId);
+  return group ? group.name : groupId;
+}
+
 export function AdminAssignmentCompletionPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [courseId, setCourseId] = useState('');
+  const [assignTo, setAssignTo] = useState<'user' | 'group'>('user');
   const [userId, setUserId] = useState('');
+  const [groupId, setGroupId] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [completionStatus, setCompletionStatus] = useState<'in_progress' | 'completed'>('in_progress');
   const [score, setScore] = useState('');
@@ -76,9 +85,10 @@ export function AdminAssignmentCompletionPage() {
 
   const loadData = useCallback(async (nextCourseId?: string) => {
     try {
-      const [{ items: courses }, { items: users }, { items: assignments }, { items: progressItems }] = await Promise.all([
+      const [{ items: courses }, { items: users }, groups, { items: assignments }, { items: progressItems }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
+        apiRequest<Group[]>('/groups'),
         apiRequest<PaginatedResponse<Assignment>>('/assignments?pageSize=200'),
         apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
       ]);
@@ -86,7 +96,8 @@ export function AdminAssignmentCompletionPage() {
 
       setCourseId(selectedCourseId);
       setUserId((current) => current || users[0]?.id || '');
-      setLoadState({ status: 'loaded', courses, users, assignments, progressItems });
+      setGroupId((current) => current || groups[0]?.id || '');
+      setLoadState({ status: 'loaded', courses, users, groups, assignments, progressItems });
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 401
@@ -107,9 +118,9 @@ export function AdminAssignmentCompletionPage() {
   async function handleCreateAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loadState.status !== 'loaded' || !selectedCourse || !userId) {
-      return;
-    }
+    if (loadState.status !== 'loaded' || !selectedCourse) return;
+    if (assignTo === 'user' && !userId) return;
+    if (assignTo === 'group' && !groupId) return;
 
     setSubmitState({ status: 'saving' });
 
@@ -119,7 +130,7 @@ export function AdminAssignmentCompletionPage() {
         body: JSON.stringify({
           organizationId: selectedCourse.organizationId,
           courseId: selectedCourse.id,
-          userId,
+          ...(assignTo === 'user' ? { userId } : { groupId }),
           status: 'assigned',
           dueAt: dueAt || undefined,
         }),
@@ -244,15 +255,41 @@ export function AdminAssignmentCompletionPage() {
                 </select>
               </div>
               <div className="admin-form__field">
-                <label>{t('admin.assignments.learner', 'Learner')}</label>
-                <select value={userId} onChange={(event) => setUserId(event.target.value)}>
-                  {loadState.users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {getUserLabel(user)}
-                    </option>
-                  ))}
+                <label>{t('admin.assignments.assignTo', 'Assign to')}</label>
+                <select value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
+                  <option value="user">{t('admin.assignments.assignToUser', 'User')}</option>
+                  <option value="group">{t('admin.assignments.assignToGroup', 'Group')}</option>
                 </select>
               </div>
+              {assignTo === 'user' ? (
+                <div className="admin-form__field">
+                  <label>{t('admin.assignments.learner', 'Learner')}</label>
+                  <select value={userId} onChange={(event) => setUserId(event.target.value)}>
+                    {loadState.users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {getUserLabel(user)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="admin-form__field">
+                  <label>{t('admin.assignments.group', 'Group')}</label>
+                  {loadState.groups.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                      {t('admin.assignments.noGroups', 'No groups found. Create a group first.')}
+                    </p>
+                  ) : (
+                    <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+                      {loadState.groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
               <div className="admin-form__field">
                 <label>{t('admin.assignments.dueAt', 'Due date')}</label>
                 <input value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
@@ -328,11 +365,9 @@ export function AdminAssignmentCompletionPage() {
                   <tr key={assignment.id}>
                     <td>{findCourseTitle(loadState.courses, assignment.courseId)}</td>
                     <td>
-                      {findUserLabel(
-                        loadState.users,
-                        assignment.userId,
-                        t('admin.assignments.groupAssignment', 'Group'),
-                      )}
+                      {assignment.userId
+                        ? findUserLabel(loadState.users, assignment.userId, assignment.userId)
+                        : findGroupLabel(loadState.groups, assignment.groupId, t('admin.assignments.groupAssignment', 'Group'))}
                     </td>
                     <td>
                       <select
