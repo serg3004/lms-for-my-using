@@ -759,7 +759,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ⚠️
+## PR 96 — feat: admin assessment builder UI ✅
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -768,7 +768,7 @@ Assessments, certificates и upload являются критичными для
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
 
-> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. **Добавление вопросов (single/multiple choice, true/false) и вариантов ответов — не реализовано** ❌. Управление вопросами через `GET/POST /assessments/:id/questions` отсутствует в UI.
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points) ✅. Добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`) ✅. Ветка `claude/pr-96-assessment-questions`.
 
 ---
 
