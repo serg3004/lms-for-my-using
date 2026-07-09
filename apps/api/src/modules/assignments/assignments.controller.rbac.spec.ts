@@ -21,9 +21,9 @@ describe('AssignmentsController — RBAC ownership', () => {
       } as unknown as AssignmentsService;
       const controller = new AssignmentsController(service);
 
-      controller.listAssignments(makeRequest(learnerId, ['learner']));
+      controller.listAssignments(makeRequest(learnerId, ['learner']), {});
 
-      expect(calls).toEqual([[orgId, learnerId]]);
+      expect(calls).toEqual([[orgId, learnerId, 1, 20]]);
     });
 
     it('passes no userId filter for admin role', () => {
@@ -33,9 +33,9 @@ describe('AssignmentsController — RBAC ownership', () => {
       } as unknown as AssignmentsService;
       const controller = new AssignmentsController(service);
 
-      controller.listAssignments(makeRequest(adminId, ['admin']));
+      controller.listAssignments(makeRequest(adminId, ['admin']), {});
 
-      expect(calls).toEqual([[orgId, undefined]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
     });
 
     it('passes no userId filter for manager role', () => {
@@ -45,9 +45,9 @@ describe('AssignmentsController — RBAC ownership', () => {
       } as unknown as AssignmentsService;
       const controller = new AssignmentsController(service);
 
-      controller.listAssignments(makeRequest(adminId, ['manager']));
+      controller.listAssignments(makeRequest(adminId, ['manager']), {});
 
-      expect(calls).toEqual([[orgId, undefined]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
     });
 
     it('passes no userId filter when user has both learner and instructor roles', () => {
@@ -57,9 +57,9 @@ describe('AssignmentsController — RBAC ownership', () => {
       } as unknown as AssignmentsService;
       const controller = new AssignmentsController(service);
 
-      controller.listAssignments(makeRequest(learnerId, ['learner', 'instructor']));
+      controller.listAssignments(makeRequest(learnerId, ['learner', 'instructor']), {});
 
-      expect(calls).toEqual([[orgId, undefined]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
     });
   });
 });

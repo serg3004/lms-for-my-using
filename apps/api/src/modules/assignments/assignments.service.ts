@@ -19,16 +19,14 @@ const assignmentSelect = {
 export class AssignmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAssignments(organizationId: string, userId?: string) {
-    return this.prisma.assignment.findMany({
-      where: {
-        organizationId,
-        ...(userId !== undefined ? { userId } : {}),
-        deletedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-      select: assignmentSelect,
-    });
+  async listAssignments(organizationId: string, userId: string | undefined, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, ...(userId !== undefined ? { userId } : {}), deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      this.prisma.assignment.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: assignmentSelect }),
+      this.prisma.assignment.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getAssignment(assignmentId: string, organizationId: string) {

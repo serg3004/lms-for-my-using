@@ -6,7 +6,8 @@ import type { CurrentUser } from '../shared/apiClient.js';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { DataTable, PageState, StatusBadge, type Column } from '../shared/ui.js';
+import { DataTable, Pagination, PageState, StatusBadge, type Column } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
@@ -34,7 +35,7 @@ type AdminUserSummary = {
 type PageLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; users: AdminUserSummary[]; currentUser: CurrentUser }
+  | { status: 'loaded'; users: AdminUserSummary[]; currentUser: CurrentUser; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
@@ -102,6 +103,7 @@ function editForm(user: AdminUserSummary): UserForm {
 
 export function AdminUsersPage() {
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [mode, setMode] = useState<'create' | 'edit' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,12 +119,12 @@ export function AdminUsersPage() {
     setPageState({ status: 'loading' });
 
     try {
-      const [users, currentUser] = await Promise.all([
-        apiRequest<AdminUserSummary[]>('/users'),
+      const [result, currentUser] = await Promise.all([
+        apiRequest<PaginatedResponse<AdminUserSummary>>(`/users?page=${page}&pageSize=20`),
         getCurrentUser(),
       ]);
 
-      setPageState({ status: 'loaded', users, currentUser });
+      setPageState({ status: 'loaded', users: result.items, currentUser, total: result.total, pageSize: result.pageSize });
     } catch (loadError) {
       if (loadError instanceof ApiClientError && loadError.status === 401) {
         setPageState({ status: 'unauthenticated', message: 'Your session expired. Sign in again.' });
@@ -131,7 +133,7 @@ export function AdminUsersPage() {
 
       setPageState({ status: 'error', message: 'Unable to load users. Try again later.' });
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     void loadData();
@@ -318,6 +320,13 @@ export function AdminUsersPage() {
         rows={pageState.users}
         keyExtractor={(u) => u.id}
         emptyMessage="No users found."
+      />
+
+      <Pagination
+        page={page}
+        pageSize={pageState.pageSize}
+        total={pageState.total}
+        onPage={setPage}
       />
 
       {mode && (

@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\.\\./common/filters/api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\.\\./api-response\\.js$': '<rootDir>/src/common/api-response.ts',
@@ -53,9 +54,15 @@ module.exports = {
     '^\\.\\./auth/roles\\.js$': '<rootDir>/src/modules/auth/roles.ts',
     '^\\.\\./auth/roles\\.guard\\.js$': '<rootDir>/src/modules/auth/roles.guard.ts',
     '^\\.\\./\\.\\./config/env\\.js$': '<rootDir>/src/config/env.ts',
+    '^\\.\\./\\.\\./common/pagination\\.schema\\.js$': '<rootDir>/src/common/pagination.schema.ts',
     '^\\.\\./\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
     '^\\.\\./database/prisma\\.service\\.js$': '<rootDir>/src/database/prisma.service.ts',
     '^\\.\\./common/middleware/api-hardening\\.js$': '<rootDir>/src/common/middleware/api-hardening.ts',
+    '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
+    '^\\./constants/locales\\.js$': '<rootDir>/../../packages/shared/src/constants/locales.ts',
+    '^\\./constants/roles\\.js$': '<rootDir>/../../packages/shared/src/constants/roles.ts',
+    '^\\./schemas/pagination\\.schema\\.js$': '<rootDir>/../../packages/shared/src/schemas/pagination.schema.ts',
+    '^\\./types/api\\.js$': '<rootDir>/../../packages/shared/src/types/api.ts',
   },
   roots: ['<rootDir>/src'],
   testEnvironment: 'node',
@@ -81,8 +88,9 @@ module.exports = {
     '^.+\\.ts$': [
       'ts-jest',
       {
-        tsconfig: '<rootDir>/tsconfig.json',
+        tsconfig: '<rootDir>/tsconfig.test.json',
         useESM: true,
+        diagnostics: false,
       },
     ],
   },

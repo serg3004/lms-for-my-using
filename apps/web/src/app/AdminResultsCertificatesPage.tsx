@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string };
@@ -50,12 +51,12 @@ export function AdminResultsCertificatesPage() {
 
   const loadData = useCallback(async (nextAssessmentId?: string) => {
     try {
-      const [courses, users, assessments, progressItems, certificates] = await Promise.all([
-        apiRequest<Course[]>('/courses'),
-        apiRequest<User[]>('/users'),
+      const [{ items: courses }, { items: users }, assessments, { items: progressItems }, { items: certificates }] = await Promise.all([
+        apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
+        apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
         apiRequest<Assessment[]>('/assessments'),
-        apiRequest<Progress[]>('/progress'),
-        apiRequest<Certificate[]>('/certificates'),
+        apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
+        apiRequest<PaginatedResponse<Certificate>>('/certificates?pageSize=200'),
       ]);
       const selectedAssessmentId = nextAssessmentId || assessmentId || assessments[0]?.id || '';
       const assessmentResults = selectedAssessmentId

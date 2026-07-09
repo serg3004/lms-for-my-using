@@ -28,10 +28,15 @@ describe('certificates api paths', () => {
   });
 
   it('reads the auto-issued certificate instead of posting learner certificate creation', async () => {
-    mocks.apiRequest.mockResolvedValueOnce([
-      { id: 'certificate-1', assessmentAttemptId: 'attempt-1' },
-      { id: 'certificate-2', assessmentAttemptId: 'attempt-2' },
-    ]);
+    mocks.apiRequest.mockResolvedValueOnce({
+      items: [
+        { id: 'certificate-1', assessmentAttemptId: 'attempt-1' },
+        { id: 'certificate-2', assessmentAttemptId: 'attempt-2' },
+      ],
+      page: 1,
+      pageSize: 200,
+      total: 2,
+    });
 
     await expect(
       issueCertificate({
@@ -42,11 +47,16 @@ describe('certificates api paths', () => {
       }),
     ).resolves.toMatchObject({ id: 'certificate-2' });
 
-    expect(mocks.apiRequest).toHaveBeenCalledWith('/certificates');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/certificates?pageSize=200');
   });
 
   it('fails when an auto-issued certificate is not available yet', async () => {
-    mocks.apiRequest.mockResolvedValueOnce([]);
+    mocks.apiRequest.mockResolvedValueOnce({
+      items: [],
+      page: 1,
+      pageSize: 200,
+      total: 0,
+    });
 
     await expect(
       issueCertificate({
@@ -57,6 +67,6 @@ describe('certificates api paths', () => {
       }),
     ).rejects.toMatchObject({ status: 404 });
 
-    expect(mocks.apiRequest).toHaveBeenCalledWith('/certificates');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/certificates?pageSize=200');
   });
 });

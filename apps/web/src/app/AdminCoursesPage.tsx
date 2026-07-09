@@ -5,7 +5,8 @@ import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { Badge, Button, DataTable, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import { Badge, Button, DataTable, Pagination, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
 import '../styles/admin.css';
 import '../styles/ui.css';
@@ -27,7 +28,7 @@ type AdminCourseSummary = {
 type PageLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; courses: AdminCourseSummary[]; currentUser: CurrentUser }
+  | { status: 'loaded'; courses: AdminCourseSummary[]; currentUser: CurrentUser; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
@@ -62,6 +63,7 @@ function formatRelativeDate(value: string): string {
 export function AdminCoursesPage() {
   const { t } = useTranslation();
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -78,11 +80,11 @@ export function AdminCoursesPage() {
   const loadData = useCallback(async () => {
     setPageState({ status: 'loading' });
     try {
-      const [courses, currentUser] = await Promise.all([
-        listCourses() as Promise<AdminCourseSummary[]>,
+      const [result, currentUser] = await Promise.all([
+        listCourses({ page, pageSize: 20 }) as Promise<PaginatedResponse<AdminCourseSummary>>,
         getCurrentUser(),
       ]);
-      setPageState({ status: 'loaded', courses, currentUser });
+      setPageState({ status: 'loaded', courses: result.items, currentUser, total: result.total, pageSize: result.pageSize });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         setPageState({
@@ -96,7 +98,7 @@ export function AdminCoursesPage() {
         message: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),
       });
     }
-  }, [t]);
+  }, [t, page]);
 
   useEffect(() => {
     void loadData();
@@ -294,6 +296,13 @@ export function AdminCoursesPage() {
         rows={courses}
         keyExtractor={(c) => c.id}
         emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
+      />
+
+      <Pagination
+        page={page}
+        pageSize={pageState.pageSize}
+        total={pageState.total}
+        onPage={setPage}
       />
 
       {/* Create course dialog */}

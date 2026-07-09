@@ -28,10 +28,10 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     setLoadState({ status: 'loading' });
 
     try {
-      const [course, lessons, progressList, currentUser] = await Promise.all([
+      const [course, lessons, { items: progressList }, currentUser] = await Promise.all([
         getCourse(courseId),
         listLessons(courseId),
-        listProgress(),
+        listProgress({ pageSize: 200 }),
         getCurrentUser(),
       ]);
 

@@ -71,6 +71,7 @@ type CertificatePrisma = PrismaService & {
     findMany(args: unknown): Promise<CertificateRow[]>;
     findFirst(args: unknown): Promise<CertificateRow | null>;
     create(args: unknown): Promise<CertificateRow>;
+    count(args: unknown): Promise<number>;
   };
 };
 
@@ -78,16 +79,14 @@ type CertificatePrisma = PrismaService & {
 export class CertificatesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listCertificates(currentUserId: string, organizationId: string) {
-    return this.certificatesPrisma.certificate.findMany({
-      where: {
-        organizationId,
-        userId: currentUserId,
-        deletedAt: null,
-      },
-      orderBy: { issuedAt: 'desc' },
-      select: certificateSelect,
-    });
+  async listCertificates(currentUserId: string, organizationId: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, userId: currentUserId, deletedAt: null };
+    const [items, total] = await Promise.all([
+      this.certificatesPrisma.certificate.findMany({ where, orderBy: { issuedAt: 'desc' }, skip, take: pageSize, select: certificateSelect }),
+      this.certificatesPrisma.certificate.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getCertificate(certificateId: string, currentUserId: string, organizationId: string) {

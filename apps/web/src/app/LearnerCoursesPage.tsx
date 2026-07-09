@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { listCourses } from '../shared/api/courses.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CourseSummary } from '../shared/api/types.js';
-import { Badge, Button, PageState, ProgressBar } from '../shared/ui.js';
+import { Badge, Button, Pagination, PageState, ProgressBar } from '../shared/ui.js';
 import '../styles/ui.css';
 
 type TabId = 'all' | 'active' | 'completed';
@@ -31,13 +31,14 @@ function statusBadge(status: string): { variant: 'published' | 'done' | 'warning
 type CoursesLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; courses: CourseSummary[] }
+  | { status: 'loaded'; courses: CourseSummary[]; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
 export function LearnerCoursesPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CoursesLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [search, setSearch] = useState('');
 
@@ -47,8 +48,8 @@ export function LearnerCoursesPage() {
     async function load() {
       setLoadState({ status: 'loading' });
       try {
-        const courses = await listCourses();
-        if (isMounted) setLoadState({ status: 'loaded', courses });
+        const result = await listCourses({ page, pageSize: 20 });
+        if (isMounted) setLoadState({ status: 'loaded', courses: result.items, total: result.total, pageSize: result.pageSize });
       } catch (error) {
         if (!isMounted) return;
         if (error instanceof ApiClientError && error.status === 401) {
@@ -61,7 +62,7 @@ export function LearnerCoursesPage() {
 
     void load();
     return () => { isMounted = false; };
-  }, [t]);
+  }, [t, page]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return <PageState message={t('courses.loading')} variant="loading" />;
@@ -82,7 +83,7 @@ export function LearnerCoursesPage() {
     return <PageState title={t('courses.title')} message={loadState.message} variant="error" />;
   }
 
-  const { courses } = loadState;
+  const { courses, total, pageSize } = loadState;
 
   const tabs: { id: TabId; label: string; count: number }[] = [
     { id: 'all', label: t('courses.tabs.all', 'Все'), count: courses.length },
@@ -198,6 +199,8 @@ export function LearnerCoursesPage() {
           })}
         </div>
       )}
+
+      <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} />
     </>
   );
 }

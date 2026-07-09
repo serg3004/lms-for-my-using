@@ -495,11 +495,11 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 74 — API pagination/filter/sort consistency plan 🔲
+## PR 74 — API pagination/filter/sort consistency plan ✅
 
-- Проверить list endpoints
-- Определить pagination, search/filter/sort conventions
-- Зафиксировать contract перед массовым ростом данных
+- Все 5 list-endpoint API (users, courses, assignments, progress, certificates) переведены на `PaginatedResponse<T>` с параметрами `page` / `pageSize`
+- Frontend: display-страницы получили `Pagination` компонент и `page` state; reference-страницы передают `pageSize=200` и берут `.items`
+- Shared: `paginationQuerySchema` в `@lms/shared`, `PaginatedResponse<T>` в `@lms/shared/types/api`, компонент `Pagination` в `shared/ui.tsx`
 
 > **Факт:** Схема определена — `paginationQuerySchema` (`page`, `pageSize`, max 100) в `packages/shared/src/schemas/pagination.schema.ts`; `PaginatedResponse<T>` в `packages/shared/src/types/api.ts`; план rollout в `docs/API_CONTRACTS.md`. **Реализации в list endpoints нет** — grep по `skip`/`take` в Prisma вызовах вернул пустой результат. Contract готов, implementation pending.
 

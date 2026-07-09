@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
@@ -15,8 +16,9 @@ export class CertificatesController {
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.certificatesRead)
-  listCertificates(@Req() request: AuthenticatedRequest) {
-    return this.certificatesService.listCertificates(request.currentUser!.id, request.currentUser!.organizationId);
+  listCertificates(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { page, pageSize } = paginationQuerySchema.parse(query);
+    return this.certificatesService.listCertificates(request.currentUser!.id, request.currentUser!.organizationId, page, pageSize);
   }
 
   @Get(':id')

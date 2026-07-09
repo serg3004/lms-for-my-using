@@ -23,15 +23,14 @@ const completedProgressStatus = 'completed' as const;
 export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listCourses(organizationId: string) {
-    return this.prisma.course.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-      select: courseSelect,
-    });
+  async listCourses(organizationId: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      this.prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: courseSelect }),
+      this.prisma.course.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getCourse(courseId: string, organizationId: string) {

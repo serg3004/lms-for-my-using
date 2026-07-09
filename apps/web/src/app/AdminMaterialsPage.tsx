@@ -6,6 +6,7 @@ import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
@@ -89,7 +90,7 @@ export function AdminMaterialsPage() {
 
   const loadMaterials = useCallback(async (courseId?: string) => {
     try {
-      const courses = await apiRequest<Course[]>('/courses');
+      const { items: courses } = await apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200');
       const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');
       const [lessons, materials] = nextCourseId
         ? await Promise.all([

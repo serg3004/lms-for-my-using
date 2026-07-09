@@ -67,12 +67,18 @@ describe('CertificatesService', () => {
 
           return [certificate];
         },
+        count: async () => 1,
       },
     } as unknown as PrismaService;
 
     const service = new CertificatesService(prisma);
 
-    await expect(service.listCertificates(userId, organizationId)).resolves.toEqual([certificate]);
+    await expect(service.listCertificates(userId, organizationId, 1, 20)).resolves.toEqual({
+      items: [certificate],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    });
     expect(certificateFindManyCalls).toEqual([
       {
         where: {
@@ -81,6 +87,8 @@ describe('CertificatesService', () => {
           deletedAt: null,
         },
         orderBy: { issuedAt: 'desc' },
+        skip: 0,
+        take: 20,
         select: expect.any(Object),
       },
     ]);

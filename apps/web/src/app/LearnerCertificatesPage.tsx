@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { EmptyState, Pagination, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
   courseTitle?: string | null;
@@ -14,7 +14,7 @@ type ReadableCertificateSummary = CertificateSummary & {
 type CertificatesLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; certificates: ReadableCertificateSummary[] }
+  | { status: 'loaded'; certificates: ReadableCertificateSummary[]; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
@@ -29,6 +29,7 @@ function getCourseTitle(certificate: ReadableCertificateSummary, fallback: strin
 export function LearnerCertificatesPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CertificatesLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -37,10 +38,10 @@ export function LearnerCertificatesPage() {
       setLoadState({ status: 'loading' });
 
       try {
-        const certificates = await listCertificates();
+        const result = await listCertificates({ page, pageSize: 20 });
 
         if (isMounted) {
-          setLoadState({ status: 'loaded', certificates });
+          setLoadState({ status: 'loaded', certificates: result.items, total: result.total, pageSize: result.pageSize });
         }
       } catch (error) {
         if (!isMounted) {
@@ -67,7 +68,7 @@ export function LearnerCertificatesPage() {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [t, page]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
@@ -146,6 +147,8 @@ export function LearnerCertificatesPage() {
           ))}
         </ul>
       )}
+
+      <Pagination page={page} pageSize={loadState.pageSize} total={loadState.total} onPage={setPage} />
     </>
   );
 }

@@ -12,7 +12,7 @@ import {
 import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
-import type { CourseSummary, ProgressSummary } from '../shared/api/types.js';
+import type { CourseSummary } from '../shared/api/types.js';
 import { getLesson } from '../shared/api/lessons.js';
 import { getLessonHref, getCourseHref } from '../shared/learnerRoutes.js';
 import { Badge, Button, ProgressBar, PageState } from '../shared/ui.js';
@@ -70,11 +70,11 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     setLoadState({ status: 'loading' });
     try {
       const lesson = await getLesson(lessonId);
-      const [course, allLessons, allMaterials, progressRecords] = await Promise.all([
+      const [course, allLessons, allMaterials, { items: progressRecords }] = await Promise.all([
         getCourse(lesson.courseId) as Promise<CourseSummary>,
         listLessons(lesson.courseId),
         listCourseMaterials(lesson.courseId),
-        listProgress() as Promise<ProgressSummary[]>,
+        listProgress({ pageSize: 200 }),
       ]);
       const materials = allMaterials.filter((m) => m.lessonId === lesson.id && m.status === 'active');
       const completedIds = new Set(

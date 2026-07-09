@@ -20,16 +20,14 @@ const progressSelect = {
 export class ProgressService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listProgress(organizationId: string, userId?: string) {
-    return this.prisma.progress.findMany({
-      where: {
-        organizationId,
-        ...(userId !== undefined ? { userId } : {}),
-        deletedAt: null,
-      },
-      orderBy: { createdAt: 'desc' },
-      select: progressSelect,
-    });
+  async listProgress(organizationId: string, userId: string | undefined, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, ...(userId !== undefined ? { userId } : {}), deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      this.prisma.progress.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: progressSelect }),
+      this.prisma.progress.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getProgress(progressId: string, organizationId: string, userId?: string) {
