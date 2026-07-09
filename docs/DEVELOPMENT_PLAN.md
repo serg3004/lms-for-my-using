@@ -475,7 +475,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 72 — frontend form validation standard ✅
+## PR 72 — frontend form validation standard ⚠️
 
 - Единый подход к form validation, единые error messages
 - Disabled/loading submit states
@@ -488,7 +488,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 73 — reusable admin page toolkit ✅
+## PR 73 — reusable admin page toolkit ⚠️
 
 - PageHeader, DataTable, FormField, Toolbar, ConfirmDialog, EmptyState
 - Сделать добавление новых admin CRUD pages быстрее
@@ -765,7 +765,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ✅
+## PR 96 — feat: admin assessment builder UI ⚠️
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
