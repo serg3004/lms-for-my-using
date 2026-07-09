@@ -400,3 +400,40 @@ type StatusBadgeProps = {
 export function StatusBadge({ children, tone = 'neutral' }: StatusBadgeProps) {
   return <span className={`ui-status-badge ui-status-badge--${tone}`}>{children}</span>;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Pagination
+   ───────────────────────────────────────────────────────────────────────── */
+
+type PaginationProps = {
+  page: number;
+  pageSize: number;
+  total: number;
+  onPage: (page: number) => void;
+};
+
+export function Pagination({ page, pageSize, total, onPage }: PaginationProps) {
+  const totalPages = Math.ceil(total / pageSize);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="ds-pagination">
+      <button
+        className="ds-button ds-button--secondary ds-button--sm"
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+        type="button"
+      >
+        ← Prev
+      </button>
+      <span className="ds-pagination__info">{page} / {totalPages}</span>
+      <button
+        className="ds-button ds-button--secondary ds-button--sm"
+        disabled={page >= totalPages}
+        onClick={() => onPage(page + 1)}
+        type="button"
+      >
+        Next →
+      </button>
+    </div>
+  );
+}

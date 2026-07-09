@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
@@ -21,8 +22,9 @@ export class CoursesController {
 
   @Get()
   @Roles(...rolePolicies.coursesRead)
-  listCourses(@Req() request: AuthenticatedRequest) {
-    return this.coursesService.listCourses(request.currentUser!.organizationId);
+  listCourses(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { page, pageSize } = paginationQuerySchema.parse(query);
+    return this.coursesService.listCourses(request.currentUser!.organizationId, page, pageSize);
   }
 
   @Get(':id')

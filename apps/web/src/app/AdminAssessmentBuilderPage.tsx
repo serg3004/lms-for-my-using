@@ -6,6 +6,7 @@ import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
@@ -59,8 +60,8 @@ export function AdminAssessmentBuilderPage() {
 
   const loadAssessmentData = useCallback(async (courseId?: string) => {
     try {
-      const [courses, assessments] = await Promise.all([
-        apiRequest<Course[]>('/courses'),
+      const [{ items: courses }, assessments] = await Promise.all([
+        apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<Assessment[]>('/assessments'),
       ]);
       const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');

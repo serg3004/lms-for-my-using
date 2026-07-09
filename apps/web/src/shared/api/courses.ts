@@ -1,6 +1,6 @@
 import { apiRequest } from '../apiClient.js';
 
-import type { CourseSummary } from './types.js';
+import type { CourseSummary, PaginatedResponse } from './types.js';
 
 const coursesPath = '/courses';
 
@@ -8,8 +8,9 @@ export function getCoursePath(courseId: string) {
   return `${coursesPath}/${encodeURIComponent(courseId)}`;
 }
 
-export function listCourses() {
-  return apiRequest<CourseSummary[]>(coursesPath);
+export function listCourses(params?: { page?: number; pageSize?: number }) {
+  const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
+  return apiRequest<PaginatedResponse<CourseSummary>>(`${coursesPath}${qs}`);
 }
 
 export function getCourse(courseId: string) {

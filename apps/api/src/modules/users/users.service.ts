@@ -54,12 +54,14 @@ type ImportRow = {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listUsers(organizationId: string) {
-    return this.prisma.user.findMany({
-      where: { organizationId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      select: userSelect,
-    });
+  async listUsers(organizationId: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      this.prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: userSelect }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getUser(userId: string, organizationId: string) {

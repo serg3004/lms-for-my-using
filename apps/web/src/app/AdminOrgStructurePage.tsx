@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type Organization = { id: string; name: string; slug: string; status: string };
@@ -30,10 +31,10 @@ export function AdminOrgStructurePage() {
   useEffect(() => {
     async function loadOrgStructure() {
       try {
-        const [organizations, groups, users] = await Promise.all([
+        const [organizations, groups, { items: users }] = await Promise.all([
           apiRequest<Organization[]>('/organizations'),
           apiRequest<Group[]>('/groups'),
-          apiRequest<User[]>('/users'),
+          apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
         ]);
         setLoadState({ status: 'loaded', organizations, groups, users });
       } catch {

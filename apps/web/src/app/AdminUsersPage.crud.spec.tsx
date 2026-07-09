@@ -43,6 +43,8 @@ const pageState = {
   status: 'loaded',
   currentUser: user,
   users: [user],
+  total: 1,
+  pageSize: 20,
 };
 
 const emptyForm = {
@@ -69,6 +71,7 @@ function useAdminUsersState(form: unknown, mode: 'create' | 'edit', validationEr
   const setter = vi.fn();
   reactMocks.useState
     .mockReturnValueOnce([pageState, setter])   // AdminUsersPage: pageState
+    .mockReturnValueOnce([1, setter])           // AdminUsersPage: page
     .mockReturnValueOnce([form, setter])        // AdminUsersPage: form
     .mockReturnValueOnce([mode, setter])        // AdminUsersPage: mode
     .mockReturnValueOnce([null, setter])        // AdminUsersPage: error

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
@@ -15,10 +16,11 @@ export class ProgressController {
 
   @Get()
   @Roles(...rolePolicies.progressRead)
-  listProgress(@Req() request: AuthenticatedRequest) {
+  listProgress(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const currentUser = request.currentUser!;
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
-    return this.progressService.listProgress(currentUser.organizationId, userId);
+    const { page, pageSize } = paginationQuerySchema.parse(query);
+    return this.progressService.listProgress(currentUser.organizationId, userId, page, pageSize);
   }
 
   @Get(':id')

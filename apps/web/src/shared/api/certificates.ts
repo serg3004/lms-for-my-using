@@ -1,6 +1,6 @@
 import { ApiClientError, apiRequest } from '../apiClient.js';
 
-import type { CertificateSummary } from './types.js';
+import type { CertificateSummary, PaginatedResponse } from './types.js';
 
 const certificatesPath = '/certificates';
 
@@ -8,8 +8,9 @@ export function getCertificatePath(certificateId: string) {
   return `${certificatesPath}/${encodeURIComponent(certificateId)}`;
 }
 
-export function listCertificates() {
-  return apiRequest<CertificateSummary[]>(certificatesPath);
+export function listCertificates(params?: { page?: number; pageSize?: number }) {
+  const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
+  return apiRequest<PaginatedResponse<CertificateSummary>>(`${certificatesPath}${qs}`);
 }
 
 export function getCertificate(certificateId: string) {
@@ -22,8 +23,8 @@ export async function issueCertificate(input: {
   userId: string;
   assessmentAttemptId?: string;
 }) {
-  const certificates = await listCertificates();
-  const certificate = certificates.find((item) => item.assessmentAttemptId === input.assessmentAttemptId);
+  const result = await listCertificates({ pageSize: 200 });
+  const certificate = result.items.find((item: CertificateSummary) => item.assessmentAttemptId === input.assessmentAttemptId);
 
   if (certificate) {
     return certificate;

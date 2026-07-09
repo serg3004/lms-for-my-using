@@ -7,7 +7,7 @@ import type { ProgressSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
-import { EmptyState, PageState } from '../shared/ui.js';
+import { EmptyState, PageState, Pagination } from '../shared/ui.js';
 
 type ReadableProgressSummary = ProgressSummary & {
   courseTitle?: string | null;
@@ -19,7 +19,7 @@ type ReadableProgressSummary = ProgressSummary & {
 type ProgressLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; progress: ReadableProgressSummary[] }
+  | { status: 'loaded'; progress: ReadableProgressSummary[]; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
@@ -35,6 +35,7 @@ function getLessonTitle(item: ReadableProgressSummary, fallback: string) {
 export function LearnerProgressPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<ProgressLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,10 +44,10 @@ export function LearnerProgressPage() {
       setLoadState({ status: 'loading' });
 
       try {
-        const progress = await listProgress();
+        const result = await listProgress({ page, pageSize: 20 });
 
         if (isMounted) {
-          setLoadState({ status: 'loaded', progress });
+          setLoadState({ status: 'loaded', progress: result.items, total: result.total, pageSize: result.pageSize });
         }
       } catch (error) {
         if (!isMounted) {
@@ -81,7 +82,7 @@ export function LearnerProgressPage() {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [t, page]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
@@ -163,6 +164,10 @@ export function LearnerProgressPage() {
             );
           })}
         </ul>
+      )}
+
+      {loadState.status === 'loaded' && (
+        <Pagination page={page} pageSize={loadState.pageSize} total={loadState.total} onPage={setPage} />
       )}
     </>
   );

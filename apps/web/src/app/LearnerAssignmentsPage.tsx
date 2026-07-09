@@ -6,7 +6,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import type { AssignmentSummary } from '../shared/api/types.js';
 import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { EmptyState, Pagination, PageState, StatusBadge } from '../shared/ui.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
   courseTitle?: string | null;
@@ -18,7 +18,7 @@ type ReadableAssignmentSummary = AssignmentSummary & {
 type AssignmentsLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; assignments: ReadableAssignmentSummary[] }
+  | { status: 'loaded'; assignments: ReadableAssignmentSummary[]; total: number; pageSize: number }
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
@@ -37,6 +37,7 @@ function getAssignmentAudience(assignment: ReadableAssignmentSummary, fallback: 
 export function LearnerAssignmentsPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<AssignmentsLoadState>({ status: 'idle' });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,10 +46,10 @@ export function LearnerAssignmentsPage() {
       setLoadState({ status: 'loading' });
 
       try {
-        const assignments = await listAssignments();
+        const result = await listAssignments({ page, pageSize: 20 });
 
         if (isMounted) {
-          setLoadState({ status: 'loaded', assignments });
+          setLoadState({ status: 'loaded', assignments: result.items, total: result.total, pageSize: result.pageSize });
         }
       } catch (error) {
         if (!isMounted) {
@@ -75,7 +76,7 @@ export function LearnerAssignmentsPage() {
     return () => {
       isMounted = false;
     };
-  }, [t]);
+  }, [t, page]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return (
@@ -147,6 +148,10 @@ export function LearnerAssignmentsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {loadState.status === 'loaded' && (
+        <Pagination page={page} pageSize={loadState.pageSize} total={loadState.total} onPage={setPage} />
       )}
     </>
   );

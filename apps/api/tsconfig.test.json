@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@lms/shared": ["../../packages/shared/src/index.ts"]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import { apiRequest } from '../apiClient.js';
 
-import type { AssignmentSummary } from './types.js';
+import type { AssignmentSummary, PaginatedResponse } from './types.js';
 
 const assignmentsPath = '/assignments';
 
@@ -10,8 +10,9 @@ export function getAssignmentPath(assignmentId: string) {
   return `${assignmentsPath}/${encodeURIComponent(assignmentId)}`;
 }
 
-export function listAssignments() {
-  return apiRequest<AssignmentSummary[]>(assignmentsPath);
+export function listAssignments(params?: { page?: number; pageSize?: number }) {
+  const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
+  return apiRequest<PaginatedResponse<AssignmentSummary>>(`${assignmentsPath}${qs}`);
 }
 
 export function getAssignment(assignmentId: string) {

@@ -24,9 +24,9 @@ describe('ProgressController — RBAC ownership', () => {
       } as unknown as ProgressService;
       const controller = new ProgressController(service);
 
-      controller.listProgress(makeRequest(learnerId, ['learner']));
+      controller.listProgress(makeRequest(learnerId, ['learner']), {});
 
-      expect(calls).toEqual([[orgId, learnerId]]);
+      expect(calls).toEqual([[orgId, learnerId, 1, 20]]);
     });
 
     it('passes no userId filter for admin role', () => {
@@ -36,9 +36,9 @@ describe('ProgressController — RBAC ownership', () => {
       } as unknown as ProgressService;
       const controller = new ProgressController(service);
 
-      controller.listProgress(makeRequest(adminId, ['admin']));
+      controller.listProgress(makeRequest(adminId, ['admin']), {});
 
-      expect(calls).toEqual([[orgId, undefined]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
     });
 
     it('passes no userId filter when user has both learner and instructor roles', () => {
@@ -48,9 +48,9 @@ describe('ProgressController — RBAC ownership', () => {
       } as unknown as ProgressService;
       const controller = new ProgressController(service);
 
-      controller.listProgress(makeRequest(learnerId, ['learner', 'instructor']));
+      controller.listProgress(makeRequest(learnerId, ['learner', 'instructor']), {});
 
-      expect(calls).toEqual([[orgId, undefined]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
     });
   });
 

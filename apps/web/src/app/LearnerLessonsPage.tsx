@@ -24,9 +24,9 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     setLoadState({ status: 'loading' });
 
     try {
-      const [lessons, progressList, currentUser] = await Promise.all([
+      const [lessons, { items: progressList }, currentUser] = await Promise.all([
         listLessons(courseId),
-        listProgress(),
+        listProgress({ pageSize: 200 }),
         getCurrentUser(),
       ]);
 

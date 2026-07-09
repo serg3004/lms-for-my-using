@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
 type AdminUserSummary = {
@@ -73,8 +74,8 @@ export function AdminRolesPage() {
     setLoadState({ status: 'loading' });
 
     try {
-      const [users, memberships] = await Promise.all([
-        apiRequest<AdminUserSummary[]>('/users'),
+      const [{ items: users }, memberships] = await Promise.all([
+        apiRequest<PaginatedResponse<AdminUserSummary>>('/users?pageSize=200'),
         apiRequest<MembershipSummary[]>('/memberships'),
       ]);
 
