@@ -559,12 +559,12 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 81 — admin CRUD expansion plan ⚠️
+## PR 81 — admin CRUD expansion plan ✅
 
 - Определить какие admin CRUD pages нужны для MVP
 - Зафиксировать order of implementation
 
-> **Факт:** Отдельного admin CRUD roadmap документа нет. `docs/PRODUCTION_HARDENING_BACKLOG.md` содержит общий backlog, ЧАСТЬ 6 этого плана описывает порядок реализации CRUD. Концептуально закрыто через план.
+> **Факт:** Порядок реализации зафиксирован в БЛОК 2 этого плана (PR 91–96): users → courses → lessons → materials → assignments → assessment builder. PR 92 (courses) реализован полностью. Отдельный doc-файл не создавался — план в `DEVELOPMENT_PLAN.md` является каноническим источником.
 
 ---
 
