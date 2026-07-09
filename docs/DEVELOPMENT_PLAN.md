@@ -598,7 +598,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 84 — fix: wire ProtectedRoute into App.tsx
+## PR 84 — fix: wire ProtectedRoute into App.tsx ✅
 
 **Проблема:** ProtectedRoute существует но нигде не используется — мёртвый код.
 
@@ -608,9 +608,11 @@ Assessments, certificates и upload являются критичными для
 - Убедиться что `location.state.from` сохраняется и восстанавливается после входа
 - Добавить тест что защита реально работает
 
+> **Факт:** `App.tsx:5` импортирует `ProtectedRoute` и оборачивает все защищённые маршруты. `ProtectedRoute.tsx:85` — `<Navigate replace state={{ from: location }} to="/login" />` сохраняет `location.state.from` для возврата после входа. `canAccess` prop ограничивает `/admin/*` для не-admin ролей. Тесты в `ProtectedRoute.spec.tsx` (7 тестов).
+
 ---
 
-## PR 85 — refactor: replace App.tsx pathname chain with React Router Routes
+## PR 85 — refactor: replace App.tsx pathname chain with React Router Routes ✅
 
 **Проблема:** App.tsx — 300+ строк `if (pathname === ...)`. Не масштабируется.
 
@@ -620,9 +622,11 @@ Assessments, certificates и upload являются критичными для
 - Подключить ProtectedRoute как layout-обёртку
 - Роль-зависимый доступ через `canAccess` prop
 
+> **Факт:** `App.tsx` полностью переведён на `<Routes>` / `<Route>` (64 вхождения). Отдельные Route-функции для каждой зоны: `AdminDashboardRoute`, `AdminUsersRoute`, `LearnerLayoutRoute` и т.д. Вложенные маршруты через `<Outlet>`. Никакого `if (pathname === ...)` — убрано полностью. `ProtectedRoute` подключён как layout-обёртка с `canAccess` prop.
+
 ---
 
-## PR 86 — fix: remove authToken.ts legacy shim
+## PR 86 — fix: remove authToken.ts legacy shim ✅
 
 **Проблема:** `authToken.ts` существует как заглушка — не удалён.
 
@@ -631,13 +635,15 @@ Assessments, certificates и upload являются критичными для
 - Убедиться что ни одна страница его не импортирует
 - Завершить PR 50
 
+> **Факт:** `authToken.ts` удалён — файл не существует в репозитории. Ни одна страница его не импортирует. PR 50 закрыт.
+
 ---
 
 ## БЛОК 1 — Railway деплой
 
 ---
 
-## PR 87 — feat: Dockerfile for API (NestJS)
+## PR 87 — feat: Dockerfile for API (NestJS) ✅
 
 Что входит:
 - Multi-stage сборка: `node:20-alpine` build → run
@@ -647,9 +653,11 @@ Assessments, certificates и upload являются критичными для
 - Health check: `GET /api/v1/health`
 - `.dockerignore`
 
+> **Факт:** `apps/api/Dockerfile` — multi-stage на `node:22-alpine`. `HEALTHCHECK` через `wget -qO- http://localhost:3000/api/v1/health`. `prisma generate` и `nest build` в build-стадии. `.dockerignore` есть.
+
 ---
 
-## PR 88 — feat: Dockerfile for Web (React + nginx)
+## PR 88 — feat: Dockerfile for Web (React + nginx) ✅
 
 Что входит:
 - Multi-stage: `node:20-alpine` build → `nginx:alpine`
@@ -657,9 +665,11 @@ Assessments, certificates и upload являются критичными для
 - `nginx.conf`: SPA routing (`try_files $uri /index.html`), proxy `/api/v1` → API сервис, gzip, security headers
 - `.dockerignore`
 
+> **Факт:** `apps/web/Dockerfile` — multi-stage: `node:22-alpine` build → `nginx:1.27-alpine`. `infra/nginx/nginx.conf`: SPA routing (`try_files $uri $uri/ /index.html`), proxy `/api/v1` → `${API_UPSTREAM_URL}`, gzip включён. `.dockerignore` есть.
+
 ---
 
-## PR 89 — feat: Railway configuration
+## PR 89 — feat: Railway configuration ✅
 
 Что входит:
 - `railway.json` — два сервиса: `api` и `web`
@@ -668,15 +678,19 @@ Assessments, certificates и upload являются критичными для
 - Healthcheck для обоих сервисов
 - `infra/railway/README.md` — пошаговая инструкция деплоя
 
+> **Факт:** `apps/api/railway.json` — builder: DOCKERFILE, startCommand: `prisma migrate deploy && node dist/main.js`, healthcheckPath: `/api/v1/health`, restartPolicy: ON_FAILURE. `apps/web/railway.json` — builder: DOCKERFILE, healthcheckPath: `/`. `infra/railway/README.md` — пошаговая инструкция деплоя.
+
 ---
 
-## PR 90 — feat: production environment setup
+## PR 90 — feat: production environment setup ✅
 
 Что входит:
 - `.env.production.example` со всеми обязательными переменными
 - CORS настройка для production домена
 - Документация: какие переменные задать в Railway dashboard
 - Инструкция: первый деплой → migrate → seed
+
+> **Факт:** `.env.production.example` в корне репозитория — все обязательные переменные: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `S3_*` и др. с комментариями по каждой. Документация по Railway dashboard переменным включена в файл.
 
 ---
 
