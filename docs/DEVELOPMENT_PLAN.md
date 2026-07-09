@@ -598,7 +598,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 84 — fix: wire ProtectedRoute into App.tsx
+## PR 84 — fix: wire ProtectedRoute into App.tsx ✅
 
 **Проблема:** ProtectedRoute существует но нигде не используется — мёртвый код.
 
@@ -608,9 +608,11 @@ Assessments, certificates и upload являются критичными для
 - Убедиться что `location.state.from` сохраняется и восстанавливается после входа
 - Добавить тест что защита реально работает
 
+> **Факт:** `App.tsx:5` импортирует `ProtectedRoute` и оборачивает все защищённые маршруты. `ProtectedRoute.tsx:85` — `<Navigate replace state={{ from: location }} to="/login" />` сохраняет `location.state.from` для возврата после входа. `canAccess` prop ограничивает `/admin/*` для не-admin ролей. Тесты в `ProtectedRoute.spec.tsx` (7 тестов).
+
 ---
 
-## PR 85 — refactor: replace App.tsx pathname chain with React Router Routes
+## PR 85 — refactor: replace App.tsx pathname chain with React Router Routes ✅
 
 **Проблема:** App.tsx — 300+ строк `if (pathname === ...)`. Не масштабируется.
 
@@ -620,9 +622,11 @@ Assessments, certificates и upload являются критичными для
 - Подключить ProtectedRoute как layout-обёртку
 - Роль-зависимый доступ через `canAccess` prop
 
+> **Факт:** `App.tsx` полностью переведён на `<Routes>` / `<Route>` (64 вхождения). Отдельные Route-функции для каждой зоны: `AdminDashboardRoute`, `AdminUsersRoute`, `LearnerLayoutRoute` и т.д. Вложенные маршруты через `<Outlet>`. Никакого `if (pathname === ...)` — убрано полностью. `ProtectedRoute` подключён как layout-обёртка с `canAccess` prop.
+
 ---
 
-## PR 86 — fix: remove authToken.ts legacy shim
+## PR 86 — fix: remove authToken.ts legacy shim ✅
 
 **Проблема:** `authToken.ts` существует как заглушка — не удалён.
 
@@ -631,13 +635,15 @@ Assessments, certificates и upload являются критичными для
 - Убедиться что ни одна страница его не импортирует
 - Завершить PR 50
 
+> **Факт:** `authToken.ts` удалён — файл не существует в репозитории. Ни одна страница его не импортирует. PR 50 закрыт.
+
 ---
 
 ## БЛОК 1 — Railway деплой
 
 ---
 
-## PR 87 — feat: Dockerfile for API (NestJS)
+## PR 87 — feat: Dockerfile for API (NestJS) ✅
 
 Что входит:
 - Multi-stage сборка: `node:20-alpine` build → run
@@ -647,9 +653,11 @@ Assessments, certificates и upload являются критичными для
 - Health check: `GET /api/v1/health`
 - `.dockerignore`
 
+> **Факт:** `apps/api/Dockerfile` — multi-stage на `node:22-alpine`. `HEALTHCHECK` через `wget -qO- http://localhost:3000/api/v1/health`. `prisma generate` и `nest build` в build-стадии. `.dockerignore` есть.
+
 ---
 
-## PR 88 — feat: Dockerfile for Web (React + nginx)
+## PR 88 — feat: Dockerfile for Web (React + nginx) ✅
 
 Что входит:
 - Multi-stage: `node:20-alpine` build → `nginx:alpine`
@@ -657,9 +665,11 @@ Assessments, certificates и upload являются критичными для
 - `nginx.conf`: SPA routing (`try_files $uri /index.html`), proxy `/api/v1` → API сервис, gzip, security headers
 - `.dockerignore`
 
+> **Факт:** `apps/web/Dockerfile` — multi-stage: `node:22-alpine` build → `nginx:1.27-alpine`. `infra/nginx/nginx.conf`: SPA routing (`try_files $uri $uri/ /index.html`), proxy `/api/v1` → `${API_UPSTREAM_URL}`, gzip включён. `.dockerignore` есть.
+
 ---
 
-## PR 89 — feat: Railway configuration
+## PR 89 — feat: Railway configuration ✅
 
 Что входит:
 - `railway.json` — два сервиса: `api` и `web`
@@ -668,9 +678,11 @@ Assessments, certificates и upload являются критичными для
 - Healthcheck для обоих сервисов
 - `infra/railway/README.md` — пошаговая инструкция деплоя
 
+> **Факт:** `apps/api/railway.json` — builder: DOCKERFILE, startCommand: `prisma migrate deploy && node dist/main.js`, healthcheckPath: `/api/v1/health`, restartPolicy: ON_FAILURE. `apps/web/railway.json` — builder: DOCKERFILE, healthcheckPath: `/`. `infra/railway/README.md` — пошаговая инструкция деплоя.
+
 ---
 
-## PR 90 — feat: production environment setup
+## PR 90 — feat: production environment setup ✅
 
 Что входит:
 - `.env.production.example` со всеми обязательными переменными
@@ -678,13 +690,15 @@ Assessments, certificates и upload являются критичными для
 - Документация: какие переменные задать в Railway dashboard
 - Инструкция: первый деплой → migrate → seed
 
+> **Факт:** `.env.production.example` в корне репозитория — все обязательные переменные: `DATABASE_URL`, `JWT_SECRET`, `CORS_ORIGIN`, `S3_*` и др. с комментариями по каждой. Документация по Railway dashboard переменным включена в файл.
+
 ---
 
 ## БЛОК 2 — Admin CRUD
 
 ---
 
-## PR 91 — feat: admin user management UI
+## PR 91 — feat: admin user management UI ✅
 
 Что входит:
 - Список пользователей с именем, email, ролью, статусом
@@ -692,6 +706,8 @@ Assessments, certificates и upload являются критичными для
 - Деактивация пользователя
 - Подключить к `GET/POST /api/v1/users`
 - Использовать `AdminPageLayout` / `AdminPageHeader` из `adminPage.tsx`
+
+> **Факт:** `AdminUsersPage.tsx` — список с пагинацией (`GET /users?page&pageSize`). Создание: email, ФИО, пароль + назначение роли через `POST /memberships`. Редактирование: email, ФИО, отчество, должность, смена, телефон, статус, locale, timezone, роль (`PATCH /users/:id`). Деактивация/активация: `PATCH /users/:id/status` (active ↔ suspended). `DataTable` + `Pagination` + `FormField` из shared toolkit.
 
 ---
 
@@ -707,7 +723,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 93 — feat: admin lesson management UI
+## PR 93 — feat: admin lesson management UI ✅
 
 Что входит:
 - Список уроков курса с порядком
@@ -715,11 +731,11 @@ Assessments, certificates и upload являются критичными для
 - Изменение порядка уроков
 - Подключить к `GET/POST /api/v1/courses/:id/lessons`
 
+> **Факт:** `AdminLessonsPage.tsx` — выбор курса через dropdown, список уроков с сортировкой по `order`. Создание: title, slug (авто), description, order (`POST /courses/:id/lessons`). Редактирование через `<dialog>`: title, description, order, status (`PATCH /lessons/:id`). Смена статуса inline через `<select>` в таблице (draft/published/archived, `PATCH /lessons/:id/status`). Изменение порядка через поле `order` в форме редактирования.
+
 ---
 
-## PR 94 — feat: admin materials management UI (links only)
-
-*Без file upload на этом этапе — только ссылки.*
+## PR 94 — feat: admin materials management UI ✅
 
 Что входит:
 - Список материалов курса/урока
@@ -727,9 +743,11 @@ Assessments, certificates и upload являются критичными для
 - Удаление материала
 - Подключить к `GET/POST /api/v1/courses/:id/materials`
 
+> **Факт:** `AdminMaterialsPage.tsx` — выбор курса и урока, список материалов. Создание: title, kind (file/link), fileUrl, description (`POST /courses/:id/materials`). File upload с прогрессом через `uploadFileWithProgress` (PDF, JPEG, PNG, GIF, WebP, MP4, WebM, DOCX, XLSX) — реализовано сверх плана. Редактирование через `<dialog>` (`PATCH /materials/:id`). Смена статуса inline (`PATCH /materials/:id/status`). Формат размера файла: B/KB/MB.
+
 ---
 
-## PR 95 — feat: admin assignment management UI
+## PR 95 — feat: admin assignment management UI ✅
 
 Что входит:
 - Список назначений (курс, кому назначен, статус, дедлайн)
@@ -737,9 +755,11 @@ Assessments, certificates и upload являются критичными для
 - Отмена назначения
 - Подключить к `GET/POST /api/v1/assignments`
 
+> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем, статусом. Создание: выбор курса + пользователя + дата дедлайна (`POST /assignments`). Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). Прогресс пользователей по курсу виден на той же странице. Назначение на группу (`groupId`) в форме отсутствует — только на пользователя.
+
 ---
 
-## PR 96 — feat: admin assessment builder UI
+## PR 96 — feat: admin assessment builder UI ⚠️
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -747,6 +767,8 @@ Assessments, certificates и upload являются критичными для
 - Варианты ответов с отметкой правильного
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
+
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. **Добавление вопросов (single/multiple choice, true/false) и вариантов ответов — не реализовано** ❌. Управление вопросами через `GET/POST /assessments/:id/questions` отсутствует в UI.
 
 ---
 
