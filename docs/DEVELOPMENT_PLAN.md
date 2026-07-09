@@ -698,7 +698,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 91 — feat: admin user management UI
+## PR 91 — feat: admin user management UI ✅
 
 Что входит:
 - Список пользователей с именем, email, ролью, статусом
@@ -706,6 +706,8 @@ Assessments, certificates и upload являются критичными для
 - Деактивация пользователя
 - Подключить к `GET/POST /api/v1/users`
 - Использовать `AdminPageLayout` / `AdminPageHeader` из `adminPage.tsx`
+
+> **Факт:** `AdminUsersPage.tsx` — список с пагинацией (`GET /users?page&pageSize`). Создание: email, ФИО, пароль + назначение роли через `POST /memberships`. Редактирование: email, ФИО, отчество, должность, смена, телефон, статус, locale, timezone, роль (`PATCH /users/:id`). Деактивация/активация: `PATCH /users/:id/status` (active ↔ suspended). `DataTable` + `Pagination` + `FormField` из shared toolkit.
 
 ---
 
@@ -721,7 +723,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 93 — feat: admin lesson management UI
+## PR 93 — feat: admin lesson management UI ✅
 
 Что входит:
 - Список уроков курса с порядком
@@ -729,11 +731,11 @@ Assessments, certificates и upload являются критичными для
 - Изменение порядка уроков
 - Подключить к `GET/POST /api/v1/courses/:id/lessons`
 
+> **Факт:** `AdminLessonsPage.tsx` — выбор курса через dropdown, список уроков с сортировкой по `order`. Создание: title, slug (авто), description, order (`POST /courses/:id/lessons`). Редактирование через `<dialog>`: title, description, order, status (`PATCH /lessons/:id`). Смена статуса inline через `<select>` в таблице (draft/published/archived, `PATCH /lessons/:id/status`). Изменение порядка через поле `order` в форме редактирования.
+
 ---
 
-## PR 94 — feat: admin materials management UI (links only)
-
-*Без file upload на этом этапе — только ссылки.*
+## PR 94 — feat: admin materials management UI ✅
 
 Что входит:
 - Список материалов курса/урока
@@ -741,9 +743,11 @@ Assessments, certificates и upload являются критичными для
 - Удаление материала
 - Подключить к `GET/POST /api/v1/courses/:id/materials`
 
+> **Факт:** `AdminMaterialsPage.tsx` — выбор курса и урока, список материалов. Создание: title, kind (file/link), fileUrl, description (`POST /courses/:id/materials`). File upload с прогрессом через `uploadFileWithProgress` (PDF, JPEG, PNG, GIF, WebP, MP4, WebM, DOCX, XLSX) — реализовано сверх плана. Редактирование через `<dialog>` (`PATCH /materials/:id`). Смена статуса inline (`PATCH /materials/:id/status`). Формат размера файла: B/KB/MB.
+
 ---
 
-## PR 95 — feat: admin assignment management UI
+## PR 95 — feat: admin assignment management UI ✅
 
 Что входит:
 - Список назначений (курс, кому назначен, статус, дедлайн)
@@ -751,9 +755,11 @@ Assessments, certificates и upload являются критичными для
 - Отмена назначения
 - Подключить к `GET/POST /api/v1/assignments`
 
+> **Факт:** `AdminAssignmentCompletionPage.tsx` — список назначений с курсом, пользователем, статусом. Создание: выбор курса + пользователя + дата дедлайна (`POST /assignments`). Смена статуса через `<select>` (assigned/completed/cancelled, `PATCH /assignments/:id/status`). Прогресс пользователей по курсу виден на той же странице. Назначение на группу (`groupId`) в форме отсутствует — только на пользователя.
+
 ---
 
-## PR 96 — feat: admin assessment builder UI
+## PR 96 — feat: admin assessment builder UI ⚠️
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -761,6 +767,8 @@ Assessments, certificates и upload являются критичными для
 - Варианты ответов с отметкой правильного
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
+
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. **Добавление вопросов (single/multiple choice, true/false) и вариантов ответов — не реализовано** ❌. Управление вопросами через `GET/POST /assessments/:id/questions` отсутствует в UI.
 
 ---
 
