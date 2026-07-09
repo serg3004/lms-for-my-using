@@ -22,6 +22,25 @@ type Assessment = {
   status: string;
 };
 
+type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
+
+type Question = {
+  id: string;
+  organizationId: string;
+  type: QuestionType;
+  title: string;
+  text: string | null;
+  points: number;
+  order: number;
+};
+
+type AnswerOption = {
+  id: string;
+  text: string | null;
+  isCorrect: boolean;
+  order: number;
+};
+
 type LoadState =
   | { status: 'loading' }
   | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; assessments: Assessment[] }
@@ -48,6 +67,22 @@ export function AdminAssessmentBuilderPage() {
 
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const [editAssessment, setEditAssessment] = useState<Assessment | null>(null);
+
+  const questionsDialogRef = useRef<HTMLDialogElement>(null);
+  const [questionsAssessment, setQuestionsAssessment] = useState<Assessment | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [optionsByQuestion, setOptionsByQuestion] = useState<Record<string, AnswerOption[]>>({});
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [qTitle, setQTitle] = useState('');
+  const [qType, setQType] = useState<QuestionType>('single_choice');
+  const [qPoints, setQPoints] = useState('1');
+  const [qSaving, setQSaving] = useState(false);
+  const [qError, setQError] = useState<string | null>(null);
+  const [addingOptionFor, setAddingOptionFor] = useState<string | null>(null);
+  const [optText, setOptText] = useState('');
+  const [optIsCorrect, setOptIsCorrect] = useState(false);
+  const [optSaving, setOptSaving] = useState(false);
+  const [optError, setOptError] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPassingScore, setEditPassingScore] = useState('70');
@@ -245,6 +280,87 @@ export function AdminAssessmentBuilderPage() {
     }
   }
 
+  async function openQuestionsDialog(assessment: Assessment) {
+    setQuestionsAssessment(assessment);
+    setQuestionsLoading(true);
+    setQuestions([]);
+    setOptionsByQuestion({});
+    setQTitle('');
+    setQType('single_choice');
+    setQPoints('1');
+    setQError(null);
+    setAddingOptionFor(null);
+    questionsDialogRef.current?.showModal();
+    try {
+      const qs = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`);
+      const optResults = await Promise.all(
+        qs.map((q) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(q.id)}/options`)),
+      );
+      const optsMap: Record<string, AnswerOption[]> = {};
+      qs.forEach((q, i) => { optsMap[q.id] = optResults[i] ?? []; });
+      setQuestions(qs);
+      setOptionsByQuestion(optsMap);
+    } catch {
+      // вопросы остаются пустыми
+    } finally {
+      setQuestionsLoading(false);
+    }
+  }
+
+  async function handleAddQuestion(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!questionsAssessment || loadState.status !== 'loaded') return;
+    const title = qTitle.trim();
+    if (!title) return;
+    const orgId = loadState.courses[0]?.organizationId ?? '';
+    setQSaving(true);
+    setQError(null);
+    try {
+      const created = await apiRequest<Question>(
+        `/assessments/${encodeURIComponent(questionsAssessment.id)}/questions`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ organizationId: orgId, type: qType, title, points: Number(qPoints) || 1, order: questions.length }),
+        },
+      );
+      setQuestions((prev) => [...prev, created]);
+      setOptionsByQuestion((prev) => ({ ...prev, [created.id]: [] }));
+      setQTitle('');
+      setQPoints('1');
+    } catch (err) {
+      setQError(err instanceof ApiClientError ? err.message : t('admin.assessmentBuilder.questionSaveError', 'Failed to add question.'));
+    } finally {
+      setQSaving(false);
+    }
+  }
+
+  async function handleAddOption(questionId: string, e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const text = optText.trim();
+    if (!text || loadState.status !== 'loaded') return;
+    const orgId = loadState.courses[0]?.organizationId ?? '';
+    const existingCount = optionsByQuestion[questionId]?.length ?? 0;
+    setOptSaving(true);
+    setOptError(null);
+    try {
+      const created = await apiRequest<AnswerOption>(
+        `/questions/${encodeURIComponent(questionId)}/options`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ organizationId: orgId, text, isCorrect: optIsCorrect, order: existingCount }),
+        },
+      );
+      setOptionsByQuestion((prev) => ({ ...prev, [questionId]: [...(prev[questionId] ?? []), created] }));
+      setOptText('');
+      setOptIsCorrect(false);
+      setAddingOptionFor(null);
+    } catch (err) {
+      setOptError(err instanceof ApiClientError ? err.message : t('admin.assessmentBuilder.optionSaveError', 'Failed to add option.'));
+    } finally {
+      setOptSaving(false);
+    }
+  }
+
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
@@ -409,13 +525,22 @@ export function AdminAssessmentBuilderPage() {
                         </select>
                       </td>
                       <td>
-                        <button
-                          className="admin-btn admin-btn--sm admin-btn--secondary"
-                          type="button"
-                          onClick={() => openEditDialog(assessment)}
-                        >
-                          {t('admin.assessmentBuilder.edit', 'Edit')}
-                        </button>
+                        <div className="td-actions">
+                          <button
+                            className="admin-btn admin-btn--sm admin-btn--secondary"
+                            type="button"
+                            onClick={() => openEditDialog(assessment)}
+                          >
+                            {t('admin.assessmentBuilder.edit', 'Edit')}
+                          </button>
+                          <button
+                            className="admin-btn admin-btn--sm admin-btn--secondary"
+                            type="button"
+                            onClick={() => void openQuestionsDialog(assessment)}
+                          >
+                            {t('admin.assessmentBuilder.questions', 'Questions')}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -511,6 +636,130 @@ export function AdminAssessmentBuilderPage() {
             </button>
           </div>
         </form>
+      </dialog>
+      {/* Questions management dialog */}
+      <dialog ref={questionsDialogRef} className="admin-dialog" style={{ maxWidth: '720px', width: '100%' }}>
+        <header className="admin-dialog__header">
+          <h2>{questionsAssessment?.title} — {t('admin.assessmentBuilder.questionsTitle', 'Questions')}</h2>
+          <button
+            className="admin-dialog__close"
+            type="button"
+            aria-label={t('admin.assessmentBuilder.close', 'Close')}
+            onClick={() => questionsDialogRef.current?.close()}
+          >
+            ×
+          </button>
+        </header>
+
+        {questionsLoading ? (
+          <p style={{ padding: '16px', color: 'var(--color-text-muted)' }}>
+            {t('admin.assessmentBuilder.questionsLoading', 'Loading questions...')}
+          </p>
+        ) : (
+          <div style={{ padding: '0 0 16px' }}>
+            {questions.length === 0 ? (
+              <p style={{ padding: '12px 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
+                {t('admin.assessmentBuilder.noQuestions', 'No questions yet.')}
+              </p>
+            ) : (
+              <ol style={{ margin: '0 0 16px', padding: '0', listStyle: 'none', display: 'grid', gap: '12px' }}>
+                {questions.map((q, idx) => (
+                  <li key={q.id} style={{ border: '1px solid var(--color-border)', borderRadius: '6px', padding: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginRight: '8px' }}>
+                          {idx + 1}. [{q.type}] {q.points}pt
+                        </span>
+                        <strong style={{ fontSize: '14px' }}>{q.title}</strong>
+                      </div>
+                      <button
+                        className="admin-btn admin-btn--sm admin-btn--secondary"
+                        type="button"
+                        onClick={() => {
+                          setAddingOptionFor(addingOptionFor === q.id ? null : q.id);
+                          setOptText('');
+                          setOptIsCorrect(false);
+                          setOptError(null);
+                        }}
+                      >
+                        + {t('admin.assessmentBuilder.addOption', 'Add option')}
+                      </button>
+                    </div>
+
+                    {(optionsByQuestion[q.id] ?? []).length > 0 && (
+                      <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: '13px' }}>
+                        {(optionsByQuestion[q.id] ?? []).map((opt) => (
+                          <li key={opt.id} style={{ color: opt.isCorrect ? 'var(--color-success)' : 'inherit' }}>
+                            {opt.isCorrect ? '✓ ' : '○ '}{opt.text}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {addingOptionFor === q.id && (
+                      <form
+                        style={{ marginTop: '10px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}
+                        onSubmit={(e) => void handleAddOption(q.id, e)}
+                      >
+                        <input
+                          style={{ flex: '1', minWidth: '160px' }}
+                          placeholder={t('admin.assessmentBuilder.optionText', 'Option text')}
+                          value={optText}
+                          onChange={(e) => setOptText(e.target.value)}
+                          maxLength={500}
+                        />
+                        <label style={{ fontSize: '13px', display: 'flex', gap: '4px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="checkbox"
+                            checked={optIsCorrect}
+                            onChange={(e) => setOptIsCorrect(e.target.checked)}
+                          />
+                          {t('admin.assessmentBuilder.correct', 'Correct')}
+                        </label>
+                        <button className="admin-btn admin-btn--sm admin-btn--primary" type="submit" disabled={optSaving}>
+                          {optSaving ? '...' : t('admin.assessmentBuilder.addOption', 'Add option')}
+                        </button>
+                        {optError && <p className="admin-form__error" role="alert" style={{ width: '100%', margin: 0 }}>{optError}</p>}
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '14px', fontWeight: 600 }}>
+                {t('admin.assessmentBuilder.addQuestion', 'Add question')}
+              </h3>
+              <form className="admin-form" onSubmit={(e) => void handleAddQuestion(e)}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', alignItems: 'end' }}>
+                  <div className="admin-form__field" style={{ margin: 0 }}>
+                    <label>{t('admin.assessmentBuilder.questionTitle', 'Question text')}</label>
+                    <input value={qTitle} onChange={(e) => setQTitle(e.target.value)} maxLength={200} />
+                  </div>
+                  <div className="admin-form__field" style={{ margin: 0 }}>
+                    <label>{t('admin.assessmentBuilder.questionType', 'Type')}</label>
+                    <select value={qType} onChange={(e) => setQType(e.target.value as QuestionType)}>
+                      <option value="single_choice">{t('admin.assessmentBuilder.singleChoice', 'Single choice')}</option>
+                      <option value="multiple_choice">{t('admin.assessmentBuilder.multipleChoice', 'Multiple choice')}</option>
+                      <option value="true_false">{t('admin.assessmentBuilder.trueFalse', 'True / False')}</option>
+                    </select>
+                  </div>
+                  <div className="admin-form__field" style={{ margin: 0 }}>
+                    <label>{t('admin.assessmentBuilder.points', 'Points')}</label>
+                    <input value={qPoints} onChange={(e) => setQPoints(e.target.value)} inputMode="numeric" style={{ width: '60px' }} />
+                  </div>
+                </div>
+                {qError && <p className="admin-form__error" role="alert" style={{ marginTop: '8px' }}>{qError}</p>}
+                <div className="admin-form__actions" style={{ marginTop: '12px' }}>
+                  <button className="admin-btn admin-btn--primary" type="submit" disabled={qSaving}>
+                    {qSaving ? t('admin.assessmentBuilder.saving', 'Creating...') : t('admin.assessmentBuilder.addQuestionBtn', 'Add question')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </dialog>
     </AdminPageLayout>
   );
