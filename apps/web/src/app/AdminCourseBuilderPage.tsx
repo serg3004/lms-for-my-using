@@ -128,10 +128,8 @@ export function AdminCourseBuilderPage() {
     }
   }
 
-  async function handlePublish() {
-    if (!courseId || pageState.status !== 'loaded') return;
-    const newStatus: CourseStatus =
-      pageState.course.status === 'published' ? 'archived' : 'published';
+  async function handleStatusChange(newStatus: CourseStatus) {
+    if (!courseId) return;
     try {
       await updateCourse(courseId, { status: newStatus });
       void loadData();
@@ -364,14 +362,15 @@ export function AdminCourseBuilderPage() {
               </span>
             </div>
             <div style={{ marginTop: '16px', display: 'grid', gap: '8px' }}>
-              <Button
-                variant={course.status === 'published' ? 'secondary' : 'primary'}
-                type="button"
-                style={{ width: '100%' }}
-                onClick={() => void handlePublish()}
+              <select
+                value={course.status}
+                onChange={(e) => void handleStatusChange(e.target.value as CourseStatus)}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}
               >
-                {course.status === 'published' ? 'Снять с публикации' : 'Опубликовать'}
-              </Button>
+                <option value="draft">Черновик</option>
+                <option value="published">Опубликован</option>
+                <option value="archived">Архив</option>
+              </select>
               <Button
                 variant="danger"
                 type="button"
