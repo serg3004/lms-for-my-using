@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
+import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
@@ -460,17 +461,7 @@ export function AdminMaterialsPage() {
                         <StatusBadge>{material.kind}</StatusBadge>
                       </td>
                       <td>
-                        <select
-                          className="admin-status-select"
-                          value={material.status}
-                          onChange={(event) => void handleUpdateStatus(material.id, event.target.value)}
-                        >
-                          {MATERIAL_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                        <AdminStatusSelect value={material.status} statuses={MATERIAL_STATUSES} onChange={(status) => void handleUpdateStatus(material.id, status)} />
                       </td>
                       <td>{formatSize(material.sizeBytes, t('admin.materials.unknownSize', '—'))}</td>
                       <td>
@@ -556,13 +547,7 @@ export function AdminMaterialsPage() {
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.col.status', 'Status')}</label>
-            <select value={editStatus} onChange={(event) => setEditStatus(event.target.value as MaterialStatus)}>
-              {MATERIAL_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.description', 'Description')}</label>
