@@ -66,3 +66,41 @@ git push
 ```
 
 Then wait for CI before merging.
+
+## pnpm audit failures
+
+If CI fails on:
+
+```bash
+pnpm audit --audit-level high
+```
+
+and the current PR did not change dependencies, do not fix audit in that PR.
+
+Use a separate security/deps PR.
+
+### Workflow
+
+1. Check the CI log.
+2. If the failure is `pnpm audit`, check whether the PR changed dependencies.
+3. If it did not, keep the PR open.
+4. Create a separate `security/fix-pnpm-audit-high` branch.
+5. Fix dependencies with real `pnpm install`.
+6. Run `pnpm audit --audit-level high`.
+7. Merge the security/deps PR.
+8. Update the original PR from `main`.
+9. Merge the original PR only after green CI.
+
+### Dependabot merge order
+
+1. GitHub Actions updates.
+2. Dev dependencies.
+3. Prod dependencies.
+4. Manual security PR if audit still fails.
+
+### Do not
+
+- Do not manually edit `pnpm-lock.yaml`.
+- Do not mix feature/refactor changes with dependency fixes.
+- Do not merge red CI if a separate security PR can fix it.
+- Do not ignore advisories without documented reason.
