@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
+import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
@@ -512,17 +513,7 @@ export function AdminAssessmentBuilderPage() {
                       <td>{assessment.title}</td>
                       <td>{assessment.passingScore}%</td>
                       <td>
-                        <select
-                          className="admin-status-select"
-                          value={assessment.status}
-                          onChange={(event) => void handleUpdateStatus(assessment.id, event.target.value)}
-                        >
-                          {ASSESSMENT_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                        <AdminStatusSelect value={assessment.status} statuses={ASSESSMENT_STATUSES} onChange={(status) => void handleUpdateStatus(assessment.id, status)} />
                       </td>
                       <td>
                         <div className="td-actions">
@@ -585,13 +576,7 @@ export function AdminAssessmentBuilderPage() {
           </div>
           <div className="admin-form__field">
             <label>{t('admin.assessmentBuilder.col.status', 'Status')}</label>
-            <select value={editStatus} onChange={(event) => setEditStatus(event.target.value as AssessmentStatus)}>
-              {ASSESSMENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+            <AdminStatusSelect value={editStatus} statuses={ASSESSMENT_STATUSES} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
           </div>
           <div className="admin-form__field">
             <label>
