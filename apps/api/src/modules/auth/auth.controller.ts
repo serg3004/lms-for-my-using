@@ -64,12 +64,15 @@ export class AuthController {
     assertValidCsrf(request.headers, request.method, accessToken.source);
     clearAuthCookies(response);
 
+    let user: Awaited<ReturnType<AuthService['getCurrentUser']>>;
+
     try {
-      const user = await this.authService.getCurrentUser(accessToken.token);
-      await this.sessionStore?.revokeAllUserSessions(user.id, user.organizationId);
+      user = await this.authService.getCurrentUser(accessToken.token);
     } catch {
-      // Invalid or already-revoked sessions keep logout-all idempotent.
+      return { accepted: true } as const;
     }
+
+    await this.sessionStore?.revokeAllUserSessions(user.id, user.organizationId);
 
     return { accepted: true } as const;
   }
