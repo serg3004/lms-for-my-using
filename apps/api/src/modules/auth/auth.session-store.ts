@@ -17,13 +17,6 @@ export class AuthSessionStore {
     });
   }
 
-  revokeCurrentSession(jti: string) {
-    return this.prisma.session.updateMany({
-      where: { jti, revokedAt: null },
-      data: { revokedAt: new Date() },
-    });
-  }
-
   revokeAllUserSessions(userId: string, organizationId: string) {
     return this.prisma.session.updateMany({
       where: { userId, organizationId, revokedAt: null },
