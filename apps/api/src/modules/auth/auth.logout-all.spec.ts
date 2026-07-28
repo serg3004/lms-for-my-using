@@ -6,7 +6,7 @@ import {
   csrfHeaderName,
   csrfTokenCookieName,
 } from './auth.cookies.js';
-import { AuthController } from './auth.controller.js';
+import { AuthController } from '../auth/auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthSessionStore } from './auth.session-store.js';
 
@@ -15,7 +15,6 @@ describe('AuthController logout-all', () => {
     id: 'user-id',
     organizationId: 'organization-id',
   };
-
   function createController(options?: { invalidToken?: boolean }) {
     const revokeCalls: unknown[] = [];
     const authService = {
@@ -23,7 +22,6 @@ describe('AuthController logout-all', () => {
         if (options?.invalidToken) {
           throw new Error('Invalid token');
         }
-
         return currentUser;
       },
     } as unknown as AuthService;
@@ -45,7 +43,6 @@ describe('AuthController logout-all', () => {
       clearCookie: jest.fn(),
     } as unknown as AuthCookieResponse;
   }
-
   it('revokes all active sessions for the current user and organization', async () => {
     const { controller, revokeCalls } = createController();
     const response = createResponse();
@@ -61,14 +58,12 @@ describe('AuthController logout-all', () => {
         response,
       ),
     ).resolves.toEqual({ accepted: true });
-
     expect(revokeCalls).toEqual([['user-id', 'organization-id']]);
     expect(response.clearCookie).toHaveBeenCalled();
   });
 
   it('requires CSRF for cookie-authenticated requests', async () => {
     const { controller, revokeCalls } = createController();
-
     await expect(
       controller.logoutAll(
         {
@@ -87,7 +82,6 @@ describe('AuthController logout-all', () => {
   it('accepts matching CSRF for cookie-authenticated requests', async () => {
     const { controller, revokeCalls } = createController();
     const csrfToken = 'csrf-token';
-
     await expect(
       controller.logoutAll(
         {
@@ -103,7 +97,6 @@ describe('AuthController logout-all', () => {
 
     expect(revokeCalls).toEqual([['user-id', 'organization-id']]);
   });
-
   it('keeps invalid or already-revoked sessions idempotent', async () => {
     const { controller, revokeCalls } = createController({ invalidToken: true });
 
