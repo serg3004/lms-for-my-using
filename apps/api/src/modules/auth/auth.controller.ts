@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Optional, Post, Req, Res } from '@nestjs/common';
 
 import {
   AuthCookieResponse,
@@ -9,6 +9,7 @@ import {
   resolveAccessToken,
   setAuthCookies,
 } from './auth.cookies.js';
+import { AuthSessionStore } from './auth.session-store.js';
 import { AuthService } from './auth.service.js';
 import {
   LoginInput,
@@ -24,7 +25,10 @@ type AuthRequest = {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Optional() private readonly sessionStore?: AuthSessionStore,
+   ) {}
 
   @Post('login')
   async login(@Body() body: unknown, @Res({ passthrough: true }) response: AuthCookieResponse) {
@@ -48,6 +52,26 @@ export class AuthController {
     clearAuthCookies(response);
 
     return this.authService.logout(accessToken.token);
+  }
+
+  @Post('logout-all')
+  async logoutAll(
+    @Req() request: AuthRequest,
+    @Res({ passthrough: true }) response: AuthCookieResponse,
+  ) {
+    const accessToken = resolveAccessToken(request.headers);
+
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    clearAuthCookies(response);
+
+    try {
+      const user = await this.authService.getCurrentUser(accessToken.token);
+      await this.sessionStore?.revokeAllUserSessions(user.id, user.organizationId);
+    } catch {
+      // Invalid or already-revoked sessions keep logout-all idempotent.
+    }
+
+    return { accepted: true } as const;
   }
 
   @Post('password-reset/request')

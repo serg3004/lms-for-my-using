@@ -3,13 +3,14 @@ import { Reflector } from '@nestjs/core';
 
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
+import { AuthSessionStore } from './auth.session-store.js';
 import { OrganizationScopeGuard } from './organization-scope.guard.js';
 import { RolesGuard } from './roles.guard.js';
 import { AuthService } from './auth.service.js';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthGuard, AuthService, OrganizationScopeGuard, Reflector, RolesGuard],
-  exports: [AuthGuard, AuthService, OrganizationScopeGuard, RolesGuard],
+  providers: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, Reflector, RolesGuard],
+  exports: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, RolesGuard],
 })
 export class AuthModule {}
