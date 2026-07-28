@@ -155,7 +155,7 @@ describe('AuthController logout', () => {
     );
 
     expect(getLogoutTokens()).toEqual(['access-token']);
-    expect(clearCookieCalls).toHaveLength(2);
+    expect(clearCookieCalls).toHaveLength(3);
     expect(result).toEqual({ accepted: true });
   });
 
@@ -199,7 +199,7 @@ describe('AuthController logout', () => {
     );
 
     expect(getLogoutTokens()).toEqual(['cookie-token']);
-    expect(clearCookieCalls).toHaveLength(2);
+    expect(clearCookieCalls).toHaveLength(3);
     expect(result).toEqual({ accepted: true });
   });
 });

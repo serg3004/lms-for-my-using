@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Optional, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Optional, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 
 import {
   AuthCookieResponse,
@@ -7,6 +7,7 @@ import {
   clearAuthCookies,
   createCsrfToken,
   resolveAccessToken,
+  resolveRefreshToken,
   setAuthCookies,
 } from './auth.cookies.js';
 import { AuthSessionStore } from './auth.session-store.js';
@@ -36,12 +37,35 @@ export class AuthController {
     const result = await this.authService.login(input);
     const csrfToken = createCsrfToken();
 
-    setAuthCookies(response, result.accessToken, csrfToken);
+    setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
 
     return {
       ...result,
       csrfToken,
     };
+  }
+
+  @Post('refresh')
+  async refresh(@Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
+    const refreshToken = resolveRefreshToken(request.headers);
+
+    if (!refreshToken || !this.sessionStore) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const session = await this.sessionStore.findActiveRefreshSession(refreshToken);
+
+    if (!session) {
+      clearAuthCookies(response);
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const result = await this.authService.refreshSession(session.id, session.userId, session.organizationId);
+    const csrfToken = createCsrfToken();
+
+    setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
+
+    return { accessToken: result.accessToken, csrfToken, tokenType: result.tokenType };
   }
 
   @Post('logout')

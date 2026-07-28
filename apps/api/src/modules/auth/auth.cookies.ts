@@ -3,11 +3,14 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const accessTokenCookieName = 'lms_access_token';
 export const csrfTokenCookieName = 'lms_csrf_token';
+export const refreshTokenCookieName = 'lms_refresh_token';
 export const csrfHeaderName = 'x-csrf-token';
 
 const apiCookiePath = '/api/v1';
 const csrfCookiePath = '/';
+const refreshTokenCookiePath = '/api/v1/auth/refresh';
 const accessTokenCookieMaxAgeMs = 60 * 60 * 1000;
+const refreshTokenCookieMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const csrfTokenByteLength = 32;
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -98,6 +101,10 @@ export function createCsrfToken() {
   return randomBytes(csrfTokenByteLength).toString('hex');
 }
 
+export function resolveRefreshToken(headers: AuthHeaders): string | undefined {
+  return getCookieValue(headers.cookie, refreshTokenCookieName);
+}
+
 export function resolveAccessToken(headers: AuthHeaders): ResolvedAccessToken {
   const bearerToken = parseBearerToken(headers.authorization);
 
@@ -124,7 +131,12 @@ export function assertValidCsrf(headers: AuthHeaders, method: string | undefined
   }
 }
 
-export function setAuthCookies(response: AuthCookieResponse, accessToken: string, csrfToken: string) {
+export function setAuthCookies(
+  response: AuthCookieResponse,
+  accessToken: string,
+  csrfToken: string,
+  refreshToken?: string,
+) {
   const secure = shouldUseSecureCookies();
 
   response.cookie(accessTokenCookieName, accessToken, {
@@ -141,6 +153,16 @@ export function setAuthCookies(response: AuthCookieResponse, accessToken: string
     path: csrfCookiePath,
     maxAge: accessTokenCookieMaxAgeMs,
   });
+
+  if (refreshToken) {
+    response.cookie(refreshTokenCookieName, refreshToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure,
+      path: refreshTokenCookiePath,
+      maxAge: refreshTokenCookieMaxAgeMs,
+    });
+  }
 }
 
 export function clearAuthCookies(response: AuthCookieResponse) {
@@ -157,5 +179,11 @@ export function clearAuthCookies(response: AuthCookieResponse) {
     sameSite: 'lax',
     secure,
     path: csrfCookiePath,
+  });
+  response.clearCookie(refreshTokenCookieName, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure,
+    path: refreshTokenCookiePath,
   });
 }
