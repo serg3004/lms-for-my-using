@@ -1016,11 +1016,13 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 118 — auth/session minimal tests and hardening 🔲
+## PR 118 — auth/session minimal tests and hardening ✅
 
 - Tests for login/logout, unauthorized access, role guard behavior, Cookie/CSRF unsafe request behavior
 - Minimal hardening только если можно без env/schema/migration
 - Компенсирует docs-only PR 108
+
+> **Факт:** `test(auth): complete PR 118 session hardening coverage` (коммит `d452a42`, вошедший в GH PR #374). Покрыто: login/logout, CSRF, revocation, session store. Все тесты зелёные.
 
 ---
 
@@ -1033,29 +1035,35 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 120 — refresh/session store design + Prisma migration 🔲
+## PR 120 — refresh/session store design + Prisma migration ✅
 
 - Session/refresh token Prisma model и migration
 - Safe token storage design
 - Tests для session creation/expiration
 - Staging migration verification; существующий login flow не должен быть сломан
 
+> **Факт:** GH PR #377 (`feature/pr-120-session-store`), #378 (`feature/pr-120-refresh-session-storage`), #382 (fix typo). `AuthSessionStore` — `findActiveRefreshSession()` с поиском по хэшу и проверкой `refreshExpiresAt`. `auth.refresh-tokens.ts` — `createRefreshToken()` + `hashRefreshToken()` (SHA-256). Prisma migration `20260728000000_add_session_refresh_storage` — поля `refreshTokenHash`, `refreshExpiresAt` в `Session`. `auth.session-store.spec.ts` — 3 теста. Существующий login flow не сломан (refresh token пока не выдаётся на login — это PR 137).
+
 ---
 
-## PR 121 — token revocation and logout hardening 🔲
+## PR 121 — token revocation and logout hardening ✅
 
 - Revoke current refresh/session при logout
 - Optional logout-all endpoint
 - Tests для revoked session
 
+> **Факт:** GH PR #379 (`feature/pr-121-token-revocation-v2`), #381 (fix error propagation). `POST /auth/logout-all` — отзывает все сессии пользователя через `AuthSessionStore.revokeAllUserSessions()`. `auth.logout-all.spec.ts` (118 строк), `auth.logout-all.error.spec.ts`, `auth.revocation.spec.ts` — покрывают happy path, ошибки propagation, scope revocation. `logout` ревоцирует сессию по `jti` через `prisma.session.updateMany`. OpenAPI задокументирован (`openapi.logout-all.spec.ts`).
+
 ---
 
-## PR 122 — replace custom JWT with `jose` 🔲
+## PR 122 — replace custom JWT with `jose` ✅
 
 - Заменить custom JWT implementation на `jose`
 - Сохранить JWT payload contract
 - Tests для sign/verify/expired/invalid tokens
 - Dependency audit после добавления зависимости
+
+> **Факт:** `jose` уже используется с самого начала. `auth.tokens.ts:1` — `import { SignJWT, errors as joseErrors, jwtVerify } from 'jose'`. `package.json` — `"jose": "^6.2.4"`. `signJwt()` и `verifyJwt()` полностью на `jose`. JWT payload contract (`sub`, `organizationId`, `email`, `jti`, `iat`, `exp`) сохранён. Никакой кастомной реализации нет. PR 122 был сделан задолго до того как внесён в план.
 
 ---
 
@@ -1140,7 +1148,7 @@ Assessments, certificates и upload являются критичными для
 ```
 БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
 БЛОК 7: Staging                  PR 110–117   8 PR  ✅ 111–113✅ 115–117✅ 110⚠️ 114⚠️ 116✅
-БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ 119✅ 124✅ 126✅ 128✅ 127❌ 129🔲 130🔲 131🔲 118🔲 120🔲 121🔲 122🔲 123⚠️ 125🔲
+БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ 118✅ 119✅ 120✅ 121✅ 122✅ 124✅ 126✅ 128✅ 127❌ 123⚠️ 125🔲 129🔲 130🔲 131🔲
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 3:                               28 PR
 ```
