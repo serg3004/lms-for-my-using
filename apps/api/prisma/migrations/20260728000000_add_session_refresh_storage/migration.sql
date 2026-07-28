@@ -1,6 +1,6 @@
 ALTER TABLE "sessions"
 ADD COLUMN "refresh_token_hash" TEXT,
-ADD COLUMMN "refresh_expires_at" TIMESTAMPTZ;
+ADD COLUMN "refresh_expires_at" TIMESTAMPTZ;
 
 CREATE UNIQUE INDEX "sessions_refresh_token_hash_key"
 ON "sessions"("refresh_token_hash");
