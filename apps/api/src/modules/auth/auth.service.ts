@@ -3,6 +3,7 @@ import { Injectable, ServiceUnavailableException, UnauthorizedException } from '
 import { PrismaService } from '../../database/prisma.service.js';
 import { type CurrentUser, type LoginInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
+import { createRefreshToken } from './auth.refresh-tokens.js';
 import { verifyPassword } from './passwords.js';
 
 const currentUserSelect = {
@@ -30,6 +31,8 @@ const passwordResetUnavailableMessage = 'Password reset is not unavailable';
 const logoutAccepted = {
   accepted: true,
 } as const;
+
+const refreshTokenLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -145,6 +148,8 @@ export class AuthService {
       organizationId: user.organizationId,
       email: user.email,
     });
+    const refresh = createRefreshToken();
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenLifetimeMs);
 
     await this.prisma.session.create({
       data: {
@@ -152,13 +157,48 @@ export class AuthService {
         userId: user.id,
         organizationId: user.organizationId,
         expiresAt,
+        refreshTokenHash: refresh.hash,
+        refreshExpiresAt,
       },
     });
 
     return {
       accessToken: token,
+      refreshToken: refresh.token,
       tokenType: 'Bearer',
       user,
+    };
+  }
+
+  async refreshSession(sessionId: string, userId: string, organizationId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, status: 'active', deletedAt: null },
+      select: currentUserSelect,
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const { token, jti, expiresAt } = await signJwt({
+      sub: user.id,
+      organizationId: user.organizationId,
+      email: user.email,
+    });
+
+    const newRefresh = createRefreshToken();
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenLifetimeMs);
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { jti, expiresAt, refreshTokenHash: newRefresh.hash, refreshExpiresAt },
+    });
+
+    return {
+      accessToken: token,
+      refreshToken: newRefresh.token,
+      tokenType: 'Bearer',
+      user: await this.withRoles(user),
     };
   }
 
