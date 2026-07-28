@@ -107,6 +107,9 @@ export function getOpenApiDocument(): OpenApiDocument {
       '/auth/logout': {
         post: operation('Logout and clear auth cookies', ['Auth'], true),
       },
+      '/auth/logout-all': {
+        post: operation('Logout from all active sessions and clear auth cookies', ['Auth'], true),
+      },
       '/auth/password-reset/request': {
         post: operation('Request password reset', ['Auth']),
       },
