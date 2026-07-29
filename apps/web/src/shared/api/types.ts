@@ -205,3 +205,21 @@ export type AssessmentAttemptResult = {
   user: { id: string; email: string; firstName: string; lastName: string };
   answers: AttemptAnswerResult[];
 };
+
+export type MembershipSummary = {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: string;
+  assignedBy: string | null;
+  createdAt: string;
+};
+
+export type UserSummary = {
+  id: string;
+  organizationId: string;
+  email: string;
+  firstName: string;
+  lastName: string | null;
+  status: string;
+};

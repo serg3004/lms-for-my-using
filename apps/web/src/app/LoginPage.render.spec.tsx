@@ -26,3 +26,23 @@ describe('LoginPage smoke', () => {
     expect(getLoginErrorMessage(new ApiClientError('Invalid credentials', 401), (key) => key)).toBe('Invalid credentials');
   });
 });
+
+import { getLoginRedirectPath } from './LoginPage';
+
+describe('getLoginRedirectPath', () => {
+  it('returns /learn by default', () => {
+    expect(getLoginRedirectPath(null)).toBe('/learn');
+  });
+
+  it('returns /manager/dashboard for manager-only role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['manager'] })).toBe('/manager/dashboard');
+  });
+
+  it('returns /learn when manager also has admin role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['manager', 'admin'] })).toBe('/learn');
+  });
+
+  it('returns from path when provided', () => {
+    expect(getLoginRedirectPath({ from: { pathname: '/some/path' } }, { roles: ['manager'] })).toBe('/some/path');
+  });
+});

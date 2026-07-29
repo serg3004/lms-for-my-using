@@ -23,12 +23,17 @@ describe('getRootNavigationItems', () => {
 
   it.each([
     ['admin'],
-    ['manager'],
     ['instructor'],
   ] as const)('shows admin navigation for %s users', (role) => {
     const items = getRootNavigationItems({ roles: [role] });
 
     expect(items[0]).toEqual({ labelKey: 'admin.navLink', fallbackLabel: 'Admin', href: '/admin' });
+  });
+
+  it('shows manager navigation for manager-only users', () => {
+    const items = getRootNavigationItems({ roles: ['manager'] });
+
+    expect(items[0]).toEqual({ labelKey: 'manager.navLink', fallbackLabel: 'Manager', href: '/manager' });
   });
 
   it('keeps learner navigation visible for privileged users with learner access', () => {

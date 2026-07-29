@@ -26,10 +26,15 @@ const initialLoginFormState: LoginFormState = {
   password: '',
 };
 
-export function getLoginRedirectPath(locationState: unknown) {
+export function getLoginRedirectPath(locationState: unknown, user?: { roles: string[] }) {
   const fromPath = (locationState as LoginLocationState | null)?.from?.pathname;
-
-  return typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//') ? fromPath : '/learn';
+  if (typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//')) {
+    return fromPath;
+  }
+  if (user?.roles.includes('manager') && !user.roles.includes('admin') && !user.roles.includes('instructor')) {
+    return '/manager/dashboard';
+  }
+  return '/learn';
 }
 
 export function LoginPage() {
@@ -82,7 +87,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({
+      const loginResult = await login({
         organizationId: formState.organizationId.trim(),
         email: formState.email.trim(),
         password: formState.password,
@@ -92,7 +97,7 @@ export function LoginPage() {
         ...currentFormState,
         password: '',
       }));
-      navigate(getLoginRedirectPath(location.state), { replace: true });
+      navigate(getLoginRedirectPath(location.state, loginResult.user), { replace: true });
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error, t));
     } finally {
