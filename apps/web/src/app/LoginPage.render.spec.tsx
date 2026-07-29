@@ -45,4 +45,12 @@ describe('getLoginRedirectPath', () => {
   it('returns from path when provided', () => {
     expect(getLoginRedirectPath({ from: { pathname: '/some/path' } }, { roles: ['manager'] })).toBe('/some/path');
   });
+
+  it('returns /instructor/dashboard for instructor-only role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['instructor'] })).toBe('/instructor/dashboard');
+  });
+
+  it('returns /learn when instructor also has admin role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['instructor', 'admin'] })).toBe('/learn');
+  });
 });

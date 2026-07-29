@@ -31,6 +31,9 @@ export function getLoginRedirectPath(locationState: unknown, user?: { roles: str
   if (typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//')) {
     return fromPath;
   }
+  if (user?.roles.includes('instructor') && !user.roles.includes('admin')) {
+    return '/instructor/dashboard';
+  }
   if (user?.roles.includes('manager') && !user.roles.includes('admin') && !user.roles.includes('instructor')) {
     return '/manager/dashboard';
   }

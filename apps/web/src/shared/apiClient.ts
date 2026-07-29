@@ -203,7 +203,7 @@ export type {
 } from './api/types.js';
 
 export { getCurrentUser, login } from './api/auth.js';
-export { getCourse, getCoursePath, listCourses } from './api/courses.js';
+export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, updateCourse } from './api/courses.js';
 export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';

@@ -21,13 +21,14 @@ describe('getRootNavigationItems', () => {
     expect(items.some((item) => item.href === '/admin')).toBe(false);
   });
 
-  it.each([
-    ['admin'],
-    ['instructor'],
-  ] as const)('shows admin navigation for %s users', (role) => {
-    const items = getRootNavigationItems({ roles: [role] });
-
+  it('shows admin navigation for admin users', () => {
+    const items = getRootNavigationItems({ roles: ['admin'] });
     expect(items[0]).toEqual({ labelKey: 'admin.navLink', fallbackLabel: 'Admin', href: '/admin' });
+  });
+
+  it('shows instructor navigation for instructor-only users', () => {
+    const items = getRootNavigationItems({ roles: ['instructor'] });
+    expect(items[0]).toEqual({ labelKey: 'instructor.navLink', fallbackLabel: 'Instructor', href: '/instructor' });
   });
 
   it('shows manager navigation for manager-only users', () => {
