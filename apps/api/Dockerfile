@@ -27,6 +27,8 @@ RUN pnpm run build
 # ---- Deploy: create standalone production bundle ----
 FROM base AS deployer
 WORKDIR /app
+# Reuse pnpm store from deps so deploy does not re-download packages
+COPY --from=deps /pnpm/store /pnpm/store
 COPY --from=builder /app .
 # hoisted linker so COPY in the runner stage works without symlinks
 RUN echo "node-linker=hoisted" >> .npmrc && \
