@@ -10,41 +10,87 @@ describe('refresh token storage', () => {
     expect(refreshToken.hash).toBe(hashRefreshToken(refreshToken.token));
     expect(refreshToken.hash).not.toBe(refreshToken.token);
   });
+});
 
-  it('looks up only active, non-revoked refresh sessions by token hash', async () => {
-    const findFirstCalls: unknown[] = [];
+describe('AuthSessionStore.consumeRefreshSession', () => {
+  const activeSession = {
+    id: 'session-id',
+    userId: 'user-id',
+    organizationId: 'org-id',
+    refreshExpiresAt: new Date(Date.now() + 86_400_000),
+    revokedAt: null,
+  };
+
+  it('atomically clears refreshTokenHash and returns session when token is valid', async () => {
+    const updateCalls: unknown[] = [];
     const prisma = {
       session: {
-        findFirst: async (args: unknown) => {
-          findFirstCalls.push(args);
-          return { id: 'session-id' };
+        update: async (args: unknown) => {
+          updateCalls.push(args);
+          return activeSession;
         },
       },
     } as unknown as PrismaService;
-    const sessionStore = new AuthSessionStore(prisma);
+    const store = new AuthSessionStore(prisma);
 
-    await sessionStore.findActiveRefreshSession('plain-refresh-token');
+    const result = await store.consumeRefreshSession('plain-token');
 
-    expect(findFirstCalls[0]).toMatchObject({
-      where: {
-        refreshTokenHash: hashRefreshToken('plain-refresh-token'),
-        refreshExpiresAt: { gt: expect.any(Date) },
-        revokedAt: null,
-      },
+    expect(result).toEqual(activeSession);
+    expect(updateCalls[0]).toMatchObject({
+      where: { refreshTokenHash: hashRefreshToken('plain-token') },
+      data: { refreshTokenHash: null },
     });
-    expect(findFirstCalls[0]).not.toEqual(
-      expect.objectContaining({ refreshTokenHash: 'plain-refresh-token' }),
-    );
+    expect(updateCalls[0]).not.toMatchObject({ where: { refreshTokenHash: 'plain-token' } });
   });
 
-  it('returns null when no active refresh session exists', async () => {
+  it('returns null when token does not exist in DB', async () => {
+    const prisma = {
+      session: { update: async () => { throw new Error('Record not found'); } },
+    } as unknown as PrismaService;
+    const store = new AuthSessionStore(prisma);
+
+    await expect(store.consumeRefreshSession('unknown-token')).resolves.toBeNull();
+  });
+
+  it('returns null when session is expired', async () => {
     const prisma = {
       session: {
-        findFirst: async () => null,
+        update: async () => ({ ...activeSession, refreshExpiresAt: new Date(Date.now() - 1000) }),
       },
     } as unknown as PrismaService;
-    const sessionStore = new AuthSessionStore(prisma);
+    const store = new AuthSessionStore(prisma);
 
-    await expect(sessionStore.findActiveRefreshSession('expired-token')).resolves.toBeNull();
+    await expect(store.consumeRefreshSession('expired-token')).resolves.toBeNull();
+  });
+
+  it('returns null when session is revoked', async () => {
+    const prisma = {
+      session: {
+        update: async () => ({ ...activeSession, revokedAt: new Date() }),
+      },
+    } as unknown as PrismaService;
+    const store = new AuthSessionStore(prisma);
+
+    await expect(store.consumeRefreshSession('revoked-token')).resolves.toBeNull();
+  });
+
+  it('revokes all sessions for a given user', async () => {
+    const updateManyCalls: unknown[] = [];
+    const prisma = {
+      session: {
+        updateMany: async (args: unknown) => {
+          updateManyCalls.push(args);
+          return { count: 3 };
+        },
+      },
+    } as unknown as PrismaService;
+    const store = new AuthSessionStore(prisma);
+
+    await store.revokeAllUserSessions('user-id', 'org-id');
+
+    expect(updateManyCalls[0]).toMatchObject({
+      where: { userId: 'user-id', organizationId: 'org-id', revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
   });
 });
