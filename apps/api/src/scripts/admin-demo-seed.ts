@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { PrismaClient } from '@prisma/client';
-
 const DEMO_CONFIRMATION = 'demo-company';
 const DEMO_IDS = {
   organization: '10000000-0000-4000-8000-000000000001',
@@ -16,7 +15,6 @@ const DEMO_IDS = {
   assignment: '10000000-0000-4000-8000-000000000061',
   assessment: '10000000-0000-4000-8000-000000000081',
 } as const;
-
 export type AdminDemoSeedOptions = { apply: boolean };
 
 export function parseAdminDemoSeedArgs(args: string[]): AdminDemoSeedOptions {
@@ -44,7 +42,6 @@ async function findMissingDemoData(prisma: PrismaClient): Promise<string[]> {
       prisma.assessment.findUnique({ where: { id: DEMO_IDS.assessment }, select: { id: true } }),
       prisma.assessmentQuestion.count({ where: { assessmentId: DEMO_IDS.assessment } }),
     ]);
-
   const requiredRecords = [
     ['organization', organization],
     ['admin user', admin],
@@ -57,8 +54,7 @@ async function findMissingDemoData(prisma: PrismaClient): Promise<string[]> {
     ['assessment', assessment],
   ] as const;
 
-  const missing = requiredRecords.filter(([, record]) => record === null).map(([label]) => label);
-
+  const missing: string[] = requiredRecords.filter(([, record]) => record === null).map(([label]) => label);
   if (questionCount !== 5) {
     missing.push(`assessment questions (expected 5, found ${questionCount})`);
   }
@@ -75,7 +71,6 @@ function sanitizeError(message: string): string {
 
 async function runExistingSeed(): Promise<void> {
   const seedPath = resolve(process.cwd(), 'prisma/seed.mjs');
-
   await new Promise<void>((resolvePromise, rejectPromise) => {
     const child = spawn(process.execPath, [seedPath], {
       env: process.env,
@@ -94,7 +89,6 @@ async function runExistingSeed(): Promise<void> {
         resolvePromise();
         return;
       }
-
       rejectPromise(new Error(sanitizeError(stderr || `Seed exited with code ${code ?? 'unknown'}`)));
     });
   });
@@ -105,7 +99,6 @@ export async function runAdminDemoSeed(args: string[], prisma = new PrismaClient
 
   try {
     const missingBefore = await findMissingDemoData(prisma);
-
     if (!apply) {
       console.log(JSON.stringify({
         mode: 'check',
@@ -125,7 +118,6 @@ export async function runAdminDemoSeed(args: string[], prisma = new PrismaClient
     }
 
     await runExistingSeed();
-
     const missingAfter = await findMissingDemoData(prisma);
     if (missingAfter.length > 0) {
       throw new Error(`Demo seed verification failed: ${missingAfter.join(', ')}`);
@@ -138,7 +130,6 @@ export async function runAdminDemoSeed(args: string[], prisma = new PrismaClient
 }
 
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-
 if (isDirectRun) {
   runAdminDemoSeed(process.argv.slice(2)).catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
