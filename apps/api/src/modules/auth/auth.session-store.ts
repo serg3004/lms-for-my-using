@@ -7,14 +7,22 @@ import { hashRefreshToken } from './auth.refresh-tokens.js';
 export class AuthSessionStore {
   constructor(private readonly prisma: PrismaService) {}
 
-  findActiveRefreshSession(refreshToken: string) {
-    return this.prisma.session.findFirst({
-      where: {
-        refreshTokenHash: hashRefreshToken(refreshToken),
-        refreshExpiresAt: { gt: new Date() },
-        revokedAt: null,
-      },
-    });
+  async consumeRefreshSession(refreshToken: string) {
+    const hash = hashRefreshToken(refreshToken);
+    try {
+      const session = await this.prisma.session.update({
+        where: { refreshTokenHash: hash },
+        data: { refreshTokenHash: null },
+        select: { id: true, userId: true, organizationId: true, refreshExpiresAt: true, revokedAt: true },
+      });
+      const now = new Date();
+      if (session.revokedAt !== null || !session.refreshExpiresAt || session.refreshExpiresAt <= now) {
+        return null;
+      }
+      return session;
+    } catch {
+      return null;
+    }
   }
 
   revokeAllUserSessions(userId: string, organizationId: string) {

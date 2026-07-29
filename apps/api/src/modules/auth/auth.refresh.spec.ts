@@ -41,7 +41,7 @@ function createController(options?: {
   }
 
   const sessionStore = {
-    findActiveRefreshSession: jest.fn<() => Promise<typeof fakeSession | null>>().mockResolvedValue(
+    consumeRefreshSession: jest.fn<() => Promise<typeof fakeSession | null>>().mockResolvedValue(
       options?.sessionNotFound ? null : fakeSession,
     ),
     revokeAllUserSessions: jest.fn(),

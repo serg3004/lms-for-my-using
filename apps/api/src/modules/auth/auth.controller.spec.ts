@@ -114,6 +114,25 @@ describe('AuthController login', () => {
       }),
     ]);
   });
+  it('does not expose refreshToken in login response body', async () => {
+    const authServiceWithToken = {
+      login: async () => ({
+        accessToken: 'login-token',
+        refreshToken: 'secret-refresh-value',
+        tokenType: 'Bearer',
+        user: currentUser,
+      }),
+    } as unknown as AuthService;
+    const controller = new AuthController(authServiceWithToken);
+    const { response } = createResponse();
+
+    const result = await controller.login(
+      { organizationId: 'org-id', email: 'user@test.com', password: 'pass' },
+      response,
+    );
+
+    expect(result).not.toHaveProperty('refreshToken');
+  });
 });
 
 describe('AuthController logout', () => {

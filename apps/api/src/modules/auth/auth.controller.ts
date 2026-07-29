@@ -40,7 +40,9 @@ export class AuthController {
     setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
 
     return {
-      ...result,
+      accessToken: result.accessToken,
+      tokenType: result.tokenType,
+      user: result.user,
       csrfToken,
     };
   }
@@ -53,7 +55,7 @@ export class AuthController {
       throw new UnauthorizedException('Missing refresh token');
     }
 
-    const session = await this.sessionStore.findActiveRefreshSession(refreshToken);
+    const session = await this.sessionStore.consumeRefreshSession(refreshToken);
 
     if (!session) {
       clearAuthCookies(response);
