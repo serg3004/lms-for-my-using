@@ -1,7 +1,8 @@
+/// <reference types="jest" />
+
 import { randomUUID } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
-import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import type { PrismaService } from '../database/prisma.service.js';
 
@@ -131,7 +132,6 @@ describe('API database smoke', () => {
         organizationId,
         email: userEmail,
         password: TEST_PASSWORD,
-
       }),
     });
 
