@@ -1239,7 +1239,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 137 — Refresh token flow и session lifecycle 🔲
+## PR 137 — Refresh token flow и session lifecycle ✅
 
 *Требует завершённого PR 120.*
 
@@ -1469,7 +1469,7 @@ Assessments, certificates и upload являются критичными для
 Новые фичи и архитектура         PR 132–150  19 PR
   ✅ СДЕЛАНО:    132 (i18n RU), 143 (layout)
   ⚠️ ЧАСТИЧНО:  135 (storage audit)
-  🔲 НЕ НАЧАТО: 133, 134, 136, 137, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
+  🔲 НЕ НАЧАТО: 133, 134, 136, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
 ```
 
 ---
