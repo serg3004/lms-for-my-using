@@ -15,7 +15,7 @@ type LoadState =
   | { status: 'loaded'; user: CurrentUser; stats: Stats }
   | { status: 'error' };
 
-function computeStats(courses: CourseSummary[], progressItems: { userId: string }[]): Stats {
+export function computeStats(courses: CourseSummary[], progressItems: { userId: string }[]): Stats {
   const published = courses.filter((c) => c.status === 'published').length;
   const draft = courses.filter((c) => c.status !== 'published').length;
   const studentsEnrolled = new Set(progressItems.map((p) => p.userId)).size;

@@ -26,7 +26,7 @@ type LoadState =
   | { status: 'loaded'; user: CurrentUser; course: CourseSummary; students: StudentRow[] }
   | { status: 'error' };
 
-function buildStudentRows(
+export function buildStudentRows(
   progressItems: ProgressSummary[],
   users: UserSummary[],
   courseId: string,
