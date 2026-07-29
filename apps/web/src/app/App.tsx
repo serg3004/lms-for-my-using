@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { Link, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
@@ -91,6 +91,13 @@ const LoginPage = lazy(() =>
   import('./LoginPage.js').then((m) => ({ default: m.LoginPage })),
 );
 
+const ManagerDashboardPage = lazy(() =>
+  import('./ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })),
+);
+const ManagerTeamPage = lazy(() =>
+  import('./ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })),
+);
+
 type RootNavigationItem = {
   labelKey: string;
   fallbackLabel?: string;
@@ -112,6 +119,13 @@ const adminNavigationItem: RootNavigationItem = {
   href: '/admin',
 };
 
+
+const managerNavigationItem: RootNavigationItem = {
+  labelKey: 'manager.navLink',
+  fallbackLabel: 'Manager',
+  href: '/manager',
+};
+
 function isAdminNavigationRole(role: UserRole) {
   return role === 'admin' || role === 'manager' || role === 'instructor';
 }
@@ -121,7 +135,13 @@ export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null):
     return [{ labelKey: 'login.navLink', href: '/login' }];
   }
 
-  return user.roles.some(isAdminNavigationRole) ? [adminNavigationItem, ...learnerNavigationItems] : learnerNavigationItems;
+  if (user.roles.includes('admin') || user.roles.includes('instructor')) {
+    return [adminNavigationItem, ...learnerNavigationItems];
+  }
+  if (user.roles.includes('manager')) {
+    return [managerNavigationItem, ...learnerNavigationItems];
+  }
+  return learnerNavigationItems;
 }
 
 function renderWithBreadcrumbs(page: ReactNode, items: BreadcrumbItem[]) {
@@ -330,14 +350,31 @@ function LearnerCourseDetailRoute() {
   return <LearnerCourseDetailPage courseId={courseId} />;
 }
 
+
+function ManagerLayoutRoute() {
+  return <Outlet />;
+}
+
+function ManagerDashboardRoute() {
+  return <ManagerDashboardPage />;
+}
+
+function ManagerTeamRoute() {
+  return <ManagerTeamPage />;
+}
+
 export function App() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
 
   return (
     <ProtectedRoute
-      protectedPathPrefixes={['/learn', '/admin']}
-      canAccess={(user) => !pathname.startsWith('/admin') || user.roles.some(isAdminNavigationRole)}
+      protectedPathPrefixes={['/learn', '/admin', '/manager']}
+      canAccess={(user) => {
+        if (pathname.startsWith('/admin')) return user.roles.some(isAdminNavigationRole);
+        if (pathname.startsWith('/manager')) return user.roles.includes('manager');
+        return true;
+      }}
     >
       <Suspense fallback={null}>
         <Routes>
@@ -355,6 +392,12 @@ export function App() {
           <Route path="/admin/assessments" element={<AdminAssessmentsRoute />} />
           <Route path="/admin/assignments" element={<AdminAssignmentsRoute />} />
           <Route path="/admin/results" element={<AdminResultsRoute />} />
+
+          <Route path="/manager" element={<ManagerLayoutRoute />}>
+            <Route index element={<Navigate replace to="/manager/dashboard" />} />
+            <Route path="dashboard" element={<ManagerDashboardRoute />} />
+            <Route path="team" element={<ManagerTeamRoute />} />
+          </Route>
 
           <Route element={<LearnerLayoutRoute />}>
             <Route path="/learn" element={<LearnerHomeRoute />} />

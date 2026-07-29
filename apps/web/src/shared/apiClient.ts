@@ -182,6 +182,8 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 export type {
+  MembershipSummary,
+  UserSummary,
   AssessmentAttemptResult,
   AssessmentSummary,
   AssignmentSummary,
@@ -209,3 +211,5 @@ export { getAssignment, getAssignmentPath, listAssignments } from './api/assignm
 export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments } from './api/assessments.js';
 export { getCertificate, getCertificatePath, issueCertificate, listCertificates } from './api/certificates.js';
 export { getOrganization } from './api/organizations.js';
+export { listMemberships } from './api/memberships.js';
+export { listUsers } from './api/users.js';
