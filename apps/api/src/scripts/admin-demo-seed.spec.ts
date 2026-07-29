@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 
-import { parseAdminDemoSeedArgs } from './admin-demo-seed.js';
+import { parseAdminDemoSeedArgs } from './admin-demo-seed';
 
 describe('parseAdminDemoSeedArgs', () => {
   it('uses check mode by default', () => {
