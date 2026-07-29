@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
+import { afterAll, beforeAll, describe, expect, it } from '@jest/globals';
 
 import type { PrismaService } from '../database/prisma.service.js';
 
@@ -20,6 +21,10 @@ type ApiEnvelope<T extends object> = T | { data: T };
 
 function unwrapResponse<T extends object>(body: ApiEnvelope<T>): T {
   return 'data' in body ? body.data : body;
+}
+
+async function readJson<T extends object>(response: Response): Promise<ApiEnvelope<T>> {
+  return (await response.json()) as ApiEnvelope<T>;
 }
 
 function assertSafeTestDatabase(databaseUrl: string | undefined): string {
@@ -114,7 +119,7 @@ describe('API database smoke', () => {
   it('serves health, authenticates a real user, and returns the current user', async () => {
     const healthResponse = await fetch(`${baseUrl}/api/v1/health`);
     expect(healthResponse.status).toBe(200);
-    expect(unwrapResponse(await healthResponse.json())).toEqual({
+    expect(unwrapResponse(await readJson<{ status: string; db: string }>(healthResponse))).toEqual({
       status: 'ok',
       db: 'ok',
     });
@@ -126,11 +131,12 @@ describe('API database smoke', () => {
         organizationId,
         email: userEmail,
         password: TEST_PASSWORD,
+
       }),
     });
 
     expect([200, 201]).toContain(loginResponse.status);
-    const login = unwrapResponse<LoginResponse>(await loginResponse.json());
+    const login = unwrapResponse(await readJson<LoginResponse>(loginResponse));
     expect(login.accessToken).toEqual(expect.any(String));
     expect(login.user.roles).toContain('admin');
 
@@ -139,7 +145,7 @@ describe('API database smoke', () => {
     });
 
     expect(currentUserResponse.status).toBe(200);
-    const currentUser = unwrapResponse<LoginResponse['user']>(await currentUserResponse.json());
+    const currentUser = unwrapResponse(await readJson<LoginResponse['user']>(currentUserResponse));
     expect(currentUser.email).toBe(login.user.email);
     expect(currentUser.roles).toContain('admin');
   });
