@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ProtectedRoute } from './ProtectedRoute.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
-import { getCurrentUser, type CurrentUser, type UserRole } from '../shared/apiClient.js';
+import { getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
 import { LearnerPageLayout } from '../shared/learnerLayout.js';
 
 // Lazy-loaded page chunks — each route loads its own JS chunk on first visit
@@ -98,6 +98,19 @@ const ManagerTeamPage = lazy(() =>
   import('./ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })),
 );
 
+const InstructorDashboardPage = lazy(() =>
+  import('./InstructorDashboardPage.js').then((m) => ({ default: m.InstructorDashboardPage })),
+);
+const InstructorCoursesPage = lazy(() =>
+  import('./InstructorCoursesPage.js').then((m) => ({ default: m.InstructorCoursesPage })),
+);
+const InstructorCourseFormPage = lazy(() =>
+  import('./InstructorCourseFormPage.js').then((m) => ({ default: m.InstructorCourseFormPage })),
+);
+const InstructorCourseStudentsPage = lazy(() =>
+  import('./InstructorCourseStudentsPage.js').then((m) => ({ default: m.InstructorCourseStudentsPage })),
+);
+
 type RootNavigationItem = {
   labelKey: string;
   fallbackLabel?: string;
@@ -126,17 +139,22 @@ const managerNavigationItem: RootNavigationItem = {
   href: '/manager',
 };
 
-function isAdminNavigationRole(role: UserRole) {
-  return role === 'admin' || role === 'manager' || role === 'instructor';
-}
+const instructorNavigationItem: RootNavigationItem = {
+  labelKey: 'instructor.navLink',
+  fallbackLabel: 'Instructor',
+  href: '/instructor',
+};
 
 export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null): RootNavigationItem[] {
   if (!user) {
     return [{ labelKey: 'login.navLink', href: '/login' }];
   }
 
-  if (user.roles.includes('admin') || user.roles.includes('instructor')) {
+  if (user.roles.includes('admin')) {
     return [adminNavigationItem, ...learnerNavigationItems];
+  }
+  if (user.roles.includes('instructor')) {
+    return [instructorNavigationItem, ...learnerNavigationItems];
   }
   if (user.roles.includes('manager')) {
     return [managerNavigationItem, ...learnerNavigationItems];
@@ -363,16 +381,45 @@ function ManagerTeamRoute() {
   return <ManagerTeamPage />;
 }
 
+function InstructorLayoutRoute() {
+  return <Outlet />;
+}
+
+function InstructorDashboardRoute() {
+  return <InstructorDashboardPage />;
+}
+
+function InstructorCoursesRoute() {
+  return <InstructorCoursesPage />;
+}
+
+function InstructorCourseCreateRoute() {
+  return <InstructorCourseFormPage mode="create" />;
+}
+
+function InstructorCourseEditRoute() {
+  const { courseId } = useParams<{ courseId: string }>();
+  if (!courseId) return <NotFoundPage />;
+  return <InstructorCourseFormPage mode="edit" courseId={courseId} />;
+}
+
+function InstructorCourseStudentsRoute() {
+  const { courseId } = useParams<{ courseId: string }>();
+  if (!courseId) return <NotFoundPage />;
+  return <InstructorCourseStudentsPage courseId={courseId} />;
+}
+
 export function App() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
 
   return (
     <ProtectedRoute
-      protectedPathPrefixes={['/learn', '/admin', '/manager']}
+      protectedPathPrefixes={['/learn', '/admin', '/manager', '/instructor']}
       canAccess={(user) => {
-        if (pathname.startsWith('/admin')) return user.roles.some(isAdminNavigationRole);
+        if (pathname.startsWith('/admin')) return user.roles.includes('admin') || user.roles.includes('manager');
         if (pathname.startsWith('/manager')) return user.roles.includes('manager');
+        if (pathname.startsWith('/instructor')) return user.roles.includes('instructor');
         return true;
       }}
     >
@@ -397,6 +444,15 @@ export function App() {
             <Route index element={<Navigate replace to="/manager/dashboard" />} />
             <Route path="dashboard" element={<ManagerDashboardRoute />} />
             <Route path="team" element={<ManagerTeamRoute />} />
+          </Route>
+
+          <Route path="/instructor" element={<InstructorLayoutRoute />}>
+            <Route index element={<Navigate replace to="/instructor/dashboard" />} />
+            <Route path="dashboard" element={<InstructorDashboardRoute />} />
+            <Route path="courses" element={<InstructorCoursesRoute />} />
+            <Route path="courses/new" element={<InstructorCourseCreateRoute />} />
+            <Route path="courses/:courseId/edit" element={<InstructorCourseEditRoute />} />
+            <Route path="courses/:courseId/students" element={<InstructorCourseStudentsRoute />} />
           </Route>
 
           <Route element={<LearnerLayoutRoute />}>
