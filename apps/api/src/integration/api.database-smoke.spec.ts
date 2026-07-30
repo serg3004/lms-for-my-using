@@ -5,10 +5,10 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 
 import type { PrismaService } from '../database/prisma.service.js';
+import { assertSafeTestDatabase } from './database-test-safety.js';
 
 const TEST_JWT_SECRET = 'database-smoke-jwt-secret-32-characters';
 const TEST_PASSWORD = 'DatabaseSmoke1!';
-const TEST_DATABASE_MARKER = 'test';
 
 type LoginResponse = {
   accessToken: string;
@@ -28,21 +28,6 @@ async function readJson<T extends object>(response: Response): Promise<ApiEnvelo
   return (await response.json()) as ApiEnvelope<T>;
 }
 
-function assertSafeTestDatabase(databaseUrl: string | undefined): string {
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required for the database smoke test');
-  }
-
-  const parsedUrl = new URL(databaseUrl);
-  const databaseName = decodeURIComponent(parsedUrl.pathname.replace(/^\//, ''));
-
-  if (!databaseName.toLowerCase().includes(TEST_DATABASE_MARKER)) {
-    throw new Error('Database smoke test requires a database name containing "test"');
-  }
-
-  return databaseUrl;
-}
-
 describe('API database smoke', () => {
   let app: INestApplication;
   let baseUrl: string;
@@ -52,7 +37,9 @@ describe('API database smoke', () => {
   let userEmail: string;
 
   beforeAll(async () => {
-    assertSafeTestDatabase(process.env.DATABASE_URL);
+    assertSafeTestDatabase(process.env.DATABASE_URL, {
+      allowExternalHost: process.env.ALLOW_EXTERNAL_TEST_DATABASE === 'true',
+    });
 
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? TEST_JWT_SECRET;

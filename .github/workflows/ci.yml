@@ -23,6 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -62,6 +80,12 @@ jobs:
 
       - name: Tests
         run: pnpm --recursive test:coverage
+
+      - name: Apply database migrations
+        run: pnpm --filter @lms/api prisma:migrate:deploy
+
+      - name: Run API database integration tests
+        run: pnpm --filter @lms/api test:integration:db
 
       - name: Build
         run: pnpm --recursive build

@@ -14,6 +14,7 @@ module.exports = {
     '^\\./auth\\.tokens\\.js$': '<rootDir>/src/modules/auth/auth.tokens.ts',
     '^\\./auth\\.refresh-tokens\\.js$': '<rootDir>/src/modules/auth/auth.refresh-tokens.ts',
     '^\\./auth\\.session-store\\.js$': '<rootDir>/src/modules/auth/auth.session-store.ts',
+    '^\\./database-test-safety\\.js$': '<rootDir>/src/integration/database-test-safety.ts',
     '^\\./passwords\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\.\\./auth/passwords\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\./organization-scope\\.js$': '<rootDir>/src/modules/auth/organization-scope.ts',
@@ -65,8 +66,10 @@ module.exports = {
     '^\\./constants/roles\\.js$': '<rootDir>/../../packages/shared/src/constants/roles.ts',
     '^\\./schemas/pagination\\.schema\\.js$': '<rootDir>/../../packages/shared/src/schemas/pagination.schema.ts',
     '^\\./types/api\\.js$': '<rootDir>/../../packages/shared/src/types/api.ts',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   roots: ['<rootDir>/src'],
+  testPathIgnorePatterns: ['/src/integration/api\\.database-smoke\\.spec\\.ts$'],
   testEnvironment: 'node',
   collectCoverageFrom: [
     'src/**/*.ts',
