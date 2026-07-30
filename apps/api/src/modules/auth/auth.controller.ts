@@ -12,6 +12,7 @@ import {
 } from './auth.cookies.js';
 import { AuthSessionStore } from './auth.session-store.js';
 import { AuthService } from './auth.service.js';
+import { AuthenticatedAccess, PublicAccess } from './roles.js';
 import {
   LoginInput,
   loginSchema,
@@ -32,6 +33,7 @@ export class AuthController {
    ) {}
 
   @Post('login')
+  @PublicAccess()
   async login(@Body() body: unknown, @Res({ passthrough: true }) response: AuthCookieResponse) {
     const input: LoginInput = loginSchema.parse(body);
     const result = await this.authService.login(input);
@@ -48,6 +50,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @PublicAccess()
   async refresh(@Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
     const refreshToken = resolveRefreshToken(request.headers);
 
@@ -71,6 +74,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @AuthenticatedAccess()
   async logout(@Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
     const accessToken = resolveAccessToken(request.headers);
 
@@ -81,6 +85,7 @@ export class AuthController {
   }
 
   @Post('logout-all')
+  @AuthenticatedAccess()
   async logoutAll(
     @Req() request: AuthRequest,
     @Res({ passthrough: true }) response: AuthCookieResponse,
@@ -104,6 +109,7 @@ export class AuthController {
   }
 
   @Post('password-reset/request')
+  @PublicAccess()
   requestPasswordReset(@Body() body: unknown) {
     passwordResetRequestSchema.parse(body);
 
@@ -111,6 +117,7 @@ export class AuthController {
   }
 
   @Post('password-reset/confirm')
+  @PublicAccess()
   confirmPasswordReset(@Body() body: unknown) {
     passwordResetConfirmSchema.parse(body);
 
@@ -118,6 +125,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @AuthenticatedAccess()
   getCurrentUser(@Req() request: AuthRequest) {
     const accessToken = resolveAccessToken(request.headers);
 

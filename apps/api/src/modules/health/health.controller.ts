@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { PublicAccess } from '../auth/roles.js';
 
 type HealthOkResponse = {
   status: 'ok';
@@ -19,6 +20,7 @@ export class HealthController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
+  @PublicAccess()
   @HttpCode(HttpStatus.OK)
   async getHealth(): Promise<HealthOkResponse> {
     try {
