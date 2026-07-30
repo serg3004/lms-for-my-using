@@ -2158,87 +2158,762 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза A — Доказательство безопасности текущей реализации
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 173 — Real PostgreSQL integration environment** | Database smoke существует, но нет гарантированно изолированного воспроизводимого окружения. | Добавить test-only PostgreSQL service/Compose; применять миграции к пустой БД; запускать smoke; проверять безопасный test URL; уничтожать окружение. | Smoke проходит на чистой БД и повторно; production/staging URL отклоняется; миграции применяются; Prisma закрывает соединения; exit code 0. |
-| **PR 174 — Atomic refresh rotation: real DB concurrency** | Unit-тест не доказывает атомарность refresh rotation при реальных конкурентных транзакциях. | Одновременно отправлять два refresh-запроса с одной cookie; проверить reuse, expired/revoked session, logout-all и сбой rotation. | Ровно один запрос получает 200, второй 401; старый token не используется; остаётся одна новая сессия; нет необработанной Prisma-ошибки; серия из 20 повторений стабильна. |
-| **PR 175 — Централизованная RBAC-матрица API** | Frontend разделяет роли, но не доказывает server-side authorization каждого endpoint. | Создать машинно-проверяемую матрицу learner/manager/instructor/admin; централизовать policies; проверить каждый controller method. | Каждый endpoint имеет policy; для каждой роли есть positive/negative test; endpoint без policy обнаруживает CI; docs и код синхронизированы. |
-| **PR 176 — Instructor course ownership** | Роль instructor сама по себе может дать доступ ко всем курсам организации. | Определить instructor→course relation; создать CourseAccessPolicy; применить ownership check ко всем instructor reads/mutations. | Instructor работает только с назначенными курсами; чужой курс даёт 403/404; admin сохраняет полный доступ; migration, seed и integration tests готовы. |
-| **PR 177 — Manager team scope** | Не определена формальная область команды manager. | Определить manager→group/team relation; централизовать ManagerTeamScope; ограничить users, assignments, progress, results и reports. | Manager видит только свою команду; cross-team/cross-tenant доступ запрещён; несколько групп корректны; admin видит всю организацию; тесты готовы. |
-| **PR 178 — Cross-tenant IDOR audit** | Подмена UUID может открыть ресурс другой организации, даже при наличии organization guard. | Аудировать GET/PATCH/DELETE и вложенные routes; добавлять `organizationId` в lookup; проверять принадлежность связанных UUID. | Организация A не читает/изменяет B; подмена course/lesson/user/attempt/certificate ID не работает; связи разных tenants не создаются; тесты есть для каждого ресурса. |
+## PR 173 — Real PostgreSQL integration environment 🔲
+
+**Проблема:** Database smoke существует, но нет гарантированно изолированного воспроизводимого окружения.
+
+**Что делаем:**
+- Добавить test-only PostgreSQL service/Compose
+- Применять миграции к пустой БД
+- Запускать smoke
+- Проверять безопасный test URL
+- Уничтожать окружение.
+
+**Критерии готовности:**
+- Smoke проходит на чистой БД и повторно
+- Production/staging URL отклоняется
+- Миграции применяются
+- Prisma закрывает соединения
+- Exit code 0.
+
+---
+
+## PR 174 — Atomic refresh rotation: real DB concurrency 🔲
+
+**Проблема:** Unit-тест не доказывает атомарность refresh rotation при реальных конкурентных транзакциях.
+
+**Что делаем:**
+- Одновременно отправлять два refresh-запроса с одной cookie
+- Проверить reuse, expired/revoked session, logout-all и сбой rotation.
+
+**Критерии готовности:**
+- Ровно один запрос получает 200, второй 401
+- Старый token не используется
+- Остаётся одна новая сессия
+- Нет необработанной Prisma-ошибки
+- Серия из 20 повторений стабильна.
+
+---
+
+## PR 175 — Централизованная RBAC-матрица API 🔲
+
+**Проблема:** Frontend разделяет роли, но не доказывает server-side authorization каждого endpoint.
+
+**Что делаем:**
+- Создать машинно-проверяемую матрицу learner/manager/instructor/admin
+- Централизовать policies
+- Проверить каждый controller method.
+
+**Критерии готовности:**
+- Каждый endpoint имеет policy
+- Для каждой роли есть positive/negative test
+- Endpoint без policy обнаруживает CI
+- Docs и код синхронизированы.
+
+---
+
+## PR 176 — Instructor course ownership 🔲
+
+**Проблема:** Роль instructor сама по себе может дать доступ ко всем курсам организации.
+
+**Что делаем:**
+- Определить instructor→course relation
+- Создать CourseAccessPolicy
+- Применить ownership check ко всем instructor reads/mutations.
+
+**Критерии готовности:**
+- Instructor работает только с назначенными курсами
+- Чужой курс даёт 403/404
+- Admin сохраняет полный доступ
+- Migration, seed и integration tests готовы.
+
+---
+
+## PR 177 — Manager team scope 🔲
+
+**Проблема:** Не определена формальная область команды manager.
+
+**Что делаем:**
+- Определить manager→group/team relation
+- Централизовать ManagerTeamScope
+- Ограничить users, assignments, progress, results и reports.
+
+**Критерии готовности:**
+- Manager видит только свою команду
+- Cross-team/cross-tenant доступ запрещён
+- Несколько групп корректны
+- Admin видит всю организацию
+- Тесты готовы.
+
+---
+
+## PR 178 — Cross-tenant IDOR audit 🔲
+
+**Проблема:** Подмена UUID может открыть ресурс другой организации, даже при наличии organization guard.
+
+**Что делаем:**
+- Аудировать GET/PATCH/DELETE и вложенные routes
+- Добавлять `organizationId` в lookup
+- Проверять принадлежность связанных UUID.
+
+**Критерии готовности:**
+- Организация A не читает/изменяет B
+- Подмена course/lesson/user/attempt/certificate ID не работает
+- Связи разных tenants не создаются
+- Тесты есть для каждого ресурса.
+
+---
 
 ## Фаза B — Аутентификация и сетевой периметр
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 179 — Cookie/session integration tests** | Cookie attributes и отсутствие refresh token в HTTP body не проверены end-to-end. | Проверить `Set-Cookie` login/refresh/logout/logout-all: HttpOnly, Secure, SameSite, Path, expiry и очистку. | Refresh token отсутствует в JSON; auth cookies HttpOnly; production cookies Secure; paths корректны; logout удаляет cookies с теми же attributes. |
-| **PR 180 — Trusted proxy и client IP** | Ручное доверие `X-Forwarded-For` позволяет обходить rate limit при неверной proxy-конфигурации. | Настроить trusted proxy hops/CIDR; использовать нормализованный `request.ip`; запретить прямой доступ к API; тестировать spoofed headers. | Недоверенный header не меняет client key; trusted proxy передаёт реальный IP; IPv4/IPv6 и multiple headers протестированы; production proxy policy явная. |
-| **PR 181 — Production Redis rate-limit store** | In-memory limiter не общий между инстансами, сбрасывается и может расти в памяти. | Сделать Redis обязательным в production; атомарный increment+TTL; namespace; graceful shutdown. | Два API-инстанса используют общий лимит; ключи имеют TTL; restart не сбрасывает лимит; production без Redis не стартует без emergency override. |
-| **PR 182 — Многоуровневый anti-bruteforce** | IP-only limit обходится распределённой атакой и плохо работает за NAT. | Добавить лимиты по IP, organization+normalized email и глобальный порог; progressive backoff; одинаковые ответы. | Смена IP не снимает account limit; user enumeration невозможен; NAT не блокирует всех пользователей одним низким порогом; login/reset покрыты тестами. |
-| **PR 183 — Rate-limit failure policy** | При ошибке Redis limiter fail-open пропускает sensitive requests без контроля. | Ввести documented degraded mode, локальный аварийный limiter, метрики, structured logs и alert. | Сбой Redis не отключает защиту незаметно; policy задана для login/reset/register; тест сбоя проходит; после восстановления обычный режим возвращается. |
-| **PR 184 — CSP и HSTS** | Базовые security headers есть, но отсутствует законченная browser/transport policy. | Добавить HSTS на HTTPS ingress; CSP report-only→enforce; ограничить script/connect/img/font/object/base/frame sources. | HTTPS имеет HSTS; HTTP redirect; CSP не требует `unsafe-eval`; frame embedding запрещён; staging-проверка headers автоматизирована. |
+## PR 179 — Cookie/session integration tests 🔲
+
+**Проблема:** Cookie attributes и отсутствие refresh token в HTTP body не проверены end-to-end.
+
+**Что делаем:**
+- Проверить `Set-Cookie` login/refresh/logout/logout-all: HttpOnly, Secure, SameSite, Path, expiry и очистку.
+
+**Критерии готовности:**
+- Refresh token отсутствует в JSON
+- Auth cookies HttpOnly
+- Production cookies Secure
+- Paths корректны
+- Logout удаляет cookies с теми же attributes.
+
+---
+
+## PR 180 — Trusted proxy и client IP 🔲
+
+**Проблема:** Ручное доверие `X-Forwarded-For` позволяет обходить rate limit при неверной proxy-конфигурации.
+
+**Что делаем:**
+- Настроить trusted proxy hops/CIDR
+- Использовать нормализованный `request.ip`
+- Запретить прямой доступ к API
+- Тестировать spoofed headers.
+
+**Критерии готовности:**
+- Недоверенный header не меняет client key
+- Trusted proxy передаёт реальный IP
+- IPv4/IPv6 и multiple headers протестированы
+- Production proxy policy явная.
+
+---
+
+## PR 181 — Production Redis rate-limit store 🔲
+
+**Проблема:** In-memory limiter не общий между инстансами, сбрасывается и может расти в памяти.
+
+**Что делаем:**
+- Сделать Redis обязательным в production
+- Атомарный increment+TTL
+- Namespace
+- Graceful shutdown.
+
+**Критерии готовности:**
+- Два API-инстанса используют общий лимит
+- Ключи имеют TTL
+- Restart не сбрасывает лимит
+- Production без Redis не стартует без emergency override.
+
+---
+
+## PR 182 — Многоуровневый anti-bruteforce 🔲
+
+**Проблема:** IP-only limit обходится распределённой атакой и плохо работает за NAT.
+
+**Что делаем:**
+- Добавить лимиты по IP, organization+normalized email и глобальный порог
+- Progressive backoff
+- Одинаковые ответы.
+
+**Критерии готовности:**
+- Смена IP не снимает account limit
+- User enumeration невозможен
+- NAT не блокирует всех пользователей одним низким порогом
+- Login/reset покрыты тестами.
+
+---
+
+## PR 183 — Rate-limit failure policy 🔲
+
+**Проблема:** При ошибке Redis limiter fail-open пропускает sensitive requests без контроля.
+
+**Что делаем:**
+- Ввести documented degraded mode, локальный аварийный limiter, метрики, structured logs и alert.
+
+**Критерии готовности:**
+- Сбой Redis не отключает защиту незаметно
+- Policy задана для login/reset/register
+- Тест сбоя проходит
+- После восстановления обычный режим возвращается.
+
+---
+
+## PR 184 — CSP и HSTS 🔲
+
+**Проблема:** Базовые security headers есть, но отсутствует законченная browser/transport policy.
+
+**Что делаем:**
+- Добавить HSTS на HTTPS ingress
+- CSP report-only→enforce
+- Ограничить script/connect/img/font/object/base/frame sources.
+
+**Критерии готовности:**
+- HTTPS имеет HSTS
+- HTTP redirect
+- CSP не требует `unsafe-eval`
+- Frame embedding запрещён
+- Staging-проверка headers автоматизирована.
+
+---
 
 ## Фаза C — Upload и файловое хранилище
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 185 — Tenant-aware object storage** | S3 keys не содержат tenant identity, временный URL смешан с идентификатором объекта. | Использовать `organizations/{organizationId}/materials/{materialId}/{uuid}`; хранить object key; выдавать presigned URL после authorization. | Каждый key tenant-scoped; cross-tenant download невозможен; URL не хранится как постоянный ID; delete/legacy plan реализованы. |
-| **PR 186 — Quarantine и malware scanning** | Magic bytes и ZIP safety не обнаруживают malware в валидном файле. | Quarantine prefix/bucket; async scan; статусы pending/scanning/available/rejected; запрет download до scan. | Файл недоступен до clean verdict; infected блокируется; failure/timeout обработаны; callbacks идемпотентны; переходы покрыты тестами. |
-| **PR 187 — Безопасная раздача и lifecycle** | Нет полной политики Content-Disposition, retention и orphan cleanup. | Отдельный file origin; безопасные headers; короткий presigned TTL; delete workflow; retention и cleanup job. | HTML/SVG не исполняется в app origin; revoked material не получает URL; cleanup имеет dry-run; удаление идемпотентно и аудируется. |
-| **PR 188 — Multipart upload больших файлов** | Multer memory storage держит каждый файл целиком в памяти API. | Добавить tenant-bound presigned multipart upload, completion endpoint и cleanup незавершённых upload. | API не буферизует большой файл; completion идемпотентен; чужой upload подтвердить нельзя; progress работает; S3 integration tests проходят. |
+## PR 185 — Tenant-aware object storage 🔲
+
+**Проблема:** S3 keys не содержат tenant identity, временный URL смешан с идентификатором объекта.
+
+**Что делаем:**
+- Использовать `organizations/{organizationId}/materials/{materialId}/{uuid}`
+- Хранить object key
+- Выдавать presigned URL после authorization.
+
+**Критерии готовности:**
+- Каждый key tenant-scoped
+- Cross-tenant download невозможен
+- URL не хранится как постоянный ID
+- Delete/legacy plan реализованы.
+
+---
+
+## PR 186 — Quarantine и malware scanning 🔲
+
+**Проблема:** Magic bytes и ZIP safety не обнаруживают malware в валидном файле.
+
+**Что делаем:**
+- Quarantine prefix/bucket
+- Async scan
+- Статусы pending/scanning/available/rejected
+- Запрет download до scan.
+
+**Критерии готовности:**
+- Файл недоступен до clean verdict
+- Infected блокируется
+- Failure/timeout обработаны
+- Callbacks идемпотентны
+- Переходы покрыты тестами.
+
+---
+
+## PR 187 — Безопасная раздача и lifecycle 🔲
+
+**Проблема:** Нет полной политики Content-Disposition, retention и orphan cleanup.
+
+**Что делаем:**
+- Отдельный file origin
+- Безопасные headers
+- Короткий presigned TTL
+- Delete workflow
+- Retention и cleanup job.
+
+**Критерии готовности:**
+- HTML/SVG не исполняется в app origin
+- Revoked material не получает URL
+- Cleanup имеет dry-run
+- Удаление идемпотентно и аудируется.
+
+---
+
+## PR 188 — Multipart upload больших файлов 🔲
+
+**Проблема:** Multer memory storage держит каждый файл целиком в памяти API.
+
+**Что делаем:**
+- Добавить tenant-bound presigned multipart upload, completion endpoint и cleanup незавершённых upload.
+
+**Критерии готовности:**
+- API не буферизует большой файл
+- Completion идемпотентен
+- Чужой upload подтвердить нельзя
+- Progress работает
+- S3 integration tests проходят.
+
+---
 
 ## Фаза D — Staging и production readiness
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 189 — Authenticated staging smoke** | Текущий smoke проверяет только health/web/proxy. | Добавить login, `/auth/me`, refresh, CSRF mutation и logout; credentials только из CI secrets. | Smoke проходит на staging; tokens не логируются; cookie jar удаляется; ошибка даёт non-zero exit; постоянные данные не меняются или очищаются. |
-| **PR 190 — Role-based staging smoke** | Deployment не проверяется по ролям. | Для admin/manager/instructor/learner выполнить login, минимальный read flow и отрицательные запросы к чужим workspace/API. | Каждая роль попадает в правильный workspace; forbidden API реально запрещён; team/course scope соблюдён; secrets только в CI. |
-| **PR 191 — Readiness и dependency health** | Liveness не доказывает готовность PostgreSQL/Redis/S3; security scans не являются обязательным gate. | Разделить liveness/readiness; добавить dependency, secret, SAST и container scans. | Readiness исключает нездоровый instance; liveness не зависит от краткого внешнего сбоя; high/critical findings блокируют merge; waivers имеют owner/expiry. |
-| **PR 192 — Безопасный demo seed task** | Ошибочный production DATABASE_URL может направить demo seed не туда. | Production deny-by-default; dry-run; безопасный target summary; environment/database confirmation; transaction. | Без флагов нет изменений; production отклоняется; secrets не логируются; повторный запуск идемпотентен; partial failure откатывается. |
+## PR 189 — Authenticated staging smoke 🔲
+
+**Проблема:** Текущий smoke проверяет только health/web/proxy.
+
+**Что делаем:**
+- Добавить login, `/auth/me`, refresh, CSRF mutation и logout
+- Credentials только из CI secrets.
+
+**Критерии готовности:**
+- Smoke проходит на staging
+- Tokens не логируются
+- Cookie jar удаляется
+- Ошибка даёт non-zero exit
+- Постоянные данные не меняются или очищаются.
+
+---
+
+## PR 190 — Role-based staging smoke 🔲
+
+**Проблема:** Deployment не проверяется по ролям.
+
+**Что делаем:**
+- Для admin/manager/instructor/learner выполнить login, минимальный read flow и отрицательные запросы к чужим workspace/API.
+
+**Критерии готовности:**
+- Каждая роль попадает в правильный workspace
+- Forbidden API реально запрещён
+- Team/course scope соблюдён
+- Secrets только в CI.
+
+---
+
+## PR 191 — Readiness и dependency health 🔲
+
+**Проблема:** Liveness не доказывает готовность PostgreSQL/Redis/S3; security scans не являются обязательным gate.
+
+**Что делаем:**
+- Разделить liveness/readiness
+- Добавить dependency, secret, SAST и container scans.
+
+**Критерии готовности:**
+- Readiness исключает нездоровый instance
+- Liveness не зависит от краткого внешнего сбоя
+- High/critical findings блокируют merge
+- Waivers имеют owner/expiry.
+
+---
+
+## PR 192 — Безопасный demo seed task 🔲
+
+**Проблема:** Ошибочный production DATABASE_URL может направить demo seed не туда.
+
+**Что делаем:**
+- Production deny-by-default
+- Dry-run
+- Безопасный target summary
+- Environment/database confirmation
+- Transaction.
+
+**Критерии готовности:**
+- Без флагов нет изменений
+- Production отклоняется
+- Secrets не логируются
+- Повторный запуск идемпотентен
+- Partial failure откатывается.
+
+---
 
 ## Фаза E — Browser E2E, адаптивность и accessibility
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 193 — Browser E2E foundation** | Unit/render tests не проверяют cookies, browser navigation, proxy и history. | Подключить Playwright/эквивалент; isolated users/data; trace/screenshot/video при ошибке. | E2E запускаются локально и в CI; независимы от порядка; артефакты безопасны; flaky tests не скрываются retries. |
-| **PR 194 — Login и role redirect E2E** | Role-based redirect не проверен реальным браузером. | E2E для четырёх ролей, гостя, forbidden workspace, expired access и refresh. | Admin→`/admin`, manager→manager, instructor→instructor, learner→`/learn`; нет redirect loop; forbidden contract соблюдён. |
-| **PR 195 — Manager workspace E2E** | Manager smoke не проверяет реальный API и scope. | Проверить dashboard, team, loading/error/empty states и запрет чужого пользователя. | Реальные агрегаты корректны; видна только команда; прямой URL чужого user недоступен; desktop/mobile screenshots приложены. |
-| **PR 196 — Instructor workspace E2E** | Course CRUD и ownership instructor не проверены end-to-end. | Dashboard→list→create→edit→students; validation, duplicate slug, API errors и чужой курс. | Разрешённый курс изменяется и сохраняется; чужой недоступен через UI/API; progress корректен; test data очищаются. |
-| **PR 197 — Responsive visual matrix** | Media queries не доказывают корректный вид на устройствах. | Screenshot tests на 320/375/768/1024/1280/1440; исправить overflow, tables, dialogs, forms и navigation. | Нет page overflow на 320px; touch target ≥44px; dialogs помещаются; zoom 200% работает; baselines проверяются CI. |
-| **PR 198 — Accessibility baseline** | Нет автоматизированного browser accessibility audit. | Интегрировать axe; проверить landmarks, headings, labels, keyboard, focus, dialogs, status/error announcements, contrast и i18n системных сообщений. | Нет critical/serious axe violations; все функции доступны клавиатурой; focus корректен; WCAG AA contrast; exceptions документированы. |
+## PR 193 — Browser E2E foundation 🔲
+
+**Проблема:** Unit/render tests не проверяют cookies, browser navigation, proxy и history.
+
+**Что делаем:**
+- Подключить Playwright/эквивалент
+- Isolated users/data
+- Trace/screenshot/video при ошибке.
+
+**Критерии готовности:**
+- E2E запускаются локально и в CI
+- Независимы от порядка
+- Артефакты безопасны
+- Flaky tests не скрываются retries.
+
+---
+
+## PR 194 — Login и role redirect E2E 🔲
+
+**Проблема:** Role-based redirect не проверен реальным браузером.
+
+**Что делаем:**
+- E2E для четырёх ролей, гостя, forbidden workspace, expired access и refresh.
+
+**Критерии готовности:**
+- Admin→`/admin`, manager→manager, instructor→instructor, learner→`/learn`
+- Нет redirect loop
+- Forbidden contract соблюдён.
+
+---
+
+## PR 195 — Manager workspace E2E 🔲
+
+**Проблема:** Manager smoke не проверяет реальный API и scope.
+
+**Что делаем:**
+- Проверить dashboard, team, loading/error/empty states и запрет чужого пользователя.
+
+**Критерии готовности:**
+- Реальные агрегаты корректны
+- Видна только команда
+- Прямой URL чужого user недоступен
+- Desktop/mobile screenshots приложены.
+
+---
+
+## PR 196 — Instructor workspace E2E 🔲
+
+**Проблема:** Course CRUD и ownership instructor не проверены end-to-end.
+
+**Что делаем:**
+- Dashboard→list→create→edit→students
+- Validation, duplicate slug, API errors и чужой курс.
+
+**Критерии готовности:**
+- Разрешённый курс изменяется и сохраняется
+- Чужой недоступен через UI/API
+- Progress корректен
+- Test data очищаются.
+
+---
+
+## PR 197 — Responsive visual matrix 🔲
+
+**Проблема:** Media queries не доказывают корректный вид на устройствах.
+
+**Что делаем:**
+- Screenshot tests на 320/375/768/1024/1280/1440
+- Исправить overflow, tables, dialogs, forms и navigation.
+
+**Критерии готовности:**
+- Нет page overflow на 320px
+- Touch target ≥44px
+- Dialogs помещаются
+- Zoom 200% работает
+- Baselines проверяются CI.
+
+---
+
+## PR 198 — Accessibility baseline 🔲
+
+**Проблема:** Нет автоматизированного browser accessibility audit.
+
+**Что делаем:**
+- Интегрировать axe
+- Проверить landmarks, headings, labels, keyboard, focus, dialogs, status/error announcements, contrast и i18n системных сообщений.
+
+**Критерии готовности:**
+- Нет critical/serious axe violations
+- Все функции доступны клавиатурой
+- Focus корректен
+- WCAG AA contrast
+- Exceptions документированы.
+
+---
 
 ## Фаза F — Frontend-поддерживаемость
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 199 — Разделение route architecture** | `App.tsx` смешивает lazy imports, navigation, auth, breadcrumbs и routes. | Вынести admin/manager/instructor/learner route modules, navigation policy и error boundaries. | `App.tsx` только композирует; URLs не меняются; lazy chunks сохраняются; role helpers протестированы; E2E зелёные. |
-| **PR 200 — Декомпозиция assessment builder** | Крупная страница смешивает state, validation, API и presentation. | Выделить reducer/model, hooks, question/options editors, settings form и mappers. | Поведение не меняется; domain helpers протестированы; page component существенно меньше; assessment E2E проходит. |
-| **PR 201 — Декомпозиция materials/course builder** | Крупные компоненты усложняют новый upload pipeline. | Выделить form model, upload state machine, material table, metadata form и mutation hooks. | Progress/error/retry корректны; validation отдельно тестируется; UI/routes сохранены; E2E проходит. |
-| **PR 202 — Декомпозиция admin users** | List, form, password state, validation и mutations смешаны. | Выделить table/filters/dialog/form/schema/hooks; безопасно очищать password state. | Password очищается после submit/error/close; duplicate email понятен; dialog доступен; CRUD E2E проходит. |
-| **PR 203 — CSS architecture и Stylelint** | Большие глобальные CSS создают конфликты и усложняют удаление правил. | Ввести cascade layers, tokens, layout/component/feature styles, Stylelint и specificity rules. | Visual regression стабилен; Stylelint зелёный; tokens не дублируются; import order не влияет на компоненты; bundle контролируется. |
-| **PR 204 — Frontend coverage roadmap** | Threshold около 25% недостаточен для role-based LMS. | Покрыть role helpers, redirects, forms, errors, assessment logic и расчёты; повышать threshold 40→50→65%. | Первый этап ≥40%; новые domain modules ≥80%; business files не исключены; CI ловит регрессию. |
-| **PR 205 — Shared package tests/contracts** | Shared test проходит с `--passWithNoTests`, contracts не имеют собственных проверок. | Тесты pagination, roles, locales, API error и DTO; переносить runtime schemas только с ясным ownership. | Shared выполняет реальные тесты; roles синхронны; breaking contracts обнаруживаются; циклических зависимостей нет. |
-| **PR 206 — ESM/test configuration cleanup** | ts-jest и ESLint выводят module warnings, diagnostics частично отключены. | Согласовать `tsconfig.test`, ESM/Jest, `isolatedModules`; включить diagnostics; исправить ESLint module type. | Lint/test без module warnings; diagnostics включены; mapper hacks не растут; build/runtime остаются ESM-compatible. |
+## PR 199 — Разделение route architecture 🔲
+
+**Проблема:** `App.tsx` смешивает lazy imports, navigation, auth, breadcrumbs и routes.
+
+**Что делаем:**
+- Вынести admin/manager/instructor/learner route modules, navigation policy и error boundaries.
+
+**Критерии готовности:**
+- `App.tsx` только композирует
+- URLs не меняются
+- Lazy chunks сохраняются
+- Role helpers протестированы
+- E2E зелёные.
+
+---
+
+## PR 200 — Декомпозиция assessment builder 🔲
+
+**Проблема:** Крупная страница смешивает state, validation, API и presentation.
+
+**Что делаем:**
+- Выделить reducer/model, hooks, question/options editors, settings form и mappers.
+
+**Критерии готовности:**
+- Поведение не меняется
+- Domain helpers протестированы
+- Page component существенно меньше
+- Assessment E2E проходит.
+
+---
+
+## PR 201 — Декомпозиция materials/course builder 🔲
+
+**Проблема:** Крупные компоненты усложняют новый upload pipeline.
+
+**Что делаем:**
+- Выделить form model, upload state machine, material table, metadata form и mutation hooks.
+
+**Критерии готовности:**
+- Progress/error/retry корректны
+- Validation отдельно тестируется
+- UI/routes сохранены
+- E2E проходит.
+
+---
+
+## PR 202 — Декомпозиция admin users 🔲
+
+**Проблема:** List, form, password state, validation и mutations смешаны.
+
+**Что делаем:**
+- Выделить table/filters/dialog/form/schema/hooks
+- Безопасно очищать password state.
+
+**Критерии готовности:**
+- Password очищается после submit/error/close
+- Duplicate email понятен
+- Dialog доступен
+- CRUD E2E проходит.
+
+---
+
+## PR 203 — CSS architecture и Stylelint 🔲
+
+**Проблема:** Большие глобальные CSS создают конфликты и усложняют удаление правил.
+
+**Что делаем:**
+- Ввести cascade layers, tokens, layout/component/feature styles, Stylelint и specificity rules.
+
+**Критерии готовности:**
+- Visual regression стабилен
+- Stylelint зелёный
+- Tokens не дублируются
+- Import order не влияет на компоненты
+- Bundle контролируется.
+
+---
+
+## PR 204 — Frontend coverage roadmap 🔲
+
+**Проблема:** Threshold около 25% недостаточен для role-based LMS.
+
+**Что делаем:**
+- Покрыть role helpers, redirects, forms, errors, assessment logic и расчёты
+- Повышать threshold 40→50→65%.
+
+**Критерии готовности:**
+- Первый этап ≥40%
+- Новые domain modules ≥80%
+- Business files не исключены
+- CI ловит регрессию.
+
+---
+
+## PR 205 — Shared package tests/contracts 🔲
+
+**Проблема:** Shared test проходит с `--passWithNoTests`, contracts не имеют собственных проверок.
+
+**Что делаем:**
+- Тесты pagination, roles, locales, API error и DTO
+- Переносить runtime schemas только с ясным ownership.
+
+**Критерии готовности:**
+- Shared выполняет реальные тесты
+- Roles синхронны
+- Breaking contracts обнаруживаются
+- Циклических зависимостей нет.
+
+---
+
+## PR 206 — ESM/test configuration cleanup 🔲
+
+**Проблема:** ts-jest и ESLint выводят module warnings, diagnostics частично отключены.
+
+**Что делаем:**
+- Согласовать `tsconfig.test`, ESM/Jest, `isolatedModules`
+- Включить diagnostics
+- Исправить ESLint module type.
+
+**Критерии готовности:**
+- Lint/test без module warnings
+- Diagnostics включены
+- Mapper hacks не растут
+- Build/runtime остаются ESM-compatible.
+
+---
 
 ## Фаза G — Backend-архитектура и производительность
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 207 — Boundaries модульного монолита** | Рост модулей создаёт риск прямых imports internal services и Prisma из controllers. | Определить public API модулей; import-boundary rules; application policies/domain calculations/infrastructure adapters. | Controllers не вызывают Prisma; internal imports запрещены CI; circular dependencies отсутствуют; поведение не изменено. |
-| **PR 208 — Background jobs foundation** | Email, reports, certificates, scanning и cleanup не должны выполняться в HTTP request. | Queue/worker; retries/backoff; idempotency key; dead-letter handling; graceful shutdown. | API быстро ставит job; worker выполняет; retry не дублирует результат; failures наблюдаемы; integration test готов. |
-| **PR 209 — Transactional outbox** | DB commit и публикация job/event могут рассинхронизироваться. | Outbox table; business mutation+event в одной transaction; идемпотентный publisher и cleanup. | Commit гарантирует обработку; rollback не создаёт event; duplicates безопасны; lag измеряется; crash test проходит. |
-| **PR 210 — Pagination/query performance audit** | Неограниченные list queries, offset и неверные индексы ухудшат latency. | Аудит query patterns/`EXPLAIN ANALYZE`; max page size; cursor pagination; отдельные migrations для индексов. | Все lists bounded; нет N+1; p95 укладывается в бюджет; индексы подтверждены plan; migration проверена на realistic dataset. |
-| **PR 211 — Load testing baseline** | Нет измеренных пределов login, refresh, lists, assessment submit и upload. | k6/Artillery smoke/load/stress profiles и реалистичный dataset. | Зафиксированы p50/p95/p99, throughput/error rate; нет leaks; safe concurrency известна; production защищён от случайного запуска. |
+## PR 207 — Boundaries модульного монолита 🔲
+
+**Проблема:** Рост модулей создаёт риск прямых imports internal services и Prisma из controllers.
+
+**Что делаем:**
+- Определить public API модулей
+- Import-boundary rules
+- Application policies/domain calculations/infrastructure adapters.
+
+**Критерии готовности:**
+- Controllers не вызывают Prisma
+- Internal imports запрещены CI
+- Circular dependencies отсутствуют
+- Поведение не изменено.
+
+---
+
+## PR 208 — Background jobs foundation 🔲
+
+**Проблема:** Email, reports, certificates, scanning и cleanup не должны выполняться в HTTP request.
+
+**Что делаем:**
+- Queue/worker
+- Retries/backoff
+- Idempotency key
+- Dead-letter handling
+- Graceful shutdown.
+
+**Критерии готовности:**
+- API быстро ставит job
+- Worker выполняет
+- Retry не дублирует результат
+- Failures наблюдаемы
+- Integration test готов.
+
+---
+
+## PR 209 — Transactional outbox 🔲
+
+**Проблема:** DB commit и публикация job/event могут рассинхронизироваться.
+
+**Что делаем:**
+- Outbox table
+- Business mutation+event в одной transaction
+- Идемпотентный publisher и cleanup.
+
+**Критерии готовности:**
+- Commit гарантирует обработку
+- Rollback не создаёт event
+- Duplicates безопасны
+- Lag измеряется
+- Crash test проходит.
+
+---
+
+## PR 210 — Pagination/query performance audit 🔲
+
+**Проблема:** Неограниченные list queries, offset и неверные индексы ухудшат latency.
+
+**Что делаем:**
+- Аудит query patterns/`EXPLAIN ANALYZE`
+- Max page size
+- Cursor pagination
+- Отдельные migrations для индексов.
+
+**Критерии готовности:**
+- Все lists bounded
+- Нет N+1
+- P95 укладывается в бюджет
+- Индексы подтверждены plan
+- Migration проверена на realistic dataset.
+
+---
+
+## PR 211 — Load testing baseline 🔲
+
+**Проблема:** Нет измеренных пределов login, refresh, lists, assessment submit и upload.
+
+**Что делаем:**
+- K6/Artillery smoke/load/stress profiles и реалистичный dataset.
+
+**Критерии готовности:**
+- Зафиксированы p50/p95/p99, throughput/error rate
+- Нет leaks
+- Safe concurrency известна
+- Production защищён от случайного запуска.
+
+---
 
 ## Фаза H — Наблюдаемость и надёжность
 
-| PR | Проблема | Что делаем | Критерии готовности |
-|---|---|---|---|
-| **PR 212 — Correlation ID и telemetry context** | Нельзя связать frontend error, API request, DB и job. | Генерировать/валидировать request ID; response header; structured logs; прокидывать в jobs; расширить redaction. | Каждый request имеет ID; цепочка находится по ID; password/cookies/auth/tokens redacted; redaction tests проходят. |
-| **PR 213 — Метрики и tracing** | Нет единой картины latency, errors, DB/Redis/S3 и queue. | OpenTelemetry/Prometheus metrics для HTTP, Prisma, Redis, S3 и jobs. | Доступны rate/p95/5xx, pool, Redis errors, limiter rejects, refresh reuse, S3 latency, queue depth; нет PII/high-cardinality labels. |
-| **PR 214 — SLO и alerting** | Нет измеримых целей и критериев инцидента. | SLO для login, learner read и assessment submit; alerts, dashboard и runbook. | SLO измеримы; alert содержит runbook; test alert проверен; owner/escalation/error budget определены. |
-| **PR 215 — Backup/restore и disaster recovery** | Backup не гарантирует восстановление PostgreSQL и S3. | Определить RPO/RTO; encrypted backup; restore drill; проверить согласованность DB/object storage. | Restore реально выполнен; приложение стартует; ключевые записи/объекты доступны; RPO/RTO измерены; runbook готов. |
-| **PR 216 — Incident response** | Нет формальной процедуры при утечке JWT, refresh, DB или S3 credentials. | Runbook: classification, containment, rotation, session revocation, evidence, notification, postmortem; tabletop exercise. | Rotation-процедуры готовы; все sessions можно отозвать; owners и сроки известны; tabletop проведён; secrets в docs отсутствуют. |
+## PR 212 — Correlation ID и telemetry context 🔲
+
+**Проблема:** Нельзя связать frontend error, API request, DB и job.
+
+**Что делаем:**
+- Генерировать/валидировать request ID
+- Response header
+- Structured logs
+- Прокидывать в jobs
+- Расширить redaction.
+
+**Критерии готовности:**
+- Каждый request имеет ID
+- Цепочка находится по ID
+- Password/cookies/auth/tokens redacted
+- Redaction tests проходят.
+
+---
+
+## PR 213 — Метрики и tracing 🔲
+
+**Проблема:** Нет единой картины latency, errors, DB/Redis/S3 и queue.
+
+**Что делаем:**
+- OpenTelemetry/Prometheus metrics для HTTP, Prisma, Redis, S3 и jobs.
+
+**Критерии готовности:**
+- Доступны rate/p95/5xx, pool, Redis errors, limiter rejects, refresh reuse, S3 latency, queue depth
+- Нет PII/high-cardinality labels.
+
+---
+
+## PR 214 — SLO и alerting 🔲
+
+**Проблема:** Нет измеримых целей и критериев инцидента.
+
+**Что делаем:**
+- SLO для login, learner read и assessment submit
+- Alerts, dashboard и runbook.
+
+**Критерии готовности:**
+- SLO измеримы
+- Alert содержит runbook
+- Test alert проверен
+- Owner/escalation/error budget определены.
+
+---
+
+## PR 215 — Backup/restore и disaster recovery 🔲
+
+**Проблема:** Backup не гарантирует восстановление PostgreSQL и S3.
+
+**Что делаем:**
+- Определить RPO/RTO
+- Encrypted backup
+- Restore drill
+- Проверить согласованность DB/object storage.
+
+**Критерии готовности:**
+- Restore реально выполнен
+- Приложение стартует
+- Ключевые записи/объекты доступны
+- RPO/RTO измерены
+- Runbook готов.
+
+---
+
+## PR 216 — Incident response 🔲
+
+**Проблема:** Нет формальной процедуры при утечке JWT, refresh, DB или S3 credentials.
+
+**Что делаем:**
+- Runbook: classification, containment, rotation, session revocation, evidence, notification, postmortem
+- Tabletop exercise.
+
+**Критерии готовности:**
+- Rotation-процедуры готовы
+- Все sessions можно отозвать
+- Owners и сроки известны
+- Tabletop проведён
+- Secrets в docs отсутствуют.
+
+---
 
 ## Граф зависимостей
 
