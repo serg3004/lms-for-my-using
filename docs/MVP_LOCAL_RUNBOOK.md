@@ -245,7 +245,46 @@ Before using the local MVP:
 - `GET /api/v1/auth/me` works after login.
 - Unsafe cookie-auth request with matching CSRF succeeds.
 
-## 13. Troubleshooting
+## 13. Disposable API database integration test
+
+Use the repository-managed disposable database flow when validating Prisma
+migrations and the API against a real PostgreSQL instance:
+
+```bash
+pnpm test:integration:db:local
+```
+
+The command:
+
+1. starts PostgreSQL 16 from `infra/docker/docker-compose.test.yml`;
+2. uses the dedicated `lms_test` database on `127.0.0.1:55432`;
+3. applies all committed migrations with `prisma migrate deploy`;
+4. runs `apps/api/src/integration/api.database-smoke.ts`;
+5. stops the container and removes its temporary storage, including after a
+   failed migration or test.
+
+Prerequisites:
+
+- Docker Engine is running;
+- Docker Compose is available as `docker compose`;
+- repository dependencies are installed.
+
+The test refuses a database name without `test`, known production/staging
+targets, and non-local hosts by default. Do not override these safeguards for a
+developer machine. CI uses a separate PostgreSQL service with the same
+`lms_test` database name.
+
+To use another local port when `55432` is occupied:
+
+```bash
+LMS_TEST_POSTGRES_PORT=55433 pnpm test:integration:db:local
+```
+
+Do not point `DATABASE_URL` at a shared, staging, or production database. The
+disposable runner constructs its own local-only URL and does not read a
+repository `.env` file.
+
+## 14. Troubleshooting
 
 ### API fails with invalid environment
 

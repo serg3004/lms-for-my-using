@@ -16,6 +16,7 @@
     "admin:demo-seed": "node dist/scripts/admin-demo-seed.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.mjs"
   },
   "dependencies": {

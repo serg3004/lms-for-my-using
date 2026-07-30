@@ -14,6 +14,7 @@ module.exports = {
     '^\\./auth\\.tokens\\.js$': '<rootDir>/src/modules/auth/auth.tokens.ts',
     '^\\./auth\\.refresh-tokens\\.js$': '<rootDir>/src/modules/auth/auth.refresh-tokens.ts',
     '^\\./auth\\.session-store\\.js$': '<rootDir>/src/modules/auth/auth.session-store.ts',
+    '^\\./database-test-safety\\.js$': '<rootDir>/src/integration/database-test-safety.ts',
     '^\\./passwords\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\.\\./auth/passwords\\.js$': '<rootDir>/src/modules/auth/passwords.ts',
     '^\\./organization-scope\\.js$': '<rootDir>/src/modules/auth/organization-scope.ts',

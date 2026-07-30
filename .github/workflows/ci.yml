@@ -71,3 +71,55 @@ jobs:
 
       - name: Build Web Docker image
         run: docker build -f apps/web/Dockerfile -t lms-web:ci .
+
+  database-integration:
+    name: API database integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+      JWT_SECRET: database-smoke-jwt-secret-32-characters
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @lms/api prisma:migrate:deploy
+
+      - name: Run API database integration tests
+        run: pnpm --filter @lms/api test:integration:db
