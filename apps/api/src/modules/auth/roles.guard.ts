@@ -26,7 +26,7 @@ export class RolesGuard implements CanActivate {
     ]);
 
     if (!allowedRoles?.length) {
-      return true;
+      throw new ForbiddenException('Missing role policy');
     }
 
     const request = context.switchToHttp().getRequest<RoleLookupRequest>();

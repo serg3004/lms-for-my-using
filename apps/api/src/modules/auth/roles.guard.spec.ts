@@ -102,16 +102,16 @@ describe('RolesGuard', () => {
     expect(queries).toHaveLength(1);
   });
 
-  it('skips membership lookup when no roles are required', async () => {
+  it('fails closed without role policy metadata', async () => {
     const { prisma, queries } = createPrisma(['admin']);
     const request: AuthenticatedRequest = {
       headers: {},
       currentUser,
     };
 
-    const result = await new RolesGuard(prisma, createReflector(undefined)).canActivate(createContext(request));
-
-    expect(result).toBe(true);
+    await expect(new RolesGuard(prisma, createReflector(undefined)).canActivate(createContext(request))).rejects.toThrow(
+      'Missing role policy',
+    );
     expect(queries).toHaveLength(0);
   });
 

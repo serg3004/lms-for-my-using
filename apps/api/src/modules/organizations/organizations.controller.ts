@@ -3,7 +3,7 @@ import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/comm
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
+import { PublicAccess, Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import {
   CreateOrganizationInput,
@@ -33,6 +33,7 @@ export class OrganizationsController {
   }
 
   @Post('register')
+  @PublicAccess()
   registerOrganization(@Body() body: unknown) {
     const input: RegisterOrganizationInput = registerOrganizationSchema.parse(body);
 

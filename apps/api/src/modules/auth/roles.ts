@@ -3,6 +3,9 @@ import { SetMetadata } from '@nestjs/common';
 export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
 
 export const rolesMetadataKey = 'roles';
+export const accessMetadataKey = 'access';
+
+export type EndpointAccess = 'public' | 'authenticated';
 
 export const rolePolicies = {
   organizationsRead: ['admin'],
@@ -38,6 +41,14 @@ export const rolePolicies = {
 
 export function Roles(...roles: UserRole[]) {
   return SetMetadata(rolesMetadataKey, roles);
+}
+
+export function PublicAccess() {
+  return SetMetadata(accessMetadataKey, 'public' satisfies EndpointAccess);
+}
+
+export function AuthenticatedAccess() {
+  return SetMetadata(accessMetadataKey, 'authenticated' satisfies EndpointAccess);
 }
 
 export function isLearnerOnly(roles: readonly UserRole[]): boolean {
