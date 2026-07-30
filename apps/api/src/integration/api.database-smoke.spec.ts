@@ -9,6 +9,8 @@ import { assertSafeTestDatabase } from './database-test-safety.js';
 
 const TEST_JWT_SECRET = 'database-smoke-jwt-secret-32-characters';
 const TEST_PASSWORD = 'DatabaseSmoke1!';
+const REFRESH_TOKEN_COOKIE_NAME = 'lms_refresh_token';
+const CONCURRENCY_ATTEMPTS = 20;
 
 type LoginResponse = {
   accessToken: string;
@@ -26,6 +28,38 @@ function unwrapResponse<T extends object>(body: ApiEnvelope<T>): T {
 
 async function readJson<T extends object>(response: Response): Promise<ApiEnvelope<T>> {
   return (await response.json()) as ApiEnvelope<T>;
+}
+
+function getSetCookies(headers: Headers): string[] {
+  const headersWithGetSetCookie = headers as Headers & { getSetCookie?: () => string[] };
+  const setCookies = headersWithGetSetCookie.getSetCookie?.();
+
+  if (setCookies?.length) {
+    return setCookies;
+  }
+
+  const combinedHeader = headers.get('set-cookie');
+  return combinedHeader?.split(/,(?=\s*[^;,=\s]+=[^;,]*)/) ?? [];
+}
+
+function getCookie(response: Response, name: string): string | undefined {
+  for (const setCookie of getSetCookies(response.headers)) {
+    const cookiePair = setCookie.split(';', 1)[0]?.trim();
+    const separatorIndex = cookiePair?.indexOf('=') ?? -1;
+
+    if (separatorIndex > 0 && cookiePair?.slice(0, separatorIndex) === name) {
+      return cookiePair.slice(separatorIndex + 1);
+    }
+  }
+
+  return undefined;
+}
+
+function refreshRequest(baseUrl: string, refreshToken: string) {
+  return fetch(`${baseUrl}/api/v1/auth/refresh`, {
+    method: 'POST',
+    headers: { cookie: `${REFRESH_TOKEN_COOKIE_NAME}=${refreshToken}` },
+  });
 }
 
 describe('API database smoke', () => {
@@ -93,15 +127,20 @@ describe('API database smoke', () => {
   });
 
   afterAll(async () => {
-    if (userId) {
-      await prisma.user.delete({ where: { id: userId } });
+    try {
+      if (userId) {
+        await prisma.session.deleteMany({ where: { userId } });
+        await prisma.user.delete({ where: { id: userId } });
+      }
+    } finally {
+      try {
+        if (organizationId) {
+          await prisma.organization.delete({ where: { id: organizationId } });
+        }
+      } finally {
+        await app?.close();
+      }
     }
-
-    if (organizationId) {
-      await prisma.organization.delete({ where: { id: organizationId } });
-    }
-
-    await app?.close();
   });
 
   it('serves health, authenticates a real user, and returns the current user', async () => {
@@ -143,5 +182,42 @@ describe('API database smoke', () => {
     expect(response.status).toBe(401);
     const body = JSON.stringify(await response.json());
     expect(body).not.toMatch(/stack|SELECT|node_modules/i);
+  });
+
+  it('atomically rotates a refresh token under concurrent requests', async () => {
+    for (let attempt = 0; attempt < CONCURRENCY_ATTEMPTS; attempt += 1) {
+      const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          organizationId,
+          email: userEmail,
+          password: TEST_PASSWORD,
+        }),
+      });
+
+      expect(loginResponse.ok).toBe(true);
+      const originalRefreshToken = getCookie(loginResponse, REFRESH_TOKEN_COOKIE_NAME);
+      expect(originalRefreshToken).toEqual(expect.any(String));
+
+      const sessionCountBeforeRefresh = await prisma.session.count({ where: { userId } });
+      const responses = await Promise.all([
+        refreshRequest(baseUrl, originalRefreshToken!),
+        refreshRequest(baseUrl, originalRefreshToken!),
+      ]);
+
+      const successfulResponses = responses.filter((response) => response.ok);
+      const unauthorizedResponses = responses.filter((response) => response.status === 401);
+      expect(successfulResponses).toHaveLength(1);
+      expect(unauthorizedResponses).toHaveLength(1);
+      expect(await prisma.session.count({ where: { userId } })).toBe(sessionCountBeforeRefresh);
+
+      const rotatedRefreshToken = getCookie(successfulResponses[0]!, REFRESH_TOKEN_COOKIE_NAME);
+      expect(rotatedRefreshToken).toEqual(expect.any(String));
+      expect(rotatedRefreshToken).not.toBe(originalRefreshToken);
+
+      const reusedTokenResponse = await refreshRequest(baseUrl, originalRefreshToken!);
+      expect(reusedTokenResponse.status).toBe(401);
+    }
   });
 });
