@@ -5,10 +5,12 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 
 import type { PrismaService } from '../database/prisma.service.js';
+import { assertSafeTestDatabase } from './database-test-safety.js';
 
 const TEST_JWT_SECRET = 'database-smoke-jwt-secret-32-characters';
 const TEST_PASSWORD = 'DatabaseSmoke1!';
-const TEST_DATABASE_MARKER = 'test';
+const REFRESH_TOKEN_COOKIE_NAME = 'lms_refresh_token';
+const CONCURRENCY_ITERATIONS = 20;
 
 type LoginResponse = {
   accessToken: string;
@@ -28,19 +30,19 @@ async function readJson<T extends object>(response: Response): Promise<ApiEnvelo
   return (await response.json()) as ApiEnvelope<T>;
 }
 
-function assertSafeTestDatabase(databaseUrl: string | undefined): string {
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required for the database smoke test');
+function getResponseCookie(response: Response, cookieName: string): string {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  const setCookieValues = headers.getSetCookie?.() ?? [response.headers.get('set-cookie') ?? ''];
+  const matchingCookie = setCookieValues
+    .flatMap((value) => value.split(new RegExp(`,\\s*(?=${cookieName}=)`)))
+    .find((value) => value.startsWith(`${cookieName}=`));
+  const match = matchingCookie?.match(new RegExp(`^${cookieName}=([^;]+)`));
+
+  if (!match?.[1]) {
+    throw new Error(`Response did not set the ${cookieName} cookie`);
   }
 
-  const parsedUrl = new URL(databaseUrl);
-  const databaseName = decodeURIComponent(parsedUrl.pathname.replace(/^\//, ''));
-
-  if (!databaseName.toLowerCase().includes(TEST_DATABASE_MARKER)) {
-    throw new Error('Database smoke test requires a database name containing "test"');
-  }
-
-  return databaseUrl;
+  return match[1];
 }
 
 describe('API database smoke', () => {
@@ -51,8 +53,29 @@ describe('API database smoke', () => {
   let userId: string | undefined;
   let userEmail: string;
 
+  async function loginUser() {
+    return fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        organizationId,
+        email: userEmail,
+        password: TEST_PASSWORD,
+      }),
+    });
+  }
+
+  function refreshSession(refreshToken: string) {
+    return fetch(`${baseUrl}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { cookie: `${REFRESH_TOKEN_COOKIE_NAME}=${refreshToken}` },
+    });
+  }
+
   beforeAll(async () => {
-    assertSafeTestDatabase(process.env.DATABASE_URL);
+    assertSafeTestDatabase(process.env.DATABASE_URL, {
+      allowExternalHost: process.env.ALLOW_EXTERNAL_TEST_DATABASE === 'true',
+    });
 
     process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? TEST_JWT_SECRET;
@@ -125,15 +148,7 @@ describe('API database smoke', () => {
       db: 'ok',
     });
 
-    const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        organizationId,
-        email: userEmail,
-        password: TEST_PASSWORD,
-      }),
-    });
+    const loginResponse = await loginUser();
 
     expect([200, 201]).toContain(loginResponse.status);
     const login = unwrapResponse(await readJson<LoginResponse>(loginResponse));
@@ -156,5 +171,28 @@ describe('API database smoke', () => {
     expect(response.status).toBe(401);
     const body = JSON.stringify(await response.json());
     expect(body).not.toMatch(/stack|SELECT|node_modules/i);
+  });
+
+  it('allows exactly one concurrent refresh request to consume a refresh token', async () => {
+    for (let iteration = 0; iteration < CONCURRENCY_ITERATIONS; iteration += 1) {
+      const sessionsBeforeLogin = await prisma.session.count({ where: { userId } });
+      const loginResponse = await loginUser();
+
+      expect([200, 201]).toContain(loginResponse.status);
+      const refreshToken = getResponseCookie(loginResponse, REFRESH_TOKEN_COOKIE_NAME);
+      expect(await prisma.session.count({ where: { userId } })).toBe(sessionsBeforeLogin + 1);
+
+      const responses = await Promise.all([refreshSession(refreshToken), refreshSession(refreshToken)]);
+      expect(responses.filter((response) => response.ok)).toHaveLength(1);
+      expect(responses.filter((response) => response.status === 401)).toHaveLength(1);
+      expect(await prisma.session.count({ where: { userId } })).toBe(sessionsBeforeLogin + 1);
+
+      const successfulResponse = responses.find((response) => response.ok);
+      expect(successfulResponse).toBeDefined();
+      expect(getResponseCookie(successfulResponse!, REFRESH_TOKEN_COOKIE_NAME)).not.toBe(refreshToken);
+
+      const reusedTokenResponse = await refreshSession(refreshToken);
+      expect(reusedTokenResponse.status).toBe(401);
+    }
   });
 });

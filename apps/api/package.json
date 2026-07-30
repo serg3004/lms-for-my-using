@@ -11,11 +11,12 @@
     "typecheck": "tsc --noEmit",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests",
     "test:coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage --passWithNoTests",
-    "test:integration:db": "NODE_ENV=test JWT_SECRET=database-smoke-jwt-secret-32-characters NODE_OPTIONS=--experimental-vm-modules jest --runInBand --runTestsByPath src/integration/api.database-smoke.ts",
+    "test:integration:db": "NODE_ENV=test JWT_SECRET=database-smoke-jwt-secret-32-characters NODE_OPTIONS=--experimental-vm-modules jest --config jest.database.config.cjs --runInBand",
     "smoke:mvp": "node dist/scripts/smoke-test.js",
     "admin:demo-seed": "node dist/scripts/admin-demo-seed.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
