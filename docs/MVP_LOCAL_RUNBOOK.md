@@ -259,7 +259,7 @@ The command:
 1. starts PostgreSQL 16 from `infra/docker/docker-compose.test.yml`;
 2. uses the dedicated `lms_test` database on `127.0.0.1:55432`;
 3. applies all committed migrations with `prisma migrate deploy`;
-4. runs `apps/api/src/integration/api.database-smoke.ts`;
+4. runs `apps/api/src/integration/api.database-smoke.spec.ts`;
 5. stops the container and removes its temporary storage, including after a
    failed migration or test.
 

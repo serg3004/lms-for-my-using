@@ -68,6 +68,7 @@ module.exports = {
     '^\\./types/api\\.js$': '<rootDir>/../../packages/shared/src/types/api.ts',
   },
   roots: ['<rootDir>/src'],
+  testPathIgnorePatterns: ['/src/integration/api\\.database-smoke\\.spec\\.ts$'],
   testEnvironment: 'node',
   collectCoverageFrom: [
     'src/**/*.ts',
