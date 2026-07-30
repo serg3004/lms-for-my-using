@@ -66,6 +66,7 @@ module.exports = {
     '^\\./constants/roles\\.js$': '<rootDir>/../../packages/shared/src/constants/roles.ts',
     '^\\./schemas/pagination\\.schema\\.js$': '<rootDir>/../../packages/shared/src/schemas/pagination.schema.ts',
     '^\\./types/api\\.js$': '<rootDir>/../../packages/shared/src/types/api.ts',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   roots: ['<rootDir>/src'],
   testPathIgnorePatterns: ['/src/integration/api\\.database-smoke\\.spec\\.ts$'],
