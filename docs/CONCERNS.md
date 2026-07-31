@@ -58,6 +58,55 @@ Threshold `functions: 25%`. После фикса PR 172 — 25.6%, запас �
 
 ---
 
+### [2026-07-31] `sessionStore` @Optional — logout-all молча не работает без Redis
+**Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
+**Severity:** 🔴  
+`AuthSessionStore` помечен `@Optional()`. Если Redis не сконфигурирован — `logout-all` возвращает `{ accepted: true }` но сессии не отзывает. Пользователь считает что вышел со всех устройств — нет.
+
+---
+
+### [2026-07-31] `ALLOW_IN_MEMORY_RATE_LIMIT=true` — escape хatch без предупреждения
+**Файл:** `apps/api/src/config/env.ts`  
+**Severity:** 🟡  
+Флаг позволяет запустить production без Redis. Нет Warning в логах при старте что включён небезопасный режим. Легко выставить на Railway и забыть.
+
+---
+
+### [2026-07-31] Fail-open при недоступном Redis — rate limit полностью отключается
+**Файл:** `apps/api/src/common/middleware/api-hardening.ts`  
+**Severity:** 🟡  
+При ошибке Redis store middleware делает `catch {}` и пропускает запрос. Атакующий может положить Redis и брутфорсить `/auth/login` без ограничений.
+
+---
+
+### [2026-07-31] `createCourse` + `assignInstructor` без транзакции
+**Файл:** `apps/api/src/modules/courses/courses.controller.ts`  
+**Severity:** 🟡  
+Два последовательных запроса к БД не обёрнуты в транзакцию. Если `assignInstructor` упадёт — курс создан но без инструктора. Инструктор-создатель его больше не увидит в своём списке.
+
+---
+
+### [2026-07-31] Password reset — нереализованная заглушка на публичном endpoint
+**Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
+**Severity:** 🟡  
+`confirmPasswordReset()` принимает любые данные и возвращает 200 без действий. Endpoint публичный. Пользователь не получит ошибку при попытке сбросить пароль.
+
+---
+
+### [2026-07-31] Rate limit 429 использует raw JSON вместо NestJS error формата
+**Файл:** `apps/api/src/common/middleware/api-hardening.ts`  
+**Severity:** 🟢  
+Middleware находится до NestJS pipeline — формат ошибки 429 отличается от остальных API ошибок. Клиент получает разные структуры ответа при разных ошибках.
+
+---
+
+### [2026-07-31] Login возвращает `accessToken` и в теле и в cookie одновременно
+**Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
+**Severity:** 🟢  
+После PR 137 refresh token убран из тела — правильно. Но access token дублируется: и в Set-Cookie и в JSON body. При переходе на cookie-only — избыточность.
+
+---
+
 ## Закрытые
 
 ### [2026-07-31] Покрытие функций ниже threshold 25% в CI → **закрыто**
