@@ -128,9 +128,11 @@ describe('API database smoke', () => {
 
   afterAll(async () => {
     try {
-      if (userId) {
-        await prisma.session.deleteMany({ where: { userId } });
-        await prisma.user.delete({ where: { id: userId } });
+      if (organizationId) {
+        // Tests may create additional users (for example, an instructor). Remove
+        // every tenant user rather than only the bootstrap admin so the
+        // Organization -> User RESTRICT relation cannot leave teardown data.
+        await prisma.user.deleteMany({ where: { organizationId } });
       }
     } finally {
       try {
