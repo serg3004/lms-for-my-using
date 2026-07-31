@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/roles.js';
+import { ManagerTeamScope, TeamScopeActor, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/manager-team-scope.js';
 
 const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 
@@ -124,15 +125,18 @@ type AttemptResultInput = {
 
 @Injectable()
 export class AssessmentResultsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listAssessmentResults(assessmentId: string, organizationId: string) {
+  async listAssessmentResults(assessmentId: string, actorInput: TeamScopeActor | string) {
+    const actor = normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     await this.ensureAssessmentExists(assessmentId, organizationId);
 
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       orderBy: { completedAt: 'desc' },
@@ -142,11 +146,16 @@ export class AssessmentResultsService {
     return attempts.map((attempt) => this.toAttemptResult(attempt));
   }
 
-  async getAttemptResult(attemptId: string, currentUserId: string, organizationId: string) {
+  async getAttemptResult(attemptId: string, actorInput: TeamScopeActor | string, legacyOrganizationId?: string) {
+    const actor = typeof actorInput === 'string' && legacyOrganizationId
+      ? { id: actorInput, organizationId: legacyOrganizationId, roles: [] as UserRole[] }
+      : normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     const attempt = await this.prisma.assessmentAttempt.findFirst({
       where: {
         id: attemptId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       select: attemptResultDetailSelect,
@@ -156,17 +165,20 @@ export class AssessmentResultsService {
       throw new NotFoundException('Assessment attempt not found');
     }
 
-    await this.ensureAttemptResultAccess(attempt.userId, currentUserId, organizationId);
+    await this.ensureAttemptResultAccess(attempt.userId, actor.id, organizationId, actor);
 
     return this.toAttemptResult(attempt);
   }
 
-  async getAssessmentReport(assessmentId: string, organizationId: string) {
+  async getAssessmentReport(assessmentId: string, actorInput: TeamScopeActor | string) {
+    const actor = normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       select: {
@@ -222,10 +234,11 @@ export class AssessmentResultsService {
     return assessment;
   }
 
-  private async ensureAttemptResultAccess(attemptUserId: string, currentUserId: string, organizationId: string) {
+  private async ensureAttemptResultAccess(attemptUserId: string, currentUserId: string, organizationId: string, actor: TeamScopeActor) {
     if (attemptUserId === currentUserId) {
       return;
     }
+    if (isManagerTeamScoped(actor)) return;
 
     const membership = await this.prisma.membership.findFirst({
       where: {

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { ManagerTeamScope, TeamScopeActor, normalizeActor, unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
 import { CreateProgressInput } from './progress.schemas.js';
 
 const progressSelect = {
@@ -18,14 +19,17 @@ const progressSelect = {
 
 @Injectable()
 export class ProgressService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listProgress(organizationId: string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
+  async listProgress(actorInput: TeamScopeActor | string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
+    const actor = normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     const skip = (page - 1) * pageSize;
     const where = {
       organizationId,
       ...(userId !== undefined ? { userId } : {}),
       ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
+      ...this.teamScope.userOwnedResource(actor),
       deletedAt: null,
     } as const;
     const [items, total] = await Promise.all([
@@ -35,11 +39,13 @@ export class ProgressService {
     return { items, page, pageSize, total };
   }
 
-  async getProgress(progressId: string, organizationId: string, userId?: string) {
+  async getProgress(progressId: string, actorInput: TeamScopeActor | string, userId?: string) {
+    const actor = normalizeActor(actorInput);
     const progress = await this.prisma.progress.findFirst({
       where: {
         id: progressId,
-        organizationId,
+        organizationId: actor.organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         ...(userId !== undefined ? { userId } : {}),
         deletedAt: null,
       },
@@ -53,9 +59,9 @@ export class ProgressService {
     return progress;
   }
 
-  async createProgress(input: CreateProgressInput) {
+  async createProgress(input: CreateProgressInput, actor: TeamScopeActor = unrestrictedActor(input.organizationId)) {
     await this.ensureCourseExists(input.courseId, input.organizationId);
-    await this.ensureUserExists(input.userId, input.organizationId);
+    await this.ensureUserExists(input.userId, input.organizationId, actor);
 
     if (input.lessonId) {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
@@ -97,11 +103,12 @@ export class ProgressService {
     }
   }
 
-  private async ensureUserExists(userId: string, organizationId: string) {
+  private async ensureUserExists(userId: string, organizationId: string, actor: TeamScopeActor) {
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
         organizationId,
+        ...this.teamScope.user(actor),
         deletedAt: null,
       },
       select: { id: true },

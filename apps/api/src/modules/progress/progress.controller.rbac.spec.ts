@@ -26,7 +26,7 @@ describe('ProgressController — RBAC ownership', () => {
 
       controller.listProgress(makeRequest(learnerId, ['learner']), {});
 
-      expect(calls).toEqual([[orgId, learnerId, 1, 20]]);
+      expect(calls).toEqual([[{ id: learnerId, organizationId: orgId, roles: ['learner'] }, learnerId, 1, 20]]);
     });
 
     it('passes no userId filter for admin role', () => {
@@ -38,7 +38,7 @@ describe('ProgressController — RBAC ownership', () => {
 
       controller.listProgress(makeRequest(adminId, ['admin']), {});
 
-      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
+      expect(calls).toEqual([[{ id: adminId, organizationId: orgId, roles: ['admin'] }, undefined, 1, 20]]);
     });
 
     it('passes no userId filter when user has both learner and instructor roles', () => {
@@ -50,7 +50,7 @@ describe('ProgressController — RBAC ownership', () => {
 
       controller.listProgress(makeRequest(learnerId, ['learner', 'instructor']), {});
 
-      expect(calls).toEqual([[orgId, undefined, 1, 20, learnerId]]);
+      expect(calls).toEqual([[{ id: learnerId, organizationId: orgId, roles: ['learner', 'instructor'] }, undefined, 1, 20, learnerId]]);
     });
   });
 
@@ -64,7 +64,7 @@ describe('ProgressController — RBAC ownership', () => {
 
       controller.getProgress('progress-id', makeRequest(learnerId, ['learner']));
 
-      expect(calls).toEqual([['progress-id', orgId, learnerId]]);
+      expect(calls).toEqual([['progress-id', { id: learnerId, organizationId: orgId, roles: ['learner'] }, learnerId]]);
     });
 
     it('passes no userId filter for admin role', () => {
@@ -76,7 +76,7 @@ describe('ProgressController — RBAC ownership', () => {
 
       controller.getProgress('progress-id', makeRequest(adminId, ['admin']));
 
-      expect(calls).toEqual([['progress-id', orgId, undefined]]);
+      expect(calls).toEqual([['progress-id', { id: adminId, organizationId: orgId, roles: ['admin'] }, undefined]]);
     });
   });
 
