@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LearnSpace — Мои тесты</title>
+  <style>
+    :root {
+      --bg:#f4f7fb;
+      --surface:#ffffff;
+      --surface-soft:#f8fafc;
+      --text:#172033;
+      --muted:#6b7280;
+      --border:#e3e8ef;
+      --primary:#4f46e5;
+      --primary-strong:#3730a3;
+      --primary-soft:#eef2ff;
+      --success:#0f9f6e;
+      --success-soft:#e9f8f2;
+      --warning:#d97706;
+      --warning-soft:#fff7e8;
+      --danger:#dc2626;
+      --danger-soft:#fef2f2;
+      --sidebar:#111827;
+      --radius-lg:20px;
+      --radius-md:14px;
+      --shadow:0 10px 28px rgba(23,32,51,.07);
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+
+    .app {
+      min-height:100vh;
+      display:grid;
+      grid-template-columns:260px minmax(0,1fr);
+      grid-template-rows:76px minmax(0,1fr);
+    }
+
+    .sidebar {
+      grid-row:1/3;
+      background:var(--sidebar);
+      color:#fff;
+      padding:22px 18px;
+      position:sticky;
+      top:0;
+      height:100vh;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:0 8px 28px;
+    }
+
+    .brand-mark {
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      background:linear-gradient(135deg,#818cf8,#4f46e5);
+      font-weight:800;
+    }
+
+    .brand strong { display:block; }
+    .brand small { color:#9ca3af; }
+
+    .nav-label {
+      padding:0 12px 8px;
+      color:#7f8aa3;
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+    }
+
+    .nav {
+      display:grid;
+      gap:7px;
+    }
+
+    .nav a {
+      color:#cbd5e1;
+      text-decoration:none;
+      padding:12px 13px;
+      border-radius:12px;
+    }
+
+    .nav a.active,
+    .nav a:hover {
+      background:rgba(129,140,248,.16);
+      color:#fff;
+    }
+
+    .header {
+      grid-column:2;
+      background:rgba(255,255,255,.94);
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:0 28px;
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+
+    .search {
+      flex:1;
+      max-width:500px;
+    }
+
+    .search input {
+      width:100%;
+      padding:11px 14px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--surface-soft);
+      outline:none;
+    }
+
+    .search input:focus {
+      border-color:#a5b4fc;
+      box-shadow:0 0 0 4px rgba(79,70,229,.10);
+    }
+
+    .header-actions {
+      margin-left:auto;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .chip {
+      height:42px;
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:12px;
+      padding:0 13px;
+    }
+
+    .avatar {
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      background:linear-gradient(135deg,#fbbf24,#f97316);
+      color:#fff;
+      font-weight:800;
+    }
+
+    main {
+      grid-column:2;
+      padding:30px;
+      min-width:0;
+    }
+
+    .content {
+      max-width:1400px;
+      margin:0 auto;
+    }
+
+    .page-head {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:20px;
+      margin-bottom:22px;
+    }
+
+    .eyebrow {
+      color:var(--primary);
+      font-weight:800;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.1em;
+      margin-bottom:8px;
+    }
+
+    h1 {
+      margin:0;
+      font-size:clamp(28px,4vw,38px);
+    }
+
+    .subtitle {
+      margin:10px 0 0;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .summary {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:16px;
+      margin-bottom:22px;
+    }
+
+    .summary-card {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius-md);
+      padding:18px;
+      box-shadow:0 6px 18px rgba(23,32,51,.04);
+    }
+
+    .summary-card strong {
+      display:block;
+      font-size:28px;
+      margin-bottom:5px;
+    }
+
+    .summary-card span {
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .toolbar {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:18px;
+    }
+
+    .filter {
+      border:1px solid var(--border);
+      background:var(--surface);
+      border-radius:12px;
+      padding:11px 13px;
+      color:var(--text);
+    }
+
+    .toolbar .spacer { flex:1; }
+
+    .view-toggle {
+      display:flex;
+      gap:8px;
+    }
+
+    .view-btn {
+      width:42px;
+      height:42px;
+      border:1px solid var(--border);
+      background:var(--surface);
+      border-radius:12px;
+    }
+
+    .view-btn.active {
+      background:var(--primary-soft);
+      border-color:#c7d2fe;
+      color:var(--primary);
+    }
+
+    .cards {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:18px;
+    }
+
+    .assessment {
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+      padding:20px;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      min-height:290px;
+      transition:.16s ease;
+    }
+
+    .assessment:hover {
+      transform:translateY(-2px);
+      box-shadow:0 16px 36px rgba(23,32,51,.10);
+    }
+
+    .assessment-top {
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:flex-start;
+      margin-bottom:18px;
+    }
+
+    .assessment-icon {
+      width:48px;
+      height:48px;
+      border-radius:15px;
+      display:grid;
+      place-items:center;
+      background:var(--primary-soft);
+      color:var(--primary);
+      font-size:22px;
+    }
+
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:800;
+    }
+
+    .badge.available {
+      background:var(--success-soft);
+      color:var(--success);
+    }
+
+    .badge.soon {
+      background:var(--warning-soft);
+      color:var(--warning);
+    }
+
+    .badge.completed {
+      background:var(--primary-soft);
+      color:var(--primary);
+    }
+
+    .assessment h2 {
+      margin:0 0 8px;
+      font-size:20px;
+      line-height:1.35;
+    }
+
+    .course-name {
+      color:var(--muted);
+      font-size:13px;
+      margin-bottom:16px;
+    }
+
+    .meta {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-bottom:18px;
+    }
+
+    .meta-item {
+      padding:11px;
+      border-radius:12px;
+      background:var(--surface-soft);
+    }
+
+    .meta-item span {
+      display:block;
+      color:var(--muted);
+      font-size:11px;
+      margin-bottom:4px;
+    }
+
+    .meta-item strong {
+      font-size:14px;
+    }
+
+    .progress {
+      height:8px;
+      background:#edf0f5;
+      border-radius:999px;
+      overflow:hidden;
+      margin-bottom:8px;
+    }
+
+    .progress span {
+      display:block;
+      height:100%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,var(--primary),#7c3aed);
+    }
+
+    .progress-copy {
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:18px;
+    }
+
+    .assessment-actions {
+      margin-top:auto;
+      display:flex;
+      gap:10px;
+    }
+
+    .btn {
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--text);
+      border-radius:12px;
+      padding:11px 14px;
+      font-weight:800;
+      flex:1;
+    }
+
+    .btn.primary {
+      background:var(--primary);
+      border-color:var(--primary);
+      color:#fff;
+    }
+
+    .empty {
+      display:none;
+      text-align:center;
+      padding:50px 20px;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius-lg);
+    }
+
+    .empty strong {
+      display:block;
+      font-size:22px;
+      margin:10px 0 6px;
+    }
+
+    .empty span { color:var(--muted); }
+
+    .mobile-menu { display:none; }
+
+    @media (max-width:1100px) {
+      .cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+
+    @media (max-width:820px) {
+      .app { grid-template-columns:1fr; }
+      .sidebar { display:none; }
+      .header, main { grid-column:1; }
+      .mobile-menu { display:inline-grid; place-items:center; }
+      main { padding:20px; }
+    }
+
+    @media (max-width:680px) {
+      .header { padding:0 14px; }
+      .search { display:none; }
+      .page-head { flex-direction:column; }
+      .summary { grid-template-columns:1fr; }
+      .toolbar { flex-wrap:wrap; }
+      .toolbar .spacer { display:none; }
+      .cards { grid-template-columns:1fr; }
+    }
+  
+.language-wrap{position:relative}
+.language-menu{position:absolute;right:0;top:50px;min-width:160px;background:#fff;border:1px solid var(--border,#e3e8ef);border-radius:14px;padding:7px;box-shadow:0 10px 28px rgba(23,32,51,.12);display:none;z-index:50}
+.language-menu.open{display:block}
+.language-option{width:100%;border:0;background:transparent;text-align:left;padding:10px 11px;border-radius:10px;color:var(--text,#172033)}
+.language-option:hover,.language-option.active{background:var(--primary-soft,#eef2ff);color:var(--primary-strong,#3730a3)}
+
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">L</div>
+        <div>
+          <strong>LearnSpace</strong>
+          <small>Учебная платформа</small>
+        </div>
+      </div>
+
+      <div class="nav-label">Обучение</div>
+      <nav class="nav">
+        <a href="#">Главная</a>
+        <a href="#">Мои курсы</a>
+        <a href="#">Назначения</a>
+        <a class="active" href="#">Тесты</a>
+        <a href="#">Прогресс</a>
+        <a href="#">Сертификаты</a>
+      </nav>
+    </aside>
+
+    <header class="header">
+      <button class="chip mobile-menu" type="button">☰</button>
+
+      <label class="search">
+        <input id="searchInput" type="search" placeholder="Найти тест">
+      </label>
+
+      <div class="header-actions">
+        <div class="language-wrap">
+<button class="chip" id="languageToggle" type="button" aria-expanded="false">RU</button>
+<div class="language-menu" id="languageMenu">
+<button class="language-option" type="button" data-lang="ru">Русский</button>
+<button class="language-option" type="button" data-lang="en">English</button>
+<button class="language-option" type="button" data-lang="kk">Қазақша</button>
+<button class="language-option" type="button" data-lang="zh">中文</button>
+</div></div>
+        <button class="chip" type="button">🔔</button>
+        <div class="avatar">АС</div>
+      </div>
+    </header>
+
+    <main>
+      <div class="content">
+        <section class="page-head">
+          <div>
+            <div class="eyebrow">Кабинет ученика</div>
+            <h1>Мои тесты</h1>
+            <p class="subtitle">Пройдите доступные проверки знаний и отслеживайте результаты.</p>
+          </div>
+        </section>
+
+        <section class="summary">
+          <article class="summary-card">
+            <strong>3</strong>
+            <span>Доступно сейчас</span>
+          </article>
+          <article class="summary-card">
+            <strong>2</strong>
+            <span>Успешно завершено</span>
+          </article>
+          <article class="summary-card">
+            <strong>84%</strong>
+            <span>Лучший результат</span>
+          </article>
+        </section>
+
+        <section class="toolbar">
+          <select class="filter" id="statusFilter">
+            <option value="all">Все статусы</option>
+            <option value="available">Доступные</option>
+            <option value="completed">Завершённые</option>
+            <option value="soon">Скоро истекают</option>
+          </select>
+
+          <select class="filter" id="courseFilter">
+            <option value="all">Все курсы</option>
+            <option value="safety">Основы безопасности</option>
+            <option value="standards">Корпоративные стандарты</option>
+            <option value="team">Работа в команде</option>
+          </select>
+
+          <div class="spacer"></div>
+
+          <div class="view-toggle">
+            <button class="view-btn active" type="button" aria-label="Карточки">▦</button>
+            <button class="view-btn" type="button" aria-label="Список">☷</button>
+          </div>
+        </section>
+
+        <section class="cards" id="assessmentGrid">
+          <article class="assessment" data-status="available" data-course="safety" data-title="техника безопасности">
+            <div class="assessment-top">
+              <div class="assessment-icon">✓</div>
+              <span class="badge available">Доступен</span>
+            </div>
+            <h2>Техника безопасности</h2>
+            <div class="course-name">Курс: Основы безопасности на рабочем месте</div>
+
+            <div class="meta">
+              <div class="meta-item">
+                <span>Вопросов</span>
+                <strong>5</strong>
+              </div>
+              <div class="meta-item">
+                <span>Время</span>
+                <strong>15 минут</strong>
+              </div>
+              <div class="meta-item">
+                <span>Попыток</span>
+                <strong>3</strong>
+              </div>
+              <div class="meta-item">
+                <span>Проходной балл</span>
+                <strong>60%</strong>
+              </div>
+            </div>
+
+            <div class="assessment-actions">
+              <button class="btn" type="button" data-action="details">Подробнее</button>
+              <button class="btn primary" type="button" data-action="start">Начать</button>
+            </div>
+          </article>
+
+          <article class="assessment" data-status="soon" data-course="team" data-title="командная коммуникация">
+            <div class="assessment-top">
+              <div class="assessment-icon">◔</div>
+              <span class="badge soon">До завтра</span>
+            </div>
+            <h2>Командная коммуникация</h2>
+            <div class="course-name">Курс: Эффективная работа в команде</div>
+
+            <div class="meta">
+              <div class="meta-item">
+                <span>Вопросов</span>
+                <strong>8</strong>
+              </div>
+              <div class="meta-item">
+                <span>Время</span>
+                <strong>20 минут</strong>
+              </div>
+              <div class="meta-item">
+                <span>Попыток</span>
+                <strong>2</strong>
+              </div>
+              <div class="meta-item">
+                <span>Проходной балл</span>
+                <strong>70%</strong>
+              </div>
+            </div>
+
+            <div class="assessment-actions">
+              <button class="btn" type="button" data-action="details">Подробнее</button>
+              <button class="btn primary" type="button" data-action="start">Начать</button>
+            </div>
+          </article>
+
+          <article class="assessment" data-status="completed" data-course="standards" data-title="корпоративные стандарты">
+            <div class="assessment-top">
+              <div class="assessment-icon">★</div>
+              <span class="badge completed">Завершён</span>
+            </div>
+            <h2>Корпоративные стандарты</h2>
+            <div class="course-name">Курс: Введение в корпоративные стандарты</div>
+
+            <div class="meta">
+              <div class="meta-item">
+                <span>Результат</span>
+                <strong>84%</strong>
+              </div>
+              <div class="meta-item">
+                <span>Попытка</span>
+                <strong>1 из 3</strong>
+              </div>
+            </div>
+
+            <div class="progress">
+              <span style="width:84%"></span>
+            </div>
+            <div class="progress-copy">
+              <span>Ваш результат</span>
+              <strong>84%</strong>
+            </div>
+
+            <div class="assessment-actions">
+              <button class="btn" type="button" data-action="result">Посмотреть результат</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="empty" id="emptyState">
+          <div style="font-size:40px">⌕</div>
+          <strong>Ничего не найдено</strong>
+          <span>Измените поиск или выбранные фильтры.</span>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const courseFilter = document.getElementById('courseFilter');
+    const languageToggle = document.getElementById('languageToggle');
+    const cards = Array.from(document.querySelectorAll('.assessment'));
+    const emptyState = document.getElementById('emptyState');
+
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      const status = statusFilter.value;
+      const course = courseFilter.value;
+      let visibleCount = 0;
+
+      cards.forEach((card) => {
+        const title = card.dataset.title || '';
+        const matchesQuery = title.includes(query);
+        const matchesStatus = status === 'all' || card.dataset.status === status;
+        const matchesCourse = course === 'all' || card.dataset.course === course;
+        const isVisible = matchesQuery && matchesStatus && matchesCourse;
+
+        card.style.display = isVisible ? 'flex' : 'none';
+
+        if (isVisible) {
+          visibleCount += 1;
+        }
+      });
+
+      emptyState.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    courseFilter.addEventListener('change', applyFilters);
+document.querySelectorAll('[data-action]').forEach((button) => {
+      button.addEventListener('click', () => {
+        window.alert('Прототип: действие «' + button.textContent.trim() + '» работает.');
+      });
+    });
+  </script>
+
+<script id="fullI18n">
+(() => {
+  const dictionaries = {"en": {"Учебная платформа": "Learning platform", "Обучение": "Learning", "Главная": "Dashboard", "Мои курсы": "My courses", "Назначения": "Assignments", "Тесты": "Assessments", "Прогресс": "Progress", "Сертификаты": "Certificates", "Проверка знаний": "Knowledge assessment", "Техника безопасности": "Safety fundamentals", "Проходной балл": "Passing score", "Доступен": "Available", "Завершено": "Completed", "В процессе": "In progress", "Завершён": "Completed", "Продолжить": "Continue", "Открыть": "Open", "Подробнее": "Details", "Начать": "Start", "Результат": "Result", "Курс": "Course", "Статус": "Status", "Срок": "Deadline", "Время": "Time", "Попыток": "Attempts", "Вопросов": "Questions", "Все статусы": "All statuses", "Завершённые": "Completed", "Все курсы": "All courses", "Корпоративные стандарты": "Corporate Standards", "Работа в команде": "Teamwork", "Кабинет ученика": "Learner dashboard", "Лучший результат": "Best result", "Все категории": "All categories", "Безопасность": "Safety", "Управление": "Management", "Стандарты": "Standards", "По прогрессу": "By progress", "По названию": "By title", "Следующий урок": "Next lesson", "Осталось": "Remaining", "Эвакуация": "Evacuation", "Сертификат": "Certificate", "Получен": "Earned", "Скачать PDF": "Download PDF", "Распечатать": "Print", "Поделиться": "Share", "Действия": "Actions", "Информация": "Information", "Владелец": "Owner", "Дата выдачи": "Issue date", "Дата завершения": "Completion date", "Срок действия": "Validity", "Бессрочно": "No expiration", "Действует": "Valid", "Обновить": "Renew", "Все годы": "All years", "Действующие": "Valid", "Требуют обновления": "Renewal required", "Скачать все": "Download all", "Все сертификаты": "All certificates", "Номер": "Number", "Номер сертификата": "Certificate number", "Описание": "Description", "Ваш прогресс": "Your progress", "Состояние": "Status", "Ожидает выполнения": "Pending", "Осталось попыток": "Attempts remaining", "Примерное время": "Estimated time", "Открыть курс": "Open course", "Вернуться к назначениям": "Back to assignments", "Активных назначений": "Active assignments", "Срок на этой неделе": "Due this week", "Требует внимания": "Needs attention", "Завершено всего": "Completed total", "Срочные": "Urgent", "В работе": "In progress", "Все типы": "All types", "Тест": "Assessment", "Ознакомление": "Acknowledgement", "Сначала ближайшие": "Nearest deadline first", "Срочно": "Urgent", "Готовность": "Readiness", "Срок выполнения": "Due date", "Сегодня, 18:00": "Today, 18:00", "Через 3 дня": "In 3 days", "Новое": "New", "Общий прогресс": "Overall progress", "Уроков завершено": "Lessons completed", "Время обучения": "Learning time", "Средний результат тестов": "Average assessment score", "Прогресс по курсам": "Course progress", "Цель недели": "Weekly goal", "Учебная серия": "Learning streak", "Последняя активность": "Recent activity", "Урок завершён": "Lesson completed", "Тест пройден": "Assessment passed", "Получен сертификат": "Certificate earned", "Последние 30 дней": "Last 30 days", "Последние 3 месяца": "Last 3 months", "Последний год": "Last year", "Скачать отчёт": "Download report", "Мой прогресс": "My progress", "Мои назначения": "My assignments", "Мои сертификаты": "My certificates", "Мои тесты": "My assessments", "Открыть каталог": "Open catalog", "Активных курса": "Active courses", "Средний прогресс": "Average progress", "Новый курс": "New course", "Назначенные": "Assigned", "Недавно открытые": "Recently opened", "Назначен": "Assigned", "Роли в команде": "Team roles", "Материалы": "Materials", "Правила": "Rules", "Формат": "Format", "Один ответ": "Single answer", "Ваши попытки": "Your attempts", "Нет данных": "No data", "Начать тест": "Start assessment", "Вернуться к списку": "Back to list", "Осталось времени": "Time remaining", "Прогресс теста": "Assessment progress", "Вопрос 2": "Question 2", "Продолжить работу": "Continue working", "Вернуться за личными вещами": "Return for personal belongings", "Использовать лифт": "Use the elevator", "← Предыдущий вопрос": "← Previous question", "Следующий вопрос →": "Next question →", "Навигация по вопросам": "Question navigation", "Ответ сохранён": "Answer saved", "Текущий вопрос": "Current question", "Нет ответа": "No answer", "Доступно сейчас": "Available now", "Успешно завершено": "Successfully completed", "Доступные": "Available", "Скоро истекают": "Expiring soon", "До завтра": "Due tomorrow", "Командная коммуникация": "Team communication", "Посмотреть результат": "View result", "Получено сертификатов": "Certificates earned", "Действуют бессрочно": "No expiration", "Требует обновления в этом году": "Renewal required this year", "Вводный курс сотрудника": "Employee onboarding course", "Информационная безопасность": "Information Security", "1 год": "1 year", "Подтверждение обучения": "Proof of completion", "Настоящим подтверждается, что": "This certifies that", "успешно завершил учебную программу": "successfully completed the learning program", "Проверка подлинности": "Authenticity verification", "Обязательное назначение": "Required assignment", "Завершите тест до 18:00": "Complete the assessment by 18:00", "Назначил": "Assigned by", "Менеджер отдела": "Department manager", "Дата назначения": "Assignment date", "Что необходимо сделать": "What you need to do", "Завершить все уроки курса": "Complete all course lessons", "Пройти итоговый тест": "Complete the final assessment", "Набрать не менее 60%": "Score at least 60%", "Подготовка к назначению": "Assignment readiness", "Перейти к тесту": "Go to assessment", "Аналитика обучения": "Learning analytics", "Пн": "Mon", "Вт": "Tue", "Ср": "Wed", "Чт": "Thu", "Пт": "Fri", "Сб": "Sat", "Вс": "Sun", "Вопрос 2 из 5 · проходной балл 60% · попытка 1 из 3": "Question 2 of 5 · passing score 60% · attempt 1 of 3", "Что необходимо сделать сразу после сигнала тревоги?": "What should you do immediately after the alarm sounds?", "Дождаться дополнительных указаний от коллег.": "Wait for additional instructions from colleagues.", "Следовать к ближайшему безопасному выходу": "Proceed to the nearest safe exit", "Соблюдать указатели и инструкции ответственного сотрудника.": "Follow signs and the responsible employee's instructions.", "Забрать документы и только после этого покинуть помещение.": "Collect documents before leaving the building.", "Как можно быстрее спуститься на первый этаж.": "Get to the ground floor as quickly as possible.", "Ответ сохраняется автоматически после выбора варианта.": "Your answer is saved automatically after selecting an option.", "Мои тесты / Проверка знаний / Прохождение": "My assessments / Knowledge check / Attempt", "Мои тесты / Проверка знаний по безопасности": "My assessments / Safety knowledge check", "Итоговый тест по курсу «Основы безопасности на рабочем месте». Ознакомьтесь с правилами перед началом.": "Final assessment for “Workplace Safety Fundamentals”. Review the rules before starting.", "● Доступен": "● Available", "Проверьте знания перед завершением курса": "Check your knowledge before completing the course", "Тест состоит из пяти вопросов. Для успешного прохождения необходимо набрать не менее 60% правильных ответов.": "The assessment has five questions. You need at least 60% correct answers to pass.", "Количество вопросов": "Number of questions", "Ограничение времени": "Time limit", "Доступно попыток": "Attempts available", "Не закрывайте страницу": "Do not close the page", "При закрытии вкладки текущая попытка может быть завершена автоматически.": "Closing the tab may automatically end the current attempt.", "Ответы сохраняются автоматически": "Answers are saved automatically", "Выбранный вариант фиксируется после перехода к следующему вопросу.": "The selected option is recorded when you move to the next question.", "Результат доступен сразу": "Result is available immediately", "После завершения вы увидите итоговый балл и статус прохождения.": "After completion, you will see your final score and pass status.", "Вы ещё не проходили этот тест": "You have not taken this assessment yet", "После нажатия «Начать тест» запустится таймер на 15 минут.": "A 15-minute timer starts when you select “Start assessment”.", "Пройдите доступные проверки знаний и отслеживайте результаты.": "Complete available assessments and track your results.", "Курс: Основы безопасности на рабочем месте": "Course: Workplace Safety Fundamentals", "Курс: Эффективная работа в команде": "Course: Effective Teamwork", "Курс: Введение в корпоративные стандарты": "Course: Introduction to Corporate Standards", "Ничего не найдено": "Nothing found", "Измените поиск или выбранные фильтры.": "Change the search query or selected filters.", "Просматривайте и скачивайте подтверждения завершённого обучения.": "View and download proof of completed learning.", "Обновить до 30.11.2026": "Renew by Nov 30, 2026", "Сертификаты не найдены": "No certificates found", "Сертификаты / Корпоративные стандарты": "Certificates / Corporate Standards", "Документ подтверждает успешное завершение учебной программы.": "This document confirms successful completion of the learning program.", "● Действует": "● Valid", "Сертификат можно проверить по уникальному коду:": "Verify the certificate using its unique code:", "Следите за сроками и завершайте обязательное обучение вовремя.": "Track deadlines and complete required learning on time.", "Пройдите итоговую проверку знаний после завершения всех уроков курса.": "Complete the final assessment after all course lessons.", "Назначено менеджером отдела": "Assigned by department manager", "Завершите первый модуль и практическое задание по командной коммуникации.": "Complete the first module and the teamwork practice task.", "Обязательный документ компании": "Required company document", "Ознакомьтесь с документом и подтвердите прочтение.": "Review the document and confirm that you have read it.", "Обязательная программа адаптации": "Required onboarding program", "Курс завершён, сертификат доступен в разделе «Сертификаты».": "The course is complete. The certificate is available under Certificates.", "Назначения не найдены": "No assignments found", "Назначения / Тест по технике безопасности": "Assignments / Safety assessment", "Завершите итоговую проверку знаний по курсу «Основы безопасности на рабочем месте».": "Complete the final assessment for “Workplace Safety Fundamentals”.", "● Срок сегодня": "● Due today", "Назначение считается выполненным после успешного прохождения теста с результатом не ниже 60%.": "The assignment is complete after passing the assessment with at least 60%.", "Итоговая проверка подтверждает, что вы ознакомились с основными правилами\n                безопасной работы, средствами индивидуальной защиты и действиями при эвакуации.": "The final assessment confirms your knowledge of safe work rules, protective equipment and evacuation procedures.", "Перед тестом должны быть просмотрены обязательные материалы.": "Review all required materials before the assessment.", "Тест содержит 5 вопросов и ограничен 15 минутами.": "The assessment has 5 questions and a 15-minute limit.", "При неудаче можно использовать ещё две попытки.": "If needed, you can use two more attempts.", "После начала теста запустится таймер. Не закрывайте страницу до завершения попытки.": "The timer starts when the assessment begins. Do not close the page until the attempt is complete.", "Отслеживайте завершённые курсы, результаты тестов и учебную активность.": "Track completed courses, assessment results and learning activity.", "7 из 10 уроков · итоговый тест не пройден": "7 of 10 lessons · final assessment not passed", "8 из 8 уроков · тест 92%": "8 of 8 lessons · assessment 92%", "3 из 8 уроков · тест ещё недоступен": "3 of 8 lessons · assessment not available yet", "Завершите ещё один урок, чтобы выполнить недельную цель.": "Complete one more lesson to reach your weekly goal.", "Вы завершили урок «Средства индивидуальной защиты».": "You completed “Personal Protective Equipment”.", "Результат теста по корпоративным стандартам — 84%.": "Your Corporate Standards assessment score is 84%.", "Сертификат по курсу «Корпоративные стандарты» доступен для скачивания.": "The Corporate Standards certificate is ready to download.", "Продолжайте активное обучение и возвращайтесь к завершённым программам.": "Continue active learning and revisit completed programs.", "Основы безопасности на рабочем месте": "Workplace Safety Fundamentals", "Практический курс по безопасной работе и действиям в экстренных ситуациях.": "A practical course on safe work and emergency response.", "Эффективная работа в команде": "Effective Teamwork", "Курс о коммуникации, ответственности и совместном достижении результата.": "A course on communication, accountability and shared results.", "Вводная программа по правилам, ценностям и рабочим процессам компании.": "An introduction to company rules, values and workflows.", "Курсы не найдены": "No courses found", "Измените поиск или фильтры.": "Change the search query or filters."}, "kk": {"Учебная платформа": "Оқу платформасы", "Обучение": "Оқу", "Главная": "Басты бет", "Мои курсы": "Менің курстарым", "Назначения": "Тапсырмалар", "Тесты": "Тесттер", "Прогресс": "Прогресс", "Сертификаты": "Сертификаттар", "Проверка знаний": "Білімді тексеру", "Техника безопасности": "Қауіпсіздік техникасы", "Проходной балл": "Өту балы", "Доступен": "Қолжетімді", "Завершено": "Аяқталды", "В процессе": "Орындалуда", "Завершён": "Аяқталды", "Продолжить": "Жалғастыру", "Открыть": "Ашу", "Подробнее": "Толығырақ", "Начать": "Бастау", "Результат": "Нәтиже", "Курс": "Курс", "Статус": "Күй", "Срок": "Мерзім", "Время": "Уақыт", "Попыток": "Әрекеттер", "Вопросов": "Сұрақтар", "Все статусы": "Барлық күйлер", "Завершённые": "Аяқталғандар", "Все курсы": "Барлық курстар", "Корпоративные стандарты": "Корпоративтік стандарттар", "Работа в команде": "Командада жұмыс істеу", "Кабинет ученика": "Оқушы кабинеті", "Лучший результат": "Үздік нәтиже", "Все категории": "Барлық санаттар", "Безопасность": "Қауіпсіздік", "Управление": "Басқару", "Стандарты": "Стандарттар", "По прогрессу": "Прогресс бойынша", "По названию": "Атауы бойынша", "Следующий урок": "Келесі сабақ", "Осталось": "Қалды", "Эвакуация": "Эвакуация", "Сертификат": "Сертификат", "Получен": "Алынды", "Скачать PDF": "PDF жүктеу", "Распечатать": "Басып шығару", "Поделиться": "Бөлісу", "Действия": "Әрекеттер", "Информация": "Ақпарат", "Владелец": "Иесі", "Дата выдачи": "Берілген күні", "Дата завершения": "Аяқталған күні", "Срок действия": "Жарамдылық мерзімі", "Бессрочно": "Мерзімсіз", "Действует": "Жарамды", "Обновить": "Жаңарту", "Все годы": "Барлық жылдар", "Действующие": "Жарамды", "Требуют обновления": "Жаңартуды қажет етеді", "Скачать все": "Барлығын жүктеу", "Все сертификаты": "Барлық сертификаттар", "Номер": "Нөмір", "Номер сертификата": "Сертификат нөмірі", "Описание": "Сипаттама", "Ваш прогресс": "Сіздің прогресіңіз", "Состояние": "Күй", "Ожидает выполнения": "Орындалуын күтуде", "Осталось попыток": "Қалған әрекеттер", "Примерное время": "Шамамен уақыт", "Открыть курс": "Курсты ашу", "Вернуться к назначениям": "Тапсырмаларға оралу", "Активных назначений": "Белсенді тапсырмалар", "Срок на этой неделе": "Осы аптадағы мерзім", "Требует внимания": "Назар аударуды қажет етеді", "Завершено всего": "Барлығы аяқталды", "Срочные": "Шұғыл", "В работе": "Жұмыста", "Все типы": "Барлық түрлер", "Тест": "Тест", "Ознакомление": "Танысу", "Сначала ближайшие": "Ең жақын мерзім алдымен", "Срочно": "Шұғыл", "Готовность": "Дайындық", "Срок выполнения": "Орындау мерзімі", "Сегодня, 18:00": "Бүгін, 18:00", "Через 3 дня": "3 күннен кейін", "Новое": "Жаңа", "Общий прогресс": "Жалпы прогресс", "Уроков завершено": "Аяқталған сабақтар", "Время обучения": "Оқу уақыты", "Средний результат тестов": "Тесттердің орташа нәтижесі", "Прогресс по курсам": "Курстар бойынша прогресс", "Цель недели": "Апталық мақсат", "Учебная серия": "Оқу сериясы", "Последняя активность": "Соңғы белсенділік", "Урок завершён": "Сабақ аяқталды", "Тест пройден": "Тест тапсырылды", "Получен сертификат": "Сертификат алынды", "Последние 30 дней": "Соңғы 30 күн", "Последние 3 месяца": "Соңғы 3 ай", "Последний год": "Соңғы жыл", "Скачать отчёт": "Есепті жүктеу", "Мой прогресс": "Менің прогресім", "Мои назначения": "Менің тапсырмаларым", "Мои сертификаты": "Менің сертификаттарым", "Мои тесты": "Менің тесттерім", "Открыть каталог": "Каталогты ашу", "Активных курса": "Белсенді курстар", "Средний прогресс": "Орташа прогресс", "Новый курс": "Жаңа курс", "Назначенные": "Тағайындалған", "Недавно открытые": "Жақында ашылған", "Назначен": "Тағайындалды", "Роли в команде": "Командадағы рөлдер", "Материалы": "Материалдар", "Правила": "Ережелер", "Формат": "Формат", "Один ответ": "Бір жауап", "Ваши попытки": "Сіздің әрекеттеріңіз", "Нет данных": "Деректер жоқ", "Начать тест": "Тестті бастау", "Вернуться к списку": "Тізімге оралу", "Осталось времени": "Қалған уақыт", "Прогресс теста": "Тест прогресі", "Вопрос 2": "2-сұрақ", "Продолжить работу": "Жұмысты жалғастыру", "Вернуться за личными вещами": "Жеке заттарға оралу", "Использовать лифт": "Лифтті пайдалану", "← Предыдущий вопрос": "← Алдыңғы сұрақ", "Следующий вопрос →": "Келесі сұрақ →", "Навигация по вопросам": "Сұрақтар бойынша навигация", "Ответ сохранён": "Жауап сақталды", "Текущий вопрос": "Ағымдағы сұрақ", "Нет ответа": "Жауап жоқ", "Доступно сейчас": "Қазір қолжетімді", "Успешно завершено": "Сәтті аяқталды", "Доступные": "Қолжетімді", "Скоро истекают": "Жақында аяқталады", "До завтра": "Ертеңге дейін", "Командная коммуникация": "Командалық коммуникация", "Посмотреть результат": "Нәтижені көру", "Получено сертификатов": "Алынған сертификаттар", "Действуют бессрочно": "Мерзімсіз жарамды", "Требует обновления в этом году": "Биыл жаңарту қажет", "Вводный курс сотрудника": "Қызметкердің кіріспе курсы", "Информационная безопасность": "Ақпараттық қауіпсіздік", "1 год": "1 жыл", "Подтверждение обучения": "Оқуды аяқтау растауы", "Настоящим подтверждается, что": "Осы арқылы расталады", "успешно завершил учебную программу": "оқу бағдарламасын сәтті аяқтады", "Проверка подлинности": "Түпнұсқалықты тексеру", "Обязательное назначение": "Міндетті тапсырма", "Завершите тест до 18:00": "Тестті 18:00-ге дейін аяқтаңыз", "Назначил": "Тағайындаған", "Менеджер отдела": "Бөлім менеджері", "Дата назначения": "Тағайындалған күні", "Что необходимо сделать": "Не істеу қажет", "Завершить все уроки курса": "Курстың барлық сабақтарын аяқтау", "Пройти итоговый тест": "Қорытынды тесттен өту", "Набрать не менее 60%": "Кемінде 60% жинау", "Подготовка к назначению": "Тапсырмаға дайындық", "Перейти к тесту": "Тестке өту", "Аналитика обучения": "Оқу аналитикасы", "Пн": "Дс", "Вт": "Сс", "Ср": "Ср", "Чт": "Бс", "Пт": "Жм", "Сб": "Сб", "Вс": "Жс", "Вопрос 2 из 5 · проходной балл 60% · попытка 1 из 3": "5 сұрақтың 2-сі · өту балы 60% · 3 әрекеттің 1-сі", "Что необходимо сделать сразу после сигнала тревоги?": "Дабыл белгісінен кейін бірден не істеу керек?", "Дождаться дополнительных указаний от коллег.": "Әріптестерден қосымша нұсқаулар күту.", "Следовать к ближайшему безопасному выходу": "Ең жақын қауіпсіз шығуға бару", "Соблюдать указатели и инструкции ответственного сотрудника.": "Белгілер мен жауапты қызметкердің нұсқауларын орындау.", "Забрать документы и только после этого покинуть помещение.": "Құжаттарды алып, содан кейін ғана ғимараттан шығу.", "Как можно быстрее спуститься на первый этаж.": "Бірінші қабатқа мүмкіндігінше тез түсу.", "Ответ сохраняется автоматически после выбора варианта.": "Жауап нұсқаны таңдағаннан кейін автоматты түрде сақталады.", "Мои тесты / Проверка знаний / Прохождение": "Менің тесттерім / Білімді тексеру / Өту", "Мои тесты / Проверка знаний по безопасности": "Менің тесттерім / Қауіпсіздік бойынша білімді тексеру", "Итоговый тест по курсу «Основы безопасности на рабочем месте». Ознакомьтесь с правилами перед началом.": "«Жұмыс орнындағы қауіпсіздік негіздері» курсының қорытынды тесті. Бастамас бұрын ережелермен танысыңыз.", "● Доступен": "● Қолжетімді", "Проверьте знания перед завершением курса": "Курсты аяқтар алдында біліміңізді тексеріңіз", "Тест состоит из пяти вопросов. Для успешного прохождения необходимо набрать не менее 60% правильных ответов.": "Тест бес сұрақтан тұрады. Өту үшін кемінде 60% дұрыс жауап қажет.", "Количество вопросов": "Сұрақтар саны", "Ограничение времени": "Уақыт шектеуі", "Доступно попыток": "Қолжетімді әрекеттер", "Не закрывайте страницу": "Бетті жаппаңыз", "При закрытии вкладки текущая попытка может быть завершена автоматически.": "Қойындыны жабу ағымдағы әрекетті автоматты түрде аяқтауы мүмкін.", "Ответы сохраняются автоматически": "Жауаптар автоматты түрде сақталады", "Выбранный вариант фиксируется после перехода к следующему вопросу.": "Таңдалған нұсқа келесі сұраққа өткенде тіркеледі.", "Результат доступен сразу": "Нәтиже бірден қолжетімді", "После завершения вы увидите итоговый балл и статус прохождения.": "Аяқтағаннан кейін қорытынды балл мен өту күйін көресіз.", "Вы ещё не проходили этот тест": "Сіз бұл тесттен әлі өткен жоқсыз", "После нажатия «Начать тест» запустится таймер на 15 минут.": "«Тестті бастау» басылғаннан кейін 15 минуттық таймер іске қосылады.", "Пройдите доступные проверки знаний и отслеживайте результаты.": "Қолжетімді тесттерден өтіп, нәтижелерді бақылаңыз.", "Курс: Основы безопасности на рабочем месте": "Курс: Жұмыс орнындағы қауіпсіздік негіздері", "Курс: Эффективная работа в команде": "Курс: Тиімді командалық жұмыс", "Курс: Введение в корпоративные стандарты": "Курс: Корпоративтік стандарттарға кіріспе", "Ничего не найдено": "Ештеңе табылмады", "Измените поиск или выбранные фильтры.": "Іздеу сұрауын немесе сүзгілерді өзгертіңіз.", "Просматривайте и скачивайте подтверждения завершённого обучения.": "Аяқталған оқу растамаларын қарап, жүктеңіз.", "Обновить до 30.11.2026": "2026 жылғы 30 қарашаға дейін жаңарту", "Сертификаты не найдены": "Сертификаттар табылмады", "Сертификаты / Корпоративные стандарты": "Сертификаттар / Корпоративтік стандарттар", "Документ подтверждает успешное завершение учебной программы.": "Бұл құжат оқу бағдарламасының сәтті аяқталғанын растайды.", "● Действует": "● Жарамды", "Сертификат можно проверить по уникальному коду:": "Сертификатты бірегей код арқылы тексеруге болады:", "Следите за сроками и завершайте обязательное обучение вовремя.": "Мерзімдерді бақылап, міндетті оқуды уақытында аяқтаңыз.", "Пройдите итоговую проверку знаний после завершения всех уроков курса.": "Курстың барлық сабақтарын аяқтағаннан кейін қорытынды тесттен өтіңіз.", "Назначено менеджером отдела": "Бөлім менеджері тағайындады", "Завершите первый модуль и практическое задание по командной коммуникации.": "Бірінші модульді және командалық коммуникация бойынша практикалық тапсырманы аяқтаңыз.", "Обязательный документ компании": "Компанияның міндетті құжаты", "Ознакомьтесь с документом и подтвердите прочтение.": "Құжатпен танысып, оқығаныңызды растаңыз.", "Обязательная программа адаптации": "Міндетті бейімдеу бағдарламасы", "Курс завершён, сертификат доступен в разделе «Сертификаты».": "Курс аяқталды, сертификат «Сертификаттар» бөлімінде қолжетімді.", "Назначения не найдены": "Тапсырмалар табылмады", "Назначения / Тест по технике безопасности": "Тапсырмалар / Қауіпсіздік тесті", "Завершите итоговую проверку знаний по курсу «Основы безопасности на рабочем месте».": "«Жұмыс орнындағы қауіпсіздік негіздері» курсының қорытынды тестін аяқтаңыз.", "● Срок сегодня": "● Мерзімі бүгін", "Назначение считается выполненным после успешного прохождения теста с результатом не ниже 60%.": "Тапсырма тесттен кемінде 60% нәтижемен өткеннен кейін орындалды деп есептеледі.", "Итоговая проверка подтверждает, что вы ознакомились с основными правилами\n                безопасной работы, средствами индивидуальной защиты и действиями при эвакуации.": "Қорытынды тест қауіпсіз жұмыс ережелері, қорғаныс құралдары және эвакуация әрекеттері бойынша біліміңізді растайды.", "Перед тестом должны быть просмотрены обязательные материалы.": "Тестке дейін барлық міндетті материалдарды қарап шығыңыз.", "Тест содержит 5 вопросов и ограничен 15 минутами.": "Тест 5 сұрақтан тұрады және 15 минутпен шектелген.", "При неудаче можно использовать ещё две попытки.": "Сәтсіз болған жағдайда тағы екі әрекет пайдалануға болады.", "После начала теста запустится таймер. Не закрывайте страницу до завершения попытки.": "Тест басталғанда таймер іске қосылады. Әрекет аяқталғанша бетті жаппаңыз.", "Отслеживайте завершённые курсы, результаты тестов и учебную активность.": "Аяқталған курстарды, тест нәтижелерін және оқу белсенділігін бақылаңыз.", "7 из 10 уроков · итоговый тест не пройден": "10 сабақтың 7-еуі · қорытынды тест өтпеген", "8 из 8 уроков · тест 92%": "8 сабақтың 8-еуі · тест 92%", "3 из 8 уроков · тест ещё недоступен": "8 сабақтың 3-еуі · тест әлі қолжетімсіз", "Завершите ещё один урок, чтобы выполнить недельную цель.": "Апталық мақсатқа жету үшін тағы бір сабақты аяқтаңыз.", "Вы завершили урок «Средства индивидуальной защиты».": "Сіз «Жеке қорғаныс құралдары» сабағын аяқтадыңыз.", "Результат теста по корпоративным стандартам — 84%.": "Корпоративтік стандарттар тестінің нәтижесі — 84%.", "Сертификат по курсу «Корпоративные стандарты» доступен для скачивания.": "«Корпоративтік стандарттар» курсының сертификатын жүктеуге болады.", "Продолжайте активное обучение и возвращайтесь к завершённым программам.": "Белсенді оқуды жалғастырып, аяқталған бағдарламаларға оралыңыз.", "Основы безопасности на рабочем месте": "Жұмыс орнындағы қауіпсіздік негіздері", "Практический курс по безопасной работе и действиям в экстренных ситуациях.": "Қауіпсіз жұмыс пен төтенше жағдайлардағы әрекеттер туралы практикалық курс.", "Эффективная работа в команде": "Тиімді командалық жұмыс", "Курс о коммуникации, ответственности и совместном достижении результата.": "Коммуникация, жауапкершілік және ортақ нәтиже туралы курс.", "Вводная программа по правилам, ценностям и рабочим процессам компании.": "Компания ережелері, құндылықтары және жұмыс үдерістері туралы кіріспе бағдарлама.", "Курсы не найдены": "Курстар табылмады", "Измените поиск или фильтры.": "Іздеу сұрауын немесе сүзгілерді өзгертіңіз."}, "zh": {"Учебная платформа": "学习平台", "Обучение": "学习", "Главная": "首页", "Мои курсы": "我的课程", "Назначения": "任务", "Тесты": "测试", "Прогресс": "进度", "Сертификаты": "证书", "Проверка знаний": "知识测试", "Техника безопасности": "安全基础", "Проходной балл": "及格分数", "Доступен": "可用", "Завершено": "已完成", "В процессе": "进行中", "Завершён": "已完成", "Продолжить": "继续", "Открыть": "打开", "Подробнее": "详情", "Начать": "开始", "Результат": "结果", "Курс": "课程", "Статус": "状态", "Срок": "截止日期", "Время": "时间", "Попыток": "尝试次数", "Вопросов": "问题数", "Все статусы": "所有状态", "Завершённые": "已完成", "Все курсы": "所有课程", "Корпоративные стандарты": "企业标准", "Работа в команде": "团队协作", "Кабинет ученика": "学员中心", "Лучший результат": "最佳成绩", "Все категории": "所有分类", "Безопасность": "安全", "Управление": "管理", "Стандарты": "标准", "По прогрессу": "按进度", "По названию": "按名称", "Следующий урок": "下一课", "Осталось": "剩余", "Эвакуация": "疏散", "Сертификат": "证书", "Получен": "已获得", "Скачать PDF": "下载 PDF", "Распечатать": "打印", "Поделиться": "分享", "Действия": "操作", "Информация": "信息", "Владелец": "持有人", "Дата выдачи": "签发日期", "Дата завершения": "完成日期", "Срок действия": "有效期", "Бессрочно": "永久有效", "Действует": "有效", "Обновить": "更新", "Все годы": "所有年份", "Действующие": "有效", "Требуют обновления": "需要更新", "Скачать все": "全部下载", "Все сертификаты": "所有证书", "Номер": "编号", "Номер сертификата": "证书编号", "Описание": "说明", "Ваш прогресс": "您的进度", "Состояние": "状态", "Ожидает выполнения": "待完成", "Осталось попыток": "剩余尝试次数", "Примерное время": "预计时间", "Открыть курс": "打开课程", "Вернуться к назначениям": "返回任务", "Активных назначений": "进行中的任务", "Срок на этой неделе": "本周到期", "Требует внимания": "需要关注", "Завершено всего": "累计完成", "Срочные": "紧急", "В работе": "进行中", "Все типы": "所有类型", "Тест": "测试", "Ознакомление": "阅读确认", "Сначала ближайшие": "最近截止优先", "Срочно": "紧急", "Готовность": "准备度", "Срок выполнения": "截止日期", "Сегодня, 18:00": "今天 18:00", "Через 3 дня": "3 天后", "Новое": "新任务", "Общий прогресс": "总进度", "Уроков завершено": "已完成课时", "Время обучения": "学习时长", "Средний результат тестов": "平均测试成绩", "Прогресс по курсам": "课程进度", "Цель недели": "本周目标", "Учебная серия": "连续学习", "Последняя активность": "最近活动", "Урок завершён": "课时已完成", "Тест пройден": "测试已通过", "Получен сертификат": "已获得证书", "Последние 30 дней": "最近 30 天", "Последние 3 месяца": "最近 3 个月", "Последний год": "最近一年", "Скачать отчёт": "下载报告", "Мой прогресс": "我的进度", "Мои назначения": "我的任务", "Мои сертификаты": "我的证书", "Мои тесты": "我的测试", "Открыть каталог": "打开目录", "Активных курса": "进行中的课程", "Средний прогресс": "平均进度", "Новый курс": "新课程", "Назначенные": "已分配", "Недавно открытые": "最近打开", "Назначен": "已分配", "Роли в команде": "团队角色", "Материалы": "资料", "Правила": "规则", "Формат": "格式", "Один ответ": "单选", "Ваши попытки": "您的尝试", "Нет данных": "暂无数据", "Начать тест": "开始测试", "Вернуться к списку": "返回列表", "Осталось времени": "剩余时间", "Прогресс теста": "测试进度", "Вопрос 2": "第 2 题", "Продолжить работу": "继续工作", "Вернуться за личными вещами": "返回取个人物品", "Использовать лифт": "使用电梯", "← Предыдущий вопрос": "← 上一题", "Следующий вопрос →": "下一题 →", "Навигация по вопросам": "题目导航", "Ответ сохранён": "答案已保存", "Текущий вопрос": "当前题目", "Нет ответа": "未作答", "Доступно сейчас": "当前可用", "Успешно завершено": "成功完成", "Доступные": "可用", "Скоро истекают": "即将到期", "До завтра": "明天到期", "Командная коммуникация": "团队沟通", "Посмотреть результат": "查看结果", "Получено сертификатов": "已获得证书", "Действуют бессрочно": "永久有效", "Требует обновления в этом году": "今年需要更新", "Вводный курс сотрудника": "员工入职课程", "Информационная безопасность": "信息安全", "1 год": "1 年", "Подтверждение обучения": "学习完成证明", "Настоящим подтверждается, что": "兹证明", "успешно завершил учебную программу": "已成功完成学习项目", "Проверка подлинности": "真伪验证", "Обязательное назначение": "必修任务", "Завершите тест до 18:00": "请在 18:00 前完成测试", "Назначил": "分配人", "Менеджер отдела": "部门经理", "Дата назначения": "分配日期", "Что необходимо сделать": "需要完成", "Завершить все уроки курса": "完成所有课程课时", "Пройти итоговый тест": "完成最终测试", "Набрать не менее 60%": "至少获得 60%", "Подготовка к назначению": "任务准备度", "Перейти к тесту": "进入测试", "Аналитика обучения": "学习分析", "Пн": "周一", "Вт": "周二", "Ср": "周三", "Чт": "周四", "Пт": "周五", "Сб": "周六", "Вс": "周日", "Вопрос 2 из 5 · проходной балл 60% · попытка 1 из 3": "第 2/5 题 · 及格分数 60% · 第 1/3 次尝试", "Что необходимо сделать сразу после сигнала тревоги?": "警报响起后应立即做什么？", "Дождаться дополнительных указаний от коллег.": "等待同事进一步指示。", "Следовать к ближайшему безопасному выходу": "前往最近的安全出口", "Соблюдать указатели и инструкции ответственного сотрудника.": "遵循指示标志和负责人的指令。", "Забрать документы и только после этого покинуть помещение.": "取走文件后再离开建筑。", "Как можно быстрее спуститься на первый этаж.": "尽快到达一楼。", "Ответ сохраняется автоматически после выбора варианта.": "选择选项后答案会自动保存。", "Мои тесты / Проверка знаний / Прохождение": "我的测试 / 知识测试 / 作答", "Мои тесты / Проверка знаний по безопасности": "我的测试 / 安全知识测试", "Итоговый тест по курсу «Основы безопасности на рабочем месте». Ознакомьтесь с правилами перед началом.": "“工作场所安全基础”课程的最终测试。开始前请阅读规则。", "● Доступен": "● 可用", "Проверьте знания перед завершением курса": "完成课程前检查您的知识", "Тест состоит из пяти вопросов. Для успешного прохождения необходимо набрать не менее 60% правильных ответов.": "测试包含五道题。通过需要至少 60% 的正确答案。", "Количество вопросов": "题目数量", "Ограничение времени": "时间限制", "Доступно попыток": "可用尝试次数", "Не закрывайте страницу": "请勿关闭页面", "При закрытии вкладки текущая попытка может быть завершена автоматически.": "关闭标签页可能会自动结束当前尝试。", "Ответы сохраняются автоматически": "答案会自动保存", "Выбранный вариант фиксируется после перехода к следующему вопросу.": "进入下一题时会记录所选选项。", "Результат доступен сразу": "结果立即可见", "После завершения вы увидите итоговый балл и статус прохождения.": "完成后您将看到最终分数和通过状态。", "Вы ещё не проходили этот тест": "您尚未参加此测试", "После нажатия «Начать тест» запустится таймер на 15 минут.": "点击“开始测试”后将启动 15 分钟计时器。", "Пройдите доступные проверки знаний и отслеживайте результаты.": "完成可用测试并跟踪结果。", "Курс: Основы безопасности на рабочем месте": "课程：工作场所安全基础", "Курс: Эффективная работа в команде": "课程：高效团队协作", "Курс: Введение в корпоративные стандарты": "课程：企业标准入门", "Ничего не найдено": "未找到内容", "Измените поиск или выбранные фильтры.": "请更改搜索内容或筛选条件。", "Просматривайте и скачивайте подтверждения завершённого обучения.": "查看并下载学习完成证明。", "Обновить до 30.11.2026": "请在 2026-11-30 前更新", "Сертификаты не найдены": "未找到证书", "Сертификаты / Корпоративные стандарты": "证书 / 企业标准", "Документ подтверждает успешное завершение учебной программы.": "此文件证明已成功完成学习项目。", "● Действует": "● 有效", "Сертификат можно проверить по уникальному коду:": "可使用唯一代码验证证书：", "Следите за сроками и завершайте обязательное обучение вовремя.": "跟踪截止日期并按时完成必修学习。", "Пройдите итоговую проверку знаний после завершения всех уроков курса.": "完成所有课程课时后参加最终测试。", "Назначено менеджером отдела": "由部门经理分配", "Завершите первый модуль и практическое задание по командной коммуникации.": "完成第一模块和团队沟通实践任务。", "Обязательный документ компании": "公司必读文件", "Ознакомьтесь с документом и подтвердите прочтение.": "阅读文件并确认已阅读。", "Обязательная программа адаптации": "必修入职项目", "Курс завершён, сертификат доступен в разделе «Сертификаты».": "课程已完成，证书可在“证书”中查看。", "Назначения не найдены": "未找到任务", "Назначения / Тест по технике безопасности": "任务 / 安全测试", "Завершите итоговую проверку знаний по курсу «Основы безопасности на рабочем месте».": "完成“工作场所安全基础”课程的最终测试。", "● Срок сегодня": "● 今天到期", "Назначение считается выполненным после успешного прохождения теста с результатом не ниже 60%.": "测试成绩达到至少 60% 后，任务视为完成。", "Итоговая проверка подтверждает, что вы ознакомились с основными правилами\n                безопасной работы, средствами индивидуальной защиты и действиями при эвакуации.": "最终测试确认您已掌握安全工作规范、防护装备和疏散流程。", "Перед тестом должны быть просмотрены обязательные материалы.": "测试前请查看所有必修资料。", "Тест содержит 5 вопросов и ограничен 15 минутами.": "测试包含 5 道题，限时 15 分钟。", "При неудаче можно использовать ещё две попытки.": "如未通过，还可再尝试两次。", "После начала теста запустится таймер. Не закрывайте страницу до завершения попытки.": "测试开始后计时器将启动。完成尝试前请勿关闭页面。", "Отслеживайте завершённые курсы, результаты тестов и учебную активность.": "跟踪已完成课程、测试结果和学习活动。", "7 из 10 уроков · итоговый тест не пройден": "已完成 7/10 课时 · 最终测试未通过", "8 из 8 уроков · тест 92%": "已完成 8/8 课时 · 测试 92%", "3 из 8 уроков · тест ещё недоступен": "已完成 3/8 课时 · 测试尚未开放", "Завершите ещё один урок, чтобы выполнить недельную цель.": "再完成一节课即可达成本周目标。", "Вы завершили урок «Средства индивидуальной защиты».": "您已完成“个人防护装备”课时。", "Результат теста по корпоративным стандартам — 84%.": "企业标准测试成绩为 84%。", "Сертификат по курсу «Корпоративные стандарты» доступен для скачивания.": "“企业标准”课程证书已可下载。", "Продолжайте активное обучение и возвращайтесь к завершённым программам.": "继续学习并随时回顾已完成项目。", "Основы безопасности на рабочем месте": "工作场所安全基础", "Практический курс по безопасной работе и действиям в экстренных ситуациях.": "关于安全工作和紧急响应的实用课程。", "Эффективная работа в команде": "高效团队协作", "Курс о коммуникации, ответственности и совместном достижении результата.": "关于沟通、责任和共同成果的课程。", "Вводная программа по правилам, ценностям и рабочим процессам компании.": "关于公司规则、价值观和工作流程的入门项目。", "Курсы не найдены": "未找到课程", "Измените поиск или фильтры.": "请更改搜索内容或筛选条件。"}};
+  const labels = {ru:"RU",en:"EN",kk:"KK",zh:"ZH"};
+  const languageButton = document.getElementById("languageToggle");
+  const languageMenu = document.getElementById("languageMenu");
+  const textKeys = new WeakMap();
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    if (node.parentElement && !["SCRIPT","STYLE"].includes(node.parentElement.tagName)) {
+      const key = node.textContent.trim();
+      if (key) textKeys.set(node, key);
+    }
+  }
+
+  document.querySelectorAll("[placeholder]").forEach((element) => {
+    element.dataset.i18nPlaceholderKey = element.placeholder;
+  });
+
+  function setLanguage(lang) {
+    const dictionary = dictionaries[lang] || {};
+    document.documentElement.lang = lang;
+    languageButton.textContent = labels[lang] || "RU";
+
+    const translateWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let textNode;
+    while ((textNode = translateWalker.nextNode())) {
+      if (!textNode.parentElement || ["SCRIPT","STYLE"].includes(textNode.parentElement.tagName)) continue;
+      const key = textKeys.get(textNode);
+      if (!key) continue;
+      const translated = lang === "ru" ? key : dictionary[key];
+      if (translated) {
+        const prefix = textNode.textContent.match(/^\s*/)?.[0] || "";
+        const suffix = textNode.textContent.match(/\s*$/)?.[0] || "";
+        textNode.textContent = prefix + translated + suffix;
+      }
+    }
+
+    document.querySelectorAll("[data-i18n-placeholder-key]").forEach((element) => {
+      const key = element.dataset.i18nPlaceholderKey;
+      element.placeholder = lang === "ru" ? key : (dictionary[key] || key);
+    });
+
+    document.querySelectorAll(".language-option").forEach((button) => {
+      button.classList.toggle("active", button.dataset.lang === lang);
+    });
+
+    localStorage.setItem("lms-prototype-language", lang);
+    languageMenu.classList.remove("open");
+    languageButton.setAttribute("aria-expanded", "false");
+  }
+
+  languageButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = languageMenu.classList.toggle("open");
+    languageButton.setAttribute("aria-expanded", String(isOpen));
+  });
+
+  document.querySelectorAll(".language-option").forEach((button) => {
+    button.addEventListener("click", () => setLanguage(button.dataset.lang));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".language-wrap")) {
+      languageMenu.classList.remove("open");
+      languageButton.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  setLanguage(localStorage.getItem("lms-prototype-language") || "ru");
+})();
+</script>
+
+</body>
+</html>
