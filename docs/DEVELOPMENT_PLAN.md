@@ -2212,7 +2212,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 176 — Instructor course ownership 🔲
+## PR 176 — Instructor course ownership ✅
 
 **Проблема:** Роль instructor сама по себе может дать доступ ко всем курсам организации.
 

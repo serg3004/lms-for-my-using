@@ -59,7 +59,7 @@ describe('AssignmentsController — RBAC ownership', () => {
 
       controller.listAssignments(makeRequest(learnerId, ['learner', 'instructor']), {});
 
-      expect(calls).toEqual([[orgId, undefined, 1, 20]]);
+      expect(calls).toEqual([[orgId, undefined, 1, 20, learnerId]]);
     });
   });
 });

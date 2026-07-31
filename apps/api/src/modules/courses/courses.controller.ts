@@ -6,6 +6,7 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
 import {
   createCourseSchema,
   CreateCourseInput,
@@ -18,26 +19,33 @@ import { CoursesService } from './courses.service.js';
 @Controller('courses')
 @UseGuards(AuthGuard, RolesGuard)
 export class CoursesController {
-  constructor(private readonly coursesService: CoursesService) {}
+  constructor(
+    private readonly coursesService: CoursesService,
+    private readonly courseAccess: CourseAccessPolicy,
+  ) {}
 
   @Get()
   @Roles(...rolePolicies.coursesRead)
   listCourses(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
-    return this.coursesService.listCourses(request.currentUser!.organizationId, page, pageSize);
+    const user = request.currentUser!;
+    const instructorId = this.courseAccess.isInstructorScoped(user) ? user.id : undefined;
+    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.coursesRead)
-  getCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
-    return this.coursesService.getCourse(courseId, request.currentUser!.organizationId);
+  async getCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.courseAccess.assertCourseAccess(courseId, user);
+    return this.coursesService.getCourse(courseId, user.organizationId);
   }
 
   @Get(':id/completion')
   @Roles(...rolePolicies.coursesRead)
-  getCourseCompletion(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+  async getCourseCompletion(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
     const currentUser = request.currentUser!;
-
+    await this.courseAccess.assertCourseAccess(courseId, currentUser);
     return this.coursesService.getCourseCompletion(courseId, currentUser.id, currentUser.organizationId);
   }
 
@@ -45,31 +53,34 @@ export class CoursesController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.coursesCreate)
   @OrganizationScope('body', 'organizationId')
-  createCourse(@Body() body: unknown) {
+  async createCourse(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateCourseInput = createCourseSchema.parse(body);
 
-    return this.coursesService.createCourse(input);
+    const course = await this.coursesService.createCourse(input);
+    await this.courseAccess.assignInstructor(course.id, request.currentUser!);
+    return course;
   }
 
   @Patch(':id')
   @Roles(...rolePolicies.coursesCreate)
-  updateCourse(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateCourse(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: UpdateCourseInput = updateCourseSchema.parse(body);
-
+    await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
     return this.coursesService.updateCourse(courseId, request.currentUser!.organizationId, input);
   }
 
   @Patch(':id/status')
   @Roles(...rolePolicies.coursesCreate)
-  updateCourseStatus(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateCourseStatus(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateCourseStatusSchema.parse(body);
-
+    await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
     return this.coursesService.updateCourseStatus(courseId, request.currentUser!.organizationId, input.status);
   }
 
   @Delete(':id')
   @Roles(...rolePolicies.coursesCreate)
-  deleteCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+  async deleteCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+    await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
     return this.coursesService.deleteCourse(courseId, request.currentUser!.organizationId);
   }
 }

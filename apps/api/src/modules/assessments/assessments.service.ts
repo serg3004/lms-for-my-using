@@ -27,11 +27,12 @@ const assessmentSelect = {
 export class AssessmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAssessments(organizationId: string) {
+  async listAssessments(organizationId: string, instructorId?: string) {
     return this.prisma.assessment.findMany({
       where: {
         organizationId,
         deletedAt: null,
+        ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       select: assessmentSelect,

@@ -19,9 +19,14 @@ const assignmentSelect = {
 export class AssignmentsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listAssignments(organizationId: string, userId: string | undefined, page: number, pageSize: number) {
+  async listAssignments(organizationId: string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
     const skip = (page - 1) * pageSize;
-    const where = { organizationId, ...(userId !== undefined ? { userId } : {}), deletedAt: null } as const;
+    const where = {
+      organizationId,
+      ...(userId !== undefined ? { userId } : {}),
+      ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
+      deletedAt: null,
+    } as const;
     const [items, total] = await Promise.all([
       this.prisma.assignment.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: assignmentSelect }),
       this.prisma.assignment.count({ where }),

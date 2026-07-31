@@ -18,6 +18,7 @@ const id = {
   // Users
   admin: '10000000-0000-4000-8000-000000000011',
   learner: '10000000-0000-4000-8000-000000000012',
+  instructor: '10000000-0000-4000-8000-000000000013',
   // Course
   course: '10000000-0000-4000-8000-000000000031',
   // Lessons
@@ -98,6 +99,16 @@ async function main() {
         position: 'New Employee',
         status: 'active',
       },
+      {
+        id: id.instructor,
+        organizationId: id.org,
+        email: 'instructor@demo.com',
+        passwordHash,
+        firstName: 'Iris',
+        lastName: 'Instructor',
+        position: 'Course Instructor',
+        status: 'active',
+      },
     ],
     skipDuplicates: true,
   });
@@ -118,6 +129,13 @@ async function main() {
         role: 'learner',
         assignedBy: id.admin,
       },
+      {
+        id: '10000000-0000-4000-8000-0000000000f3',
+        organizationId: id.org,
+        userId: id.instructor,
+        role: 'instructor',
+        assignedBy: id.admin,
+      },
     ],
     skipDuplicates: true,
   });
@@ -132,6 +150,11 @@ async function main() {
       description: 'Essential safety knowledge for all new employees. Covers emergency procedures, protective equipment, and safe equipment operation.',
       status: 'published',
     }],
+    skipDuplicates: true,
+  });
+
+  await prisma.courseInstructor.createMany({
+    data: [{ courseId: id.course, instructorId: id.instructor, organizationId: id.org }],
     skipDuplicates: true,
   });
 
@@ -346,6 +369,7 @@ async function main() {
   console.log('  Learner: learner@demo.com');
   console.log('');
   console.log('Demo state:');
+  console.log('  Instructor: instructor@demo.com / Demo1234!');
   console.log('  Course: Workplace Safety Fundamentals (3 lessons)');
   console.log('  Learner has completed 1/3 lessons — progress bar visible');
   console.log('  Assessment: Safety Knowledge Assessment (5 questions, 60% passing)');

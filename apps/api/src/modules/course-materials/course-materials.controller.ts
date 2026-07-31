@@ -5,6 +5,7 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
 import {
   createCourseMaterialSchema,
   CreateCourseMaterialInput,
@@ -14,18 +15,20 @@ import {
 import { CourseMaterialsService } from './course-materials.service.js';
 
 @Controller()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class CourseMaterialsController {
   constructor(private readonly courseMaterialsService: CourseMaterialsService) {}
 
   @Get('courses/:courseId/materials')
   @Roles(...rolePolicies.courseMaterialsRead)
+  @CourseScope('param', 'courseId')
   listCourseMaterials(@Param('courseId') courseId: string, @Req() request: AuthenticatedRequest) {
     return this.courseMaterialsService.listCourseMaterials(courseId, request.currentUser!.organizationId);
   }
 
   @Get('materials/:id')
   @Roles(...rolePolicies.courseMaterialsRead)
+  @CourseScope('param', 'id', 'material')
   getCourseMaterial(@Param('id') materialId: string, @Req() request: AuthenticatedRequest) {
     return this.courseMaterialsService.getCourseMaterial(materialId, request.currentUser!.organizationId);
   }
@@ -34,6 +37,7 @@ export class CourseMaterialsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.courseMaterialsCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('param', 'courseId')
   createCourseMaterial(@Param('courseId') courseId: string, @Body() body: unknown) {
     const input: CreateCourseMaterialInput = createCourseMaterialSchema.parse({
       ...(typeof body === 'object' && body !== null ? body : {}),
@@ -45,6 +49,7 @@ export class CourseMaterialsController {
 
   @Patch('materials/:id/status')
   @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
   updateCourseMaterialStatus(
     @Param('id') materialId: string,
     @Body() body: unknown,
@@ -60,6 +65,7 @@ export class CourseMaterialsController {
 
   @Patch('materials/:id')
   @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
   updateCourseMaterial(@Param('id') materialId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateCourseMaterialSchema.parse(body);
     return this.courseMaterialsService.updateCourseMaterial(materialId, request.currentUser!.organizationId, input);

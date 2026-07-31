@@ -116,6 +116,7 @@ model Organization {
   certificates                    Certificate[]
   memberships                     Membership[]
   sessions                        Session[]
+  courseInstructors               CourseInstructor[]
 
   @@map("organizations")
 }
@@ -147,6 +148,7 @@ model User {
   assessmentAttempts  AssessmentAttempt[]
   certificates        Certificate[]
   sessions            Session[]
+  instructedCourses   CourseInstructor[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -191,10 +193,27 @@ model Course {
   progress       Progress[]
   assessments    Assessment[]
   certificates   Certificate[]
+  instructors    CourseInstructor[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
   @@map("courses")
+}
+
+model CourseInstructor {
+  courseId       String   @map("course_id") @db.Uuid
+  instructorId   String   @map("instructor_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  assignedAt     DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+
+  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, instructorId])
+  @@index([organizationId, instructorId])
+  @@index([organizationId, courseId])
+  @@map("course_instructors")
 }
 
 model Lesson {
