@@ -22,6 +22,17 @@ type Middleware = (request: ApiRequest, response: ApiResponse, next: NextFunctio
 const TOO_MANY_REQUESTS_STATUS = 429;
 const TOO_MANY_REQUESTS_CODE = 'TOO_MANY_REQUESTS';
 const TOO_MANY_REQUESTS_MESSAGE = 'Too many requests';
+const API_CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "script-src 'none'",
+  "connect-src 'none'",
+  "img-src 'none'",
+  "font-src 'none'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'none'",
+].join('; ');
 
 const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/login',
@@ -161,6 +172,10 @@ export function createRedisRateLimitStore(redis: MinimalRedis, namespace = 'lms'
 
 export function createSecurityHeadersMiddleware(): Middleware {
   return (_request, response, next) => {
+    // TLS is terminated by the trusted production proxy. Browsers ignore HSTS
+    // when this same application is reached over plain HTTP during development.
+    response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    response.setHeader('Content-Security-Policy', API_CONTENT_SECURITY_POLICY);
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
     response.setHeader('Referrer-Policy', 'no-referrer');

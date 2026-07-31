@@ -23,8 +23,15 @@ The script checks:
 1. `${API_URL}/api/v1/health`
 2. `${WEB_URL}`
 3. `${WEB_URL}/api/v1/health`
+4. HSTS and enforced CSP on all three HTTPS responses
+5. CSP source restrictions, absence of `unsafe-eval`, and frame embedding protection
+6. HTTP-to-HTTPS redirects for the API and Web URLs
 
 Any failed request returns a non-zero exit code.
+
+Both `API_URL` and `WEB_URL` must use `https://`; header and redirect checks are
+intended for a deployed staging environment where TLS terminates at the public
+ingress.
 
 ## Optional environment variables
 
