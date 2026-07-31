@@ -73,6 +73,9 @@ GET  /api/v1/lessons/:id
 GET  /api/v1/courses/:courseId/materials
 POST /api/v1/courses/:courseId/materials
 GET  /api/v1/materials/:id
+GET  /api/v1/materials/:id/download
+POST /api/v1/materials/:id/file
+DELETE /api/v1/materials/:id/file
 
 GET  /api/v1/progress
 POST /api/v1/progress

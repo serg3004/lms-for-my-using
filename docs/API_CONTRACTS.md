@@ -126,6 +126,9 @@ Suggested rollout order:
 | GET | `/courses/:courseId/materials` | Admin/manager/instructor/learner read scope. |
 | POST | `/courses/:courseId/materials` | Admin/instructor create scope. |
 | GET | `/materials/:id` | Admin/manager/instructor/learner read scope. |
+| GET | `/materials/:id/download` | Authorized read scope; returns a five-minute presigned URL for private objects. |
+| POST | `/materials/:id/file` | Admin/instructor create scope; multipart `file`, tenant-scoped private upload. |
+| DELETE | `/materials/:id/file` | Admin/instructor create scope; idempotent object removal. |
 | GET | `/assignments` | Admin/manager/instructor/learner read scope. |
 | GET | `/assignments/:id` | Admin/manager/instructor/learner read scope. |
 | POST | `/assignments` | Admin/manager/instructor create scope. |

@@ -18,6 +18,7 @@ const courseMaterialSelect = {
   kind: true,
   fileName: true,
   fileUrl: true,
+  objectKey: true,
   mimeType: true,
   sizeBytes: true,
   status: true,
@@ -121,6 +122,37 @@ export class CourseMaterialsService {
     return this.prisma.courseMaterial.update({
       where: { id: materialId, organizationId },
       data: input,
+      select: courseMaterialSelect,
+    });
+  }
+
+  async getMaterialStorageReference(materialId: string, organizationId: string) {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, deletedAt: null },
+      select: { id: true, kind: true, fileUrl: true, objectKey: true },
+    });
+    if (!material) throw new NotFoundException('Course material not found');
+    return material;
+  }
+
+  async attachUploadedFile(
+    materialId: string,
+    organizationId: string,
+    file: { objectKey: string; fileName: string; mimeType: string; sizeBytes: number },
+  ) {
+    await this.getMaterialStorageReference(materialId, organizationId);
+    return this.prisma.courseMaterial.update({
+      where: { id: materialId, organizationId },
+      data: { ...file, kind: 'file', fileUrl: null },
+      select: courseMaterialSelect,
+    });
+  }
+
+  async clearUploadedFile(materialId: string, organizationId: string) {
+    await this.getMaterialStorageReference(materialId, organizationId);
+    return this.prisma.courseMaterial.update({
+      where: { id: materialId, organizationId },
+      data: { objectKey: null, fileName: null, mimeType: null, sizeBytes: null },
       select: courseMaterialSelect,
     });
   }
