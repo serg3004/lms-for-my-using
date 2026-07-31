@@ -39,6 +39,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      TRUST_PROXY: loopback,linklocal,uniquelocal
     networks:
       - lms_internal
     depends_on:

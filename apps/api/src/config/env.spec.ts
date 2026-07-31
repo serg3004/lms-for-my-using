@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { getJwtSecret, loadApiEnv, loadLocalEnvFiles } from './env';
+import { getJwtSecret, loadApiEnv, loadLocalEnvFiles, parseTrustProxy } from './env';
 
 const validJwtSecret = '0123456789abcdef0123456789abcdef';
 const validDatabaseUrl = 'postgresql://postgres:postgres@localhost:5432/lms';
@@ -19,6 +19,7 @@ describe('API environment validation', () => {
       API_PORT: '3001',
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
+      TRUST_PROXY: 'loopback,linklocal,uniquelocal',
     });
 
     expect(apiEnv).toEqual({
@@ -28,6 +29,7 @@ describe('API environment validation', () => {
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
       LOG_LEVEL: 'info',
+      TRUST_PROXY: ['loopback', 'linklocal', 'uniquelocal'],
     });
   });
 
@@ -55,6 +57,7 @@ describe('API environment validation', () => {
         NODE_ENV: nodeEnv,
         DATABASE_URL: validDatabaseUrl,
         JWT_SECRET: validJwtSecret,
+        ...(nodeEnv === 'production' ? { TRUST_PROXY: '1' } : {}),
       });
       expect(apiEnv.NODE_ENV).toBe(nodeEnv);
     }
@@ -69,6 +72,34 @@ describe('API environment validation', () => {
       }),
     ).toThrow(/NODE_ENV/);
   });
+
+  it('requires an explicit trusted proxy policy in production', () => {
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: validDatabaseUrl,
+        JWT_SECRET: validJwtSecret,
+      }),
+    ).toThrow(/TRUST_PROXY.*required in production/);
+  });
+
+  it('parses disabled, hop-count, IPv4, IPv6, and named proxy policies', () => {
+    expect(parseTrustProxy(undefined)).toBe(false);
+    expect(parseTrustProxy('false')).toBe(false);
+    expect(parseTrustProxy('2')).toBe(2);
+    expect(parseTrustProxy('127.0.0.1/32, 2001:db8::/32, loopback')).toEqual([
+      '127.0.0.1/32',
+      '2001:db8::/32',
+      'loopback',
+    ]);
+  });
+
+  it.each(['true', '999.1.1.1', '10.0.0.0/33', '2001:db8::/129', 'loopback,all'])(
+    'rejects invalid trusted proxy policy %s',
+    (value) => {
+      expect(() => parseTrustProxy(value)).toThrow(/TRUST_PROXY/);
+    },
+  );
 
   it('rejects missing DATABASE_URL', () => {
     expect(() =>

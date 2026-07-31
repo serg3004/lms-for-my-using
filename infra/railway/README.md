@@ -50,6 +50,12 @@ Railway will automatically create the `DATABASE_URL` variable.
 | `JWT_SECRET` | random 32+ char string | use `openssl rand -hex 32` |
 | `FRONTEND_URL` | `https://your-web.up.railway.app` | web service URL |
 | `NODE_ENV` | `production` | — |
+| `TRUST_PROXY` | `loopback,linklocal,uniquelocal` | Trust only private/loopback proxy addresses |
+
+Do not enable Public Networking on the API service. All public `/api/` traffic must
+enter through the web nginx service over Railway private networking; otherwise a
+client can bypass nginx's forwarded-header normalization and the intended network
+perimeter.
 
 ### 4. Create Web service
 
