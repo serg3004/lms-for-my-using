@@ -160,7 +160,7 @@ export class CoursesService {
     }
 
     return this.prisma.course.update({
-      where: { id: courseId },
+      where: { id: courseId, organizationId },
       data: input,
       select: courseSelect,
     });
@@ -177,7 +177,7 @@ export class CoursesService {
     }
 
     return this.prisma.course.update({
-      where: { id: courseId },
+      where: { id: courseId, organizationId },
       data: { status },
       select: courseSelect,
     });
@@ -194,7 +194,7 @@ export class CoursesService {
     }
 
     await this.prisma.course.update({
-      where: { id: courseId },
+      where: { id: courseId, organizationId },
       data: { deletedAt: new Date() },
       select: { id: true },
     });

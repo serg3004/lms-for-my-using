@@ -89,7 +89,7 @@ describe('CoursesService CRUD updates', () => {
     await expect(service.deleteCourse(courseId, organizationId)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: courseId },
+        where: { id: courseId, organizationId },
         data: { deletedAt: expect.any(Date) },
       }),
     );

@@ -90,7 +90,7 @@ export class AssignmentsService {
     }
 
     return this.prisma.assignment.update({
-      where: { id: assignmentId },
+      where: { id: assignmentId, organizationId: actor.organizationId },
       data: { status },
       select: assignmentSelect,
     });

@@ -190,7 +190,7 @@ export class AuthService {
     const refreshExpiresAt = new Date(Date.now() + refreshTokenLifetimeMs);
 
     await this.prisma.session.update({
-      where: { id: sessionId },
+      where: { id: sessionId, userId, organizationId },
       data: { jti, expiresAt, refreshTokenHash: newRefresh.hash, refreshExpiresAt },
     });
 

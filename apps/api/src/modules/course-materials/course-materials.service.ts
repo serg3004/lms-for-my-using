@@ -102,7 +102,7 @@ export class CourseMaterialsService {
     }
 
     return this.prisma.courseMaterial.update({
-      where: { id: materialId },
+      where: { id: materialId, organizationId },
       data: { status },
       select: courseMaterialSelect,
     });
@@ -119,7 +119,7 @@ export class CourseMaterialsService {
     }
 
     return this.prisma.courseMaterial.update({
-      where: { id: materialId },
+      where: { id: materialId, organizationId },
       data: input,
       select: courseMaterialSelect,
     });

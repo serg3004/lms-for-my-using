@@ -2247,7 +2247,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 178 — Cross-tenant IDOR audit 🔲
+## PR 178 — Cross-tenant IDOR audit ✅
 
 **Проблема:** Подмена UUID может открыть ресурс другой организации, даже при наличии organization guard.
 
