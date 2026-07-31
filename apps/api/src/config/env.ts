@@ -9,6 +9,7 @@ const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 const JWT_SECRET_MIN_LENGTH = 32;
 const LOCAL_ENV_FILES = ['.env', '.env.local'] as const;
 const TRUST_PROXY_DISABLED = 'false';
+const DEFAULT_RATE_LIMIT_NAMESPACE = 'lms';
 const TRUST_PROXY_NAMES = new Set(['loopback', 'linklocal', 'uniquelocal']);
 
 type MutableEnv = Record<string, string | undefined>;
@@ -27,6 +28,14 @@ const apiEnvSchema = z
     FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
     JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
     REDIS_URL: z.string().url().optional(),
+    RATE_LIMIT_NAMESPACE: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .regex(/^[a-zA-Z0-9_-]+$/)
+      .default(DEFAULT_RATE_LIMIT_NAMESPACE),
+    ALLOW_IN_MEMORY_RATE_LIMIT: z.enum(['true']).optional(),
     SENTRY_DSN: z.string().url().optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     TRUST_PROXY: z.string().trim().min(1).optional(),
@@ -37,6 +46,13 @@ const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['TRUST_PROXY'],
         message: 'is required in production',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.REDIS_URL === undefined && env.ALLOW_IN_MEMORY_RATE_LIMIT !== 'true') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['REDIS_URL'],
+        message: 'is required in production unless ALLOW_IN_MEMORY_RATE_LIMIT=true',
       });
     }
   });

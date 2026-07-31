@@ -20,6 +20,7 @@ describe('API environment validation', () => {
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
       TRUST_PROXY: 'loopback,linklocal,uniquelocal',
+      REDIS_URL: 'redis://localhost:6379',
     });
 
     expect(apiEnv).toEqual({
@@ -29,6 +30,8 @@ describe('API environment validation', () => {
       FRONTEND_URL: 'http://localhost:5173',
       JWT_SECRET: validJwtSecret,
       LOG_LEVEL: 'info',
+      REDIS_URL: 'redis://localhost:6379',
+      RATE_LIMIT_NAMESPACE: 'lms',
       TRUST_PROXY: ['loopback', 'linklocal', 'uniquelocal'],
     });
   });
@@ -57,7 +60,7 @@ describe('API environment validation', () => {
         NODE_ENV: nodeEnv,
         DATABASE_URL: validDatabaseUrl,
         JWT_SECRET: validJwtSecret,
-        ...(nodeEnv === 'production' ? { TRUST_PROXY: '1' } : {}),
+        ...(nodeEnv === 'production' ? { TRUST_PROXY: '1', REDIS_URL: 'redis://localhost:6379' } : {}),
       });
       expect(apiEnv.NODE_ENV).toBe(nodeEnv);
     }
@@ -79,8 +82,35 @@ describe('API environment validation', () => {
         NODE_ENV: 'production',
         DATABASE_URL: validDatabaseUrl,
         JWT_SECRET: validJwtSecret,
+        REDIS_URL: 'redis://localhost:6379',
       }),
     ).toThrow(/TRUST_PROXY.*required in production/);
+  });
+
+  it('requires Redis in production', () => {
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: validDatabaseUrl,
+        JWT_SECRET: validJwtSecret,
+        TRUST_PROXY: '1',
+      }),
+    ).toThrow(/REDIS_URL.*required in production/);
+  });
+
+  it('allows an explicit emergency in-memory override in production', () => {
+    const apiEnv = loadApiEnv({
+      NODE_ENV: 'production',
+      DATABASE_URL: validDatabaseUrl,
+      JWT_SECRET: validJwtSecret,
+      TRUST_PROXY: '1',
+      ALLOW_IN_MEMORY_RATE_LIMIT: 'true',
+      RATE_LIMIT_NAMESPACE: 'emergency-prod',
+    });
+
+    expect(apiEnv.REDIS_URL).toBeUndefined();
+    expect(apiEnv.ALLOW_IN_MEMORY_RATE_LIMIT).toBe('true');
+    expect(apiEnv.RATE_LIMIT_NAMESPACE).toBe('emergency-prod');
   });
 
   it('parses disabled, hop-count, IPv4, IPv6, and named proxy policies', () => {
