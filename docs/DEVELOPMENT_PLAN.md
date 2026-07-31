@@ -2350,7 +2350,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 184 — CSP и HSTS 🔲
+## PR 184 — CSP и HSTS ✅
 
 **Проблема:** Базовые security headers есть, но отсутствует законченная browser/transport policy.
 
