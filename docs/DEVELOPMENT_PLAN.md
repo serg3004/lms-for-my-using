@@ -2335,7 +2335,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 183 — Rate-limit failure policy 🔲
+## PR 183 — Rate-limit failure policy ✅
 
 **Проблема:** При ошибке Redis limiter fail-open пропускает sensitive requests без контроля.
 

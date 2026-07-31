@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 import {
   createInMemoryRateLimitStore,
   createRedisRateLimitStore,
@@ -294,19 +296,59 @@ describe('Redis rate limit store', () => {
     expect(await restartedInstance.increment('key', 60_000)).toBe(3);
   });
 
-  it('fails open when the store throws', async () => {
-    const redis: MinimalRedis = {
-      eval: async () => {
-        throw new Error('Redis connection refused');
-      },
+  it.each([
+    '/api/v1/auth/login',
+    '/api/v1/auth/password-reset/request',
+    '/api/v1/auth/password-reset/confirm',
+    '/api/v1/organizations/register',
+  ])('enforces the local emergency limit when Redis fails on %s', async (url) => {
+    const store = {
+      increment: jest.fn().mockRejectedValue(new Error('Redis connection refused')),
     };
-    const store = createRedisRateLimitStore(redis);
-    const middleware = createSensitiveRouteRateLimitMiddleware(store);
-    const request = createRequest();
+    const modeChanged = jest.fn();
+    const recordRequest = jest.fn();
+    const middleware = createSensitiveRouteRateLimitMiddleware(
+      store,
+      {
+        ip: { maxRequests: 1, windowMs: 60_000 },
+        account: [{ maxRequests: 1, windowMs: 60_000 }],
+        global: { maxRequests: 100, windowMs: 60_000 },
+      },
+      { observability: { modeChanged, recordRequest } },
+    );
+
+    await middleware(createRequest({ url }) as never, createResponse() as never, () => undefined);
+    const response = createResponse();
     const nextTracker = createNextTracker();
+    await middleware(createRequest({ url }) as never, response as never, nextTracker.next.bind(nextTracker));
 
-    await middleware(request as never, createResponse() as never, nextTracker.next.bind(nextTracker));
+    expect(response.statusCode).toBe(429);
+    expect(nextTracker.calls).toBe(0);
+    expect(modeChanged).toHaveBeenCalledTimes(1);
+    expect(modeChanged).toHaveBeenCalledWith('local-degraded', expect.any(Error));
+    expect(recordRequest).toHaveBeenCalledWith('local-degraded', url);
+  });
 
-    expect(nextTracker.calls).toBe(1);
+  it('returns to Redis mode automatically after the store recovers', async () => {
+    const store = {
+      increment: jest
+        .fn<Promise<number>, [string, number]>()
+        .mockRejectedValueOnce(new Error('Redis connection refused'))
+        .mockResolvedValue(1),
+    };
+    const modeChanged = jest.fn();
+    const recordRequest = jest.fn();
+    const middleware = createSensitiveRouteRateLimitMiddleware(store, undefined, {
+      observability: { modeChanged, recordRequest },
+    });
+
+    await middleware(createRequest() as never, createResponse() as never, () => undefined);
+    await middleware(createRequest() as never, createResponse() as never, () => undefined);
+
+    expect(modeChanged.mock.calls).toEqual([
+      ['local-degraded', expect.any(Error)],
+      ['redis'],
+    ]);
+    expect(recordRequest).toHaveBeenLastCalledWith('redis', '/api/v1/auth/login');
   });
 });

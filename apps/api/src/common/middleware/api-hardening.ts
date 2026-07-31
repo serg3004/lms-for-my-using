@@ -66,6 +66,18 @@ export type RateLimitStore = {
   increment(key: string, windowMs: number): Promise<number>;
 };
 
+export type RateLimitMode = 'redis' | 'local-degraded';
+
+export type RateLimitObservability = {
+  recordRequest(mode: RateLimitMode, route: string): void;
+  modeChanged(mode: RateLimitMode, error?: unknown): void;
+};
+
+export type SensitiveRateLimitOptions = {
+  fallbackStore?: RateLimitStore;
+  observability?: RateLimitObservability;
+};
+
 export type MinimalRedis = {
   eval(script: string, numberOfKeys: number, key: string, ttlMs: string): Promise<unknown>;
 };
@@ -163,8 +175,11 @@ export function createSecurityHeadersMiddleware(): Middleware {
 export function createSensitiveRouteRateLimitMiddleware(
   store?: RateLimitStore,
   policy: SensitiveRateLimitPolicy = DEFAULT_SENSITIVE_RATE_LIMIT_POLICY,
+  options: SensitiveRateLimitOptions = {},
 ): Middleware {
   const resolvedStore = store ?? createInMemoryRateLimitStore();
+  const fallbackStore = options.fallbackStore ?? createInMemoryRateLimitStore();
+  let degraded = false;
 
   return async (request, response, next) => {
     if (!isRateLimitedRoute(request)) {
@@ -182,26 +197,37 @@ export function createSensitiveRouteRateLimitMiddleware(
         : []),
     ];
 
+    let counts: number[];
     try {
-      const counts = await Promise.all(rules.map(({ key, rule }) => resolvedStore.increment(key, rule.windowMs)));
-
-      if (counts.some((count, index) => count > (rules[index]?.rule.maxRequests ?? 0))) {
-        response.statusCode = TOO_MANY_REQUESTS_STATUS;
-        response.setHeader('Content-Type', 'application/json');
-        response.end(
-          JSON.stringify(
-            createApiErrorResponse({
-              statusCode: TOO_MANY_REQUESTS_STATUS,
-              code: TOO_MANY_REQUESTS_CODE,
-              message: TOO_MANY_REQUESTS_MESSAGE,
-              path: request.url ?? requestPath,
-            }),
-          ),
-        );
-        return;
+      counts = await Promise.all(rules.map(({ key, rule }) => resolvedStore.increment(key, rule.windowMs)));
+      options.observability?.recordRequest('redis', requestPath);
+      if (degraded) {
+        degraded = false;
+        options.observability?.modeChanged('redis');
       }
-    } catch {
-      // store unavailable — fail open to avoid blocking all traffic
+    } catch (error) {
+      counts = await Promise.all(rules.map(({ key, rule }) => fallbackStore.increment(key, rule.windowMs)));
+      options.observability?.recordRequest('local-degraded', requestPath);
+      if (!degraded) {
+        degraded = true;
+        options.observability?.modeChanged('local-degraded', error);
+      }
+    }
+
+    if (counts.some((count, index) => count > (rules[index]?.rule.maxRequests ?? 0))) {
+      response.statusCode = TOO_MANY_REQUESTS_STATUS;
+      response.setHeader('Content-Type', 'application/json');
+      response.end(
+        JSON.stringify(
+          createApiErrorResponse({
+            statusCode: TOO_MANY_REQUESTS_STATUS,
+            code: TOO_MANY_REQUESTS_CODE,
+            message: TOO_MANY_REQUESTS_MESSAGE,
+            path: request.url ?? requestPath,
+          }),
+        ),
+      );
+      return;
     }
 
     next();
