@@ -58,4 +58,10 @@ describe('UploadService', () => {
     );
     expect(key).not.toContain('test.pdf');
   });
+
+  it('creates a tenant-scoped quarantine key', () => {
+    expect(service.createQuarantineObjectKey('organization-a', 'material-a')).toMatch(
+      /^quarantine\/organizations\/organization-a\/materials\/material-a\/[0-9a-f-]{36}$/,
+    );
+  });
 });

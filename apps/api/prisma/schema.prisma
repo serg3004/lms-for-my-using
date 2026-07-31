@@ -60,6 +60,13 @@ enum CourseMaterialKind {
   link
 }
 
+enum MalwareScanStatus {
+  pending
+  scanning
+  available
+  rejected
+}
+
 enum AssignmentStatus {
   assigned
   completed
@@ -287,8 +294,13 @@ model CourseMaterial {
   fileName       String?             @map("file_name")
   fileUrl        String?            @map("file_url")
   objectKey      String?            @unique(map: "course_materials_object_key_key") @map("object_key")
+  quarantineKey String?            @unique(map: "course_materials_quarantine_key_key") @map("quarantine_key")
   mimeType       String?             @map("mime_type")
   sizeBytes      Int?              @map("size_bytes")
+  scanStatus     MalwareScanStatus? @map("scan_status")
+  scanReason     String?            @map("scan_reason")
+  scanExpiresAt  DateTime?          @map("scan_expires_at") @db.Timestamptz
+  scannedAt      DateTime?          @map("scanned_at") @db.Timestamptz
   status         CourseMaterialStatus @default(active)
   createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz

@@ -49,5 +49,19 @@ the database and leaves copied objects for later orphan cleanup.
 Storage requires `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and
 `S3_SECRET_ACCESS_KEY`; `S3_REGION` and `S3_FORCE_PATH_STYLE` are optional.
 Uploads retain the 50 MB limit, MIME/magic-byte validation, filename safety,
-and ZIP-bomb checks. Malware quarantine/scanning is intentionally deferred to
-PR 186.
+and ZIP-bomb checks.
+
+Every new binary is written below the tenant-scoped `quarantine/` prefix and
+persisted with scan status `pending`. The API submits the opaque quarantine key
+to `MALWARE_SCANNER_URL`, then accepts an authenticated, idempotent verdict at
+`POST /api/v1/internal/material-scans/:id/result`. The scanner authenticates
+with `Authorization: Bearer $MALWARE_SCANNER_CALLBACK_SECRET` and sends one of
+`clean`, `infected`, `error`, or `timeout`.
+
+Only a timely `clean` verdict copies the object into the normal private material
+prefix, removes the quarantine object, and changes the status to `available`.
+All other verdicts fail closed as `rejected` and remove the quarantine object.
+Downloads require both an ordinary object key and `available`; therefore
+pending, scanning, rejected, failed, and timed-out files cannot receive a URL.
+Scan dispatch uses a five-second request deadline and verdicts expire after 15
+minutes. Scanner callbacks can safely be retried after a terminal state.

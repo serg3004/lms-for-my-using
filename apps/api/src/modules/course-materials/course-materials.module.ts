@@ -5,10 +5,12 @@ import { CourseAccessModule } from '../course-access/course-access.module.js';
 import { UploadModule } from '../upload/upload.module.js';
 import { CourseMaterialsController } from './course-materials.controller.js';
 import { CourseMaterialsService } from './course-materials.service.js';
+import { MaterialMalwareScanController } from './material-malware-scan.controller.js';
+import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 
 @Module({
   imports: [AuthModule, CourseAccessModule, UploadModule],
-  controllers: [CourseMaterialsController],
-  providers: [CourseMaterialsService],
+  controllers: [CourseMaterialsController, MaterialMalwareScanController],
+  providers: [CourseMaterialsService, MaterialMalwareScanService],
 })
 export class CourseMaterialsModule {}

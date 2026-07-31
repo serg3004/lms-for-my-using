@@ -2387,7 +2387,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 186 — Quarantine и malware scanning 🔲
+## PR 186 — Quarantine и malware scanning ✅
 
 **Проблема:** Magic bytes и ZIP safety не обнаруживают malware в валидном файле.
 
@@ -2954,4 +2954,3 @@ frontend quality и observability.
 - performance baseline, correlation ID, метрики, SLO и alerts работают;
 - backup восстановлен на практике, incident response проверен tabletop exercise;
 - dependency, secret, SAST и container scans являются CI gates.
-

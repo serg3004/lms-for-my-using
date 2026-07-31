@@ -31,6 +31,7 @@ import {
 import { CourseMaterialsService } from './course-materials.service.js';
 import { UploadService } from '../upload/upload.service.js';
 import { MAX_UPLOAD_FILE_SIZE_BYTES, validateUploadFile } from '../upload/upload.validation.js';
+import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
@@ -38,6 +39,7 @@ export class CourseMaterialsController {
   constructor(
     private readonly courseMaterialsService: CourseMaterialsService,
     private readonly uploadService: UploadService,
+    private readonly malwareScans: MaterialMalwareScanService,
   ) {}
 
   @Get('courses/:courseId/materials')
@@ -62,7 +64,7 @@ export class CourseMaterialsController {
       materialId,
       request.currentUser!.organizationId,
     );
-    if (material.objectKey) {
+    if (material.objectKey && material.scanStatus === 'available') {
       return { url: await this.uploadService.getPresignedUrl(material.objectKey, 300), expiresIn: 300 };
     }
     if (material.kind === 'link' && material.fileUrl) return { url: material.fileUrl, expiresIn: null };
@@ -85,7 +87,9 @@ export class CourseMaterialsController {
     const organizationId = request.currentUser!.organizationId;
     await this.courseMaterialsService.getMaterialStorageReference(materialId, organizationId);
     const uploaded = await this.uploadService.uploadMaterialFile(file, organizationId, materialId);
-    return this.courseMaterialsService.attachUploadedFile(materialId, organizationId, uploaded);
+    const material = await this.courseMaterialsService.attachUploadedFile(materialId, organizationId, uploaded);
+    await this.malwareScans.dispatch(materialId);
+    return material;
   }
 
   @Delete('materials/:id/file')
@@ -95,6 +99,7 @@ export class CourseMaterialsController {
     const organizationId = request.currentUser!.organizationId;
     const material = await this.courseMaterialsService.getMaterialStorageReference(materialId, organizationId);
     if (material.objectKey) await this.uploadService.deleteObject(material.objectKey);
+    if (material.quarantineKey) await this.uploadService.deleteObject(material.quarantineKey);
     return this.courseMaterialsService.clearUploadedFile(materialId, organizationId);
   }
 

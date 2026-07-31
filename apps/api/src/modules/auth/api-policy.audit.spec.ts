@@ -12,6 +12,7 @@ import { AssessmentsController } from '../assessments/assessments.controller.js'
 import { AssignmentsController } from '../assignments/assignments.controller.js';
 import { CertificatesController } from '../certificates/certificates.controller.js';
 import { CourseMaterialsController } from '../course-materials/course-materials.controller.js';
+import { MaterialMalwareScanController } from '../course-materials/material-malware-scan.controller.js';
 import { CoursesController } from '../courses/courses.controller.js';
 import { GroupsController } from '../groups/groups.controller.js';
 import { HealthController } from '../health/health.controller.js';
@@ -37,6 +38,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'auth/auth.controller.ts', Controller: AuthController },
   { file: 'certificates/certificates.controller.ts', Controller: CertificatesController },
   { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
+  { file: 'course-materials/material-malware-scan.controller.ts', Controller: MaterialMalwareScanController },
   { file: 'courses/courses.controller.ts', Controller: CoursesController },
   { file: 'groups/groups.controller.ts', Controller: GroupsController },
   { file: 'health/health.controller.ts', Controller: HealthController },
