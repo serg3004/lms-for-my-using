@@ -2266,7 +2266,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза B — Аутентификация и сетевой периметр
 
-## PR 179 — Cookie/session integration tests 🔲
+## PR 179 — Cookie/session integration tests ✅
 
 **Проблема:** Cookie attributes и отсутствие refresh token в HTTP body не проверены end-to-end.
 
