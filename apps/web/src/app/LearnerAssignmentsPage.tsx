@@ -108,6 +108,18 @@ export function LearnerAssignmentsPage() {
     return () => { isMounted = false; };
   }, [t, page]);
 
+  const filtered = useMemo(() => {
+    const all = loadState.status === 'loaded' ? loadState.assignments : [];
+    const q = search.toLowerCase();
+    return all.filter((a) => {
+      const title = getCourseTitle(a, '');
+      const matchesSearch = !q || title.toLowerCase().includes(q);
+      const effective = getEffectiveStatus(a);
+      const matchesStatus = statusFilter === 'all' || effective === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [loadState, search, statusFilter]);
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return <PageState message={t('assignments.loading')} variant="loading" />;
   }
@@ -126,17 +138,6 @@ export function LearnerAssignmentsPage() {
   const dueThisWeek = assignments.filter((a) => isDueThisWeek(a.dueAt)).length;
   const overdueCount = assignments.filter((a) => isOverdue(a.dueAt) && a.status !== 'completed').length;
   const completedCount = assignments.filter((a) => a.status === 'completed').length;
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return assignments.filter((a) => {
-      const title = getCourseTitle(a, '');
-      const matchesSearch = !q || title.toLowerCase().includes(q);
-      const effective = getEffectiveStatus(a);
-      const matchesStatus = statusFilter === 'all' || effective === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [assignments, search, statusFilter]);
 
   return (
     <>
