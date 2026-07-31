@@ -72,10 +72,11 @@ describe('trusted proxy client IP integration', () => {
       await postLogin(app, '198.51.100.10');
       await postLogin(app, '203.0.113.20');
 
-      expect(keys).toHaveLength(2);
-      expect(keys[0]).toBe(keys[1]);
-      expect(keys[0]).not.toContain('198.51.100.10');
-      expect(keys[1]).not.toContain('203.0.113.20');
+      const ipKeys = keys.filter((key) => key.startsWith('ip:'));
+      expect(ipKeys).toHaveLength(2);
+      expect(ipKeys[0]).toBe(ipKeys[1]);
+      expect(ipKeys[0]).not.toContain('198.51.100.10');
+      expect(ipKeys[1]).not.toContain('203.0.113.20');
     } finally {
       await app.close();
     }

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Redis } from 'ioredis';
 import { Logger } from 'nestjs-pino';
 
@@ -32,8 +33,12 @@ async function bootstrap(): Promise<void> {
     Sentry.init({ dsn: apiEnv.SENTRY_DSN, environment: apiEnv.NODE_ENV });
   }
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true, bodyParser: false });
   app.useLogger(app.get(Logger));
+
+  // Account-aware limiting needs the normalized login/reset identity before controllers run.
+  app.useBodyParser('json');
+  app.useBodyParser('urlencoded', { extended: true });
 
   const server = app.getHttpAdapter().getInstance() as ExpressLikeServer;
   if (server.disable) {

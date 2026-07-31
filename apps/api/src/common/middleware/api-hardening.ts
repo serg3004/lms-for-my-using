@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { createApiErrorResponse } from '../api-response.js';
@@ -5,6 +6,7 @@ import { createApiErrorResponse } from '../api-response.js';
 type NextFunction = () => void;
 
 type ApiRequest = IncomingMessage & {
+  body?: unknown;
   ip?: string;
   socket: IncomingMessage['socket'] & {
     remoteAddress?: string;
@@ -17,8 +19,6 @@ type ApiResponse = ServerResponse & {
 
 type Middleware = (request: ApiRequest, response: ApiResponse, next: NextFunction) => void;
 
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 20;
 const TOO_MANY_REQUESTS_STATUS = 429;
 const TOO_MANY_REQUESTS_CODE = 'TOO_MANY_REQUESTS';
 const TOO_MANY_REQUESTS_MESSAGE = 'Too many requests';
@@ -29,6 +29,33 @@ const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/password-reset/confirm',
   '/api/v1/organizations/register',
 ]);
+
+const accountRateLimitedRoutes = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/auth/password-reset/request',
+]);
+
+type RateLimitRule = {
+  maxRequests: number;
+  windowMs: number;
+};
+
+export type SensitiveRateLimitPolicy = {
+  ip: RateLimitRule;
+  account: RateLimitRule[];
+  global: RateLimitRule;
+};
+
+export const DEFAULT_SENSITIVE_RATE_LIMIT_POLICY: SensitiveRateLimitPolicy = {
+  // Deliberately generous for shared NATs; account limits provide the tighter protection.
+  ip: { maxRequests: 100, windowMs: 15 * 60_000 },
+  account: [
+    { maxRequests: 5, windowMs: 60_000 },
+    { maxRequests: 10, windowMs: 15 * 60_000 },
+    { maxRequests: 20, windowMs: 60 * 60_000 },
+  ],
+  global: { maxRequests: 10_000, windowMs: 60_000 },
+};
 
 type RateLimitEntry = {
   count: number;
@@ -63,6 +90,24 @@ function getClientKey(request: ApiRequest): string {
 
 function isRateLimitedRoute(request: ApiRequest): boolean {
   return request.method === 'POST' && sensitiveRateLimitedRoutes.has(getRequestPath(request));
+}
+
+function getNormalizedAccountKey(request: ApiRequest, requestPath: string): string | undefined {
+  if (!accountRateLimitedRoutes.has(requestPath) || !request.body || typeof request.body !== 'object') return undefined;
+
+  const body = request.body as Record<string, unknown>;
+  if (typeof body.organizationId !== 'string' || typeof body.email !== 'string') return undefined;
+
+  const organizationId = body.organizationId.trim().toLowerCase();
+  const email = body.email.trim().toLowerCase();
+  if (!organizationId || !email) return undefined;
+
+  // Avoid storing account identifiers as plaintext in Redis keys.
+  return createHash('sha256').update(`${organizationId}\0${email}`).digest('hex');
+}
+
+function ruleKey(scope: string, route: string, rule: RateLimitRule): string {
+  return `${scope}:${route}:${rule.windowMs}`;
 }
 
 export function createInMemoryRateLimitStore(now = () => Date.now()): RateLimitStore {
@@ -115,7 +160,10 @@ export function createSecurityHeadersMiddleware(): Middleware {
   };
 }
 
-export function createSensitiveRouteRateLimitMiddleware(store?: RateLimitStore): Middleware {
+export function createSensitiveRouteRateLimitMiddleware(
+  store?: RateLimitStore,
+  policy: SensitiveRateLimitPolicy = DEFAULT_SENSITIVE_RATE_LIMIT_POLICY,
+): Middleware {
   const resolvedStore = store ?? createInMemoryRateLimitStore();
 
   return async (request, response, next) => {
@@ -125,12 +173,19 @@ export function createSensitiveRouteRateLimitMiddleware(store?: RateLimitStore):
     }
 
     const requestPath = getRequestPath(request);
-    const key = `ratelimit:${getClientKey(request)}:${requestPath}`;
+    const accountKey = getNormalizedAccountKey(request, requestPath);
+    const rules = [
+      { key: ruleKey(`ip:${getClientKey(request)}`, requestPath, policy.ip), rule: policy.ip },
+      { key: `global:${policy.global.windowMs}`, rule: policy.global },
+      ...(accountKey
+        ? policy.account.map((rule) => ({ key: ruleKey(`account:${accountKey}`, requestPath, rule), rule }))
+        : []),
+    ];
 
     try {
-      const count = await resolvedStore.increment(key, RATE_LIMIT_WINDOW_MS);
+      const counts = await Promise.all(rules.map(({ key, rule }) => resolvedStore.increment(key, rule.windowMs)));
 
-      if (count > RATE_LIMIT_MAX_REQUESTS) {
+      if (counts.some((count, index) => count > (rules[index]?.rule.maxRequests ?? 0))) {
         response.statusCode = TOO_MANY_REQUESTS_STATUS;
         response.setHeader('Content-Type', 'application/json');
         response.end(
