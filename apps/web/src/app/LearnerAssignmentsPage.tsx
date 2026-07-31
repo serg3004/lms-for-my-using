@@ -9,6 +9,8 @@ import { Pagination, PageState } from '../shared/ui.js';
 type ExtendedAssignment = AssignmentSummary & {
   courseTitle?: string | null;
   course?: { title?: string | null } | null;
+  userName?: string | null;
+  groupName?: string | null;
 };
 
 type LoadState =
@@ -229,9 +231,15 @@ export function LearnerAssignmentsPage() {
                     <h2 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
                       {courseTitle}
                     </h2>
-                    <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                      {t('assignments.courseLabel', 'Курс')}
-                    </div>
+                    {(assignment.userName ?? assignment.groupName) ? (
+                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                        {assignment.userName ?? assignment.groupName}
+                      </div>
+                    ) : (
+                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                        {t('assignments.courseLabel', 'Курс')}
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
