@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 
@@ -49,7 +49,7 @@ export class UploadService {
       throw new ServiceUnavailableException('File storage is not configured');
     }
 
-    const key = this.createMaterialObjectKey(organizationId, materialId);
+    const key = this.createQuarantineObjectKey(organizationId, materialId);
 
     await this.s3.send(
       new PutObjectCommand({
@@ -71,6 +71,22 @@ export class UploadService {
 
   createMaterialObjectKey(organizationId: string, materialId: string): string {
     return `organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
+  }
+
+  createQuarantineObjectKey(organizationId: string, materialId: string): string {
+    return `quarantine/organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
+  }
+
+  async promoteQuarantinedObject(quarantineKey: string, organizationId: string, materialId: string): Promise<string> {
+    if (!this.s3 || !this.bucket) throw new ServiceUnavailableException('File storage is not configured');
+    const objectKey = this.createMaterialObjectKey(organizationId, materialId);
+    await this.s3.send(new CopyObjectCommand({
+      Bucket: this.bucket,
+      Key: objectKey,
+      CopySource: `${this.bucket}/${encodeURIComponent(quarantineKey).replace(/%2F/g, '/')}`,
+    }));
+    await this.deleteObject(quarantineKey);
+    return objectKey;
   }
 
   async getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {

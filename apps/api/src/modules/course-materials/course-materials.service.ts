@@ -19,8 +19,13 @@ const courseMaterialSelect = {
   fileName: true,
   fileUrl: true,
   objectKey: true,
+  quarantineKey: true,
   mimeType: true,
   sizeBytes: true,
+  scanStatus: true,
+  scanReason: true,
+  scanExpiresAt: true,
+  scannedAt: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -129,7 +134,7 @@ export class CourseMaterialsService {
   async getMaterialStorageReference(materialId: string, organizationId: string) {
     const material = await this.prisma.courseMaterial.findFirst({
       where: { id: materialId, organizationId, deletedAt: null },
-      select: { id: true, kind: true, fileUrl: true, objectKey: true },
+      select: { id: true, organizationId: true, kind: true, fileUrl: true, objectKey: true, quarantineKey: true, scanStatus: true, scanExpiresAt: true },
     });
     if (!material) throw new NotFoundException('Course material not found');
     return material;
@@ -143,7 +148,19 @@ export class CourseMaterialsService {
     await this.getMaterialStorageReference(materialId, organizationId);
     return this.prisma.courseMaterial.update({
       where: { id: materialId, organizationId },
-      data: { ...file, kind: 'file', fileUrl: null },
+      data: {
+        quarantineKey: file.objectKey,
+        objectKey: null,
+        fileName: file.fileName,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
+        kind: 'file',
+        fileUrl: null,
+        scanStatus: 'pending',
+        scanReason: null,
+        scanExpiresAt: new Date(Date.now() + 15 * 60_000),
+        scannedAt: null,
+      },
       select: courseMaterialSelect,
     });
   }
@@ -152,7 +169,7 @@ export class CourseMaterialsService {
     await this.getMaterialStorageReference(materialId, organizationId);
     return this.prisma.courseMaterial.update({
       where: { id: materialId, organizationId },
-      data: { objectKey: null, fileName: null, mimeType: null, sizeBytes: null },
+      data: { objectKey: null, quarantineKey: null, fileName: null, mimeType: null, sizeBytes: null, scanStatus: null, scanReason: null, scanExpiresAt: null, scannedAt: null },
       select: courseMaterialSelect,
     });
   }
