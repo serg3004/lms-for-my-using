@@ -5,6 +5,7 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
 import {
   createAssessmentAnswerOptionSchema,
   createAssessmentQuestionSchema,
@@ -14,24 +15,27 @@ import {
 import { AssessmentQuestionsService } from './assessment-questions.service.js';
 
 @Controller()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class AssessmentQuestionsController {
   constructor(private readonly assessmentQuestionsService: AssessmentQuestionsService) {}
 
   @Get('assessments/:assessmentId/questions')
   @Roles(...rolePolicies.assessmentQuestionsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
   listQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentQuestionsService.listQuestions(assessmentId, request.currentUser!.organizationId);
   }
 
   @Get('assessments/:assessmentId/quiz')
   @Roles(...rolePolicies.assessmentsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
   listLearnerQuizQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentQuestionsService.listLearnerQuizQuestions(assessmentId, request.currentUser!.organizationId);
   }
 
   @Get('questions/:id')
   @Roles(...rolePolicies.assessmentQuestionsRead)
+  @CourseScope('param', 'id', 'question')
   getQuestion(@Param('id') questionId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentQuestionsService.getQuestion(questionId, request.currentUser!.organizationId);
   }
@@ -40,6 +44,7 @@ export class AssessmentQuestionsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.assessmentQuestionsCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('param', 'assessmentId', 'assessment')
   createQuestion(@Param('assessmentId') assessmentId: string, @Body() body: unknown) {
     const input: CreateAssessmentQuestionInput = createAssessmentQuestionSchema.parse(body);
 
@@ -48,6 +53,7 @@ export class AssessmentQuestionsController {
 
   @Get('questions/:questionId/options')
   @Roles(...rolePolicies.assessmentAnswerOptionsRead)
+  @CourseScope('param', 'questionId', 'question')
   listAnswerOptions(@Param('questionId') questionId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentQuestionsService.listAnswerOptions(questionId, request.currentUser!.organizationId);
   }
@@ -56,6 +62,7 @@ export class AssessmentQuestionsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.assessmentAnswerOptionsCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('param', 'questionId', 'question')
   createAnswerOption(@Param('questionId') questionId: string, @Body() body: unknown) {
     const input: CreateAssessmentAnswerOptionInput = createAssessmentAnswerOptionSchema.parse(body);
 

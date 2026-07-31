@@ -6,11 +6,13 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, isLearnerOnly, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { isInstructorCourseScoped } from '../course-access/course-access.policy.js';
 import { createProgressSchema, CreateProgressInput } from './progress.schemas.js';
 import { ProgressService } from './progress.service.js';
 
 @Controller('progress')
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class ProgressController {
   constructor(private readonly progressService: ProgressService) {}
 
@@ -20,11 +22,15 @@ export class ProgressController {
     const currentUser = request.currentUser!;
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
     const { page, pageSize } = paginationQuerySchema.parse(query);
+    if (isInstructorCourseScoped(currentUser)) {
+      return this.progressService.listProgress(currentUser.organizationId, userId, page, pageSize, currentUser.id);
+    }
     return this.progressService.listProgress(currentUser.organizationId, userId, page, pageSize);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.progressRead)
+  @CourseScope('param', 'id', 'progress')
   getProgress(@Param('id') progressId: string, @Req() request: AuthenticatedRequest) {
     const currentUser = request.currentUser!;
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
@@ -35,6 +41,7 @@ export class ProgressController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.progressCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('body', 'courseId')
   createProgress(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const currentUser = request.currentUser!;
     const input: CreateProgressInput = createProgressSchema.parse(body);

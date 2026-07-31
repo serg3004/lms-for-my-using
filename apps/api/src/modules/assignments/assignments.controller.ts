@@ -6,6 +6,8 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, isLearnerOnly, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { isInstructorCourseScoped } from '../course-access/course-access.policy.js';
 import { AssignmentsService } from './assignments.service.js';
 import {
   createAssignmentSchema,
@@ -14,7 +16,7 @@ import {
 } from './assignments.schemas.js';
 
 @Controller('assignments')
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class AssignmentsController {
   constructor(private readonly assignmentsService: AssignmentsService) {}
 
@@ -24,11 +26,15 @@ export class AssignmentsController {
     const currentUser = request.currentUser!;
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
     const { page, pageSize } = paginationQuerySchema.parse(query);
+    if (isInstructorCourseScoped(currentUser)) {
+      return this.assignmentsService.listAssignments(currentUser.organizationId, userId, page, pageSize, currentUser.id);
+    }
     return this.assignmentsService.listAssignments(currentUser.organizationId, userId, page, pageSize);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.assignmentsRead)
+  @CourseScope('param', 'id', 'assignment')
   getAssignment(@Param('id') assignmentId: string, @Req() request: AuthenticatedRequest) {
     return this.assignmentsService.getAssignment(assignmentId, request.currentUser!.organizationId);
   }
@@ -37,6 +43,7 @@ export class AssignmentsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.assignmentsCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('body', 'courseId')
   createAssignment(@Body() body: unknown) {
     const input: CreateAssignmentInput = createAssignmentSchema.parse(body);
 
@@ -45,6 +52,7 @@ export class AssignmentsController {
 
   @Patch(':id/status')
   @Roles(...rolePolicies.assignmentsCreate)
+  @CourseScope('param', 'id', 'assignment')
   updateAssignmentStatus(
     @Param('id') assignmentId: string,
     @Body() body: unknown,

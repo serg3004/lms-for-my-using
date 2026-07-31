@@ -5,6 +5,7 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
 import {
   createLessonSchema,
   CreateLessonInput,
@@ -16,18 +17,20 @@ import {
 import { LessonsService } from './lessons.service.js';
 
 @Controller()
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class LessonsController {
   constructor(private readonly lessonsService: LessonsService) {}
 
   @Get('courses/:courseId/lessons')
   @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'courseId')
   listLessons(@Param('courseId') courseId: string, @Req() request: AuthenticatedRequest) {
     return this.lessonsService.listLessons(courseId, request.currentUser!.organizationId);
   }
 
   @Get('lessons/:id')
   @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'id', 'lesson')
   getLesson(@Param('id') lessonId: string, @Req() request: AuthenticatedRequest) {
     return this.lessonsService.getLesson(lessonId, request.currentUser!.organizationId);
   }
@@ -36,6 +39,7 @@ export class LessonsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.lessonsCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('param', 'courseId')
   createLesson(@Param('courseId') courseId: string, @Body() body: unknown) {
     const input: CreateLessonInput = createLessonSchema.parse({
       ...(typeof body === 'object' && body !== null ? body : {}),
@@ -47,6 +51,7 @@ export class LessonsController {
 
   @Patch('courses/:courseId/lessons/order')
   @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'courseId')
   reorderLessons(@Param('courseId') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: ReorderLessonsInput = reorderLessonsSchema.parse(body);
 
@@ -55,6 +60,7 @@ export class LessonsController {
 
   @Patch('lessons/:id/status')
   @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
   updateLessonStatus(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateLessonStatusSchema.parse(body);
     return this.lessonsService.updateLessonStatus(lessonId, request.currentUser!.organizationId, input.status);
@@ -62,6 +68,7 @@ export class LessonsController {
 
   @Patch('lessons/:id')
   @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
   updateLesson(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateLessonSchema.parse(body);
     return this.lessonsService.updateLesson(lessonId, request.currentUser!.organizationId, input);
@@ -69,6 +76,7 @@ export class LessonsController {
 
   @Delete('lessons/:id')
   @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
   deleteLesson(@Param('id') lessonId: string, @Req() request: AuthenticatedRequest) {
     return this.lessonsService.deleteLesson(lessonId, request.currentUser!.organizationId);
   }

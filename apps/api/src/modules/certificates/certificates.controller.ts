@@ -6,6 +6,7 @@ import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
 import { CertificatesService } from './certificates.service.js';
 import { IssueCertificateInput, issueCertificateSchema } from './certificates.schemas.js';
 
@@ -14,7 +15,7 @@ export class CertificatesController {
   constructor(private readonly certificatesService: CertificatesService) {}
 
   @Get()
-  @UseGuards(AuthGuard, RolesGuard)
+  @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
   @Roles(...rolePolicies.certificatesRead)
   listCertificates(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
@@ -24,6 +25,7 @@ export class CertificatesController {
   @Get(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.certificatesRead)
+  @CourseScope('param', 'id', 'certificate')
   getCertificate(@Param('id') certificateId: string, @Req() request: AuthenticatedRequest) {
     return this.certificatesService.getCertificate(
       certificateId,
@@ -36,6 +38,7 @@ export class CertificatesController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.certificatesCreate)
   @OrganizationScope('body', 'organizationId')
+  @CourseScope('body', 'courseId')
   issueCertificate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: IssueCertificateInput = issueCertificateSchema.parse(body);
 

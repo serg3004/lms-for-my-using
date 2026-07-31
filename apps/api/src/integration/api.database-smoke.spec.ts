@@ -184,6 +184,58 @@ describe('API database smoke', () => {
     expect(body).not.toMatch(/stack|SELECT|node_modules/i);
   });
 
+  it('enforces instructor ownership with real course assignments', async () => {
+    const passwordOwner = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const instructor = await prisma.user.create({
+      data: {
+        organizationId: organizationId!,
+        email: `instructor-${randomUUID()}@example.test`,
+        passwordHash: passwordOwner.passwordHash,
+        firstName: 'Course',
+        lastName: 'Instructor',
+        memberships: { create: { organizationId: organizationId!, role: 'instructor' } },
+      },
+    });
+    const [ownedCourse, foreignCourse] = await Promise.all([
+      prisma.course.create({
+        data: { organizationId: organizationId!, title: 'Owned course', slug: `owned-${randomUUID()}` },
+      }),
+      prisma.course.create({
+        data: { organizationId: organizationId!, title: 'Foreign course', slug: `foreign-${randomUUID()}` },
+      }),
+    ]);
+    await prisma.courseInstructor.create({
+      data: { organizationId: organizationId!, instructorId: instructor.id, courseId: ownedCourse.id },
+    });
+
+    const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ organizationId, email: instructor.email, password: TEST_PASSWORD }),
+    });
+    const login = unwrapResponse(await readJson<LoginResponse>(loginResponse));
+    const headers = { authorization: `Bearer ${login.accessToken}` };
+
+    const listResponse = await fetch(`${baseUrl}/api/v1/courses`, { headers });
+    const list = unwrapResponse(await readJson<{ items: Array<{ id: string }> }>(listResponse));
+    expect(list.items.map((course) => course.id)).toContain(ownedCourse.id);
+    expect(list.items.map((course) => course.id)).not.toContain(foreignCourse.id);
+
+    expect((await fetch(`${baseUrl}/api/v1/courses/${ownedCourse.id}`, { headers })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/v1/courses/${foreignCourse.id}`, { headers })).status).toBe(404);
+
+    const createResponse = await fetch(`${baseUrl}/api/v1/courses`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({ organizationId, title: 'Instructor-created', slug: `created-${randomUUID()}` }),
+    });
+    expect(createResponse.status).toBe(201);
+    const created = unwrapResponse(await readJson<{ id: string }>(createResponse));
+    await expect(prisma.courseInstructor.findUnique({
+      where: { courseId_instructorId: { courseId: created.id, instructorId: instructor.id } },
+    })).resolves.not.toBeNull();
+  });
+
   it('atomically rotates a refresh token under concurrent requests', async () => {
     for (let attempt = 0; attempt < CONCURRENCY_ATTEMPTS; attempt += 1) {
       const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {

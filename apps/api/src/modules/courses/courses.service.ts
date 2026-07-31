@@ -23,9 +23,13 @@ const completedProgressStatus = 'completed' as const;
 export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listCourses(organizationId: string, page: number, pageSize: number) {
+  async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string) {
     const skip = (page - 1) * pageSize;
-    const where = { organizationId, deletedAt: null } as const;
+    const where = {
+      organizationId,
+      deletedAt: null,
+      ...(instructorId ? { instructors: { some: { instructorId, organizationId } } } : {}),
+    } as const;
     const [items, total] = await Promise.all([
       this.prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: courseSelect }),
       this.prisma.course.count({ where }),
