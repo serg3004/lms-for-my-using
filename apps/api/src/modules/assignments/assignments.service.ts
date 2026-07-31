@@ -14,6 +14,7 @@ const assignmentSelect = {
   dueAt: true,
   createdAt: true,
   updatedAt: true,
+  course: { select: { title: true } },
 } as const;
 
 @Injectable()
