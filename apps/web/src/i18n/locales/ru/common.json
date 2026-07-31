@@ -33,13 +33,22 @@
   },
   "courses": {
     "navLink": "Курсы",
-    "title": "Courses",
-    "loading": "Loading courses...",
-    "authRequired": "Sign in to view courses.",
-    "sessionExpired": "Your session expired. Sign in again.",
-    "loadError": "Unable to load courses. Try again later.",
-    "empty": "No courses are available yet.",
-    "status": "Status"
+    "title": "Мои курсы",
+    "loading": "Загрузка курсов...",
+    "authRequired": "Войдите, чтобы просмотреть курсы.",
+    "sessionExpired": "Сессия истекла. Войдите снова.",
+    "loadError": "Не удалось загрузить курсы. Попробуйте позже.",
+    "empty": "Курсы пока недоступны.",
+    "status": "Статус",
+    "activeCount": "{{count}} активных курса",
+    "searchPlaceholder": "Поиск курсов...",
+    "notStarted": "Не начат",
+    "lessons": "уроков",
+    "tabs": {
+      "all": "Все",
+      "active": "Активные",
+      "completed": "Архив"
+    }
   },
   "courseDetail": {
     "title": "Course details",

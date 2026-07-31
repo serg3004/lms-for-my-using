@@ -4,7 +4,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/api/types.js';
-import { LogoutButton } from './LogoutButton.js';
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -94,10 +93,5 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
     );
   }
 
-  return (
-    <>
-      <LogoutButton />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }
