@@ -48,6 +48,10 @@ scope are implemented separately so that role authorization remains distinct fro
 ## Enforcement
 
 - `RolesGuard` rejects an endpoint when its role-policy metadata is absent.
-- The API policy audit test inventories production controllers and requires exactly one access classification on
-  every HTTP handler.
-- The role-policy tests exercise both allowed and denied roles for every matrix entry.
+- The API policy audit test compares an explicit controller inventory with every production `*.controller.ts` file
+  and requires exactly one access classification on every HTTP handler. A new controller or endpoint without a
+  policy therefore fails the API test job in CI.
+- The audit executes `RolesGuard` for every role on every role-protected controller method, covering both allowed
+  and denied decisions across the entire API rather than only selected modules.
+- The role-policy tests independently compare every centralized policy with the documented four-role matrix, so
+  an undocumented policy or a role mismatch fails CI.
