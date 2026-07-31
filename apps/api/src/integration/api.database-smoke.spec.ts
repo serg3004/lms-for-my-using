@@ -67,6 +67,7 @@ describe('API database smoke', () => {
   let baseUrl: string;
   let prisma: PrismaService;
   let organizationId: string | undefined;
+  const additionalOrganizationIds: string[] = [];
   let userId: string | undefined;
   let userEmail: string;
 
@@ -128,17 +129,19 @@ describe('API database smoke', () => {
 
   afterAll(async () => {
     try {
-      if (organizationId) {
+      for (const tenantId of [organizationId, ...additionalOrganizationIds].filter((id): id is string => Boolean(id))) {
+        await prisma.progress.deleteMany({ where: { organizationId: tenantId } });
+        await prisma.assignment.deleteMany({ where: { organizationId: tenantId } });
         // Tests may create additional users (for example, an instructor). Remove
         // every tenant user rather than only the bootstrap admin so the
         // Organization -> User RESTRICT relation cannot leave teardown data.
-        await prisma.user.deleteMany({ where: { organizationId } });
+        await prisma.user.deleteMany({ where: { organizationId: tenantId } });
       }
     } finally {
       try {
-        if (organizationId) {
-          await prisma.organization.delete({ where: { id: organizationId } });
-        }
+        await prisma.organization.deleteMany({
+          where: { id: { in: [organizationId, ...additionalOrganizationIds].filter((id): id is string => Boolean(id)) } },
+        });
       } finally {
         await app?.close();
       }
@@ -236,6 +239,98 @@ describe('API database smoke', () => {
     await expect(prisma.courseInstructor.findUnique({
       where: { courseId_instructorId: { courseId: created.id, instructorId: instructor.id } },
     })).resolves.not.toBeNull();
+  });
+
+  it('enforces manager scope across multiple teams and tenants while leaving admins unrestricted', async () => {
+    const passwordOwner = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    const createUser = (label: string, tenantId = organizationId!) => prisma.user.create({
+      data: {
+        organizationId: tenantId,
+        email: `${label}-${randomUUID()}@example.test`,
+        passwordHash: passwordOwner.passwordHash,
+        firstName: label,
+        lastName: 'Manager scope',
+      },
+    });
+    const [manager, firstTeamUser, secondTeamUser, sameTenantOutsider] = await Promise.all([
+      createUser('manager'),
+      createUser('first-team'),
+      createUser('second-team'),
+      createUser('outsider'),
+    ]);
+    await prisma.membership.create({
+      data: { organizationId: organizationId!, userId: manager.id, role: 'manager' },
+    });
+
+    const [firstGroup, secondGroup, outsiderGroup, course] = await Promise.all([
+      prisma.group.create({ data: { organizationId: organizationId!, name: 'First team', slug: `first-${randomUUID()}` } }),
+      prisma.group.create({ data: { organizationId: organizationId!, name: 'Second team', slug: `second-${randomUUID()}` } }),
+      prisma.group.create({ data: { organizationId: organizationId!, name: 'Other team', slug: `other-${randomUUID()}` } }),
+      prisma.course.create({ data: { organizationId: organizationId!, title: 'Manager scope', slug: `scope-${randomUUID()}` } }),
+    ]);
+    await Promise.all([
+      prisma.managerGroup.create({ data: { organizationId: organizationId!, managerId: manager.id, groupId: firstGroup.id } }),
+      prisma.managerGroup.create({ data: { organizationId: organizationId!, managerId: manager.id, groupId: secondGroup.id } }),
+      prisma.groupMember.create({ data: { organizationId: organizationId!, groupId: firstGroup.id, userId: firstTeamUser.id } }),
+      prisma.groupMember.create({ data: { organizationId: organizationId!, groupId: secondGroup.id, userId: secondTeamUser.id } }),
+      prisma.groupMember.create({ data: { organizationId: organizationId!, groupId: outsiderGroup.id, userId: sameTenantOutsider.id } }),
+    ]);
+    const [teamAssignment, groupAssignment, outsiderAssignment, teamProgress, outsiderProgress] = await Promise.all([
+      prisma.assignment.create({ data: { organizationId: organizationId!, courseId: course.id, userId: firstTeamUser.id } }),
+      prisma.assignment.create({ data: { organizationId: organizationId!, courseId: course.id, groupId: secondGroup.id } }),
+      prisma.assignment.create({ data: { organizationId: organizationId!, courseId: course.id, userId: sameTenantOutsider.id } }),
+      prisma.progress.create({ data: { organizationId: organizationId!, courseId: course.id, userId: secondTeamUser.id } }),
+      prisma.progress.create({ data: { organizationId: organizationId!, courseId: course.id, userId: sameTenantOutsider.id } }),
+    ]);
+
+    const foreignOrganization = await prisma.organization.create({
+      data: { name: 'Foreign manager scope', slug: `foreign-scope-${randomUUID()}` },
+    });
+    additionalOrganizationIds.push(foreignOrganization.id);
+    const foreignUser = await createUser('foreign', foreignOrganization.id);
+
+    const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ organizationId, email: manager.email, password: TEST_PASSWORD }),
+    });
+    expect(loginResponse.ok).toBe(true);
+    const login = unwrapResponse(await readJson<LoginResponse>(loginResponse));
+    const managerHeaders = { authorization: `Bearer ${login.accessToken}` };
+
+    const usersResponse = await fetch(`${baseUrl}/api/v1/users?pageSize=100`, { headers: managerHeaders });
+    const users = unwrapResponse(await readJson<{ items: Array<{ id: string }> }>(usersResponse));
+    expect(users.items.map(({ id }) => id)).toEqual(expect.arrayContaining([firstTeamUser.id, secondTeamUser.id]));
+    expect(users.items.map(({ id }) => id)).not.toEqual(expect.arrayContaining([sameTenantOutsider.id, foreignUser.id]));
+    expect((await fetch(`${baseUrl}/api/v1/users/${sameTenantOutsider.id}`, { headers: managerHeaders })).status).toBe(404);
+    expect((await fetch(`${baseUrl}/api/v1/users/${foreignUser.id}`, { headers: managerHeaders })).status).toBe(404);
+
+    const assignmentsResponse = await fetch(`${baseUrl}/api/v1/assignments?pageSize=100`, { headers: managerHeaders });
+    const assignments = unwrapResponse(await readJson<{ items: Array<{ id: string }> }>(assignmentsResponse));
+    expect(assignments.items.map(({ id }) => id)).toEqual(expect.arrayContaining([teamAssignment.id, groupAssignment.id]));
+    expect(assignments.items.map(({ id }) => id)).not.toContain(outsiderAssignment.id);
+
+    const progressResponse = await fetch(`${baseUrl}/api/v1/progress?pageSize=100`, { headers: managerHeaders });
+    const progress = unwrapResponse(await readJson<{ items: Array<{ id: string }> }>(progressResponse));
+    expect(progress.items.map(({ id }) => id)).toContain(teamProgress.id);
+    expect(progress.items.map(({ id }) => id)).not.toContain(outsiderProgress.id);
+
+    const adminLoginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ organizationId, email: userEmail, password: TEST_PASSWORD }),
+    });
+    const adminLogin = unwrapResponse(await readJson<LoginResponse>(adminLoginResponse));
+    const adminUsersResponse = await fetch(`${baseUrl}/api/v1/users?pageSize=100`, {
+      headers: { authorization: `Bearer ${adminLogin.accessToken}` },
+    });
+    const adminUsers = unwrapResponse(await readJson<{ items: Array<{ id: string }> }>(adminUsersResponse));
+    expect(adminUsers.items.map(({ id }) => id)).toEqual(expect.arrayContaining([
+      firstTeamUser.id,
+      secondTeamUser.id,
+      sameTenantOutsider.id,
+    ]));
+    expect(adminUsers.items.map(({ id }) => id)).not.toContain(foreignUser.id);
   });
 
   it('atomically rotates a refresh token under concurrent requests', async () => {
