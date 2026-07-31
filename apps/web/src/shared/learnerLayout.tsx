@@ -112,13 +112,13 @@ type UserState =
   | { status: 'loaded'; firstName: string; lastName?: string }
   | { status: 'error' };
 
-const LEARNER_NAV = [
-  { label: 'Главная', href: '/learn' },
-  { label: 'Мои курсы', href: '/learn/courses' },
-  { label: 'Назначения', href: '/learn/assignments' },
-  { label: 'Тесты', href: '/learn/assessments' },
-  { label: 'Прогресс', href: '/learn/progress' },
-  { label: 'Сертификаты', href: '/learn/certificates' },
+const LEARNER_NAV_DEFS = [
+  { key: 'nav.home', href: '/learn' },
+  { key: 'courses.title', href: '/learn/courses' },
+  { key: 'assignments.navLink', href: '/learn/assignments' },
+  { key: 'assessments.navLink', href: '/learn/assessments' },
+  { key: 'progress.navLink', href: '/learn/progress' },
+  { key: 'certificates.navLink', href: '/learn/certificates' },
 ] as const;
 
 type LearnerPageLayoutProps = {
@@ -127,6 +127,7 @@ type LearnerPageLayoutProps = {
 };
 
 export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutProps) {
+  const { t } = useTranslation();
   const [userState, setUserState] = useState<UserState>({ status: 'loading' });
 
   useEffect(() => {
@@ -164,20 +165,20 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
           <div className="learner-sidebar__mark">L</div>
           <div>
             <strong className="learner-sidebar__brand-name">LMS</strong>
-            <span className="learner-sidebar__brand-sub">Учебная платформа</span>
+            <span className="learner-sidebar__brand-sub">{t('nav.brandSub')}</span>
           </div>
         </div>
 
-        <div className="learner-sidebar__section-label">Обучение</div>
+        <div className="learner-sidebar__section-label">{t('nav.sectionLabel')}</div>
         <nav className="learner-sidebar__nav" aria-label="Main navigation">
-          {LEARNER_NAV.map((item) => (
+          {LEARNER_NAV_DEFS.map((item) => (
             <a
               key={item.href}
               href={item.href}
               className={`learner-sidebar__link${path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? ' learner-sidebar__link--active' : ''}`}
               aria-current={path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? 'page' : undefined}
             >
-              {item.label}
+              {t(item.key)}
             </a>
           ))}
         </nav>
@@ -189,7 +190,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
             <LanguageSwitcher />
             {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
             <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
-              Выйти
+              {t('nav.logout')}
             </button>
           </div>
         </header>

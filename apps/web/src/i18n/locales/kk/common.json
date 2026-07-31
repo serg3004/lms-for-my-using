@@ -3,6 +3,12 @@
     "title": "LMS",
     "subtitle": "Оқытуды басқару жүйесі"
   },
+  "nav": {
+    "home": "Басты бет",
+    "sectionLabel": "Оқу",
+    "logout": "Шығу",
+    "brandSub": "Оқыту платформасы"
+  },
   "login": {
     "navLink": "Кіру",
     "title": "Кіру",

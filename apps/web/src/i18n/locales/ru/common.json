@@ -3,6 +3,12 @@
     "title": "LMS",
     "subtitle": "Learning management system"
   },
+  "nav": {
+    "home": "Главная",
+    "sectionLabel": "Обучение",
+    "logout": "Выйти",
+    "brandSub": "Учебная платформа"
+  },
   "login": {
     "navLink": "Sign in",
     "title": "Sign in",

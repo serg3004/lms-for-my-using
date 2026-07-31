@@ -3,6 +3,12 @@
     "title": "LMS",
     "subtitle": "学习管理系统"
   },
+  "nav": {
+    "home": "首页",
+    "sectionLabel": "学习",
+    "logout": "退出",
+    "brandSub": "学习平台"
+  },
   "login": {
     "navLink": "登录",
     "title": "登录",
