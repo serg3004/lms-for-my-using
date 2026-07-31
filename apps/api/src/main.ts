@@ -18,6 +18,11 @@ type ExpressLikeServer = {
   set?: (setting: string, value: unknown) => void;
 };
 
+async function closeRedis(redis: Redis | undefined): Promise<void> {
+  if (!redis) return;
+  await redis.quit();
+}
+
 async function bootstrap(): Promise<void> {
   loadLocalEnvFiles();
   const apiEnv = loadApiEnv();
@@ -40,13 +45,17 @@ async function bootstrap(): Promise<void> {
     origin: apiEnv.FRONTEND_URL,
     credentials: true,
   });
-  const rateLimitStore = apiEnv.REDIS_URL ? createRedisRateLimitStore(new Redis(apiEnv.REDIS_URL)) : undefined;
+  const redis = apiEnv.REDIS_URL ? new Redis(apiEnv.REDIS_URL) : undefined;
+  const rateLimitStore = redis ? createRedisRateLimitStore(redis, apiEnv.RATE_LIMIT_NAMESPACE) : undefined;
 
   app.use(createSecurityHeadersMiddleware());
   app.use(createSensitiveRouteRateLimitMiddleware(rateLimitStore));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
+  app.getHttpServer().once('close', () => {
+    void closeRedis(redis);
+  });
 
   await app.listen(apiEnv.API_PORT);
 }
