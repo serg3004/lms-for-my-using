@@ -2195,7 +2195,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 175 — Централизованная RBAC-матрица API 🔲
+## PR 175 — Централизованная RBAC-матрица API ✅
 
 **Проблема:** Frontend разделяет роли, но не доказывает server-side authorization каждого endpoint.
 

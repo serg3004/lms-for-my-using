@@ -2,7 +2,9 @@ import { readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ForbiddenException, type ExecutionContext } from '@nestjs/common';
 import { GUARDS_METADATA, METHOD_METADATA } from '@nestjs/common/constants';
+import { Reflector } from '@nestjs/core';
 
 import { AssessmentAttemptsController } from '../assessment-attempts/assessment-attempts.controller.js';
 import { AssessmentQuestionsController } from '../assessment-questions/assessment-questions.controller.js';
@@ -25,26 +27,66 @@ import { RolesGuard } from './roles.guard.js';
 import { accessMetadataKey, rolesMetadataKey, type EndpointAccess, type UserRole } from './roles.js';
 
 type ControllerClass = abstract new (...args: never[]) => object;
+type ControllerEntry = { file: string; Controller: ControllerClass };
+type EndpointHandler = (...args: never[]) => unknown;
 
-const controllers: ControllerClass[] = [
-  AssessmentAttemptsController,
-  AssessmentQuestionsController,
-  AssessmentsController,
-  AssignmentsController,
-  AuthController,
-  CertificatesController,
-  CourseMaterialsController,
-  CoursesController,
-  GroupsController,
-  HealthController,
-  LessonsController,
-  MembershipsController,
-  OpenApiController,
-  OrganizationsController,
-  ProgressController,
-  UploadController,
-  UsersController,
+const controllerEntries: ControllerEntry[] = [
+  { file: 'assessment-attempts/assessment-attempts.controller.ts', Controller: AssessmentAttemptsController },
+  { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
+  { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
+  { file: 'assignments/assignments.controller.ts', Controller: AssignmentsController },
+  { file: 'auth/auth.controller.ts', Controller: AuthController },
+  { file: 'certificates/certificates.controller.ts', Controller: CertificatesController },
+  { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
+  { file: 'courses/courses.controller.ts', Controller: CoursesController },
+  { file: 'groups/groups.controller.ts', Controller: GroupsController },
+  { file: 'health/health.controller.ts', Controller: HealthController },
+  { file: 'lessons/lessons.controller.ts', Controller: LessonsController },
+  { file: 'memberships/memberships.controller.ts', Controller: MembershipsController },
+  { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
+  { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
+  { file: 'progress/progress.controller.ts', Controller: ProgressController },
+  { file: 'upload/upload.controller.ts', Controller: UploadController },
+  { file: 'users/users.controller.ts', Controller: UsersController },
 ];
+
+const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'learner'];
+
+const protectedEndpoints = controllerEntries.flatMap(({ Controller }) =>
+  Object.getOwnPropertyNames(Controller.prototype).flatMap((methodName) => {
+    const handler = Object.getOwnPropertyDescriptor(Controller.prototype, methodName)?.value as unknown;
+    const roles = typeof handler === 'function' ? (Reflect.getMetadata(rolesMetadataKey, handler) as UserRole[] | undefined) : undefined;
+
+    return roles?.length ? [{ Controller, methodName, handler: handler as EndpointHandler, roles }] : [];
+  }),
+);
+
+function roleContext(Controller: ControllerClass, handler: EndpointHandler, role: UserRole): ExecutionContext {
+  const request = {
+    currentUser: {
+      id: 'user-id',
+      organizationId: 'organization-id',
+      email: 'user@example.com',
+      roles: [role],
+    },
+  };
+
+  return {
+    getClass: () => Controller,
+    getHandler: () => handler,
+    switchToHttp: () => ({ getRequest: () => request }),
+  } as unknown as ExecutionContext;
+}
+
+function rolesGuardFor(role: UserRole): RolesGuard {
+  const prisma = {
+    membership: {
+      findMany: async () => [{ role }],
+    },
+  };
+
+  return new RolesGuard(prisma as never, new Reflector());
+}
 
 function controllerFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -61,12 +103,14 @@ function controllerFiles(directory: string): string[] {
 describe('API access policy audit', () => {
   it('keeps the audit inventory synchronized with every production controller', () => {
     const modulesDirectory = join(dirname(fileURLToPath(import.meta.url)), '..');
-    const files = controllerFiles(modulesDirectory).map((path) => relative(modulesDirectory, path));
+    const files = controllerFiles(modulesDirectory)
+      .map((path) => relative(modulesDirectory, path))
+      .sort();
 
-    expect(files).toHaveLength(controllers.length);
+    expect(files).toEqual(controllerEntries.map(({ file }) => file).sort());
   });
 
-  it.each(controllers)('$name gives every endpoint exactly one explicit access policy', (Controller) => {
+  it.each(controllerEntries)('$Controller.name gives every endpoint exactly one explicit access policy', ({ Controller }) => {
     const classGuards = Reflect.getMetadata(GUARDS_METADATA, Controller) as unknown[] | undefined;
 
     for (const methodName of Object.getOwnPropertyNames(Controller.prototype)) {
@@ -90,6 +134,20 @@ describe('API access policy audit', () => {
         const methodGuards = Reflect.getMetadata(GUARDS_METADATA, handler) as unknown[] | undefined;
         expect([...(classGuards ?? []), ...(methodGuards ?? [])]).toContain(RolesGuard);
       }
+    }
+  });
+
+  it.each(
+    protectedEndpoints.flatMap(({ Controller, methodName, handler, roles }) =>
+      allRoles.map((role) => ({ Controller, methodName, handler, roles, role })),
+    ),
+  )('$Controller.name.$methodName enforces the centralized policy for $role', async ({ Controller, handler, roles, role }) => {
+    const authorization = rolesGuardFor(role).canActivate(roleContext(Controller, handler, role));
+
+    if (roles.includes(role)) {
+      await expect(authorization).resolves.toBe(true);
+    } else {
+      await expect(authorization).rejects.toBeInstanceOf(ForbiddenException);
     }
   });
 });
