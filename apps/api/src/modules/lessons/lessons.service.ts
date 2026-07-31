@@ -85,7 +85,7 @@ export class LessonsService {
     }
 
     return this.prisma.lesson.update({
-      where: { id: lessonId },
+      where: { id: lessonId, organizationId },
       data: { status },
       select: lessonSelect,
     });
@@ -102,7 +102,7 @@ export class LessonsService {
     }
 
     return this.prisma.lesson.update({
-      where: { id: lessonId },
+      where: { id: lessonId, organizationId },
       data: input,
       select: lessonSelect,
     });
@@ -137,7 +137,7 @@ export class LessonsService {
     await this.prisma.$transaction(
       lessonIds.map((lessonId, order) =>
         this.prisma.lesson.update({
-          where: { id: lessonId },
+          where: { id: lessonId, organizationId },
           data: { order },
           select: { id: true },
         }),
@@ -158,7 +158,7 @@ export class LessonsService {
     }
 
     await this.prisma.lesson.update({
-      where: { id: lessonId },
+      where: { id: lessonId, organizationId },
       data: { deletedAt: new Date() },
       select: { id: true },
     });

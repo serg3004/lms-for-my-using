@@ -112,7 +112,7 @@ export class UsersService {
 
     return this.prisma.$transaction(async (transaction) => {
       await transaction.user.update({
-        where: { id: userId },
+        where: { id: userId, organizationId },
         data: userData,
         select: { id: true },
       });
@@ -137,7 +137,7 @@ export class UsersService {
       }
 
       return transaction.user.findUniqueOrThrow({
-        where: { id: userId },
+        where: { id: userId, organizationId },
         select: userSelect,
       });
     });
@@ -322,7 +322,7 @@ export class UsersService {
     }
 
     return this.prisma.user.update({
-      where: { id: userId },
+      where: { id: userId, organizationId },
       data: { status },
       select: userSelect,
     });

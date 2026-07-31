@@ -34,7 +34,7 @@ describe('LessonsService CRUD order', () => {
     await expect(service.deleteLesson(firstLessonId, organizationId)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: firstLessonId },
+        where: { id: firstLessonId, organizationId },
         data: { deletedAt: expect.any(Date) },
       }),
     );

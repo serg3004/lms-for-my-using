@@ -84,7 +84,7 @@ export class AssessmentsService {
     }
 
     return this.prisma.assessment.update({
-      where: { id: assessmentId },
+      where: { id: assessmentId, organizationId },
       data: { status },
       select: assessmentSelect,
     });
@@ -101,7 +101,7 @@ export class AssessmentsService {
     }
 
     return this.prisma.assessment.update({
-      where: { id: assessmentId },
+      where: { id: assessmentId, organizationId },
       data: input,
       select: assessmentSelect,
     });
