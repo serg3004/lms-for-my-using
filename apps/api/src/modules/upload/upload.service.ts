@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 
@@ -13,6 +13,7 @@ export type UploadResult = {
 @Injectable()
 export class UploadService {
   private readonly s3: S3Client | null;
+  private readonly downloadS3: S3Client | null;
   private readonly bucket: string | undefined;
 
   constructor() {
@@ -24,15 +25,22 @@ export class UploadService {
     const forcePathStyle = process.env['S3_FORCE_PATH_STYLE'] === 'true';
 
     if (endpoint && bucket && accessKeyId && secretAccessKey) {
-      this.s3 = new S3Client({
-        endpoint,
+      const clientOptions = {
         region,
         credentials: { accessKeyId, secretAccessKey },
         forcePathStyle,
+      };
+      this.s3 = new S3Client({ endpoint, ...clientOptions });
+      this.downloadS3 = new S3Client({
+        endpoint: process.env['S3_FILE_ORIGIN'] ?? endpoint,
+        ...clientOptions,
+        // Preserve the dedicated origin hostname instead of rewriting it to bucket.origin.
+        forcePathStyle: process.env['S3_FILE_ORIGIN'] ? true : forcePathStyle,
       });
       this.bucket = bucket;
     } else {
       this.s3 = null;
+      this.downloadS3 = null;
     }
   }
 
@@ -89,13 +97,41 @@ export class UploadService {
     return objectKey;
   }
 
-  async getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
-    if (!this.s3 || !this.bucket) {
+  async getPresignedUrl(key: string, fileName: string, expiresIn: number): Promise<string> {
+    if (!this.downloadS3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');
     }
 
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
-    return getSignedUrl(this.s3, command, { expiresIn });
+    const safeTtl = Math.min(Math.max(expiresIn, 1), 300);
+    const fallbackName = fileName.replace(/[\r\n"\\]/g, '_') || 'download';
+    const encodedName = encodeURIComponent(fileName || 'download').replace(/['()*]/g, (value) =>
+      `%${value.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`,
+      ResponseContentType: 'application/octet-stream',
+    });
+    return getSignedUrl(this.downloadS3, command, { expiresIn: safeTtl });
+  }
+
+  async listObjects(prefix: string): Promise<Array<{ key: string; lastModified: Date }>> {
+    if (!this.s3 || !this.bucket) throw new ServiceUnavailableException('File storage is not configured');
+    const objects: Array<{ key: string; lastModified: Date }> = [];
+    let continuationToken: string | undefined;
+    do {
+      const page = await this.s3.send(new ListObjectsV2Command({
+        Bucket: this.bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }));
+      for (const object of page.Contents ?? []) {
+        if (object.Key && object.LastModified) objects.push({ key: object.Key, lastModified: object.LastModified });
+      }
+      continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (continuationToken);
+    return objects;
   }
 
   async deleteObject(key: string): Promise<void> {

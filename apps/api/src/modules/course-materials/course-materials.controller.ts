@@ -64,8 +64,13 @@ export class CourseMaterialsController {
       materialId,
       request.currentUser!.organizationId,
     );
+    if (material.status !== 'active') throw new NotFoundException('Material file not found');
     if (material.objectKey && material.scanStatus === 'available') {
-      return { url: await this.uploadService.getPresignedUrl(material.objectKey, 300), expiresIn: 300 };
+      const expiresIn = Math.min(Math.max(Number(process.env['S3_PRESIGNED_TTL_SECONDS'] ?? 300), 1), 300);
+      return {
+        url: await this.uploadService.getPresignedUrl(material.objectKey, material.fileName ?? 'download', expiresIn),
+        expiresIn,
+      };
     }
     if (material.kind === 'link' && material.fileUrl) return { url: material.fileUrl, expiresIn: null };
     throw new NotFoundException('Material file not found');
@@ -100,7 +105,7 @@ export class CourseMaterialsController {
     const material = await this.courseMaterialsService.getMaterialStorageReference(materialId, organizationId);
     if (material.objectKey) await this.uploadService.deleteObject(material.objectKey);
     if (material.quarantineKey) await this.uploadService.deleteObject(material.quarantineKey);
-    return this.courseMaterialsService.clearUploadedFile(materialId, organizationId);
+    return this.courseMaterialsService.clearUploadedFile(materialId, organizationId, request.currentUser!.id);
   }
 
   @Post('courses/:courseId/materials')

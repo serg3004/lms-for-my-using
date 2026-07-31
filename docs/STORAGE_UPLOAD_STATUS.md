@@ -20,14 +20,33 @@ organizations/{organizationId}/materials/{materialId}/{uuid}
 Only this opaque `objectKey` is persisted. Original names are metadata and are
 never part of an object key. `S3_PUBLIC_URL` is no longer used.
 
-Authorized readers obtain a five-minute URL from
+Authorized readers obtain a short-lived (at most five-minute) URL from
 `GET /api/v1/materials/:id/download`. The endpoint checks the caller's role,
 course access, and organization before signing the stored key. Consequently a
 key or material UUID from another organization cannot be used to mint a URL.
+Archived or deleted materials fail closed and cannot receive a URL. Configure
+`S3_FILE_ORIGIN` as a dedicated file-serving origin, separate from the web
+application origin. Signed responses always force `Content-Type:
+application/octet-stream` and `Content-Disposition: attachment`, including for
+HTML and SVG, so uploaded active content is not rendered in the application
+security context. `S3_PRESIGNED_TTL_SECONDS` defaults to 300 and is hard-capped
+at 300 seconds.
 
 `DELETE /api/v1/materials/:id/file` deletes the private object and clears its
 storage metadata. S3 DeleteObject is idempotent; repeating the API call when no
-key remains safely clears metadata again.
+key remains safely clears metadata again. Each request writes a durable audit
+row with the tenant, material, actor, affected keys, result, and timestamp.
+
+## Retention and orphan cleanup
+
+Build the API, then run `pnpm --filter @lms/api storage:cleanup` to inventory
+unreferenced ordinary and quarantine objects older than
+`S3_ORPHAN_RETENTION_DAYS` (default 30). Dry-run is the default and prints the
+exact candidates without deleting anything. After reviewing the output, pass
+`-- --apply` to delete those candidates. Database references are loaded without
+excluding soft-deleted materials, preventing cleanup from bypassing retention
+for an object that is still referenced. S3 deletion is idempotent, so an
+interrupted applied run can be safely repeated.
 
 ## Legacy transition
 

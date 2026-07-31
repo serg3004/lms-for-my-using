@@ -126,6 +126,7 @@ model Organization {
   courseInstructors               CourseInstructor[]
   groupMembers                    GroupMember[]
   managerGroups                   ManagerGroup[]
+  materialFileDeletionAudits      MaterialFileDeletionAudit[]
 
   @@map("organizations")
 }
@@ -558,4 +559,19 @@ model Session {
   @@index([expiresAt])
   @@index([refreshExpiresAt])
   @@map("sessions")
+}
+
+model MaterialFileDeletionAudit {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  materialId     String       @map("material_id") @db.Uuid
+  actorId        String       @map("actor_id") @db.Uuid
+  objectKeys     String[]     @map("object_keys")
+  result         String
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, materialId, createdAt])
+  @@map("material_file_deletion_audits")
 }

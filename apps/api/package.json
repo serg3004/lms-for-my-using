@@ -14,6 +14,7 @@
     "test:integration:db": "NODE_ENV=test JWT_SECRET=database-smoke-jwt-secret-32-characters NODE_OPTIONS=--experimental-vm-modules jest --config jest.database.config.cjs --runInBand",
     "smoke:mvp": "node dist/scripts/smoke-test.js",
     "admin:demo-seed": "node dist/scripts/admin-demo-seed.js",
+    "storage:cleanup": "node dist/scripts/material-storage-cleanup.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

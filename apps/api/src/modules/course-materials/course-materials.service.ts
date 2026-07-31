@@ -134,7 +134,7 @@ export class CourseMaterialsService {
   async getMaterialStorageReference(materialId: string, organizationId: string) {
     const material = await this.prisma.courseMaterial.findFirst({
       where: { id: materialId, organizationId, deletedAt: null },
-      select: { id: true, organizationId: true, kind: true, fileUrl: true, objectKey: true, quarantineKey: true, scanStatus: true, scanExpiresAt: true },
+      select: { id: true, organizationId: true, kind: true, fileUrl: true, fileName: true, objectKey: true, quarantineKey: true, scanStatus: true, scanExpiresAt: true, status: true },
     });
     if (!material) throw new NotFoundException('Course material not found');
     return material;
@@ -165,12 +165,24 @@ export class CourseMaterialsService {
     });
   }
 
-  async clearUploadedFile(materialId: string, organizationId: string) {
-    await this.getMaterialStorageReference(materialId, organizationId);
-    return this.prisma.courseMaterial.update({
-      where: { id: materialId, organizationId },
-      data: { objectKey: null, quarantineKey: null, fileName: null, mimeType: null, sizeBytes: null, scanStatus: null, scanReason: null, scanExpiresAt: null, scannedAt: null },
-      select: courseMaterialSelect,
+  async clearUploadedFile(materialId: string, organizationId: string, actorId: string) {
+    const material = await this.getMaterialStorageReference(materialId, organizationId);
+    return this.prisma.$transaction(async (transaction) => {
+      const updated = await transaction.courseMaterial.update({
+        where: { id: materialId, organizationId },
+        data: { objectKey: null, quarantineKey: null, fileName: null, mimeType: null, sizeBytes: null, scanStatus: null, scanReason: null, scanExpiresAt: null, scannedAt: null },
+        select: courseMaterialSelect,
+      });
+      await transaction.materialFileDeletionAudit.create({
+        data: {
+          organizationId,
+          materialId,
+          actorId,
+          objectKeys: [material.objectKey, material.quarantineKey].filter((key): key is string => Boolean(key)),
+          result: material.objectKey || material.quarantineKey ? 'deleted' : 'already_absent',
+        },
+      });
+      return updated;
     });
   }
 
