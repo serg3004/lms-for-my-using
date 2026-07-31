@@ -2300,7 +2300,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 181 — Production Redis rate-limit store 🔲
+## PR 181 — Production Redis rate-limit store ✅
 
 **Проблема:** In-memory limiter не общий между инстансами, сбрасывается и может расти в памяти.
 

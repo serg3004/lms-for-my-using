@@ -152,56 +152,48 @@ describe('API hardening middleware', () => {
 });
 
 describe('Redis rate limit store', () => {
-  it('increments the counter and sets TTL on first request', async () => {
-    let counter = 0;
-    const expireCalls: Array<{ key: string; seconds: number }> = [];
+  it('atomically increments a namespaced counter and assigns its TTL', async () => {
+    const calls: unknown[][] = [];
     const redis: MinimalRedis = {
-      incr: async () => {
-        counter += 1;
-        return counter;
-      },
-      expire: async (key, seconds) => {
-        expireCalls.push({ key, seconds });
+      eval: async (...args) => {
+        calls.push(args);
         return 1;
       },
     };
-    const store = createRedisRateLimitStore(redis);
+    const store = createRedisRateLimitStore(redis, 'production');
 
     const count = await store.increment('test-key', 60_000);
 
     expect(count).toBe(1);
-    expect(expireCalls).toEqual([{ key: 'test-key', seconds: 60 }]);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.slice(1)).toEqual([1, 'production:rate-limit:test-key', '60000']);
+    expect(String(calls[0]?.[0])).toContain("redis.call('PEXPIRE', KEYS[1], ARGV[1])");
   });
 
-  it('does not reset TTL on subsequent increments', async () => {
-    let counter = 0;
-    const expireCalls: number[] = [];
+  it('shares counters between store instances and preserves them across store recreation', async () => {
+    const counters = new Map<string, number>();
     const redis: MinimalRedis = {
-      incr: async () => {
-        counter += 1;
-        return counter;
-      },
-      expire: async () => {
-        expireCalls.push(1);
-        return 1;
+      eval: async (_script, _keys, key) => {
+        const count = (counters.get(key) ?? 0) + 1;
+        counters.set(key, count);
+        return count;
       },
     };
-    const store = createRedisRateLimitStore(redis);
+    const firstInstance = createRedisRateLimitStore(redis, 'shared');
+    const secondInstance = createRedisRateLimitStore(redis, 'shared');
 
-    await store.increment('key', 60_000);
-    await store.increment('key', 60_000);
-    await store.increment('key', 60_000);
+    expect(await firstInstance.increment('key', 60_000)).toBe(1);
+    expect(await secondInstance.increment('key', 60_000)).toBe(2);
 
-    expect(counter).toBe(3);
-    expect(expireCalls).toHaveLength(1);
+    const restartedInstance = createRedisRateLimitStore(redis, 'shared');
+    expect(await restartedInstance.increment('key', 60_000)).toBe(3);
   });
 
   it('fails open when the store throws', async () => {
     const redis: MinimalRedis = {
-      incr: async () => {
+      eval: async () => {
         throw new Error('Redis connection refused');
       },
-      expire: async () => 1,
     };
     const store = createRedisRateLimitStore(redis);
     const middleware = createSensitiveRouteRateLimitMiddleware(store);

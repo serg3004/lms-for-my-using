@@ -40,9 +40,16 @@ export type RateLimitStore = {
 };
 
 export type MinimalRedis = {
-  incr(key: string): Promise<number>;
-  expire(key: string, seconds: number): Promise<number>;
+  eval(script: string, numberOfKeys: number, key: string, ttlMs: string): Promise<unknown>;
 };
+
+const ATOMIC_INCREMENT_WITH_TTL_SCRIPT = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return count
+`;
 
 function getRequestPath(request: ApiRequest): string {
   const url = request.url ?? '';
@@ -77,16 +84,19 @@ export function createInMemoryRateLimitStore(now = () => Date.now()): RateLimitS
   };
 }
 
-export function createRedisRateLimitStore(redis: MinimalRedis): RateLimitStore {
+export function createRedisRateLimitStore(redis: MinimalRedis, namespace = 'lms'): RateLimitStore {
   return {
     async increment(key: string, windowMs: number): Promise<number> {
-      const windowSeconds = Math.ceil(windowMs / 1000);
-      const count = await redis.incr(key);
-
-      if (count === 1) {
-        await redis.expire(key, windowSeconds);
+      const result = await redis.eval(
+        ATOMIC_INCREMENT_WITH_TTL_SCRIPT,
+        1,
+        `${namespace}:rate-limit:${key}`,
+        String(Math.ceil(windowMs)),
+      );
+      const count = Number(result);
+      if (!Number.isSafeInteger(count) || count < 1) {
+        throw new Error('Redis rate limit store returned an invalid counter');
       }
-
       return count;
     },
   };
