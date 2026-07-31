@@ -2406,7 +2406,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 187 — Безопасная раздача и lifecycle 🔲
+## PR 187 — Безопасная раздача и lifecycle ✅
 
 **Проблема:** Нет полной политики Content-Disposition, retention и orphan cleanup.
 

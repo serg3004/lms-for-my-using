@@ -10,6 +10,7 @@ describe('UploadService', () => {
     delete process.env['S3_BUCKET'];
     delete process.env['S3_ACCESS_KEY_ID'];
     delete process.env['S3_SECRET_ACCESS_KEY'];
+    delete process.env['S3_FILE_ORIGIN'];
     service = new UploadService();
   });
 
@@ -35,7 +36,9 @@ describe('UploadService', () => {
   });
 
   it('throws ServiceUnavailableException on getPresignedUrl when not configured', async () => {
-    await expect(service.getPresignedUrl('materials/test.pdf')).rejects.toThrow(ServiceUnavailableException);
+    await expect(service.getPresignedUrl('materials/test.pdf', 'test.pdf', 300)).rejects.toThrow(
+      ServiceUnavailableException,
+    );
   });
 
   it('reports configured when all S3 env vars are set', () => {
@@ -46,6 +49,25 @@ describe('UploadService', () => {
 
     const configured = new UploadService();
     expect(configured.isConfigured()).toBe(true);
+  });
+
+  it('signs short-lived attachment downloads on the isolated file origin', async () => {
+    process.env['S3_ENDPOINT'] = 'https://storage.internal.example';
+    process.env['S3_FILE_ORIGIN'] = 'https://files.example.test';
+    process.env['S3_BUCKET'] = 'lms-bucket';
+    process.env['S3_ACCESS_KEY_ID'] = 'test-access-key';
+    process.env['S3_SECRET_ACCESS_KEY'] = 'test-secret-key';
+
+    const configured = new UploadService();
+    const signed = new URL(
+      await configured.getPresignedUrl('organizations/org/materials/id/object', 'unsafe\r\nname.svg', 3_600),
+    );
+
+    expect(signed.origin).toBe('https://files.example.test');
+    expect(signed.searchParams.get('X-Amz-Expires')).toBe('300');
+    expect(signed.searchParams.get('response-content-type')).toBe('application/octet-stream');
+    expect(signed.searchParams.get('response-content-disposition')).toContain('attachment;');
+    expect(signed.searchParams.get('response-content-disposition')).not.toMatch(/[\r\n]/);
   });
 
   it('creates a tenant-scoped opaque material key', () => {
