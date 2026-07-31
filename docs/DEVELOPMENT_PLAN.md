@@ -2282,7 +2282,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 180 — Trusted proxy и client IP 🔲
+## PR 180 — Trusted proxy и client IP ✅
 
 **Проблема:** Ручное доверие `X-Forwarded-For` позволяет обходить rate limit при неверной proxy-конфигурации.
 

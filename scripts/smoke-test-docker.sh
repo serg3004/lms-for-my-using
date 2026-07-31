@@ -75,6 +75,7 @@ docker run -d \
   --network "$NETWORK" \
   -p 3000:3000 \
   -e NODE_ENV=production \
+  -e TRUST_PROXY=false \
   -e DATABASE_URL="postgresql://postgres:postgres@${PG_CONTAINER}:5432/lms_smoke" \
   -e JWT_SECRET="smoke-test-secret-32-chars-minimum" \
   -e FRONTEND_URL="http://localhost" \

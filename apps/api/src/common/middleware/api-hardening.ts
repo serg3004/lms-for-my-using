@@ -51,10 +51,7 @@ function getRequestPath(request: ApiRequest): string {
 }
 
 function getClientKey(request: ApiRequest): string {
-  const forwardedFor = request.headers['x-forwarded-for'];
-  const forwardedClient = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0];
-
-  return forwardedClient?.trim() || request.ip || request.socket.remoteAddress || 'unknown';
+  return request.ip || request.socket.remoteAddress || 'unknown';
 }
 
 function isRateLimitedRoute(request: ApiRequest): boolean {

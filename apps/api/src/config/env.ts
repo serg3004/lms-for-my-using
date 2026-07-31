@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -7,6 +8,8 @@ const DEFAULT_API_PORT = 3000;
 const DEFAULT_FRONTEND_URL = 'http://localhost:5173';
 const JWT_SECRET_MIN_LENGTH = 32;
 const LOCAL_ENV_FILES = ['.env', '.env.local'] as const;
+const TRUST_PROXY_DISABLED = 'false';
+const TRUST_PROXY_NAMES = new Set(['loopback', 'linklocal', 'uniquelocal']);
 
 type MutableEnv = Record<string, string | undefined>;
 
@@ -16,18 +19,66 @@ type LocalEnvLoadOptions = {
   files?: readonly string[];
 };
 
-const apiEnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  DATABASE_URL: z.string().url(),
-  API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
-  FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
-  JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
-  REDIS_URL: z.string().url().optional(),
-  SENTRY_DSN: z.string().url().optional(),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-});
+const apiEnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    DATABASE_URL: z.string().url(),
+    API_PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_API_PORT),
+    FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
+    JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
+    REDIS_URL: z.string().url().optional(),
+    SENTRY_DSN: z.string().url().optional(),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    TRUST_PROXY: z.string().trim().min(1).optional(),
+  })
+  .superRefine((env, context) => {
+    if (env.NODE_ENV === 'production' && env.TRUST_PROXY === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['TRUST_PROXY'],
+        message: 'is required in production',
+      });
+    }
+  });
 
-export type ApiEnv = z.infer<typeof apiEnvSchema>;
+export type TrustProxy = false | number | string[];
+export type ApiEnv = Omit<z.infer<typeof apiEnvSchema>, 'TRUST_PROXY'> & { TRUST_PROXY: TrustProxy };
+
+function isValidProxyAddress(value: string): boolean {
+  if (TRUST_PROXY_NAMES.has(value)) {
+    return true;
+  }
+
+  const [address, prefix, ...extra] = value.split('/');
+  const ipVersion = address ? isIP(address) : 0;
+  if (extra.length > 0 || ipVersion === 0) {
+    return false;
+  }
+
+  if (prefix === undefined) {
+    return true;
+  }
+
+  const maximumPrefix = ipVersion === 6 ? 128 : 32;
+  return /^\d+$/.test(prefix) && Number(prefix) <= maximumPrefix;
+}
+
+export function parseTrustProxy(value: string | undefined): TrustProxy {
+  if (value === undefined || value === TRUST_PROXY_DISABLED) {
+    return false;
+  }
+
+  if (/^\d+$/.test(value)) {
+    return Number(value);
+  }
+
+  const addresses = value.split(',').map((address) => address.trim());
+  if (addresses.some((address) => !isValidProxyAddress(address))) {
+    throw new Error('Invalid API environment: TRUST_PROXY: expected false, a hop count, or IP/CIDR list');
+  }
+
+  return addresses;
+}
 
 function parseEnvLine(line: string): [string, string] | null {
   const trimmedLine = line.trim();
@@ -118,7 +169,10 @@ export function loadApiEnv(env = process.env): ApiEnv {
     throw new Error(`Invalid API environment: ${message}`);
   }
 
-  return parsedResult.data;
+  return {
+    ...parsedResult.data,
+    TRUST_PROXY: parseTrustProxy(parsedResult.data.TRUST_PROXY),
+  };
 }
 
 const jwtSecretSchema = z.string().min(JWT_SECRET_MIN_LENGTH);

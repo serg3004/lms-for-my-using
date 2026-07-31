@@ -15,6 +15,7 @@ import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
   disable?: (setting: string) => void;
+  set?: (setting: string, value: unknown) => void;
 };
 
 async function bootstrap(): Promise<void> {
@@ -33,6 +34,7 @@ async function bootstrap(): Promise<void> {
   if (server.disable) {
     server.disable('x-powered-by');
   }
+  server.set?.('trust proxy', apiEnv.TRUST_PROXY);
 
   app.enableCors({
     origin: apiEnv.FRONTEND_URL,
