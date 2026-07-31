@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser } from './apiClient.js';
+import { logout } from './logout.js';
 import { Avatar } from './ui.js';
+import { supportedLocales } from '../i18n/index.js';
 
 export type LearnerNavItem = {
   label: string;
@@ -65,6 +68,43 @@ export function LearnerShell({ children }: LearnerShellProps) {
   return <main className="learner-shell">{children}</main>;
 }
 
+/* ── Language switcher ───────────────────────────────────────────────────── */
+
+const LANG_LABELS: Record<string, string> = { ru: 'RU', en: 'EN', kk: 'KK', zh: 'ZH' };
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const current = LANG_LABELS[i18n.language] ?? 'RU';
+
+  return (
+    <div className="lang-switcher">
+      <button
+        className="lang-switcher__btn"
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {current}
+      </button>
+      {open && (
+        <div className="lang-switcher__menu">
+          {supportedLocales.map((lang) => (
+            <button
+              key={lang}
+              className={`lang-switcher__option${i18n.language === lang ? ' lang-switcher__option--active' : ''}`}
+              type="button"
+              onClick={() => { void i18n.changeLanguage(lang); setOpen(false); }}
+            >
+              {LANG_LABELS[lang]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── LearnerPageLayout ────────────────────────────────────────────────────── */
 
 type UserState =
@@ -73,8 +113,10 @@ type UserState =
   | { status: 'error' };
 
 const LEARNER_NAV = [
+  { label: 'Главная', href: '/learn' },
   { label: 'Мои курсы', href: '/learn/courses' },
   { label: 'Назначения', href: '/learn/assignments' },
+  { label: 'Тесты', href: '/learn/assessments' },
   { label: 'Прогресс', href: '/learn/progress' },
   { label: 'Сертификаты', href: '/learn/certificates' },
 ] as const;
@@ -94,11 +136,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
       try {
         const user = await getCurrentUser();
         if (isMounted) {
-          setUserState({
-            status: 'loaded',
-            firstName: user.firstName,
-            lastName: user.lastName ?? undefined,
-          });
+          setUserState({ status: 'loaded', firstName: user.firstName, lastName: user.lastName ?? undefined });
         }
       } catch {
         if (isMounted) setUserState({ status: 'error' });
@@ -106,33 +144,57 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
     }
 
     void loadUser();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   const path = currentPath ?? (typeof window !== 'undefined' ? window.location.pathname : '');
 
-  const navItems: LearnerNavItem[] = LEARNER_NAV.map((item) => ({
-    ...item,
-    isCurrent: path.startsWith(item.href),
-  }));
-
   const firstName = userState.status === 'loaded' ? userState.firstName : undefined;
   const lastName = userState.status === 'loaded' ? userState.lastName : undefined;
 
+  async function handleLogout() {
+    try { await logout(); } catch { /* ignore */ }
+    window.location.href = '/login';
+  }
+
   return (
-    <>
-      <LearnerTopNav
-        brandLabel="LMS"
-        firstName={firstName}
-        lastName={lastName}
-        navItems={navItems}
-        onLogout={() => {
-          window.location.href = '/login';
-        }}
-      />
-      <LearnerShell>{children}</LearnerShell>
-    </>
+    <div className="learner-app">
+      <aside className="learner-sidebar">
+        <div className="learner-sidebar__brand">
+          <div className="learner-sidebar__mark">L</div>
+          <div>
+            <strong className="learner-sidebar__brand-name">LMS</strong>
+            <span className="learner-sidebar__brand-sub">Учебная платформа</span>
+          </div>
+        </div>
+
+        <div className="learner-sidebar__section-label">Обучение</div>
+        <nav className="learner-sidebar__nav" aria-label="Main navigation">
+          {LEARNER_NAV.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`learner-sidebar__link${path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? ' learner-sidebar__link--active' : ''}`}
+              aria-current={path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="learner-content">
+        <header className="learner-header">
+          <div className="learner-header__end">
+            <LanguageSwitcher />
+            {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
+            <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
+              Выйти
+            </button>
+          </div>
+        </header>
+        <main className="learner-shell">{children}</main>
+      </div>
+    </div>
   );
 }
