@@ -113,6 +113,7 @@ export type AssignmentSummary = {
   dueAt: string | null;
   createdAt: string;
   updatedAt: string;
+  course?: { title: string | null } | null;
 };
 
 export type AssessmentSummary = {

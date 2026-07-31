@@ -3,6 +3,12 @@
     "title": "LMS",
     "subtitle": "Оқытуды басқару жүйесі"
   },
+  "nav": {
+    "home": "Басты бет",
+    "sectionLabel": "Оқу",
+    "logout": "Шығу",
+    "brandSub": "Оқыту платформасы"
+  },
   "login": {
     "navLink": "Кіру",
     "title": "Кіру",
@@ -155,7 +161,8 @@
     "statsOverdue": "Мерзімі өткен",
     "statsCompleted": "Барлығы аяқталды",
     "open": "Ашу",
-    "viewResult": "Нәтиже"
+    "viewResult": "Нәтиже",
+    "sortNearest": "Ең жақын мерзім алдымен"
   },
   "assessments": {
     "navLink": "Тесттер",

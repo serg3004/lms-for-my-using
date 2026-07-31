@@ -3,6 +3,12 @@
     "title": "LMS",
     "subtitle": "Learning management system"
   },
+  "nav": {
+    "home": "Home",
+    "sectionLabel": "Learning",
+    "logout": "Log out",
+    "brandSub": "Learning Platform"
+  },
   "login": {
     "navLink": "Sign in",
     "title": "Sign in",
