@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { ManagerTeamScope, TeamScopeActor, normalizeActor } from '../manager-team-scope/manager-team-scope.js';
 import {
   CreateAssessmentAttemptAnswerInput,
   CreateAssessmentAttemptInput,
@@ -55,15 +56,18 @@ type GradedAnswer = {
 
 @Injectable()
 export class AssessmentAttemptsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listAttempts(assessmentId: string, organizationId: string) {
+  async listAttempts(assessmentId: string, actorInput: TeamScopeActor | string) {
+    const actor = normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     await this.ensureAssessmentExists(assessmentId, organizationId);
 
     return this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
@@ -71,11 +75,14 @@ export class AssessmentAttemptsService {
     });
   }
 
-  async getAttempt(attemptId: string, organizationId: string) {
+  async getAttempt(attemptId: string, actorInput: TeamScopeActor | string) {
+    const actor = normalizeActor(actorInput);
+    const organizationId = actor.organizationId;
     const attempt = await this.prisma.assessmentAttempt.findFirst({
       where: {
         id: attemptId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       select: {
@@ -186,7 +193,7 @@ export class AssessmentAttemptsService {
       return attempt.id;
     });
 
-    return this.getAttempt(attemptId, organizationId);
+    return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
   }
 
   private async ensureAssessmentExists(assessmentId: string, organizationId: string) {

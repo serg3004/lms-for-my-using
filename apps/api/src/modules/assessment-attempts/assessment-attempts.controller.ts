@@ -23,28 +23,28 @@ export class AssessmentAttemptsController {
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
   listAttempts(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentAttemptsService.listAttempts(assessmentId, request.currentUser!.organizationId);
+    return this.assessmentAttemptsService.listAttempts(assessmentId, request.currentUser!);
   }
 
   @Get('assessments/:assessmentId/results')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
   listAssessmentResults(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!.organizationId);
+    return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!);
   }
 
   @Get('assessments/:assessmentId/report')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
   getAssessmentReport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentResultsService.getAssessmentReport(assessmentId, request.currentUser!.organizationId);
+    return this.assessmentResultsService.getAssessmentReport(assessmentId, request.currentUser!);
   }
 
   @Get('attempts/:id')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'id', 'attempt')
   getAttempt(@Param('id') attemptId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentAttemptsService.getAttempt(attemptId, request.currentUser!.organizationId);
+    return this.assessmentAttemptsService.getAttempt(attemptId, request.currentUser!);
   }
 
   @Get('attempts/:id/result')
@@ -53,7 +53,7 @@ export class AssessmentAttemptsController {
   getAttemptResult(@Param('id') attemptId: string, @Req() request: AuthenticatedRequest) {
     const currentUser = request.currentUser!;
 
-    return this.assessmentResultsService.getAttemptResult(attemptId, currentUser.id, currentUser.organizationId);
+    return this.assessmentResultsService.getAttemptResult(attemptId, currentUser);
   }
 
   @Post('assessments/:assessmentId/attempts')

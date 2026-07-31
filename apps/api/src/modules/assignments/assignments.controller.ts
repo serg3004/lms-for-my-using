@@ -27,16 +27,16 @@ export class AssignmentsController {
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
     const { page, pageSize } = paginationQuerySchema.parse(query);
     if (isInstructorCourseScoped(currentUser)) {
-      return this.assignmentsService.listAssignments(currentUser.organizationId, userId, page, pageSize, currentUser.id);
+      return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize, currentUser.id);
     }
-    return this.assignmentsService.listAssignments(currentUser.organizationId, userId, page, pageSize);
+    return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize);
   }
 
   @Get(':id')
   @Roles(...rolePolicies.assignmentsRead)
   @CourseScope('param', 'id', 'assignment')
   getAssignment(@Param('id') assignmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assignmentsService.getAssignment(assignmentId, request.currentUser!.organizationId);
+    return this.assignmentsService.getAssignment(assignmentId, request.currentUser!);
   }
 
   @Post()
@@ -44,10 +44,10 @@ export class AssignmentsController {
   @Roles(...rolePolicies.assignmentsCreate)
   @OrganizationScope('body', 'organizationId')
   @CourseScope('body', 'courseId')
-  createAssignment(@Body() body: unknown) {
+  createAssignment(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateAssignmentInput = createAssignmentSchema.parse(body);
 
-    return this.assignmentsService.createAssignment(input);
+    return this.assignmentsService.createAssignment(input, request.currentUser!);
   }
 
   @Patch(':id/status')
@@ -61,7 +61,7 @@ export class AssignmentsController {
     const input = updateAssignmentStatusSchema.parse(body);
     return this.assignmentsService.updateAssignmentStatus(
       assignmentId,
-      request.currentUser!.organizationId,
+      request.currentUser!,
       input.status,
     );
   }

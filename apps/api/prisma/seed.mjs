@@ -19,6 +19,8 @@ const id = {
   admin: '10000000-0000-4000-8000-000000000011',
   learner: '10000000-0000-4000-8000-000000000012',
   instructor: '10000000-0000-4000-8000-000000000013',
+  manager: '10000000-0000-4000-8000-000000000014',
+  group: '10000000-0000-4000-8000-000000000021',
   // Course
   course: '10000000-0000-4000-8000-000000000031',
   // Lessons
@@ -109,6 +111,16 @@ async function main() {
         position: 'Course Instructor',
         status: 'active',
       },
+      {
+        id: id.manager,
+        organizationId: id.org,
+        email: 'manager@demo.com',
+        passwordHash,
+        firstName: 'Morgan',
+        lastName: 'Manager',
+        position: 'Team Manager',
+        status: 'active',
+      },
     ],
     skipDuplicates: true,
   });
@@ -136,7 +148,28 @@ async function main() {
         role: 'instructor',
         assignedBy: id.admin,
       },
+      {
+        id: '10000000-0000-4000-8000-0000000000f4',
+        organizationId: id.org,
+        userId: id.manager,
+        role: 'manager',
+        assignedBy: id.admin,
+      },
     ],
+    skipDuplicates: true,
+  });
+
+  // ── Manager team ──────────────────────────────────────────────────────────
+  await prisma.group.createMany({
+    data: [{ id: id.group, organizationId: id.org, name: 'Demo Team', slug: 'demo-team', status: 'active' }],
+    skipDuplicates: true,
+  });
+  await prisma.groupMember.createMany({
+    data: [{ groupId: id.group, userId: id.learner, organizationId: id.org }],
+    skipDuplicates: true,
+  });
+  await prisma.managerGroup.createMany({
+    data: [{ groupId: id.group, managerId: id.manager, organizationId: id.org }],
     skipDuplicates: true,
   });
 

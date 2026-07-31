@@ -2229,7 +2229,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 177 — Manager team scope 🔲
+## PR 177 — Manager team scope ✅
 
 **Проблема:** Не определена формальная область команды manager.
 

@@ -19,7 +19,7 @@ export class CertificatesController {
   @Roles(...rolePolicies.certificatesRead)
   listCertificates(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
-    return this.certificatesService.listCertificates(request.currentUser!.id, request.currentUser!.organizationId, page, pageSize);
+    return this.certificatesService.listCertificates(request.currentUser!, page, pageSize);
   }
 
   @Get(':id')
@@ -29,8 +29,7 @@ export class CertificatesController {
   getCertificate(@Param('id') certificateId: string, @Req() request: AuthenticatedRequest) {
     return this.certificatesService.getCertificate(
       certificateId,
-      request.currentUser!.id,
-      request.currentUser!.organizationId,
+      request.currentUser!,
     );
   }
 
@@ -42,6 +41,6 @@ export class CertificatesController {
   issueCertificate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: IssueCertificateInput = issueCertificateSchema.parse(body);
 
-    return this.certificatesService.issueCertificate(input, request.currentUser!.id);
+    return this.certificatesService.issueCertificate(input, request.currentUser!);
   }
 }

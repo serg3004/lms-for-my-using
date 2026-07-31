@@ -23,9 +23,9 @@ export class ProgressController {
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
     const { page, pageSize } = paginationQuerySchema.parse(query);
     if (isInstructorCourseScoped(currentUser)) {
-      return this.progressService.listProgress(currentUser.organizationId, userId, page, pageSize, currentUser.id);
+      return this.progressService.listProgress(currentUser, userId, page, pageSize, currentUser.id);
     }
-    return this.progressService.listProgress(currentUser.organizationId, userId, page, pageSize);
+    return this.progressService.listProgress(currentUser, userId, page, pageSize);
   }
 
   @Get(':id')
@@ -34,7 +34,7 @@ export class ProgressController {
   getProgress(@Param('id') progressId: string, @Req() request: AuthenticatedRequest) {
     const currentUser = request.currentUser!;
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
-    return this.progressService.getProgress(progressId, currentUser.organizationId, userId);
+    return this.progressService.getProgress(progressId, currentUser, userId);
   }
 
   @Post()
@@ -47,6 +47,6 @@ export class ProgressController {
     const input: CreateProgressInput = createProgressSchema.parse(body);
     const safeInput = isLearnerOnly(currentUser.roles) ? { ...input, userId: currentUser.id } : input;
 
-    return this.progressService.createProgress(safeInput);
+    return this.progressService.createProgress(safeInput, currentUser);
   }
 }

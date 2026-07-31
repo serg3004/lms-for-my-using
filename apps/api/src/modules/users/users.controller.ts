@@ -28,14 +28,14 @@ export class UsersController {
   @Roles(...rolePolicies.usersRead)
   listUsers(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
-    return this.usersService.listUsers(request.currentUser!.organizationId, page, pageSize);
+    return this.usersService.listUsers(request.currentUser!, page, pageSize);
   }
 
   @Get(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)
   getUser(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
-    return this.usersService.getUser(userId, request.currentUser!.organizationId);
+    return this.usersService.getUser(userId, request.currentUser!);
   }
 
   @Post('bulk')
@@ -74,7 +74,7 @@ export class UsersController {
   updateUser(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: UpdateUserInput = updateUserSchema.parse(body);
 
-    return this.usersService.updateUser(userId, request.currentUser!.organizationId, input);
+    return this.usersService.updateUser(userId, request.currentUser!, input);
   }
 
   @Patch(':id/status')
@@ -83,6 +83,6 @@ export class UsersController {
   updateUserStatus(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateUserStatusSchema.parse(body);
 
-    return this.usersService.updateUserStatus(userId, request.currentUser!.organizationId, input.status);
+    return this.usersService.updateUserStatus(userId, request.currentUser!, input.status);
   }
 }

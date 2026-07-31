@@ -67,9 +67,9 @@ describe('UsersController', () => {
   });
 
   it('updates user status through the guarded controller action', () => {
-    const calls: Array<[string, string, string]> = [];
-    const updateUserStatus = (userId: string, organizationId: string, status: string) => {
-      calls.push([userId, organizationId, status]);
+    const calls: Array<[string, unknown, string]> = [];
+    const updateUserStatus = (userId: string, actor: unknown, status: string) => {
+      calls.push([userId, actor, status]);
 
       return { id: userId, status };
     };
@@ -78,7 +78,7 @@ describe('UsersController', () => {
     const userId = '22222222-2222-2222-2222-222222222222';
     const result = controller.updateUserStatus(userId, { status: 'suspended' }, mockRequest);
 
-    expect(calls).toEqual([[userId, orgId, 'suspended']]);
+    expect(calls).toEqual([[userId, mockRequest.currentUser, 'suspended']]);
     expect(result).toEqual({ id: userId, status: 'suspended' });
   });
 });

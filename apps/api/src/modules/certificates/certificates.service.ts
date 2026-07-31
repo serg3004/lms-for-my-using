@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/roles.js';
+import { isManagerTeamScoped, ManagerTeamScope, TeamScopeActor } from '../manager-team-scope/manager-team-scope.js';
 import type { IssueCertificateInput } from './certificates.schemas.js';
 
 const privilegedCertificateRoles: UserRole[] = ['admin', 'manager', 'instructor'];
@@ -77,11 +78,22 @@ type CertificatePrisma = PrismaService & {
 
 @Injectable()
 export class CertificatesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listCertificates(currentUserId: string, organizationId: string, page: number, pageSize: number) {
+  async listCertificates(actorOrId: TeamScopeActor | string, organizationOrPage: string | number, pageOrSize: number, legacyPageSize?: number) {
+    const actor = typeof actorOrId === 'string'
+      ? { id: actorOrId, organizationId: organizationOrPage as string, roles: [] as UserRole[] }
+      : actorOrId;
+    const page = typeof actorOrId === 'string' ? pageOrSize : organizationOrPage as number;
+    const pageSize = typeof actorOrId === 'string' ? legacyPageSize! : pageOrSize;
     const skip = (page - 1) * pageSize;
-    const where = { organizationId, userId: currentUserId, deletedAt: null };
+    const organizationWide = actor.roles.some((role) => role === 'admin' || role === 'manager');
+    const where = {
+      organizationId: actor.organizationId,
+      ...(!organizationWide ? { userId: actor.id } : {}),
+      ...this.teamScope.userOwnedResource(actor),
+      deletedAt: null,
+    };
     const [items, total] = await Promise.all([
       this.certificatesPrisma.certificate.findMany({ where, orderBy: { issuedAt: 'desc' }, skip, take: pageSize, select: certificateSelect }),
       this.certificatesPrisma.certificate.count({ where }),
@@ -89,11 +101,16 @@ export class CertificatesService {
     return { items, page, pageSize, total };
   }
 
-  async getCertificate(certificateId: string, currentUserId: string, organizationId: string) {
+  async getCertificate(certificateId: string, actorOrId: TeamScopeActor | string, legacyOrganizationId?: string) {
+    const actor = typeof actorOrId === 'string'
+      ? { id: actorOrId, organizationId: legacyOrganizationId!, roles: [] as UserRole[] }
+      : actorOrId;
+    const organizationId = actor.organizationId;
     const certificate = await this.certificatesPrisma.certificate.findFirst({
       where: {
         id: certificateId,
         organizationId,
+        ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
       select: certificateSelect,
@@ -103,13 +120,16 @@ export class CertificatesService {
       throw new NotFoundException('Certificate not found');
     }
 
-    await this.ensureCertificateAccess(certificate.userId, currentUserId, organizationId);
+    await this.ensureCertificateAccess(certificate.userId, actor.id, organizationId, actor);
 
     return certificate;
   }
 
-  async issueCertificate(input: IssueCertificateInput, currentUserId: string) {
-    await this.ensureCertificateAccess(input.userId, currentUserId, input.organizationId);
+  async issueCertificate(input: IssueCertificateInput, actorOrId: TeamScopeActor | string) {
+    const actor = typeof actorOrId === 'string'
+      ? { id: actorOrId, organizationId: input.organizationId, roles: [] as UserRole[] }
+      : actorOrId;
+    await this.ensureCertificateAccess(input.userId, actor.id, input.organizationId, actor);
     await this.ensureCourseExists(input.courseId, input.organizationId);
     await this.ensureUserExists(input.userId, input.organizationId);
 
@@ -179,9 +199,17 @@ export class CertificatesService {
     }
   }
 
-  private async ensureCertificateAccess(targetUserId: string, currentUserId: string, organizationId: string) {
+  private async ensureCertificateAccess(targetUserId: string, currentUserId: string, organizationId: string, actor: TeamScopeActor) {
     if (targetUserId === currentUserId) {
       return;
+    }
+    if (isManagerTeamScoped(actor)) {
+      const user = await this.prisma.user.findFirst({
+        where: { id: targetUserId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
+        select: { id: true },
+      });
+      if (user) return;
+      throw new ForbiddenException('Certificate is not available for current user');
     }
 
     const membership = await this.prisma.membership.findFirst({

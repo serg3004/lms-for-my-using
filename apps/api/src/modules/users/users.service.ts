@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { hashPassword } from '../auth/passwords.js';
+import { ManagerTeamScope, TeamScopeActor } from '../manager-team-scope/manager-team-scope.js';
 import {
   createBulkUserItemSchema,
   CreateBulkUsersInput,
@@ -52,11 +53,11 @@ type ImportRow = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listUsers(organizationId: string, page: number, pageSize: number) {
+  async listUsers(actor: TeamScopeActor, page: number, pageSize: number) {
     const skip = (page - 1) * pageSize;
-    const where = { organizationId, deletedAt: null } as const;
+    const where = { organizationId: actor.organizationId, ...this.teamScope.user(actor), deletedAt: null };
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: userSelect }),
       this.prisma.user.count({ where }),
@@ -64,11 +65,12 @@ export class UsersService {
     return { items, page, pageSize, total };
   }
 
-  async getUser(userId: string, organizationId: string) {
+  async getUser(userId: string, actor: TeamScopeActor) {
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
-        organizationId,
+        organizationId: actor.organizationId,
+        ...this.teamScope.user(actor),
         deletedAt: null,
       },
       select: userSelect,
@@ -82,11 +84,13 @@ export class UsersService {
   }
 
 
-  async updateUser(userId: string, organizationId: string, input: UpdateUserInput) {
+  async updateUser(userId: string, actor: TeamScopeActor, input: UpdateUserInput) {
+    const organizationId = actor.organizationId;
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
         organizationId,
+        ...this.teamScope.user(actor),
         deletedAt: null,
       },
       select: { id: true, email: true },
@@ -306,9 +310,10 @@ export class UsersService {
     };
   }
 
-  async updateUserStatus(userId: string, organizationId: string, status: UpdateUserStatusInput['status']) {
+  async updateUserStatus(userId: string, actor: TeamScopeActor, status: UpdateUserStatusInput['status']) {
+    const organizationId = actor.organizationId;
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, organizationId, deletedAt: null },
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
       select: { id: true },
     });
 
