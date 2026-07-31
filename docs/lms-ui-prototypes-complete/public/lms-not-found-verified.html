@@ -1,0 +1,37 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LearnSpace — 404</title><style>
+:root{--bg:#f4f7fb;--s:#fff;--t:#172033;--m:#6b7280;--b:#e3e8ef;--p:#4f46e5;--ps:#eef2ff}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--t)}
+button,input{font:inherit}button{cursor:pointer}.chip{height:42px;border:1px solid var(--b);background:#fff;border-radius:12px;padding:0 13px}
+.lang{position:relative}.menu{position:absolute;right:0;top:48px;min-width:155px;background:#fff;border:1px solid var(--b);border-radius:14px;padding:7px;box-shadow:0 12px 30px rgba(0,0,0,.12);display:none;z-index:10}.menu.open{display:block}.opt{width:100%;border:0;background:transparent;text-align:left;padding:10px;border-radius:9px}.opt:hover,.opt.active{background:var(--ps);color:var(--p)}
+
+.page{min-height:100vh;display:grid;place-items:center;padding:24px;position:relative;background:radial-gradient(circle at top,#e0e7ff,transparent 40%)}.top{position:absolute;top:24px;right:24px}.card{width:min(700px,100%);background:#fff;border:1px solid var(--b);border-radius:28px;padding:48px;text-align:center;box-shadow:0 24px 60px rgba(23,32,51,.1)}.code{font-size:150px;line-height:.8;font-weight:900;color:var(--ps)}h1{font-size:36px;margin:30px 0 12px}p{color:var(--m);line-height:1.7;max-width:520px;margin:0 auto 26px}.actions{display:flex;justify-content:center;gap:12px}.btn{padding:12px 16px;border-radius:12px;font-weight:800;border:1px solid var(--b);background:#fff}.btn.primary{background:var(--p);color:#fff;border-color:var(--p)}@media(max-width:600px){.card{padding:34px 20px}.code{font-size:100px}.actions{flex-direction:column}}
+</style></head><body><div class="page"><div class="top">
+<div class="lang"><button class="chip" id="languageButton">RU</button><div class="menu" id="languageMenu">
+<button class="opt" data-lang="ru">Русский</button><button class="opt" data-lang="en">English</button>
+<button class="opt" data-lang="kk">Қазақша</button><button class="opt" data-lang="zh">中文</button></div></div>
+</div><main class="card"><div class="code">404</div><h1 data-i18n="title">Страница не найдена</h1><p data-i18n="text">Возможно, адрес изменился, страница была удалена или ссылка указана неверно.</p><div class="actions"><button class="btn primary" id="homeButton" data-i18n="home">На главную</button><button class="btn" id="backButton" data-i18n="back">Назад</button></div></main></div><script>
+const translations={
+ru:{title:"Страница не найдена",text:"Возможно, адрес изменился, страница была удалена или ссылка указана неверно.",home:"На главную",back:"Назад"},
+en:{title:"Page not found",text:"The address may have changed, the page may have been removed, or the link may be incorrect.",home:"Go to dashboard",back:"Go back"},
+kk:{title:"Бет табылмады",text:"Мекенжай өзгерген, бет жойылған немесе сілтеме дұрыс емес болуы мүмкін.",home:"Басты бетке",back:"Артқа"},
+zh:{title:"页面未找到",text:"地址可能已更改、页面已删除，或链接不正确。",home:"返回首页",back:"返回"}};
+
+const labels={ru:"RU",en:"EN",kk:"KK",zh:"ZH"};
+const languageButton=document.getElementById("languageButton");
+const languageMenu=document.getElementById("languageMenu");
+function setLanguage(lang){
+ const d=translations[lang]||translations.ru;
+ document.documentElement.lang=lang;languageButton.textContent=labels[lang];
+ document.querySelectorAll("[data-i18n]").forEach(e=>{if(d[e.dataset.i18n])e.textContent=d[e.dataset.i18n]});
+ document.querySelectorAll("[data-ph]").forEach(e=>{if(d[e.dataset.ph])e.placeholder=d[e.dataset.ph]});
+ document.querySelectorAll(".opt").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
+ localStorage.setItem("lms-prototype-language",lang);languageMenu.classList.remove("open");
+}
+languageButton.addEventListener("click",e=>{e.stopPropagation();languageMenu.classList.toggle("open")});
+document.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>setLanguage(b.dataset.lang)));
+document.addEventListener("click",e=>{if(!e.target.closest(".lang"))languageMenu.classList.remove("open")});
+
+document.getElementById("homeButton").addEventListener("click",()=>alert("Прототип: переход на главную."));
+document.getElementById("backButton").addEventListener("click",()=>alert("Прототип: возврат назад."));
+setLanguage(localStorage.getItem("lms-prototype-language")||"ru");
+</script></body></html>

@@ -1,0 +1,38 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LearnSpace — Вход</title><style>
+:root{--bg:#f4f7fb;--s:#fff;--t:#172033;--m:#6b7280;--b:#e3e8ef;--p:#4f46e5;--ps:#eef2ff}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--t)}
+button,input{font:inherit}button{cursor:pointer}.chip{height:42px;border:1px solid var(--b);background:#fff;border-radius:12px;padding:0 13px}
+.lang{position:relative}.menu{position:absolute;right:0;top:48px;min-width:155px;background:#fff;border:1px solid var(--b);border-radius:14px;padding:7px;box-shadow:0 12px 30px rgba(0,0,0,.12);display:none;z-index:10}.menu.open{display:block}.opt{width:100%;border:0;background:transparent;text-align:left;padding:10px;border-radius:9px}.opt:hover,.opt.active{background:var(--ps);color:var(--p)}
+
+.page{min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr}.hero{padding:48px;background:linear-gradient(135deg,#312e81,#4f46e5);color:#fff;display:flex;flex-direction:column;justify-content:space-between}.brand{font-weight:900;font-size:22px}.hero h1{font-size:64px;line-height:1.02;max-width:650px;margin:0}.hero p{color:#dbeafe;font-size:18px;line-height:1.7;max-width:600px}.side{display:flex;align-items:center;justify-content:center;padding:30px;position:relative}.top{position:absolute;top:24px;right:24px}.card{width:min(460px,100%);background:#fff;border:1px solid var(--b);border-radius:24px;padding:32px;box-shadow:0 20px 50px rgba(23,32,51,.1)}h2{font-size:32px;margin:0 0 8px}.sub{color:var(--m);margin:0 0 24px}.field{display:grid;gap:8px;margin-bottom:16px}.field input{padding:13px;border:1px solid var(--b);border-radius:12px}.row{display:flex;justify-content:space-between;margin:8px 0 20px;color:var(--m)}.link{border:0;background:none;color:var(--p);font-weight:800}.primary{width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:800}.error{display:none;margin-top:14px;padding:12px;background:#fef2f2;color:#dc2626;border-radius:12px}
+@media(max-width:850px){.page{grid-template-columns:1fr}.hero{display:none}.side{min-height:100vh}}
+</style></head><body><div class="page"><section class="hero"><div class="brand">LearnSpace</div><div><h1 data-i18n="hero">Обучение начинается здесь</h1><p data-i18n="heroText">Курсы, тесты, прогресс и сертификаты в одной платформе.</p></div><div data-i18n="footer">Корпоративное обучение без лишней сложности</div></section><section class="side"><div class="top">
+<div class="lang"><button class="chip" id="languageButton">RU</button><div class="menu" id="languageMenu">
+<button class="opt" data-lang="ru">Русский</button><button class="opt" data-lang="en">English</button>
+<button class="opt" data-lang="kk">Қазақша</button><button class="opt" data-lang="zh">中文</button></div></div>
+</div><form class="card" id="loginForm"><h2 data-i18n="title">Вход</h2><p class="sub" data-i18n="sub">Введите данные корпоративной учётной записи.</p><div class="field"><label data-i18n="email">Электронная почта</label><input id="email" type="email" data-ph="emailPh" placeholder="name@company.com"></div><div class="field"><label data-i18n="password">Пароль</label><input id="password" type="password" data-ph="passwordPh" placeholder="Введите пароль"></div><div class="row"><label><input type="checkbox"> <span data-i18n="remember">Запомнить меня</span></label><button class="link" id="forgotButton" type="button" data-i18n="forgot">Забыли пароль?</button></div><button class="primary" data-i18n="submit">Войти</button><div class="error" id="errorMessage" data-i18n="error">Введите корректные данные.</div></form></section></div><script>
+const translations={
+ru:{hero:"Обучение начинается здесь",heroText:"Курсы, тесты, прогресс и сертификаты в одной платформе.",footer:"Корпоративное обучение без лишней сложности",title:"Вход",sub:"Введите данные корпоративной учётной записи.",email:"Электронная почта",emailPh:"name@company.com",password:"Пароль",passwordPh:"Введите пароль",remember:"Запомнить меня",forgot:"Забыли пароль?",submit:"Войти",error:"Введите корректные данные."},
+en:{hero:"Learning starts here",heroText:"Courses, assessments, progress and certificates in one platform.",footer:"Corporate learning without unnecessary complexity",title:"Sign in",sub:"Enter your corporate account details.",email:"Email",emailPh:"name@company.com",password:"Password",passwordPh:"Enter password",remember:"Remember me",forgot:"Forgot password?",submit:"Sign in",error:"Enter valid credentials."},
+kk:{hero:"Оқу осы жерден басталады",heroText:"Курстар, тесттер, прогресс және сертификаттар бір платформада.",footer:"Артық күрделіліксіз корпоративтік оқу",title:"Кіру",sub:"Корпоративтік есептік жазба деректерін енгізіңіз.",email:"Электрондық пошта",emailPh:"name@company.com",password:"Құпиясөз",passwordPh:"Құпиясөзді енгізіңіз",remember:"Мені есте сақтау",forgot:"Құпиясөзді ұмыттыңыз ба?",submit:"Кіру",error:"Дұрыс деректерді енгізіңіз."},
+zh:{hero:"学习从这里开始",heroText:"课程、测试、进度和证书统一在一个平台中。",footer:"简单高效的企业学习",title:"登录",sub:"请输入公司账户信息。",email:"电子邮箱",emailPh:"name@company.com",password:"密码",passwordPh:"输入密码",remember:"记住我",forgot:"忘记密码？",submit:"登录",error:"请输入有效信息。"}};
+
+const labels={ru:"RU",en:"EN",kk:"KK",zh:"ZH"};
+const languageButton=document.getElementById("languageButton");
+const languageMenu=document.getElementById("languageMenu");
+function setLanguage(lang){
+ const d=translations[lang]||translations.ru;
+ document.documentElement.lang=lang;languageButton.textContent=labels[lang];
+ document.querySelectorAll("[data-i18n]").forEach(e=>{if(d[e.dataset.i18n])e.textContent=d[e.dataset.i18n]});
+ document.querySelectorAll("[data-ph]").forEach(e=>{if(d[e.dataset.ph])e.placeholder=d[e.dataset.ph]});
+ document.querySelectorAll(".opt").forEach(b=>b.classList.toggle("active",b.dataset.lang===lang));
+ localStorage.setItem("lms-prototype-language",lang);languageMenu.classList.remove("open");
+}
+languageButton.addEventListener("click",e=>{e.stopPropagation();languageMenu.classList.toggle("open")});
+document.querySelectorAll(".opt").forEach(b=>b.addEventListener("click",()=>setLanguage(b.dataset.lang)));
+document.addEventListener("click",e=>{if(!e.target.closest(".lang"))languageMenu.classList.remove("open")});
+
+document.getElementById("loginForm").addEventListener("submit",e=>{e.preventDefault();const ok=document.getElementById("email").value.includes("@")&&document.getElementById("password").value.length>=6;document.getElementById("errorMessage").style.display=ok?"none":"block";if(ok)alert("Прототип: вход выполнен.")});
+document.getElementById("forgotButton").addEventListener("click",()=>alert("Прототип: восстановление пароля."));
+setLanguage(localStorage.getItem("lms-prototype-language")||"ru");
+</script></body></html>
