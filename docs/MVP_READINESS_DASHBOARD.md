@@ -29,7 +29,7 @@ It is a status document only. It does not replace the detailed source documents:
 | API error response contract | Ready | Error envelope construction is centralized through the API response helper. |
 | CI quality gates | Ready | CI runs install, lint, Prisma generate, typecheck, tests, and build with concurrency, timeout, pnpm cache, and Prisma auto-install protection. |
 | Dependency automation | Ready | Dependabot npm updates use workspace-level `directories` so nested manifests stay aligned with the shared root `pnpm-lock.yaml`. |
-| Storage uploads | Ready for controlled MVP usage with object storage configured | `POST /api/v1/upload` supports authenticated material uploads to S3-compatible storage, validates files, and returns material metadata input fields. |
+| Storage uploads | Ready for controlled MVP usage with object storage configured | Material file endpoints use tenant-scoped private keys; authorized downloads receive short-lived presigned URLs. |
 | Password reset | Documented as skeleton only | Current password reset status is documented in `docs/PASSWORD_RESET_STATUS.md`; endpoints validate input but return `503 Service Unavailable`. |
 | Demo seed data | Needs follow-up | Local demo seed coverage is planned for PR 70. |
 | Full RBAC audit | Needs follow-up | Full learner/admin RBAC audit is planned for PR 71. |

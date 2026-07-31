@@ -260,7 +260,6 @@ Dashboard → service → **Deployments** tab → click any previous deploy → 
 | `S3_SECRET_ACCESS_KEY` | ☐ | Secret key |
 | `S3_REGION` | ☐ | Default: `auto` |
 | `S3_FORCE_PATH_STYLE` | ☐ | Default: `false` (set `true` for MinIO) |
-| `S3_PUBLIC_URL` | ☐ | Public base URL for uploaded files |
 
 ### Web service
 

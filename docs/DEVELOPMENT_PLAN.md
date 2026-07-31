@@ -2370,7 +2370,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза C — Upload и файловое хранилище
 
-## PR 185 — Tenant-aware object storage 🔲
+## PR 185 — Tenant-aware object storage ✅
 
 **Проблема:** S3 keys не содержат tenant identity, временный URL смешан с идентификатором объекта.
 

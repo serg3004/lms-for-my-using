@@ -285,7 +285,8 @@ model CourseMaterial {
   description    String?
   kind           CourseMaterialKind   @default(file)
   fileName       String?             @map("file_name")
-  fileUrl        String             @map("file_url")
+  fileUrl        String?            @map("file_url")
+  objectKey      String?            @unique(map: "course_materials_object_key_key") @map("object_key")
   mimeType       String?             @map("mime_type")
   sizeBytes      Int?              @map("size_bytes")
   status         CourseMaterialStatus @default(active)

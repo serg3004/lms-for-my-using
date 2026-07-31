@@ -17,7 +17,7 @@ describe('UploadService', () => {
     expect(service.isConfigured()).toBe(false);
   });
 
-  it('throws ServiceUnavailableException on uploadFile when not configured', async () => {
+  it('throws ServiceUnavailableException on uploadMaterialFile when not configured', async () => {
     const file = {
       originalname: 'test.pdf',
       mimetype: 'application/pdf',
@@ -25,7 +25,13 @@ describe('UploadService', () => {
       size: 0,
     } as Express.Multer.File;
 
-    await expect(service.uploadFile(file)).rejects.toThrow(ServiceUnavailableException);
+    await expect(
+      service.uploadMaterialFile(
+        file,
+        '11111111-1111-1111-1111-111111111111',
+        '22222222-2222-2222-2222-222222222222',
+      ),
+    ).rejects.toThrow(ServiceUnavailableException);
   });
 
   it('throws ServiceUnavailableException on getPresignedUrl when not configured', async () => {
@@ -40,5 +46,16 @@ describe('UploadService', () => {
 
     const configured = new UploadService();
     expect(configured.isConfigured()).toBe(true);
+  });
+
+  it('creates a tenant-scoped opaque material key', () => {
+    const key = service.createMaterialObjectKey(
+      '11111111-1111-1111-1111-111111111111',
+      '22222222-2222-2222-2222-222222222222',
+    );
+    expect(key).toMatch(
+      /^organizations\/11111111-1111-1111-1111-111111111111\/materials\/22222222-2222-2222-2222-222222222222\/[0-9a-f-]{36}$/,
+    );
+    expect(key).not.toContain('test.pdf');
   });
 });

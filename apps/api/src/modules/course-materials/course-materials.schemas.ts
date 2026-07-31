@@ -19,7 +19,7 @@ export const createCourseMaterialSchema = z.object({
   description: z.string().trim().max(1000).optional(),
   kind: courseMaterialKindSchema.default('file'),
   fileName: z.string().trim().min(1).max(255).optional(),
-  fileUrl: z.string().trim().url().max(2048),
+  fileUrl: z.string().trim().url().max(2048).optional(),
   mimeType: z.string().trim().min(1).max(120).optional(),
   sizeBytes: z.number().int().min(0).optional(),
   status: courseMaterialStatusSchema.default('active'),
@@ -38,7 +38,7 @@ export const updateCourseMaterialSchema = z
     description: z.string().trim().max(1000).nullable(),
     kind: courseMaterialKindSchema,
     fileName: z.string().trim().max(255).nullable(),
-    fileUrl: z.string().trim().url().max(2048),
+    fileUrl: z.string().trim().url().max(2048).nullable(),
     status: courseMaterialStatusSchema,
   })
   .partial();
