@@ -161,7 +161,8 @@
     "statsOverdue": "Мерзімі өткен",
     "statsCompleted": "Барлығы аяқталды",
     "open": "Ашу",
-    "viewResult": "Нәтиже"
+    "viewResult": "Нәтиже",
+    "sortNearest": "Ең жақын мерзім алдымен"
   },
   "assessments": {
     "navLink": "Тесттер",

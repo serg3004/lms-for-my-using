@@ -22,8 +22,8 @@ type LoadState =
 
 type StatusFilter = 'all' | 'assigned' | 'completed' | 'overdue';
 
-function getCourseTitle(a: ExtendedAssignment, fallback: string) {
-  return a.courseTitle ?? a.course?.title ?? fallback;
+function getCourseTitle(a: ExtendedAssignment) {
+  return a.courseTitle ?? a.course?.title ?? null;
 }
 
 function isOverdue(dueAt: string | null) {
@@ -39,8 +39,8 @@ function isDueThisWeek(dueAt: string | null) {
   return due >= now && due <= weekAhead;
 }
 
-function formatDueDate(dueAt: string | null, fallback: string) {
-  if (!dueAt) return fallback;
+function formatDueDate(dueAt: string | null) {
+  if (!dueAt) return null;
   return new Date(dueAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
@@ -50,21 +50,22 @@ function getEffectiveStatus(a: ExtendedAssignment): 'overdue' | 'completed' | 'a
   return 'assigned';
 }
 
-const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+const STATUS_BADGE = {
   overdue:   { label: 'Срочно',    bg: '#fef2f2', color: '#dc2626' },
   assigned:  { label: 'В работе',  bg: '#eef2ff', color: '#4f46e5' },
   completed: { label: 'Завершено', bg: '#e9f8f2', color: '#0f9f6e' },
-};
+} as const;
 
-function Badge({ type }: { type: string }) {
-  const s = STATUS_BADGE[type] ?? STATUS_BADGE.assigned;
+const TYPE_BADGE = { label: 'Курс', bg: '#eef2ff', color: '#4f46e5' } as const;
+
+function Badge({ bg, color, label }: { bg: string; color: string; label: string }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', borderRadius: '999px',
-      padding: '4px 10px', fontSize: '12px', fontWeight: 700,
-      background: s.bg, color: s.color,
+      padding: '7px 10px', fontSize: '12px', fontWeight: 800,
+      background: bg, color,
     }}>
-      {s.label}
+      {label}
     </span>
   );
 }
@@ -77,6 +78,24 @@ function SummaryCard({ value, label }: { value: number; label: string }) {
     }}>
       <strong style={{ display: 'block', fontSize: '28px', marginBottom: '5px', color: '#172033' }}>{value}</strong>
       <span style={{ color: '#6b7280', fontSize: '13px' }}>{label}</span>
+    </div>
+  );
+}
+
+function ProgressBar({ pct, success }: { pct: number; success?: boolean }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px', fontSize: '13px' }}>
+        <span style={{ color: '#6b7280' }}>Прогресс</span>
+        <strong style={{ color: '#172033' }}>{pct}%</strong>
+      </div>
+      <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+        <div style={{
+          height: '100%', borderRadius: '999px', width: `${pct}%`,
+          background: success ? '#0f9f6e' : 'linear-gradient(90deg,#4f46e5,#7c3aed)',
+          transition: 'width .3s ease',
+        }} />
+      </div>
     </div>
   );
 }
@@ -95,7 +114,14 @@ export function LearnerAssignmentsPage() {
       setLoadState({ status: 'loading' });
       try {
         const result = await listAssignments({ page, pageSize: 20 });
-        if (isMounted) setLoadState({ status: 'loaded', assignments: result.items as ExtendedAssignment[], total: result.total, pageSize: result.pageSize });
+        if (isMounted) {
+          setLoadState({
+            status: 'loaded',
+            assignments: result.items as ExtendedAssignment[],
+            total: result.total,
+            pageSize: result.pageSize,
+          });
+        }
       } catch (error) {
         if (!isMounted) return;
         if (error instanceof ApiClientError && error.status === 401) {
@@ -114,7 +140,7 @@ export function LearnerAssignmentsPage() {
     const all = loadState.status === 'loaded' ? loadState.assignments : [];
     const q = search.toLowerCase();
     return all.filter((a) => {
-      const title = getCourseTitle(a, '');
+      const title = getCourseTitle(a) ?? '';
       const matchesSearch = !q || title.toLowerCase().includes(q);
       const effective = getEffectiveStatus(a);
       const matchesStatus = statusFilter === 'all' || effective === statusFilter;
@@ -144,48 +170,58 @@ export function LearnerAssignmentsPage() {
   return (
     <>
       {/* Page header */}
-      <div style={{ marginBottom: '22px' }}>
-        <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
-          {t('learner.navLink')}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '22px' }}>
+        <div>
+          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+            {t('learner.navLink')}
+          </div>
+          <h1 style={{ margin: '0', fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: '#172033' }}>
+            {t('assignments.title')}
+          </h1>
+          <p style={{ margin: '10px 0 0', color: '#6b7280', lineHeight: 1.6, maxWidth: '760px', fontSize: '14px' }}>
+            {t('assignments.subtitle')}
+          </p>
         </div>
-        <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(24px,4vw,34px)', fontWeight: 800, color: '#172033' }}>
-          {t('assignments.title')}
-        </h1>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>
-          {t('assignments.subtitle', 'Следите за сроками и завершайте обязательное обучение вовремя.')}
-        </p>
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '16px', marginBottom: '22px' }}>
-        <SummaryCard value={activeCount} label={t('assignments.statsActive', 'Активных назначений')} />
-        <SummaryCard value={dueThisWeek} label={t('assignments.statsDueWeek', 'Срок на этой неделе')} />
-        <SummaryCard value={overdueCount} label={t('assignments.statsOverdue', 'Просроченных')} />
-        <SummaryCard value={completedCount} label={t('assignments.statsCompleted', 'Завершено всего')} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px', marginBottom: '22px' }}>
+        <SummaryCard value={activeCount} label={t('assignments.statsActive')} />
+        <SummaryCard value={dueThisWeek} label={t('assignments.statsDueWeek')} />
+        <SummaryCard value={overdueCount} label={t('assignments.statsOverdue')} />
+        <SummaryCard value={completedCount} label={t('assignments.statsCompleted')} />
       </div>
 
       {/* Toolbar */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
         <input
           type="search"
-          placeholder={t('assignments.searchPlaceholder', 'Найти назначение...')}
+          placeholder={t('assignments.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
-            padding: '10px 14px', border: '1px solid #e3e8ef', borderRadius: '12px',
+            padding: '11px 14px', border: '1px solid #e3e8ef', borderRadius: '12px',
             background: '#f8fafc', outline: 'none', fontSize: '14px', minWidth: '220px',
           }}
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          style={{ padding: '10px 13px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', fontSize: '14px', color: '#172033' }}
+          style={{ padding: '11px 13px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', fontSize: '14px', color: '#172033' }}
         >
-          <option value="all">{t('assignments.filterAll', 'Все статусы')}</option>
-          <option value="assigned">{t('assignments.filterActive', 'В работе')}</option>
-          <option value="overdue">{t('assignments.filterOverdue', 'Срочные')}</option>
-          <option value="completed">{t('assignments.filterCompleted', 'Завершённые')}</option>
+          <option value="all">{t('assignments.filterAll')}</option>
+          <option value="assigned">{t('assignments.filterActive')}</option>
+          <option value="overdue">{t('assignments.filterOverdue')}</option>
+          <option value="completed">{t('assignments.filterCompleted')}</option>
         </select>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          style={{ height: '42px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', padding: '0 13px', fontSize: '14px', cursor: 'pointer', color: '#172033' }}
+          onClick={() => { /* sort by due date */ }}
+        >
+          {t('assignments.sortNearest', 'Сначала ближайшие')}
+        </button>
       </div>
 
       {/* Assignment list */}
@@ -194,82 +230,82 @@ export function LearnerAssignmentsPage() {
           textAlign: 'center', padding: '50px 20px', background: '#fff',
           border: '1px solid #e3e8ef', borderRadius: '20px',
         }}>
-          <div style={{ fontSize: '36px', marginBottom: '12px' }}>⌕</div>
-          <strong style={{ display: 'block', fontSize: '18px', marginBottom: '6px', color: '#172033' }}>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }}>⌕</div>
+          <strong style={{ display: 'block', fontSize: '22px', margin: '10px 0 6px', color: '#172033' }}>
             {t('assignments.empty')}
           </strong>
-          <span style={{ color: '#6b7280', fontSize: '14px' }}>
-            {t('assignments.emptyHint', 'Измените поиск или выбранные фильтры.')}
-          </span>
+          <span style={{ color: '#6b7280' }}>{t('assignments.emptyHint')}</span>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '14px' }}>
           {filtered.map((assignment) => {
             const effective = getEffectiveStatus(assignment);
-            const courseTitle = getCourseTitle(assignment, t('assignments.courseId', 'Курс'));
+            const statusBadge = STATUS_BADGE[effective];
+            const courseTitle = getCourseTitle(assignment);
             const overdue = isOverdue(assignment.dueAt) && assignment.status !== 'completed';
+            const pct = assignment.status === 'completed' ? 100 : 0;
+            const dueDate = formatDueDate(assignment.dueAt);
             const href = `/learn/assignments/${encodeURIComponent(assignment.id)}`;
 
             return (
-              <a
-                key={assignment.id}
-                href={href}
-                style={{ textDecoration: 'none', color: 'inherit' }}
-              >
+              <a key={assignment.id} href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <article style={{
                   background: '#fff', border: '1px solid #e3e8ef', borderRadius: '20px',
                   boxShadow: '0 10px 28px rgba(23,32,51,.07)', padding: '20px',
                   display: 'grid',
-                  gridTemplateColumns: 'minmax(0,1fr) 180px',
+                  gridTemplateColumns: 'minmax(0,1fr) 210px 160px',
                   gap: '20px', alignItems: 'center',
                   transition: 'transform .16s ease, box-shadow .16s ease',
                 }}>
+                  {/* Main column */}
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                      <Badge type={effective} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      <Badge bg={statusBadge.bg} color={statusBadge.color} label={statusBadge.label} />
+                      <Badge bg={TYPE_BADGE.bg} color={TYPE_BADGE.color} label={TYPE_BADGE.label} />
                     </div>
-                    <h2 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
-                      {courseTitle}
+                    <h2 style={{ margin: '0 0 7px', fontSize: '20px', fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
+                      {courseTitle ?? t('assignments.courseLabel')}
                     </h2>
                     {(assignment.userName ?? assignment.groupName) ? (
-                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                      <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>
                         {assignment.userName ?? assignment.groupName}
                       </div>
-                    ) : (
-                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                        {t('assignments.courseLabel', 'Курс')}
+                    ) : courseTitle ? (
+                      <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>
+                        {t('assignments.courseLabel')}: {courseTitle}
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    {assignment.dueAt ? (
-                      <>
-                        <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
-                          {assignment.status === 'completed'
-                            ? t('assignments.completedAt', 'Завершено')
-                            : t('assignments.dueAt')}
-                        </div>
-                        <strong style={{ fontSize: '14px', color: overdue ? '#dc2626' : '#172033' }}>
-                          {formatDueDate(assignment.dueAt, t('assignments.notAvailable'))}
+                  {/* Progress column */}
+                  <div style={{ minWidth: 0 }}>
+                    <ProgressBar pct={pct} success={assignment.status === 'completed'} />
+                  </div>
+
+                  {/* Due date column */}
+                  <div style={{ display: 'grid', gap: '8px', justifyItems: 'end' }}>
+                    <div>
+                      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
+                        {assignment.status === 'completed' ? t('assignments.completedAt') : t('assignments.dueAt')}
+                      </div>
+                      {dueDate ? (
+                        <strong style={{ fontSize: '15px', color: overdue ? '#dc2626' : '#172033' }}>
+                          {dueDate}
                         </strong>
-                      </>
-                    ) : (
-                      <span style={{ color: '#6b7280', fontSize: '13px' }}>{t('assignments.notAvailable')}</span>
-                    )}
-                    <div style={{ marginTop: '12px' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '8px 16px',
-                        background: assignment.status === 'completed' ? '#f8fafc' : '#4f46e5',
-                        color: assignment.status === 'completed' ? '#172033' : '#fff',
-                        borderRadius: '12px', fontSize: '13px', fontWeight: 700,
-                        border: assignment.status === 'completed' ? '1px solid #e3e8ef' : 'none',
-                      }}>
-                        {assignment.status === 'completed'
-                          ? t('assignments.viewResult', 'Результат')
-                          : t('assignments.open', 'Открыть')}
-                      </span>
+                      ) : (
+                        <span style={{ color: '#6b7280', fontSize: '13px' }}>{t('assignments.notAvailable')}</span>
+                      )}
                     </div>
+                    <span style={{
+                      display: 'inline-block', padding: '11px 14px',
+                      background: assignment.status === 'completed' ? '#fff' : '#4f46e5',
+                      color: assignment.status === 'completed' ? '#172033' : '#fff',
+                      borderRadius: '12px', fontSize: '14px', fontWeight: 800,
+                      border: assignment.status === 'completed' ? '1px solid #e3e8ef' : 'none',
+                      width: '100%', textAlign: 'center',
+                    }}>
+                      {assignment.status === 'completed' ? t('assignments.viewResult') : t('assignments.open')}
+                    </span>
                   </div>
                 </article>
               </a>
