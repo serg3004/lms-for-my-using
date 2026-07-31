@@ -2318,7 +2318,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 182 — Многоуровневый anti-bruteforce 🔲
+## PR 182 — Многоуровневый anti-bruteforce ✅
 
 **Проблема:** IP-only limit обходится распределённой атакой и плохо работает за NAT.
 

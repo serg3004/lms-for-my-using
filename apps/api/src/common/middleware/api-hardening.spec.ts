@@ -7,6 +7,7 @@ import {
 } from './api-hardening';
 
 type TestRequest = {
+  body?: unknown;
   method?: string;
   url?: string;
   headers: Record<string, string | string[] | undefined>;
@@ -21,6 +22,11 @@ function createRequest(overrides: Partial<TestRequest> = {}): TestRequest {
     method: 'POST',
     url: '/api/v1/auth/login',
     headers: {},
+    body: {
+      organizationId: 'example-org',
+      email: 'learner@example.com',
+      password: 'secret',
+    },
     socket: {
       remoteAddress: '127.0.0.1',
     },
@@ -71,7 +77,11 @@ describe('API hardening middleware', () => {
   it('limits sensitive POST routes after the configured threshold', async () => {
     let currentTime = 1_000;
     const store = createInMemoryRateLimitStore(() => currentTime);
-    const middleware = createSensitiveRouteRateLimitMiddleware(store);
+    const middleware = createSensitiveRouteRateLimitMiddleware(store, {
+      ip: { maxRequests: 20, windowMs: 60_000 },
+      account: [{ maxRequests: 20, windowMs: 60_000 }],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
     const request = createRequest();
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -118,7 +128,11 @@ describe('API hardening middleware', () => {
 
   it('keeps the request query in the normalized rate limit error path', async () => {
     const store = createInMemoryRateLimitStore(() => 1_000);
-    const middleware = createSensitiveRouteRateLimitMiddleware(store);
+    const middleware = createSensitiveRouteRateLimitMiddleware(store, {
+      ip: { maxRequests: 100, windowMs: 60_000 },
+      account: [{ maxRequests: 20, windowMs: 60_000 }],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
     const request = createRequest({ url: '/api/v1/auth/login?next=%2Flearn' });
 
     for (let attempt = 0; attempt < 21; attempt += 1) {
@@ -149,6 +163,97 @@ describe('API hardening middleware', () => {
 
     expect(nextTracker.calls).toBe(25);
   });
+
+  it('keeps the progressive account limit when an attacker changes IP', async () => {
+    const middleware = createSensitiveRouteRateLimitMiddleware(createInMemoryRateLimitStore(), {
+      ip: { maxRequests: 100, windowMs: 60_000 },
+      account: [
+        { maxRequests: 2, windowMs: 60_000 },
+        { maxRequests: 3, windowMs: 15 * 60_000 },
+      ],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
+
+    for (const ip of ['192.0.2.1', '192.0.2.2', '192.0.2.3']) {
+      const nextTracker = createNextTracker();
+      await middleware(createRequest({ ip }) as never, createResponse() as never, nextTracker.next.bind(nextTracker));
+    }
+
+    const response = createResponse();
+    const nextTracker = createNextTracker();
+    await middleware(
+      createRequest({ ip: '192.0.2.4' }) as never,
+      response as never,
+      nextTracker.next.bind(nextTracker),
+    );
+
+    expect(response.statusCode).toBe(429);
+    expect(nextTracker.calls).toBe(0);
+  });
+
+  it('normalizes organization and email before applying the account limit', async () => {
+    const middleware = createSensitiveRouteRateLimitMiddleware(createInMemoryRateLimitStore(), {
+      ip: { maxRequests: 100, windowMs: 60_000 },
+      account: [{ maxRequests: 1, windowMs: 60_000 }],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
+    await middleware(createRequest() as never, createResponse() as never, () => undefined);
+    const response = createResponse();
+
+    await middleware(
+      createRequest({
+        ip: '192.0.2.2',
+        body: { organizationId: ' EXAMPLE-ORG ', email: ' Learner@Example.COM ', password: 'secret' },
+      }) as never,
+      response as never,
+      () => undefined,
+    );
+
+    expect(response.statusCode).toBe(429);
+  });
+
+  it('does not block different accounts behind one NAT at the low account threshold', async () => {
+    const middleware = createSensitiveRouteRateLimitMiddleware(createInMemoryRateLimitStore(), {
+      ip: { maxRequests: 10, windowMs: 60_000 },
+      account: [{ maxRequests: 1, windowMs: 60_000 }],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
+
+    for (const email of ['one@example.com', 'two@example.com', 'three@example.com']) {
+      const nextTracker = createNextTracker();
+      await middleware(
+        createRequest({ body: { organizationId: 'example-org', email, password: 'secret' } }) as never,
+        createResponse() as never,
+        nextTracker.next.bind(nextTracker),
+      );
+      expect(nextTracker.calls).toBe(1);
+    }
+  });
+
+  it.each(['/api/v1/auth/login', '/api/v1/auth/password-reset/request'])(
+    'uses the same public response for every limiting level on %s',
+    async (url) => {
+      const responses: string[] = [];
+      for (const limitingPolicy of [
+        { ip: 0, account: 100, global: 100 },
+        { ip: 100, account: 0, global: 100 },
+        { ip: 100, account: 100, global: 0 },
+      ]) {
+        const middleware = createSensitiveRouteRateLimitMiddleware(createInMemoryRateLimitStore(), {
+          ip: { maxRequests: limitingPolicy.ip, windowMs: 60_000 },
+          account: [{ maxRequests: limitingPolicy.account, windowMs: 60_000 }],
+          global: { maxRequests: limitingPolicy.global, windowMs: 60_000 },
+        });
+        const response = createResponse();
+        await middleware(createRequest({ url }) as never, response as never, () => undefined);
+        const body = JSON.parse(response.body) as { timestamp?: string };
+        delete body.timestamp;
+        responses.push(JSON.stringify(body));
+      }
+
+      expect(new Set(responses).size).toBe(1);
+    },
+  );
 });
 
 describe('Redis rate limit store', () => {
