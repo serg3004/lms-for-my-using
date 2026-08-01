@@ -21,7 +21,7 @@ if (!/^[a-zA-Z0-9_-]+$/.test(databaseName) || !/^[a-zA-Z0-9_-]+$/.test(nodeEnvir
 const startApiCommand = [
   'pnpm --filter @lms/api build',
   [
-    'pnpm --filter @lms/api admin:demo-seed --',
+    'pnpm --filter @lms/api admin:demo-seed',
     '--apply',
     `--confirm-environment=${nodeEnvironment}`,
     `--confirm-database=${databaseName}`,
