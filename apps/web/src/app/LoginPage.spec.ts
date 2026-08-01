@@ -14,4 +14,8 @@ describe('getLoginRedirectPath', () => {
   it('rejects non-internal redirect paths', () => {
     expect(getLoginRedirectPath({ from: { pathname: '//evil.example/path' } })).toBe('/learn');
   });
+
+  it('redirects administrators to the admin workspace', () => {
+    expect(getLoginRedirectPath(null, { roles: ['admin'] })).toBe('/admin');
+  });
 });

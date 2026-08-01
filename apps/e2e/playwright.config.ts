@@ -27,7 +27,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @lms/api dev',
+      command: 'pnpm --filter @lms/api prisma:seed && pnpm --filter @lms/api dev',
       url: 'http://127.0.0.1:3000/api/v1/health/live',
       reuseExistingServer: !ci,
       timeout: 120_000,

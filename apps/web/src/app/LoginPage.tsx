@@ -70,6 +70,10 @@ export function getLoginRedirectPath(locationState: unknown, user?: { roles: str
     return fromPath;
   }
 
+  if (user?.roles.includes('admin')) {
+    return '/admin';
+  }
+
   if (user?.roles.includes('instructor') && !user.roles.includes('admin')) {
     return '/instructor/dashboard';
   }
