@@ -2544,7 +2544,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 195 — Manager workspace E2E 🔲
+## PR 195 — Manager workspace E2E ✅
 
 **Проблема:** Manager smoke не проверяет реальный API и scope.
 

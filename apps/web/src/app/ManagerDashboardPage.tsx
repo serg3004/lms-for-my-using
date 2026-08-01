@@ -48,7 +48,7 @@ export function ManagerDashboardPage() {
       try {
         const [user, assignmentsPage] = await Promise.all([
           getCurrentUser(),
-          listAssignments({ pageSize: 200 }),
+          listAssignments({ pageSize: 100 }),
         ]);
 
         if (!isMounted) return;
