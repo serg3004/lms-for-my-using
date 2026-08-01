@@ -1,4 +1,4 @@
-import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -24,6 +24,18 @@ type LoginLocationState = {
 const REMEMBERED_LOGIN_KEY = 'lms-remembered-login';
 const LANGUAGE_KEY = 'lms-prototype-language';
 const SUPPORTED_LOCALES: LoginLocale[] = ['ru', 'en', 'kk', 'zh'];
+const LANGUAGE_LABELS: Record<LoginLocale, string> = {
+  ru: 'Русский',
+  en: 'English',
+  kk: 'Қазақша',
+  zh: '中文',
+};
+const LANGUAGE_CODES: Record<LoginLocale, string> = {
+  ru: 'RU',
+  en: 'EN',
+  kk: 'KK',
+  zh: 'ZH',
+};
 
 function getRememberedLogin(): Pick<LoginFormState, 'organizationId' | 'email'> | null {
   try {
@@ -70,6 +82,7 @@ export function LoginPage() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const languageMenuRef = useRef<HTMLDivElement>(null);
   const [formState, setFormState] = useState(getInitialLoginFormState);
   const [validationErrors, setValidationErrors] = useState<FormValidationErrors<LoginFormField>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,7 +90,10 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== null);
+  const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== nul);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+
+  const currentLocale = ((i18n.resolvedLanguage ?? i18n.language).split('-')[0] || 'ru') as LoginLocale;
 
   useEffect(() => {
     const storedLanguage = localStorage.getItem(LANGUAGE_KEY);
@@ -85,6 +101,28 @@ export function LoginPage() {
       void i18n.changeLanguage(storedLanguage);
     }
   }, [i18n]);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!languageMenuRef.current?.contains(event.target as Node)) {
+        setIsLanguageMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsLanguageMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   const updateField =
     (field: LoginFormField) =>
@@ -128,7 +166,7 @@ export function LoginPage() {
 
       if (rememberMe) {
         localStorage.setItem(
-          REMEMBERED_LOGIN_KEY,
+          REMEMBEREED_LOGIN_KEY,
           JSON.stringify({
             organizationId: formState.organizationId.trim(),
             email: formState.email.trim(),
@@ -151,50 +189,58 @@ export function LoginPage() {
     }
   }
 
-  function handleLanguageChange(event: ChangeEvent<HTMLSelectElement>) {
-    const locale = event.target.value as LoginLocale;
+  function handleLanguageChange(locale: LoginLocale) {
     localStorage.setItem(LANGUAGE_KEY, locale);
     void i18n.changeLanguage(locale);
+    setIsLanguageMenuOpen(false);
   }
 
   return (
     <main className="login-page">
       <section className="login-hero" aria-labelledby="login-hero-title">
-        <div className="login-hero__brand">
-          <span className="login-hero__mark" aria-hidden="true">L</span>
-          <span>
-            <strong>LearnSpace</strong>
-            <small>{t('login.brandSubtitle')}</small>
-          </span>
-        </div>
+        <div className="login-hero__brand">LearnSpace</div>
 
         <div className="login-hero__content">
-          <span className="login-hero__eyebrow">LearnSpace LMS</span>
           <h1 id="login-hero-title">{t('login.heroTitle')}</h1>
           <p>{t('login.heroText')}</p>
         </div>
 
-        <div className="login-hero__benefits">
-          <span>{t('login.benefitCourses')}</span>
-          <span>{t('login.benefitAssessments')}</span>
-          <span>{t('login.benefitProgress')}</span>
-        </div>
+        <div className="login-hero__footer">{t('login.footer')}</div>
       </section>
 
       <section className="login-side">
-        <label className="login-language">
-          <span className="sr-only">{t('login.language')}</span>
-          <select
-            aria-label={t('login.language')}
-            onChange={handleLanguageChange}
-            value={(i18n.resolvedLanguage ?? i18n.language).split('-')[0]}
+        <div className="login-language" ref={languageMenuRef}>
+          <button
+            aria-controls="login-language-menu"
+            aria-expanded={isLanguageMenuOpen}
+            aria-haspopup="menu"
+            className="login-language__button"
+            onClick={() => setIsLanguageMenuOpen((currentValue) => !currentValue)}
+            type="button"
           >
-            <option value="ru">RU</option>
-            <option value="en">EN</option>
-            <option value="kk">KK</option>
-            <option value="zh">ZH</option>
-          </select>
-        </label>
+            {LANGUAGE_CODES[currentLocale] ?? 'RU'}
+          </button>
+
+          <div
+            className={`login-language__menu${isLanguageMenuOpen ? ' login-language__menu--open' : ''}`}
+            id="login-language-menu"
+            role="menu"
+          >
+            {SUPPORTED_LOCALES.map((locale) => (
+              <button
+                className={`login-language__option${currentLocale === locale ? ' login-language__option--active' : ''}`}
+                key={locale}
+                onClick={() => handleLanguageChange(locale)}
+                role="menuitemradio"
+                aria-checked={currentLocale === locale}
+                type="button"
+                value={locale}
+              >
+                {LANGUAGE_LABELS[locale]}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="login-card">
           <header className="login-header">
@@ -212,6 +258,7 @@ export function LoginPage() {
                 id="organizationId"
                 name="organizationId"
                 onChange={updateField('organizationId')}
+                placeholder={t('login.organizationIdPlaceholder')}
                 required
                 type="text"
                 value={formState.organizationId}
@@ -232,6 +279,7 @@ export function LoginPage() {
                 id="email"
                 name="email"
                 onChange={updateField('email')}
+                placeholder={t('login.emailPlaceholder')}
                 required
                 type="email"
                 value={formState.email}
@@ -253,6 +301,7 @@ export function LoginPage() {
                   id="password"
                   name="password"
                   onChange={updateField('password')}
+                  placeholder={t('login.passwordPlaceholder')}
                   required
                   type={showPassword ? 'text' : 'password'}
                   value={formState.password}
@@ -263,7 +312,16 @@ export function LoginPage() {
                   onClick={() => setShowPassword((previousValue) => !previousValue)}
                   type="button"
                 >
-                  {showPassword ? '🙈' : '👁'}
+                  {showPassword ? (
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M3 3l18 18M10.6 10.7a2 2 0 002.7 2.7M9.9 4.2A10.7 10.7 0 0112 4c5.2 0 8.8 4.5 9.7 6a1.8 1.8 0 010 2 16.6 16.6 0 01-3.1 3.6M6.2 6.2A16.3 16.3 0 002.3 10a1.8 1.8 0 000 2c.9 1.5 4.5 6 9.7 6 1.2 0 2.3-.2 3.3-.6" />
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" viewBox="0 0 24 24">
+                      <path d="M2.3 10a1.8 1.8 0 000 2c.9 1.5 4.5 6 9.7 6s8.8-4.5 9.7-6a1.8 1.8 0 000-2C20.8 8.5 17.2 4 12 4S3.2 8.5 2.3 10z" />
+                      <circle cx="12" cy="11" r="3" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </label>
