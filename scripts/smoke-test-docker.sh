@@ -100,7 +100,7 @@ echo "Proxy response: $(curl -sf http://localhost:8080/api/v1/health)"
 echo ""
 echo "=== Step 6: Run seed ==="
 docker exec "$API_CONTAINER" \
-  sh -c 'NODE_ENV=production node node_modules/.bin/prisma db seed 2>/dev/null || node dist/scripts/seed.js 2>/dev/null || echo "Seed skipped (no seed script in dist)"'
+  sh -c 'NODE_ENV=test node dist/scripts/admin-demo-seed.js --apply --confirm-environment=test --confirm-database=lms_smoke'
 
 echo ""
 echo "================================================"

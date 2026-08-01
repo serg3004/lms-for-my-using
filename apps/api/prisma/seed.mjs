@@ -1,8 +1,6 @@
 import { scryptSync } from 'node:crypto';
-
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 // Demo credentials — document these in RAILWAY_DEPLOY_GUIDE.md
 const demoPassword = 'Demo1234!';
@@ -65,7 +63,7 @@ const id = {
   q5o3: '10000000-0000-4000-8000-0000000000e3',
 };
 
-async function main() {
+export async function seedDemo(prisma) {
   // ── Organization ──────────────────────────────────────────────────────────
   await prisma.organization.createMany({
     data: [{
@@ -393,26 +391,9 @@ async function main() {
     skipDuplicates: true,
   });
 
-  console.log('✅ Demo seed complete.');
-  console.log('');
-  console.log('Credentials (password: Demo1234!):');
-  console.log('  Organization UUID: 10000000-0000-4000-8000-000000000001');
-  console.log('  Organization slug: demo-company');
-  console.log('  Admin:   admin@demo.com');
-  console.log('  Learner: learner@demo.com');
-  console.log('');
-  console.log('Demo state:');
-  console.log('  Instructor: instructor@demo.com / Demo1234!');
-  console.log('  Course: Workplace Safety Fundamentals (3 lessons)');
-  console.log('  Learner has completed 1/3 lessons — progress bar visible');
-  console.log('  Assessment: Safety Knowledge Assessment (5 questions, 60% passing)');
 }
 
-main()
-  .catch((error) => {
-    console.error('Seed failed:', error);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  console.error('Direct demo seed execution is disabled. Use the guarded admin:demo-seed task.');
+  process.exitCode = 1;
+}
