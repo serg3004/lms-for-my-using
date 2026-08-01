@@ -9,22 +9,6 @@
     "logout": "Шығу",
     "brandSub": "Оқыту платформасы"
   },
-  "login": {
-    "navLink": "Кіру",
-    "title": "Кіру",
-    "subtitle": "Access token алу үшін ұйым ID, email және құпиясөзді енгізіңіз.",
-    "organizationId": "Ұйым ID",
-    "email": "Email",
-    "password": "Құпиясөз",
-    "submit": "Кіру",
-    "submitting": "Кіру...",
-    "success": "Кіру орындалды. Оқушы кабинеті ашылады.",
-    "showPassword": "Құпиясөзді көрсету",
-    "hidePassword": "Құпиясөзді жасыру",
-    "errors": {
-      "generic": "Кіру мүмкін болмады. Қайталап көріңіз."
-    }
-  },
   "notFound": {
     "title": "Бет табылмады",
     "description": "Мекенжай өзгерген, бет жойылған немесе сілтеме дұрыс емес болуы мүмкін.",
