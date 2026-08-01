@@ -78,8 +78,15 @@ test.describe('login and role redirects', () => {
 
     await page.goto('/learn/courses');
     await expect(page).toHaveURL(/\/learn\/courses$/);
-    await expect.poll(() => authStatuses.some(({ path, status }) => path === '/api/v1/auth/refresh' && status === 201)).toBe(true);
-    expect(authStatuses).toContainEqual({ path: '/api/v1/auth/me', status: 401 });
-    expect(authStatuses).toContainEqual({ path: '/api/v1/auth/me', status: 200 });
+    await expect.poll(() => ({
+      expiredAccessRejected: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 401),
+      refreshSucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/refresh' && status === 201),
+      retrySucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 200),
+    })).toEqual({
+      expiredAccessRejected: true,
+      refreshSucceeded: true,
+      retrySucceeded: true,
+    });
+    expect(authStatuses.filter(({ path }) => path === '/api/v1/auth/refresh')).toHaveLength(1);
   });
 });
