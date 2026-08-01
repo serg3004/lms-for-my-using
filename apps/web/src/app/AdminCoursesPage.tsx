@@ -139,6 +139,7 @@ export function AdminCoursesPage() {
       await createCourse({
         organizationId: pageState.currentUser.organizationId,
         title,
+        slug,
         description: formDescription.trim() || undefined,
         status: 'draft',
       });
