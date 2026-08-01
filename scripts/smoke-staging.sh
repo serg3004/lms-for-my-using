@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Verifies deployed API, Web, the Web -> API proxy path, and HTTPS policies.
+# Verifies deployed API, Web, HTTPS policies, and the cookie auth lifecycle.
 #
 # Required:
 #   API_URL=https://api.example.com
 #   WEB_URL=https://app.example.com
+#   STAGING_SMOKE_ORGANIZATION=<organization slug or UUID>
+#   STAGING_SMOKE_EMAIL=<dedicated smoke user email>
+#   STAGING_SMOKE_PASSWORD=<dedicated smoke user password>
 #
 # Optional:
 #   HEALTH_PATH=/api/v1/health
 #   CURL_TIMEOUT_SECONDS=15
-#   SMOKE_TOKEN=<bearer token>
 
 set -euo pipefail
 
@@ -16,10 +18,20 @@ API_URL="${API_URL:?API_URL is required}"
 WEB_URL="${WEB_URL:?WEB_URL is required}"
 HEALTH_PATH="${HEALTH_PATH:-/api/v1/health}"
 CURL_TIMEOUT_SECONDS="${CURL_TIMEOUT_SECONDS:-15}"
-SMOKE_TOKEN="${SMOKE_TOKEN:-}"
+STAGING_SMOKE_ORGANIZATION="${STAGING_SMOKE_ORGANIZATION:?STAGING_SMOKE_ORGANIZATION is required}"
+STAGING_SMOKE_EMAIL="${STAGING_SMOKE_EMAIL:?STAGING_SMOKE_EMAIL is required}"
+STAGING_SMOKE_PASSWORD="${STAGING_SMOKE_PASSWORD:?STAGING_SMOKE_PASSWORD is required}"
 
 API_URL="${API_URL%/}"
 WEB_URL="${WEB_URL%/}"
+COOKIE_JAR="$(mktemp)"
+RESPONSE_BODY="$(mktemp)"
+LOGIN_BODY="$(mktemp)"
+
+cleanup() {
+  rm -f "$COOKIE_JAR" "$RESPONSE_BODY" "$LOGIN_BODY"
+}
+trap cleanup EXIT HUP INT TERM
 
 request() {
   local label="$1"
@@ -32,13 +44,71 @@ request() {
     --max-time "$CURL_TIMEOUT_SECONDS"
   )
 
-  if [[ -n "$SMOKE_TOKEN" ]]; then
-    curl_args+=(--header "Authorization: Bearer $SMOKE_TOKEN")
-  fi
-
   echo "Checking ${label}: ${url}"
   curl "${curl_args[@]}" "$url" >/dev/null
   echo "${label}: PASS"
+}
+
+auth_request() {
+  local label="$1"
+  local method="$2"
+  local path="$3"
+  local expected_status="$4"
+  shift 4
+  local status
+
+  echo "Checking ${label}: ${method} ${path}"
+  status="$(curl \
+    --silent \
+    --show-error \
+    --max-time "$CURL_TIMEOUT_SECONDS" \
+    --request "$method" \
+    --cookie "$COOKIE_JAR" \
+    --cookie-jar "$COOKIE_JAR" \
+    --output "$RESPONSE_BODY" \
+    --write-out '%{http_code}' \
+    "$@" \
+    "${API_URL}${path}")"
+
+  if [[ "$status" != "$expected_status" ]]; then
+    echo "${label}: expected HTTP ${expected_status}, got ${status}" >&2
+    return 1
+  fi
+
+  echo "${label}: PASS"
+}
+
+csrf_token() {
+  awk '$0 !~ /^#/ && $6 == "lms_csrf_token" { value = $7 } END { print value }' "$COOKIE_JAR"
+}
+
+check_authenticated_session() {
+  local csrf
+  node -e 'process.stdout.write(JSON.stringify({organizationId: process.env.STAGING_SMOKE_ORGANIZATION, email: process.env.STAGING_SMOKE_EMAIL, password: process.env.STAGING_SMOKE_PASSWORD}))' >"$LOGIN_BODY"
+
+  auth_request "Login" POST "/api/v1/auth/login" 201 \
+    --header "Content-Type: application/json" \
+    --data-binary "@${LOGIN_BODY}"
+  auth_request "Current user" GET "/api/v1/auth/me" 200
+  auth_request "Refresh session" POST "/api/v1/auth/refresh" 201 \
+    --header "Content-Type: application/json" \
+    --data '{}'
+
+  csrf="$(csrf_token)"
+  if [[ -z "$csrf" ]]; then
+    echo "Refresh session did not issue the CSRF cookie" >&2
+    return 1
+  fi
+
+  # Logout is the safe smoke mutation: it exercises CSRF without changing business data.
+  auth_request "CSRF rejection" POST "/api/v1/auth/logout" 403 \
+    --header "Content-Type: application/json" \
+    --data '{}'
+  auth_request "Logout" POST "/api/v1/auth/logout" 201 \
+    --header "Content-Type: application/json" \
+    --header "x-csrf-token: ${csrf}" \
+    --data '{}'
+  auth_request "Logged-out session" GET "/api/v1/auth/me" 401
 }
 
 require_https_url() {
@@ -155,5 +225,6 @@ check_security_headers "Web" "${WEB_URL}"
 check_security_headers "Web to API proxy" "${WEB_URL}${HEALTH_PATH}"
 check_http_redirect "API" "${API_URL}${HEALTH_PATH}"
 check_http_redirect "Web" "${WEB_URL}"
+check_authenticated_session
 
 echo "All staging smoke checks passed."

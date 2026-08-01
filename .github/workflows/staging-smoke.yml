@@ -1,0 +1,27 @@
+name: Staging smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authenticated-smoke:
+    name: Authenticated staging smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: staging
+    env:
+      API_URL: ${{ vars.STAGING_API_URL }}
+      WEB_URL: ${{ vars.STAGING_WEB_URL }}
+      STAGING_SMOKE_ORGANIZATION: ${{ secrets.STAGING_SMOKE_ORGANIZATION }}
+      STAGING_SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
+      STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run authenticated staging smoke
+        run: bash scripts/smoke-staging.sh

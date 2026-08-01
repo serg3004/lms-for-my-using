@@ -81,6 +81,9 @@ jobs:
       - name: Tests
         run: pnpm --recursive test:coverage
 
+      - name: Staging smoke script tests
+        run: bash scripts/smoke-staging.test.sh
+
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
 
