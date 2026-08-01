@@ -2460,7 +2460,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 190 — Role-based staging smoke 🔲
+## PR 190 — Role-based staging smoke ✅
 
 **Проблема:** Deployment не проверяется по ролям.
 
