@@ -20,7 +20,17 @@ async function loginAs(page: Page, role: DemoRole) {
 
 async function deleteCourse(page: Page, courseId: string) {
   await page.evaluate(async (id) => {
-    const response = await fetch(`/api/v1/courses/${id}`, { method: 'DELETE' });
+    const csrfToken = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('lms_csrf_token='))
+      ?.split('=')[1];
+    if (!csrfToken) throw new Error('CSRF cookie is missing during course cleanup');
+
+    const response = await fetch(`/api/v1/courses/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-csrf-token': decodeURIComponent(csrfToken) },
+    });
     if (!response.ok) throw new Error(`Course cleanup failed with ${response.status}`);
   }, courseId);
 }
@@ -30,9 +40,19 @@ async function createForeignCourse(browser: Browser, slug: string, title: string
   const page = await context.newPage();
   await loginAs(page, 'admin');
   const created = await page.evaluate(async (input) => {
+    const csrfToken = document.cookie
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith('lms_csrf_token='))
+      ?.split('=')[1];
+    if (!csrfToken) throw new Error('CSRF cookie is missing during course setup');
+
     const response = await fetch('/api/v1/courses', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-csrf-token': decodeURIComponent(csrfToken),
+      },
       body: JSON.stringify(input),
     });
     if (!response.ok) throw new Error(`Course setup failed with ${response.status}`);
@@ -43,17 +63,19 @@ async function createForeignCourse(browser: Browser, slug: string, title: string
 
 test.describe('instructor workspace', () => {
   test('shows scoped dashboard, course list, students, and correct progress', async ({ page }) => {
-    await loginAs(page, 'instructor');
-
     const coursesResponsePromise = page.waitForResponse((response) =>
-      new URL(response.url()).pathname === '/api/v1/courses');
+      new URL(response.url()).pathname === '/api/v1/courses' && response.request().method() === 'GET');
     const progressResponsePromise = page.waitForResponse((response) =>
-      new URL(response.url()).pathname === '/api/v1/progress');
-    await page.reload();
-    const coursesPage = await (await coursesResponsePromise).json() as {
+      new URL(response.url()).pathname === '/api/v1/progress' && response.request().method() === 'GET');
+    await loginAs(page, 'instructor');
+    const coursesResponse = await coursesResponsePromise;
+    const progressResponse = await progressResponsePromise;
+    expect(coursesResponse.status()).toBe(200);
+    expect(progressResponse.status()).toBe(200);
+    const coursesPage = await coursesResponse.json() as {
       items: Array<{ status: string }>;
     };
-    const progressPage = await (await progressResponsePromise).json() as {
+    const progressPage = await progressResponse.json() as {
       items: Array<{ userId: string }>;
     };
     const published = coursesPage.items.filter(({ status }) => status === 'published').length;
