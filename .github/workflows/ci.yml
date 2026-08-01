@@ -103,7 +103,7 @@ jobs:
         run: scripts/docker-build-retry.sh -f apps/web/Dockerfile -t lms-web:ci .
 
       - name: Scan API Docker image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           image-ref: lms-api:ci
           format: table
@@ -113,7 +113,7 @@ jobs:
           trivyignores: ${{ runner.temp }}/trivyignore
 
       - name: Scan Web Docker image
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.32.0
         with:
           image-ref: lms-web:ci
           format: table
