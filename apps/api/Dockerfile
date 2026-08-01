@@ -45,14 +45,18 @@ COPY --from=deployer /standalone/package.json ./package.json
 COPY --from=builder  /app/apps/api/dist ./dist
 COPY --from=builder  /app/apps/api/prisma ./prisma
 
-RUN node node_modules/.bin/prisma generate
+# npm is only build tooling; keeping it in the runtime image adds its
+# dependency tree and an unnecessary package-installation surface.
+RUN node node_modules/.bin/prisma generate && \
+    rm -rf /usr/local/lib/node_modules/npm && \
+    rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 USER lms
 ENV NODE_ENV=production
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/v1/health || exit 1
+  CMD wget -qO- http://localhost:3000/api/v1/health/ready || exit 1
 
 # prisma is in production dependencies so migrate deploy runs before startup
 CMD ["sh", "-c", "node node_modules/.bin/prisma migrate deploy && node dist/main.js"]

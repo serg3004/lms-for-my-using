@@ -19,7 +19,9 @@ import { z } from 'zod';
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
+import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
+import { UploadService } from '../modules/upload/upload.service.js';
 
 type HttpTestResponse = {
   statusCode?: number;
@@ -184,6 +186,8 @@ describe('API integration scaffold', () => {
         IntegrationAuthGuard,
         IntegrationOrganizationScopeGuard,
         { provide: PrismaService, useValue: { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) } },
+        { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
+        { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
       ],
     }).compile();
 
