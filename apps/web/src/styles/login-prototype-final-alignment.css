@@ -1,0 +1,39 @@
+.login-hero__benefits {
+  display: none;
+}
+
+.login-language {
+  top: 24px;
+  right: 24px;
+}
+
+.login-language > .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.login-form__toggle-password {
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+}
+
+.login-form__remember {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.login-form__remember input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  flex-shrink: 0;
+}
