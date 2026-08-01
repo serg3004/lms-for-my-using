@@ -2443,7 +2443,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза D — Staging и production readiness
 
-## PR 189 — Authenticated staging smoke 🔲
+## PR 189 — Authenticated staging smoke ✅
 
 **Проблема:** Текущий smoke проверяет только health/web/proxy.
 
