@@ -67,6 +67,12 @@ enum MalwareScanStatus {
   rejected
 }
 
+enum MultipartUploadStatus {
+  pending
+  completed
+  aborted
+}
+
 enum AssignmentStatus {
   assigned
   completed
@@ -309,11 +315,35 @@ model CourseMaterial {
 
   course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  multipartUploads MultipartUpload[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
   @@index([lessonId])
   @@map("course_materials")
+}
+
+model MultipartUpload {
+  id             String                @id @default(uuid()) @db.Uuid
+  uploadId       String                @unique @map("upload_id")
+  organizationId String                @map("organization_id") @db.Uuid
+  materialId     String                @map("material_id") @db.Uuid
+  objectKey      String                @unique @map("object_key")
+  fileName       String                @map("file_name")
+  mimeType       String                @map("mime_type")
+  sizeBytes      Int                   @map("size_bytes")
+  partSizeBytes  Int                   @map("part_size_bytes")
+  status         MultipartUploadStatus @default(pending)
+  expiresAt      DateTime              @map("expires_at") @db.Timestamptz
+  completedAt    DateTime?             @map("completed_at") @db.Timestamptz
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  material CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, expiresAt])
+  @@index([materialId, status])
+  @@map("multipart_uploads")
 }
 
 model Assignment {

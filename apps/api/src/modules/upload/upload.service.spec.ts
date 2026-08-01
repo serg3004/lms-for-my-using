@@ -86,4 +86,19 @@ describe('UploadService', () => {
       /^quarantine\/organizations\/organization-a\/materials\/material-a\/[0-9a-f-]{36}$/,
     );
   });
+
+  it('signs a bounded multipart part URL without contacting the API with file bytes', async () => {
+    process.env['S3_ENDPOINT'] = 'https://storage.example.test';
+    process.env['S3_BUCKET'] = 'lms-bucket';
+    process.env['S3_ACCESS_KEY_ID'] = 'test-access-key';
+    process.env['S3_SECRET_ACCESS_KEY'] = 'test-secret-key';
+    const configured = new UploadService();
+    const signed = new URL(await configured.getMultipartPartUrl(
+      'quarantine/organizations/org/materials/material/key', 'upload-id', 3, 3_600,
+    ));
+
+    expect(signed.searchParams.get('partNumber')).toBe('3');
+    expect(signed.searchParams.get('uploadId')).toBe('upload-id');
+    expect(signed.searchParams.get('X-Amz-Expires')).toBe('900');
+  });
 });

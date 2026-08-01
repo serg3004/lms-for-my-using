@@ -2425,7 +2425,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 188 — Multipart upload больших файлов 🔲
+## PR 188 — Multipart upload больших файлов ✅
 
 **Проблема:** Multer memory storage держит каждый файл целиком в памяти API.
 

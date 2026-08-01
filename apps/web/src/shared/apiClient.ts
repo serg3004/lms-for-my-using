@@ -150,6 +150,63 @@ export function uploadFileWithProgress(file: File, onProgress: (percent: number)
   });
 }
 
+type MultipartSession = {
+  uploadId: string;
+  partSizeBytes: number;
+  parts: Array<{ partNumber: number; url: string }>;
+};
+
+function uploadPresignedPart(url: string, body: Blob, onProgress: (loaded: number) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', (event) => onProgress(event.loaded));
+    xhr.addEventListener('load', () => {
+      if (xhr.status < 200 || xhr.status >= 300) return reject(new ApiClientError('Upload part failed', xhr.status));
+      const etag = xhr.getResponseHeader('etag');
+      if (!etag) return reject(new ApiClientError('Storage did not expose the uploaded part ETag', xhr.status));
+      resolve(etag);
+    });
+    xhr.addEventListener('error', () => reject(new ApiClientError('Upload part failed', 0)));
+    xhr.open('PUT', url);
+    xhr.send(body);
+  });
+}
+
+/** Uploads bytes directly to object storage; only metadata and ETags pass through the API. */
+export async function uploadMaterialFileMultipart(
+  materialId: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<unknown> {
+  const session = await apiRequest<MultipartSession>(`/materials/${materialId}/file/multipart`, {
+    method: 'POST',
+    body: JSON.stringify({ fileName: file.name, mimeType: file.type, sizeBytes: file.size }),
+  });
+  const loadedByPart = new Map<number, number>();
+  onProgress(0);
+  try {
+    const parts = await Promise.all(session.parts.map(async ({ partNumber, url }) => {
+      const start = (partNumber - 1) * session.partSizeBytes;
+      const body = file.slice(start, Math.min(start + session.partSizeBytes, file.size));
+      const etag = await uploadPresignedPart(url, body, (loaded) => {
+        loadedByPart.set(partNumber, loaded);
+        const totalLoaded = [...loadedByPart.values()].reduce((total, value) => total + value, 0);
+        onProgress(Math.min(99, Math.round((totalLoaded / file.size) * 100)));
+      });
+      return { partNumber, etag };
+    }));
+    const material = await apiRequest(`/materials/${materialId}/file/multipart/${encodeURIComponent(session.uploadId)}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ parts }),
+    });
+    onProgress(100);
+    return material;
+  } catch (error) {
+    await apiRequest(`/materials/${materialId}/file/multipart/${encodeURIComponent(session.uploadId)}`, { method: 'DELETE' }).catch(() => undefined);
+    throw error;
+  }
+}
+
 const REQUEST_TIMEOUT_MS = 15_000;
 
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {

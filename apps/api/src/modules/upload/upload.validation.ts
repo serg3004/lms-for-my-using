@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 
 export const MAX_UPLOAD_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_BUFFERED_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
 export const MAX_ZIP_ENTRY_COUNT = 1000;
 export const MAX_ZIP_COMPRESSION_RATIO = 100;
 export const MAX_ZIP_UNCOMPRESSED_BYTES = 250 * 1024 * 1024;
@@ -31,20 +32,15 @@ const ALLOWED_MIME_TYPES = new Set([
   XLSX_MIME_TYPE,
 ]);
 
+export function validateUploadMetadata(fileName: string, mimeType: string, sizeBytes: number): void {
+  validateFileName(fileName);
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) throw new BadRequestException(`File type "${mimeType}" is not allowed`);
+  if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) throw new BadRequestException('File is empty');
+  if (sizeBytes > MAX_UPLOAD_FILE_SIZE_BYTES) throw new BadRequestException('File exceeds maximum allowed size');
+}
+
 export function validateUploadFile(file: Express.Multer.File): void {
-  validateFileName(file.originalname);
-
-  if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-    throw new BadRequestException(`File type "${file.mimetype}" is not allowed`);
-  }
-
-  if (file.size <= 0) {
-    throw new BadRequestException('File is empty');
-  }
-
-  if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
-    throw new BadRequestException('File exceeds maximum allowed size');
-  }
+  validateUploadMetadata(file.originalname, file.mimetype, file.size);
 
   if (!matchesDeclaredMimeType(file.buffer, file.mimetype)) {
     throw new BadRequestException('File content does not match declared file type');

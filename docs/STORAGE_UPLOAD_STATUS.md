@@ -67,8 +67,34 @@ the database and leaves copied objects for later orphan cleanup.
 
 Storage requires `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and
 `S3_SECRET_ACCESS_KEY`; `S3_REGION` and `S3_FORCE_PATH_STYLE` are optional.
-Uploads retain the 50 MB limit, MIME/magic-byte validation, filename safety,
-and ZIP-bomb checks.
+
+## Multipart uploads
+
+Large material files use a direct-to-storage multipart flow. The authenticated
+API creates a tenant/material-scoped quarantine key, records the S3 `uploadId`,
+and returns presigned URLs for 8 MiB parts. The browser uploads those parts to
+S3 and reports their `ETag` values to the completion endpoint. Consequently,
+file bytes never pass through the API process; the legacy buffered endpoint is
+limited to 8 MiB.
+
+The storage CORS policy must allow `PUT` from the web origin and expose the
+`ETag` response header. Presigned part URLs expire after 15 minutes. Upload
+sessions expire after 24 hours and can be inspected safely with:
+
+```bash
+pnpm --filter @lms/api storage:multipart-cleanup
+```
+
+The command is dry-run by default. Abort expired S3 uploads and mark their
+database sessions aborted only with:
+
+```bash
+pnpm --filter @lms/api storage:multipart-cleanup -- --execute
+```
+Both paths retain the 50 MB limit and filename/MIME allow-list checks. Buffered
+uploads additionally perform magic-byte and ZIP-bomb checks before storage;
+direct multipart uploads verify the completed object size and rely on the
+mandatory quarantine scanner before the object can become available.
 
 Every new binary is written below the tenant-scoped `quarantine/` prefix and
 persisted with scan status `pending`. The API submits the opaque quarantine key

@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CopyObjectCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListMultipartUploadsCommand, ListObjectsV2Command, PutObjectCommand, S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 
@@ -9,6 +9,8 @@ export type UploadResult = {
   mimeType: string;
   sizeBytes: number;
 };
+
+export type CompletedPart = { partNumber: number; etag: string };
 
 @Injectable()
 export class UploadService {
@@ -83,6 +85,67 @@ export class UploadService {
 
   createQuarantineObjectKey(organizationId: string, materialId: string): string {
     return `quarantine/organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
+  }
+
+  async createMultipartUpload(key: string, mimeType: string): Promise<string> {
+    const { s3, bucket } = this.requireStorage();
+    const result = await s3.send(new CreateMultipartUploadCommand({ Bucket: bucket, Key: key, ContentType: mimeType }));
+    if (!result.UploadId) throw new ServiceUnavailableException('Storage did not return a multipart upload ID');
+    return result.UploadId;
+  }
+
+  async getMultipartPartUrl(key: string, uploadId: string, partNumber: number, expiresIn = 900): Promise<string> {
+    const { s3, bucket } = this.requireStorage();
+    const command = new UploadPartCommand({ Bucket: bucket, Key: key, UploadId: uploadId, PartNumber: partNumber });
+    return getSignedUrl(s3, command, { expiresIn: Math.min(Math.max(expiresIn, 1), 900) });
+  }
+
+  async completeMultipartUpload(key: string, uploadId: string, parts: CompletedPart[]): Promise<number> {
+    const { s3, bucket } = this.requireStorage();
+    try {
+      await s3.send(new CompleteMultipartUploadCommand({
+        Bucket: bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: parts.map(({ partNumber, etag }) => ({ PartNumber: partNumber, ETag: etag })) },
+      }));
+    } catch (error) {
+      // A previous completion may have reached S3 before the API response/DB update
+      // failed. HeadObject makes that retry idempotent; otherwise preserve the S3 error.
+      try {
+        await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+      } catch {
+        throw error;
+      }
+    }
+    const object = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return object.ContentLength ?? -1;
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    const { s3, bucket } = this.requireStorage();
+    await s3.send(new AbortMultipartUploadCommand({ Bucket: bucket, Key: key, UploadId: uploadId }));
+  }
+
+  async listMultipartUploads(prefix = 'quarantine/organizations/') {
+    const { s3, bucket } = this.requireStorage();
+    const uploads: Array<{ key: string; uploadId: string; initiatedAt: Date }> = [];
+    let keyMarker: string | undefined;
+    let uploadIdMarker: string | undefined;
+    do {
+      const page = await s3.send(new ListMultipartUploadsCommand({ Bucket: bucket, Prefix: prefix, KeyMarker: keyMarker, UploadIdMarker: uploadIdMarker }));
+      for (const upload of page.Uploads ?? []) {
+        if (upload.Key && upload.UploadId && upload.Initiated) uploads.push({ key: upload.Key, uploadId: upload.UploadId, initiatedAt: upload.Initiated });
+      }
+      keyMarker = page.IsTruncated ? page.NextKeyMarker : undefined;
+      uploadIdMarker = page.IsTruncated ? page.NextUploadIdMarker : undefined;
+    } while (keyMarker);
+    return uploads;
+  }
+
+  private requireStorage(): { s3: S3Client; bucket: string } {
+    if (!this.s3 || !this.bucket) throw new ServiceUnavailableException('File storage is not configured');
+    return { s3: this.s3, bucket: this.bucket };
   }
 
   async promoteQuarantinedObject(quarantineKey: string, organizationId: string, materialId: string): Promise<string> {
