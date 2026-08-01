@@ -15,6 +15,31 @@
     "homeLink": "返回首页",
     "backLink": "返回"
   },
+  "publicHome": {
+    "nav": {
+      "features": "功能",
+      "about": "关于平台"
+    },
+    "hero": {
+      "title": "结果清晰可见的学习",
+      "lead": "课程、测试、任务、进度和证书统一在一个企业平台中。",
+      "start": "开始学习",
+      "learnMore": "了解更多"
+    },
+    "preview": {
+      "title": "您的进度",
+      "active": "进行中的课程",
+      "done": "已完成",
+      "course": "安全基础"
+    },
+    "features": {
+      "title": "系统化学习所需的一切",
+      "f1": { "title": "课程与资料", "text": "结构化项目、课时、视频和文档。" },
+      "f2": { "title": "测试与任务", "text": "知识检查、截止日期和必修项目。" },
+      "f3": { "title": "进度与证书", "text": "透明结果和学习证明。" }
+    },
+    "footer": "LearnSpace · 学习平台"
+  },
   "learner": {
     "navLink": "学习区",
     "title": "学习区",
