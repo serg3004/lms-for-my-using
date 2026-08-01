@@ -96,6 +96,26 @@ jobs:
       - name: Build
         run: pnpm --recursive build
 
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Browser E2E
+        run: pnpm test:e2e
+        env:
+          NODE_ENV: test
+          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+
+      - name: Upload safe Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Build API Docker image
         run: scripts/docker-build-retry.sh -f apps/api/Dockerfile -t lms-api:ci .
 

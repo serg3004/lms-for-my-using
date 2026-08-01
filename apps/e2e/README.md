@@ -1,0 +1,18 @@
+# Browser E2E
+
+Run the Chromium suite from the repository root:
+
+```bash
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+Playwright starts the API and Vite development servers automatically. A local PostgreSQL database matching `DATABASE_URL` must be available and migrated. Existing local servers are reused; CI always starts clean server processes.
+
+## Isolation and artifact policy
+
+- Tests run in independent browser contexts, and the `isolatedUser` fixture derives a unique synthetic `.invalid` identity from the worker and test IDs.
+- Tests that create persistent records must use that fixture and delete those records during fixture teardown. Tests must not depend on execution order or data created by another test.
+- Retries are intentionally disabled. A flaky failure remains a failed run.
+- Traces, screenshots, and video are retained only for failures, ignored by Git, and retained in CI for seven days.
+- Never put production credentials, bearer tokens, personal data, or a reusable authenticated `storageState` in E2E input or attachments. Use test-only accounts and redact response data before manually attaching it.
