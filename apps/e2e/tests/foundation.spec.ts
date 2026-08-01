@@ -11,10 +11,13 @@ test.describe('browser E2E foundation', () => {
     await expect(page).toHaveURL(/\/login$/);
 
     await page.goto('/');
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL('http://127.0.0.1:5173/');
 
     await page.goBack();
     await expect(page).toHaveURL(/\/login$/);
+
+    await page.goForward();
+    await expect(page).toHaveURL('http://127.0.0.1:5173/');
   });
 
   test('forwards API calls through the development proxy', async ({ page }) => {
