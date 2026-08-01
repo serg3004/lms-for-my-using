@@ -69,8 +69,8 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
         const [currentUser, course, progressPage, usersPage] = await Promise.all([
           getCurrentUser(),
           getCourse(courseId),
-          listProgress({ pageSize: 200 }),
-          listUsers({ pageSize: 200 }),
+          listProgress({ pageSize: 100 }),
+          listUsers({ pageSize: 100 }),
         ]);
 
         if (!isMounted) return;
