@@ -14,7 +14,7 @@
     "test:integration:db:local": "bash scripts/test-api-database.sh"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2",
+    "@playwright/test": "^1.55.1",
     "@eslint/js": "^10.0.1",
     "globals": "^17.8.0",
     "turbo": "^2.10.7",
