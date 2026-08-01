@@ -11,6 +11,7 @@ import './styles/global.css';
 import './styles/ui.css';
 import './styles/login-prototype-final-alignment.css';
 import './styles/login-remember-checkbox-fix.css';
+import './styles/public-home.css';
 
 applyThemeSettings(getStoredThemeSettings());
 

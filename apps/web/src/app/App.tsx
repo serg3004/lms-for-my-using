@@ -1,12 +1,13 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
-import { Link, Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { lazy, Suspense, type ReactNode } from 'react';
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
 import { NotFoundPage } from './NotFoundPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
-import { getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
 import { LearnerPageLayout } from '../shared/learnerLayout.js';
+
+export { getRootNavigationItems } from '../shared/rootNavigation.js';
 
 // Lazy-loaded page chunks — each route loads its own JS chunk on first visit
 const AdminAssessmentBuilderPage = lazy(() =>
@@ -90,6 +91,9 @@ const LearnerProgressPage = lazy(() =>
 const LoginPage = lazy(() =>
   import('./LoginPage.js').then((m) => ({ default: m.LoginPage })),
 );
+const PublicHomePage = lazy(() =>
+  import('./PublicHomePage.js').then((m) => ({ default: m.PublicHomePage })),
+);
 
 const ManagerDashboardPage = lazy(() =>
   import('./ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })),
@@ -111,111 +115,12 @@ const InstructorCourseStudentsPage = lazy(() =>
   import('./InstructorCourseStudentsPage.js').then((m) => ({ default: m.InstructorCourseStudentsPage })),
 );
 
-type RootNavigationItem = {
-  labelKey: string;
-  fallbackLabel?: string;
-  href: string;
-};
-
-const learnerNavigationItems: RootNavigationItem[] = [
-  { labelKey: 'learner.navLink', href: '/learn' },
-  { labelKey: 'courses.navLink', href: '/learn/courses' },
-  { labelKey: 'progress.navLink', href: '/learn/progress' },
-  { labelKey: 'assignments.navLink', href: '/learn/assignments' },
-  { labelKey: 'assessments.navLink', href: '/learn/assessments' },
-  { labelKey: 'certificates.navLink', href: '/learn/certificates' },
-];
-
-const adminNavigationItem: RootNavigationItem = {
-  labelKey: 'admin.navLink',
-  fallbackLabel: 'Admin',
-  href: '/admin',
-};
-
-
-const managerNavigationItem: RootNavigationItem = {
-  labelKey: 'manager.navLink',
-  fallbackLabel: 'Manager',
-  href: '/manager',
-};
-
-const instructorNavigationItem: RootNavigationItem = {
-  labelKey: 'instructor.navLink',
-  fallbackLabel: 'Instructor',
-  href: '/instructor',
-};
-
-export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null): RootNavigationItem[] {
-  if (!user) {
-    return [{ labelKey: 'login.navLink', href: '/login' }];
-  }
-
-  if (user.roles.includes('admin')) {
-    return [adminNavigationItem, ...learnerNavigationItems];
-  }
-  if (user.roles.includes('instructor')) {
-    return [instructorNavigationItem, ...learnerNavigationItems];
-  }
-  if (user.roles.includes('manager')) {
-    return [managerNavigationItem, ...learnerNavigationItems];
-  }
-  return learnerNavigationItems;
-}
-
 function renderWithBreadcrumbs(page: ReactNode, items: BreadcrumbItem[]) {
   return (
     <>
       <Breadcrumbs items={items} />
       {page}
     </>
-  );
-}
-
-function RootNavigation() {
-  const { t } = useTranslation();
-  const [currentUser, setCurrentUser] = useState<Pick<CurrentUser, 'roles'> | null>(null);
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadCurrentUser() {
-      try {
-        const user = await getCurrentUser();
-
-        if (isMounted) {
-          setCurrentUser({ roles: user.roles });
-        }
-      } catch {
-        if (isMounted) {
-          setCurrentUser(null);
-        }
-      } finally {
-        if (isMounted) {
-          setHasCheckedAuth(true);
-        }
-      }
-    }
-
-    void loadCurrentUser();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  if (!hasCheckedAuth) {
-    return null;
-  }
-
-  return (
-    <nav>
-      {getRootNavigationItems(currentUser).map((item) => (
-        <Link key={item.href} to={item.href}>
-          {item.fallbackLabel ? t(item.labelKey, item.fallbackLabel) : t(item.labelKey)}
-        </Link>
-      ))}
-    </nav>
   );
 }
 
@@ -410,7 +315,6 @@ function InstructorCourseStudentsRoute() {
 }
 
 export function App() {
-  const { t } = useTranslation();
   const { pathname } = useLocation();
 
   return (
@@ -472,16 +376,7 @@ export function App() {
             <Route path="/learn/courses/:courseId" element={<LearnerCourseDetailRoute />} />
           </Route>
 
-          <Route
-            path="/"
-            element={
-              <main>
-                <h1>{t('app.title')}</h1>
-                <p>{t('app.subtitle')}</p>
-                <RootNavigation />
-              </main>
-            }
-          />
+          <Route path="/" element={<PublicHomePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

@@ -15,6 +15,31 @@
     "homeLink": "Go to dashboard",
     "backLink": "Go back"
   },
+  "publicHome": {
+    "nav": {
+      "features": "Features",
+      "about": "About"
+    },
+    "hero": {
+      "title": "Learning with visible results",
+      "lead": "Courses, assessments, assignments, progress and certificates in one corporate platform.",
+      "start": "Start learning",
+      "learnMore": "Learn more"
+    },
+    "preview": {
+      "title": "Your progress",
+      "active": "Active courses",
+      "done": "Completed",
+      "course": "Safety fundamentals"
+    },
+    "features": {
+      "title": "Everything for structured learning",
+      "f1": { "title": "Courses and materials", "text": "Structured programs, lessons, videos and documents." },
+      "f2": { "title": "Assessments and assignments", "text": "Knowledge checks, deadlines and required programs." },
+      "f3": { "title": "Progress and certificates", "text": "Transparent results and learning proof." }
+    },
+    "footer": "LearnSpace · Learning platform"
+  },
   "learner": {
     "navLink": "Learner area",
     "title": "Learner area",
