@@ -1,64 +1,130 @@
-import { spawn } from 'node:child_process';
-import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { PrismaClient } from '@prisma/client';
-const DEMO_CONFIRMATION = 'demo-company';
-const DEMO_IDS = {
-  organization: '10000000-0000-4000-8000-000000000001',
-  admin: '10000000-0000-4000-8000-000000000011',
-  learner: '10000000-0000-4000-8000-000000000012',
-  course: '10000000-0000-4000-8000-000000000031',
-  lessonOne: '10000000-0000-4000-8000-000000000041',
-  lessonTwo: '10000000-0000-4000-8000-000000000042',
-  lessonThree: '10000000-0000-4000-8000-000000000043',
-  assignment: '10000000-0000-4000-8000-000000000061',
-  assessment: '10000000-0000-4000-8000-000000000081',
-} as const;
-export type AdminDemoSeedOptions = { apply: boolean };
+import { Prisma, PrismaClient } from '@prisma/client';
+
+const APPLY_FLAG = '--apply';
+const CONFIRM_ENVIRONMENT_PREFIX = '--confirm-environment=';
+const CONFIRM_DATABASE_PREFIX = '--confirm-database=';
+const TRANSACTION_TIMEOUT_MS = 60_000;
+
+export type AdminDemoSeedOptions = {
+  apply: boolean;
+  confirmedEnvironment?: string;
+  confirmedDatabase?: string;
+};
+
+export type SafeDatabaseTarget = {
+  environment: string;
+  host: string;
+  port: string;
+  database: string;
+  schema: string;
+};
+
+type DemoSeedModule = {
+  seedDemo(prisma: Prisma.TransactionClient): Promise<void>;
+};
+
+type SeedDemo = DemoSeedModule['seedDemo'];
 
 export function parseAdminDemoSeedArgs(args: string[]): AdminDemoSeedOptions {
-  const apply = args.includes('--apply');
-  const confirmation = args.find((arg) => arg.startsWith('--confirm='))?.slice('--confirm='.length);
-
-  if (apply && confirmation !== DEMO_CONFIRMATION) {
-    throw new Error(`Apply requires --confirm=${DEMO_CONFIRMATION}`);
+  const allowed = args.every((arg) =>
+    arg === APPLY_FLAG
+    || arg.startsWith(CONFIRM_ENVIRONMENT_PREFIX)
+    || arg.startsWith(CONFIRM_DATABASE_PREFIX));
+  if (!allowed) {
+    throw new Error('Unknown argument. Expected --apply, --confirm-environment, or --confirm-database');
   }
 
-  return { apply };
+  const values = (prefix: string) => args.filter((arg) => arg.startsWith(prefix));
+  const applyCount = args.filter((arg) => arg === APPLY_FLAG).length;
+  const environments = values(CONFIRM_ENVIRONMENT_PREFIX);
+  const databases = values(CONFIRM_DATABASE_PREFIX);
+  if (applyCount > 1 || environments.length > 1 || databases.length > 1) {
+    throw new Error('Seed arguments must not be repeated');
+  }
+
+  return {
+    apply: applyCount === 1,
+    ...(environments[0]
+      ? { confirmedEnvironment: environments[0].slice(CONFIRM_ENVIRONMENT_PREFIX.length) }
+      : {}),
+    ...(databases[0]
+      ? { confirmedDatabase: databases[0].slice(CONFIRM_DATABASE_PREFIX.length) }
+      : {}),
+  };
 }
 
-async function findMissingDemoData(prisma: PrismaClient): Promise<string[]> {
-  const [organization, admin, learner, course, lessonOne, lessonTwo, lessonThree, assignment, assessment, questionCount] =
-    await Promise.all([
-      prisma.organization.findUnique({ where: { id: DEMO_IDS.organization }, select: { id: true } }),
-      prisma.user.findUnique({ where: { id: DEMO_IDS.admin }, select: { id: true } }),
-      prisma.user.findUnique({ where: { id: DEMO_IDS.learner }, select: { id: true } }),
-      prisma.course.findUnique({ where: { id: DEMO_IDS.course }, select: { id: true } }),
-      prisma.lesson.findUnique({ where: { id: DEMO_IDS.lessonOne }, select: { id: true } }),
-      prisma.lesson.findUnique({ where: { id: DEMO_IDS.lessonTwo }, select: { id: true } }),
-      prisma.lesson.findUnique({ where: { id: DEMO_IDS.lessonThree }, select: { id: true } }),
-      prisma.assignment.findUnique({ where: { id: DEMO_IDS.assignment }, select: { id: true } }),
-      prisma.assessment.findUnique({ where: { id: DEMO_IDS.assessment }, select: { id: true } }),
-      prisma.assessmentQuestion.count({ where: { assessmentId: DEMO_IDS.assessment } }),
-    ]);
-  const requiredRecords = [
-    ['organization', organization],
-    ['admin user', admin],
-    ['learner user', learner],
-    ['course', course],
-    ['lesson 1', lessonOne],
-    ['lesson 2', lessonTwo],
-    ['lesson 3', lessonThree],
-    ['assignment', assignment],
-    ['assessment', assessment],
-  ] as const;
+export function getSafeDatabaseTarget(databaseUrl: string | undefined, environment: string): SafeDatabaseTarget {
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required');
+  }
 
-  const missing: string[] = requiredRecords.filter(([, record]) => record === null).map(([label]) => label);
+  let url: URL;
+  try {
+    url = new URL(databaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL URL');
+  }
+  if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+    throw new Error('DATABASE_URL must use the PostgreSQL protocol');
+  }
+
+  const database = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  if (!url.hostname || !database) {
+    throw new Error('DATABASE_URL must include a host and database name');
+  }
+
+  return {
+    environment,
+    host: url.hostname,
+    port: url.port || '5432',
+    database,
+    schema: url.searchParams.get('schema') || 'public',
+  };
+}
+
+function assertSafeToApply(options: AdminDemoSeedOptions, target: SafeDatabaseTarget): void {
+  if (target.environment === 'production') {
+    throw new Error('Demo seed is disabled in production');
+  }
+  if (options.confirmedEnvironment !== target.environment) {
+    throw new Error(`Apply requires --confirm-environment=${target.environment}`);
+  }
+  if (options.confirmedDatabase !== target.database) {
+    throw new Error(`Apply requires --confirm-database=${target.database}`);
+  }
+}
+
+async function findMissingDemoData(prisma: Prisma.TransactionClient | PrismaClient): Promise<string[]> {
+  const ids = {
+    organization: '10000000-0000-4000-8000-000000000001',
+    admin: '10000000-0000-4000-8000-000000000011',
+    learner: '10000000-0000-4000-8000-000000000012',
+    course: '10000000-0000-4000-8000-000000000031',
+    lessonOne: '10000000-0000-4000-8000-000000000041',
+    lessonTwo: '10000000-0000-4000-8000-000000000042',
+    lessonThree: '10000000-0000-4000-8000-000000000043',
+    assignment: '10000000-0000-4000-8000-000000000061',
+    assessment: '10000000-0000-4000-8000-000000000081',
+  } as const;
+  const records = await Promise.all([
+    prisma.organization.findUnique({ where: { id: ids.organization }, select: { id: true } }),
+    prisma.user.findUnique({ where: { id: ids.admin }, select: { id: true } }),
+    prisma.user.findUnique({ where: { id: ids.learner }, select: { id: true } }),
+    prisma.course.findUnique({ where: { id: ids.course }, select: { id: true } }),
+    prisma.lesson.findUnique({ where: { id: ids.lessonOne }, select: { id: true } }),
+    prisma.lesson.findUnique({ where: { id: ids.lessonTwo }, select: { id: true } }),
+    prisma.lesson.findUnique({ where: { id: ids.lessonThree }, select: { id: true } }),
+    prisma.assignment.findUnique({ where: { id: ids.assignment }, select: { id: true } }),
+    prisma.assessment.findUnique({ where: { id: ids.assessment }, select: { id: true } }),
+  ]);
+  const labels = ['organization', 'admin user', 'learner user', 'course', 'lesson 1', 'lesson 2', 'lesson 3', 'assignment', 'assessment'];
+  const missing = labels.filter((_, index) => records[index] === null);
+  const questionCount = await prisma.assessmentQuestion.count({ where: { assessmentId: ids.assessment } });
   if (questionCount !== 5) {
     missing.push(`assessment questions (expected 5, found ${questionCount})`);
   }
-
   return missing;
 }
 
@@ -69,60 +135,48 @@ function sanitizeError(message: string): string {
     .trim();
 }
 
-async function runExistingSeed(): Promise<void> {
-  const seedPath = resolve(process.cwd(), 'prisma/seed.mjs');
-  await new Promise<void>((resolvePromise, rejectPromise) => {
-    const child = spawn(process.execPath, [seedPath], {
-      env: process.env,
-      stdio: ['ignore', 'ignore', 'pipe'],
-    });
-
-    let stderr = '';
-    child.stderr.setEncoding('utf8');
-    child.stderr.on('data', (chunk: string) => {
-      stderr += chunk;
-    });
-
-    child.on('error', rejectPromise);
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolvePromise();
-        return;
-      }
-      rejectPromise(new Error(sanitizeError(stderr || `Seed exited with code ${code ?? 'unknown'}`)));
-    });
-  });
+async function loadDemoSeed(): Promise<SeedDemo> {
+  const seedUrl = new URL('../../prisma/seed.mjs', import.meta.url).href;
+  const seedModule = await import(seedUrl) as DemoSeedModule;
+  return seedModule.seedDemo;
 }
 
-export async function runAdminDemoSeed(args: string[], prisma = new PrismaClient()): Promise<void> {
-  const { apply } = parseAdminDemoSeedArgs(args);
-
+export async function runAdminDemoSeed(
+  args: string[],
+  prisma = new PrismaClient(),
+  environment = process.env.NODE_ENV || 'development',
+  databaseUrl = process.env.DATABASE_URL,
+  seedDemo?: SeedDemo,
+): Promise<void> {
   try {
-    const missingBefore = await findMissingDemoData(prisma);
-    if (!apply) {
-      console.log(JSON.stringify({
-        mode: 'check',
-        status: missingBefore.length === 0 ? 'complete' : 'incomplete',
-        missing: missingBefore,
-      }));
+    const options = parseAdminDemoSeedArgs(args);
+    const target = getSafeDatabaseTarget(databaseUrl, environment);
+    console.log(JSON.stringify({ target, mode: options.apply ? 'apply' : 'dry-run' }));
 
-      if (missingBefore.length > 0) {
-        process.exitCode = 2;
-      }
+    if (target.environment === 'production') {
+      throw new Error('Demo seed is disabled in production');
+    }
+
+    const missingBefore = await findMissingDemoData(prisma);
+    if (!options.apply) {
+      console.log(JSON.stringify({ mode: 'dry-run', status: missingBefore.length === 0 ? 'complete' : 'incomplete', missing: missingBefore }));
       return;
     }
 
+    assertSafeToApply(options, target);
     if (missingBefore.length === 0) {
       console.log(JSON.stringify({ mode: 'apply', status: 'already-complete', missing: [] }));
       return;
     }
 
-    await runExistingSeed();
-    const missingAfter = await findMissingDemoData(prisma);
-    if (missingAfter.length > 0) {
-      throw new Error(`Demo seed verification failed: ${missingAfter.join(', ')}`);
-    }
-
+    const applySeed = seedDemo ?? await loadDemoSeed();
+    await prisma.$transaction(async (transaction) => {
+      await applySeed(transaction);
+      const missingAfter = await findMissingDemoData(transaction);
+      if (missingAfter.length > 0) {
+        throw new Error(`Demo seed verification failed: ${missingAfter.join(', ')}`);
+      }
+    }, { maxWait: TRANSACTION_TIMEOUT_MS, timeout: TRANSACTION_TIMEOUT_MS });
     console.log(JSON.stringify({ mode: 'apply', status: 'complete', restored: missingBefore }));
   } finally {
     await prisma.$disconnect();

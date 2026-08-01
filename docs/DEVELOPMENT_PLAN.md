@@ -2491,7 +2491,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 192 — Безопасный demo seed task 🔲
+## PR 192 — Безопасный demo seed task ✅
 
 **Проблема:** Ошибочный production DATABASE_URL может направить demo seed не туда.
 
