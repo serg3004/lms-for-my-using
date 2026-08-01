@@ -1009,6 +1009,7 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
 
   '@playwright/test@1.54.2':
+    resolution: {tarball: https://registry.npmjs.org/@playwright/test/-/test-1.54.2.tgz}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -3161,10 +3162,12 @@ packages:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
 
   playwright-core@1.54.2:
+    resolution: {tarball: https://registry.npmjs.org/playwright-core/-/playwright-core-1.54.2.tgz}
     engines: {node: '>=18'}
     hasBin: true
 
   playwright@1.54.2:
+    resolution: {tarball: https://registry.npmjs.org/playwright/-/playwright-1.54.2.tgz}
     engines: {node: '>=18'}
     hasBin: true
 
