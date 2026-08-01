@@ -42,7 +42,6 @@
   },
   "learner": {
     "navLink": "学习区",
-    "title": "学习区",
     "loading": "正在加载学习者资料...",
     "authRequired": "请登录以打开学习区。",
     "sessionExpired": "会话已过期。请重新登录。",
@@ -50,7 +49,27 @@
     "profileTitle": "资料",
     "name": "姓名",
     "email": "邮箱",
-    "organizationId": "组织 ID"
+    "organizationId": "组织 ID",
+    "dashboard": {
+      "greeting": "你好，{{name}}！",
+      "continueLearning": {
+        "title": "继续学习",
+        "empty": "还没有开始的课程。",
+        "lessonsProgress": "已完成 {{completed}}/{{total}} 课时",
+        "action": "继续"
+      },
+      "upcomingDeadlines": {
+        "title": "近期截止日期",
+        "empty": "暂无即将到来的截止日期。",
+        "dueLabel": "截止：{{date}}"
+      },
+      "recentActivity": {
+        "title": "最近动态",
+        "empty": "暂无动态。",
+        "lessonCompleted": "在《{{title}}》课程中完成了一节课",
+        "certificateIssued": "获得《{{title}}》课程证书"
+      }
+    }
   },
   "courses": {
     "navLink": "课程",
