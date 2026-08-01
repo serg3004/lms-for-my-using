@@ -52,7 +52,7 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3000/api/v1/health || exit 1
+  CMD wget -qO- http://localhost:3000/api/v1/health/ready || exit 1
 
 # prisma is in production dependencies so migrate deploy runs before startup
 CMD ["sh", "-c", "node node_modules/.bin/prisma migrate deploy && node dist/main.js"]

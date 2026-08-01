@@ -2475,7 +2475,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 191 — Readiness и dependency health 🔲
+## PR 191 — Readiness и dependency health ✅
 
 **Проблема:** Liveness не доказывает готовность PostgreSQL/Redis/S3; security scans не являются обязательным gate.
 

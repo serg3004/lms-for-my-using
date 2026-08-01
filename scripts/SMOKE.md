@@ -67,6 +67,6 @@ TLS termination and application routing are configured.
 ## Optional environment variables
 
 ```bash
-export HEALTH_PATH="/api/v1/health"
+export HEALTH_PATH="/api/v1/health/ready"
 export CURL_TIMEOUT_SECONDS="15"
 ```

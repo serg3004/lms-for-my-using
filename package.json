@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "security:waivers": "node scripts/validate-security-waivers.mjs",
     "test:integration:db:local": "bash scripts/test-api-database.sh"
   },
   "devDependencies": {

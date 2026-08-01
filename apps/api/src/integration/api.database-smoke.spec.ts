@@ -151,9 +151,11 @@ describe('API database smoke', () => {
   it('serves health, authenticates a real user, and returns the current user', async () => {
     const healthResponse = await fetch(`${baseUrl}/api/v1/health`);
     expect(healthResponse.status).toBe(200);
-    expect(unwrapResponse(await readJson<{ status: string; db: string }>(healthResponse))).toEqual({
+    expect(unwrapResponse(await readJson<{ status: string; db: string; redis: string; storage: string }>(healthResponse))).toEqual({
       status: 'ok',
       db: 'ok',
+      redis: 'disabled',
+      storage: 'disabled',
     });
 
     const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {

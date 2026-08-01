@@ -69,6 +69,9 @@ jobs:
       - name: Dependency audit
         run: pnpm audit --audit-level high
 
+      - name: Validate security waivers
+        run: node scripts/validate-security-waivers.mjs security-waivers.json "$RUNNER_TEMP/trivyignore"
+
       - name: Lint
         run: pnpm --recursive lint
 
@@ -98,3 +101,23 @@ jobs:
 
       - name: Build Web Docker image
         run: scripts/docker-build-retry.sh -f apps/web/Dockerfile -t lms-web:ci .
+
+      - name: Scan API Docker image
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: lms-api:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          trivyignores: ${{ runner.temp }}/trivyignore
+
+      - name: Scan Web Docker image
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: lms-web:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          trivyignores: ${{ runner.temp }}/trivyignore

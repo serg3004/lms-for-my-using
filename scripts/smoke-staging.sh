@@ -11,14 +11,14 @@
 #   STAGING_SMOKE_FOREIGN_USER_ID=<user in another organization>
 #
 # Optional:
-#   HEALTH_PATH=/api/v1/health
+#   HEALTH_PATH=/api/v1/health/ready
 #   CURL_TIMEOUT_SECONDS=15
 
 set -euo pipefail
 
 API_URL="${API_URL:?API_URL is required}"
 WEB_URL="${WEB_URL:?WEB_URL is required}"
-HEALTH_PATH="${HEALTH_PATH:-/api/v1/health}"
+HEALTH_PATH="${HEALTH_PATH:-/api/v1/health/ready}"
 CURL_TIMEOUT_SECONDS="${CURL_TIMEOUT_SECONDS:-15}"
 STAGING_SMOKE_ORGANIZATION="${STAGING_SMOKE_ORGANIZATION:?STAGING_SMOKE_ORGANIZATION is required}"
 for role in ADMIN MANAGER INSTRUCTOR LEARNER; do

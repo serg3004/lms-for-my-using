@@ -1,5 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CopyObjectCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListMultipartUploadsCommand, ListObjectsV2Command, PutObjectCommand, S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
+import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CopyObjectCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListMultipartUploadsCommand, ListObjectsV2Command, PutObjectCommand, S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 
@@ -48,6 +48,12 @@ export class UploadService {
 
   isConfigured(): boolean {
     return this.s3 !== null;
+  }
+
+  async checkReadiness(): Promise<'ok' | 'disabled'> {
+    if (!this.s3 || !this.bucket) return 'disabled';
+    await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }));
+    return 'ok';
   }
 
   async uploadMaterialFile(

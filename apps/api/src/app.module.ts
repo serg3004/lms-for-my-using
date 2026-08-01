@@ -33,7 +33,7 @@ import { UsersModule } from './modules/users/users.module.js';
             ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
             : undefined,
         redact: { paths: PINO_REDACT_PATHS, censor: '[REDACTED]' },
-        autoLogging: { ignore: (req) => req.url === '/api/v1/health' },
+        autoLogging: { ignore: (req) => req.url?.startsWith('/api/v1/health') ?? false },
       },
     }),
     DatabaseModule,

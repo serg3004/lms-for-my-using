@@ -17,6 +17,8 @@ import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { createSecurityHeadersMiddleware } from '../common/middleware/api-hardening.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
+import { RedisHealthService } from '../modules/health/redis-health.service.js';
+import { UploadService } from '../modules/upload/upload.service.js';
 
 const ALLOWED_ORIGIN = 'http://localhost:5173';
 const BLOCKED_ORIGIN = 'http://evil.example.com';
@@ -89,6 +91,8 @@ describe('Security audit', () => {
       providers: [
         AuditAuthGuard,
         { provide: PrismaService, useValue: { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) } },
+        { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
+        { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
       ],
     }).compile();
 
