@@ -9,22 +9,6 @@
     "logout": "Выйти",
     "brandSub": "Учебная платформа"
   },
-  "login": {
-    "navLink": "Sign in",
-    "title": "Sign in",
-    "subtitle": "Use your organization, email, and password to get an access token.",
-    "organizationId": "Organization ID",
-    "email": "Email",
-    "password": "Password",
-    "submit": "Sign in",
-    "submitting": "Signing in...",
-    "success": "Signed in. Opening learner area.",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "errors": {
-      "generic": "Unable to sign in. Try again."
-    }
-  },
   "notFound": {
     "title": "Страница не найдена",
     "description": "Возможно, адрес изменился, страница была удалена или ссылка указана неверно.",

@@ -9,20 +9,6 @@
     "logout": "退出",
     "brandSub": "学习平台"
   },
-  "login": {
-    "navLink": "登录",
-    "title": "登录",
-    "subtitle": "输入组织、邮箱和密码以获取 access token。",
-    "organizationId": "组织 ID",
-    "email": "邮箱",
-    "password": "密码",
-    "submit": "登录",
-    "submitting": "正在登录...",
-    "success": "登录成功。正在打开学习区。",
-    "errors": {
-      "generic": "无法登录。请重试。"
-    }
-  },
   "notFound": {
     "title": "页面未找到",
     "description": "地址可能已更改、页面已删除，或链接不正确。",

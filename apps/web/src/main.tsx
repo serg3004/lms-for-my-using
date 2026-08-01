@@ -9,7 +9,6 @@ import './i18n/index.js';
 import { applyThemeSettings, getStoredThemeSettings } from './shared/theme.js';
 import './styles/global.css';
 import './styles/ui.css';
-import './styles/login-prototype.css';
 import './styles/login-prototype-final-alignment.css';
 import './styles/login-remember-checkbox-fix.css';
 

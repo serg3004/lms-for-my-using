@@ -9,20 +9,6 @@
     "logout": "Log out",
     "brandSub": "Learning Platform"
   },
-  "login": {
-    "navLink": "Sign in",
-    "title": "Sign in",
-    "subtitle": "Use your organization, email, and password to get an access token.",
-    "organizationId": "Organization ID",
-    "email": "Email",
-    "password": "Password",
-    "submit": "Sign in",
-    "submitting": "Signing in...",
-    "success": "Signed in. Opening learner area.",
-    "errors": {
-      "generic": "Unable to sign in. Try again."
-    }
-  },
   "notFound": {
     "title": "Page not found",
     "description": "The address may have changed, the page may have been removed, or the link may be incorrect.",
