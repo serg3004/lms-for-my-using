@@ -23,6 +23,12 @@
       "generic": "无法登录。请重试。"
     }
   },
+  "notFound": {
+    "title": "页面未找到",
+    "description": "地址可能已更改、页面已删除，或链接不正确。",
+    "homeLink": "返回首页",
+    "backLink": "返回"
+  },
   "learner": {
     "navLink": "学习区",
     "title": "学习区",
