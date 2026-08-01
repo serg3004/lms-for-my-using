@@ -8,10 +8,12 @@ import { CourseMaterialsService } from './course-materials.service.js';
 import { MaterialMalwareScanController } from './material-malware-scan.controller.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import { MaterialStorageLifecycleService } from './material-storage-lifecycle.service.js';
+import { MaterialMultipartUploadService } from './material-multipart-upload.service.js';
 
 @Module({
   imports: [AuthModule, CourseAccessModule, UploadModule],
   controllers: [CourseMaterialsController, MaterialMalwareScanController],
-  providers: [CourseMaterialsService, MaterialMalwareScanService, MaterialStorageLifecycleService],
+  providers: [CourseMaterialsService, MaterialMalwareScanService, MaterialStorageLifecycleService, MaterialMultipartUploadService],
+  exports: [MaterialMultipartUploadService],
 })
 export class CourseMaterialsModule {}

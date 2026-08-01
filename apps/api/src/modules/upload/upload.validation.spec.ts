@@ -7,6 +7,7 @@ import {
   MAX_ZIP_UNCOMPRESSED_BYTES,
   validateFileName,
   validateUploadFile,
+  validateUploadMetadata,
 } from './upload.validation';
 
 function createFile(overrides: Partial<Express.Multer.File>): Express.Multer.File {
@@ -121,6 +122,17 @@ describe('validateFileName', () => {
 
   it('rejects a file name exceeding 255 bytes', () => {
     expect(() => validateFileName('a'.repeat(256))).toThrow(BadRequestException);
+  });
+});
+
+describe('validateUploadMetadata', () => {
+  it('validates a direct-to-storage upload without requiring a file buffer', () => {
+    expect(() => validateUploadMetadata('video.mp4', 'video/mp4', 1024)).not.toThrow();
+  });
+
+  it('rejects unsupported types and invalid sizes before multipart initiation', () => {
+    expect(() => validateUploadMetadata('page.html', 'text/html', 1024)).toThrow(BadRequestException);
+    expect(() => validateUploadMetadata('video.mp4', 'video/mp4', 0)).toThrow(BadRequestException);
   });
 });
 

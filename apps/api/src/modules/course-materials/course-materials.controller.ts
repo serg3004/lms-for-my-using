@@ -30,8 +30,10 @@ import {
 } from './course-materials.schemas.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 import { UploadService } from '../upload/upload.service.js';
-import { MAX_UPLOAD_FILE_SIZE_BYTES, validateUploadFile } from '../upload/upload.validation.js';
+import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/upload.validation.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
+import { MaterialMultipartUploadService } from './material-multipart-upload.service.js';
+import { completeMultipartUploadSchema, initiateMultipartUploadSchema } from './multipart-upload.schemas.js';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
@@ -40,7 +42,29 @@ export class CourseMaterialsController {
     private readonly courseMaterialsService: CourseMaterialsService,
     private readonly uploadService: UploadService,
     private readonly malwareScans: MaterialMalwareScanService,
+    private readonly multipartUploads: MaterialMultipartUploadService,
   ) {}
+
+  @Post('materials/:id/file/multipart')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  initiateMultipartUpload(@Param('id') materialId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.multipartUploads.initiate(materialId, request.currentUser!.organizationId, initiateMultipartUploadSchema.parse(body));
+  }
+
+  @Post('materials/:id/file/multipart/:uploadId/complete')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  completeMultipartUpload(@Param('id') materialId: string, @Param('uploadId') uploadId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.multipartUploads.complete(materialId, request.currentUser!.organizationId, uploadId, completeMultipartUploadSchema.parse(body));
+  }
+
+  @Delete('materials/:id/file/multipart/:uploadId')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  abortMultipartUpload(@Param('id') materialId: string, @Param('uploadId') uploadId: string, @Req() request: AuthenticatedRequest) {
+    return this.multipartUploads.abort(materialId, request.currentUser!.organizationId, uploadId);
+  }
 
   @Get('courses/:courseId/materials')
   @Roles(...rolePolicies.courseMaterialsRead)
@@ -80,7 +104,7 @@ export class CourseMaterialsController {
   @Roles(...rolePolicies.courseMaterialsCreate)
   @CourseScope('param', 'id', 'material')
   @UseInterceptors(
-    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_UPLOAD_FILE_SIZE_BYTES } }),
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
   )
   async uploadMaterialFile(
     @Param('id') materialId: string,
