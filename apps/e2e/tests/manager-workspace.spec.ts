@@ -6,6 +6,10 @@ const organization = 'demo-company';
 const password = 'Demo1234!';
 const outOfTeamUserId = '10000000-0000-4000-8000-000000000011';
 
+function isApiPath(url: string, pathname: string) {
+  return new URL(url).pathname === `/api/v1${pathname}`;
+}
+
 async function loginAsManager(page: Page) {
   await page.goto('/login');
   await page.locator('input[name="organizationId"]').fill(organization);
@@ -27,10 +31,12 @@ test.describe('manager workspace', () => {
     await loginAsManager(page);
 
     const assignmentsResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/v1/assignments?') && response.status() === 200,
+      (response) => isApiPath(response.url(), '/assignments'),
     );
     await page.reload();
-    const assignments = await (await assignmentsResponsePromise).json() as {
+    const assignmentsResponse = await assignmentsResponsePromise;
+    expect(assignmentsResponse.status()).toBe(200);
+    const assignments = await assignmentsResponse.json() as {
       items: Array<{ status: string }>;
       total: number;
     };
@@ -50,10 +56,12 @@ test.describe('manager workspace', () => {
     await page.setViewportSize({ width: 375, height: 812 });
 
     const usersResponsePromise = page.waitForResponse(
-      (response) => response.url().includes('/api/v1/users?') && response.status() === 200,
+      (response) => isApiPath(response.url(), '/users'),
     );
     await page.goto('/manager/team');
-    const users = await (await usersResponsePromise).json() as {
+    const usersResponse = await usersResponsePromise;
+    expect(usersResponse.status()).toBe(200);
+    const users = await usersResponse.json() as {
       items: Array<{ email: string }>;
       total: number;
     };
@@ -104,7 +112,7 @@ test.describe('manager workspace', () => {
 
   test('renders the empty team state', async ({ page }) => {
     await loginAsManager(page);
-    const emptyPage = JSON.stringify({ items: [], page: 1, pageSize: 200, total: 0 });
+    const emptyPage = JSON.stringify({ items: [], page: 1, pageSize: 100, total: 0 });
     await page.route('**/api/v1/users?*', async (route) => {
       await route.fulfill({ status: 200, contentType: 'application/json', body: emptyPage });
     });

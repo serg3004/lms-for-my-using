@@ -41,8 +41,8 @@ export function ManagerTeamPage() {
       try {
         const [currentUser, usersPage, progressPage] = await Promise.all([
           getCurrentUser(),
-          listUsers({ pageSize: 200 }),
-          listProgress({ pageSize: 200 }),
+          listUsers({ pageSize: 100 }),
+          listProgress({ pageSize: 100 }),
         ]);
 
         if (!isMounted) return;
