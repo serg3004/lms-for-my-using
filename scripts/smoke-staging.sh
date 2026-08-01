@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Verifies deployed API, Web, HTTPS policies, and the cookie auth lifecycle.
+# Verifies deployed API, Web, HTTPS policies, and role-scoped access.
 #
 # Required:
 #   API_URL=https://api.example.com
 #   WEB_URL=https://app.example.com
 #   STAGING_SMOKE_ORGANIZATION=<organization slug or UUID>
-#   STAGING_SMOKE_EMAIL=<dedicated smoke user email>
-#   STAGING_SMOKE_PASSWORD=<dedicated smoke user password>
+#   STAGING_SMOKE_{ADMIN,MANAGER,INSTRUCTOR,LEARNER}_{EMAIL,PASSWORD}=...
+#   STAGING_SMOKE_OUT_OF_TEAM_USER_ID=<same-tenant user outside the manager's teams>
+#   STAGING_SMOKE_UNASSIGNED_COURSE_ID=<same-tenant course not assigned to the instructor>
+#   STAGING_SMOKE_FOREIGN_USER_ID=<user in another organization>
 #
 # Optional:
 #   HEALTH_PATH=/api/v1/health
@@ -19,17 +21,25 @@ WEB_URL="${WEB_URL:?WEB_URL is required}"
 HEALTH_PATH="${HEALTH_PATH:-/api/v1/health}"
 CURL_TIMEOUT_SECONDS="${CURL_TIMEOUT_SECONDS:-15}"
 STAGING_SMOKE_ORGANIZATION="${STAGING_SMOKE_ORGANIZATION:?STAGING_SMOKE_ORGANIZATION is required}"
-STAGING_SMOKE_EMAIL="${STAGING_SMOKE_EMAIL:?STAGING_SMOKE_EMAIL is required}"
-STAGING_SMOKE_PASSWORD="${STAGING_SMOKE_PASSWORD:?STAGING_SMOKE_PASSWORD is required}"
+for role in ADMIN MANAGER INSTRUCTOR LEARNER; do
+  email_variable="STAGING_SMOKE_${role}_EMAIL"
+  password_variable="STAGING_SMOKE_${role}_PASSWORD"
+  : "${!email_variable:?${email_variable} is required}"
+  : "${!password_variable:?${password_variable} is required}"
+done
+STAGING_SMOKE_OUT_OF_TEAM_USER_ID="${STAGING_SMOKE_OUT_OF_TEAM_USER_ID:?STAGING_SMOKE_OUT_OF_TEAM_USER_ID is required}"
+STAGING_SMOKE_UNASSIGNED_COURSE_ID="${STAGING_SMOKE_UNASSIGNED_COURSE_ID:?STAGING_SMOKE_UNASSIGNED_COURSE_ID is required}"
+STAGING_SMOKE_FOREIGN_USER_ID="${STAGING_SMOKE_FOREIGN_USER_ID:?STAGING_SMOKE_FOREIGN_USER_ID is required}"
 
 API_URL="${API_URL%/}"
 WEB_URL="${WEB_URL%/}"
-COOKIE_JAR="$(mktemp)"
-RESPONSE_BODY="$(mktemp)"
-LOGIN_BODY="$(mktemp)"
+TEMP_DIR="$(mktemp -d)"
+COOKIE_JAR=
+RESPONSE_BODY="${TEMP_DIR}/response.json"
+LOGIN_BODY="${TEMP_DIR}/login.json"
 
 cleanup() {
-  rm -f "$COOKIE_JAR" "$RESPONSE_BODY" "$LOGIN_BODY"
+  rm -rf "$TEMP_DIR"
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -82,33 +92,70 @@ csrf_token() {
   awk '$0 !~ /^#/ && $6 == "lms_csrf_token" { value = $7 } END { print value }' "$COOKIE_JAR"
 }
 
-check_authenticated_session() {
-  local csrf
-  node -e 'process.stdout.write(JSON.stringify({organizationId: process.env.STAGING_SMOKE_ORGANIZATION, email: process.env.STAGING_SMOKE_EMAIL, password: process.env.STAGING_SMOKE_PASSWORD}))' >"$LOGIN_BODY"
+assert_current_role() {
+  local expected_role="$1"
+  EXPECTED_ROLE="$expected_role" RESPONSE_BODY="$RESPONSE_BODY" node <<'NODE'
+const fs = require('node:fs');
+const user = JSON.parse(fs.readFileSync(process.env.RESPONSE_BODY, 'utf8'));
+if (!Array.isArray(user.roles) || !user.roles.includes(process.env.EXPECTED_ROLE)) {
+  process.stderr.write(`Current user does not have expected role ${process.env.EXPECTED_ROLE}\n`);
+  process.exit(1);
+}
+NODE
+}
 
-  auth_request "Login" POST "/api/v1/auth/login" 201 \
+check_role() {
+  local role="$1"
+  local workspace_path="$2"
+  local email_variable="STAGING_SMOKE_${role^^}_EMAIL"
+  local password_variable="STAGING_SMOKE_${role^^}_PASSWORD"
+  local csrf
+
+  COOKIE_JAR="${TEMP_DIR}/${role}.cookies"
+  : >"$COOKIE_JAR"
+  STAGING_SMOKE_ROLE_EMAIL="${!email_variable}" \
+    STAGING_SMOKE_ROLE_PASSWORD="${!password_variable}" \
+    node -e 'process.stdout.write(JSON.stringify({organizationId: process.env.STAGING_SMOKE_ORGANIZATION, email: process.env.STAGING_SMOKE_ROLE_EMAIL, password: process.env.STAGING_SMOKE_ROLE_PASSWORD}))' >"$LOGIN_BODY"
+
+  auth_request "${role} login" POST "/api/v1/auth/login" 201 \
     --header "Content-Type: application/json" \
     --data-binary "@${LOGIN_BODY}"
-  auth_request "Current user" GET "/api/v1/auth/me" 200
-  auth_request "Refresh session" POST "/api/v1/auth/refresh" 201 \
-    --header "Content-Type: application/json" \
-    --data '{}'
+  auth_request "${role} current user" GET "/api/v1/auth/me" 200
+  assert_current_role "$role"
+  request "${role} workspace" "${WEB_URL}${workspace_path}"
+
+  case "$role" in
+    admin)
+      auth_request "admin users read" GET "/api/v1/users?pageSize=1" 200
+      auth_request "admin cross-organization isolation" GET "/api/v1/users/${STAGING_SMOKE_FOREIGN_USER_ID}" 404
+      ;;
+    manager)
+      auth_request "manager team read" GET "/api/v1/users?pageSize=1" 200
+      auth_request "manager out-of-team isolation" GET "/api/v1/users/${STAGING_SMOKE_OUT_OF_TEAM_USER_ID}" 404
+      auth_request "manager forbidden course creation" POST "/api/v1/courses" 403 \
+        --header "Content-Type: application/json" --data '{}'
+      ;;
+    instructor)
+      auth_request "instructor course read" GET "/api/v1/courses?pageSize=1" 200
+      auth_request "instructor unassigned-course isolation" GET "/api/v1/courses/${STAGING_SMOKE_UNASSIGNED_COURSE_ID}" 404
+      auth_request "instructor forbidden users API" GET "/api/v1/users?pageSize=1" 403
+      ;;
+    learner)
+      auth_request "learner course read" GET "/api/v1/courses?pageSize=1" 200
+      auth_request "learner forbidden users API" GET "/api/v1/users?pageSize=1" 403
+      ;;
+  esac
 
   csrf="$(csrf_token)"
   if [[ -z "$csrf" ]]; then
-    echo "Refresh session did not issue the CSRF cookie" >&2
+    echo "${role} login did not issue the CSRF cookie" >&2
     return 1
   fi
 
-  # Logout is the safe smoke mutation: it exercises CSRF without changing business data.
-  auth_request "CSRF rejection" POST "/api/v1/auth/logout" 403 \
-    --header "Content-Type: application/json" \
-    --data '{}'
-  auth_request "Logout" POST "/api/v1/auth/logout" 201 \
+  auth_request "${role} logout" POST "/api/v1/auth/logout" 201 \
     --header "Content-Type: application/json" \
     --header "x-csrf-token: ${csrf}" \
     --data '{}'
-  auth_request "Logged-out session" GET "/api/v1/auth/me" 401
 }
 
 require_https_url() {
@@ -225,6 +272,9 @@ check_security_headers "Web" "${WEB_URL}"
 check_security_headers "Web to API proxy" "${WEB_URL}${HEALTH_PATH}"
 check_http_redirect "API" "${API_URL}${HEALTH_PATH}"
 check_http_redirect "Web" "${WEB_URL}"
-check_authenticated_session
+check_role admin "/admin"
+check_role manager "/manager/dashboard"
+check_role instructor "/instructor/dashboard"
+check_role learner "/learn"
 
 echo "All staging smoke checks passed."
