@@ -42,7 +42,6 @@
   },
   "learner": {
     "navLink": "Оқушы кабинеті",
-    "title": "Оқушы кабинеті",
     "loading": "Оқушы профилі жүктелуде...",
     "authRequired": "Оқушы кабинетіне ашу үшін кіріңіз.",
     "sessionExpired": "Сессия аяқталды. Қайта кіріңіз.",
@@ -50,7 +49,27 @@
     "profileTitle": "Профиль",
     "name": "Аты",
     "email": "Email",
-    "organizationId": "Ұйым ID"
+    "organizationId": "Ұйым ID",
+    "dashboard": {
+      "greeting": "Сәлеметсіз бе, {{name}}!",
+      "continueLearning": {
+        "title": "Оқуды жалғастыру",
+        "empty": "Әзірге бастаған курс жоқ.",
+        "lessonsProgress": "{{total}} сабақтың {{completed}} аяқталды",
+        "action": "Жалғастыру"
+      },
+      "upcomingDeadlines": {
+        "title": "Жақын мерзімдер",
+        "empty": "Жақын мерзімдер жоқ.",
+        "dueLabel": "Мерзімі: {{date}}"
+      },
+      "recentActivity": {
+        "title": "Соңғы белсенділік",
+        "empty": "Әзірге белсенділік жоқ.",
+        "lessonCompleted": "«{{title}}» курсында сабақ өтілді",
+        "certificateIssued": "«{{title}}» курсы үшін сертификат алынды"
+      }
+    }
   },
   "courses": {
     "navLink": "Курстар",
