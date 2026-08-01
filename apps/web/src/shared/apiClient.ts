@@ -208,18 +208,48 @@ export async function uploadMaterialFileMultipart(
 }
 
 const REQUEST_TIMEOUT_MS = 15_000;
+let refreshRequest: Promise<boolean> | null = null;
+
+async function refreshAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = fetch(`${apiBasePath}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshRequest = null;
+      });
+  }
+
+  return refreshRequest;
+}
+
+async function executeApiRequest(path: string, init: RequestInit, signal: AbortSignal) {
+  return fetch(`${apiBasePath}${path}`, {
+    ...init,
+    credentials: init.credentials ?? 'same-origin',
+    headers: buildHeaders(init),
+    signal: init.signal ?? signal,
+  });
+}
 
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${apiBasePath}${path}`, {
-      ...init,
-      credentials: init.credentials ?? 'same-origin',
-      headers: buildHeaders(init),
-      signal: init.signal ?? controller.signal,
-    });
+    let response = await executeApiRequest(path, init, controller.signal);
+
+    if (response.status === 401 && path !== '/auth/login' && path !== '/auth/refresh') {
+      const refreshed = await refreshAccessToken();
+
+      if (refreshed) {
+        response = await executeApiRequest(path, init, controller.signal);
+      }
+    }
+
     clearTimeout(timeoutId);
     const body = await parseJsonResponse(response);
 

@@ -2530,7 +2530,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 194 — Login и role redirect E2E 🔲
+## PR 194 — Login и role redirect E2E ✅
 
 **Проблема:** Role-based redirect не проверен реальным браузером.
 

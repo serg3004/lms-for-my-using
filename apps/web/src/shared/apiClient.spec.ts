@@ -182,4 +182,47 @@ describe('apiRequest', () => {
 
     await expect(apiRequest<{ ok: boolean }>('/health')).resolves.toEqual({ ok: true });
   });
+
+  it('refreshes an expired access cookie and retries the original request once', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accessToken: 'renewed' }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'user-1' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(apiRequest<{ id: string }>('/auth/me')).resolves.toEqual({ id: 'user-1' });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/api/v1/auth/me',
+      '/api/v1/auth/refresh',
+      '/api/v1/auth/me',
+    ]);
+  });
+
+  it('shares one refresh request between concurrent authentication failures', async () => {
+    let resolveRefresh!: (response: Response) => void;
+    const refreshResponse = new Promise<Response>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const requestCounts = new Map<string, number>();
+    const fetchMock = vi.fn<typeof fetch>(async (url): Promise<Response> => {
+      if (url === '/api/v1/auth/refresh') return refreshResponse;
+      const requestUrl = String(url);
+      const callsForUrl = (requestCounts.get(requestUrl) ?? 0) + 1;
+      requestCounts.set(requestUrl, callsForUrl);
+      return callsForUrl === 1
+        ? new Response(null, { status: 401 })
+        : new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const requests = [apiRequest('/one'), apiRequest('/two')];
+    await vi.waitFor(() => {
+      expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1);
+    });
+    resolveRefresh(new Response(null, { status: 201 }));
+
+    await expect(Promise.all(requests)).resolves.toEqual([{ ok: true }, { ok: true }]);
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1);
+  });
 });

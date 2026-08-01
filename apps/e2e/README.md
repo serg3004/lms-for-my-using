@@ -7,7 +7,9 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-Playwright starts the API and Vite development servers automatically. A local PostgreSQL database matching `DATABASE_URL` must be available and migrated. Existing local servers are reused; CI always starts clean server processes.
+Playwright builds the API, runs the guarded `admin:demo-seed` task with confirmations derived from the non-production `NODE_ENV` and parsed `DATABASE_URL`, and then starts the API and Vite development servers. A local PostgreSQL database matching `DATABASE_URL` must be available and migrated. Existing local servers are reused; when reusing them, apply the guarded seed as documented in `docs/ADMIN_DEMO_SEED.md` first. CI always starts clean server processes.
+
+The login suite exercises the real form, development proxy, API cookies, role guards, and refresh-session rotation for the four demo roles. Keep the demo identities test-only and never replace them with production credentials.
 
 ## Isolation and artifact policy
 

@@ -52,8 +52,8 @@ describe('getLoginRedirectPath', () => {
     expect(getLoginRedirectPath(null, { roles: ['manager'] })).toBe('/manager/dashboard');
   });
 
-  it('returns /learn when manager also has admin role', () => {
-    expect(getLoginRedirectPath(null, { roles: ['manager', 'admin'] })).toBe('/learn');
+  it('prioritizes the admin workspace for users with the admin role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['manager', 'admin'] })).toBe('/admin');
   });
 
   it('returns from path when provided', () => {
@@ -64,7 +64,7 @@ describe('getLoginRedirectPath', () => {
     expect(getLoginRedirectPath(null, { roles: ['instructor'] })).toBe('/instructor/dashboard');
   });
 
-  it('returns /learn when instructor also has admin role', () => {
-    expect(getLoginRedirectPath(null, { roles: ['instructor', 'admin'] })).toBe('/learn');
+  it('returns /admin when instructor also has admin role', () => {
+    expect(getLoginRedirectPath(null, { roles: ['instructor', 'admin'] })).toBe('/admin');
   });
 });

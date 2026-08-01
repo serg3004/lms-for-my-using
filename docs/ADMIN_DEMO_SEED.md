@@ -28,7 +28,7 @@ both exactly:
 ```bash
 DATABASE_URL='postgresql://user:password@localhost:5432/lms_dev' \
   NODE_ENV=development \
-  pnpm --filter @lms/api admin:demo-seed -- \
+  pnpm --filter @lms/api admin:demo-seed \
     --apply \
     --confirm-environment=development \
     --confirm-database=lms_dev
