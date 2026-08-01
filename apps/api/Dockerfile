@@ -45,7 +45,11 @@ COPY --from=deployer /standalone/package.json ./package.json
 COPY --from=builder  /app/apps/api/dist ./dist
 COPY --from=builder  /app/apps/api/prisma ./prisma
 
-RUN node node_modules/.bin/prisma generate
+# npm is only build tooling; keeping it in the runtime image adds its
+# dependency tree and an unnecessary package-installation surface.
+RUN node node_modules/.bin/prisma generate && \
+    rm -rf /usr/local/lib/node_modules/npm && \
+    rm -f /usr/local/bin/npm /usr/local/bin/npx
 
 USER lms
 ENV NODE_ENV=production
