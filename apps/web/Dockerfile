@@ -24,7 +24,11 @@ WORKDIR /app/apps/web
 RUN pnpm run build
 
 # ---- Runner: nginx serving static files ----
-FROM nginx:1.27-alpine AS runner
+FROM nginx:stable-alpine AS runner
+
+# Refresh base-image packages so fixed Alpine security updates are present even
+# when the upstream nginx tag has not yet been rebuilt.
+RUN apk upgrade --no-cache
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/nginx.conf /etc/nginx/templates/default.conf.template
