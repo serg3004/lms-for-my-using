@@ -10,6 +10,7 @@ import { applyThemeSettings, getStoredThemeSettings } from './shared/theme.js';
 import './styles/global.css';
 import './styles/ui.css';
 import './styles/login-prototype.css';
+import './styles/login-prototype-adjustments.css';
 
 applyThemeSettings(getStoredThemeSettings());
 
