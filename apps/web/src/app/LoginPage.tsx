@@ -69,12 +69,15 @@ export function getLoginRedirectPath(locationState: unknown, user?: { roles: str
   if (typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//')) {
     return fromPath;
   }
+
   if (user?.roles.includes('instructor') && !user.roles.includes('admin')) {
     return '/instructor/dashboard';
   }
+
   if (user?.roles.includes('manager') && !user.roles.includes('admin') && !user.roles.includes('instructor')) {
     return '/manager/dashboard';
   }
+
   return '/learn';
 }
 
@@ -90,7 +93,7 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== nul);
+  const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== null);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
 
   const currentLocale = ((i18n.resolvedLanguage ?? i18n.language).split('-')[0] || 'ru') as LoginLocale;
@@ -166,7 +169,7 @@ export function LoginPage() {
 
       if (rememberMe) {
         localStorage.setItem(
-          REMEMBEREED_LOGIN_KEY,
+          REMEMBERED_LOGIN_KEY,
           JSON.stringify({
             organizationId: formState.organizationId.trim(),
             email: formState.email.trim(),
