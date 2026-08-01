@@ -23,6 +23,12 @@
       "generic": "Unable to sign in. Try again."
     }
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The address may have changed, the page may have been removed, or the link may be incorrect.",
+    "homeLink": "Go to dashboard",
+    "backLink": "Go back"
+  },
   "learner": {
     "navLink": "Learner area",
     "title": "Learner area",

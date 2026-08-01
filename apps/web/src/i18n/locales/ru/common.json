@@ -25,6 +25,12 @@
       "generic": "Unable to sign in. Try again."
     }
   },
+  "notFound": {
+    "title": "Страница не найдена",
+    "description": "Возможно, адрес изменился, страница была удалена или ссылка указана неверно.",
+    "homeLink": "На главную",
+    "backLink": "Назад"
+  },
   "learner": {
     "navLink": "Кабинет ученика",
     "title": "Learner area",
