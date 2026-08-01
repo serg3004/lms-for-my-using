@@ -8,6 +8,7 @@
 2. Создать ветку: `git checkout -b claude/название-задачи`
 3. Прочитать релевантные файлы — не делать ничего по памяти
 4. Найти похожие паттерны в проекте — не изобретать то что уже есть
+5. **Если задача UI/фронтенд** — сначала прочитать прототип: `docs/lms-ui-prototypes-complete/<раздел>/<страница>.html`. Реализовывать точно по прототипу, не придумывать.
 
 ---
 
@@ -65,6 +66,8 @@
 - Добавлять код/функции которые не были запрошены
 - Делать предположения вместо того чтобы прочитать реальный файл
 - Использовать `gh` без проверки что он установлен (`where gh`)
+- **Использовать PowerShell** — только Bash. PowerShell вызывает прерывания.
+- **Делать UI без чтения прототипа** — всегда читать HTML-прототип перед реализацией.
 
 ---
 
@@ -85,7 +88,9 @@
 - **API:** NestJS + Prisma + PostgreSQL (`apps/api`)
 - **Web:** React 19 + Vite + TypeScript (`apps/web`)
 - **Деплой:** Railway (web nginx, api NestJS, PostgreSQL)
-- **Тесты API:** Jest (`pnpm --filter api test`)
-- **Тесты Web:** Vitest (`pnpm --filter web test`)
-- **Typecheck:** `pnpm typecheck`
-- **Lint:** `pnpm lint`
+- **Тесты Web:** `node /c/Users/Computer/AppData/Local/node/corepack/v1/pnpm/9.15.0/bin/pnpm.cjs --dir "D:/LMS fo my" --filter web test:coverage`
+- **Lint Web:** `node /c/Users/Computer/AppData/Local/node/corepack/v1/pnpm/9.15.0/bin/pnpm.cjs --dir "D:/LMS fo my" --filter web lint`
+- **Typecheck Web:** `node /c/Users/Computer/AppData/Local/node/corepack/v1/pnpm/9.15.0/bin/pnpm.cjs --dir "D:/LMS fo my" --filter web typecheck`
+- **Прототипы UI:** `docs/lms-ui-prototypes-complete/learner/` — читать перед любой UI-задачей
+- **Живой сайт:** https://web-production-b1f01.up.railway.app (деплоится с `main`)
+- **Демо логин:** org=`10000000-0000-4000-8000-000000000001`, email=`learner@demo.com`, пароль=`Demo1234!`
