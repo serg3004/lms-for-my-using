@@ -2513,7 +2513,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза E — Browser E2E, адаптивность и accessibility
 
-## PR 193 — Browser E2E foundation 🔲
+## PR 193 — Browser E2E foundation ✅
 
 **Проблема:** Unit/render tests не проверяют cookies, browser navigation, proxy и history.
 

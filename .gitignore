@@ -22,6 +22,11 @@ lib-cov
 coverage
 *.lcov
 
+# Playwright output can contain page content and test-only session data.
+playwright-report/
+test-results/
+apps/e2e/.auth/
+
 # nyc test coverage
 .nyc_output
 

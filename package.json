@@ -9,10 +9,12 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:e2e": "playwright test --config apps/e2e/playwright.config.ts",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
     "test:integration:db:local": "bash scripts/test-api-database.sh"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "@eslint/js": "^10.0.1",
     "globals": "^17.8.0",
     "turbo": "^2.10.7",
