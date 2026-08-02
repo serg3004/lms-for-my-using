@@ -2627,7 +2627,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 200 — Декомпозиция assessment builder 🔲
+## PR 200 — Декомпозиция assessment builder ✅
 
 **Проблема:** Крупная страница смешивает state, validation, API и presentation.
 
