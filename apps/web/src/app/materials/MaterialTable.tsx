@@ -1,7 +1,6 @@
 import type { TFunction } from 'i18next';
-
 import { AdminStatusSelect } from '../../shared/AdminStatusSelect.js';
-import { EmptyState, StatusBadge } from '../../shared/ui.js';
+import { DataTable, StatusBadge, type Column } from '../../shared/ui.js';
 import type { MaterialStatus } from './model.js';
 
 export type MaterialRow = {
@@ -26,24 +25,19 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
   onStatusChange: (materialId: string, status: MaterialStatus) => void;
   t: TFunction;
 }) {
-  if (materials.length === 0) {
-    return <EmptyState message={t('admin.materials.empty', 'No materials found for the selected course.')} />;
-  }
+  const columns: Column<MaterialRow>[] = [
+    { key: 'title', label: t('admin.materials.col.title', 'Title'), render: (m) => <a href={m.fileUrl} target="_blank" rel="noreferrer">{m.title}</a> },
+    { key: 'kind', label: t('admin.materials.col.kind', 'Kind'), render: (m) => <StatusBadge>{m.kind}</StatusBadge> },
+    { key: 'status', label: t('admin.materials.col.status', 'Status'), render: (m) => <AdminStatusSelect value={m.status} statuses={['active', 'archived']} onChange={(status) => onStatusChange(m.id, status)} /> },
+    { key: 'size', label: t('admin.materials.col.size', 'Size'), render: (m) => formatSize(m.sizeBytes, t('admin.materials.unknownSize', '—')) },
+    { key: 'actions', label: '', render: (m) => <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(m.id)}>{t('admin.materials.edit', 'Edit')}</button> },
+  ];
   return (
-    <table>
-      <thead><tr>
-        <th>{t('admin.materials.col.title', 'Title')}</th><th>{t('admin.materials.col.kind', 'Kind')}</th>
-        <th>{t('admin.materials.col.status', 'Status')}</th><th>{t('admin.materials.col.size', 'Size')}</th><th />
-      </tr></thead>
-      <tbody>{materials.map((material) => (
-        <tr key={material.id}>
-          <td><a href={material.fileUrl} target="_blank" rel="noreferrer">{material.title}</a></td>
-          <td><StatusBadge>{material.kind}</StatusBadge></td>
-          <td><AdminStatusSelect value={material.status} statuses={['active', 'archived']} onChange={(status) => onStatusChange(material.id, status)} /></td>
-          <td>{formatSize(material.sizeBytes, t('admin.materials.unknownSize', '—'))}</td>
-          <td><button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(material.id)}>{t('admin.materials.edit', 'Edit')}</button></td>
-        </tr>
-      ))}</tbody>
-    </table>
+    <DataTable
+      columns={columns}
+      rows={materials}
+      keyExtractor={(m) => m.id}
+      emptyMessage={t('admin.materials.empty', 'No materials found for the selected course.')}
+    />
   );
 }

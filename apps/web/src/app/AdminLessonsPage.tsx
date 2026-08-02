@@ -4,9 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { EmptyState, PageState } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
@@ -246,29 +246,24 @@ export function AdminLessonsPage() {
               <EmptyState message={t('admin.lessons.noCourses', 'Create a course before adding lessons.')} />
             ) : (
               <form className="admin-form" onSubmit={handleCreateLesson}>
-                <div className="admin-form__field">
-                  <label>{t('admin.lessons.course', 'Course')}</label>
-                  <select value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
+                <FormField id="lesson-create-course" label={t('admin.lessons.course', 'Course')}>
+                  <select id="lesson-create-course" value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
                     {loadState.courses.map((course) => (
                       <option key={course.id} value={course.id}>
                         {course.title}
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.lessons.lessonTitle', 'Lesson title')}</label>
-                  <input value={title} onChange={(event) => { setTitle(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
-                  {createErrors.title ? <p className="admin-form__error" role="alert">{createErrors.title}</p> : null}
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.lessons.order', 'Order')}</label>
-                  <input value={order} onChange={(event) => setOrder(event.target.value)} inputMode="numeric" />
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.lessons.description', 'Description')}</label>
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </div>
+                </FormField>
+                <FormField id="lesson-create-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={createErrors.title}>
+                  <input id="lesson-create-title" aria-describedby={createErrors.title ? 'lesson-create-title-error' : undefined} aria-invalid={Boolean(createErrors.title)} value={title} onChange={(event) => { setTitle(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+                </FormField>
+                <FormField id="lesson-create-order" label={t('admin.lessons.order', 'Order')}>
+                  <input id="lesson-create-order" value={order} onChange={(event) => setOrder(event.target.value)} inputMode="numeric" />
+                </FormField>
+                <FormField id="lesson-create-description" label={t('admin.lessons.description', 'Description')}>
+                  <textarea id="lesson-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
+                </FormField>
                 {submitState.status === 'error' ? (
                   <p className="admin-form__error" role="alert">
                     {submitState.message}
@@ -287,52 +282,34 @@ export function AdminLessonsPage() {
 
         <AdminCard>
             <h2>{t('admin.lessons.lessonsTitle', 'Lessons')}</h2>
-            {loadState.lessons.length === 0 ? (
-              <EmptyState message={t('admin.lessons.empty', 'No lessons found for the selected course.')} />
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>{t('admin.lessons.col.title', 'Title')}</th>
-                    <th>{t('admin.lessons.col.slug', 'Slug')}</th>
-                    <th>{t('admin.lessons.col.status', 'Status')}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadState.lessons.map((lesson) => (
-                    <tr key={lesson.id}>
-                      <td>{lesson.order}</td>
-                      <td>{lesson.title}</td>
-                      <td>{lesson.slug}</td>
-                      <td>
-                        <select
-                          className="admin-status-select"
-                          value={lesson.status}
-                          onChange={(event) => void handleUpdateStatus(lesson.id, event.target.value)}
-                        >
-                          {LESSON_STATUSES.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <button
-                          className="admin-btn admin-btn--sm admin-btn--secondary"
-                          type="button"
-                          onClick={() => openEditDialog(lesson)}
-                        >
-                          {t('admin.lessons.edit', 'Edit')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <DataTable<Lesson>
+              columns={[
+                { key: 'order', label: '#', render: (l) => l.order },
+                { key: 'title', label: t('admin.lessons.col.title', 'Title'), render: (l) => l.title },
+                { key: 'slug', label: t('admin.lessons.col.slug', 'Slug'), render: (l) => l.slug },
+                { key: 'status', label: t('admin.lessons.col.status', 'Status'), render: (l) => (
+                  <select
+                    className="admin-status-select"
+                    value={l.status}
+                    onChange={(event) => void handleUpdateStatus(l.id, event.target.value)}
+                  >
+                    {LESSON_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                )},
+                { key: 'actions', label: '', render: (l) => (
+                  <button
+                    className="admin-btn admin-btn--sm admin-btn--secondary"
+                    type="button"
+                    onClick={() => openEditDialog(l)}
+                  >
+                    {t('admin.lessons.edit', 'Edit')}
+                  </button>
+                )},
+              ] satisfies Column<Lesson>[]}
+              rows={loadState.lessons}
+              keyExtractor={(l) => l.id}
+              emptyMessage={t('admin.lessons.empty', 'No lessons found for the selected course.')}
+            />
         </AdminCard>
       </section>
 
@@ -349,33 +326,24 @@ export function AdminLessonsPage() {
           </button>
         </header>
         <form className="admin-form" onSubmit={handleUpdateLesson}>
-          <div className="admin-form__field">
-            <label>{t('admin.lessons.lessonTitle', 'Lesson title')}</label>
-            <input value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
-            {editErrors.title ? <p className="admin-form__error" role="alert">{editErrors.title}</p> : null}
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.lessons.order', 'Order')}</label>
-            <input value={editOrder} onChange={(event) => setEditOrder(event.target.value)} inputMode="numeric" />
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.lessons.col.status', 'Status')}</label>
-            <select value={editStatus} onChange={(event) => setEditStatus(event.target.value as LessonStatus)}>
+          <FormField id="lesson-edit-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={editErrors.title}>
+            <input id="lesson-edit-title" aria-describedby={editErrors.title ? 'lesson-edit-title-error' : undefined} aria-invalid={Boolean(editErrors.title)} value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+          </FormField>
+          <FormField id="lesson-edit-order" label={t('admin.lessons.order', 'Order')}>
+            <input id="lesson-edit-order" value={editOrder} onChange={(event) => setEditOrder(event.target.value)} inputMode="numeric" />
+          </FormField>
+          <FormField id="lesson-edit-status" label={t('admin.lessons.col.status', 'Status')}>
+            <select id="lesson-edit-status" value={editStatus} onChange={(event) => setEditStatus(event.target.value as LessonStatus)}>
               {LESSON_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.lessons.description', 'Description')}</label>
-            <textarea
-              value={editDescription}
-              onChange={(event) => setEditDescription(event.target.value)}
-              maxLength={1000}
-            />
-          </div>
+          </FormField>
+          <FormField id="lesson-edit-description" label={t('admin.lessons.description', 'Description')}>
+            <textarea id="lesson-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />
+          </FormField>
           {editState.status === 'error' ? (
             <p className="admin-form__error" role="alert">
               {editState.message}
