@@ -2642,7 +2642,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 201 — Декомпозиция materials/course builder 🔲
+## PR 201 — Декомпозиция materials/course builder ✅
 
 **Проблема:** Крупные компоненты усложняют новый upload pipeline.
 

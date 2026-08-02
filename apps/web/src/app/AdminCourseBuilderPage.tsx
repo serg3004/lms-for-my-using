@@ -4,12 +4,14 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
-import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
+import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
+import { toCourseMutation, validateCourseForm, validateLessonForm } from './course-builder/model.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, Card, PageState } from '../shared/ui.js';
-import { getCourse, updateCourse, deleteCourse } from '../shared/api/courses.js';
-import { listLessons, createLesson, updateLesson } from '../shared/api/lessons.js';
+import { getCourse } from '../shared/api/courses.js';
+import { listLessons } from '../shared/api/lessons.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
+import { useCourseBuilderMutations } from './course-builder/useCourseBuilderMutations.js';
 import '../styles/admin.css';
 import '../styles/ui.css';
 
@@ -54,6 +56,7 @@ function formatDate(value: string): string {
 export function AdminCourseBuilderPage() {
   const { t } = useTranslation();
   const { courseId } = useParams<{ courseId: string }>();
+  const mutations = useCourseBuilderMutations();
 
   const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
   const [formTitle, setFormTitle] = useState('');
@@ -109,14 +112,12 @@ export function AdminCourseBuilderPage() {
   async function handleSaveCourse(e: React.FormEvent) {
     e.preventDefault();
     if (!courseId) return;
-    const nextCourseErrors = validateRequiredFields([
-      { name: 'title', value: formTitle, message: 'Course title is required' },
-    ]);
+    const nextCourseErrors = validateCourseForm({ title: formTitle, description: formDescription });
     setCourseErrors(nextCourseErrors);
     if (hasValidationErrors(nextCourseErrors)) return;
     setSaveState({ status: 'saving' });
     try {
-      await updateCourse(courseId, { title: formTitle.trim(), description: formDescription.trim() || undefined });
+      await mutations.updateCourse(courseId, toCourseMutation({ title: formTitle, description: formDescription }));
       setSaveState({ status: 'saved' });
       setTimeout(() => setSaveState({ status: 'idle' }), 2000);
       void loadData();
@@ -131,7 +132,7 @@ export function AdminCourseBuilderPage() {
   async function handleStatusChange(newStatus: CourseStatus) {
     if (!courseId) return;
     try {
-      await updateCourse(courseId, { status: newStatus });
+      await mutations.updateCourse(courseId, { status: newStatus });
       void loadData();
     } catch {
       // silently ignore
@@ -141,7 +142,7 @@ export function AdminCourseBuilderPage() {
   async function handleDeleteCourse() {
     if (!courseId) return;
     try {
-      await deleteCourse(courseId);
+      await mutations.deleteCourse(courseId);
       window.location.assign('/admin/courses');
     } catch {
       setShowDelete(false);
@@ -152,19 +153,13 @@ export function AdminCourseBuilderPage() {
     e.preventDefault();
     if (!courseId || pageState.status !== 'loaded') return;
     const title = lessonTitle.trim();
-    const nextLessonErrors = validateRequiredFields([
-      { name: 'title', value: title, message: 'Lesson title is required' },
-    ]);
+    const nextLessonErrors = validateLessonForm({ title, description: lessonDesc });
     setLessonErrors(nextLessonErrors);
     if (hasValidationErrors(nextLessonErrors)) return;
     const slug = slugify(title);
-    if (!slug) {
-      setLessonErrors({ title: 'Enter a title using letters or numbers.' });
-      return;
-    }
     setLessonFormState({ status: 'submitting' });
     try {
-      await createLesson(courseId, {
+      await mutations.createLesson(courseId, {
         organizationId: pageState.currentUser.organizationId,
         title,
         slug,
@@ -188,7 +183,7 @@ export function AdminCourseBuilderPage() {
   async function handleToggleLessonStatus(lesson: LessonSummary) {
     const newStatus: LessonStatus = lesson.status === 'published' ? 'draft' : 'published';
     try {
-      await updateLesson(lesson.id, { status: newStatus });
+      await mutations.updateLesson(lesson.id, { status: newStatus });
       void loadData();
     } catch {
       // silently ignore

@@ -1,12 +1,16 @@
-import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
+import { uploadReducer, validateMaterialForm, type MaterialKind, type MaterialStatus } from './materials/model.js';
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
+import { MaterialTable } from './materials/MaterialTable.js';
+import { MaterialMetadataForm } from './materials/MaterialMetadataForm.js';
+import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { EmptyState, PageState } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
@@ -30,9 +34,6 @@ type LoadState =
   | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; materials: Material[] }
   | { status: 'error'; message: string };
 
-type MaterialStatus = 'active' | 'archived';
-type MaterialKind = 'file' | 'link';
-
 const MATERIAL_STATUSES: MaterialStatus[] = ['active', 'archived'];
 
 const ACCEPTED_FILE_TYPES = [
@@ -47,15 +48,10 @@ const ACCEPTED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ].join(',');
 
-function formatSize(sizeBytes: number | null, fallback: string) {
-  if (sizeBytes === null) return fallback;
-  if (sizeBytes >= 1_048_576) return `${(sizeBytes / 1_048_576).toFixed(1)} MB`;
-  if (sizeBytes >= 1024) return `${(sizeBytes / 1024).toFixed(0)} KB`;
-  return `${sizeBytes} B`;
-}
 
 export function AdminMaterialsPage() {
   const { t } = useTranslation();
+  const materialMutations = useMaterialMutations();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
@@ -68,7 +64,7 @@ export function AdminMaterialsPage() {
   const [mimeType, setMimeType] = useState('');
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
   const [description, setDescription] = useState('');
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadState, dispatchUpload] = useReducer(uploadReducer, { status: 'idle' });
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
@@ -84,7 +80,7 @@ export function AdminMaterialsPage() {
   const [editFileName, setEditFileName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editStatus, setEditStatus] = useState<MaterialStatus>('active');
-  const [editUploadProgress, setEditUploadProgress] = useState<number | null>(null);
+  const [editUploadState, dispatchEditUpload] = useReducer(uploadReducer, { status: 'idle' });
   const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
@@ -130,7 +126,7 @@ export function AdminMaterialsPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const setProgress = target === 'create' ? setUploadProgress : setEditUploadProgress;
+    const dispatch = target === 'create' ? dispatchUpload : dispatchEditUpload;
     const setUrl = target === 'create' ? setFileUrl : setEditFileUrl;
     const setName = target === 'create' ? setFileName : setEditFileName;
     const setError = target === 'create'
@@ -144,9 +140,10 @@ export function AdminMaterialsPage() {
       setEditKind('file');
     }
 
-    setProgress(0);
+    dispatch({ type: 'start' });
     try {
-      const result = await uploadFileWithProgress(file, setProgress);
+      const result = await uploadFileWithProgress(file, (progress) => dispatch({ type: 'progress', progress }));
+      dispatch({ type: 'success' });
       setUrl(result.fileUrl);
       setName(result.fileName);
       if (target === 'create') {
@@ -158,9 +155,9 @@ export function AdminMaterialsPage() {
         error instanceof ApiClientError && error.status === 503
           ? t('admin.materials.uploadUnconfigured', 'File storage is not configured on this server.')
           : t('admin.materials.uploadError', 'Upload failed. Try again.');
+      dispatch({ type: 'error', message });
       setError(message);
     } finally {
-      setProgress(null);
       event.target.value = '';
     }
   }
@@ -175,7 +172,7 @@ export function AdminMaterialsPage() {
     const materialTitle = title.trim();
     const slug = slugify(materialTitle);
 
-    if (!materialTitle || !slug || !fileUrl.trim()) {
+    if (Object.keys(validateMaterialForm({ title, kind, fileUrl, fileName, description })).length > 0) {
       setSubmitState({
         status: 'error',
         message: t('admin.materials.invalidInput', 'Enter a material title and valid URL.'),
@@ -186,9 +183,7 @@ export function AdminMaterialsPage() {
     setSubmitState({ status: 'saving' });
 
     try {
-      await apiRequest<Material>(`/courses/${encodeURIComponent(selectedCourse.id)}/materials`, {
-        method: 'POST',
-        body: JSON.stringify({
+      await materialMutations.create(selectedCourse.id, {
           organizationId: selectedCourse.organizationId,
           courseId: selectedCourse.id,
           lessonId: selectedLessonId || undefined,
@@ -201,7 +196,6 @@ export function AdminMaterialsPage() {
           mimeType: mimeType || undefined,
           sizeBytes: sizeBytes ?? undefined,
           status: 'active',
-        }),
       });
 
       setTitle('');
@@ -223,10 +217,7 @@ export function AdminMaterialsPage() {
 
   async function handleUpdateStatus(materialId: string, newStatus: string) {
     try {
-      const updated = await apiRequest<Material>(`/materials/${encodeURIComponent(materialId)}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const updated = await materialMutations.updateStatus(materialId, newStatus);
       setLoadState((prev) =>
         prev.status === 'loaded'
           ? { ...prev, materials: prev.materials.map((m) => (m.id === materialId ? updated : m)) }
@@ -245,7 +236,7 @@ export function AdminMaterialsPage() {
     setEditFileName(material.fileName ?? '');
     setEditDescription(material.description ?? '');
     setEditStatus(material.status as MaterialStatus);
-    setEditUploadProgress(null);
+    dispatchEditUpload({ type: 'reset' });
     setEditState({ status: 'idle' });
     editDialogRef.current?.showModal();
   }
@@ -260,7 +251,7 @@ export function AdminMaterialsPage() {
     const newTitle = editTitle.trim();
     const newFileUrl = editFileUrl.trim();
 
-    if (!newTitle || !newFileUrl) {
+    if (Object.keys(validateMaterialForm({ title: editTitle, kind: editKind, fileUrl: editFileUrl, fileName: editFileName, description: editDescription })).length > 0) {
       setEditState({
         status: 'error',
         message: t('admin.materials.invalidInput', 'Enter a material title and valid URL.'),
@@ -271,16 +262,13 @@ export function AdminMaterialsPage() {
     setEditState({ status: 'saving' });
 
     try {
-      const updated = await apiRequest<Material>(`/materials/${encodeURIComponent(editMaterial.id)}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
+      const updated = await materialMutations.update(editMaterial.id, {
           title: newTitle,
           description: editDescription.trim() || null,
           kind: editKind,
           fileName: editFileName.trim() || null,
           fileUrl: newFileUrl,
           status: editStatus,
-        }),
       });
       editDialogRef.current?.close();
       setLoadState((prev) =>
@@ -358,17 +346,15 @@ export function AdminMaterialsPage() {
                     ))}
                   </select>
                 </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.materialTitle', 'Title')}</label>
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.kind', 'Kind')}</label>
-                  <select value={kind} onChange={(event) => setKind(event.target.value as MaterialKind)}>
-                    <option value="link">{t('admin.materials.link', 'Link (URL)')}</option>
-                    <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
-                  </select>
-                </div>
+                <MaterialMetadataForm
+                  form={{ title, kind }}
+                  t={t}
+                  onChange={(field, value) => {
+                    if (field === 'title') setTitle(value);
+                    else if (field === 'kind') setKind(value as MaterialKind);
+
+                  }}
+                />
                 <div className="admin-form__field">
                   <label>{t('admin.materials.fileUrl', 'URL')}</label>
                   <div className="admin-upload">
@@ -378,12 +364,12 @@ export function AdminMaterialsPage() {
                         onChange={(event) => setFileUrl(event.target.value)}
                         maxLength={2048}
                         placeholder="https://..."
-                        disabled={uploadProgress !== null}
+                        disabled={uploadState.status === 'uploading'}
                       />
                       <button
                         className="admin-btn admin-btn--secondary admin-btn--sm"
                         type="button"
-                        disabled={uploadProgress !== null}
+                        disabled={uploadState.status === 'uploading'}
                         onClick={() => fileInputRef.current?.click()}
                       >
                         {t('admin.materials.uploadBtn', 'Upload file…')}
@@ -396,16 +382,17 @@ export function AdminMaterialsPage() {
                         onChange={(event) => void handleFileSelect(event, 'create')}
                       />
                     </div>
-                    {uploadProgress !== null ? (
+                    {uploadState.status === 'uploading' ? (
                       <div className="admin-upload__progress">
                         <div className="admin-upload__bar">
-                          <div className="admin-upload__fill" style={{ width: `${uploadProgress}%` }} />
+                          <div className="admin-upload__fill" style={{ width: `${uploadState.progress}%` }} />
                         </div>
-                        <span>{uploadProgress}%</span>
+                        <span>{uploadState.progress}%</span>
                       </div>
                     ) : null}
                   </div>
                 </div>
+
                 <div className="admin-form__field">
                   <label>{t('admin.materials.fileName', 'File name')}</label>
                   <input value={fileName} onChange={(event) => setFileName(event.target.value)} maxLength={255} />
@@ -423,7 +410,7 @@ export function AdminMaterialsPage() {
                   <button
                     className="admin-btn admin-btn--primary"
                     type="submit"
-                    disabled={submitState.status === 'saving' || uploadProgress !== null}
+                    disabled={submitState.status === 'saving' || uploadState.status === 'uploading'}
                   >
                     {submitState.status === 'saving'
                       ? t('admin.materials.saving', 'Saving...')
@@ -436,48 +423,15 @@ export function AdminMaterialsPage() {
 
         <AdminCard>
             <h2>{t('admin.materials.materialsTitle', 'Materials')}</h2>
-            {loadState.materials.length === 0 ? (
-              <EmptyState message={t('admin.materials.empty', 'No materials found for the selected course.')} />
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t('admin.materials.col.title', 'Title')}</th>
-                    <th>{t('admin.materials.col.kind', 'Kind')}</th>
-                    <th>{t('admin.materials.col.status', 'Status')}</th>
-                    <th>{t('admin.materials.col.size', 'Size')}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadState.materials.map((material) => (
-                    <tr key={material.id}>
-                      <td>
-                        <a href={material.fileUrl} target="_blank" rel="noreferrer">
-                          {material.title}
-                        </a>
-                      </td>
-                      <td>
-                        <StatusBadge>{material.kind}</StatusBadge>
-                      </td>
-                      <td>
-                        <AdminStatusSelect value={material.status} statuses={MATERIAL_STATUSES} onChange={(status) => void handleUpdateStatus(material.id, status)} />
-                      </td>
-                      <td>{formatSize(material.sizeBytes, t('admin.materials.unknownSize', '—'))}</td>
-                      <td>
-                        <button
-                          className="admin-btn admin-btn--sm admin-btn--secondary"
-                          type="button"
-                          onClick={() => openEditDialog(material)}
-                        >
-                          {t('admin.materials.edit', 'Edit')}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            <MaterialTable
+              materials={loadState.materials}
+              t={t}
+              onEdit={(materialId) => {
+                const material = loadState.materials.find((item) => item.id === materialId);
+                if (material) openEditDialog(material);
+              }}
+              onStatusChange={(materialId, status) => void handleUpdateStatus(materialId, status)}
+            />
         </AdminCard>
       </section>
 
@@ -513,12 +467,12 @@ export function AdminMaterialsPage() {
                   value={editFileUrl}
                   onChange={(event) => setEditFileUrl(event.target.value)}
                   maxLength={2048}
-                  disabled={editUploadProgress !== null}
+                  disabled={editUploadState.status === 'uploading'}
                 />
                 <button
                   className="admin-btn admin-btn--secondary admin-btn--sm"
                   type="button"
-                  disabled={editUploadProgress !== null}
+                  disabled={editUploadState.status === 'uploading'}
                   onClick={() => editFileInputRef.current?.click()}
                 >
                   {t('admin.materials.replaceBtn', 'Replace file…')}
@@ -531,12 +485,12 @@ export function AdminMaterialsPage() {
                   onChange={(event) => void handleFileSelect(event, 'edit')}
                 />
               </div>
-              {editUploadProgress !== null ? (
+              {editUploadState.status === 'uploading' ? (
                 <div className="admin-upload__progress">
                   <div className="admin-upload__bar">
-                    <div className="admin-upload__fill" style={{ width: `${editUploadProgress}%` }} />
+                    <div className="admin-upload__fill" style={{ width: `${editUploadState.progress}%` }} />
                   </div>
-                  <span>{editUploadProgress}%</span>
+                  <span>{editUploadState.progress}%</span>
                 </div>
               ) : null}
             </div>
@@ -566,7 +520,7 @@ export function AdminMaterialsPage() {
             <button
               className="admin-btn admin-btn--primary"
               type="submit"
-              disabled={editState.status === 'saving' || editUploadProgress !== null}
+              disabled={editState.status === 'saving' || editUploadState.status === 'uploading'}
             >
               {editState.status === 'saving'
                 ? t('admin.materials.updating', 'Saving...')
