@@ -109,6 +109,42 @@ export type ProgressSummary = {
   };
 };
 
+export type ProgressSummaryCourse = {
+  courseId: string;
+  title: string;
+  completedLessons: number;
+  totalLessons: number;
+  percentage: number;
+  status: 'completed' | 'in_progress';
+  latestAssessmentScore: number | null;
+};
+
+export type ProgressSummaryStreakDay = {
+  dayOfWeek: number;
+  date: string;
+  active: boolean;
+};
+
+export type ProgressSummaryActivityItem = {
+  type: 'lesson_completed' | 'assessment_passed' | 'certificate_issued';
+  courseId: string;
+  courseTitle: string;
+  score?: number;
+  date: string;
+};
+
+export type ProgressSummaryReport = {
+  period: 30 | 90 | 365;
+  overallProgressPercent: number;
+  lessonsCompletedCount: number;
+  activeDaysCount: number;
+  avgAssessmentScore: number | null;
+  courses: ProgressSummaryCourse[];
+  weeklyGoal: { completed: number; target: number };
+  streak: ProgressSummaryStreakDay[];
+  recentActivity: ProgressSummaryActivityItem[];
+};
+
 export type AssignmentSummary = {
   id: string;
   organizationId: string;

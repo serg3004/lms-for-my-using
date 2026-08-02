@@ -8,13 +8,21 @@ import { Roles, isLearnerOnly, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
 import { isInstructorCourseScoped } from '../course-access/course-access.policy.js';
-import { createProgressSchema, CreateProgressInput } from './progress.schemas.js';
+import { createProgressSchema, CreateProgressInput, progressSummaryQuerySchema } from './progress.schemas.js';
 import { ProgressService } from './progress.service.js';
 
 @Controller('progress')
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class ProgressController {
   constructor(private readonly progressService: ProgressService) {}
+
+  @Get('summary')
+  @Roles(...rolePolicies.progressRead)
+  getProgressSummary(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const currentUser = request.currentUser!;
+    const { period } = progressSummaryQuerySchema.parse(query);
+    return this.progressService.getProgressSummary(currentUser, period);
+  }
 
   @Get()
   @Roles(...rolePolicies.progressRead)

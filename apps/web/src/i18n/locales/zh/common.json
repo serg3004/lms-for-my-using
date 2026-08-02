@@ -222,6 +222,48 @@
     "sizeBytes": "大小，字节",
     "notAvailable": "不可用"
   },
+  "progress": {
+    "navLink": "进度",
+    "eyebrow": "学习分析",
+    "title": "我的进度",
+    "subtitle": "跟踪已完成的课程、测验成绩和学习活动。",
+    "loading": "正在加载进度...",
+    "authRequired": "请登录以查看进度。",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载进度。请稍后重试。",
+    "period30": "最近 30 天",
+    "period90": "最近 3 个月",
+    "period365": "最近一年",
+    "downloadReport": "下载报告",
+    "stats": {
+      "overallProgress": "总体进度",
+      "lessonsCompleted": "已完成课时",
+      "activeDays": "活跃天数",
+      "avgScore": "平均测验成绩",
+      "notAvailable": "暂无数据"
+    },
+    "coursesTitle": "课程进度",
+    "coursesEmpty": "您还没有开始任何课程。",
+    "lessonsProgress": "{{total}} 节课中已完成 {{completed}} 节",
+    "scoreLabel": "测验 {{score}}%",
+    "scoreUnavailable": "尚未参加测验",
+    "statusCompleted": "已完成",
+    "statusInProgress": "进行中",
+    "weeklyGoalTitle": "本周目标",
+    "weeklyGoalDone": "您已完成本周目标！",
+    "weeklyGoalRemaining": "距离目标还差 {{count}} 节课",
+    "streakTitle": "学习连续记录",
+    "streakDays": ["一", "二", "三", "四", "五", "六", "日"],
+    "activityTitle": "最近活动",
+    "activityEmpty": "所选时间段内没有活动。",
+    "activity": {
+      "lessonCompleted": "您完成了课程《{{course}}》中的一节课。",
+      "assessmentPassed": "课程《{{course}}》的测验成绩为 {{score}}%。",
+      "certificateIssued": "课程《{{course}}》的证书可供下载。"
+    },
+    "today": "今天",
+    "yesterday": "昨天"
+  },
   "assessments": {
     "navLink": "测验",
     "title": "测验",
