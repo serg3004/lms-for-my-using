@@ -204,8 +204,9 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login-page" id="main-content" tabIndex={-1}>
+    <>
       <SkipLink label={t('a11y.skipToContent')} />
+      <main className="login-page" id="main-content" tabIndex={-1}>
       <section className="login-hero" aria-labelledby="login-hero-title">
         <div className="login-hero__brand">LearnSpace</div>
 
@@ -383,6 +384,7 @@ export function LoginPage() {
           </form>
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

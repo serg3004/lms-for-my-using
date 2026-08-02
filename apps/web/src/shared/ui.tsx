@@ -3,7 +3,22 @@ import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNod
 type SkipLinkProps = { label: string; targetId?: string };
 
 export function SkipLink({ label, targetId = 'main-content' }: SkipLinkProps) {
-  return <a className="ui-skip-link" href={`#${targetId}`}>{label}</a>;
+  return (
+    <a
+      className="ui-skip-link"
+      href={`#${targetId}`}
+      onClick={(event) => {
+        const target = document.getElementById(targetId);
+        if (!target) return;
+
+        event.preventDefault();
+        target.focus();
+        target.scrollIntoView();
+      }}
+    >
+      {label}
+    </a>
+  );
 }
 
 export type BreadcrumbItem = {
@@ -243,7 +258,7 @@ type AvatarProps = {
   size?: AvatarSize;
 };
 
-const AVATAR_PALETTE = ['#2563eb', '#059669', '#7c3aed', '#ea580c', '#db2777'];
+const AVATAR_PALETTE = ['#2563eb', '#047857', '#7c3aed', '#c2410c', '#db2777'];
 
 function avatarColor(name: string): string {
   let h = 0;
