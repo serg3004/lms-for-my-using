@@ -169,6 +169,54 @@
   flex-wrap: wrap;
 }
 
+/* ── Forbidden page ──────────────────────────────────────────────────────── */
+
+.forbidden-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px);
+  padding: var(--space-page);
+}
+
+.forbidden-card {
+  width: min(560px, 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.forbidden-card__code {
+  font-size: 96px;
+  line-height: 0.8;
+  font-weight: var(--fw-bold);
+  color: var(--color-danger-bg);
+}
+
+.forbidden-card h1 {
+  margin: 24px 0 12px;
+  font-size: 1.625rem;
+  color: var(--color-text);
+}
+
+.forbidden-card p {
+  margin: 0 auto 24px;
+  max-width: 420px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}
+
+.forbidden-card__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* ── Learner shared ──────────────────────────────────────────────────────── */
 
 .learner-breadcrumb {

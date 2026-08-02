@@ -15,6 +15,12 @@
     "homeLink": "Басты бетке",
     "backLink": "Артқа"
   },
+  "forbidden": {
+    "title": "Қолжетімділік жоқ",
+    "description": "Есептік жазбаңызда бұл бетті көруге құқық жоқ.",
+    "homeLink": "Басты бетке",
+    "backLink": "Артқа"
+  },
   "publicHome": {
     "nav": {
       "features": "Мүмкіндіктер",

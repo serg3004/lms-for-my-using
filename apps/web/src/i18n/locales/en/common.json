@@ -15,6 +15,12 @@
     "homeLink": "Go to dashboard",
     "backLink": "Go back"
   },
+  "forbidden": {
+    "title": "Access denied",
+    "description": "Your account does not have permission to view this page.",
+    "homeLink": "Go to dashboard",
+    "backLink": "Go back"
+  },
   "publicHome": {
     "nav": {
       "features": "Features",
