@@ -105,6 +105,12 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
 
+      - name: Accessibility baseline
+        run: pnpm test:a11y
+        env:
+          NODE_ENV: test
+          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+
       - name: Responsive visual matrix
         run: pnpm test:visual
 

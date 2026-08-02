@@ -1,6 +1,8 @@
 import { type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayout.js';
+import { SkipLink } from './ui.js';
 
 const MANAGER_NAV = [
   { label: 'Дашборд', href: '/manager/dashboard' },
@@ -14,6 +16,7 @@ type ManagerPageLayoutProps = {
 };
 
 export function ManagerPageLayout({ children, firstName, lastName }: ManagerPageLayoutProps) {
+  const { t } = useTranslation();
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
 
   const navItems: LearnerNavItem[] = MANAGER_NAV.map((item) => ({
@@ -23,6 +26,7 @@ export function ManagerPageLayout({ children, firstName, lastName }: ManagerPage
 
   return (
     <>
+      <SkipLink label={t('a11y.skipToContent')} />
       <LearnerTopNav
         brandLabel="LMS"
         firstName={firstName}

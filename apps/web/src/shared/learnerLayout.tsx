@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser } from './apiClient.js';
 import { logout } from './logout.js';
-import { Avatar } from './ui.js';
+import { Avatar, SkipLink } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
 
 export type LearnerNavItem = {
@@ -65,7 +65,7 @@ type LearnerShellProps = {
 };
 
 export function LearnerShell({ children }: LearnerShellProps) {
-  return <main className="learner-shell">{children}</main>;
+  return <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>;
 }
 
 /* ── Language switcher ───────────────────────────────────────────────────── */
@@ -160,6 +160,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
 
   return (
     <div className="learner-app">
+      <SkipLink label={t('a11y.skipToContent')} />
       <aside className="learner-sidebar">
         <div className="learner-sidebar__brand">
           <div className="learner-sidebar__mark">L</div>
@@ -194,7 +195,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
             </button>
           </div>
         </header>
-        <main className="learner-shell">{children}</main>
+        <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
       </div>
     </div>
   );

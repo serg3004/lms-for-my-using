@@ -225,4 +225,35 @@ describe('apiRequest', () => {
     await expect(Promise.all(requests)).resolves.toEqual([{ ok: true }, { ok: true }]);
     expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1);
   });
+
+  it('retries a stale 401 without refreshing again after another request renewed the cookie', async () => {
+    let resolveDelayedUnauthorized!: (response: Response) => void;
+    const delayedUnauthorized = new Promise<Response>((resolve) => {
+      resolveDelayedUnauthorized = resolve;
+    });
+    const requestCounts = new Map<string, number>();
+    const fetchMock = vi.fn<typeof fetch>(async (url): Promise<Response> => {
+      if (url === '/api/v1/auth/refresh') {
+        return new Response(JSON.stringify({ accessToken: 'renewed' }), { status: 201 });
+      }
+      if (url === '/api/v1/auth/me' && !requestCounts.has(String(url))) {
+        requestCounts.set(String(url), 1);
+        return delayedUnauthorized;
+      }
+      const requestUrl = String(url);
+      const callsForUrl = (requestCounts.get(requestUrl) ?? 0) + 1;
+      requestCounts.set(requestUrl, callsForUrl);
+      return callsForUrl === 1
+        ? new Response(null, { status: 401 })
+        : new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const staleRequest = apiRequest('/auth/me');
+    await expect(apiRequest('/courses')).resolves.toEqual({ ok: true });
+    resolveDelayedUnauthorized(new Response(null, { status: 401 }));
+
+    await expect(staleRequest).resolves.toEqual({ ok: true });
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1);
+  });
 });

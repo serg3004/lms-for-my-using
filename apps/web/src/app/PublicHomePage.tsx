@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
 import { getRootNavigationItems } from '../shared/rootNavigation.js';
 import { supportedLocales } from '../i18n/index.js';
+import { SkipLink } from '../shared/ui.js';
 
 const LANGUAGE_CODES: Record<string, string> = { ru: 'RU', en: 'EN', kk: 'KK', zh: 'ZH' };
 const LANGUAGE_LABELS: Record<string, string> = { ru: 'Русский', en: 'English', kk: 'Қазақша', zh: '中文' };
@@ -57,6 +58,7 @@ export function PublicHomePage() {
 
   return (
     <div className="public-home">
+      <SkipLink label={t('a11y.skipToContent')} />
       <header className="public-home__header">
         <div className="public-home__container public-home__header-inner">
           <div className="public-home__brand">LearnSpace</div>
@@ -105,7 +107,7 @@ export function PublicHomePage() {
         </div>
       </header>
 
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <section className="public-home__hero">
           <div className="public-home__container public-home__hero-inner">
             <div>

@@ -102,7 +102,7 @@
 }
 
 .ui-status-badge--success {
-  color: var(--color-success);
+  color: #166534;
   background: rgb(21 128 61 / 12%);
 }
 
