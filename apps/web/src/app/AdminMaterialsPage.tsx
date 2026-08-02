@@ -10,7 +10,7 @@ import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { MaterialTable } from './materials/MaterialTable.js';
 import { MaterialMetadataForm } from './materials/MaterialMetadataForm.js';
 import { useMaterialMutations } from './materials/useMaterialMutations.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
@@ -327,19 +327,17 @@ export function AdminMaterialsPage() {
               <EmptyState message={t('admin.materials.noCourses', 'Create a course before adding materials.')} />
             ) : (
               <form className="admin-form" onSubmit={handleCreateMaterial}>
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.course', 'Course')}</label>
-                  <select value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
+                <FormField id="material-create-course" label={t('admin.materials.course', 'Course')}>
+                  <select id="material-create-course" value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
                     {loadState.courses.map((course) => (
                       <option key={course.id} value={course.id}>
                         {course.title}
                       </option>
                     ))}
                   </select>
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.lesson', 'Lesson')}</label>
-                  <select value={selectedLessonId} onChange={(event) => setSelectedLessonId(event.target.value)}>
+                </FormField>
+                <FormField id="material-create-lesson" label={t('admin.materials.lesson', 'Lesson')}>
+                  <select id="material-create-lesson" value={selectedLessonId} onChange={(event) => setSelectedLessonId(event.target.value)}>
                     <option value="">{t('admin.materials.noLesson', 'No lesson')}</option>
                     {loadState.lessons.map((lesson) => (
                       <option key={lesson.id} value={lesson.id}>
@@ -347,7 +345,7 @@ export function AdminMaterialsPage() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </FormField>
                 <MaterialMetadataForm
                   form={{ title, kind }}
                   t={t}
@@ -357,11 +355,13 @@ export function AdminMaterialsPage() {
                     else if (field === 'kind') setKind(value as MaterialKind);
                   }}
                 />
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.fileUrl', 'URL')}</label>
+                <FormField id="material-create-fileurl" label={t('admin.materials.fileUrl', 'URL')} required error={createErrors.fileUrl}>
                   <div className="admin-upload">
                     <div className="admin-upload__row">
                       <input
+                        id="material-create-fileurl"
+                        aria-describedby={createErrors.fileUrl ? 'material-create-fileurl-error' : undefined}
+                        aria-invalid={Boolean(createErrors.fileUrl)}
                         value={fileUrl}
                         onChange={(event) => { setFileUrl(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
                         maxLength={2048}
@@ -393,17 +393,14 @@ export function AdminMaterialsPage() {
                       </div>
                     ) : null}
                   </div>
-                  {createErrors.fileUrl ? <p className="admin-form__error" role="alert">{createErrors.fileUrl}</p> : null}
-                </div>
+                </FormField>
 
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.fileName', 'File name')}</label>
-                  <input value={fileName} onChange={(event) => setFileName(event.target.value)} maxLength={255} />
-                </div>
-                <div className="admin-form__field">
-                  <label>{t('admin.materials.description', 'Description')}</label>
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </div>
+                <FormField id="material-create-filename" label={t('admin.materials.fileName', 'File name')}>
+                  <input id="material-create-filename" value={fileName} onChange={(event) => setFileName(event.target.value)} maxLength={255} />
+                </FormField>
+                <FormField id="material-create-description" label={t('admin.materials.description', 'Description')}>
+                  <textarea id="material-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
+                </FormField>
                 {submitState.status === 'error' ? (
                   <p className="admin-form__error" role="alert">
                     {submitState.message}
@@ -451,23 +448,22 @@ export function AdminMaterialsPage() {
           </button>
         </header>
         <form className="admin-form" onSubmit={handleUpdateMaterial}>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.materialTitle', 'Title')}</label>
-            <input value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
-            {editErrors.title ? <p className="admin-form__error" role="alert">{editErrors.title}</p> : null}
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.kind', 'Kind')}</label>
-            <select value={editKind} onChange={(event) => setEditKind(event.target.value as MaterialKind)}>
+          <FormField id="material-edit-title" label={t('admin.materials.materialTitle', 'Title')} required error={editErrors.title}>
+            <input id="material-edit-title" aria-describedby={editErrors.title ? 'material-edit-title-error' : undefined} aria-invalid={Boolean(editErrors.title)} value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+          </FormField>
+          <FormField id="material-edit-kind" label={t('admin.materials.kind', 'Kind')}>
+            <select id="material-edit-kind" value={editKind} onChange={(event) => setEditKind(event.target.value as MaterialKind)}>
               <option value="link">{t('admin.materials.link', 'Link (URL)')}</option>
               <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
             </select>
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.fileUrl', 'URL')}</label>
+          </FormField>
+          <FormField id="material-edit-fileurl" label={t('admin.materials.fileUrl', 'URL')} required error={editErrors.fileUrl}>
             <div className="admin-upload">
               <div className="admin-upload__row">
                 <input
+                  id="material-edit-fileurl"
+                  aria-describedby={editErrors.fileUrl ? 'material-edit-fileurl-error' : undefined}
+                  aria-invalid={Boolean(editErrors.fileUrl)}
                   value={editFileUrl}
                   onChange={(event) => { setEditFileUrl(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
                   maxLength={2048}
@@ -498,24 +494,16 @@ export function AdminMaterialsPage() {
                 </div>
               ) : null}
             </div>
-            {editErrors.fileUrl ? <p className="admin-form__error" role="alert">{editErrors.fileUrl}</p> : null}
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.fileName', 'File name')}</label>
-            <input value={editFileName} onChange={(event) => setEditFileName(event.target.value)} maxLength={255} />
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.col.status', 'Status')}</label>
+          </FormField>
+          <FormField id="material-edit-filename" label={t('admin.materials.fileName', 'File name')}>
+            <input id="material-edit-filename" value={editFileName} onChange={(event) => setEditFileName(event.target.value)} maxLength={255} />
+          </FormField>
+          <FormField id="material-edit-status" label={t('admin.materials.col.status', 'Status')}>
             <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
-          </div>
-          <div className="admin-form__field">
-            <label>{t('admin.materials.description', 'Description')}</label>
-            <textarea
-              value={editDescription}
-              onChange={(event) => setEditDescription(event.target.value)}
-              maxLength={1000}
-            />
-          </div>
+          </FormField>
+          <FormField id="material-edit-description" label={t('admin.materials.description', 'Description')}>
+            <textarea id="material-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />
+          </FormField>
           {editState.status === 'error' ? (
             <p className="admin-form__error" role="alert">
               {editState.message}

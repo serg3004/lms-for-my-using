@@ -2,9 +2,9 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, StatusBadge, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
@@ -244,43 +244,39 @@ export function AdminAssignmentCompletionPage() {
             />
           ) : (
             <form className="admin-form" onSubmit={handleCreateAssignment}>
-              <div className="admin-form__field">
-                <label>{t('admin.assignments.course', 'Course')}</label>
-                <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+              <FormField id="assign-create-course" label={t('admin.assignments.course', 'Course')}>
+                <select id="assign-create-course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
                   {loadState.courses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title}
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="admin-form__field">
-                <label>{t('admin.assignments.assignTo', 'Assign to')}</label>
-                <select value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
+              </FormField>
+              <FormField id="assign-create-assign-to" label={t('admin.assignments.assignTo', 'Assign to')}>
+                <select id="assign-create-assign-to" value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
                   <option value="user">{t('admin.assignments.assignToUser', 'User')}</option>
                   <option value="group">{t('admin.assignments.assignToGroup', 'Group')}</option>
                 </select>
-              </div>
+              </FormField>
               {assignTo === 'user' ? (
-                <div className="admin-form__field">
-                  <label>{t('admin.assignments.learner', 'Learner')}</label>
-                  <select value={userId} onChange={(event) => setUserId(event.target.value)}>
+                <FormField id="assign-create-user" label={t('admin.assignments.learner', 'Learner')}>
+                  <select id="assign-create-user" value={userId} onChange={(event) => setUserId(event.target.value)}>
                     {loadState.users.map((user) => (
                       <option key={user.id} value={user.id}>
                         {getUserLabel(user)}
                       </option>
                     ))}
                   </select>
-                </div>
+                </FormField>
               ) : (
-                <div className="admin-form__field">
-                  <label>{t('admin.assignments.group', 'Group')}</label>
+                <FormField id="assign-create-group" label={t('admin.assignments.group', 'Group')}>
                   {loadState.groups.length === 0 ? (
                     <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
                       {t('admin.assignments.noGroups', 'No groups found. Create a group first.')}
                     </p>
                   ) : (
-                    <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+                    <select id="assign-create-group" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
                       {loadState.groups.map((group) => (
                         <option key={group.id} value={group.id}>
                           {group.name}
@@ -288,12 +284,11 @@ export function AdminAssignmentCompletionPage() {
                       ))}
                     </select>
                   )}
-                </div>
+                </FormField>
               )}
-              <div className="admin-form__field">
-                <label>{t('admin.assignments.dueAt', 'Due date')}</label>
-                <input value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
-              </div>
+              <FormField id="assign-create-due-at" label={t('admin.assignments.dueAt', 'Due date')}>
+                <input id="assign-create-due-at" value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
+              </FormField>
               {submitState.status === 'error' ? (
                 <p className="admin-form__error" role="alert">
                   {submitState.message}
@@ -313,21 +308,26 @@ export function AdminAssignmentCompletionPage() {
         <AdminCard>
           <h2>{t('admin.assignments.progressTitle', 'Record progress')}</h2>
           <form className="admin-form" onSubmit={handleRecordCompletion}>
-            <div className="admin-form__field">
-              <label>{t('admin.assignments.completionStatus', 'Status')}</label>
+            <FormField id="record-status" label={t('admin.assignments.completionStatus', 'Status')}>
               <select
+                id="record-status"
                 value={completionStatus}
                 onChange={(event) => setCompletionStatus(event.target.value as 'in_progress' | 'completed')}
               >
                 <option value="in_progress">{t('admin.assignments.inProgress', 'In progress')}</option>
                 <option value="completed">{t('admin.assignments.completed', 'Completed')}</option>
               </select>
-            </div>
-            <div className="admin-form__field">
-              <label>{t('admin.assignments.score', 'Score (0–100)')}</label>
-              <input value={score} onChange={(event) => { setScore(event.target.value); setRecordErrors((prev) => clearFieldError(prev, 'score')); }} inputMode="numeric" />
-              {recordErrors.score ? <p className="admin-form__error" role="alert">{recordErrors.score}</p> : null}
-            </div>
+            </FormField>
+            <FormField id="record-score" label={t('admin.assignments.score', 'Score (0–100)')} error={recordErrors.score}>
+              <input
+                id="record-score"
+                aria-describedby={recordErrors.score ? 'record-score-error' : undefined}
+                aria-invalid={Boolean(recordErrors.score)}
+                value={score}
+                onChange={(event) => { setScore(event.target.value); setRecordErrors((prev) => clearFieldError(prev, 'score')); }}
+                inputMode="numeric"
+              />
+            </FormField>
             {submitState.status === 'error' ? (
               <p className="admin-form__error" role="alert">
                 {submitState.message}
@@ -349,80 +349,46 @@ export function AdminAssignmentCompletionPage() {
 
         <AdminCard>
           <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
-          {loadState.assignments.length === 0 ? (
-            <EmptyState message={t('admin.assignments.empty', 'No assignments found.')} />
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('admin.assignments.col.course', 'Course')}</th>
-                  <th>{t('admin.assignments.col.learner', 'Learner')}</th>
-                  <th>{t('admin.assignments.col.status', 'Status')}</th>
-                  <th>{t('admin.assignments.col.dueAt', 'Due date')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadState.assignments.map((assignment) => (
-                  <tr key={assignment.id}>
-                    <td>{findCourseTitle(loadState.courses, assignment.courseId)}</td>
-                    <td>
-                      {assignment.userId
-                        ? findUserLabel(loadState.users, assignment.userId, assignment.userId)
-                        : findGroupLabel(loadState.groups, assignment.groupId, t('admin.assignments.groupAssignment', 'Group'))}
-                    </td>
-                    <td>
-                      <select
-                        className="admin-status-select"
-                        value={assignment.status}
-                        onChange={(event) => void handleUpdateAssignmentStatus(assignment.id, event.target.value)}
-                      >
-                        {ASSIGNMENT_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      {assignment.dueAt
-                        ? new Date(assignment.dueAt).toLocaleDateString()
-                        : t('admin.assignments.noDueDate', '—')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable<Assignment>
+            columns={[
+              { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.courses, a.courseId) },
+              { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
+                ? findUserLabel(loadState.users, a.userId, a.userId)
+                : findGroupLabel(loadState.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
+              { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (a) => (
+                <select
+                  className="admin-status-select"
+                  value={a.status}
+                  onChange={(event) => void handleUpdateAssignmentStatus(a.id, event.target.value)}
+                >
+                  {ASSIGNMENT_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )},
+              { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
+                ? new Date(a.dueAt).toLocaleDateString()
+                : t('admin.assignments.noDueDate', '—') },
+            ] satisfies Column<Assignment>[]}
+            rows={loadState.assignments}
+            keyExtractor={(a) => a.id}
+            emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
+          />
         </AdminCard>
 
         <AdminCard>
           <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
-          {loadState.progressItems.length === 0 ? (
-            <EmptyState message={t('admin.assignments.progressEmpty', 'No course progress found.')} />
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('admin.assignments.col.course', 'Course')}</th>
-                  <th>{t('admin.assignments.col.learner', 'Learner')}</th>
-                  <th>{t('admin.assignments.col.status', 'Status')}</th>
-                  <th>{t('admin.assignments.col.score', 'Score')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadState.progressItems.map((progress) => (
-                  <tr key={progress.id}>
-                    <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
-                    <td>
-                      {findUserLabel(loadState.users, progress.userId, t('admin.assignments.groupAssignment', 'Group'))}
-                    </td>
-                    <td><StatusBadge>{progress.status}</StatusBadge></td>
-                    <td>{progress.score !== null ? `${progress.score}%` : t('admin.assignments.noScore', '—')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable<Progress>
+            columns={[
+              { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
+              { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
+              { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (p) => <StatusBadge>{p.status}</StatusBadge> },
+              { key: 'score', label: t('admin.assignments.col.score', 'Score'), render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
+            ] satisfies Column<Progress>[]}
+            rows={loadState.progressItems}
+            keyExtractor={(p) => p.id}
+            emptyMessage={t('admin.assignments.progressEmpty', 'No course progress found.')}
+          />
         </AdminCard>
       </section>
     </AdminPageLayout>
