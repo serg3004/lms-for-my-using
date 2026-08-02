@@ -3,17 +3,27 @@ import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNod
 type SkipLinkProps = { label: string; targetId?: string };
 
 export function SkipLink({ label, targetId = 'main-content' }: SkipLinkProps) {
+  function focusTarget() {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+
+    target.focus();
+    target.scrollIntoView();
+  }
+
   return (
     <a
       className="ui-skip-link"
       href={`#${targetId}`}
       onClick={(event) => {
-        const target = document.getElementById(targetId);
-        if (!target) return;
+        event.preventDefault();
+        focusTarget();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
 
         event.preventDefault();
-        target.focus();
-        target.scrollIntoView();
+        focusTarget();
       }}
     >
       {label}
