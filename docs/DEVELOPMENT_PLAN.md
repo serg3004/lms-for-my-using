@@ -2653,7 +2653,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 202 — Декомпозиция admin users 🔲
+## PR 202 — Декомпозиция admin users ✅
 
 **Проблема:** List, form, password state, validation и mutations смешаны.
 

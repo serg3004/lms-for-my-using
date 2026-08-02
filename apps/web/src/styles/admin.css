@@ -771,3 +771,26 @@
     padding: 1rem;
   }
 }
+.admin-users-filters .ui-toolbar__left {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.admin-users-filter {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 10rem;
+}
+
+.admin-users-filter:first-child {
+  flex: 1 1 16rem;
+}
+
+.admin-user-dialog {
+  max-height: min(90vh, 52rem);
+  max-width: min(56rem, calc(100vw - 2rem));
+  overflow: auto;
+  width: 100%;
+}
