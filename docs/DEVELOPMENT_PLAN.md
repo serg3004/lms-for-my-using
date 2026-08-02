@@ -475,27 +475,23 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 72 — frontend form validation standard ⚠️
+## PR 72 — frontend form validation standard ✅
 
 - Единый подход к form validation, единые error messages
 - Disabled/loading submit states
 - Reusable form field patterns
 - Применить к ключевым admin/learner формам
 
-> **Факт:** `formValidation.ts` расширен — добавлен `clearFieldError` (сброс ошибки конкретного поля при вводе). Паттерн из `LoginPage` применён к трём admin-формам: `AdminUsersPage` (firstName, lastName, email, password), `AdminCoursesPage` (title), `AdminCourseBuilderPage` (title курса и урока). Каждая форма: `validateRequiredFields` перед API-вызовом → field-level `<p role="alert">` под полем → `clearFieldError` в `onChange` → `disabled` кнопка во время сохранения. `AdminUsersPage.crud.spec.tsx` обновлён (7 useState mock), добавлен тест проверки рендера ошибок. Все 143 web-теста проходят.
->
-> **Долг:** Паттерн применён только к 3 страницам. `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssignmentCompletionPage`, `AdminAssessmentBuilderPage` — используют прямой `useState` для ошибок и не вызывают `validateRequiredFields`/`clearFieldError`. Стандарт не распространён на все admin-формы. Некритично для MVP — формы работают корректно, но поведение ошибок неоднородное.
+> **Факт:** `formValidation.ts` — `validateRequiredFields`, `clearFieldError`, `hasValidationErrors`. Паттерн применён ко всем 7 admin-страницам с формами: `AdminUsersPage`, `AdminCoursesPage`, `AdminCourseBuilderPage`, `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssignmentCompletionPage`, `AdminAssessmentBuilderPage`. Каждая форма: `validateRequiredFields` перед API-вызовом → field-level `error` через `FormField` → `clearFieldError` в `onChange` → `disabled` кнопка во время сохранения. Sub-компоненты `AssessmentSettingsForm` и `MaterialMetadataForm` принимают `titleError` как prop. 203 web-теста, все проходят. Ветка: `claude/pr-72-form-validation-standard`.
 
 ---
 
-## PR 73 — reusable admin page toolkit ⚠️
+## PR 73 — reusable admin page toolkit ✅
 
 - PageHeader, DataTable, FormField, Toolbar, ConfirmDialog, EmptyState
 - Сделать добавление новых admin CRUD pages быстрее
 
-> **Факт:** Весь тулкит реализован и применён к существующим страницам. `adminPage.tsx` добавлены: `FormField` (label + children-slot + error, `admin-form__field`) и `ConfirmDialog` (controlled `<dialog>`, `variant: danger|default`). `ui.tsx` добавлены: `DataTable<T>` (generic, columns + rows + keyExtractor + emptyMessage, встроенный `TableWrap` + `EmptyState`) и `Toolbar` (left/right slots). Применено: `AdminCoursesPage` — таблица → `DataTable`, delete-диалог → `ConfirmDialog`, поля формы → `FormField`; `AdminUsersPage` — таблица → `DataTable`, поля формы → `FormField`; `AdminCourseBuilderPage` — поля форм → `FormField`, delete-диалог → `ConfirmDialog`. 10 новых тестов. Итого 153 web-теста, все проходят.
->
-> **Долг:** `DataTable` используется только в `AdminUsersPage`. `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssignmentCompletionPage`, `AdminAssessmentBuilderPage` — используют plain `<table>` напрямую. `FormField` также не применён в этих страницах. Компоненты тулкита готовы, но страницы написанные позже не были на него переведены. Некритично для MVP — визуально работает, но при изменении стиля таблиц/форм потребуется обновлять каждую страницу вручную.
+> **Факт:** Весь тулкит реализован и применён ко всем admin-страницам. `adminPage.tsx`: `FormField` (label + children-slot + error + hint + aria-describedby, `admin-form__field`) и `ConfirmDialog` (controlled `<dialog>`, `variant: danger|default`). `ui.tsx`: `DataTable<T>` (generic, columns + rows + keyExtractor + emptyMessage, встроенный `TableWrap` + `EmptyState`) и `Toolbar` (left/right slots). Применено везде: `AdminCoursesPage`, `AdminUsersPage`, `AdminCourseBuilderPage` — из предыдущей итерации; `AdminLessonsPage`, `AdminMaterialsPage`, `AdminAssessmentBuilderPage`, `AdminAssignmentCompletionPage` — переведены в рамках PR 73. Sub-компоненты `AssessmentSettingsForm` и `MaterialMetadataForm` используют `useId()` для уникальных ID при многократном рендере на одной странице. `MaterialTable` и `MaterialMetadataForm` вынесены в отдельные файлы. 203 web-теста, все проходят. Ветка: `claude/pr-73-toolkit-apply`.
 
 ---
 
