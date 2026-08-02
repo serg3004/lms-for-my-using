@@ -30,23 +30,36 @@ test.describe('manager workspace', () => {
   test('shows real dashboard aggregates and attaches a desktop screenshot', async ({ page }, testInfo) => {
     await loginAsManager(page);
 
-    const assignmentsResponsePromise = page.waitForResponse(
-      (response) => isApiPath(response.url(), '/assignments'),
+    const summaryResponsePromise = page.waitForResponse(
+      (response) => isApiPath(response.url(), '/manager/team-summary'),
     );
     await page.reload();
-    const assignmentsResponse = await assignmentsResponsePromise;
-    expect(assignmentsResponse.status()).toBe(200);
-    const assignments = await assignmentsResponse.json() as {
-      items: Array<{ status: string }>;
-      total: number;
+    const summaryResponse = await summaryResponsePromise;
+    expect(summaryResponse.status()).toBe(200);
+    const summary = await summaryResponse.json() as {
+      membersCount: number;
+      completionRate: number;
+      dueThisWeekCount: number;
+      overdueCount: number;
+      avgTeamScore: number | null;
+      members: Array<{ status: string; completionPercent: number }>;
     };
 
-    expect(assignments).toMatchObject({ total: 1, items: [{ status: 'assigned' }] });
-    await expect(page.getByRole('heading', { name: 'Дашборд менеджера' })).toBeVisible();
-    await expect(page.getByText('Всего назначений').locator('..').getByText('1', { exact: true })).toBeVisible();
-    await expect(page.getByText('В процессе').locator('..').getByText('1', { exact: true })).toBeVisible();
-    await expect(page.getByText('Завершено').locator('..').getByText('0', { exact: true })).toBeVisible();
-    await expect(page.getByText('Просрочено').locator('..').getByText('0', { exact: true })).toBeVisible();
+    // Seed: learner has completed lesson 1 of 3 published lessons, no due date on the assignment, no attempts yet.
+    expect(summary).toMatchObject({
+      membersCount: 1,
+      completionRate: 33,
+      dueThisWeekCount: 0,
+      overdueCount: 0,
+      avgTeamScore: null,
+      members: [{ status: 'risk', completionPercent: 33 }],
+    });
+
+    await expect(page.getByRole('heading', { name: 'Панель менеджера' })).toBeVisible();
+    await expect(page.getByText('Сотрудников').locator('..').getByText('1', { exact: true })).toBeVisible();
+    await expect(page.getByText('Завершение').locator('..').getByText('33%', { exact: true })).toBeVisible();
+    await expect(page.getByText('Срок на неделе').locator('..').getByText('0', { exact: true })).toBeVisible();
+    await expect(page.getByText('Требует внимания').locator('..').getByText('0', { exact: true })).toBeVisible();
 
     await attachScreenshot(page, testInfo, 'manager-dashboard-desktop');
   });
@@ -55,25 +68,24 @@ test.describe('manager workspace', () => {
     await loginAsManager(page);
     await page.setViewportSize({ width: 375, height: 812 });
 
-    const usersResponsePromise = page.waitForResponse(
-      (response) => isApiPath(response.url(), '/users'),
+    const summaryResponsePromise = page.waitForResponse(
+      (response) => isApiPath(response.url(), '/manager/team-summary'),
     );
     await page.goto('/manager/team');
-    const usersResponse = await usersResponsePromise;
-    expect(usersResponse.status()).toBe(200);
-    const users = await usersResponse.json() as {
-      items: Array<{ email: string }>;
-      total: number;
+    const summaryResponse = await summaryResponsePromise;
+    expect(summaryResponse.status()).toBe(200);
+    const summary = await summaryResponse.json() as {
+      membersCount: number;
+      members: Array<{ email: string }>;
     };
 
-    expect(users).toEqual(expect.objectContaining({
-      total: 1,
-      items: [expect.objectContaining({ email: 'learner@demo.com' })],
+    expect(summary).toEqual(expect.objectContaining({
+      membersCount: 1,
+      members: [expect.objectContaining({ email: 'learner@demo.com' })],
     }));
     await expect(page.getByRole('heading', { name: 'Команда' })).toBeVisible();
-    await expect(page.getByText('Всего сотрудников: 1')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'learner@demo.com' })).toBeVisible();
-    await expect(page.getByText('admin@demo.com')).toHaveCount(0);
+    await expect(page.getByRole('cell', { name: 'Alex Learner' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'admin@demo.com' })).toHaveCount(0);
 
     const forbiddenUser = await page.evaluate(async (userId) => {
       const response = await fetch(`/api/v1/users/${userId}`);
@@ -89,17 +101,17 @@ test.describe('manager workspace', () => {
 
   test('renders the dashboard loading and error states', async ({ page }) => {
     await loginAsManager(page);
-    await page.route('**/api/v1/assignments?*', async (route) => {
+    await page.route('**/api/v1/manager/team-summary', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 750));
       await route.continue();
     });
 
     await page.goto('/manager/dashboard');
-    await expect(page.getByRole('status')).toHaveText('Загрузка...');
-    await expect(page.getByRole('heading', { name: 'Дашборд менеджера' })).toBeVisible();
+    await expect(page.getByRole('status')).toHaveText('Загрузка панели менеджера...');
+    await expect(page.getByRole('heading', { name: 'Панель менеджера' })).toBeVisible();
 
-    await page.unroute('**/api/v1/assignments?*');
-    await page.route('**/api/v1/assignments?*', async (route) => {
+    await page.unroute('**/api/v1/manager/team-summary');
+    await page.route('**/api/v1/manager/team-summary', async (route) => {
       await route.fulfill({
         status: 500,
         contentType: 'application/json',
@@ -112,16 +124,20 @@ test.describe('manager workspace', () => {
 
   test('renders the empty team state', async ({ page }) => {
     await loginAsManager(page);
-    const emptyPage = JSON.stringify({ items: [], page: 1, pageSize: 100, total: 0 });
-    await page.route('**/api/v1/users?*', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: emptyPage });
+    const emptySummary = JSON.stringify({
+      membersCount: 0,
+      completionRate: 0,
+      dueThisWeekCount: 0,
+      overdueCount: 0,
+      avgTeamScore: null,
+      upcomingDeadlines: [],
+      members: [],
     });
-    await page.route('**/api/v1/progress?*', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: emptyPage });
+    await page.route('**/api/v1/manager/team-summary', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: emptySummary });
     });
 
     await page.goto('/manager/team');
-    await expect(page.getByText('Всего сотрудников: 0')).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Нет сотрудников' })).toBeVisible();
+    await expect(page.getByText('Сотрудники не найдены.')).toBeVisible();
   });
 });

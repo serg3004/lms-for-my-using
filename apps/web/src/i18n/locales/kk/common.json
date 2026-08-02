@@ -378,6 +378,58 @@
     "presentedTo": "Курсты сәтті аяқтағаны үшін",
     "issuedOn": "Берілген күні: {{date}}"
   },
+  "manager": {
+    "brandSub": "Менеджер",
+    "navDashboard": "Панель",
+    "navTeam": "Команда",
+    "dashboard": {
+      "eyebrow": "Команда",
+      "title": "Менеджер панелі",
+      "subtitle": "Командаңыздың оқуы және жақын мерзімдер.",
+      "assignButton": "Оқу тағайындау",
+      "loading": "Менеджер панелі жүктелуде...",
+      "loadError": "Деректерді жүктеу мүмкін болмады. Кейінірек қайталаңыз.",
+      "stats": {
+        "members": "Қызметкерлер",
+        "completion": "Аяқталу",
+        "dueThisWeek": "Осы аптадағы мерзім",
+        "attention": "Назар аудару қажет"
+      },
+      "teamProgressTitle": "Команда прогресі",
+      "upcomingTitle": "Жақын мерзімдер",
+      "upcomingEmpty": "Жақын мерзімдер жоқ.",
+      "upcomingItem": "{{course}} — {{name}}, мерзімі {{date}}",
+      "recentTitle": "Соңғы нәтижелер",
+      "recentScore": "Команданың орташа балы — {{score}}%",
+      "recentEmpty": "Тест нәтижелері әлі жоқ.",
+      "assign": {
+        "title": "Оқу тағайындау",
+        "employeeLabel": "Қызметкер",
+        "courseLabel": "Курс",
+        "dueDateLabel": "Мерзімі (міндетті емес)",
+        "submit": "Тағайындау",
+        "cancel": "Бас тарту",
+        "success": "Оқу тағайындалды.",
+        "error": "Оқуды тағайындау мүмкін болмады. Кейінірек қайталаңыз."
+      }
+    },
+    "team": {
+      "eyebrow": "Қызметкерлер",
+      "title": "Команда",
+      "subtitle": "Қызметкерлердің прогресі мен нәтижелерін бақылаңыз.",
+      "loading": "Команда жүктелуде...",
+      "loadError": "Деректерді жүктеу мүмкін болмады. Кейінірек қайталаңыз.",
+      "searchPlaceholder": "Қызметкерді табу",
+      "filterAll": "Барлық күйлер",
+      "filterGood": "Қалыпты",
+      "filterRisk": "Тәуекел",
+      "columnEmployee": "Қызметкер",
+      "columnActiveCourses": "Белсенді курстар",
+      "columnProgress": "Прогресс",
+      "columnStatus": "Күй",
+      "empty": "Қызметкерлер табылмады."
+    }
+  },
   "a11y": {
     "skipToContent": "Негізгі мазмұнға өту"
   }

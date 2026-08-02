@@ -331,6 +331,58 @@
     "presentedTo": "兹证明已成功完成以下课程",
     "issuedOn": "颁发日期：{{date}}"
   },
+  "manager": {
+    "brandSub": "经理",
+    "navDashboard": "面板",
+    "navTeam": "团队",
+    "dashboard": {
+      "eyebrow": "团队",
+      "title": "经理面板",
+      "subtitle": "团队学习情况和近期截止日期。",
+      "assignButton": "分配学习",
+      "loading": "正在加载经理面板...",
+      "loadError": "无法加载数据。请稍后重试。",
+      "stats": {
+        "members": "员工",
+        "completion": "完成率",
+        "dueThisWeek": "本周到期",
+        "attention": "需要关注"
+      },
+      "teamProgressTitle": "团队进度",
+      "upcomingTitle": "近期截止日期",
+      "upcomingEmpty": "没有近期截止日期。",
+      "upcomingItem": "{{course}} — {{name}}，截止 {{date}}",
+      "recentTitle": "最近结果",
+      "recentScore": "团队平均分 — {{score}}%",
+      "recentEmpty": "暂无测验结果。",
+      "assign": {
+        "title": "分配学习",
+        "employeeLabel": "员工",
+        "courseLabel": "课程",
+        "dueDateLabel": "截止日期（可选）",
+        "submit": "分配",
+        "cancel": "取消",
+        "success": "已分配学习任务。",
+        "error": "无法分配学习任务。请稍后重试。"
+      }
+    },
+    "team": {
+      "eyebrow": "员工",
+      "title": "团队",
+      "subtitle": "跟踪员工进度和结果。",
+      "loading": "正在加载团队...",
+      "loadError": "无法加载数据。请稍后重试。",
+      "searchPlaceholder": "搜索员工",
+      "filterAll": "所有状态",
+      "filterGood": "正常",
+      "filterRisk": "有风险",
+      "columnEmployee": "员工",
+      "columnActiveCourses": "进行中的课程",
+      "columnProgress": "进度",
+      "columnStatus": "状态",
+      "empty": "未找到员工。"
+    }
+  },
   "a11y": {
     "skipToContent": "跳到主要内容"
   }

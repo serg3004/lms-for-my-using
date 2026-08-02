@@ -377,6 +377,58 @@
     "presentedTo": "Настоящим подтверждается успешное завершение курса",
     "issuedOn": "Выдан {{date}}"
   },
+  "manager": {
+    "brandSub": "Менеджер",
+    "navDashboard": "Панель",
+    "navTeam": "Команда",
+    "dashboard": {
+      "eyebrow": "Команда",
+      "title": "Панель менеджера",
+      "subtitle": "Обучение вашей команды и ближайшие сроки.",
+      "assignButton": "Назначить обучение",
+      "loading": "Загрузка панели менеджера...",
+      "loadError": "Не удалось загрузить данные. Попробуйте позже.",
+      "stats": {
+        "members": "Сотрудников",
+        "completion": "Завершение",
+        "dueThisWeek": "Срок на неделе",
+        "attention": "Требует внимания"
+      },
+      "teamProgressTitle": "Прогресс команды",
+      "upcomingTitle": "Ближайшие сроки",
+      "upcomingEmpty": "Нет ближайших сроков.",
+      "upcomingItem": "{{course}} — {{name}}, до {{date}}",
+      "recentTitle": "Последние результаты",
+      "recentScore": "Средний балл команды — {{score}}%",
+      "recentEmpty": "Пока нет результатов тестов.",
+      "assign": {
+        "title": "Назначить обучение",
+        "employeeLabel": "Сотрудник",
+        "courseLabel": "Курс",
+        "dueDateLabel": "Срок (необязательно)",
+        "submit": "Назначить",
+        "cancel": "Отмена",
+        "success": "Обучение назначено.",
+        "error": "Не удалось назначить обучение. Попробуйте позже."
+      }
+    },
+    "team": {
+      "eyebrow": "Сотрудники",
+      "title": "Команда",
+      "subtitle": "Отслеживайте прогресс и результаты сотрудников.",
+      "loading": "Загрузка команды...",
+      "loadError": "Не удалось загрузить данные. Попробуйте позже.",
+      "searchPlaceholder": "Найти сотрудника",
+      "filterAll": "Все статусы",
+      "filterGood": "В норме",
+      "filterRisk": "Риск",
+      "columnEmployee": "Сотрудник",
+      "columnActiveCourses": "Активные курсы",
+      "columnProgress": "Прогресс",
+      "columnStatus": "Статус",
+      "empty": "Сотрудники не найдены."
+    }
+  },
   "a11y": {
     "skipToContent": "Перейти к основному содержимому"
   }

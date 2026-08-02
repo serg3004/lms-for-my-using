@@ -1,70 +1,59 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { getCurrentUser, listProgress, listUsers, type CurrentUser, type ProgressSummary, type UserSummary } from '../shared/apiClient.js';
+import { getManagerTeamSummary, type ManagerTeamMember, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
-
-type TeamMember = {
-  user: UserSummary;
-  inProgress: number;
-  completed: number;
-  total: number;
-};
+import { Badge, PageState } from '../shared/ui.js';
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'loaded'; currentUser: CurrentUser; team: TeamMember[] }
+  | { status: 'loaded'; summary: ManagerTeamSummary }
   | { status: 'error' };
 
-function buildTeam(users: UserSummary[], progressItems: ProgressSummary[]): TeamMember[] {
-  const byUser = new Map<string, { inProgress: number; completed: number }>();
+type StatusFilter = 'all' | 'good' | 'risk';
 
-  for (const p of progressItems) {
-    const existing = byUser.get(p.userId) ?? { inProgress: 0, completed: 0 };
-    if (p.status === 'completed') existing.completed++;
-    else if (p.status === 'in_progress') existing.inProgress++;
-    byUser.set(p.userId, existing);
-  }
-
-  return users.map((user) => {
-    const counts = byUser.get(user.id) ?? { inProgress: 0, completed: 0 };
-    return { user, ...counts, total: counts.inProgress + counts.completed };
-  });
+function memberName(member: ManagerTeamMember) {
+  return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email;
 }
 
 export function ManagerTeamPage() {
+  const { t } = useTranslation();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   useEffect(() => {
     let isMounted = true;
 
     async function load() {
       try {
-        const [currentUser, usersPage, progressPage] = await Promise.all([
-          getCurrentUser(),
-          listUsers({ pageSize: 100 }),
-          listProgress({ pageSize: 100 }),
-        ]);
-
-        if (!isMounted) return;
-
-        setState({
-          status: 'loaded',
-          currentUser,
-          team: buildTeam(usersPage.items, progressPage.items),
-        });
+        const summary = await getManagerTeamSummary();
+        if (isMounted) setState({ status: 'loaded', summary });
       } catch {
         if (isMounted) setState({ status: 'error' });
       }
     }
 
     void load();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  const filtered = useMemo(() => {
+    const members = state.status === 'loaded' ? state.summary.members : [];
+    const q = search.trim().toLowerCase();
+    return members.filter((member) => {
+      const matchesSearch = !q || memberName(member).toLowerCase().includes(q) || member.email.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'all' || member.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [state, search, statusFilter]);
 
   if (state.status === 'loading') {
     return (
       <ManagerPageLayout>
-        <p role="status">Загрузка...</p>
+        <PageState message={t('manager.team.loading')} variant="loading" />
       </ManagerPageLayout>
     );
   }
@@ -72,49 +61,70 @@ export function ManagerTeamPage() {
   if (state.status === 'error') {
     return (
       <ManagerPageLayout>
-        <p role="alert">Не удалось загрузить данные. Попробуйте позже.</p>
+        <PageState message={t('manager.team.loadError')} variant="error" />
       </ManagerPageLayout>
     );
   }
 
-  const { currentUser, team } = state;
-
   return (
-    <ManagerPageLayout firstName={currentUser.firstName} lastName={currentUser.lastName ?? undefined}>
-      <h1>Команда</h1>
-      <p>Всего сотрудников: {team.length}</p>
+    <ManagerPageLayout>
+      <div style={{ marginBottom: '22px' }}>
+        <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+          {t('manager.team.eyebrow')}
+        </div>
+        <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 800 }}>{t('manager.team.title')}</h1>
+        <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('manager.team.subtitle')}</p>
+      </div>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Сотрудник</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Email</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>В процессе</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>Завершено</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>Всего</th>
-          </tr>
-        </thead>
-        <tbody>
-          {team.map(({ user, inProgress, completed, total }) => (
-            <tr key={user.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-              <td style={{ padding: '0.5rem' }}>
-                {[user.firstName, user.lastName].filter(Boolean).join(' ') || '—'}
-              </td>
-              <td style={{ padding: '0.5rem' }}>{user.email}</td>
-              <td style={{ textAlign: 'right', padding: '0.5rem' }}>{inProgress}</td>
-              <td style={{ textAlign: 'right', padding: '0.5rem' }}>{completed}</td>
-              <td style={{ textAlign: 'right', padding: '0.5rem' }}>{total}</td>
-            </tr>
-          ))}
-          {team.length === 0 && (
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <input
+          type="search"
+          placeholder={t('manager.team.searchPlaceholder')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="ds-input"
+          style={{ flex: 1, minWidth: '220px' }}
+        />
+        <select className="ds-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} style={{ maxWidth: '200px' }}>
+          <option value="all">{t('manager.team.filterAll')}</option>
+          <option value="good">{t('manager.team.filterGood')}</option>
+          <option value="risk">{t('manager.team.filterRisk')}</option>
+        </select>
+      </div>
+
+      <div className="admin-table-wrap">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={5} style={{ padding: '1rem', textAlign: 'center' }}>
-                Нет сотрудников
-              </td>
+              <th>{t('manager.team.columnEmployee')}</th>
+              <th>{t('manager.team.columnActiveCourses')}</th>
+              <th>{t('manager.team.columnProgress')}</th>
+              <th>{t('manager.team.columnStatus')}</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map((member) => (
+              <tr key={member.userId}>
+                <td>{memberName(member)}</td>
+                <td>{member.activeCoursesCount}</td>
+                <td>{member.completionPercent}%</td>
+                <td>
+                  <Badge variant={member.status === 'good' ? 'done' : 'overdue'}>
+                    {member.status === 'good' ? t('manager.team.filterGood') : t('manager.team.filterRisk')}
+                  </Badge>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>
+                  {t('manager.team.empty')}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </ManagerPageLayout>
   );
 }

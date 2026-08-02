@@ -17,6 +17,7 @@ import { CoursesController } from '../courses/courses.controller.js';
 import { GroupsController } from '../groups/groups.controller.js';
 import { HealthController } from '../health/health.controller.js';
 import { LessonsController } from '../lessons/lessons.controller.js';
+import { ManagerController } from '../manager/manager.controller.js';
 import { MembershipsController } from '../memberships/memberships.controller.js';
 import { OpenApiController } from '../openapi/openapi.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
@@ -43,6 +44,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'groups/groups.controller.ts', Controller: GroupsController },
   { file: 'health/health.controller.ts', Controller: HealthController },
   { file: 'lessons/lessons.controller.ts', Controller: LessonsController },
+  { file: 'manager/manager.controller.ts', Controller: ManagerController },
   { file: 'memberships/memberships.controller.ts', Controller: MembershipsController },
   { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
   { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
