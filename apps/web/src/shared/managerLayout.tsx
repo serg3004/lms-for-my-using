@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getCurrentUser } from './apiClient.js';
 import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
-import { Avatar } from './ui.js';
+import { Avatar, SkipLink } from './ui.js';
 
 const MANAGER_NAV_DEFS = [
   { key: 'manager.navDashboard', href: '/manager/dashboard' },
@@ -61,6 +61,7 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
 
   return (
     <div className="learner-app">
+      <SkipLink label={t('a11y.skipToContent')} />
       <aside className="learner-sidebar">
         <div className="learner-sidebar__brand">
           <div className="learner-sidebar__mark">L</div>
@@ -94,7 +95,7 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
             </button>
           </div>
         </header>
-        <main className="learner-shell">{children}</main>
+        <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
       </div>
     </div>
   );

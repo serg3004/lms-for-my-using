@@ -9,5 +9,13 @@
     "noEmit": true,
     "types": ["node", "@playwright/test"]
   },
-  "include": ["fixtures", "tests", "visual-tests", "playwright.config.ts", "playwright.visual.config.ts"]
+  "include": [
+    "accessibility-tests",
+    "fixtures",
+    "tests",
+    "visual-tests",
+    "playwright.config.ts",
+    "playwright.accessibility.config.ts",
+    "playwright.visual.config.ts"
+  ]
 }

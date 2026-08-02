@@ -4,11 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "lint": "eslint \"{fixtures,tests,visual-tests}/**/*.ts\" playwright.config.ts playwright.visual.config.ts",
+    "lint": "eslint \"{accessibility-tests,fixtures,tests,visual-tests}/**/*.ts\" playwright.config.ts playwright.accessibility.config.ts playwright.visual.config.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:a11y": "playwright test --config playwright.accessibility.config.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
     "@playwright/test": "^1.55.1",
     "@types/node": "^25.9.5",
     "eslint": "^10.8.0",

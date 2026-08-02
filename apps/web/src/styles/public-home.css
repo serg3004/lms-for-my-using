@@ -33,7 +33,7 @@
 }
 
 .public-home__nav a {
-  color: #6b7280;
+  color: #596274;
   text-decoration: none;
 }
 
@@ -111,7 +111,7 @@
 
 .public-home__lead {
   margin: 0;
-  color: #6b7280;
+  color: #596274;
   font-size: 19px;
   line-height: 1.7;
 }
@@ -149,7 +149,7 @@
 }
 
 .public-home__stat span {
-  color: #6b7280;
+  color: #596274;
   font-size: 0.875rem;
 }
 
@@ -208,14 +208,14 @@
 
 .public-home__feature p {
   margin: 0;
-  color: #6b7280;
+  color: #596274;
   line-height: 1.6;
 }
 
 .public-home__footer {
   padding: 28px 0;
   border-top: 1px solid #e3e8ef;
-  color: #6b7280;
+  color: #596274;
 }
 
 @media (max-width: 850px) {

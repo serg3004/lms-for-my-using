@@ -2592,7 +2592,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 198 — Accessibility baseline 🔲
+## PR 198 — Accessibility baseline ✅
 
 **Проблема:** Нет автоматизированного browser accessibility audit.
 

@@ -33,7 +33,7 @@ export const defaultThemeSettings: ThemeSettings = {
   colorSurfaceMuted: '#eef2f7',
   colorBorder: '#d8e0ec',
   colorText: '#172033',
-  colorTextMuted: '#64748b',
+  colorTextMuted: '#566176',
   shadowCard: '0 10px 30px rgb(15 23 42 / 8%)',
   radiusSm: '6px',
   radiusMd: '10px',
