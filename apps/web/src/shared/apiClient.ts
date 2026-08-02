@@ -209,6 +209,7 @@ export async function uploadMaterialFileMultipart(
 
 const REQUEST_TIMEOUT_MS = 15_000;
 let refreshRequest: Promise<boolean> | null = null;
+let successfulRefreshCount = 0;
 
 async function refreshAccessToken() {
   if (!refreshRequest) {
@@ -216,7 +217,10 @@ async function refreshAccessToken() {
       method: 'POST',
       credentials: 'same-origin',
     })
-      .then((response) => response.ok)
+      .then((response) => {
+        if (response.ok) successfulRefreshCount += 1;
+        return response.ok;
+      })
       .catch(() => false)
       .finally(() => {
         refreshRequest = null;
@@ -238,12 +242,15 @@ async function executeApiRequest(path: string, init: RequestInit, signal: AbortS
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const refreshCountAtRequestStart = successfulRefreshCount;
 
   try {
     let response = await executeApiRequest(path, init, controller.signal);
 
     if (response.status === 401 && path !== '/auth/login' && path !== '/auth/refresh') {
-      const refreshed = await refreshAccessToken();
+      const refreshed = successfulRefreshCount > refreshCountAtRequestStart
+        ? true
+        : await refreshAccessToken();
 
       if (refreshed) {
         response = await executeApiRequest(path, init, controller.signal);
