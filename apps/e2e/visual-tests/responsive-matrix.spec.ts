@@ -68,11 +68,24 @@ async function installAdminMocks(page: Page) {
   }));
 }
 
+async function installGuestMock(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    status: 401,
+    json: {
+      statusCode: 401,
+      error: { code: 'UNAUTHORIZED', message: 'Synthetic guest session' },
+      path: '/api/v1/auth/me',
+      timestamp: '2026-01-15T12:00:00.000Z',
+    },
+  }));
+}
+
 for (const width of widths) {
   test.describe(`${width}px viewport`, () => {
     test.use({ viewport: { width, height } });
 
     test('matches the public navigation baseline without page overflow', async ({ page }, testInfo) => {
+      await installGuestMock(page);
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expectNoPageOverflow(page);
@@ -108,6 +121,7 @@ for (const width of widths) {
 
 test('remains usable at 200% browser zoom', async ({ page }) => {
   await page.setViewportSize({ width: 320, height });
+  await installGuestMock(page);
   await page.goto('/');
   const client = await page.context().newCDPSession(page);
   await client.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
