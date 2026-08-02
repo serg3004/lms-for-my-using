@@ -9,6 +9,52 @@
     "logout": "退出",
     "brandSub": "学习平台"
   },
+  "admin": {
+    "navLink": "管理员",
+    "sidebarLabel": "管理员导航",
+    "title": "管理面板",
+    "subtitle": "欢迎回来，{{name}}。",
+    "loading": "正在加载管理面板...",
+    "sessionExpired": "会话已过期。请重新登录。",
+    "loadError": "无法加载管理面板。请稍后重试。",
+    "profileTitle": "管理员资料",
+    "name": "姓名",
+    "email": "邮箱",
+    "organizationId": "组织 ID",
+    "sectionsTitle": "快捷链接",
+    "sections": {
+      "courses": { "title": "课程", "description": "创建并管理培训课程。" },
+      "users": { "title": "用户", "description": "管理组织成员及其角色。" },
+      "assignments": { "title": "任务", "description": "为学员分配课程。" },
+      "reports": { "title": "结果", "description": "查看证书和测试成绩。" }
+    },
+    "dashboard": {
+      "downloadReport": "下载报告",
+      "stats": {
+        "users": "用户",
+        "courses": "课程",
+        "completion": "完成率",
+        "certificates": "证书"
+      },
+      "activity": {
+        "title": "最近动态",
+        "empty": "暂无最近动态。",
+        "userAdded": "新增用户：{{name}}",
+        "certificateIssued": "已颁发证书",
+        "lessonCompleted": "课时已完成"
+      },
+      "needsAttention": {
+        "title": "需要关注",
+        "pendingUsers": "{{count}} 名用户等待激活",
+        "empty": "目前没有需要关注的事项。"
+      },
+      "systemStatus": {
+        "title": "系统状态",
+        "available": "可用",
+        "unavailable": "不可用"
+      }
+    }
+  },
   "notFound": {
     "title": "页面未找到",
     "description": "地址可能已更改、页面已删除，或链接不正确。",

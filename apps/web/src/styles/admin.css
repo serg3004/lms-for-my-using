@@ -276,6 +276,41 @@
   gap: 24px;
 }
 
+.admin-dashboard-widgets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin-dashboard-widget__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.admin-activity-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-activity-list li {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+@media (max-width: 900px) {
+  .admin-dashboard-widgets {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);

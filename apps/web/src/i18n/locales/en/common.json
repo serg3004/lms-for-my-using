@@ -9,6 +9,52 @@
     "logout": "Log out",
     "brandSub": "Learning Platform"
   },
+  "admin": {
+    "navLink": "Admin",
+    "sidebarLabel": "Admin navigation",
+    "title": "Dashboard",
+    "subtitle": "Welcome back, {{name}}.",
+    "loading": "Loading admin dashboard...",
+    "sessionExpired": "Your session expired. Sign in again.",
+    "loadError": "Unable to load admin dashboard. Try again later.",
+    "profileTitle": "Admin profile",
+    "name": "Name",
+    "email": "Email",
+    "organizationId": "Organization ID",
+    "sectionsTitle": "Quick links",
+    "sections": {
+      "courses": { "title": "Courses", "description": "Create and manage training courses." },
+      "users": { "title": "Users", "description": "Manage organization members and roles." },
+      "assignments": { "title": "Assignments", "description": "Assign courses to learners." },
+      "reports": { "title": "Results", "description": "View certificates and assessment scores." }
+    },
+    "dashboard": {
+      "downloadReport": "Download report",
+      "stats": {
+        "users": "Users",
+        "courses": "Courses",
+        "completion": "Completion",
+        "certificates": "Certificates"
+      },
+      "activity": {
+        "title": "Recent activity",
+        "empty": "No recent activity.",
+        "userAdded": "New user added: {{name}}",
+        "certificateIssued": "Certificate issued",
+        "lessonCompleted": "Lesson completed"
+      },
+      "needsAttention": {
+        "title": "Needs attention",
+        "pendingUsers": "{{count}} users await activation",
+        "empty": "Nothing needs attention right now."
+      },
+      "systemStatus": {
+        "title": "System status",
+        "available": "Available",
+        "unavailable": "Unavailable"
+      }
+    }
+  },
   "notFound": {
     "title": "Page not found",
     "description": "The address may have changed, the page may have been removed, or the link may be incorrect.",
