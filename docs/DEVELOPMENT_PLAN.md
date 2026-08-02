@@ -2611,7 +2611,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза F — Frontend-поддерживаемость
 
-## PR 199 — Разделение route architecture 🔲
+## PR 199 — Разделение route architecture ✅
 
 **Проблема:** `App.tsx` смешивает lazy imports, navigation, auth, breadcrumbs и routes.
 
