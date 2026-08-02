@@ -35,13 +35,14 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     setLoadState({ status: 'loading' });
 
     try {
-      const [course, lessonsAll, { items: progressList }, { items: assignments }, currentUser] = await Promise.all([
+      const [course, lessonsAll, { items: progressList }, assignmentsRes, currentUser] = await Promise.all([
         getCourse(courseId),
         listLessons(courseId),
         listProgress({ pageSize: 200 }),
-        listAssignments({ pageSize: 50 }),
+        listAssignments({ pageSize: 50 }).catch(() => ({ items: [] as import('../shared/api/types.js').AssignmentSummary[] })),
         getCurrentUser(),
       ]);
+      const assignments = assignmentsRes.items;
 
       const lessons = lessonsAll
         .filter((l) => l.status === 'published')
