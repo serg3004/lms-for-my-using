@@ -1,23 +1,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { listAssignments } from '../shared/api/assignments.js';
 import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
+import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
-import type { CourseSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 
 type CourseDetailLoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; course: CourseSummary; totalLessons: number; completedLessons: number }
+  | {
+      status: 'loaded';
+      course: CourseSummary;
+      lessons: LessonSummary[];
+      completedLessonIds: Set<string>;
+      dueAt: string | null;
+    }
   | { status: 'unauthenticated'; message: string }
   | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
-function getLessonsHref(courseId: string) {
-  return `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
+function formatDueAt(dueAt: string): string {
+  return new Date(dueAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
@@ -28,14 +35,18 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     setLoadState({ status: 'loading' });
 
     try {
-      const [course, lessons, { items: progressList }, currentUser] = await Promise.all([
+      const [course, lessonsAll, { items: progressList }, { items: assignments }, currentUser] = await Promise.all([
         getCourse(courseId),
         listLessons(courseId),
         listProgress({ pageSize: 200 }),
+        listAssignments({ pageSize: 50 }),
         getCurrentUser(),
       ]);
 
-      const publishedLessons = lessons.filter((l) => l.status === 'published');
+      const lessons = lessonsAll
+        .filter((l) => l.status === 'published')
+        .sort((a, b) => a.order - b.order);
+
       const completedLessonIds = new Set(
         progressList
           .filter(
@@ -47,9 +58,10 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
           )
           .map((p) => p.lessonId as string),
       );
-      const completedLessons = publishedLessons.filter((l) => completedLessonIds.has(l.id)).length;
 
-      setLoadState({ status: 'loaded', course, totalLessons: publishedLessons.length, completedLessons });
+      const dueAt = assignments.find((a) => a.courseId === courseId)?.dueAt ?? null;
+
+      setLoadState({ status: 'loaded', course, lessons, completedLessonIds, dueAt });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
         setLoadState({ status: 'unauthenticated', message: t('courseDetail.sessionExpired') });
@@ -71,69 +83,166 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
-    return (
-      <>
-        <PageState message={t('courseDetail.loading')} variant="loading" />
-      </>
-    );
+    return <PageState message={t('courseDetail.loading')} variant="loading" />;
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <>
-        <PageState
-          title={t('courseDetail.title')}
-          message={loadState.message}
-          variant="error"
-          action={loginAction}
-        />
-      </>
+      <PageState
+        title={t('courseDetail.title')}
+        message={loadState.message}
+        variant="error"
+        action={loginAction}
+      />
     );
   }
 
   if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
-      <>
-        <PageState
-          title={t('courseDetail.title')}
-          message={loadState.message}
-          variant="error"
-          action={coursesAction}
-        />
-      </>
+      <PageState
+        title={t('courseDetail.title')}
+        message={loadState.message}
+        variant="error"
+        action={coursesAction}
+      />
     );
   }
 
-  const { course, totalLessons, completedLessons } = loadState;
-  const progressPercent = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
+  const { course, lessons, completedLessonIds, dueAt } = loadState;
+  const totalLessons = lessons.length;
+  const completedLessons = lessons.filter((l) => completedLessonIds.has(l.id)).length;
+  const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  const firstIncomplete = lessons.find((l) => !completedLessonIds.has(l.id));
+  const continueHref = firstIncomplete
+    ? `/learn/lessons/${encodeURIComponent(firstIncomplete.id)}`
+    : `/learn/courses/${encodeURIComponent(courseId)}/lessons`;
+
+  const allDone = totalLessons > 0 && completedLessons === totalLessons;
+  const noneStarted = completedLessons === 0;
+
+  let heroTitle: string;
+  let heroText: string;
+  if (allDone) {
+    heroTitle = t('courseDetail.heroTitleDone');
+    heroText = t('courseDetail.heroTextDone', { total: totalLessons });
+  } else if (noneStarted || !firstIncomplete) {
+    heroTitle = t('courseDetail.heroTitleStart');
+    heroText = t('courseDetail.heroTextStart');
+  } else {
+    heroTitle = t('courseDetail.heroTitle', { lesson: firstIncomplete.title });
+    heroText = t('courseDetail.heroText', { completed: completedLessons, total: totalLessons });
+  }
 
   return (
-    <div className="learner-course-detail">
+    <div>
       <nav className="learner-breadcrumb">
         <a href="/learn/courses">{t('courses.navLink')}</a>
+        <span aria-hidden="true"> / </span>
+        <span>{course.title}</span>
       </nav>
 
-      <article className="learner-course-detail__article">
-        <h1>{course.title}</h1>
-        {course.description ? <p className="learner-course-detail__description">{course.description}</p> : null}
+      <section className="lcd-hero">
+        <div className="lcd-hero__text">
+          <p className="lcd-eyebrow">{t('courseDetail.eyebrow')}</p>
+          <h2>{heroTitle}</h2>
+          <p className="lcd-hero__subtext">{heroText}</p>
+        </div>
+        <div className="lcd-hero__card">
+          <div className="lcd-hero__percent">{progressPercent}%</div>
+          <div className="lcd-hero__bar-label">{t('courseDetail.progressLabel')}</div>
+          <div className="lcd-hero__bar">
+            <div className="lcd-hero__bar-fill" style={{ width: `${progressPercent}%` }} />
+          </div>
+        </div>
+      </section>
 
-        {totalLessons > 0 ? (
-          <div className="learner-course-detail__progress">
-            <div className="learner-progress-summary">
-              <span className="learner-progress-summary__text">
-                {t('courseDetail.lessonsProgress', { completed: completedLessons, total: totalLessons })}
-              </span>
-              <div className="learner-progress-bar">
-                <div className="learner-progress-bar__fill" style={{ width: `${progressPercent}%` }} />
+      <div className="lcd-layout">
+        <div className="lcd-main">
+          <div className="ds-card" style={{ padding: '28px 32px' }}>
+            <h3 className="lcd-section-title">{t('courseDetail.aboutTitle')}</h3>
+
+            <div className="lcd-facts">
+              <div className="lcd-fact">
+                <div className="lcd-fact__value">{totalLessons}</div>
+                <div className="lcd-fact__label">{t('courseDetail.factsLessons')}</div>
+              </div>
+              <div className="lcd-fact">
+                <div className="lcd-fact__value">{completedLessons}</div>
+                <div className="lcd-fact__label">{t('courseDetail.factsCompleted')}</div>
+              </div>
+              <div className="lcd-fact">
+                <div className="lcd-fact__value">{progressPercent}%</div>
+                <div className="lcd-fact__label">{t('courseDetail.factsProgress')}</div>
               </div>
             </div>
-          </div>
-        ) : null}
 
-        <a className="learner-btn learner-btn--primary" href={getLessonsHref(course.id)}>
-          {t('lessons.navLink')}
-        </a>
-      </article>
+            {course.description ? (
+              <p className="lcd-description" style={{ marginTop: '20px' }}>
+                {course.description}
+              </p>
+            ) : null}
+          </div>
+
+          {lessons.length > 0 ? (
+            <div className="ds-card" style={{ padding: '28px 32px' }}>
+              <h3 className="lcd-section-title">{t('courseDetail.programTitle')}</h3>
+              <div className="lcd-lessons">
+                {lessons.map((lesson, idx) => {
+                  const isDone = completedLessonIds.has(lesson.id);
+                  const isCurrent = !isDone && lesson === firstIncomplete;
+                  return (
+                    <div key={lesson.id} className="lcd-lesson">
+                      <div
+                        className={`lcd-lesson__index${isDone ? ' lcd-lesson__index--done' : isCurrent ? ' lcd-lesson__index--current' : ''}`}
+                      >
+                        {idx + 1}
+                      </div>
+                      <div className="lcd-lesson__title">{lesson.title}</div>
+                      {isDone ? (
+                        <span className="lcd-badge lcd-badge--done">{t('courseDetail.statusDone')}</span>
+                      ) : isCurrent ? (
+                        <span className="lcd-badge lcd-badge--current">{t('courseDetail.statusCurrent')}</span>
+                      ) : (
+                        <span />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <aside className="lcd-side">
+          <div className="ds-card" style={{ padding: '24px' }}>
+            <h3 className="lcd-section-title">{t('courseDetail.detailsTitle')}</h3>
+            <div className="info-row">
+              <span className="info-row__label">{t('courseDetail.detailsStatus')}</span>
+              <span>{course.status}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">{t('courseDetail.detailsDueAt')}</span>
+              <span>{dueAt ? formatDueAt(dueAt) : t('courseDetail.detailsNoDueAt')}</span>
+            </div>
+          </div>
+
+          <div className="ds-card lcd-actions" style={{ padding: '24px' }}>
+            <a className="learner-btn learner-btn--primary" href={continueHref}>
+              {t('courseDetail.continueLearning')}
+            </a>
+            <a
+              className="learner-btn learner-btn--secondary"
+              href={`/learn/courses/${encodeURIComponent(courseId)}/lessons`}
+            >
+              {t('lessons.navLink')}
+            </a>
+            <a className="learner-btn learner-btn--secondary" href="/learn/courses">
+              {t('courseDetail.backToCourses')}
+            </a>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
