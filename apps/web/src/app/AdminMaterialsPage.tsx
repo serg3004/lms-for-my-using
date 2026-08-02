@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
-import { uploadReducer, validateMaterialForm, type MaterialKind, type MaterialStatus } from './materials/model.js';
+import { uploadReducer, type MaterialKind, type MaterialStatus } from './materials/model.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { MaterialTable } from './materials/MaterialTable.js';
@@ -68,6 +69,7 @@ export function AdminMaterialsPage() {
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title' | 'fileUrl'>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit dialog
@@ -84,6 +86,7 @@ export function AdminMaterialsPage() {
   const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const [editErrors, setEditErrors] = useState<FormValidationErrors<'title' | 'fileUrl'>>({});
 
   const loadMaterials = useCallback(async (courseId?: string) => {
     try {
@@ -172,13 +175,12 @@ export function AdminMaterialsPage() {
     const materialTitle = title.trim();
     const slug = slugify(materialTitle);
 
-    if (Object.keys(validateMaterialForm({ title, kind, fileUrl, fileName, description })).length > 0) {
-      setSubmitState({
-        status: 'error',
-        message: t('admin.materials.invalidInput', 'Enter a material title and valid URL.'),
-      });
-      return;
-    }
+    const errors = validateRequiredFields([
+      { name: 'title', value: materialTitle, message: t('admin.materials.titleRequired', 'Material title is required.') },
+      { name: 'fileUrl', value: fileUrl, message: t('admin.materials.urlRequired', 'URL is required.') },
+    ]);
+    if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
+    setCreateErrors({});
 
     setSubmitState({ status: 'saving' });
 
@@ -238,6 +240,7 @@ export function AdminMaterialsPage() {
     setEditStatus(material.status as MaterialStatus);
     dispatchEditUpload({ type: 'reset' });
     setEditState({ status: 'idle' });
+    setEditErrors({});
     editDialogRef.current?.showModal();
   }
 
@@ -251,13 +254,12 @@ export function AdminMaterialsPage() {
     const newTitle = editTitle.trim();
     const newFileUrl = editFileUrl.trim();
 
-    if (Object.keys(validateMaterialForm({ title: editTitle, kind: editKind, fileUrl: editFileUrl, fileName: editFileName, description: editDescription })).length > 0) {
-      setEditState({
-        status: 'error',
-        message: t('admin.materials.invalidInput', 'Enter a material title and valid URL.'),
-      });
-      return;
-    }
+    const editValidationErrors = validateRequiredFields([
+      { name: 'title', value: newTitle, message: t('admin.materials.titleRequired', 'Material title is required.') },
+      { name: 'fileUrl', value: newFileUrl, message: t('admin.materials.urlRequired', 'URL is required.') },
+    ]);
+    if (hasValidationErrors(editValidationErrors)) { setEditErrors(editValidationErrors); return; }
+    setEditErrors({});
 
     setEditState({ status: 'saving' });
 
@@ -349,10 +351,10 @@ export function AdminMaterialsPage() {
                 <MaterialMetadataForm
                   form={{ title, kind }}
                   t={t}
+                  titleError={createErrors.title}
                   onChange={(field, value) => {
-                    if (field === 'title') setTitle(value);
+                    if (field === 'title') { setTitle(value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }
                     else if (field === 'kind') setKind(value as MaterialKind);
-
                   }}
                 />
                 <div className="admin-form__field">
@@ -361,7 +363,7 @@ export function AdminMaterialsPage() {
                     <div className="admin-upload__row">
                       <input
                         value={fileUrl}
-                        onChange={(event) => setFileUrl(event.target.value)}
+                        onChange={(event) => { setFileUrl(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
                         maxLength={2048}
                         placeholder="https://..."
                         disabled={uploadState.status === 'uploading'}
@@ -391,6 +393,7 @@ export function AdminMaterialsPage() {
                       </div>
                     ) : null}
                   </div>
+                  {createErrors.fileUrl ? <p className="admin-form__error" role="alert">{createErrors.fileUrl}</p> : null}
                 </div>
 
                 <div className="admin-form__field">
@@ -450,7 +453,8 @@ export function AdminMaterialsPage() {
         <form className="admin-form" onSubmit={handleUpdateMaterial}>
           <div className="admin-form__field">
             <label>{t('admin.materials.materialTitle', 'Title')}</label>
-            <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={160} />
+            <input value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+            {editErrors.title ? <p className="admin-form__error" role="alert">{editErrors.title}</p> : null}
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.kind', 'Kind')}</label>
@@ -465,7 +469,7 @@ export function AdminMaterialsPage() {
               <div className="admin-upload__row">
                 <input
                   value={editFileUrl}
-                  onChange={(event) => setEditFileUrl(event.target.value)}
+                  onChange={(event) => { setEditFileUrl(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
                   maxLength={2048}
                   disabled={editUploadState.status === 'uploading'}
                 />
@@ -494,6 +498,7 @@ export function AdminMaterialsPage() {
                 </div>
               ) : null}
             </div>
+            {editErrors.fileUrl ? <p className="admin-form__error" role="alert">{editErrors.fileUrl}</p> : null}
           </div>
           <div className="admin-form__field">
             <label>{t('admin.materials.fileName', 'File name')}</label>

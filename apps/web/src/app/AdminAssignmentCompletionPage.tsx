@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
@@ -78,6 +79,7 @@ export function AdminAssignmentCompletionPage() {
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const [recordErrors, setRecordErrors] = useState<FormValidationErrors<'score'>>({});
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.assignments.title', 'Assignments'), href: '/admin/assignments', isCurrent: true },
@@ -173,12 +175,10 @@ export function AdminAssignmentCompletionPage() {
     const scoreValue = score.trim() ? Number(score) : undefined;
 
     if (scoreValue !== undefined && (!Number.isInteger(scoreValue) || scoreValue < 0 || scoreValue > 100)) {
-      setSubmitState({
-        status: 'error',
-        message: t('admin.assignments.invalidScore', 'Score must be an integer from 0 to 100.'),
-      });
+      setRecordErrors({ score: t('admin.assignments.invalidScore', 'Score must be an integer from 0 to 100.') });
       return;
     }
+    setRecordErrors({});
 
     setSubmitState({ status: 'saving' });
 
@@ -325,7 +325,8 @@ export function AdminAssignmentCompletionPage() {
             </div>
             <div className="admin-form__field">
               <label>{t('admin.assignments.score', 'Score (0–100)')}</label>
-              <input value={score} onChange={(event) => setScore(event.target.value)} inputMode="numeric" />
+              <input value={score} onChange={(event) => { setScore(event.target.value); setRecordErrors((prev) => clearFieldError(prev, 'score')); }} inputMode="numeric" />
+              {recordErrors.score ? <p className="admin-form__error" role="alert">{recordErrors.score}</p> : null}
             </div>
             {submitState.status === 'error' ? (
               <p className="admin-form__error" role="alert">
