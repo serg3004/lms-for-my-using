@@ -56,9 +56,13 @@ test.describe('WCAG AA browser baseline', () => {
 test.describe('keyboard and focus baseline', () => {
   test('skip link moves keyboard focus to the main landmark', async ({ page }) => {
     await page.goto('/login');
-    await page.keyboard.press('Tab');
-
     const skipLink = page.getByRole('link', { name: 'Перейти к основному содержимому' });
+    await expect(skipLink).toBeVisible();
+
+    // Start tabbing only after React has rendered the route. Pressing Tab while
+    // the document shell is still empty can advance focus before the skip link
+    // exists, which makes this assertion depend on application startup timing.
+    await page.keyboard.press('Tab');
     await expect(skipLink).toBeFocused();
     await skipLink.press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
