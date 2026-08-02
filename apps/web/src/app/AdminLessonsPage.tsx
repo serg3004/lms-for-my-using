@@ -5,6 +5,7 @@ import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
@@ -33,6 +34,7 @@ export function AdminLessonsPage() {
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title'>>({});
 
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const [editLesson, setEditLesson] = useState<Lesson | null>(null);
@@ -43,6 +45,7 @@ export function AdminLessonsPage() {
   const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+  const [editErrors, setEditErrors] = useState<FormValidationErrors<'title'>>({});
 
   const loadLessons = useCallback(async (courseId?: string) => {
     try {
@@ -88,10 +91,14 @@ export function AdminLessonsPage() {
     const slug = slugify(lessonTitle);
     const orderValue = Number(order);
 
-    if (!lessonTitle || !slug || !Number.isInteger(orderValue) || orderValue < 0) {
+    const errors = validateRequiredFields([{ name: 'title', value: lessonTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
+    if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
+    setCreateErrors({});
+
+    if (!Number.isInteger(orderValue) || orderValue < 0) {
       setSubmitState({
         status: 'error',
-        message: t('admin.lessons.invalidInput', 'Enter a lesson title and non-negative order number.'),
+        message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.'),
       });
       return;
     }
@@ -147,6 +154,7 @@ export function AdminLessonsPage() {
     setEditOrder(String(lesson.order));
     setEditStatus(lesson.status as LessonStatus);
     setEditState({ status: 'idle' });
+    setEditErrors({});
     editDialogRef.current?.showModal();
   }
 
@@ -160,10 +168,14 @@ export function AdminLessonsPage() {
     const newTitle = editTitle.trim();
     const newOrder = Number(editOrder);
 
-    if (!newTitle || !Number.isInteger(newOrder) || newOrder < 0) {
+    const titleErrors = validateRequiredFields([{ name: 'title', value: newTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
+    if (hasValidationErrors(titleErrors)) { setEditErrors(titleErrors); return; }
+    setEditErrors({});
+
+    if (!Number.isInteger(newOrder) || newOrder < 0) {
       setEditState({
         status: 'error',
-        message: t('admin.lessons.invalidInput', 'Enter a lesson title and non-negative order number.'),
+        message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.'),
       });
       return;
     }
@@ -246,7 +258,8 @@ export function AdminLessonsPage() {
                 </div>
                 <div className="admin-form__field">
                   <label>{t('admin.lessons.lessonTitle', 'Lesson title')}</label>
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
+                  <input value={title} onChange={(event) => { setTitle(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+                  {createErrors.title ? <p className="admin-form__error" role="alert">{createErrors.title}</p> : null}
                 </div>
                 <div className="admin-form__field">
                   <label>{t('admin.lessons.order', 'Order')}</label>
@@ -338,7 +351,8 @@ export function AdminLessonsPage() {
         <form className="admin-form" onSubmit={handleUpdateLesson}>
           <div className="admin-form__field">
             <label>{t('admin.lessons.lessonTitle', 'Lesson title')}</label>
-            <input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} maxLength={160} />
+            <input value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+            {editErrors.title ? <p className="admin-form__error" role="alert">{editErrors.title}</p> : null}
           </div>
           <div className="admin-form__field">
             <label>{t('admin.lessons.order', 'Order')}</label>
