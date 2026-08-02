@@ -1,5 +1,11 @@
 import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
 
+type SkipLinkProps = { label: string; targetId?: string };
+
+export function SkipLink({ label, targetId = 'main-content' }: SkipLinkProps) {
+  return <a className="ui-skip-link" href={`#${targetId}`}>{label}</a>;
+}
+
 export type BreadcrumbItem = {
   label: string;
   href?: string;

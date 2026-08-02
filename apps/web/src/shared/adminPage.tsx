@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
-import { Avatar } from './ui.js';
+import { Avatar, SkipLink } from './ui.js';
 
 export type AdminNavItem = {
   label: string;
@@ -52,29 +53,59 @@ export function AdminPageLayout({
   currentUser,
   children,
 }: AdminPageLayoutProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+
+  function closeNavigation() {
+    setIsOpen(false);
+    menuButtonRef.current?.focus();
+  }
 
   const currentHrefs = new Set(
     navItems.filter((item) => item.isCurrent).map((item) => item.href),
   );
 
   useEffect(() => {
+    const media = window.matchMedia('(max-width: 860px)');
+    const syncViewport = () => {
+      const hidden = media.matches && !isOpen;
+      sidebarRef.current?.toggleAttribute('inert', hidden);
+      if (hidden) sidebarRef.current?.setAttribute('aria-hidden', 'true');
+      else sidebarRef.current?.removeAttribute('aria-hidden');
+    };
+    syncViewport();
+    media.addEventListener('change', syncViewport);
+    return () => media.removeEventListener('change', syncViewport);
+  }, [isOpen]);
+
+  useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        menuButtonRef.current?.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen]);
 
   return (
-    <main className="admin-layout">
+    <div className="admin-layout">
+      <SkipLink label={t('a11y.skipToContent')} />
       <div className="admin-mobile-bar">
         <button
           aria-expanded={isOpen}
           aria-label="Open navigation"
           className="admin-hamburger"
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setIsOpen(true);
+            requestAnimationFrame(() => closeButtonRef.current?.focus());
+          }}
+          ref={menuButtonRef}
           type="button"
         >
           ☰
@@ -86,13 +117,14 @@ export function AdminPageLayout({
         <div
           aria-hidden="true"
           className="admin-drawer-backdrop"
-          onClick={() => setIsOpen(false)}
+          onClick={closeNavigation}
         />
       )}
 
       <aside
         aria-label={sidebarLabel}
         className={`admin-sidebar${isOpen ? ' admin-sidebar--open' : ''}`}
+        ref={sidebarRef}
       >
         <div className="admin-sidebar-header">
           <a className="admin-brand" href="/admin">
@@ -105,7 +137,8 @@ export function AdminPageLayout({
           <button
             aria-label="Close navigation"
             className="admin-sidebar-close"
-            onClick={() => setIsOpen(false)}
+            onClick={closeNavigation}
+            ref={closeButtonRef}
             type="button"
           >
             ✕
@@ -149,8 +182,8 @@ export function AdminPageLayout({
         ) : null}
       </aside>
 
-      <section className="admin-shell">{children}</section>
-    </main>
+      <main className="admin-shell" id="main-content" tabIndex={-1}>{children}</main>
+    </div>
   );
 }
 
@@ -230,16 +263,29 @@ export function ConfirmDialog({
   variant = 'default',
 }: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
 
   useEffect(() => {
-    if (open) ref.current?.showModal();
-    else ref.current?.close();
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      ref.current?.showModal();
+      confirmRef.current?.focus();
+    } else if (ref.current?.open) {
+      ref.current.close();
+    }
   }, [open]);
 
+  function handleClose() {
+    if (open) onCancel();
+    requestAnimationFrame(() => returnFocusRef.current?.focus());
+  }
+
   return (
-    <dialog className="admin-dialog" ref={ref} onClose={onCancel}>
+    <dialog aria-labelledby={titleId} className="admin-dialog" ref={ref} onClose={handleClose}>
       <div className="admin-dialog__header">
-        <h2>{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <button
           aria-label={cancelLabel}
           className="admin-dialog__close"
@@ -258,6 +304,7 @@ export function ConfirmDialog({
           <button
             className={`admin-btn ${variant === 'danger' ? 'admin-btn--danger' : 'admin-btn--primary'}`}
             onClick={onConfirm}
+            ref={confirmRef}
             type="button"
           >
             {confirmLabel}

@@ -40,9 +40,18 @@
     },
     "features": {
       "title": "Everything for structured learning",
-      "f1": { "title": "Courses and materials", "text": "Structured programs, lessons, videos and documents." },
-      "f2": { "title": "Assessments and assignments", "text": "Knowledge checks, deadlines and required programs." },
-      "f3": { "title": "Progress and certificates", "text": "Transparent results and learning proof." }
+      "f1": {
+        "title": "Courses and materials",
+        "text": "Structured programs, lessons, videos and documents."
+      },
+      "f2": {
+        "title": "Assessments and assignments",
+        "text": "Knowledge checks, deadlines and required programs."
+      },
+      "f3": {
+        "title": "Progress and certificates",
+        "text": "Transparent results and learning proof."
+      }
     },
     "footer": "LearnSpace · Learning platform"
   },
@@ -279,5 +288,8 @@
     "certType": "Certificate of Completion",
     "presentedTo": "This certificate is awarded for successfully completing the course",
     "issuedOn": "Issued on {{date}}"
+  },
+  "a11y": {
+    "skipToContent": "Skip to main content"
   }
 }

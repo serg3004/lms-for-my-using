@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { login } from '../shared/api/auth.js';
 import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 import { hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
+import { SkipLink } from '../shared/ui.js';
 
 type LoginFormState = {
   organizationId: string;
@@ -203,7 +204,8 @@ export function LoginPage() {
   }
 
   return (
-    <main className="login-page">
+    <main className="login-page" id="main-content" tabIndex={-1}>
+      <SkipLink label={t('a11y.skipToContent')} />
       <section className="login-hero" aria-labelledby="login-hero-title">
         <div className="login-hero__brand">LearnSpace</div>
 

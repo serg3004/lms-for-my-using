@@ -12,7 +12,8 @@
     "test:e2e": "playwright test --config apps/e2e/playwright.config.ts",
     "test:visual": "playwright test --config apps/e2e/playwright.visual.config.ts",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
-    "test:integration:db:local": "bash scripts/test-api-database.sh"
+    "test:integration:db:local": "bash scripts/test-api-database.sh",
+    "test:a11y": "playwright test --config apps/e2e/playwright.accessibility.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",

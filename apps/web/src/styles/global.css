@@ -180,6 +180,28 @@ tr:last-child td {
   min-height: 100vh;
 }
 
+.ui-skip-link {
+  position: fixed;
+  z-index: 10000;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  color: #ffffff;
+  background: #172033;
+  transform: translateY(calc(-100% - 16px));
+}
+
+.ui-skip-link:focus {
+  color: #ffffff;
+  transform: translateY(0);
+}
+
+:where(button, input, select, textarea, summary, a, [tabindex]):focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 3px;
+}
+
 @media (max-width: 860px) {
   button,
   input,
