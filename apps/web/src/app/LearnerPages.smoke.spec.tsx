@@ -77,7 +77,7 @@ describe('learner page smoke rendering', () => {
 
     expect(html).toContain('MVP Onboarding Course');
     expect(html).toContain('href="/learn/courses/course-1"');
-    expect(html).toContain('published');
+    expect(html).toContain('В процессе');
   });
 
   it('renders assignments loading state without crashing', () => {

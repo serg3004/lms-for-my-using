@@ -57,6 +57,7 @@ export type CourseSummary = {
   status: string;
   createdAt: string;
   updatedAt: string;
+  _count?: { lessons: number };
 };
 
 export type LessonSummary = {

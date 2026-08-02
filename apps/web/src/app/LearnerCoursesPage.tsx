@@ -4,15 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { listCourses } from '../shared/api/courses.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CourseSummary } from '../shared/api/types.js';
-import { Badge, Button, Pagination, PageState, ProgressBar } from '../shared/ui.js';
-import '../styles/ui.css';
-
-type TabId = 'all' | 'active' | 'completed';
+import { PageState } from '../shared/ui.js';
 
 const COVER_GRADIENTS = [
-  'linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)',
-  'linear-gradient(135deg, #059669 0%, #0284c7 100%)',
-  'linear-gradient(135deg, #d97706 0%, #ea580c 100%)',
+  'linear-gradient(135deg, #4338ca 0%, #0ea5e9 100%)',
+  'linear-gradient(135deg, #047857 0%, #22c55e 100%)',
+  'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)',
   'linear-gradient(135deg, #ea580c 0%, #db2777 100%)',
   'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
   'linear-gradient(135deg, #7c3aed 0%, #db2777 100%)',
@@ -22,11 +19,8 @@ function coverGradient(index: number) {
   return COVER_GRADIENTS[index % COVER_GRADIENTS.length];
 }
 
-function statusBadge(status: string): { variant: 'published' | 'done' | 'warning' | 'neutral'; label: string } {
-  if (status === 'published') return { variant: 'published', label: 'Активен' };
-  if (status === 'archived') return { variant: 'neutral', label: 'Архив' };
-  return { variant: 'neutral', label: 'Черновик' };
-}
+type StatusFilter = 'all' | 'active' | 'completed';
+type SortMode = 'recent' | 'progress' | 'title';
 
 type CoursesLoadState =
   | { status: 'idle' }
@@ -35,12 +29,21 @@ type CoursesLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
+const SEL_STYLE: React.CSSProperties = {
+  border: '1px solid #e3e8ef',
+  background: '#fff',
+  borderRadius: '12px',
+  padding: '11px 13px',
+  fontSize: '14px',
+  cursor: 'pointer',
+  color: '#172033',
+};
+
 export function LearnerCoursesPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CoursesLoadState>({ status: 'idle' });
-  const [page, setPage] = useState(1);
-  const [activeTab, setActiveTab] = useState<TabId>('all');
-  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
 
   useEffect(() => {
     let isMounted = true;
@@ -48,8 +51,9 @@ export function LearnerCoursesPage() {
     async function load() {
       setLoadState({ status: 'loading' });
       try {
-        const result = await listCourses({ page, pageSize: 20 });
-        if (isMounted) setLoadState({ status: 'loaded', courses: result.items, total: result.total, pageSize: result.pageSize });
+        const result = await listCourses({ page: 1, pageSize: 100 });
+        if (isMounted)
+          setLoadState({ status: 'loaded', courses: result.items, total: result.total, pageSize: result.pageSize });
       } catch (error) {
         if (!isMounted) return;
         if (error instanceof ApiClientError && error.status === 401) {
@@ -61,8 +65,10 @@ export function LearnerCoursesPage() {
     }
 
     void load();
-    return () => { isMounted = false; };
-  }, [t, page]);
+    return () => {
+      isMounted = false;
+    };
+  }, [t]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return <PageState message={t('courses.loading')} variant="loading" />;
@@ -83,124 +89,339 @@ export function LearnerCoursesPage() {
     return <PageState title={t('courses.title')} message={loadState.message} variant="error" />;
   }
 
-  const { courses, total, pageSize } = loadState;
+  const { courses } = loadState;
+  const activeCount = courses.filter((c) => c.status === 'published').length;
+  const completedCount = courses.filter((c) => c.status === 'archived').length;
+  const avgProgress = courses.length > 0 ? Math.round((completedCount / courses.length) * 100) : 0;
 
-  const tabs: { id: TabId; label: string; count: number }[] = [
-    { id: 'all', label: t('courses.tabs.all', 'Все'), count: courses.length },
-    {
-      id: 'active',
-      label: t('courses.tabs.active', 'Активные'),
-      count: courses.filter((c) => c.status === 'published').length,
-    },
-    {
-      id: 'completed',
-      label: t('courses.tabs.completed', 'Архив'),
-      count: courses.filter((c) => c.status === 'archived').length,
-    },
-  ];
-
-  const filtered = courses.filter((c) => {
-    const matchesTab =
-      activeTab === 'all' ||
-      (activeTab === 'active' && c.status === 'published') ||
-      (activeTab === 'completed' && c.status === 'archived');
-    const q = search.toLowerCase();
-    const matchesSearch = !q || c.title.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q);
-    return matchesTab && matchesSearch;
+  let filtered = courses.filter((c) => {
+    if (statusFilter === 'active') return c.status === 'published';
+    if (statusFilter === 'completed') return c.status === 'archived';
+    return true;
   });
+
+  if (sortMode === 'title') {
+    filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'ru'));
+  } else if (sortMode === 'progress') {
+    filtered = [...filtered].sort((a, b) => {
+      const pa = a.status === 'archived' ? 100 : 0;
+      const pb = b.status === 'archived' ? 100 : 0;
+      return pb - pa;
+    });
+  }
 
   return (
     <>
       {/* Page header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 4px', color: 'var(--color-text)' }}>
-          {t('courses.title')}
-        </h1>
-        <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-muted)' }}>
-          {t('courses.activeCount', { count: courses.filter((c) => c.status === 'published').length })}
-        </p>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '22px',
+          gap: '20px',
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: '#4f46e5',
+              fontSize: '12px',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              marginBottom: '8px',
+            }}
+          >
+            {t('learner.navLink')}
+          </div>
+          <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: '#172033', lineHeight: 1.2 }}>
+            {t('courses.title')}
+          </h1>
+          <p style={{ margin: '10px 0 0', color: '#6b7280', fontSize: '15px' }}>{t('courses.subtitle')}</p>
+        </div>
+        <button
+          style={{
+            border: '1px solid #4f46e5',
+            background: '#4f46e5',
+            color: '#fff',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            fontWeight: 800,
+            fontSize: '14px',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          {t('courses.openCatalog')}
+        </button>
       </div>
 
-      {/* Search + filter toolbar */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="ds-search" style={{ width: '260px', flexShrink: 0 }}>
-          <span className="ds-search__icon" aria-hidden="true">⌕</span>
-          <input
-            className="ds-search__input"
-            placeholder={t('courses.searchPlaceholder', 'Поиск курсов...')}
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        {tabs.map((tab) => (
-          <Button
-            key={tab.id}
-            variant={activeTab === tab.id ? 'primary' : 'secondary'}
-            size="sm"
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
+      {/* Stats row */}
+      <div
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '16px', marginBottom: '22px' }}
+      >
+        {[
+          { value: activeCount, label: t('courses.statsActive') },
+          { value: completedCount, label: t('courses.statsCompleted') },
+          { value: `${avgProgress}%`, label: t('courses.statsAvgProgress') },
+          { value: courses.length, label: t('courses.statsTotal') },
+        ].map((s, i) => (
+          <div
+            key={i}
+            style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '14px', padding: '18px' }}
           >
-            {tab.label} ({tab.count})
-          </Button>
+            <strong style={{ display: 'block', fontSize: '28px', color: '#172033' }}>{s.value}</strong>
+            <span style={{ color: '#6b7280', fontSize: '13px' }}>{s.label}</span>
+          </div>
         ))}
+      </div>
+
+      {/* Toolbar */}
+      <div
+        style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '18px', alignItems: 'center' }}
+      >
+        <select
+          style={SEL_STYLE}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+        >
+          <option value="all">{t('courses.filterAll')}</option>
+          <option value="active">{t('courses.filterActive')}</option>
+          <option value="completed">{t('courses.filterCompleted')}</option>
+        </select>
+        <select style={{ ...SEL_STYLE, color: '#9ca3af', cursor: 'default' }} disabled>
+          <option>{t('courses.filterAllCategories')}</option>
+        </select>
+        <div style={{ flex: 1 }} />
+        <select
+          style={SEL_STYLE}
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value as SortMode)}
+        >
+          <option value="recent">{t('courses.sortRecent')}</option>
+          <option value="progress">{t('courses.sortProgress')}</option>
+          <option value="title">{t('courses.sortTitle')}</option>
+        </select>
       </div>
 
       {/* Course grid */}
       {filtered.length === 0 ? (
         <div
           style={{
-            padding: '60px 20px',
             textAlign: 'center',
-            color: 'var(--color-text-muted)',
-            fontSize: '15px',
+            padding: '50px',
+            background: '#fff',
+            border: '1px solid #e3e8ef',
+            borderRadius: '20px',
           }}
         >
-          {t('courses.empty')}
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>⌕</div>
+          <strong style={{ fontSize: '16px', color: '#172033' }}>{t('courses.empty')}</strong>
+          <p style={{ color: '#6b7280', margin: '8px 0 0' }}>{t('courses.emptyHint')}</p>
         </div>
       ) : (
-        <div className="course-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
           {filtered.map((course, index) => {
-            const { variant, label } = statusBadge(course.status);
+            const isCompleted = course.status === 'archived';
+            const pct = isCompleted ? 100 : 0;
+            const lessonsCount = course._count?.lessons ?? 0;
+
+            const badgeBg = isCompleted ? '#e9f8f2' : '#eef2ff';
+            const badgeColor = isCompleted ? '#0f9f6e' : '#4f46e5';
+            const badgeLabel = isCompleted ? t('courses.statusCompleted') : t('courses.statusActive');
+
             return (
-              <a
+              <article
                 key={course.id}
-                href={`/learn/courses/${encodeURIComponent(course.id)}`}
-                className="course-card"
-                style={{ textDecoration: 'none', color: 'inherit' }}
+                style={{
+                  background: '#fff',
+                  border: '1px solid #e3e8ef',
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  minHeight: '420px',
+                  boxShadow: '0 10px 28px rgba(23,32,51,.07)',
+                }}
               >
-                <div className="course-card__cover" style={{ background: coverGradient(index) }}>
-                  <span className="course-card__cover-title">{course.title.slice(0, 24).toUpperCase()}</span>
+                {/* Cover */}
+                <div
+                  style={{
+                    minHeight: '180px',
+                    padding: '22px',
+                    color: '#fff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    background: coverGradient(index),
+                  }}
+                >
+                  <strong style={{ fontSize: '23px', lineHeight: 1.3, fontWeight: 800 }}>
+                    {course.title}
+                  </strong>
                 </div>
-                <div className="course-card__body">
-                  <h2 className="course-card__title">{course.title}</h2>
-                  {course.description ? (
-                    <p className="course-card__description">
+
+                {/* Body */}
+                <div
+                  style={{
+                    padding: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px',
+                    flex: 1,
+                  }}
+                >
+                  {/* Badges */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                    <span
+                      style={{
+                        borderRadius: '999px',
+                        padding: '7px 10px',
+                        fontSize: '12px',
+                        fontWeight: 800,
+                        background: badgeBg,
+                        color: badgeColor,
+                      }}
+                    >
+                      {badgeLabel}
+                    </span>
+                    {lessonsCount > 0 && (
+                      <span
+                        style={{
+                          borderRadius: '999px',
+                          padding: '7px 10px',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          background: '#eef2ff',
+                          color: '#4f46e5',
+                        }}
+                      >
+                        {lessonsCount} {t('courses.lessons')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <h2 style={{ fontSize: '20px', margin: 0, color: '#172033', fontWeight: 800 }}>
+                    {course.title}
+                  </h2>
+
+                  {/* Description */}
+                  {course.description && (
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: 1.5 }}>
                       {course.description.length > 120
                         ? `${course.description.slice(0, 120)}…`
                         : course.description}
                     </p>
-                  ) : null}
-                  <div className="course-card__progress">
-                    <ProgressBar value={0} size="sm" />
-                    <span className="course-card__progress-label">
-                      {t('courses.notStarted', 'Не начат')}
-                    </span>
+                  )}
+
+                  {/* Meta grid */}
+                  {lessonsCount > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      <div
+                        style={{ padding: '11px', background: '#f8fafc', borderRadius: '12px' }}
+                      >
+                        <span
+                          style={{ display: 'block', color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}
+                        >
+                          {t('courses.lessons')}
+                        </span>
+                        <strong style={{ fontSize: '14px', color: '#172033' }}>{lessonsCount}</strong>
+                      </div>
+                      <div
+                        style={{ padding: '11px', background: '#f8fafc', borderRadius: '12px' }}
+                      >
+                        <span
+                          style={{ display: 'block', color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}
+                        >
+                          {t('courses.remaining')}
+                        </span>
+                        <strong style={{ fontSize: '14px', color: '#172033' }}>
+                          {isCompleted ? 0 : lessonsCount} {t('courses.lessons')}
+                        </strong>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Progress bar */}
+                  <div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        color: '#6b7280',
+                        fontSize: '12px',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      <span>{t('courses.progress')}</span>
+                      <strong style={{ color: '#172033' }}>{pct}%</strong>
+                    </div>
+                    <div
+                      style={{
+                        height: '9px',
+                        background: '#edf0f5',
+                        borderRadius: '999px',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${pct}%`,
+                          height: '100%',
+                          background: isCompleted
+                            ? '#0f9f6e'
+                            : 'linear-gradient(90deg, #4f46e5, #7c3aed)',
+                          borderRadius: '999px',
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
+                    <a
+                      href={`/learn/courses/${encodeURIComponent(course.id)}`}
+                      style={{
+                        flex: 1,
+                        border: '1px solid #e3e8ef',
+                        background: '#fff',
+                        borderRadius: '12px',
+                        padding: '11px 14px',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        textDecoration: 'none',
+                        color: '#172033',
+                      }}
+                    >
+                      {t('courses.details')}
+                    </a>
+                    <a
+                      href={`/learn/courses/${encodeURIComponent(course.id)}`}
+                      style={{
+                        flex: 1,
+                        border: '1px solid #4f46e5',
+                        background: '#4f46e5',
+                        borderRadius: '12px',
+                        padding: '11px 14px',
+                        fontWeight: 800,
+                        fontSize: '14px',
+                        textAlign: 'center',
+                        textDecoration: 'none',
+                        color: '#fff',
+                      }}
+                    >
+                      {isCompleted ? t('courses.certificate') : t('courses.continue')}
+                    </a>
                   </div>
                 </div>
-                <div className="course-card__footer">
-                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                    {t('courses.lessons', '— уроков')}
-                  </span>
-                  <Badge variant={variant}>{label}</Badge>
-                </div>
-              </a>
+              </article>
             );
           })}
         </div>
       )}
-
-      <Pagination page={page} pageSize={pageSize} total={total} onPage={setPage} />
     </>
   );
 }
