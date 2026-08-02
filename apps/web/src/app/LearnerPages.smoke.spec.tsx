@@ -394,22 +394,37 @@ describe('learner page smoke rendering', () => {
   it('renders progress happy path without crashing', () => {
     useReadyState({
       status: 'loaded',
-      progress: [
-        {
-          id: 'progress-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          lessonId: 'lesson-1',
-          userId: 'user-1',
-          status: 'completed',
-          score: null,
-          completedAt: '2026-01-02T00:00:00.000Z',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-02T00:00:00.000Z',
-          course: { id: 'course-1', title: 'Workplace Safety' },
-          lesson: { id: 'lesson-1', title: 'Fire Safety Basics' },
-        },
-      ],
+      data: {
+        period: 30,
+        overallProgressPercent: 72,
+        lessonsCompletedCount: 5,
+        activeDaysCount: 3,
+        avgAssessmentScore: 84,
+        courses: [
+          {
+            courseId: 'course-1',
+            title: 'Workplace Safety',
+            completedLessons: 7,
+            totalLessons: 10,
+            percentage: 70,
+            status: 'in_progress',
+            latestAssessmentScore: 84,
+          },
+        ],
+        weeklyGoal: { completed: 2, target: 3 },
+        streak: [
+          { dayOfWeek: 0, date: '2026-01-05', active: true },
+          { dayOfWeek: 1, date: '2026-01-06', active: false },
+          { dayOfWeek: 2, date: '2026-01-07', active: false },
+          { dayOfWeek: 3, date: '2026-01-08', active: false },
+          { dayOfWeek: 4, date: '2026-01-09', active: false },
+          { dayOfWeek: 5, date: '2026-01-10', active: false },
+          { dayOfWeek: 6, date: '2026-01-11', active: false },
+        ],
+        recentActivity: [
+          { type: 'lesson_completed', courseId: 'course-1', courseTitle: 'Workplace Safety', date: '2026-01-02T00:00:00.000Z' },
+        ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerProgressPage />);

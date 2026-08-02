@@ -1,174 +1,337 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
-import { listProgress } from '../shared/api/progress.js';
+import { getProgressSummary } from '../shared/api/progress.js';
 import { ApiClientError } from '../shared/apiClient.js';
-import type { ProgressSummary } from '../shared/api/types.js';
-import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
-import { formatNullableDate } from '../shared/formatDate.js';
-import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
-import { EmptyState, PageState, Pagination } from '../shared/ui.js';
+import type { ProgressSummaryReport } from '../shared/api/types.js';
+import { getCourseHref } from '../shared/learnerRoutes.js';
+import { PageState } from '../shared/ui.js';
 
-type ReadableProgressSummary = ProgressSummary & {
-  courseTitle?: string | null;
-  lessonTitle?: string | null;
-  course?: { title?: string | null } | null;
-  lesson?: { title?: string | null } | null;
-};
+type Period = 30 | 90 | 365;
 
-type ProgressLoadState =
+type LoadState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'loaded'; progress: ReadableProgressSummary[]; total: number; pageSize: number }
+  | { status: 'loaded'; data: ProgressSummaryReport }
   | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
   | { status: 'error'; message: string };
 
-function getCourseTitle(item: ReadableProgressSummary, fallback: string) {
-  return getReadableTitle(item.courseTitle ?? item.course?.title, fallback);
+const COLORS = {
+  bg: '#f4f7fb',
+  surface: '#ffffff',
+  surfaceSoft: '#f8fafc',
+  text: '#172033',
+  muted: '#6b7280',
+  border: '#e3e8ef',
+  primary: '#4f46e5',
+  success: '#0f9f6e',
+  successSoft: '#e9f8f2',
+  warning: '#d97706',
+  warningSoft: '#fff7e8',
+  primarySoft: '#eef2ff',
+};
+
+function formatActivityDate(dateIso: string, t: TFunction, locale: string): string {
+  const date = new Date(dateIso);
+  const now = new Date();
+  const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  const time = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+
+  if (isSameDay(date, now)) {
+    return `${t('progress.today')}, ${time}`;
+  }
+  if (isSameDay(date, yesterday)) {
+    return `${t('progress.yesterday')}, ${time}`;
+  }
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function getLessonTitle(item: ReadableProgressSummary, fallback: string) {
-  return getReadableTitle(item.lessonTitle ?? item.lesson?.title, fallback);
+function StatCard({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div style={{
+      background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '14px',
+      padding: '18px', boxShadow: '0 6px 18px rgba(23,32,51,.04)',
+    }}>
+      <strong style={{ display: 'block', fontSize: '28px', marginBottom: '5px', color: COLORS.text }}>{value}</strong>
+      <span style={{ color: COLORS.muted, fontSize: '13px' }}>{label}</span>
+    </div>
+  );
+}
+
+function CourseProgressBar({ pct, success }: { pct: number; success?: boolean }) {
+  return (
+    <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+      <div style={{
+        height: '100%', borderRadius: '999px', width: `${pct}%`,
+        background: success ? COLORS.success : `linear-gradient(90deg,${COLORS.primary},#7c3aed)`,
+      }}
+      />
+    </div>
+  );
+}
+
+function downloadProgressReport(data: ProgressSummaryReport, t: TFunction) {
+  const lines = [
+    `${t('progress.stats.overallProgress')},${data.overallProgressPercent}%`,
+    `${t('progress.stats.lessonsCompleted')},${data.lessonsCompletedCount}`,
+    `${t('progress.stats.activeDays')},${data.activeDaysCount}`,
+    `${t('progress.stats.avgScore')},${data.avgAssessmentScore ?? ''}`,
+    '',
+    [t('progress.coursesTitle'), '', '', '', '', ''].join(','),
+    ...data.courses.map((course) =>
+      [
+        course.title,
+        `${course.completedLessons}/${course.totalLessons}`,
+        `${course.percentage}%`,
+        course.status === 'completed' ? t('progress.statusCompleted') : t('progress.statusInProgress'),
+        course.latestAssessmentScore !== null ? `${course.latestAssessmentScore}%` : '',
+      ]
+        .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+        .join(','),
+    ),
+  ].join('\n');
+
+  const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `progress-report-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function LearnerProgressPage() {
-  const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<ProgressLoadState>({ status: 'idle' });
-  const [page, setPage] = useState(1);
+  const { t, i18n } = useTranslation();
+  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
+  const [period, setPeriod] = useState<Period>(30);
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadProgress() {
+    async function load() {
       setLoadState({ status: 'loading' });
 
       try {
-        const result = await listProgress({ page, pageSize: 20 });
+        const data = await getProgressSummary(period);
 
         if (isMounted) {
-          setLoadState({ status: 'loaded', progress: result.items, total: result.total, pageSize: result.pageSize });
+          setLoadState({ status: 'loaded', data });
         }
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({
-            status: 'unauthenticated',
-            message: t('progress.sessionExpired'),
-          });
+          setLoadState({ status: 'unauthenticated', message: t('progress.sessionExpired') });
           return;
         }
 
-        if (error instanceof ApiClientError && error.status === 404) {
-          setLoadState({
-            status: 'notFound',
-            message: t('progress.notFound'),
-          });
-          return;
-        }
-
-        setLoadState({
-          status: 'error',
-          message: t('progress.loadError'),
-        });
+        setLoadState({ status: 'error', message: t('progress.loadError') });
       }
     }
 
-    void loadProgress();
+    void load();
 
     return () => {
       isMounted = false;
     };
-  }, [t, page]);
-
-  const loginAction = <a href="/login">{t('login.navLink')}</a>;
-  const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
+  }, [t, period]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
-    return (
-      <>
-        <PageState message={t('progress.loading')} variant="loading" />
-      </>
-    );
+    return <PageState message={t('progress.loading')} variant="loading" />;
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <>
-        <PageState
-          title={t('progress.title')}
-          message={loadState.message}
-          variant="error"
-          action={loginAction}
-        />
-      </>
+      <PageState
+        title={t('progress.title')}
+        message={loadState.message}
+        variant="error"
+        action={<a href="/login">{t('login.navLink')}</a>}
+      />
     );
   }
 
-  if (loadState.status === 'notFound' || loadState.status === 'error') {
+  if (loadState.status === 'error') {
     return (
-      <>
-        <PageState
-          title={t('progress.title')}
-          message={loadState.message}
-          variant="error"
-          action={learnerAction}
-        />
-      </>
+      <PageState
+        title={t('progress.title')}
+        message={loadState.message}
+        variant="error"
+        action={<a href="/learn">{t('learner.navLink')}</a>}
+      />
     );
   }
+
+  const { data } = loadState;
+  const streakDays = t('progress.streakDays', { returnObjects: true }) as string[];
+  const weeklyGoalPct = Math.round(Math.min(100, (data.weeklyGoal.completed / Math.max(data.weeklyGoal.target, 1)) * 100));
+  const remaining = Math.max(0, data.weeklyGoal.target - data.weeklyGoal.completed);
 
   return (
     <>
-      <nav>
-        <a href="/learn">{t('learner.navLink')}</a>
-        <a href="/learn/courses">{t('courses.navLink')}</a>
-      </nav>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '22px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: COLORS.primary, fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+            {t('progress.eyebrow')}
+          </div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: COLORS.text }}>
+            {t('progress.title')}
+          </h1>
+          <p style={{ margin: '10px 0 0', color: COLORS.muted, lineHeight: 1.6, maxWidth: '760px', fontSize: '14px' }}>
+            {t('progress.subtitle')}
+          </p>
+        </div>
 
-      <h1>{t('progress.title')}</h1>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(Number(e.target.value) as Period)}
+            style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px', color: COLORS.text, fontSize: '14px' }}
+          >
+            <option value={30}>{t('progress.period30')}</option>
+            <option value={90}>{t('progress.period90')}</option>
+            <option value={365}>{t('progress.period365')}</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => downloadProgressReport(data, t)}
+            style={{ border: `1px solid ${COLORS.primary}`, background: COLORS.primary, color: '#fff', borderRadius: '12px', padding: '11px 14px', fontWeight: 800, cursor: 'pointer', fontSize: '14px' }}
+          >
+            {t('progress.downloadReport')}
+          </button>
+        </div>
+      </div>
 
-      {loadState.progress.length === 0 ? (
-        <EmptyState message={t('progress.empty')} />
-      ) : (
-        <ul>
-          {loadState.progress.map((item, index) => {
-            const courseTitle = getCourseTitle(item, 'Course');
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: '16px', marginBottom: '22px' }}>
+        <StatCard value={`${data.overallProgressPercent}%`} label={t('progress.stats.overallProgress')} />
+        <StatCard value={data.lessonsCompletedCount} label={t('progress.stats.lessonsCompleted')} />
+        <StatCard value={data.activeDaysCount} label={t('progress.stats.activeDays')} />
+        <StatCard
+          value={data.avgAssessmentScore !== null ? `${data.avgAssessmentScore}%` : t('progress.stats.notAvailable')}
+          label={t('progress.stats.avgScore')}
+        />
+      </div>
 
-            return (
-              <li key={item.id}>
-                <article>
-                  <h2>{getListItemLabel('Progress record', index)}</h2>
-                  <dl>
-                    <dt>Course</dt>
-                    <dd>
-                      <a href={getCourseHref(item.courseId)}>{courseTitle}</a>
-                    </dd>
-                    <dt>Lesson</dt>
-                    <dd>
-                      {item.lessonId ? (
-                        <a href={getLessonHref(item.lessonId)}>{getLessonTitle(item, 'Lesson')}</a>
-                      ) : (
-                        t('progress.notAvailable')
-                      )}
-                    </dd>
-                    <dt>{t('progress.score')}</dt>
-                    <dd>{item.score ?? t('progress.notAvailable')}</dd>
-                    <dt>{t('progress.completedAt')}</dt>
-                    <dd>{formatNullableDate(item.completedAt, t('progress.notAvailable'))}</dd>
-                  </dl>
-                </article>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.3fr) minmax(320px,.7fr)', gap: '22px', alignItems: 'start' }}>
+        <article style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+          <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('progress.coursesTitle')}</h3>
 
-      {loadState.status === 'loaded' && (
-        <Pagination page={page} pageSize={loadState.pageSize} total={loadState.total} onPage={setPage} />
-      )}
+          {data.courses.length === 0 ? (
+            <p style={{ color: COLORS.muted, margin: 0 }}>{t('progress.coursesEmpty')}</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '14px' }}>
+              {data.courses.map((course) => (
+                <a key={course.courseId} href={getCourseHref(course.courseId)} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{
+                    border: `1px solid ${COLORS.border}`, borderRadius: '16px', padding: '16px',
+                    display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 110px', gap: '18px', alignItems: 'center',
+                  }}
+                  >
+                    <div>
+                      <h4 style={{ margin: '0 0 6px', fontSize: '17px', color: COLORS.text }}>{course.title}</h4>
+                      <p style={{ margin: '0 0 12px', color: COLORS.muted, fontSize: '13px' }}>
+                        {t('progress.lessonsProgress', { completed: course.completedLessons, total: course.totalLessons })}
+                        {' · '}
+                        {course.latestAssessmentScore !== null
+                          ? t('progress.scoreLabel', { score: course.latestAssessmentScore })
+                          : t('progress.scoreUnavailable')}
+                      </p>
+                      <CourseProgressBar pct={course.percentage} success={course.status === 'completed'} />
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <strong style={{ display: 'block', fontSize: '26px', color: COLORS.text }}>{course.percentage}%</strong>
+                      <span style={{ color: COLORS.muted, fontSize: '12px' }}>
+                        {course.status === 'completed' ? t('progress.statusCompleted') : t('progress.statusInProgress')}
+                      </span>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <aside>
+          <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('progress.weeklyGoalTitle')}</h3>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{
+                width: '150px', height: '150px', borderRadius: '50%', margin: '0 auto', display: 'grid', placeItems: 'center',
+                background: `radial-gradient(circle at center,${COLORS.surface} 58%,transparent 59%), conic-gradient(${COLORS.primary} 0 ${weeklyGoalPct}%,#edf0f5 ${weeklyGoalPct}% 100%)`,
+              }}
+              >
+                <strong style={{ fontSize: '30px', color: COLORS.text }}>{data.weeklyGoal.completed}/{data.weeklyGoal.target}</strong>
+              </div>
+              <div style={{ textAlign: 'center', color: COLORS.muted, lineHeight: 1.55 }}>
+                {remaining === 0 ? t('progress.weeklyGoalDone') : t('progress.weeklyGoalRemaining', { count: remaining })}
+              </div>
+            </div>
+          </section>
+
+          <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px', marginTop: '18px' }}>
+            <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('progress.streakTitle')}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '8px' }}>
+              {data.streak.map((day) => (
+                <div key={day.date} style={{ textAlign: 'center', color: COLORS.muted, fontSize: '11px' }}>
+                  {streakDays[day.dayOfWeek]}
+                  <span style={{
+                    width: '36px', height: '36px', margin: '6px auto 0', borderRadius: '10px', display: 'grid', placeItems: 'center',
+                    background: day.active ? COLORS.primarySoft : COLORS.surfaceSoft,
+                    border: `1px solid ${day.active ? '#c7d2fe' : COLORS.border}`,
+                    color: day.active ? COLORS.primary : COLORS.muted,
+                    fontWeight: day.active ? 800 : 400,
+                  }}
+                  >
+                    {day.active ? '✓' : '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px', marginTop: '22px' }}>
+        <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('progress.activityTitle')}</h3>
+
+        {data.recentActivity.length === 0 ? (
+          <p style={{ color: COLORS.muted, margin: 0 }}>{t('progress.activityEmpty')}</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '14px' }}>
+            {data.recentActivity.map((item, index) => {
+              const icon = item.type === 'lesson_completed' ? '✓' : item.type === 'assessment_passed' ? `${item.score}%` : '★';
+              const iconBg = item.type === 'lesson_completed' ? COLORS.successSoft : item.type === 'assessment_passed' ? COLORS.primarySoft : COLORS.warningSoft;
+              const iconColor = item.type === 'lesson_completed' ? COLORS.success : item.type === 'assessment_passed' ? COLORS.primary : COLORS.warning;
+              const message =
+                item.type === 'lesson_completed'
+                  ? t('progress.activity.lessonCompleted', { course: item.courseTitle })
+                  : item.type === 'assessment_passed'
+                    ? t('progress.activity.assessmentPassed', { course: item.courseTitle, score: item.score })
+                    : t('progress.activity.certificateIssued', { course: item.courseTitle });
+
+              return (
+                <div key={`${item.type}-${item.courseId}-${index}`} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0,1fr)', gap: '12px', alignItems: 'start' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '13px', display: 'grid', placeItems: 'center', background: iconBg, color: iconColor, fontWeight: 800 }}>
+                    {icon}
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, color: COLORS.text }}>{message}</p>
+                    <time style={{ display: 'block', marginTop: '5px', color: '#9ca3af', fontSize: '11px' }}>
+                      {formatActivityDate(item.date, t, i18n.language)}
+                    </time>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </>
   );
 }

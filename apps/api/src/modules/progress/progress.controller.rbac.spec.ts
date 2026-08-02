@@ -16,6 +16,39 @@ function makeRequest(userId: string, roles: string[]): AuthenticatedRequest {
 }
 
 describe('ProgressController — RBAC ownership', () => {
+  describe('getProgressSummary', () => {
+    it('always scopes summary to the requesting user regardless of role', () => {
+      const calls: unknown[] = [];
+      const service = {
+        getProgressSummary: (...args: unknown[]) => { calls.push(args); return {}; },
+      } as unknown as ProgressService;
+      const controller = new ProgressController(service);
+
+      controller.getProgressSummary(makeRequest(learnerId, ['learner']), { period: '90' });
+
+      expect(calls).toEqual([[{ id: learnerId, organizationId: orgId, roles: ['learner'] }, 90]]);
+    });
+
+    it('defaults period to 30 when omitted', () => {
+      const calls: unknown[] = [];
+      const service = {
+        getProgressSummary: (...args: unknown[]) => { calls.push(args); return {}; },
+      } as unknown as ProgressService;
+      const controller = new ProgressController(service);
+
+      controller.getProgressSummary(makeRequest(adminId, ['admin']), {});
+
+      expect(calls).toEqual([[{ id: adminId, organizationId: orgId, roles: ['admin'] }, 30]]);
+    });
+
+    it('rejects an unsupported period value', () => {
+      const service = {} as unknown as ProgressService;
+      const controller = new ProgressController(service);
+
+      expect(() => controller.getProgressSummary(makeRequest(learnerId, ['learner']), { period: '7' })).toThrow();
+    });
+  });
+
   describe('listProgress', () => {
     it('passes userId filter for learner-only role', () => {
       const calls: unknown[] = [];
