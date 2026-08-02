@@ -19,7 +19,7 @@ export function InstructorCoursesPage() {
       try {
         const [user, page] = await Promise.all([
           getCurrentUser(),
-          listCourses({ pageSize: 200 }),
+          listCourses({ pageSize: 100 }),
         ]);
         if (!isMounted) return;
         setState({ status: 'loaded', user, courses: page.items });

@@ -8,6 +8,7 @@ type Mode = 'create' | 'edit';
 
 type FormState = {
   title: string;
+  slug: string;
   description: string;
   status: string;
 };
@@ -25,7 +26,7 @@ type InstructorCourseFormPageProps = {
 export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFormPageProps) {
   const navigate = useNavigate();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [form, setForm] = useState<FormState>({ title: '', description: '', status: 'draft' });
+  const [form, setForm] = useState<FormState>({ title: '', slug: '', description: '', status: 'draft' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -40,7 +41,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
         if (mode === 'edit' && courseId) {
           const course = await getCourse(courseId);
           if (!isMounted) return;
-          setForm({ title: course.title, description: course.description ?? '', status: course.status });
+          setForm({ title: course.title, slug: course.slug, description: course.description ?? '', status: course.status });
         }
 
         setLoadState({
@@ -75,12 +76,14 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
         await createCourse({
           organizationId: loadState.organizationId,
           title: form.title.trim(),
+          slug: form.slug.trim(),
           description: form.description.trim() || undefined,
           status: form.status,
         });
       } else if (courseId) {
         await updateCourse(courseId, {
           title: form.title.trim(),
+          slug: form.slug.trim(),
           description: form.description.trim() || undefined,
           status: form.status,
         });
@@ -118,6 +121,22 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
               required
               value={form.title}
               onChange={updateField('title')}
+              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
+            />
+          </label>
+
+          <label htmlFor="slug" style={{ display: 'block', marginBottom: '1rem' }}>
+            Slug
+            <input
+              id="slug"
+              name="slug"
+              type="text"
+              required
+              minLength={3}
+              maxLength={80}
+              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+              value={form.slug}
+              onChange={updateField('slug')}
               style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
             />
           </label>

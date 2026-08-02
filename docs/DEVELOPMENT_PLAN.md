@@ -2559,7 +2559,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 196 — Instructor workspace E2E 🔲
+## PR 196 — Instructor workspace E2E ✅
 
 **Проблема:** Course CRUD и ownership instructor не проверены end-to-end.
 

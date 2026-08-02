@@ -32,8 +32,8 @@ export function InstructorDashboardPage() {
       try {
         const [user, coursesPage, progressPage] = await Promise.all([
           getCurrentUser(),
-          listCourses({ pageSize: 200 }),
-          listProgress({ pageSize: 200 }),
+          listCourses({ pageSize: 100 }),
+          listProgress({ pageSize: 100 }),
         ]);
 
         if (!isMounted) return;

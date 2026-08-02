@@ -20,12 +20,14 @@ export function getCourse(courseId: string) {
 export type CreateCourseInput = {
   organizationId: string;
   title: string;
+  slug: string;
   description?: string;
   status?: string;
 };
 
 export type UpdateCourseInput = {
   title?: string;
+  slug?: string;
   description?: string;
   status?: string;
 };
