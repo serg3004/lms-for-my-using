@@ -209,14 +209,52 @@ describe('learner page smoke rendering', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
-      totalLessons: 3,
-      completedLessons: 1,
+      lessons: [
+        {
+          id: 'lesson-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          title: 'Introduction to Safety',
+          slug: 'intro-safety',
+          description: null,
+          order: 1,
+          status: 'published',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'lesson-2',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          title: 'Fire Safety Basics',
+          slug: 'fire-safety-basics',
+          description: null,
+          order: 2,
+          status: 'published',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'lesson-3',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          title: 'Assessment',
+          slug: 'assessment',
+          description: null,
+          order: 3,
+          status: 'published',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      completedLessonIds: new Set(['lesson-1']),
+      dueAt: null,
     });
 
     const html = renderToStaticMarkup(<LearnerCourseDetailPage courseId="course-1" />);
 
     expect(html).toContain('Workplace Safety');
-    expect(html).toContain('href="/learn/courses/course-1/lessons"');
+    expect(html).toContain('href="/learn/lessons/lesson-2"');
   });
 
   it('renders lessons loading state without crashing', () => {

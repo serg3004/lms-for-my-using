@@ -1897,3 +1897,225 @@
   max-height: 90vh;
   overflow-y: auto;
 }
+
+/* ── Learner Course Detail (lcd-*) ────────────────────────────────────────── */
+
+.lcd-hero {
+  background: linear-gradient(135deg, #4338ca, #6d5dfc);
+  border-radius: var(--radius-lg, 16px);
+  padding: 36px 40px;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 32px;
+  align-items: center;
+  margin-bottom: 28px;
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .lcd-hero {
+    grid-template-columns: 1fr;
+    padding: 24px 20px;
+  }
+}
+
+.lcd-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.lcd-hero h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 8px;
+  color: #fff;
+}
+
+.lcd-hero__subtext {
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.lcd-hero__card {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 20px 24px;
+  text-align: center;
+}
+
+.lcd-hero__percent {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.lcd-hero__bar-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.lcd-hero__bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.lcd-hero__bar-fill {
+  height: 100%;
+  background: #fff;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.lcd-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .lcd-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.lcd-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.lcd-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-border, #d8e0ec);
+  margin-bottom: 4px;
+}
+
+.lcd-fact {
+  text-align: center;
+}
+
+.lcd-fact__value {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: var(--color-text, #172033);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.lcd-fact__label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #566176);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+
+.lcd-description {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted, #566176);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.lcd-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text, #172033);
+  margin: 0 0 12px;
+}
+
+.lcd-lessons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lcd-lesson {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border, #d8e0ec);
+}
+
+.lcd-lesson:last-child {
+  border-bottom: none;
+}
+
+.lcd-lesson__index {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-surface-secondary, #f0f4fa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text-muted, #566176);
+  flex-shrink: 0;
+}
+
+.lcd-lesson__index--done {
+  background: var(--color-success-bg, #dcfce7);
+  color: var(--color-success, #15803d);
+}
+
+.lcd-lesson__index--current {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.lcd-lesson__title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text, #172033);
+  line-height: 1.35;
+}
+
+.lcd-badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.lcd-badge--done {
+  background: var(--color-success-bg, #dcfce7);
+  color: var(--color-success, #15803d);
+}
+
+.lcd-badge--current {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.lcd-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lcd-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
