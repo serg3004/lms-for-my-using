@@ -60,7 +60,7 @@ test.describe('keyboard and focus baseline', () => {
 
     const skipLink = page.getByRole('link', { name: 'Перейти к основному содержимому' });
     await expect(skipLink).toBeFocused();
-    await page.keyboard.press('Enter');
+    await skipLink.press('Enter');
     await expect(page.locator('#main-content')).toBeFocused();
   });
 
