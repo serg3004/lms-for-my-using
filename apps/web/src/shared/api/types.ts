@@ -101,6 +101,11 @@ export type ProgressSummary = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    firstName: string;
+    lastName: string | null;
+    email: string;
+  };
 };
 
 export type AssignmentSummary = {

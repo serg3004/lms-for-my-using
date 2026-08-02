@@ -5,11 +5,9 @@ import {
   getCourse,
   getCurrentUser,
   listProgress,
-  listUsers,
   type CourseSummary,
   type CurrentUser,
   type ProgressSummary,
-  type UserSummary,
 } from '../shared/apiClient.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 
@@ -28,22 +26,25 @@ type LoadState =
 
 export function buildStudentRows(
   progressItems: ProgressSummary[],
-  users: UserSummary[],
   courseId: string,
 ): StudentRow[] {
   const courseProgress = progressItems.filter((p) => p.courseId === courseId);
-  const userMap = new Map(users.map((u) => [u.id, u]));
-  const byUser = new Map<string, { completed: number; inProgress: number }>();
+  const byUser = new Map<string, {
+    completed: number;
+    inProgress: number;
+    user: ProgressSummary['user'];
+  }>();
 
   for (const p of courseProgress) {
-    const cur = byUser.get(p.userId) ?? { completed: 0, inProgress: 0 };
+    const cur = byUser.get(p.userId) ?? { completed: 0, inProgress: 0, user: p.user };
     if (p.status === 'completed') cur.completed++;
     else if (p.status === 'in_progress') cur.inProgress++;
+    cur.user ??= p.user;
     byUser.set(p.userId, cur);
   }
 
   return [...byUser.entries()].map(([userId, counts]) => {
-    const user = userMap.get(userId);
+    const user = counts.user;
     return {
       userId,
       name: user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : userId,
@@ -66,11 +67,10 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
 
     async function load() {
       try {
-        const [currentUser, course, progressPage, usersPage] = await Promise.all([
+        const [currentUser, course, progressPage] = await Promise.all([
           getCurrentUser(),
           getCourse(courseId),
           listProgress({ pageSize: 100 }),
-          listUsers({ pageSize: 100 }),
         ]);
 
         if (!isMounted) return;
@@ -78,7 +78,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
           status: 'loaded',
           user: currentUser,
           course,
-          students: buildStudentRows(progressPage.items, usersPage.items, courseId),
+          students: buildStudentRows(progressPage.items, courseId),
         });
       } catch {
         if (isMounted) setState({ status: 'error' });

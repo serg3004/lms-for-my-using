@@ -28,17 +28,13 @@ describe('computeStats', () => {
 describe('buildStudentRows', () => {
   it('filters by courseId, aggregates completed/inProgress, joins user data', () => {
     const progress = [
-      { courseId: 'c1', userId: 'u1', status: 'completed' },
-      { courseId: 'c1', userId: 'u1', status: 'in_progress' },
-      { courseId: 'c1', userId: 'u2', status: 'completed' },
-      { courseId: 'c2', userId: 'u1', status: 'completed' },
+      { courseId: 'c1', userId: 'u1', status: 'completed', user: { firstName: 'Алексей', lastName: 'Морозов', email: 'am@test.com' } },
+      { courseId: 'c1', userId: 'u1', status: 'in_progress', user: { firstName: 'Алексей', lastName: 'Морозов', email: 'am@test.com' } },
+      { courseId: 'c1', userId: 'u2', status: 'completed', user: { firstName: 'Наталья', lastName: null, email: 'nk@test.com' } },
+      { courseId: 'c2', userId: 'u1', status: 'completed', user: { firstName: 'Алексей', lastName: 'Морозов', email: 'am@test.com' } },
     ] as Parameters<typeof buildStudentRows>[0];
-    const users = [
-      { id: 'u1', firstName: 'Алексей', lastName: 'Морозов', email: 'am@test.com' },
-      { id: 'u2', firstName: 'Наталья', lastName: null, email: 'nk@test.com' },
-    ] as Parameters<typeof buildStudentRows>[1];
 
-    const rows = buildStudentRows(progress, users, 'c1');
+    const rows = buildStudentRows(progress, 'c1');
     expect(rows).toHaveLength(2);
 
     const u1 = rows.find((r) => r.userId === 'u1')!;
@@ -52,6 +48,6 @@ describe('buildStudentRows', () => {
   });
 
   it('returns empty array when no progress for the given course', () => {
-    expect(buildStudentRows([], [], 'any-course')).toEqual([]);
+    expect(buildStudentRows([], 'any-course')).toEqual([]);
   });
 });

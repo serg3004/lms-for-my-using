@@ -15,6 +15,13 @@ const progressSelect = {
   completedAt: true,
   createdAt: true,
   updatedAt: true,
+  user: {
+    select: {
+      firstName: true,
+      lastName: true,
+      email: true,
+    },
+  },
 } as const;
 
 @Injectable()
