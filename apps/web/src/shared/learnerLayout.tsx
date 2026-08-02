@@ -72,7 +72,7 @@ export function LearnerShell({ children }: LearnerShellProps) {
 
 const LANG_LABELS: Record<string, string> = { ru: 'RU', en: 'EN', kk: 'KK', zh: 'ZH' };
 
-function LanguageSwitcher() {
+export function LanguageSwitcher() {
   const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const current = LANG_LABELS[i18n.language] ?? 'RU';

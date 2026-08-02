@@ -352,5 +352,57 @@
     "certType": "Certificate of Completion",
     "presentedTo": "This certificate is awarded for successfully completing the course",
     "issuedOn": "Issued on {{date}}"
+  },
+  "manager": {
+    "brandSub": "Manager",
+    "navDashboard": "Dashboard",
+    "navTeam": "Team",
+    "dashboard": {
+      "eyebrow": "Team",
+      "title": "Manager dashboard",
+      "subtitle": "Your team's learning and upcoming deadlines.",
+      "assignButton": "Assign learning",
+      "loading": "Loading manager dashboard...",
+      "loadError": "Unable to load data. Try again later.",
+      "stats": {
+        "members": "Employees",
+        "completion": "Completion",
+        "dueThisWeek": "Due this week",
+        "attention": "Needs attention"
+      },
+      "teamProgressTitle": "Team progress",
+      "upcomingTitle": "Upcoming deadlines",
+      "upcomingEmpty": "No upcoming deadlines.",
+      "upcomingItem": "{{course}} — {{name}}, due {{date}}",
+      "recentTitle": "Recent results",
+      "recentScore": "Average team score — {{score}}%",
+      "recentEmpty": "No test results yet.",
+      "assign": {
+        "title": "Assign learning",
+        "employeeLabel": "Employee",
+        "courseLabel": "Course",
+        "dueDateLabel": "Due date (optional)",
+        "submit": "Assign",
+        "cancel": "Cancel",
+        "success": "Training assigned.",
+        "error": "Unable to assign training. Try again later."
+      }
+    },
+    "team": {
+      "eyebrow": "Employees",
+      "title": "Team",
+      "subtitle": "Track employee progress and results.",
+      "loading": "Loading team...",
+      "loadError": "Unable to load data. Try again later.",
+      "searchPlaceholder": "Find employee",
+      "filterAll": "All statuses",
+      "filterGood": "On track",
+      "filterRisk": "At risk",
+      "columnEmployee": "Employee",
+      "columnActiveCourses": "Active courses",
+      "columnProgress": "Progress",
+      "columnStatus": "Status",
+      "empty": "No employees found."
+    }
   }
 }

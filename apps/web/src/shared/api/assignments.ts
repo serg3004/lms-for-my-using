@@ -18,3 +18,18 @@ export function listAssignments(params?: { page?: number; pageSize?: number }) {
 export function getAssignment(assignmentId: string) {
   return apiRequest<AssignmentSummary>(getAssignmentPath(assignmentId));
 }
+
+export type CreateAssignmentInput = {
+  organizationId: string;
+  courseId: string;
+  userId?: string;
+  groupId?: string;
+  dueAt?: string;
+};
+
+export function createAssignment(input: CreateAssignmentInput) {
+  return apiRequest<AssignmentSummary>(assignmentsPath, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}

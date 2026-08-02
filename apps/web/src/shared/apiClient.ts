@@ -294,7 +294,7 @@ export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, upda
 export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
-export { getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
+export { createAssignment, getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
 export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments } from './api/assessments.js';
 export { getCertificate, getCertificatePath, issueCertificate, listCertificates } from './api/certificates.js';
 export { getOrganization } from './api/organizations.js';

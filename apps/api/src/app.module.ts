@@ -15,6 +15,7 @@ import { CoursesModule } from './modules/courses/courses.module.js';
 import { GroupsModule } from './modules/groups/groups.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { LessonsModule } from './modules/lessons/lessons.module.js';
+import { ManagerModule } from './modules/manager/manager.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { ManagerTeamScopeModule } from './modules/manager-team-scope/manager-team-scope.module.js';
 import { OpenApiModule } from './modules/openapi/openapi.module.js';
@@ -49,6 +50,7 @@ import { UsersModule } from './modules/users/users.module.js';
     GroupsModule,
     HealthModule,
     LessonsModule,
+    ManagerModule,
     MembershipsModule,
     ManagerTeamScopeModule,
     OpenApiModule,
