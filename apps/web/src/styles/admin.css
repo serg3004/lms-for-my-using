@@ -476,6 +476,8 @@
 .admin-dialog {
   min-width: min(480px, 95vw);
   max-width: 95vw;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 0;
@@ -667,6 +669,8 @@
 
   .admin-sidebar-close {
     display: flex;
+    width: 44px;
+    height: 44px;
   }
 
   .admin-drawer-backdrop {
@@ -703,5 +707,32 @@
 
   .admin-user-summary {
     width: 100%;
+  }
+
+  .admin-dialog {
+    width: calc(100vw - 32px);
+    min-width: 0;
+    max-width: none;
+    margin: auto;
+  }
+
+  .admin-dialog__close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .admin-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form__actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 380px), (max-height: 560px) {
+  .admin-dialog__header,
+  .admin-form {
+    padding: 1rem;
   }
 }

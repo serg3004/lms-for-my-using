@@ -1561,7 +1561,9 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);
-  overflow: hidden;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-table-wrap table {
@@ -1610,6 +1612,16 @@
 }
 
 @media (max-width: 860px) {
+  .section-header,
+  .section-header__right {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-table-wrap table {
+    min-width: 640px;
+  }
+
   .edit-layout {
     grid-template-columns: 1fr;
   }

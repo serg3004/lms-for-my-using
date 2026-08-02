@@ -118,6 +118,7 @@
 
 .public-home__hero-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 24px;
 }
@@ -232,5 +233,41 @@
 
   .public-home__hero-inner h1 {
     font-size: 48px;
+  }
+}
+
+@media (max-width: 380px) {
+  .public-home__container {
+    width: calc(100% - 32px);
+  }
+
+  .public-home__header-inner {
+    gap: 12px;
+  }
+
+  .public-home__brand {
+    font-size: 18px;
+  }
+
+  .public-home__header-actions {
+    gap: 6px;
+  }
+
+  .public-home__hero {
+    padding: 56px 0;
+  }
+
+  .public-home__hero-inner h1 {
+    overflow-wrap: anywhere;
+    font-size: 40px;
+  }
+
+  .public-home__hero-actions > * {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .public-home__stats {
+    grid-template-columns: 1fr;
   }
 }
