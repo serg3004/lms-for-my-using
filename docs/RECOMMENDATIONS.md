@@ -111,3 +111,27 @@ Auto-merge не включать.
 
 Оценка: отдельная задача, не входит в объём переверстки страниц менеджера под прототип.
 4. Показать в мета-сетке карточки на фронте
+
+## R3 — 2026-08-02 — Изолировать refresh-запросы в responsive visual tests
+
+**Проблема:** responsive visual tests запускают только Vite web-сервер и намеренно
+возвращают `401` из mock `/api/v1/auth/me` для гостевых сценариев. API client после
+`401` вызывает `/api/v1/auth/refresh`, но этот endpoint не замокирован. Vite пытается
+проксировать запрос на незапущенный API по адресу `localhost:3000`, поэтому в зелёном
+CI job появляются сообщения `http proxy error` и `ECONNREFUSED`.
+
+**Критичность:** низкая. Ошибка не влияет на текущие responsive assertions и не
+блокирует merge, пока все visual tests проходят. Тем не менее сетевой шум скрывает
+настоящие ошибки и означает, что browser test не полностью изолирован от внешнего API.
+
+**Рекомендация:** в `installGuestMock()` файла
+`apps/e2e/visual-tests/responsive-matrix.spec.ts` добавить mock для
+`**/api/v1/auth/refresh`, возвращающий ожидаемый `401` гостевой сессии. Не следует
+запускать API только ради visual tests или подавлять сообщения Vite.
+
+**Критерии готовности:**
+
+- `pnpm test:visual` по-прежнему выполняет все responsive и zoom-сценарии;
+- в выводе visual job нет `http proxy error` и `ECONNREFUSED`;
+- тесты не обращаются к реальному API;
+- production auth/refresh-поведение не изменяется.
