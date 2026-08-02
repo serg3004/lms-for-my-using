@@ -46,8 +46,8 @@ test.describe('login and role redirects', () => {
 
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/admin$/);
-    await expect(page.getByRole('heading', { name: 'Forbidden' })).toBeVisible();
-    await expect(page.getByText('You do not have access to this page.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Доступ запрещён' })).toBeVisible();
+    await expect(page.getByText('У вашей учётной записи нет прав для просмотра этой страницы.')).toBeVisible();
 
     const forbiddenResponse = await page.evaluate(async () => {
       const response = await fetch('/api/v1/users');

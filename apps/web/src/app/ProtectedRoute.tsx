@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
+import { ForbiddenPage } from './ForbiddenPage.js';
 import { getCurrentUser } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/api/types.js';
@@ -85,7 +86,7 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
   }
 
   if (authState === 'forbidden') {
-    return <Navigate replace to="/403" />;
+    return <ForbiddenPage />;
   }
 
   return <>{children}</>;
