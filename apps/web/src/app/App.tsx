@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ProtectedRoute } from './ProtectedRoute.js';
 import { NotFoundPage } from './NotFoundPage.js';
+import { ForbiddenPage } from './ForbiddenPage.js';
 import { Breadcrumbs, type BreadcrumbItem } from '../shared/ui.js';
 import { LearnerPageLayout } from '../shared/learnerLayout.js';
 
@@ -377,6 +378,7 @@ export function App() {
           </Route>
 
           <Route path="/" element={<PublicHomePage />} />
+          <Route path="/403" element={<ForbiddenPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>

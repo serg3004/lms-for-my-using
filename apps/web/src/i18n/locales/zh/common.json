@@ -15,6 +15,12 @@
     "homeLink": "返回首页",
     "backLink": "返回"
   },
+  "forbidden": {
+    "title": "访问被拒绝",
+    "description": "您的账户无权查看此页面。",
+    "homeLink": "返回首页",
+    "backLink": "返回"
+  },
   "publicHome": {
     "nav": {
       "features": "功能",
