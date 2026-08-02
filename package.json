@@ -10,6 +10,7 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:e2e": "playwright test --config apps/e2e/playwright.config.ts",
+    "test:visual": "playwright test --config apps/e2e/playwright.visual.config.ts",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
     "test:integration:db:local": "bash scripts/test-api-database.sh"
   },

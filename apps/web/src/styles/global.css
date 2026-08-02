@@ -55,12 +55,12 @@
 }
 
 html {
-  min-width: 320px;
+  width: 100%;
   background: var(--color-background);
 }
 
 body {
-  min-width: 320px;
+  width: 100%;
   min-height: 100vh;
   margin: 0;
   color: var(--color-text);
@@ -178,4 +178,24 @@ tr:last-child td {
 
 #root {
   min-height: 100vh;
+}
+
+@media (max-width: 860px) {
+  button,
+  input,
+  select,
+  summary,
+  textarea,
+  a[role='button'] {
+    min-height: 44px;
+  }
+
+  main {
+    padding-block: 24px;
+  }
+
+  th,
+  td {
+    overflow-wrap: anywhere;
+  }
 }

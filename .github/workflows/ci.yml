@@ -105,6 +105,9 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
 
+      - name: Responsive visual matrix
+        run: pnpm test:visual
+
       - name: Upload safe Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v6

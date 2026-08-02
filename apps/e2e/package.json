@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "lint": "eslint \"{fixtures,tests}/**/*.ts\" playwright.config.ts",
+    "lint": "eslint \"{fixtures,tests,visual-tests}/**/*.ts\" playwright.config.ts playwright.visual.config.ts",
+    "test:visual": "playwright test --config playwright.visual.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
