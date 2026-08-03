@@ -340,6 +340,17 @@ export function AdminCourseBuilderPage() {
 
         {/* Right: sidebar */}
         <div>
+          <Card style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
+            <div style={{ height: '160px', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)' }} />
+            <div style={{ padding: '18px' }}>
+              <Badge variant={statusVariant}>{statusLabel}</Badge>
+              <h2 style={{ margin: '10px 0 6px', fontSize: 'var(--text-lg)' }}>{course.title}</h2>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                Так карточка курса будет выглядеть для ученика.
+              </p>
+            </div>
+          </Card>
+
           <Card style={{ marginBottom: '16px' }}>
             <div className="ds-card__title">Публикация</div>
             <div className="info-row">
