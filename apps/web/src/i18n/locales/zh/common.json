@@ -444,7 +444,11 @@
     "validity": "有效期",
     "validityUnlimited": "永久有效",
     "open": "打开",
-    "downloadPdf": "下载 PDF"
+    "downloadPdf": "下载 PDF",
+    "infoTitle": "信息",
+    "owner": "持有人",
+    "courseLabel": "课程",
+    "completedAt": "完成日期"
   },
   "manager": {
     "brandSub": "经理",

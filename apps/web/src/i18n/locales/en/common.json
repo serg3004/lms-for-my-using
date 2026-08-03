@@ -473,7 +473,11 @@
     "validity": "Validity",
     "validityUnlimited": "No expiration",
     "open": "Open",
-    "downloadPdf": "Download PDF"
+    "downloadPdf": "Download PDF",
+    "infoTitle": "Information",
+    "owner": "Owner",
+    "courseLabel": "Course",
+    "completedAt": "Completion date"
   },
   "manager": {
     "brandSub": "Manager",

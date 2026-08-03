@@ -488,7 +488,11 @@
     "validity": "Срок действия",
     "validityUnlimited": "Бессрочно",
     "open": "Открыть",
-    "downloadPdf": "Скачать PDF"
+    "downloadPdf": "Скачать PDF",
+    "infoTitle": "Информация",
+    "owner": "Владелец",
+    "courseLabel": "Курс",
+    "completedAt": "Дата завершения"
   },
   "manager": {
     "brandSub": "Менеджер",

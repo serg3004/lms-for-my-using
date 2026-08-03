@@ -489,7 +489,11 @@
     "validity": "Жарамдылық мерзімі",
     "validityUnlimited": "Мерзімсіз",
     "open": "Ашу",
-    "downloadPdf": "PDF жүктеу"
+    "downloadPdf": "PDF жүктеу",
+    "infoTitle": "Ақпарат",
+    "owner": "Иесі",
+    "courseLabel": "Курс",
+    "completedAt": "Аяқталған күні"
   },
   "manager": {
     "brandSub": "Менеджер",
