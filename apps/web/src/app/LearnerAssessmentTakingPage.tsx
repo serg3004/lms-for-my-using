@@ -12,26 +12,15 @@ import {
 } from '../shared/apiClient.js';
 import { apiRequest } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
-
-type Question = {
-  id: string;
-  type: 'single_choice' | 'multiple_choice' | 'true_false';
-  title: string;
-  text: string | null;
-  points: number;
-  order: number;
-};
-
-type Option = {
-  id: string;
-  questionId: string;
-  text: string | null;
-  imageUrl: string | null;
-  order: number;
-};
-
-type QuestionWithOptions = Question & { options: Option[] };
-type SelectedAnswers = Record<string, string | string[]>;
+import {
+  buildAssessmentAnswers,
+  countAnsweredQuestions,
+  getAssessmentOptionLabel,
+  getAssessmentSubmitErrorKey,
+  selectedIds,
+  type QuestionWithOptions,
+  type SelectedAnswers,
+} from './assessment-taking/model.js';
 
 type LoadState =
   | { status: 'loading' }
@@ -44,44 +33,6 @@ type SubmitState =
   | { status: 'submitting' }
   | { status: 'done'; result: AssessmentAttemptResult; certificateId: string | null }
   | { status: 'error'; message: string };
-
-function selectedIds(value: string | string[] | undefined): string[] {
-  return Array.isArray(value) ? value : [];
-}
-
-function buildAnswers(questions: QuestionWithOptions[], selected: SelectedAnswers) {
-  return questions.map((q) => {
-    const value = selected[q.id];
-    if (q.type === 'multiple_choice') {
-      return { questionId: q.id, selectedOptionIds: selectedIds(value) };
-    }
-    return { questionId: q.id, selectedOptionId: typeof value === 'string' ? value : undefined };
-  });
-}
-
-function countAnswered(questions: QuestionWithOptions[], selected: SelectedAnswers): number {
-  return questions.filter((q) => {
-    const value = selected[q.id];
-    return q.type === 'multiple_choice' ? selectedIds(value).length > 0 : typeof value === 'string';
-  }).length;
-}
-
-function getSubmitErrorKey(error: unknown): string {
-  if (error instanceof ApiClientError) {
-    if (error.status === 401) return 'assessments.sessionExpired';
-    if (error.status === 400) {
-      const msg = error.message.toLowerCase();
-      if (msg.includes('attempts limit')) return 'assessments.errorAttemptsLimit';
-      if (msg.includes('course must be completed')) return 'assessments.errorCourseNotComplete';
-      if (msg.includes('must be published')) return 'assessments.errorNotPublished';
-    }
-  }
-  return 'assessments.errorSubmit';
-}
-
-function getOptionLabel(option: Pick<Option, 'id' | 'text' | 'imageUrl'>): string {
-  return option.text ?? option.imageUrl ?? option.id;
-}
 
 export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: string }) {
   const { t } = useTranslation();
@@ -128,7 +79,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
     if (loadState.status !== 'loaded') return;
 
-    const answeredCount = countAnswered(loadState.questions, selected);
+    const answeredCount = countAnsweredQuestions(loadState.questions, selected);
     if (answeredCount < loadState.questions.length) {
       setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
@@ -137,7 +88,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     setSubmitState({ status: 'submitting' });
 
     try {
-      const attempt = await createAssessmentAttempt(assessmentId, buildAnswers(loadState.questions, selected));
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.questions, selected));
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;
@@ -157,7 +108,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
       setSubmitState({ status: 'done', result, certificateId });
     } catch (error) {
-      setSubmitState({ status: 'error', message: t(getSubmitErrorKey(error)) });
+      setSubmitState({ status: 'error', message: t(getAssessmentSubmitErrorKey(error)) });
     }
   }
 
@@ -189,7 +140,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   }
 
   const { assessment, questions } = loadState;
-  const answeredCount = countAnswered(questions, selected);
+  const answeredCount = countAnsweredQuestions(questions, selected);
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
@@ -227,7 +178,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
                       <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
                       <p className="learner-quiz__breakdown-answer">
                         <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
-                        {answer.selectedOption ? getOptionLabel(answer.selectedOption) : '—'}
+                        {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
                       </p>
                       <p className="learner-quiz__breakdown-points">
                         {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
@@ -317,7 +268,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
                   <ul className="learner-quiz__options">
                     {question.options.map((option) => {
-                      const label = getOptionLabel(option);
+                      const label = getAssessmentOptionLabel(option);
                       if (question.type === 'multiple_choice') {
                         const checked = selectedIds(selected[question.id]).includes(option.id);
                         return (

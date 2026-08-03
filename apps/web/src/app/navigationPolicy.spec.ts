@@ -25,4 +25,18 @@ describe('navigationPolicy', () => {
     expect(canAccessPath('/learn/courses', { roles: ['learner'] })).toBe(true);
     expect(canAccessPath('/login', { roles: [] })).toBe(true);
   });
+
+  it.each([
+    ['/admin', ['admin'], true],
+    ['/admin/users', ['manager'], true],
+    ['/administer', ['learner'], true],
+    ['/manager', ['manager'], true],
+    ['/manager/team', ['learner'], false],
+    ['/instructor', ['instructor'], true],
+    ['/instructor/courses', [], false],
+    ['/learn', [], true],
+    ['/', [], true],
+  ] as const)('evaluates %s for roles %j', (path, roles, expected) => {
+    expect(canAccessPath(path, { roles: [...roles] })).toBe(expected);
+  });
 });

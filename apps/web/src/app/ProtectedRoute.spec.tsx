@@ -76,4 +76,13 @@ describe('ProtectedRoute', () => {
   it('resolves unauthenticated state for 401 API failures', () => {
     expect(getProtectedRouteErrorState(new ApiClientError('Unauthorized', 401))).toBe('unauthenticated');
   });
+
+  it('resolves unauthenticated state for network and server failures', () => {
+    expect(getProtectedRouteErrorState(new Error('offline'))).toBe('unauthenticated');
+    expect(getProtectedRouteErrorState(new ApiClientError('Unavailable', 503))).toBe('unauthenticated');
+  });
+
+  it('allows authenticated users when no role predicate is supplied', () => {
+    expect(getProtectedRouteAuthState(currentUser)).toBe('authenticated');
+  });
 });

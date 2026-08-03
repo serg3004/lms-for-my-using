@@ -2691,7 +2691,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 204 — Frontend coverage roadmap 🔲
+## PR 204 — Frontend coverage roadmap ✅
 
 **Проблема:** Threshold около 25% недостаточен для role-based LMS.
 
@@ -2704,6 +2704,13 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Новые domain modules ≥80%
 - Business files не исключены
 - CI ловит регрессию.
+
+> **Факт:** Зафиксирован baseline 34.25/36.01/29.65/37.67 и первый gate 40%
+> для statements/branches/functions/lines. Добавлены проверки role/redirect,
+> route error boundary, theme/session/domain API, form errors и page states.
+> Assessment-taking calculations вынесены в отдельную model с собственным
+> порогом 80% по всем метрикам. Следующие этапы 50% и 65% описаны в
+> `docs/FRONTEND_COVERAGE_ROADMAP.md`; business source files не исключались.
 
 ---
 
