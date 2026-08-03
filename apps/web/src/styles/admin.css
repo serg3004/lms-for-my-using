@@ -225,6 +225,7 @@
 .admin-sidebar-footer__actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;

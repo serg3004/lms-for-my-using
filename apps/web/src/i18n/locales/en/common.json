@@ -529,6 +529,7 @@
     "completedAt": "Completion date"
   },
   "manager": {
+    "navLink": "Manager",
     "brandSub": "Manager",
     "navDashboard": "Dashboard",
     "navTeam": "Team",
@@ -581,6 +582,7 @@
     }
   },
   "instructor": {
+    "navLink": "Instructor",
     "navDashboard": "Dashboard",
     "navCourses": "Courses",
     "dashboard": {
@@ -659,6 +661,9 @@
       "colScore": "Score",
       "empty": "No students with progress in this course"
     }
+  },
+  "accountSwitcher": {
+    "button": "Switch account"
   },
   "a11y": {
     "skipToContent": "Skip to main content"

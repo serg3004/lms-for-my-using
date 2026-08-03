@@ -545,6 +545,7 @@
     "completedAt": "Аяқталған күні"
   },
   "manager": {
+    "navLink": "Менеджер",
     "brandSub": "Менеджер",
     "navDashboard": "Панель",
     "navTeam": "Команда",
@@ -597,6 +598,7 @@
     }
   },
   "instructor": {
+    "navLink": "Оқытушы",
     "navDashboard": "Дашборд",
     "navCourses": "Курстар",
     "dashboard": {
@@ -677,6 +679,9 @@
       "colScore": "Нәтиже",
       "empty": "Бұл курс бойынша прогресі бар оқушылар жоқ"
     }
+  },
+  "accountSwitcher": {
+    "button": "Аккаунтты ауыстыру"
   },
   "a11y": {
     "skipToContent": "Негізгі мазмұнға өту"

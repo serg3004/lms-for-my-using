@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AccountSwitcher } from './accountSwitcher.js';
 import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
@@ -193,6 +194,7 @@ export function AdminPageLayout({
             </div>
           ) : null}
           <div className="admin-sidebar-footer__actions">
+            <AccountSwitcher />
             <LanguageSwitcher />
             <button
               className="admin-sidebar-logout"

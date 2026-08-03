@@ -43,6 +43,7 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
         lastName={lastName}
         navItems={navItems}
         onLogout={() => { void handleLogout(); }}
+        showAccountSwitcher
         showLanguageSwitcher
       />
       <LearnerShell>{children}</LearnerShell>

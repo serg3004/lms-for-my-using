@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AccountSwitcher } from './accountSwitcher.js';
 import { getCurrentUser } from './apiClient.js';
 import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
@@ -88,6 +89,7 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
       <div className="learner-content">
         <header className="learner-header">
           <div className="learner-header__end">
+            <AccountSwitcher />
             <LanguageSwitcher />
             {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
             <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
