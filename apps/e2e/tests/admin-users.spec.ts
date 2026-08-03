@@ -17,7 +17,7 @@ async function fillCreateForm(page: Page, email: string, password: string) {
   await dialog.getByLabel('Имя').fill('Admin user');
   await dialog.getByLabel('Email').fill(email);
   await dialog.getByLabel('Пароль').fill(password);
-  await dialog.getByLabel('Роль').selectOption('learner');
+  await dialog.getByLabel('Роль', { exact: true }).selectOption('learner');
 }
 
 test('admin creates, filters, edits, deactivates and reactivates a user', async ({ page, isolatedUser }) => {
