@@ -18,6 +18,7 @@ type LearnerTopNavProps = {
   lastName?: string;
   navItems?: LearnerNavItem[];
   onLogout: () => void;
+  showLanguageSwitcher?: boolean;
 };
 
 export function LearnerTopNav({
@@ -26,6 +27,7 @@ export function LearnerTopNav({
   lastName,
   navItems = [],
   onLogout,
+  showLanguageSwitcher = false,
 }: LearnerTopNavProps) {
   return (
     <header className="learner-topnav">
@@ -49,6 +51,7 @@ export function LearnerTopNav({
       ) : null}
 
       <div className="learner-topnav__end">
+        {showLanguageSwitcher ? <LanguageSwitcher /> : null}
         {firstName ? (
           <Avatar firstName={firstName} lastName={lastName} size="sm" />
         ) : null}

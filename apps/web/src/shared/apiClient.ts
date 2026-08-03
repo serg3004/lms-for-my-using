@@ -207,7 +207,7 @@ export async function uploadMaterialFileMultipart(
   }
 }
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 let refreshRequest: Promise<boolean> | null = null;
 let successfulRefreshCount = 0;
 

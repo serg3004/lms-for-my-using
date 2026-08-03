@@ -1,7 +1,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { LanguageSwitcher } from './learnerLayout.js';
+import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
+
+const BRAND_NAME = 'LearnSpace';
 
 export type AdminNavItem = {
   label: string;
@@ -64,6 +68,15 @@ export function AdminPageLayout({
     menuButtonRef.current?.focus();
   }
 
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      /* ignore */
+    }
+    window.location.href = '/login';
+  }
+
   const currentHrefs = new Set(
     navItems.filter((item) => item.isCurrent).map((item) => item.href),
   );
@@ -110,7 +123,7 @@ export function AdminPageLayout({
         >
           ☰
         </button>
-        <span className="admin-mobile-brand">{brandLabel}</span>
+        <span className="admin-mobile-brand">{BRAND_NAME}</span>
       </div>
 
       {isOpen && (
@@ -128,10 +141,10 @@ export function AdminPageLayout({
       >
         <div className="admin-sidebar-header">
           <a className="admin-brand" href="/admin">
-            <span className="admin-brand__logo">{brandLabel[0]}</span>
+            <span className="admin-brand__logo">{BRAND_NAME[0]}</span>
             <span className="admin-brand__text">
-              <span>{brandLabel}</span>
-              <span className="admin-brand__role">Admin Panel</span>
+              <span>{BRAND_NAME}</span>
+              <span className="admin-brand__role">{brandLabel}</span>
             </span>
           </a>
           <button
@@ -163,8 +176,8 @@ export function AdminPageLayout({
           ))}
         </nav>
 
-        {currentUser ? (
-          <div className="admin-sidebar-footer">
+        <div className="admin-sidebar-footer">
+          {currentUser ? (
             <div className="admin-sidebar-user">
               <Avatar
                 firstName={currentUser.firstName}
@@ -178,8 +191,18 @@ export function AdminPageLayout({
                 <div className="admin-sidebar-user__email">{currentUser.email}</div>
               </div>
             </div>
+          ) : null}
+          <div className="admin-sidebar-footer__actions">
+            <LanguageSwitcher />
+            <button
+              className="admin-sidebar-logout"
+              onClick={() => { void handleLogout(); }}
+              type="button"
+            >
+              {t('nav.logout')}
+            </button>
           </div>
-        ) : null}
+        </div>
       </aside>
 
       <main className="admin-shell" id="main-content" tabIndex={-1}>{children}</main>

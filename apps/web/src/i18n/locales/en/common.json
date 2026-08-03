@@ -53,6 +53,44 @@
         "available": "Available",
         "unavailable": "Unavailable"
       }
+    },
+    "courses": {
+      "title": "Courses",
+      "subtitle": "Create and manage courses for your organization.",
+      "loading": "Loading courses...",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "loadError": "Unable to load courses. Try again later.",
+      "create": "Create course",
+      "titleRequired": "Course title is required",
+      "invalidTitle": "Enter a title using letters or numbers.",
+      "courseExists": "A course with this title already exists.",
+      "saveError": "Failed to create course. Try again.",
+      "searchPlaceholder": "Search courses...",
+      "allStatuses": "All statuses",
+      "empty": "No courses yet. Create your first course.",
+      "deleteTitle": "Delete course",
+      "deleteConfirm": "Delete \"{{title}}\"? This action cannot be undone.",
+      "col": {
+        "course": "Course",
+        "status": "Status",
+        "lessons": "Lessons",
+        "updated": "Updated"
+      },
+      "status": {
+        "published": "Published",
+        "draft": "Draft",
+        "archived": "Archived"
+      },
+      "stats": {
+        "total": "Total courses",
+        "published": "Published",
+        "draft": "Draft",
+        "archived": "Archived"
+      },
+      "form": {
+        "title": "Course title",
+        "description": "Description"
+      }
     }
   },
   "notFound": {

@@ -222,6 +222,29 @@
   text-overflow: ellipsis;
 }
 
+.admin-sidebar-footer__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.admin-sidebar-logout {
+  background: transparent;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: var(--radius-md);
+  color: #f1f5f9;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.admin-sidebar-logout:hover {
+  background: rgb(255 255 255 / 8%);
+}
+
 .admin-shell {
   min-width: 0;
   padding: 32px;
