@@ -216,7 +216,18 @@
     "empty": "No lessons are available yet.",
     "order": "Order",
     "status": "Status",
-    "progressSummary": "{{completed}} of {{total}} lessons completed"
+    "progressSummary": "{{completed}} of {{total}} lessons completed",
+    "heroText": "{{completed}} of {{total}} lessons completed. Next lesson: {{next}}.",
+    "heroTextDone": "All {{total}} lessons completed.",
+    "heroProgress": "Overall progress",
+    "statusCurrent": "Continue",
+    "statusAvailable": "Available",
+    "detailsTitle": "Details",
+    "currentLessonLabel": "Current lesson",
+    "deadlineLabel": "Deadline",
+    "actionContinue": "Continue lesson",
+    "actionCourse": "Open course",
+    "actionMaterials": "Materials"
   },
   "lessonDetail": {
     "title": "Lesson details",

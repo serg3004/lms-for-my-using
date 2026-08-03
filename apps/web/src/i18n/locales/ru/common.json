@@ -216,7 +216,18 @@
     "empty": "Уроки пока не добавлены.",
     "order": "Order",
     "status": "Status",
-    "progressSummary": "Завершено {{completed}} из {{total}} уроков"
+    "progressSummary": "Завершено {{completed}} из {{total}} уроков",
+    "heroText": "Завершено {{completed}} из {{total}} уроков. Следующий урок — «{{next}}».",
+    "heroTextDone": "Все {{total}} уроков завершены.",
+    "heroProgress": "Общий прогресс",
+    "statusCurrent": "Продолжить",
+    "statusAvailable": "Доступно",
+    "detailsTitle": "Детали",
+    "currentLessonLabel": "Текущий урок",
+    "deadlineLabel": "Срок",
+    "actionContinue": "Продолжить урок",
+    "actionCourse": "Открыть курс",
+    "actionMaterials": "Материалы"
   },
   "lessonDetail": {
     "title": "Урок",

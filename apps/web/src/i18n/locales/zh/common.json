@@ -216,7 +216,18 @@
     "empty": "暂无可用课时。",
     "order": "顺序",
     "status": "状态",
-    "progressSummary": "已完成 {{completed}} / {{total}} 个课时"
+    "progressSummary": "已完成 {{completed}} / {{total}} 个课时",
+    "heroText": "已完成 {{total}} 节课中的 {{completed}} 节。下一课：{{next}}。",
+    "heroTextDone": "全部 {{total}} 节课已完成。",
+    "heroProgress": "总进度",
+    "statusCurrent": "继续",
+    "statusAvailable": "可用",
+    "detailsTitle": "详情",
+    "currentLessonLabel": "当前课时",
+    "deadlineLabel": "截止日期",
+    "actionContinue": "继续课时",
+    "actionCourse": "打开课程",
+    "actionMaterials": "资料"
   },
   "lessonDetail": {
     "title": "课时详情",

@@ -216,7 +216,18 @@
     "empty": "Сабақтар әзірге қолжетімсіз.",
     "order": "Реті",
     "status": "Статус",
-    "progressSummary": "{{completed}} / {{total}} сабақ аяқталды"
+    "progressSummary": "{{completed}} / {{total}} сабақ аяқталды",
+    "heroText": "{{total}} сабақтың {{completed}}-і аяқталды. Келесі сабақ — «{{next}}».",
+    "heroTextDone": "Барлық {{total}} сабақ аяқталды.",
+    "heroProgress": "Жалпы прогресс",
+    "statusCurrent": "Жалғастыру",
+    "statusAvailable": "Қолжетімді",
+    "detailsTitle": "Деректер",
+    "currentLessonLabel": "Ағымдағы сабақ",
+    "deadlineLabel": "Мерзім",
+    "actionContinue": "Сабақты жалғастыру",
+    "actionCourse": "Курсты ашу",
+    "actionMaterials": "Материалдар"
   },
   "lessonDetail": {
     "title": "Сабақ мәліметтері",
