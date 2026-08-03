@@ -297,7 +297,14 @@
     "completeAction": "Mark lesson completed",
     "completing": "Marking completed...",
     "completionSuccess": "Lesson marked as completed.",
-    "completionError": "Unable to mark lesson completed. Try again later."
+    "completionError": "Unable to mark lesson completed. Try again later.",
+    "inProgress": "● In progress",
+    "donePill": "● Completed",
+    "videoLabel": "Video",
+    "videoSubtitles": "Subtitles available",
+    "progressTitle": "Course progress",
+    "contentsTitle": "Contents",
+    "previousLesson": "← Previous"
   },
   "materials": {
     "navLink": "Materials",
