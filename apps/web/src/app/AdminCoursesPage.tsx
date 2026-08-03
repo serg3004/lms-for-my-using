@@ -8,8 +8,6 @@ import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminN
 import { Badge, Button, DataTable, Pagination, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
-import '../styles/admin.css';
-import '../styles/ui.css';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 

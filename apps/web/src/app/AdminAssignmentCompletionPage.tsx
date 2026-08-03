@@ -6,7 +6,6 @@ import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavIt
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
 import { DataTable, EmptyState, PageState, StatusBadge, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
 type User = {

@@ -5,7 +5,6 @@ import { apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Organization = { id: string; name: string; slug: string; status: string };
 type Group = { id: string; name: string; slug: string; status: string };

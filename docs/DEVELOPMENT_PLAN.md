@@ -2669,7 +2669,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 203 — CSS architecture и Stylelint 🔲
+## PR 203 — CSS architecture и Stylelint ✅
 
 **Проблема:** Большие глобальные CSS создают конфликты и усложняют удаление правил.
 
@@ -2682,6 +2682,12 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Tokens не дублируются
 - Import order не влияет на компоненты
 - Bundle контролируется.
+
+> **Факт:** CSS подключается через единый `styles/index.css` с фиксированными
+> cascade layers; route-компоненты больше не управляют порядком каскада. Все
+> custom properties вынесены в `tokens.css`. Stylelint проверяет корректность и
+> потолок specificity, дополнительный architecture guard — named-layer imports
+> и уникальность tokens, а production build — лимит CSS bundle 80 KiB.
 
 ---
 

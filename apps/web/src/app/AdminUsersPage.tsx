@@ -11,7 +11,6 @@ import { EMPTY_USER_FORM, toEditUserForm, withoutPassword, type AdminUserSummary
 import { useAdminUserMutations } from '../features/admin-users/useAdminUserMutations.js';
 import { useAdminUsers } from '../features/admin-users/useAdminUsers.js';
 import { validateUserForm } from '../features/admin-users/validation.js';
-import '../styles/admin.css';
 
 const navItems: AdminNavItem[] = [
   { label: 'Admin dashboard', href: '/admin' }, { label: 'Users', href: '/admin/users', isCurrent: true },

@@ -16,7 +16,6 @@ import type { CourseSummary } from '../shared/api/types.js';
 import { getLesson } from '../shared/api/lessons.js';
 import { getLessonHref, getCourseHref } from '../shared/learnerRoutes.js';
 import { Badge, Button, ProgressBar, PageState } from '../shared/ui.js';
-import '../styles/ui.css';
 
 type LessonDetailLoadState =
   | { status: 'idle' }

@@ -9,7 +9,6 @@ import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsF
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Assessment, type Question, type SaveState } from './assessment-builder/model.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
-import '../styles/admin.css';
 
 export function AdminAssessmentBuilderPage() {
   const { t } = useTranslation();
