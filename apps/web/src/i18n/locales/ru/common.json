@@ -544,6 +544,7 @@
     "completedAt": "Дата завершения"
   },
   "manager": {
+    "navLink": "Менеджер",
     "brandSub": "Менеджер",
     "navDashboard": "Панель",
     "navTeam": "Команда",
@@ -596,6 +597,7 @@
     }
   },
   "instructor": {
+    "navLink": "Инструктор",
     "navDashboard": "Дашборд",
     "navCourses": "Курсы",
     "dashboard": {
@@ -676,6 +678,9 @@
       "colScore": "Результат",
       "empty": "Нет студентов с прогрессом по этому курсу"
     }
+  },
+  "accountSwitcher": {
+    "button": "Сменить аккаунт"
   },
   "a11y": {
     "skipToContent": "Перейти к основному содержимому"

@@ -500,6 +500,7 @@
     "completedAt": "完成日期"
   },
   "manager": {
+    "navLink": "经理",
     "brandSub": "经理",
     "navDashboard": "面板",
     "navTeam": "团队",
@@ -552,6 +553,7 @@
     }
   },
   "instructor": {
+    "navLink": "讲师",
     "navDashboard": "仪表盘",
     "navCourses": "课程",
     "dashboard": {
@@ -629,6 +631,9 @@
       "colScore": "成绩",
       "empty": "该课程暂无学员进度"
     }
+  },
+  "accountSwitcher": {
+    "button": "切换账户"
   },
   "a11y": {
     "skipToContent": "跳到主要内容"
