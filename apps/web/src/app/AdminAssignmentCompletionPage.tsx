@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
-import { DataTable, EmptyState, PageState, StatusBadge, type Column } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, StatCard, StatsGrid, StatusBadge, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
@@ -231,6 +231,31 @@ export function AdminAssignmentCompletionPage() {
         title={t('admin.assignments.title', 'Assignments')}
         subtitle={t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}
       />
+
+      {(() => {
+        const now = Date.now();
+        const weekMs = 7 * 24 * 60 * 60 * 1000;
+        const active = loadState.assignments.filter((a) => a.status === 'assigned').length;
+        const dueThisWeek = loadState.assignments.filter((a) => {
+          if (a.status !== 'assigned' || !a.dueAt) return false;
+          const dueTime = new Date(a.dueAt).getTime();
+          return dueTime >= now && dueTime - now <= weekMs;
+        }).length;
+        const overdue = loadState.assignments.filter((a) => {
+          if (a.status !== 'assigned' || !a.dueAt) return false;
+          return new Date(a.dueAt).getTime() < now;
+        }).length;
+        const completed = loadState.assignments.filter((a) => a.status === 'completed').length;
+
+        return (
+          <StatsGrid>
+            <StatCard label={t('admin.assignments.stats.active', 'Active assignments')} value={active} />
+            <StatCard label={t('admin.assignments.stats.dueWeek', 'Due this week')} value={dueThisWeek} />
+            <StatCard label={t('admin.assignments.stats.overdue', 'Overdue')} value={overdue} />
+            <StatCard label={t('admin.assignments.stats.completed', 'Completed total')} value={completed} />
+          </StatsGrid>
+        );
+      })()}
 
       <section className="admin-content-grid">
         <AdminCard>

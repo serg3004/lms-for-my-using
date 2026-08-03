@@ -1,10 +1,11 @@
-import { type FormEvent, useMemo, useReducer, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import type { AssessmentAttemptSummary } from '../shared/api/types.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Assessment, type Question, type SaveState } from './assessment-builder/model.js';
@@ -29,6 +30,35 @@ export function AdminAssessmentBuilderPage() {
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const selectedCourse = useMemo(() => builder.loadState.status === 'loaded' ? builder.loadState.courses.find((course) => course.id === builder.selectedCourseId) : undefined, [builder.loadState, builder.selectedCourseId]);
   const invalidMessage = t('admin.assessmentBuilder.invalidInput', 'Enter title, passing score 0–100, and optional attempts ≥ 1.');
+  const [attemptStats, setAttemptStats] = useState<{ totalAttempts: number; passRate: number | null } | null>(null);
+
+  useEffect(() => {
+    if (builder.loadState.status !== 'loaded') return;
+    let isMounted = true;
+    async function loadAttemptStats() {
+      if (builder.loadState.status !== 'loaded') return;
+      try {
+        const results = await Promise.all(
+          builder.loadState.assessments.map((assessment) =>
+            apiRequest<AssessmentAttemptSummary[]>(`/assessments/${encodeURIComponent(assessment.id)}/results`),
+          ),
+        );
+        const allAttempts = results.flat();
+        const completed = allAttempts.filter((a) => a.status === 'completed');
+        const passed = completed.filter((a) => a.passed).length;
+        if (isMounted) {
+          setAttemptStats({
+            totalAttempts: allAttempts.length,
+            passRate: completed.length > 0 ? Math.round((passed / completed.length) * 100) : null,
+          });
+        }
+      } catch {
+        if (isMounted) setAttemptStats(null);
+      }
+    }
+    void loadAttemptStats();
+    return () => { isMounted = false; };
+  }, [builder.loadState]);
 
   async function createAssessment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,6 +85,11 @@ export function AdminAssessmentBuilderPage() {
   const navItems: AdminNavItem[] = [{ label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' }, { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons' }, { label: t('admin.materials.title', 'Materials'), href: '/admin/materials' }, { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments', isCurrent: true }];
   return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems}>
     <AdminPageHeader title={t('admin.assessmentBuilder.title', 'Assessment builder')} subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')} action={<a href="/admin">{t('admin.assessmentBuilder.backToDashboard', 'Back to dashboard')}</a>}/>
+    <StatsGrid>
+      <StatCard label={t('admin.assessmentBuilder.stats.total', 'Assessments')} value={data.assessments.length} />
+      <StatCard label={t('admin.assessmentBuilder.stats.attempts', 'Total attempts')} value={attemptStats?.totalAttempts ?? '—'} />
+      <StatCard label={t('admin.assessmentBuilder.stats.passRate', 'Pass rate')} value={attemptStats?.passRate != null ? `${attemptStats.passRate}%` : '—'} />
+    </StatsGrid>
     <section className="admin-content-grid">
       <AdminCard>
         <h2>{t('admin.assessmentBuilder.createTitle', 'Create assessment')}</h2>
