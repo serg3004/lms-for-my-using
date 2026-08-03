@@ -52,7 +52,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
         listProgress({ pageSize: 200 }),
         getCurrentUser(),
         getCourse(courseId),
-        listAssignments({ pageSize: 200 }),
+        listAssignments({ pageSize: 100 }),
       ]);
 
       const completedIds = new Set(

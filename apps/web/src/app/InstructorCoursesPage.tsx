@@ -36,7 +36,7 @@ export function InstructorCoursesPage() {
         const [user, page, { items: progressItems }] = await Promise.all([
           getCurrentUser(),
           listCourses({ pageSize: 100 }),
-          listProgress({ pageSize: 500 }),
+          listProgress({ pageSize: 100 }),
         ]);
         if (!isMounted) return;
         const studentsByCourse = new Map<string, Set<string>>();
