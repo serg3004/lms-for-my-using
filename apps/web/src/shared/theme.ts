@@ -26,22 +26,22 @@ export type ThemePreset = {
 const storageKey = 'lms.adminThemeSettings';
 
 export const defaultThemeSettings: ThemeSettings = {
-  colorPrimary: '#2563eb',
-  colorPrimaryHover: '#1d4ed8',
-  colorBackground: '#f5f7fb',
+  colorPrimary: '#4f46e5',
+  colorPrimaryHover: '#4338ca',
+  colorBackground: '#f4f7fb',
   colorSurface: '#ffffff',
-  colorSurfaceMuted: '#eef2f7',
-  colorBorder: '#d8e0ec',
+  colorSurfaceMuted: '#f8fafc',
+  colorBorder: '#e3e8ef',
   colorText: '#172033',
-  colorTextMuted: '#566176',
-  shadowCard: '0 10px 30px rgb(15 23 42 / 8%)',
+  colorTextMuted: '#6b7280',
+  shadowCard: '0 8px 24px rgb(23 32 51 / 5%)',
   radiusSm: '6px',
-  radiusMd: '10px',
-  radiusLg: '16px',
+  radiusMd: '11px',
+  radiusLg: '18px',
   spacePage: 'clamp(16px, 4vw, 48px)',
   adminSidebarBackground: '#111827',
   adminSidebarText: '#ffffff',
-  adminSidebarTextMuted: '#dbeafe',
+  adminSidebarTextMuted: '#cbd5e1',
 };
 
 export const themePresets: ThemePreset[] = [

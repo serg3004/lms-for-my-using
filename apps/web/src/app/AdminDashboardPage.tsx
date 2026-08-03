@@ -214,6 +214,7 @@ export function AdminDashboardPage() {
       currentUser={{ firstName: user.firstName, lastName: user.lastName ?? undefined, email: user.email }}
     >
       <AdminPageHeader
+        eyebrow={t('admin.eyebrow', 'Administrator')}
         title={t('admin.title', 'Admin dashboard')}
         subtitle={t('admin.subtitle', 'Welcome back, {{name}}.', { name: getUserDisplayName(user) })}
         action={
@@ -266,42 +267,6 @@ export function AdminDashboardPage() {
               ? t('admin.dashboard.systemStatus.available', 'Available')
               : t('admin.dashboard.systemStatus.unavailable', 'Unavailable')}
           </StatusBadge>
-        </AdminCard>
-      </section>
-
-      <section className="admin-content-grid">
-        <AdminCard>
-          <h2>{t('admin.profileTitle', 'Admin profile')}</h2>
-          <dl className="admin-profile-list">
-            <dt>{t('admin.name', 'Name')}</dt>
-            <dd>{getUserDisplayName(user)}</dd>
-            <dt>{t('admin.email', 'Email')}</dt>
-            <dd>{user.email}</dd>
-            <dt>{t('admin.organizationId', 'Organization ID')}</dt>
-            <dd>{user.organizationId}</dd>
-          </dl>
-        </AdminCard>
-
-        <AdminCard>
-          <h2>{t('admin.sectionsTitle', 'Quick links')}</h2>
-          <ul className="admin-section-list">
-            <li>
-              <a href="/admin/courses">{t('admin.sections.courses.title', 'Courses')}</a>
-              <p>{t('admin.sections.courses.description', 'Create and manage training courses.')}</p>
-            </li>
-            <li>
-              <a href="/admin/users">{t('admin.sections.users.title', 'Users')}</a>
-              <p>{t('admin.sections.users.description', 'Manage organization members and roles.')}</p>
-            </li>
-            <li>
-              <a href="/admin/assignments">{t('admin.sections.assignments.title', 'Assignments')}</a>
-              <p>{t('admin.sections.assignments.description', 'Assign courses to learners.')}</p>
-            </li>
-            <li>
-              <a href="/admin/results">{t('admin.sections.reports.title', 'Results')}</a>
-              <p>{t('admin.sections.reports.description', 'View certificates and assessment scores.')}</p>
-            </li>
-          </ul>
         </AdminCard>
       </section>
     </AdminPageLayout>

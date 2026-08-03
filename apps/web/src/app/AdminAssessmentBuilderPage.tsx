@@ -83,7 +83,7 @@ export function AdminAssessmentBuilderPage() {
   const data = builder.loadState;
   const navItems: AdminNavItem[] = [{ label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' }, { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons' }, { label: t('admin.materials.title', 'Materials'), href: '/admin/materials' }, { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments', isCurrent: true }];
   return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems}>
-    <AdminPageHeader title={t('admin.assessmentBuilder.title', 'Assessment builder')} subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')} action={<a href="/admin">{t('admin.assessmentBuilder.backToDashboard', 'Back to dashboard')}</a>}/>
+    <AdminPageHeader eyebrow={t('admin.assessmentBuilder.eyebrow', 'Knowledge control')} title={t('admin.assessmentBuilder.title', 'Assessment builder')} subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')} action={<a href="/admin">{t('admin.assessmentBuilder.backToDashboard', 'Back to dashboard')}</a>}/>
     <StatsGrid>
       <StatCard label={t('admin.assessmentBuilder.stats.total', 'Assessments')} value={data.assessments.length} />
       <StatCard label={t('admin.assessmentBuilder.stats.attempts', 'Total attempts')} value={attemptStats?.totalAttempts ?? '—'} />

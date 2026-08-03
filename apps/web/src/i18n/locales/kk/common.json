@@ -11,6 +11,7 @@
   },
   "admin": {
     "navLink": "Әкімші",
+    "eyebrow": "Әкімші",
     "sidebarLabel": "Әкімші навигациясы",
     "title": "Басқару панелі",
     "subtitle": "Қайта қош келдіңіз, {{name}}.",
@@ -55,6 +56,7 @@
       }
     },
     "courses": {
+      "eyebrow": "Оқу контенті",
       "title": "Курстар",
       "subtitle": "Ұйымыңыздың курстарын жасаңыз және басқарыңыз.",
       "loading": "Курстар жүктелуде...",
@@ -91,7 +93,17 @@
         "title": "Курс атауы",
         "description": "Сипаттама"
       }
-    }
+    },
+    "users": { "eyebrow": "Қолжетімділікті басқару" },
+    "lessons": { "eyebrow": "Оқу контенті" },
+    "materials": { "eyebrow": "Файлдар мен ресурстар" },
+    "assessmentBuilder": { "eyebrow": "Білімді бақылау" },
+    "assignments": { "eyebrow": "Міндетті оқу" },
+    "results": { "eyebrow": "Аналитика" },
+    "roles": { "eyebrow": "Қолжетімділікті бақылау" },
+    "themeSettings": { "eyebrow": "Платформа брендингі" },
+    "orgStructure": { "eyebrow": "Компания құрылымы" },
+    "courseBuilder": { "eyebrow": "Курс редакторы" }
   },
   "notFound": {
     "title": "Бет табылмады",
@@ -684,6 +696,7 @@
     "button": "Аккаунтты ауыстыру"
   },
   "a11y": {
-    "skipToContent": "Негізгі мазмұнға өту"
+    "skipToContent": "Негізгі мазмұнға өту",
+    "breadcrumb": "Шолу жолы"
   }
 }

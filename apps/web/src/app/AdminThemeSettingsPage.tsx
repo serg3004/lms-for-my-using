@@ -132,6 +132,7 @@ export function AdminThemeSettingsPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.themeSettings.eyebrow', 'Platform branding')}
         title={t('admin.themeSettings.title', 'Theme settings')}
         subtitle={t(
           'admin.themeSettings.subtitle',

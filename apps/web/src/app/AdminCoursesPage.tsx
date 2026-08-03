@@ -269,6 +269,7 @@ export function AdminCoursesPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.courses.eyebrow', 'Learning content')}
         title={t('admin.courses.title', 'Courses')}
         subtitle={t('admin.courses.subtitle', 'Create and manage courses for your organization.')}
         action={

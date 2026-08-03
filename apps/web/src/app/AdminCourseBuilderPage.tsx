@@ -222,6 +222,7 @@ export function AdminCourseBuilderPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.courseBuilder.eyebrow', 'Course editor')}
         title={course.title}
         subtitle={`${lessons.length} уроков · обновлён ${formatDate(course.updatedAt)}`}
         action={

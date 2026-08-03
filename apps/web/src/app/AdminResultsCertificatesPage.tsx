@@ -143,6 +143,7 @@ export function AdminResultsCertificatesPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.results.eyebrow', 'Analytics')}
         title={t('admin.results.title', 'Results')}
         subtitle={t('admin.results.subtitle', 'Review learner progress, assessment results, and issue certificates.')}
       />

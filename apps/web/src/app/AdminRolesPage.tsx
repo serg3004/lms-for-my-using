@@ -183,11 +183,12 @@ export function AdminRolesPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.roles.eyebrow', 'Access control')}
         title={t('admin.roles.title', 'Roles')}
         subtitle={t('admin.roles.subtitle', 'Assign existing organization roles to users.')}
       />
 
-      <section className="admin-content-grid" style={{ marginBottom: '20px' }}>
+      <section className="admin-dashboard-widgets" style={{ marginBottom: '20px' }}>
         {adminRoles.map((role) => {
           const count = loadState.memberships.filter((m) => m.role === role).length;
           return (
