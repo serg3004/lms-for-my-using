@@ -53,6 +53,44 @@
         "available": "可用",
         "unavailable": "不可用"
       }
+    },
+    "courses": {
+      "title": "课程",
+      "subtitle": "创建并管理您所在组织的课程。",
+      "loading": "正在加载课程...",
+      "sessionExpired": "会话已过期。请重新登录。",
+      "loadError": "无法加载课程。请稍后重试。",
+      "create": "创建课程",
+      "titleRequired": "课程名称为必填项",
+      "invalidTitle": "请输入包含字母或数字的名称。",
+      "courseExists": "该名称的课程已存在。",
+      "saveError": "创建课程失败。请重试。",
+      "searchPlaceholder": "搜索课程...",
+      "allStatuses": "所有状态",
+      "empty": "暂无课程。创建您的第一个课程。",
+      "deleteTitle": "删除课程",
+      "deleteConfirm": "删除“{{title}}”？此操作无法撤销。",
+      "col": {
+        "course": "课程",
+        "status": "状态",
+        "lessons": "课时",
+        "updated": "更新时间"
+      },
+      "status": {
+        "published": "已发布",
+        "draft": "草稿",
+        "archived": "已归档"
+      },
+      "stats": {
+        "total": "课程总数",
+        "published": "已发布",
+        "draft": "草稿",
+        "archived": "已归档"
+      },
+      "form": {
+        "title": "课程名称",
+        "description": "描述"
+      }
     }
   },
   "notFound": {
