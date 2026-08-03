@@ -265,7 +265,9 @@
     "deadlineLabel": "截止日期",
     "actionContinue": "继续课时",
     "actionCourse": "打开课程",
-    "actionMaterials": "资料"
+    "actionMaterials": "资料",
+    "listTitle": "课程内容",
+    "progressTitle": "进度"
   },
   "lessonDetail": {
     "title": "课时详情",
@@ -494,6 +496,7 @@
     "validityUnlimited": "永久有效",
     "open": "打开",
     "downloadPdf": "下载 PDF",
+    "number": "证书编号",
     "infoTitle": "信息",
     "owner": "持有人",
     "courseLabel": "课程",

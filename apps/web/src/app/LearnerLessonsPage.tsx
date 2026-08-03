@@ -160,7 +160,8 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
       </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.25fr) minmax(280px,.75fr)', gap: '22px', alignItems: 'start' }}>
-        <div className="learner-lessons__header">
+        <div className="ds-card" style={{ padding: '24px' }}>
+          <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: '#172033' }}>{t('lessons.listTitle')}</h3>
           {publishedLessons.length === 0 ? (
             <EmptyState message={t('lessons.empty')} />
           ) : (
@@ -206,6 +207,17 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
         </div>
 
         <aside style={{ display: 'grid', gap: '18px', position: 'sticky', top: '98px' }}>
+          <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: '18px', color: COLORS.text }}>{t('lessons.progressTitle')}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', fontSize: '14px' }}>
+              <span style={{ color: COLORS.muted }}>{t('lessons.heroProgress')}</span>
+              <strong style={{ color: COLORS.text }}>{completedCount} / {publishedLessons.length}</strong>
+            </div>
+            <div style={{ height: '10px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: '999px', width: `${overallPercent}%`, background: `linear-gradient(90deg,${COLORS.primary},#7c3aed)`, transition: 'width .3s ease' }} />
+            </div>
+          </section>
+
           <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
             <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: COLORS.text }}>{t('lessons.detailsTitle')}</h3>
             <div style={{ display: 'grid', gap: '10px' }}>

@@ -265,7 +265,9 @@
     "deadlineLabel": "Срок",
     "actionContinue": "Продолжить урок",
     "actionCourse": "Открыть курс",
-    "actionMaterials": "Материалы"
+    "actionMaterials": "Материалы",
+    "listTitle": "Содержание курса",
+    "progressTitle": "Прогресс"
   },
   "lessonDetail": {
     "title": "Урок",
@@ -538,6 +540,7 @@
     "validityUnlimited": "Бессрочно",
     "open": "Открыть",
     "downloadPdf": "Скачать PDF",
+    "number": "Номер",
     "infoTitle": "Информация",
     "owner": "Владелец",
     "courseLabel": "Курс",

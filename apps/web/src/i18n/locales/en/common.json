@@ -265,7 +265,9 @@
     "deadlineLabel": "Deadline",
     "actionContinue": "Continue lesson",
     "actionCourse": "Open course",
-    "actionMaterials": "Materials"
+    "actionMaterials": "Materials",
+    "listTitle": "Course content",
+    "progressTitle": "Progress"
   },
   "lessonDetail": {
     "title": "Lesson details",
@@ -523,6 +525,7 @@
     "validityUnlimited": "No expiration",
     "open": "Open",
     "downloadPdf": "Download PDF",
+    "number": "Number",
     "infoTitle": "Information",
     "owner": "Owner",
     "courseLabel": "Course",

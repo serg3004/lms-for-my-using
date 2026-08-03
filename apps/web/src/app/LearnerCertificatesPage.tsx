@@ -29,6 +29,12 @@ const COLORS = {
   successSoft: '#e9f8f2',
 };
 
+const BANNER_GRADIENTS = [
+  'radial-gradient(circle at top right,rgba(255,255,255,.18),transparent 32%),linear-gradient(135deg,#4338ca,#7c3aed)',
+  'radial-gradient(circle at top right,rgba(255,255,255,.18),transparent 32%),linear-gradient(135deg,#047857,#10b981)',
+  'radial-gradient(circle at top right,rgba(255,255,255,.20),transparent 32%),linear-gradient(135deg,#b45309,#f59e0b)',
+];
+
 function getCertificateHref(certificateId: string) {
   return `/learn/certificates/${encodeURIComponent(certificateId)}`;
 }
@@ -188,16 +194,18 @@ export function LearnerCertificatesPage() {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '18px' }}>
-          {filtered.map((certificate) => {
+          {filtered.map((certificate, idx) => {
             const courseTitle = getCourseTitle(certificate, 'Course');
             const isIssued = certificate.status === 'issued';
+            const bannerGradient = BANNER_GRADIENTS[idx % BANNER_GRADIENTS.length];
+            const shortId = certificate.id.replace(/-/g, '').slice(0, 10).toUpperCase();
 
             return (
               <article
                 key={certificate.id}
                 style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 28px rgba(23,32,51,.07)' }}
               >
-                <div style={{ padding: '22px', background: 'linear-gradient(135deg,#4338ca,#6d5dfc)', color: '#fff' }}>
+                <div style={{ padding: '22px', background: bannerGradient, color: '#fff' }}>
                   <small style={{ display: 'block', opacity: 0.85, marginBottom: '10px' }}>LearnSpace Certificate</small>
                   <strong style={{ fontSize: '19px' }}>{courseTitle}</strong>
                 </div>
@@ -216,8 +224,11 @@ export function LearnerCertificatesPage() {
                   >
                     {isIssued ? t('certificates.statusIssued') : t('certificates.statusRevoked')}
                   </span>
-                  <h2 style={{ margin: 0, fontSize: '19px', color: COLORS.text }}>{courseTitle}</h2>
                   <div style={{ display: 'grid', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <span style={{ color: COLORS.muted, fontSize: '13px' }}>{t('certificates.number')}</span>
+                      <strong style={{ fontSize: '13px', fontVariantNumeric: 'tabular-nums' }}>{shortId}</strong>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
                       <span style={{ color: COLORS.muted, fontSize: '13px' }}>{t('certificates.issuedAt')}</span>
                       <strong style={{ fontSize: '13px' }}>{formatNullableDate(certificate.issuedAt, t('certificates.notAvailable'))}</strong>
