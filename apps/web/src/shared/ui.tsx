@@ -300,8 +300,8 @@ type StatCardProps = {
 export function StatCard({ label, value, trend }: StatCardProps) {
   return (
     <div className="stat-card">
-      <div className="stat-card__label">{label}</div>
       <div className="stat-card__value">{value}</div>
+      <div className="stat-card__label">{label}</div>
       {trend ? <div className="stat-card__trend">{trend}</div> : null}
     </div>
   );

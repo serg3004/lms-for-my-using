@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import type { FormValidationErrors } from '../shared/formValidation.js';
@@ -17,6 +18,7 @@ const navItems: AdminNavItem[] = [
 ];
 
 export function AdminUsersPage() {
+  const { t } = useTranslation();
   const usersQuery = useAdminUsers();
   const mutations = useAdminUserMutations(usersQuery.reload);
   const [form, setForm] = useState<UserForm>(EMPTY_USER_FORM);
@@ -54,7 +56,7 @@ export function AdminUsersPage() {
   const loadedState = usersQuery.state;
 
   return <AdminPageLayout brandLabel="Admin" sidebarLabel="Admin navigation" navItems={navItems}>
-    <AdminPageHeader title="Users" subtitle="Manage organization users and their roles." action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">Create user</button>} />
+    <AdminPageHeader eyebrow={t('admin.users.eyebrow', 'Access management')} title="Users" subtitle="Manage organization users and their roles." action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">Create user</button>} />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void mutations.toggleStatus(user)} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />

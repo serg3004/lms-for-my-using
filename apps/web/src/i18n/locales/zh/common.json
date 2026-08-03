@@ -11,6 +11,7 @@
   },
   "admin": {
     "navLink": "管理员",
+    "eyebrow": "管理员",
     "sidebarLabel": "管理员导航",
     "title": "管理面板",
     "subtitle": "欢迎回来，{{name}}。",
@@ -55,6 +56,7 @@
       }
     },
     "courses": {
+      "eyebrow": "学习内容",
       "title": "课程",
       "subtitle": "创建并管理您所在组织的课程。",
       "loading": "正在加载课程...",
@@ -91,7 +93,17 @@
         "title": "课程名称",
         "description": "描述"
       }
-    }
+    },
+    "users": { "eyebrow": "访问管理" },
+    "lessons": { "eyebrow": "学习内容" },
+    "materials": { "eyebrow": "文件与资源" },
+    "assessmentBuilder": { "eyebrow": "知识控制" },
+    "assignments": { "eyebrow": "必修学习" },
+    "results": { "eyebrow": "分析" },
+    "roles": { "eyebrow": "访问控制" },
+    "themeSettings": { "eyebrow": "平台品牌" },
+    "orgStructure": { "eyebrow": "公司结构" },
+    "courseBuilder": { "eyebrow": "课程编辑器" }
   },
   "notFound": {
     "title": "页面未找到",
@@ -636,6 +648,7 @@
     "button": "切换账户"
   },
   "a11y": {
-    "skipToContent": "跳到主要内容"
+    "skipToContent": "跳到主要内容",
+    "breadcrumb": "面包屑导航"
   }
 }

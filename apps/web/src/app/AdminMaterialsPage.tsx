@@ -316,6 +316,7 @@ export function AdminMaterialsPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.materials.eyebrow', 'Files and resources')}
         title={t('admin.materials.title', 'Materials')}
         subtitle={t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}
         action={<a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>}

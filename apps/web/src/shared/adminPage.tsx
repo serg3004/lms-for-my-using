@@ -180,11 +180,6 @@ export function AdminPageLayout({
         <div className="admin-sidebar-footer">
           {currentUser ? (
             <div className="admin-sidebar-user">
-              <Avatar
-                firstName={currentUser.firstName}
-                lastName={currentUser.lastName}
-                size="sm"
-              />
               <div className="admin-sidebar-user__info">
                 <div className="admin-sidebar-user__name">
                   {[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')}
@@ -193,19 +188,44 @@ export function AdminPageLayout({
               </div>
             </div>
           ) : null}
-          <div className="admin-sidebar-footer__actions">
+          <div className="admin-sidebar-footer__mobile-actions">
             <AccountSwitcher />
             <LanguageSwitcher />
-            <button
-              className="admin-sidebar-logout"
-              onClick={() => { void handleLogout(); }}
-              type="button"
-            >
-              {t('nav.logout')}
-            </button>
           </div>
+          <button
+            className="admin-sidebar-logout"
+            onClick={() => { void handleLogout(); }}
+            type="button"
+          >
+            {t('nav.logout')}
+          </button>
         </div>
       </aside>
+
+      <header className="admin-topheader">
+        <nav aria-label={t('a11y.breadcrumb', 'Breadcrumb')} className="admin-breadcrumbs">
+          {navItems.map((item, index) =>
+            index === navItems.length - 1 ? (
+              <span aria-current="page" key={item.href}>{item.label}</span>
+            ) : (
+              <span key={item.href}>
+                <a href={item.href}>{item.label}</a>
+                <span aria-hidden="true"> / </span>
+              </span>
+            ),
+          )}
+        </nav>
+        <div className="admin-topheader__actions">
+          <span aria-hidden="true" className="admin-topheader__bell">🔔</span>
+          <AccountSwitcher />
+          <LanguageSwitcher />
+          {currentUser ? (
+            <span title={`${[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')} — ${currentUser.email}`}>
+              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} size="sm" />
+            </span>
+          ) : null}
+        </div>
+      </header>
 
       <main className="admin-shell" id="main-content" tabIndex={-1}>{children}</main>
     </div>
@@ -213,15 +233,17 @@ export function AdminPageLayout({
 }
 
 type AdminPageHeaderProps = {
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   action?: ReactNode;
 };
 
-export function AdminPageHeader({ title, subtitle, action }: AdminPageHeaderProps) {
+export function AdminPageHeader({ eyebrow, title, subtitle, action }: AdminPageHeaderProps) {
   return (
     <header className="admin-topbar">
       <div>
+        {eyebrow ? <p className="admin-topbar__eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>

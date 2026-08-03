@@ -227,6 +227,7 @@ export function AdminAssignmentCompletionPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.assignments.eyebrow', 'Required learning')}
         title={t('admin.assignments.title', 'Assignments')}
         subtitle={t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}
       />

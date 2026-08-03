@@ -11,6 +11,7 @@
   },
   "admin": {
     "navLink": "Админ",
+    "eyebrow": "Администратор",
     "sidebarLabel": "Навигация администратора",
     "title": "Панель управления",
     "subtitle": "С возвращением, {{name}}.",
@@ -55,6 +56,7 @@
       }
     },
     "courses": {
+      "eyebrow": "Учебный контент",
       "title": "Курсы",
       "subtitle": "Создавайте и управляйте курсами вашей организации.",
       "loading": "Загрузка курсов...",
@@ -91,7 +93,17 @@
         "title": "Название курса",
         "description": "Описание"
       }
-    }
+    },
+    "users": { "eyebrow": "Управление доступом" },
+    "lessons": { "eyebrow": "Учебный контент" },
+    "materials": { "eyebrow": "Файлы и ресурсы" },
+    "assessmentBuilder": { "eyebrow": "Контроль знаний" },
+    "assignments": { "eyebrow": "Обязательное обучение" },
+    "results": { "eyebrow": "Аналитика" },
+    "roles": { "eyebrow": "Контроль доступа" },
+    "themeSettings": { "eyebrow": "Брендинг платформы" },
+    "orgStructure": { "eyebrow": "Структура компании" },
+    "courseBuilder": { "eyebrow": "Редактор курса" }
   },
   "notFound": {
     "title": "Страница не найдена",
@@ -683,6 +695,7 @@
     "button": "Сменить аккаунт"
   },
   "a11y": {
-    "skipToContent": "Перейти к основному содержимому"
+    "skipToContent": "Перейти к основному содержимому",
+    "breadcrumb": "Хлебные крошки"
   }
 }

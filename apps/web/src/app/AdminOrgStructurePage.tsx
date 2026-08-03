@@ -69,7 +69,10 @@ export function AdminOrgStructurePage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
-      <AdminPageHeader title={t('admin.orgStructure.title', 'Organization structure')} />
+      <AdminPageHeader
+        eyebrow={t('admin.orgStructure.eyebrow', 'Company structure')}
+        title={t('admin.orgStructure.title', 'Organization structure')}
+      />
 
       <section className="admin-content-grid">
         <AdminCard>

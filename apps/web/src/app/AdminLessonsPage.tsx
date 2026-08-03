@@ -233,6 +233,7 @@ export function AdminLessonsPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.lessons.eyebrow', 'Learning content')}
         title={t('admin.lessons.title', 'Lesson editor')}
         subtitle={t('admin.lessons.subtitle', 'Create and edit lessons, control display order and status.')}
         action={<a href="/admin">{t('admin.lessons.backToDashboard', 'Back to dashboard')}</a>}

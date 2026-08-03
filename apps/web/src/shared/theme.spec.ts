@@ -25,7 +25,7 @@ afterEach(() => {
 
 describe('theme settings', () => {
   it('publishes immutable-looking default and preset choices', () => {
-    expect(defaultThemeSettings.colorPrimary).toBe('#2563eb');
+    expect(defaultThemeSettings.colorPrimary).toBe('#4f46e5');
     expect(themePresets.map(({ id }) => id)).toEqual(['default', 'emerald', 'slate']);
     expect(themePresets[1]?.settings.colorPrimary).toBe('#047857');
   });
@@ -62,7 +62,7 @@ describe('theme settings', () => {
 
     applyThemeSettings(defaultThemeSettings);
 
-    expect(setProperty).toHaveBeenCalledWith('--color-primary', '#2563eb');
+    expect(setProperty).toHaveBeenCalledWith('--color-primary', '#4f46e5');
     expect(setProperty).toHaveBeenCalledWith('--admin-sidebar-text', '#ffffff');
     expect(setProperty).toHaveBeenCalledTimes(Object.keys(defaultThemeSettings).length);
   });
