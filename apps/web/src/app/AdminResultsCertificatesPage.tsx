@@ -5,7 +5,6 @@ import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string };
 type User = { id: string; email: string; name: string | null };

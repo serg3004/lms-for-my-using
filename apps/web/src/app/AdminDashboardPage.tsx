@@ -9,7 +9,6 @@ import { listCertificates } from '../shared/api/certificates.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
-import '../styles/admin.css';
 
 type AdminUserStatus = 'active' | 'invited' | 'suspended' | 'archived';
 
