@@ -113,9 +113,9 @@ describe('admin page smoke rendering', () => {
   it('renders every theme settings group', () => {
     useLoadingState();
     const html = renderToStaticMarkup(<AdminThemeSettingsPage />);
-    expect(html).toContain('Primary color');
-    expect(html).toContain('Page spacing');
-    expect(html).toContain('Sidebar background');
+    expect(html).toContain('Основной цвет');
+    expect(html).toContain('Отступы страницы');
+    expect(html).toContain('Фон сайдбара');
   });
   it('renders dashboard loading state without crashing', () => {
     useLoadingState();

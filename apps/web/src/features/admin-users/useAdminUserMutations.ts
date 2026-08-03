@@ -1,13 +1,13 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
 import type { AdminUserSummary, UserForm, UserFormField, UserFormMode } from './model.js';
 
-const DUPLICATE_EMAIL_MESSAGE = 'A user with this email already exists';
-
 export function useAdminUserMutations(reload: () => Promise<void>) {
+  const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
 
   async function saveUser(form: UserForm, mode: UserFormMode, organizationId: string): Promise<{
@@ -31,9 +31,9 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
       return { ok: true };
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 409) {
-        return { ok: false, formErrors: { email: DUPLICATE_EMAIL_MESSAGE } };
+        return { ok: false, formErrors: { email: t('admin.users.duplicateEmail', 'A user with this email already exists') } };
       }
-      return { ok: false, message: error instanceof ApiClientError ? error.message : 'Failed to save user. Try again.' };
+      return { ok: false, message: error instanceof ApiClientError ? error.message : t('admin.users.saveFailed', 'Failed to save user. Try again.') };
     } finally {
       setIsSaving(false);
     }

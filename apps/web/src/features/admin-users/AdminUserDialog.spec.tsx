@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>();
+  return { ...actual, useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }) };
+});
+
 import { AdminUserDialog } from './AdminUserDialog.js';
 import { AdminUserForm } from './AdminUserForm.js';
 import { EMPTY_USER_FORM } from './model.js';
