@@ -12,8 +12,6 @@ import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
 import { useCourseBuilderMutations } from './course-builder/useCourseBuilderMutations.js';
-import '../styles/admin.css';
-import '../styles/ui.css';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 type LessonStatus = 'draft' | 'published' | 'archived';

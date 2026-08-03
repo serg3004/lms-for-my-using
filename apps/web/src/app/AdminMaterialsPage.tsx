@@ -13,7 +13,6 @@ import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
 type Lesson = { id: string; title: string; order: number };
