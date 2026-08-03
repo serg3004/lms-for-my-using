@@ -37,6 +37,13 @@ type LoadState =
 
 const adminRoles: AdminRole[] = ['learner', 'instructor', 'manager', 'admin'];
 
+const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
+  admin: 'Full system access.',
+  instructor: 'Courses and learners.',
+  manager: 'Team and results.',
+  learner: 'Learning and certificates.',
+};
+
 function getUserDisplayName(user: AdminUserSummary) {
   const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
 
@@ -180,6 +187,21 @@ export function AdminRolesPage() {
         title={t('admin.roles.title', 'Roles')}
         subtitle={t('admin.roles.subtitle', 'Assign existing organization roles to users.')}
       />
+
+      <section className="admin-content-grid" style={{ marginBottom: '20px' }}>
+        {adminRoles.map((role) => {
+          const count = loadState.memberships.filter((m) => m.role === role).length;
+          return (
+            <AdminCard key={role}>
+              <span className="ds-badge ds-badge--neutral">{count}</span>
+              <h3 style={{ margin: '10px 0 4px' }}>{t(`admin.roles.options.${role}`, role)}</h3>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
+                {t(`admin.roles.descriptions.${role}`, ROLE_DESCRIPTIONS[role])}
+              </p>
+            </AdminCard>
+          );
+        })}
+      </section>
 
       <section className="admin-content-grid">
         <AdminCard>
