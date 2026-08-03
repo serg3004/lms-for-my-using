@@ -1,6 +1,12 @@
 import { apiRequest } from '../apiClient.js';
 
-import type { AssessmentAttemptResult, AssessmentSummary, CreateAttemptAnswerInput } from './types.js';
+import type {
+  AssessmentAttemptResult,
+  AssessmentAttemptSummary,
+  AssessmentQuestionSummary,
+  AssessmentSummary,
+  CreateAttemptAnswerInput,
+} from './types.js';
 
 const assessmentsPath = '/assessments';
 
@@ -21,6 +27,14 @@ export function createAssessmentAttempt(assessmentId: string, answers: CreateAtt
     method: 'POST',
     body: JSON.stringify({ answers }),
   });
+}
+
+export function listAssessmentAttempts(assessmentId: string) {
+  return apiRequest<AssessmentAttemptSummary[]>(`${getAssessmentPath(assessmentId)}/attempts`);
+}
+
+export function listAssessmentQuestions(assessmentId: string) {
+  return apiRequest<AssessmentQuestionSummary[]>(`${getAssessmentPath(assessmentId)}/questions`);
 }
 
 export function getAttemptResult(attemptId: string) {
