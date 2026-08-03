@@ -16,7 +16,7 @@
     "test:a11y": "playwright test --config apps/e2e/playwright.accessibility.config.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.1",
+    "@playwright/test": "^1.62.1",
     "@eslint/js": "^10.0.1",
     "globals": "^17.8.0",
     "turbo": "^2.10.7",
