@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
-import { getListItemLabel, getReadableTitle } from '../shared/displayLabels.js';
+import { getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
-import { EmptyState, Pagination, PageState, StatusBadge } from '../shared/ui.js';
+import { PageState } from '../shared/ui.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
   courseTitle?: string | null;
@@ -18,6 +18,17 @@ type CertificatesLoadState =
   | { status: 'unauthenticated'; message: string }
   | { status: 'error'; message: string };
 
+const COLORS = {
+  surface: '#ffffff',
+  soft: '#f8fafc',
+  text: '#172033',
+  muted: '#6b7280',
+  border: '#e3e8ef',
+  primary: '#4f46e5',
+  success: '#0f9f6e',
+  successSoft: '#e9f8f2',
+};
+
 function getCertificateHref(certificateId: string) {
   return `/learn/certificates/${encodeURIComponent(certificateId)}`;
 }
@@ -26,10 +37,13 @@ function getCourseTitle(certificate: ReadableCertificateSummary, fallback: strin
   return getReadableTitle(certificate.courseTitle ?? certificate.course?.title, fallback);
 }
 
+type StatusFilter = 'all' | 'issued' | 'revoked';
+
 export function LearnerCertificatesPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CertificatesLoadState>({ status: 'idle' });
-  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [yearFilter, setYearFilter] = useState<'all' | string>('all');
 
   useEffect(() => {
     let isMounted = true;
@@ -38,7 +52,7 @@ export function LearnerCertificatesPage() {
       setLoadState({ status: 'loading' });
 
       try {
-        const result = await listCertificates({ page, pageSize: 20 });
+        const result = await listCertificates({ page: 1, pageSize: 100 });
 
         if (isMounted) {
           setLoadState({ status: 'loaded', certificates: result.items, total: result.total, pageSize: result.pageSize });
@@ -49,17 +63,11 @@ export function LearnerCertificatesPage() {
         }
 
         if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({
-            status: 'unauthenticated',
-            message: t('certificates.sessionExpired'),
-          });
+          setLoadState({ status: 'unauthenticated', message: t('certificates.sessionExpired') });
           return;
         }
 
-        setLoadState({
-          status: 'error',
-          message: t('certificates.loadError'),
-        });
+        setLoadState({ status: 'error', message: t('certificates.loadError') });
       }
     }
 
@@ -68,87 +76,177 @@ export function LearnerCertificatesPage() {
     return () => {
       isMounted = false;
     };
-  }, [t, page]);
+  }, [t]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
 
+  const years = useMemo(() => {
+    if (loadState.status !== 'loaded') return [];
+    const set = new Set(loadState.certificates.map((c) => new Date(c.issuedAt).getFullYear().toString()));
+    return [...set].sort((a, b) => Number(b) - Number(a));
+  }, [loadState]);
+
+  const filtered = useMemo(() => {
+    if (loadState.status !== 'loaded') return [];
+    return loadState.certificates.filter((certificate) => {
+      const matchesStatus = statusFilter === 'all' || certificate.status === statusFilter;
+      const matchesYear =
+        yearFilter === 'all' || new Date(certificate.issuedAt).getFullYear().toString() === yearFilter;
+      return matchesStatus && matchesYear;
+    });
+  }, [loadState, statusFilter, yearFilter]);
+
   if (loadState.status === 'idle' || loadState.status === 'loading') {
-    return (
-      <>
-        <PageState message={t('certificates.loading')} variant="loading" />
-      </>
-    );
+    return <PageState message={t('certificates.loading')} variant="loading" />;
   }
 
   if (loadState.status === 'unauthenticated') {
     return (
-      <>
-        <PageState
-          title={t('certificates.title')}
-          message={loadState.message}
-          variant="error"
-          action={loginAction}
-        />
-      </>
+      <PageState title={t('certificates.title')} message={loadState.message} variant="error" action={loginAction} />
     );
   }
 
   if (loadState.status === 'error') {
     return (
-      <>
-        <PageState
-          title={t('certificates.title')}
-          message={loadState.message}
-          variant="error"
-          action={learnerAction}
-        />
-      </>
+      <PageState title={t('certificates.title')} message={loadState.message} variant="error" action={learnerAction} />
     );
+  }
+
+  const { certificates } = loadState;
+  const issuedCount = certificates.filter((c) => c.status === 'issued').length;
+  const revokedCount = certificates.filter((c) => c.status === 'revoked').length;
+
+  function downloadAll() {
+    for (const certificate of filtered) {
+      window.open(getCertificateHref(certificate.id), '_blank', 'noopener,noreferrer');
+    }
   }
 
   return (
     <>
-      <nav>
-        <a href="/learn">{t('learner.navLink')}</a>
-      </nav>
+      <div style={{ marginBottom: '22px' }}>
+        <div style={{ color: COLORS.primary, fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          {t('certificates.eyebrow')}
+        </div>
+        <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: COLORS.text, lineHeight: 1.2 }}>{t('certificates.title')}</h1>
+        <p style={{ margin: '10px 0 0', color: COLORS.muted, fontSize: '15px', maxWidth: '760px', lineHeight: 1.6 }}>
+          {t('certificates.subtitle')}
+        </p>
+      </div>
 
-      <h1>{t('certificates.title')}</h1>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '16px', marginBottom: '22px' }}>
+        {[
+          { value: certificates.length, label: t('certificates.statsTotal') },
+          { value: issuedCount, label: t('certificates.statsIssued') },
+          { value: revokedCount, label: t('certificates.statsRevoked') },
+        ].map((s, i) => (
+          <div key={i} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '14px', padding: '18px' }}>
+            <strong style={{ display: 'block', fontSize: '28px', color: COLORS.text }}>{s.value}</strong>
+            <span style={{ color: COLORS.muted, fontSize: '13px' }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
 
-      {loadState.certificates.length === 0 ? (
-        <EmptyState message={t('certificates.empty')} />
-      ) : (
-        <ul>
-          {loadState.certificates.map((certificate, index) => (
-            <li key={certificate.id}>
-              <article>
-                <h2>
-                  <a href={getCertificateHref(certificate.id)}>
-                    {getListItemLabel('Certificate', index)}
-                  </a>
-                </h2>
-                <dl>
-                  <dt>{t('certificates.course', 'Course')}</dt>
-                  <dd>{getCourseTitle(certificate, 'Course')}</dd>
-                  <dt>{t('certificates.status')}</dt>
-                  <dd>
-                    <StatusBadge>{certificate.status}</StatusBadge>
-                  </dd>
-                  <dt>{t('certificates.issuedAt')}</dt>
-                  <dd>
-                    {formatNullableDate(
-                      certificate.issuedAt,
-                      t('certificates.notAvailable'),
-                    )}
-                  </dd>
-                </dl>
-              </article>
-            </li>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '18px', alignItems: 'center' }}>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+          style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
+        >
+          <option value="all">{t('certificates.filterAll')}</option>
+          <option value="issued">{t('certificates.filterIssued')}</option>
+          <option value="revoked">{t('certificates.filterRevoked')}</option>
+        </select>
+        <select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
+        >
+          <option value="all">{t('certificates.filterAllYears')}</option>
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
           ))}
-        </ul>
-      )}
+        </select>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={downloadAll}
+          style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px' }}
+        >
+          {t('certificates.downloadAll')}
+        </button>
+      </div>
 
-      <Pagination page={page} pageSize={loadState.pageSize} total={loadState.total} onPage={setPage} />
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '50px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>⌕</div>
+          <strong style={{ fontSize: '16px', color: COLORS.text }}>{t('certificates.empty')}</strong>
+          <p style={{ color: COLORS.muted, margin: '8px 0 0' }}>{t('certificates.emptyHint')}</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '18px' }}>
+          {filtered.map((certificate) => {
+            const courseTitle = getCourseTitle(certificate, 'Course');
+            const isIssued = certificate.status === 'issued';
+
+            return (
+              <article
+                key={certificate.id}
+                style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 28px rgba(23,32,51,.07)' }}
+              >
+                <div style={{ padding: '22px', background: 'linear-gradient(135deg,#4338ca,#6d5dfc)', color: '#fff' }}>
+                  <small style={{ display: 'block', opacity: 0.85, marginBottom: '10px' }}>LearnSpace Certificate</small>
+                  <strong style={{ fontSize: '19px' }}>{courseTitle}</strong>
+                </div>
+                <div style={{ padding: '20px', display: 'grid', gap: '14px' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignSelf: 'flex-start',
+                      padding: '7px 10px',
+                      borderRadius: '999px',
+                      fontSize: '12px',
+                      fontWeight: 800,
+                      background: isIssued ? COLORS.successSoft : '#fef2f2',
+                      color: isIssued ? COLORS.success : '#dc2626',
+                    }}
+                  >
+                    {isIssued ? t('certificates.statusIssued') : t('certificates.statusRevoked')}
+                  </span>
+                  <h2 style={{ margin: 0, fontSize: '19px', color: COLORS.text }}>{courseTitle}</h2>
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <span style={{ color: COLORS.muted, fontSize: '13px' }}>{t('certificates.issuedAt')}</span>
+                      <strong style={{ fontSize: '13px' }}>{formatNullableDate(certificate.issuedAt, t('certificates.notAvailable'))}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
+                      <span style={{ color: COLORS.muted, fontSize: '13px' }}>{t('certificates.validity')}</span>
+                      <strong style={{ fontSize: '13px' }}>{t('certificates.validityUnlimited')}</strong>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <a
+                      href={getCertificateHref(certificate.id)}
+                      style={{ flex: 1, border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px', textAlign: 'center', textDecoration: 'none', color: COLORS.text }}
+                    >
+                      {t('certificates.open')}
+                    </a>
+                    <a
+                      href={getCertificateHref(certificate.id)}
+                      style={{ flex: 1, border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px', textAlign: 'center', textDecoration: 'none', color: '#fff' }}
+                    >
+                      {t('certificates.downloadPdf')}
+                    </a>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }
