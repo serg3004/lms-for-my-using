@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
 import type { ProgressSummary } from '../shared/api/types.js';
@@ -57,6 +58,7 @@ function countCompletionsToday(progressItems: ProgressSummary[]): number {
 }
 
 export function InstructorDashboardPage() {
+  const { t } = useTranslation();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
 
   useEffect(() => {
@@ -90,7 +92,7 @@ export function InstructorDashboardPage() {
   if (state.status === 'loading') {
     return (
       <InstructorPageLayout>
-        <p role="status">Загрузка...</p>
+        <p role="status">{t('instructor.dashboard.loading')}</p>
       </InstructorPageLayout>
     );
   }
@@ -98,7 +100,7 @@ export function InstructorDashboardPage() {
   if (state.status === 'error') {
     return (
       <InstructorPageLayout>
-        <p role="alert">Не удалось загрузить данные. Попробуйте позже.</p>
+        <p role="alert">{t('instructor.dashboard.loadError')}</p>
       </InstructorPageLayout>
     );
   }
@@ -109,36 +111,40 @@ export function InstructorDashboardPage() {
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Панель инструктора</h1>
-          <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Ваши курсы, ученики и последние результаты.</p>
+          <h1 style={{ margin: 0 }}>{t('instructor.dashboard.title')}</h1>
+          <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{t('instructor.dashboard.subtitle')}</p>
         </div>
         <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
-          Создать курс
+          {t('instructor.dashboard.createCourse')}
         </Link>
       </div>
 
       <section className="admin-content-grid" style={{ marginTop: '1.5rem' }}>
-        <StatCard label="Курсов" value={stats.total} />
-        <StatCard label="Учеников" value={stats.studentsEnrolled} />
-        <StatCard label="Завершение" value={`${stats.completionPercent}%`} />
-        <StatCard label="Черновики" value={stats.draft} />
+        <StatCard label={t('instructor.dashboard.statsCourses')} value={stats.total} />
+        <StatCard label={t('instructor.dashboard.statsStudents')} value={stats.studentsEnrolled} />
+        <StatCard label={t('instructor.dashboard.statsCompletion')} value={`${stats.completionPercent}%`} />
+        <StatCard label={t('instructor.dashboard.statsDrafts')} value={stats.draft} />
       </section>
 
       <section className="admin-content-grid" style={{ marginTop: '1rem' }}>
         <div className="admin-card">
-          <h3 style={{ margin: '0 0 8px' }}>Популярный курс</h3>
-          <p style={{ margin: 0, color: '#6b7280' }}>{popularCourseTitle ?? 'Пока нет данных'}</p>
+          <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.popularCourseTitle')}</h3>
+          <p style={{ margin: 0, color: '#6b7280' }}>{popularCourseTitle ?? t('instructor.dashboard.popularCourseEmpty')}</p>
         </div>
         <div className="admin-card">
-          <h3 style={{ margin: '0 0 8px' }}>Последняя активность</h3>
+          <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.recentActivityTitle')}</h3>
           <p style={{ margin: 0, color: '#6b7280' }}>
-            {completionsToday > 0 ? `${completionsToday} новых завершений сегодня` : 'Сегодня пока нет завершений'}
+            {completionsToday > 0
+              ? t('instructor.dashboard.recentActivityCount', { count: completionsToday })
+              : t('instructor.dashboard.recentActivityEmpty')}
           </p>
         </div>
         <div className="admin-card">
-          <h3 style={{ margin: '0 0 8px' }}>Черновики</h3>
+          <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.draftsTitle')}</h3>
           <p style={{ margin: 0, color: '#6b7280' }}>
-            {stats.draft > 0 ? `${stats.draft} курса требуют завершения` : 'Черновиков нет'}
+            {stats.draft > 0
+              ? t('instructor.dashboard.draftsCount', { count: stats.draft })
+              : t('instructor.dashboard.draftsEmpty')}
           </p>
         </div>
       </section>
