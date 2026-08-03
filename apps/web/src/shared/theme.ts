@@ -28,7 +28,7 @@ const storageKey = 'lms.adminThemeSettings';
 export const defaultThemeSettings: ThemeSettings = {
   colorPrimary: '#4f46e5',
   colorPrimaryHover: '#4338ca',
-  colorBackground: '#f4f7fb',
+  colorBackground: '#f5f7fb',
   colorSurface: '#ffffff',
   colorSurfaceMuted: '#f8fafc',
   colorBorder: '#e3e8ef',
