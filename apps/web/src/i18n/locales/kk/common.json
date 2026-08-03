@@ -277,7 +277,9 @@
     "deadlineLabel": "Мерзім",
     "actionContinue": "Сабақты жалғастыру",
     "actionCourse": "Курсты ашу",
-    "actionMaterials": "Материалдар"
+    "actionMaterials": "Материалдар",
+    "listTitle": "Курс мазмұны",
+    "progressTitle": "Прогресс"
   },
   "lessonDetail": {
     "title": "Сабақ мәліметтері",
@@ -551,6 +553,7 @@
     "validityUnlimited": "Мерзімсіз",
     "open": "Ашу",
     "downloadPdf": "PDF жүктеу",
+    "number": "Нөмірі",
     "infoTitle": "Ақпарат",
     "owner": "Иесі",
     "courseLabel": "Курс",
