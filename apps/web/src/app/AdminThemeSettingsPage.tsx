@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import {
   ThemeSettings,
@@ -22,39 +23,41 @@ type ThemeFieldGroup = {
   fields: ThemeField[];
 };
 
-const themeFieldGroups: ThemeFieldGroup[] = [
-  {
-    title: 'Colors',
-    fields: [
-      { key: 'colorPrimary', label: 'Primary color', type: 'color' },
-      { key: 'colorPrimaryHover', label: 'Primary hover', type: 'color' },
-      { key: 'colorBackground', label: 'Background', type: 'color' },
-      { key: 'colorSurface', label: 'Surface', type: 'color' },
-      { key: 'colorSurfaceMuted', label: 'Muted surface', type: 'color' },
-      { key: 'colorBorder', label: 'Border', type: 'color' },
-      { key: 'colorText', label: 'Text', type: 'color' },
-      { key: 'colorTextMuted', label: 'Muted text', type: 'color' },
-    ],
-  },
-  {
-    title: 'Layout',
-    fields: [
-      { key: 'radiusSm', label: 'Small radius', type: 'text' },
-      { key: 'radiusMd', label: 'Medium radius', type: 'text' },
-      { key: 'radiusLg', label: 'Large radius', type: 'text' },
-      { key: 'spacePage', label: 'Page spacing', type: 'text' },
-      { key: 'shadowCard', label: 'Card shadow', type: 'text' },
-    ],
-  },
-  {
-    title: 'Admin sidebar',
-    fields: [
-      { key: 'adminSidebarBackground', label: 'Sidebar background', type: 'color' },
-      { key: 'adminSidebarText', label: 'Sidebar text', type: 'color' },
-      { key: 'adminSidebarTextMuted', label: 'Sidebar muted text', type: 'color' },
-    ],
-  },
-];
+function getThemeFieldGroups(t: TFunction): ThemeFieldGroup[] {
+  return [
+    {
+      title: t('admin.themeSettings.groups.colors', 'Colors'),
+      fields: [
+        { key: 'colorPrimary', label: t('admin.themeSettings.fields.colorPrimary', 'Primary color'), type: 'color' },
+        { key: 'colorPrimaryHover', label: t('admin.themeSettings.fields.colorPrimaryHover', 'Primary hover'), type: 'color' },
+        { key: 'colorBackground', label: t('admin.themeSettings.fields.colorBackground', 'Background'), type: 'color' },
+        { key: 'colorSurface', label: t('admin.themeSettings.fields.colorSurface', 'Surface'), type: 'color' },
+        { key: 'colorSurfaceMuted', label: t('admin.themeSettings.fields.colorSurfaceMuted', 'Muted surface'), type: 'color' },
+        { key: 'colorBorder', label: t('admin.themeSettings.fields.colorBorder', 'Border'), type: 'color' },
+        { key: 'colorText', label: t('admin.themeSettings.fields.colorText', 'Text'), type: 'color' },
+        { key: 'colorTextMuted', label: t('admin.themeSettings.fields.colorTextMuted', 'Muted text'), type: 'color' },
+      ],
+    },
+    {
+      title: t('admin.themeSettings.groups.layout', 'Layout'),
+      fields: [
+        { key: 'radiusSm', label: t('admin.themeSettings.fields.radiusSm', 'Small radius'), type: 'text' },
+        { key: 'radiusMd', label: t('admin.themeSettings.fields.radiusMd', 'Medium radius'), type: 'text' },
+        { key: 'radiusLg', label: t('admin.themeSettings.fields.radiusLg', 'Large radius'), type: 'text' },
+        { key: 'spacePage', label: t('admin.themeSettings.fields.spacePage', 'Page spacing'), type: 'text' },
+        { key: 'shadowCard', label: t('admin.themeSettings.fields.shadowCard', 'Card shadow'), type: 'text' },
+      ],
+    },
+    {
+      title: t('admin.themeSettings.groups.sidebar', 'Admin sidebar'),
+      fields: [
+        { key: 'adminSidebarBackground', label: t('admin.themeSettings.fields.adminSidebarBackground', 'Sidebar background'), type: 'color' },
+        { key: 'adminSidebarText', label: t('admin.themeSettings.fields.adminSidebarText', 'Sidebar text'), type: 'color' },
+        { key: 'adminSidebarTextMuted', label: t('admin.themeSettings.fields.adminSidebarTextMuted', 'Sidebar muted text'), type: 'color' },
+      ],
+    },
+  ];
+}
 
 function getMatchingPresetId(settings: ThemeSettings) {
   const matchingPreset = themePresets.find((preset) => JSON.stringify(preset.settings) === JSON.stringify(settings));
@@ -158,7 +161,7 @@ export function AdminThemeSettingsPage() {
 
         <section className="admin-theme-settings__grid">
           <form className="admin-card admin-theme-settings__form" onSubmit={(event) => event.preventDefault()}>
-            {themeFieldGroups.map((group) => (
+            {getThemeFieldGroups(t).map((group) => (
               <fieldset className="admin-theme-settings__fieldset" key={group.title}>
                 <legend>{group.title}</legend>
                 {group.fields.map((field) => (
