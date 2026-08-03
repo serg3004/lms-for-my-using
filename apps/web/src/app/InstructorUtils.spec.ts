@@ -10,18 +10,23 @@ describe('computeStats', () => {
       { id: '2', status: 'published' },
       { id: '3', status: 'draft' },
     ] as Parameters<typeof computeStats>[0];
-    const progress = [{ userId: 'u1' }, { userId: 'u2' }, { userId: 'u1' }];
+    const progress = [
+      { userId: 'u1', status: 'completed' },
+      { userId: 'u2', status: 'in_progress' },
+      { userId: 'u1', status: 'completed' },
+    ];
 
     expect(computeStats(courses, progress)).toEqual({
       total: 3,
       published: 2,
       draft: 1,
       studentsEnrolled: 2,
+      completionPercent: 67,
     });
   });
 
   it('returns zeros for empty input', () => {
-    expect(computeStats([], [])).toEqual({ total: 0, published: 0, draft: 0, studentsEnrolled: 0 });
+    expect(computeStats([], [])).toEqual({ total: 0, published: 0, draft: 0, studentsEnrolled: 0, completionPercent: 0 });
   });
 });
 
