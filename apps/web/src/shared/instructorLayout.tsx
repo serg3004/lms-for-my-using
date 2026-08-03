@@ -5,11 +5,6 @@ import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayou
 import { logout } from './logout.js';
 import { SkipLink } from './ui.js';
 
-const INSTRUCTOR_NAV = [
-  { label: 'Дашборд', href: '/instructor/dashboard' },
-  { label: 'Курсы', href: '/instructor/courses' },
-] as const;
-
 type InstructorPageLayoutProps = {
   children: ReactNode;
   firstName?: string;
@@ -20,7 +15,12 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
   const { t } = useTranslation();
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
 
-  const navItems: LearnerNavItem[] = INSTRUCTOR_NAV.map((item) => ({
+  const instructorNav = [
+    { label: t('instructor.navDashboard'), href: '/instructor/dashboard' },
+    { label: t('instructor.navCourses'), href: '/instructor/courses' },
+  ] as const;
+
+  const navItems: LearnerNavItem[] = instructorNav.map((item) => ({
     ...item,
     isCurrent: path.startsWith(item.href),
   }));

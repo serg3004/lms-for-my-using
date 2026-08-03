@@ -1,5 +1,6 @@
 import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { createCourse, getCourse, getCurrentUser, updateCourse } from '../shared/apiClient.js';
 import { listLessons } from '../shared/api/lessons.js';
@@ -26,6 +27,7 @@ type InstructorCourseFormPageProps = {
 };
 
 export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFormPageProps) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [form, setForm] = useState<FormState>({ title: '', slug: '', description: '', status: 'draft' });
@@ -60,13 +62,13 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           updatedAt,
         });
       } catch {
-        if (isMounted) setLoadState({ status: 'error', message: 'Не удалось загрузить данные.' });
+        if (isMounted) setLoadState({ status: 'error', message: t('instructor.courseForm.loadError') });
       }
     }
 
     void load();
     return () => { isMounted = false; };
-  }, [mode, courseId]);
+  }, [mode, courseId, t]);
 
   function updateField(field: keyof FormState) {
     return (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -99,7 +101,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
       }
       navigate('/instructor/courses');
     } catch {
-      setSubmitError('Не удалось сохранить курс. Попробуйте ещё раз.');
+      setSubmitError(t('instructor.courseForm.saveError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -107,24 +109,24 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
 
   const firstName = loadState.status === 'loaded' ? loadState.firstName : undefined;
   const lastName = loadState.status === 'loaded' ? (loadState.lastName ?? undefined) : undefined;
-  const pageTitle = mode === 'create' ? 'Создать курс' : 'Редактировать курс';
+  const pageTitle = mode === 'create' ? t('instructor.courseForm.createTitle') : t('instructor.courseForm.editTitle');
   const lessons = loadState.status === 'loaded' ? loadState.lessons : [];
   const updatedAt = loadState.status === 'loaded' ? loadState.updatedAt : null;
 
   return (
     <InstructorPageLayout firstName={firstName} lastName={lastName}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Link to="/instructor/courses">← Курсы</Link>
+        <Link to="/instructor/courses">← {t('instructor.courseForm.backToCourses')}</Link>
         <h1 style={{ margin: 0 }}>{pageTitle}</h1>
       </div>
 
-      {loadState.status === 'loading' && <p role="status">Загрузка...</p>}
+      {loadState.status === 'loading' && <p role="status">{t('instructor.courseForm.loading')}</p>}
       {loadState.status === 'error' && <p role="alert">{loadState.message}</p>}
 
       {loadState.status === 'loaded' && (
         <form onSubmit={handleSubmit} style={{ maxWidth: '36rem' }}>
           <label htmlFor="title" style={{ display: 'block', marginBottom: '1rem' }}>
-            Название
+            {t('instructor.courseForm.fieldTitle')}
             <input
               id="title"
               name="title"
@@ -137,7 +139,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           </label>
 
           <label htmlFor="slug" style={{ display: 'block', marginBottom: '1rem' }}>
-            Slug
+            {t('instructor.courseForm.fieldSlug')}
             <input
               id="slug"
               name="slug"
@@ -153,7 +155,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           </label>
 
           <label htmlFor="description" style={{ display: 'block', marginBottom: '1rem' }}>
-            Описание
+            {t('instructor.courseForm.fieldDescription')}
             <textarea
               id="description"
               name="description"
@@ -165,7 +167,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           </label>
 
           <label htmlFor="status" style={{ display: 'block', marginBottom: '1.5rem' }}>
-            Статус
+            {t('instructor.courseForm.fieldStatus')}
             <select
               id="status"
               name="status"
@@ -173,8 +175,8 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
               onChange={updateField('status')}
               style={{ display: 'block', marginTop: '0.25rem' }}
             >
-              <option value="draft">Черновик</option>
-              <option value="published">Опубликован</option>
+              <option value="draft">{t('instructor.courseForm.statusDraft')}</option>
+              <option value="published">{t('instructor.courseForm.statusPublished')}</option>
             </select>
           </label>
 
@@ -185,7 +187,11 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           )}
 
           <button type="submit" disabled={isSubmitting} className="admin-btn admin-btn--primary">
-            {isSubmitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
+            {isSubmitting
+              ? t('instructor.courseForm.saving')
+              : mode === 'create'
+                ? t('instructor.courseForm.submitCreate')
+                : t('instructor.courseForm.submitSave')}
           </button>
         </form>
       )}
@@ -194,7 +200,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
         <div style={{ maxWidth: '36rem', marginTop: '2rem', display: 'grid', gap: '16px' }}>
           <div style={{ border: '1px solid #e3e8ef', borderRadius: '14px', padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <strong>Статус публикации</strong>
+              <strong>{t('instructor.courseForm.publicationStatus')}</strong>
               <span
                 style={{
                   borderRadius: '999px',
@@ -205,20 +211,20 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                   color: form.status === 'published' ? '#0f9f6e' : '#4f46e5',
                 }}
               >
-                {form.status === 'published' ? 'Опубликован' : 'Черновик'}
+                {form.status === 'published' ? t('instructor.courseForm.statusPublished') : t('instructor.courseForm.statusDraft')}
               </span>
             </div>
             {updatedAt ? (
               <span style={{ color: '#6b7280', fontSize: '13px' }}>
-                Последнее обновление: {new Date(updatedAt).toLocaleDateString('ru-RU')}
+                {t('instructor.courseForm.lastUpdated', { date: new Date(updatedAt).toLocaleDateString(i18n.language) })}
               </span>
             ) : null}
           </div>
 
           <div style={{ border: '1px solid #e3e8ef', borderRadius: '14px', padding: '16px' }}>
-            <strong style={{ display: 'block', marginBottom: '10px' }}>Уроки ({lessons.length})</strong>
+            <strong style={{ display: 'block', marginBottom: '10px' }}>{t('instructor.courseForm.lessonsTitle', { count: lessons.length })}</strong>
             {lessons.length === 0 ? (
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Уроки ещё не добавлены.</p>
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>{t('instructor.courseForm.lessonsEmpty')}</p>
             ) : (
               <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: '8px' }}>
                 {lessons.map((lesson) => (
@@ -237,7 +243,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                         color: lesson.status === 'published' ? '#0f9f6e' : '#6b7280',
                       }}
                     >
-                      {lesson.status === 'published' ? 'Опубликован' : 'Черновик'}
+                      {lesson.status === 'published' ? t('instructor.courseForm.statusPublished') : t('instructor.courseForm.statusDraft')}
                     </span>
                   </li>
                 ))}

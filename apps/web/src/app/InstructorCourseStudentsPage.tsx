@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import {
   getCourse,
@@ -65,14 +67,21 @@ export function buildStudentRows(
   });
 }
 
-function downloadStudentsCsv(course: CourseSummary, students: StudentRow[]) {
+function downloadStudentsCsv(course: CourseSummary, students: StudentRow[], t: TFunction) {
   const lines = [
-    ['Имя', 'Email', 'Статус', 'Уроков пройдено', 'В процессе', 'Результат'].join(','),
+    [
+      t('instructor.courseStudents.colName'),
+      t('instructor.courseStudents.colEmail'),
+      t('instructor.courseStudents.colStatus'),
+      t('instructor.courseStudents.colCompleted'),
+      t('instructor.courseStudents.colInProgress'),
+      t('instructor.courseStudents.colScore'),
+    ].join(','),
     ...students.map((row) =>
       [
         row.name,
         row.email,
-        row.status === 'completed' ? 'Завершил' : 'В процессе',
+        row.status === 'completed' ? t('instructor.courseStudents.statusCompleted') : t('instructor.courseStudents.statusInProgress'),
         String(row.lessonsCompleted),
         String(row.lessonsInProgress),
         row.avgScore != null ? `${row.avgScore}%` : '',
@@ -110,6 +119,7 @@ const COLORS = {
 };
 
 export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStudentsPageProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in_progress'>('all');
@@ -154,7 +164,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
   if (state.status === 'loading') {
     return (
       <InstructorPageLayout>
-        <p role="status">Загрузка...</p>
+        <p role="status">{t('instructor.courseStudents.loading')}</p>
       </InstructorPageLayout>
     );
   }
@@ -162,7 +172,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
   if (state.status === 'error') {
     return (
       <InstructorPageLayout>
-        <p role="alert">Не удалось загрузить данные. Попробуйте позже.</p>
+        <p role="alert">{t('instructor.courseStudents.loadError')}</p>
       </InstructorPageLayout>
     );
   }
@@ -172,8 +182,8 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Link to="/instructor/courses">← Курсы</Link>
-        <h1 style={{ margin: 0 }}>Студенты: {course.title}</h1>
+        <Link to="/instructor/courses">← {t('instructor.courseStudents.backToCourses')}</Link>
+        <h1 style={{ margin: 0 }}>{t('instructor.courseStudents.title', { course: course.title })}</h1>
       </div>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
@@ -181,7 +191,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск по имени или email..."
+          placeholder={t('instructor.courseStudents.searchPlaceholder')}
           style={{ flex: 1, minWidth: '220px', border: `1px solid ${COLORS.border}`, background: COLORS.soft, borderRadius: '12px', padding: '11px 13px' }}
         />
         <select
@@ -189,30 +199,30 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
           onChange={(e) => setStatusFilter(e.target.value as 'all' | 'completed' | 'in_progress')}
           style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
         >
-          <option value="all">Все статусы</option>
-          <option value="completed">Завершил</option>
-          <option value="in_progress">В процессе</option>
+          <option value="all">{t('instructor.courseStudents.allStatuses')}</option>
+          <option value="completed">{t('instructor.courseStudents.statusCompleted')}</option>
+          <option value="in_progress">{t('instructor.courseStudents.statusInProgress')}</option>
         </select>
         <button
           type="button"
-          onClick={() => downloadStudentsCsv(course, filteredStudents)}
+          onClick={() => downloadStudentsCsv(course, filteredStudents, t)}
           style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 14px', fontWeight: 700, fontSize: '14px' }}
         >
-          Экспортировать
+          {t('instructor.courseStudents.export')}
         </button>
       </div>
 
-      <p style={{ color: COLORS.muted }}>Всего студентов: {students.length}</p>
+      <p style={{ color: COLORS.muted }}>{t('instructor.courseStudents.totalStudents', { count: students.length })}</p>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Имя</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Email</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Статус</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>Уроков пройдено</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>В процессе</th>
-            <th style={{ textAlign: 'right', padding: '0.5rem' }}>Результат</th>
+            <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('instructor.courseStudents.colName')}</th>
+            <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('instructor.courseStudents.colEmail')}</th>
+            <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('instructor.courseStudents.colStatus')}</th>
+            <th style={{ textAlign: 'right', padding: '0.5rem' }}>{t('instructor.courseStudents.colCompleted')}</th>
+            <th style={{ textAlign: 'right', padding: '0.5rem' }}>{t('instructor.courseStudents.colInProgress')}</th>
+            <th style={{ textAlign: 'right', padding: '0.5rem' }}>{t('instructor.courseStudents.colScore')}</th>
           </tr>
         </thead>
         <tbody>
@@ -232,7 +242,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
                     color: row.status === 'completed' ? COLORS.success : COLORS.primary,
                   }}
                 >
-                  {row.status === 'completed' ? 'Завершил' : 'В процессе'}
+                  {row.status === 'completed' ? t('instructor.courseStudents.statusCompleted') : t('instructor.courseStudents.statusInProgress')}
                 </span>
               </td>
               <td style={{ textAlign: 'right', padding: '0.5rem' }}>{row.lessonsCompleted}</td>
@@ -243,7 +253,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
           {filteredStudents.length === 0 && (
             <tr>
               <td colSpan={6} style={{ padding: '1rem', textAlign: 'center' }}>
-                Нет студентов с прогрессом по этому курсу
+                {t('instructor.courseStudents.empty')}
               </td>
             </tr>
           )}

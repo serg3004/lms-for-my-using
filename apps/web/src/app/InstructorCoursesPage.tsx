@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
@@ -24,6 +25,7 @@ const COLORS = {
 };
 
 export function InstructorCoursesPage() {
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -70,7 +72,7 @@ export function InstructorCoursesPage() {
   if (state.status === 'loading') {
     return (
       <InstructorPageLayout>
-        <p role="status">Загрузка...</p>
+        <p role="status">{t('instructor.courses.loading')}</p>
       </InstructorPageLayout>
     );
   }
@@ -78,7 +80,7 @@ export function InstructorCoursesPage() {
   if (state.status === 'error') {
     return (
       <InstructorPageLayout>
-        <p role="alert">Не удалось загрузить данные. Попробуйте позже.</p>
+        <p role="alert">{t('instructor.courses.loadError')}</p>
       </InstructorPageLayout>
     );
   }
@@ -88,9 +90,9 @@ export function InstructorCoursesPage() {
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1 style={{ margin: 0 }}>Курсы</h1>
+        <h1 style={{ margin: 0 }}>{t('instructor.courses.title')}</h1>
         <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
-          Создать курс
+          {t('instructor.courses.createCourse')}
         </Link>
       </div>
 
@@ -99,7 +101,7 @@ export function InstructorCoursesPage() {
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск курсов..."
+          placeholder={t('instructor.courses.searchPlaceholder')}
           style={{ flex: 1, minWidth: '220px', border: `1px solid ${COLORS.border}`, background: COLORS.soft, borderRadius: '12px', padding: '11px 13px' }}
         />
         <select
@@ -107,17 +109,17 @@ export function InstructorCoursesPage() {
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
         >
-          <option value="all">Все статусы</option>
-          <option value="published">Опубликован</option>
-          <option value="draft">Черновик</option>
-          <option value="archived">Архив</option>
+          <option value="all">{t('instructor.courses.allStatuses')}</option>
+          <option value="published">{t('instructor.courses.statusPublished')}</option>
+          <option value="draft">{t('instructor.courses.statusDraft')}</option>
+          <option value="archived">{t('instructor.courses.statusArchived')}</option>
         </select>
       </div>
 
       {filteredCourses.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '16px' }}>
           <p style={{ margin: 0, color: COLORS.muted }}>
-            Курсов ещё нет. <Link to="/instructor/courses/new">Создать первый курс</Link>
+            {t('instructor.courses.emptyTitle')} <Link to="/instructor/courses/new">{t('instructor.courses.createFirstCourse')}</Link>
           </p>
         </div>
       ) : (
@@ -126,7 +128,11 @@ export function InstructorCoursesPage() {
             const isPublished = course.status === 'published';
             const badgeBg = isPublished ? COLORS.successSoft : COLORS.primarySoft;
             const badgeColor = isPublished ? COLORS.success : COLORS.primary;
-            const badgeLabel = isPublished ? 'Опубликован' : course.status === 'archived' ? 'Архив' : 'Черновик';
+            const badgeLabel = isPublished
+              ? t('instructor.courses.statusPublished')
+              : course.status === 'archived'
+                ? t('instructor.courses.statusArchived')
+                : t('instructor.courses.statusDraft');
             const studentCount = studentCounts.get(course.id) ?? 0;
 
             return (
@@ -141,20 +147,20 @@ export function InstructorCoursesPage() {
                   </span>
                 </div>
                 <div style={{ color: COLORS.muted, fontSize: '13px' }}>
-                  {studentCount} {studentCount === 1 ? 'ученик' : 'учеников'} · {new Date(course.createdAt).toLocaleDateString('ru-RU')}
+                  {t('instructor.courses.studentsCount', { count: studentCount })} · {new Date(course.createdAt).toLocaleDateString(i18n.language)}
                 </div>
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
                   <Link
                     to={`/instructor/courses/${course.id}/students`}
                     style={{ flex: 1, textAlign: 'center', border: `1px solid ${COLORS.border}`, borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: 700, color: COLORS.text, textDecoration: 'none' }}
                   >
-                    Студенты
+                    {t('instructor.courses.studentsLink')}
                   </Link>
                   <Link
                     to={`/instructor/courses/${course.id}/edit`}
                     style={{ flex: 1, textAlign: 'center', border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: 700, color: '#fff', textDecoration: 'none' }}
                   >
-                    Редактировать
+                    {t('instructor.courses.editLink')}
                   </Link>
                 </div>
               </article>
