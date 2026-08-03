@@ -5,7 +5,7 @@ import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { Badge, Button, DataTable, Pagination, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import { Badge, Button, DataTable, Pagination, PageState, SearchInput, SectionHeader, StatCard, StatsGrid, Toolbar, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
 
@@ -68,6 +68,8 @@ export function AdminCoursesPage() {
   const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
   const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title'>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const navItems: AdminNavItem[] = [
@@ -200,6 +202,12 @@ export function AdminCoursesPage() {
   const archived = courses.filter((c) => c.status === 'archived').length;
   const deletingCourse = courses.find((c) => c.id === deletingId);
 
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch = !search.trim() || course.title.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   const courseColumns: Column<AdminCourseSummary>[] = [
     {
       key: 'course',
@@ -281,18 +289,33 @@ export function AdminCoursesPage() {
         <StatCard label={t('admin.courses.stats.archived', 'Archived')} value={archived} />
       </StatsGrid>
 
-      <SectionHeader
-        title={t('admin.courses.title', 'Courses')}
-        actions={
-          <Button variant="secondary" size="sm" type="button">
-            {t('admin.courses.allStatuses', 'All statuses')} ▾
-          </Button>
+      <SectionHeader title={t('admin.courses.title', 'Courses')} />
+
+      <Toolbar
+        left={
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('admin.courses.searchPlaceholder', 'Search courses...')}
+          />
+        }
+        right={
+          <select
+            className="admin-status-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | CourseStatus)}
+          >
+            <option value="all">{t('admin.courses.allStatuses', 'All statuses')}</option>
+            <option value="published">{t('admin.courses.status.published', 'Published')}</option>
+            <option value="draft">{t('admin.courses.status.draft', 'Draft')}</option>
+            <option value="archived">{t('admin.courses.status.archived', 'Archived')}</option>
+          </select>
         }
       />
 
       <DataTable
         columns={courseColumns}
-        rows={courses}
+        rows={filteredCourses}
         keyExtractor={(c) => c.id}
         emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
       />

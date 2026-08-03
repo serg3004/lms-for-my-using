@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
+import type { ProgressSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 
 type Stats = {
@@ -8,18 +10,50 @@ type Stats = {
   published: number;
   draft: number;
   studentsEnrolled: number;
+  completionPercent: number;
 };
 
 type LoadState =
+  | {
+      status: 'loaded';
+      user: CurrentUser;
+      stats: Stats;
+      popularCourseTitle: string | null;
+      completionsToday: number;
+    }
   | { status: 'loading' }
-  | { status: 'loaded'; user: CurrentUser; stats: Stats }
   | { status: 'error' };
 
-export function computeStats(courses: CourseSummary[], progressItems: { userId: string }[]): Stats {
+export function computeStats(courses: CourseSummary[], progressItems: { userId: string; status: string }[]): Stats {
   const published = courses.filter((c) => c.status === 'published').length;
   const draft = courses.filter((c) => c.status !== 'published').length;
   const studentsEnrolled = new Set(progressItems.map((p) => p.userId)).size;
-  return { total: courses.length, published, draft, studentsEnrolled };
+  const completed = progressItems.filter((p) => p.status === 'completed').length;
+  const completionPercent = progressItems.length > 0 ? Math.round((completed / progressItems.length) * 100) : 0;
+  return { total: courses.length, published, draft, studentsEnrolled, completionPercent };
+}
+
+function findPopularCourseTitle(courses: CourseSummary[], progressItems: ProgressSummary[]): string | null {
+  const studentsByCourse = new Map<string, Set<string>>();
+  for (const p of progressItems) {
+    const set = studentsByCourse.get(p.courseId) ?? new Set<string>();
+    set.add(p.userId);
+    studentsByCourse.set(p.courseId, set);
+  }
+  let bestCourseId: string | null = null;
+  let bestCount = 0;
+  for (const [courseId, students] of studentsByCourse) {
+    if (students.size > bestCount) {
+      bestCount = students.size;
+      bestCourseId = courseId;
+    }
+  }
+  return bestCourseId ? courses.find((c) => c.id === bestCourseId)?.title ?? null : null;
+}
+
+function countCompletionsToday(progressItems: ProgressSummary[]): number {
+  const today = new Date().toDateString();
+  return progressItems.filter((p) => p.completedAt && new Date(p.completedAt).toDateString() === today).length;
 }
 
 export function InstructorDashboardPage() {
@@ -37,7 +71,13 @@ export function InstructorDashboardPage() {
         ]);
 
         if (!isMounted) return;
-        setState({ status: 'loaded', user, stats: computeStats(coursesPage.items, progressPage.items) });
+        setState({
+          status: 'loaded',
+          user,
+          stats: computeStats(coursesPage.items, progressPage.items),
+          popularCourseTitle: findPopularCourseTitle(coursesPage.items, progressPage.items),
+          completionsToday: countCompletionsToday(progressPage.items),
+        });
       } catch {
         if (isMounted) setState({ status: 'error' });
       }
@@ -63,24 +103,50 @@ export function InstructorDashboardPage() {
     );
   }
 
-  const { user, stats } = state;
+  const { user, stats, popularCourseTitle, completionsToday } = state;
 
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
-      <h1>Дашборд инструктора</h1>
-      <p>Добро пожаловать, {user.firstName}.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Панель инструктора</h1>
+          <p style={{ margin: '4px 0 0', color: '#6b7280' }}>Ваши курсы, ученики и последние результаты.</p>
+        </div>
+        <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
+          Создать курс
+        </Link>
+      </div>
 
       <section className="admin-content-grid" style={{ marginTop: '1.5rem' }}>
-        <StatCard label="Всего курсов" value={stats.total} />
-        <StatCard label="Опубликовано" value={stats.published} />
+        <StatCard label="Курсов" value={stats.total} />
+        <StatCard label="Учеников" value={stats.studentsEnrolled} />
+        <StatCard label="Завершение" value={`${stats.completionPercent}%`} />
         <StatCard label="Черновики" value={stats.draft} />
-        <StatCard label="Студентов записано" value={stats.studentsEnrolled} />
+      </section>
+
+      <section className="admin-content-grid" style={{ marginTop: '1rem' }}>
+        <div className="admin-card">
+          <h3 style={{ margin: '0 0 8px' }}>Популярный курс</h3>
+          <p style={{ margin: 0, color: '#6b7280' }}>{popularCourseTitle ?? 'Пока нет данных'}</p>
+        </div>
+        <div className="admin-card">
+          <h3 style={{ margin: '0 0 8px' }}>Последняя активность</h3>
+          <p style={{ margin: 0, color: '#6b7280' }}>
+            {completionsToday > 0 ? `${completionsToday} новых завершений сегодня` : 'Сегодня пока нет завершений'}
+          </p>
+        </div>
+        <div className="admin-card">
+          <h3 style={{ margin: '0 0 8px' }}>Черновики</h3>
+          <p style={{ margin: 0, color: '#6b7280' }}>
+            {stats.draft > 0 ? `${stats.draft} курса требуют завершения` : 'Черновиков нет'}
+          </p>
+        </div>
       </section>
     </InstructorPageLayout>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="admin-card" style={{ textAlign: 'center' }}>
       <p style={{ fontSize: '2rem', fontWeight: 700, margin: 0 }}>{value}</p>

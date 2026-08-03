@@ -149,22 +149,28 @@ describe('learner page smoke rendering', () => {
   it('renders assessments happy path without crashing', () => {
     useReadyState({
       status: 'loaded',
-      assessments: [
+      rows: [
         {
-          id: 'assessment-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          lessonId: 'lesson-1',
-          title: 'MVP Quiz',
-          slug: 'mvp-quiz',
-          description: 'Check MVP understanding',
-          status: 'published',
-          passingScore: 70,
-          maxAttempts: 3,
-          availableAfterCourseCompletion: false,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
+          assessment: {
+            id: 'assessment-1',
+            organizationId: 'org-1',
+            courseId: 'course-1',
+            lessonId: 'lesson-1',
+            title: 'MVP Quiz',
+            slug: 'mvp-quiz',
+            description: 'Check MVP understanding',
+            status: 'published',
+            passingScore: 70,
+            maxAttempts: 3,
+            availableAfterCourseCompletion: false,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
           courseTitle: 'MVP Onboarding Course',
+          questionCount: 5,
+          attemptsUsed: 0,
+          bestPercentage: null,
+          completed: false,
         },
       ],
     });

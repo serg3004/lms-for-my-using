@@ -11,7 +11,7 @@ import { MaterialTable } from './materials/MaterialTable.js';
 import { MaterialMetadataForm } from './materials/MaterialMetadataForm.js';
 import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState } from '../shared/ui.js';
+import { EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
@@ -55,6 +55,8 @@ export function AdminMaterialsPage() {
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
+  const [materialSearch, setMaterialSearch] = useState('');
+  const [materialKindFilter, setMaterialKindFilter] = useState<'all' | 'file' | 'link'>('all');
 
   // Create form
   const [title, setTitle] = useState('');
@@ -422,8 +424,33 @@ export function AdminMaterialsPage() {
 
         <AdminCard>
             <h2>{t('admin.materials.materialsTitle', 'Materials')}</h2>
+            <Toolbar
+              left={
+                <SearchInput
+                  value={materialSearch}
+                  onChange={setMaterialSearch}
+                  placeholder={t('admin.materials.searchPlaceholder', 'Search materials...')}
+                />
+              }
+              right={
+                <select
+                  className="admin-status-select"
+                  value={materialKindFilter}
+                  onChange={(e) => setMaterialKindFilter(e.target.value as 'all' | 'file' | 'link')}
+                >
+                  <option value="all">{t('admin.materials.filterAllTypes', 'All types')}</option>
+                  <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
+                  <option value="link">{t('admin.materials.link', 'External link')}</option>
+                </select>
+              }
+            />
             <MaterialTable
-              materials={loadState.materials}
+              materials={loadState.materials.filter((material) => {
+                const matchesSearch =
+                  !materialSearch.trim() || material.title.toLowerCase().includes(materialSearch.trim().toLowerCase());
+                const matchesKind = materialKindFilter === 'all' || material.kind === materialKindFilter;
+                return matchesSearch && matchesKind;
+              })}
               t={t}
               onEdit={(materialId) => {
                 const material = loadState.materials.find((item) => item.id === materialId);
