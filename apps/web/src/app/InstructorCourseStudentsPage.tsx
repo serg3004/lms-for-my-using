@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
@@ -17,6 +17,8 @@ type StudentRow = {
   email: string;
   lessonsCompleted: number;
   lessonsInProgress: number;
+  avgScore: number | null;
+  status: 'completed' | 'in_progress';
 };
 
 type LoadState =
@@ -32,35 +34,85 @@ export function buildStudentRows(
   const byUser = new Map<string, {
     completed: number;
     inProgress: number;
+    scores: number[];
     user: ProgressSummary['user'];
   }>();
 
   for (const p of courseProgress) {
-    const cur = byUser.get(p.userId) ?? { completed: 0, inProgress: 0, user: p.user };
+    const cur = byUser.get(p.userId) ?? { completed: 0, inProgress: 0, scores: [], user: p.user };
     if (p.status === 'completed') cur.completed++;
     else if (p.status === 'in_progress') cur.inProgress++;
+    if (p.score != null) cur.scores.push(p.score);
     cur.user ??= p.user;
     byUser.set(p.userId, cur);
   }
 
   return [...byUser.entries()].map(([userId, counts]) => {
     const user = counts.user;
+    const avgScore =
+      counts.scores.length > 0
+        ? Math.round(counts.scores.reduce((sum, s) => sum + s, 0) / counts.scores.length)
+        : null;
     return {
       userId,
       name: user ? [user.firstName, user.lastName].filter(Boolean).join(' ') : userId,
       email: user?.email ?? '—',
       lessonsCompleted: counts.completed,
       lessonsInProgress: counts.inProgress,
+      avgScore,
+      status: counts.inProgress === 0 && counts.completed > 0 ? 'completed' : 'in_progress',
     };
   });
+}
+
+function downloadStudentsCsv(course: CourseSummary, students: StudentRow[]) {
+  const lines = [
+    ['Имя', 'Email', 'Статус', 'Уроков пройдено', 'В процессе', 'Результат'].join(','),
+    ...students.map((row) =>
+      [
+        row.name,
+        row.email,
+        row.status === 'completed' ? 'Завершил' : 'В процессе',
+        String(row.lessonsCompleted),
+        String(row.lessonsInProgress),
+        row.avgScore != null ? `${row.avgScore}%` : '',
+      ]
+        .map((value) => `"${value.replace(/"/g, '""')}"`)
+        .join(','),
+    ),
+  ].join('\n');
+
+  const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${course.slug || course.id}-students.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 type InstructorCourseStudentsPageProps = {
   courseId: string;
 };
 
+const COLORS = {
+  surface: '#ffffff',
+  soft: '#f8fafc',
+  text: '#172033',
+  muted: '#6b7280',
+  border: '#e3e8ef',
+  primary: '#4f46e5',
+  success: '#0f9f6e',
+  successSoft: '#e9f8f2',
+  primarySoft: '#eef2ff',
+};
+
 export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStudentsPageProps) {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in_progress'>('all');
 
   useEffect(() => {
     let isMounted = true;
@@ -89,6 +141,16 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
     return () => { isMounted = false; };
   }, [courseId]);
 
+  const filteredStudents = useMemo(() => {
+    if (state.status !== 'loaded') return [];
+    const q = search.trim().toLowerCase();
+    return state.students.filter((row) => {
+      const matchesSearch = !q || row.name.toLowerCase().includes(q) || row.email.toLowerCase().includes(q);
+      const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [state, search, statusFilter]);
+
   if (state.status === 'loading') {
     return (
       <InstructorPageLayout>
@@ -114,29 +176,73 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
         <h1 style={{ margin: 0 }}>Студенты: {course.title}</h1>
       </div>
 
-      <p>Всего студентов: {students.length}</p>
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', alignItems: 'center' }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Поиск по имени или email..."
+          style={{ flex: 1, minWidth: '220px', border: `1px solid ${COLORS.border}`, background: COLORS.soft, borderRadius: '12px', padding: '11px 13px' }}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as 'all' | 'completed' | 'in_progress')}
+          style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
+        >
+          <option value="all">Все статусы</option>
+          <option value="completed">Завершил</option>
+          <option value="in_progress">В процессе</option>
+        </select>
+        <button
+          type="button"
+          onClick={() => downloadStudentsCsv(course, filteredStudents)}
+          style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 14px', fontWeight: 700, fontSize: '14px' }}
+        >
+          Экспортировать
+        </button>
+      </div>
+
+      <p style={{ color: COLORS.muted }}>Всего студентов: {students.length}</p>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
         <thead>
           <tr>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Имя</th>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>Email</th>
+            <th style={{ textAlign: 'left', padding: '0.5rem' }}>Статус</th>
             <th style={{ textAlign: 'right', padding: '0.5rem' }}>Уроков пройдено</th>
             <th style={{ textAlign: 'right', padding: '0.5rem' }}>В процессе</th>
+            <th style={{ textAlign: 'right', padding: '0.5rem' }}>Результат</th>
           </tr>
         </thead>
         <tbody>
-          {students.map((row) => (
+          {filteredStudents.map((row) => (
             <tr key={row.userId} style={{ borderTop: '1px solid #e5e7eb' }}>
               <td style={{ padding: '0.5rem' }}>{row.name}</td>
               <td style={{ padding: '0.5rem' }}>{row.email}</td>
+              <td style={{ padding: '0.5rem' }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    padding: '5px 9px',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    background: row.status === 'completed' ? COLORS.successSoft : COLORS.primarySoft,
+                    color: row.status === 'completed' ? COLORS.success : COLORS.primary,
+                  }}
+                >
+                  {row.status === 'completed' ? 'Завершил' : 'В процессе'}
+                </span>
+              </td>
               <td style={{ textAlign: 'right', padding: '0.5rem' }}>{row.lessonsCompleted}</td>
               <td style={{ textAlign: 'right', padding: '0.5rem' }}>{row.lessonsInProgress}</td>
+              <td style={{ textAlign: 'right', padding: '0.5rem' }}>{row.avgScore != null ? `${row.avgScore}%` : '—'}</td>
             </tr>
           ))}
-          {students.length === 0 && (
+          {filteredStudents.length === 0 && (
             <tr>
-              <td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>
+              <td colSpan={6} style={{ padding: '1rem', textAlign: 'center' }}>
                 Нет студентов с прогрессом по этому курсу
               </td>
             </tr>

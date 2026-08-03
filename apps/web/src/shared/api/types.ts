@@ -230,6 +230,34 @@ export type AttemptAnswerResult = {
   selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
 };
 
+export type AssessmentQuestionSummary = {
+  id: string;
+  organizationId: string;
+  assessmentId: string;
+  type: string;
+  title: string;
+  text: string | null;
+  imageUrl: string | null;
+  points: number;
+  order: number;
+};
+
+export type AssessmentAttemptSummary = {
+  id: string;
+  organizationId: string;
+  assessmentId: string;
+  userId: string;
+  status: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  passed: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AssessmentAttemptResult = {
   id: string;
   organizationId: string;

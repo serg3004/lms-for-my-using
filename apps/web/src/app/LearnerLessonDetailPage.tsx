@@ -154,6 +154,8 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const progressPct = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   const isDone = completionState.status === 'completed' || completedIds.has(lesson.id);
+  const previousLesson = currentIndex > 0 ? sortedLessons[currentIndex - 1] : null;
+  const nextLesson = currentIndex >= 0 && currentIndex < sortedLessons.length - 1 ? sortedLessons[currentIndex + 1] : null;
 
   return (
     <>
@@ -251,6 +253,29 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
                   ? t('lessonDetail.completing', 'Сохранение...')
                   : t('lessonDetail.completeAction', '✓ Урок пройден')}
             </Button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
+            {previousLesson ? (
+              <a
+                href={getLessonHref(previousLesson.id)}
+                className="ds-button ds-button--secondary"
+                style={{ textDecoration: 'none' }}
+              >
+                {t('lessonDetail.previousLesson', '← Предыдущий урок')}
+              </a>
+            ) : (
+              <span />
+            )}
+            {nextLesson ? (
+              <a
+                href={getLessonHref(nextLesson.id)}
+                className="ds-button ds-button--primary"
+                style={{ textDecoration: 'none' }}
+              >
+                {t('lessonDetail.nextLesson', 'Следующий урок →')}
+              </a>
+            ) : null}
           </div>
         </article>
 

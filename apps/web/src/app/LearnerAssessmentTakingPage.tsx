@@ -88,6 +88,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const loadAssessment = useCallback(async () => {
     setLoadState({ status: 'loading' });
@@ -285,16 +286,30 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
             {t('assessments.answered', { answered: answeredCount, total: questions.length })}
           </div>
 
-          <ol className="learner-quiz__questions">
-            {questions.map((question, index) => {
-              const isAnswered = question.type === 'multiple_choice'
+          <div style={{ height: '8px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden', marginBottom: '20px' }}>
+            <div
+              style={{
+                width: `${((currentIndex + 1) / questions.length) * 100}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg,#4f46e5,#7c3aed)',
+                borderRadius: '999px',
+              }}
+            />
+          </div>
+
+          {(() => {
+            const question = questions[currentIndex];
+            const isAnswered =
+              question.type === 'multiple_choice'
                 ? selectedIds(selected[question.id]).length > 0
                 : typeof selected[question.id] === 'string';
+            const isLastQuestion = currentIndex === questions.length - 1;
 
-              return (
-                <li key={question.id} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+            return (
+              <ol className="learner-quiz__questions">
+                <li className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
                   <div className="learner-quiz__question-header">
-                    <span className="learner-quiz__question-num">{index + 1}</span>
+                    <span className="learner-quiz__question-num">{currentIndex + 1}</span>
                     <h3 className="learner-quiz__question-title">{question.title}</h3>
                     <span className="learner-quiz__question-points">{question.points} pt</span>
                   </div>
@@ -335,23 +350,41 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
                     })}
                   </ul>
                 </li>
-              );
-            })}
-          </ol>
+
+                <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
+                  <button
+                    className="learner-btn learner-btn--secondary"
+                    type="button"
+                    disabled={currentIndex === 0}
+                    onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                  >
+                    {t('assessments.previousQuestion', '← Предыдущий вопрос')}
+                  </button>
+                  {isLastQuestion ? (
+                    <button
+                      className="learner-btn learner-btn--primary"
+                      disabled={submitState.status === 'submitting'}
+                      type="submit"
+                    >
+                      {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
+                    </button>
+                  ) : (
+                    <button
+                      className="learner-btn learner-btn--primary"
+                      type="button"
+                      onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                    >
+                      {t('assessments.nextQuestion', 'Следующий вопрос →')}
+                    </button>
+                  )}
+                </li>
+              </ol>
+            );
+          })()}
 
           {submitState.status === 'error' ? (
             <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
           ) : null}
-
-          <div className="learner-quiz__submit-row">
-            <button
-              className="learner-btn learner-btn--primary"
-              disabled={submitState.status === 'submitting'}
-              type="submit"
-            >
-              {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
-            </button>
-          </div>
         </form>
       )}
     </div>

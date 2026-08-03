@@ -82,20 +82,20 @@ test.describe('instructor workspace', () => {
     const drafts = coursesPage.items.length - published;
     const students = new Set(progressPage.items.map(({ userId }) => userId)).size;
 
-    await expect(page.getByRole('heading', { name: 'Дашборд инструктора' })).toBeVisible();
-    await expect(page.getByText('Всего курсов').locator('..').getByText(String(coursesPage.items.length), { exact: true })).toBeVisible();
-    await expect(page.getByText('Опубликовано').locator('..').getByText(String(published), { exact: true })).toBeVisible();
-    await expect(page.getByText('Черновики').locator('..').getByText(String(drafts), { exact: true })).toBeVisible();
-    await expect(page.getByText('Студентов записано').locator('..').getByText(String(students), { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Панель инструктора' })).toBeVisible();
+    const statsGrid = page.locator('.admin-content-grid').first();
+    await expect(statsGrid.getByText('Курсов', { exact: true }).locator('..').getByText(String(coursesPage.items.length), { exact: true })).toBeVisible();
+    await expect(statsGrid.getByText('Черновики', { exact: true }).locator('..').getByText(String(drafts), { exact: true })).toBeVisible();
+    await expect(statsGrid.getByText('Учеников', { exact: true }).locator('..').getByText(String(students), { exact: true })).toBeVisible();
 
     await page.goto('/instructor/courses');
-    await expect(page.getByRole('cell', { name: 'Workplace Safety Fundamentals' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Workplace Safety Fundamentals' })).toBeVisible();
     await page.getByRole('link', { name: 'Студенты' }).click();
     await expect(page).toHaveURL(new RegExp(`/instructor/courses/${seededCourseId}/students$`));
     const learnerRow = page.getByRole('row').filter({ hasText: 'learner@demo.com' });
     await expect(learnerRow).toContainText('Alex Learner');
-    await expect(learnerRow.getByRole('cell').nth(2)).toHaveText('1');
-    await expect(learnerRow.getByRole('cell').nth(3)).toHaveText('0');
+    await expect(learnerRow.getByRole('cell').nth(3)).toHaveText('1');
+    await expect(learnerRow.getByRole('cell').nth(4)).toHaveText('0');
   });
 
   test('validates, creates, edits, handles duplicate slugs and API errors, then cleans up', async ({ page, isolatedCourse }) => {
@@ -116,12 +116,12 @@ test.describe('instructor workspace', () => {
     const created = await createResponse.json() as { id: string };
 
     try {
-      await expect(page.getByRole('cell', { name: isolatedCourse.title })).toBeVisible();
-      await page.getByRole('row').filter({ hasText: isolatedCourse.title }).getByRole('link', { name: 'Редактировать' }).click();
+      await expect(page.getByRole('heading', { name: isolatedCourse.title })).toBeVisible();
+      await page.locator('article', { hasText: isolatedCourse.title }).getByRole('link', { name: 'Редактировать' }).click();
       await page.locator('input[name="title"]').fill(`${isolatedCourse.title} edited`);
       await page.locator('select[name="status"]').selectOption('published');
       await page.getByRole('button', { name: 'Сохранить' }).click();
-      await expect(page.getByRole('cell', { name: `${isolatedCourse.title} edited` })).toBeVisible();
+      await expect(page.getByRole('heading', { name: `${isolatedCourse.title} edited` })).toBeVisible();
 
       await page.goto('/instructor/courses/new');
       await page.locator('input[name="title"]').fill('Duplicate slug course');
