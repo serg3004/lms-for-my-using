@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "build": "tsc -b && vite build && pnpm check:css-bundle",
+    "check:css-bundle": "node scripts/check-css-bundle.mjs",
+    "lint": "pnpm lint:code && pnpm lint:css",
+    "lint:code": "eslint \"src/**/*.{ts,tsx}\"",
+    "lint:css": "stylelint \"src/styles/**/*.css\" && node scripts/check-css-architecture.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage"
@@ -27,6 +30,7 @@
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-plugin-react-hooks": "^7.1.1",
+    "stylelint": "^16.23.1",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",
     "vitest": "^4.1.10"

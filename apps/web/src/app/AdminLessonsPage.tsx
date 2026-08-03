@@ -8,7 +8,6 @@ import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavIt
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; slug: string; status: string };
 type Lesson = { id: string; title: string; slug: string; description: string | null; order: number; status: string };

@@ -27,6 +27,7 @@ import { LearnerCertificatesPage } from './LearnerCertificatesPage';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage';
 import { LearnerCoursesPage } from './LearnerCoursesPage';
 import { LearnerLessonDetailPage } from './LearnerLessonDetailPage';
+import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage';
 import { LearnerLessonsPage } from './LearnerLessonsPage';
 import { LearnerProgressPage } from './LearnerProgressPage';
 
@@ -35,11 +36,17 @@ function isIdleLoadState(value: unknown) {
 }
 
 function useLoadingState() {
-  reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => [
+    typeof initialState === 'function' ? (initialState as () => unknown)() : initialState,
+    vi.fn(),
+  ]);
 }
 
 function useReadyState(value: unknown) {
-  reactMocks.useState.mockImplementation((initialState: unknown) => [isIdleLoadState(initialState) ? value : initialState, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => {
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [isIdleLoadState(resolvedInitial) ? value : resolvedInitial, vi.fn()];
+  });
 }
 
 afterEach(() => {
@@ -48,6 +55,21 @@ afterEach(() => {
 });
 
 describe('learner page smoke rendering', () => {
+  it('renders lesson materials loading and loaded states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<LearnerLessonMaterialsPage lessonId="lesson-1" />)).toContain('role="status"');
+
+    useReadyState({
+      status: 'loaded',
+      lesson: {
+        id: 'lesson-1', organizationId: 'org-1', courseId: 'course-1', title: 'Fire safety', slug: 'fire-safety', description: null, order: 1, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      materials: [{
+        id: 'material-1', organizationId: 'org-1', courseId: 'course-1', lessonId: 'lesson-1', title: 'Checklist', slug: 'checklist', description: 'Inspection steps', kind: 'file', fileName: 'checklist.pdf', fileUrl: '/file.pdf', mimeType: 'application/pdf', sizeBytes: 100, status: 'active', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+    });
+    expect(renderToStaticMarkup(<LearnerLessonMaterialsPage lessonId="lesson-1" />)).toContain('Checklist');
+  });
   it('renders courses loading state without crashing', () => {
     useLoadingState();
 

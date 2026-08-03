@@ -10,7 +10,6 @@ import {
   themePresets,
 } from '../shared/theme.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import '../styles/admin.css';
 
 type ThemeField = {
   key: keyof ThemeSettings;

@@ -21,21 +21,29 @@ vi.mock('react', async () => {
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage';
 import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage';
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
+import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AdminLessonsPage } from './AdminLessonsPage';
 import { AdminMaterialsPage } from './AdminMaterialsPage';
+import { AdminOrgStructurePage } from './AdminOrgStructurePage';
 import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage';
+import { AdminRolesPage } from './AdminRolesPage';
+import { AdminThemeSettingsPage } from './AdminThemeSettingsPage';
 import { AdminUsersPage } from './AdminUsersPage';
 
 function useLoadingState() {
-  reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => [
+    typeof initialState === 'function' ? (initialState as () => unknown)() : initialState,
+    vi.fn(),
+  ]);
 }
 
 function useFirstCallReadyState(value: unknown) {
   let callCount = 0;
   reactMocks.useState.mockImplementation((initialState: unknown) => {
     callCount++;
-    return [callCount === 1 ? value : initialState, vi.fn()];
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [callCount === 1 ? value : resolvedInitial, vi.fn()];
   });
 }
 
@@ -66,6 +74,49 @@ const course = { id: 'course-1', organizationId: 'org-1', title: 'Workplace Safe
 const lesson = { id: 'lesson-1', title: 'Fire Safety Basics', slug: 'fire-safety-basics', description: null as null, order: 1, status: 'published' };
 
 describe('admin page smoke rendering', () => {
+  it('renders courses loading and loaded table states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('role="status"');
+
+    useFirstCallReadyState({
+      status: 'loaded', currentUser, total: 1, pageSize: 20,
+      courses: [{ ...course, createdAt: ts, updatedAt: ts, _count: { lessons: 2 } }],
+    });
+    expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('Workplace Safety');
+  });
+
+  it('renders organization structure loading and populated states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('role="status"');
+
+    useFirstCallReadyState({
+      status: 'loaded',
+      organizations: [{ id: 'org-1', name: 'Demo Company', slug: 'demo', status: 'active' }],
+      groups: [{ id: 'group-1', name: 'Safety', slug: 'safety', status: 'active' }],
+      users: [{ id: 'user-1', email: 'admin@demo.com', position: 'Manager', shift: 'Day' }],
+    });
+    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('Demo Company');
+  });
+
+  it('renders roles loading and populated states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminRolesPage />)).toContain('role="status"');
+
+    useFirstCallReadyState({
+      status: 'loaded',
+      users: [{ id: 'user-1', organizationId: 'org-1', email: 'admin@demo.com', firstName: 'Admin', lastName: 'User', middleName: null, status: 'active' }],
+      memberships: [{ id: 'membership-1', organizationId: 'org-1', userId: 'user-1', role: 'admin', assignedBy: null, createdAt: ts }],
+    });
+    expect(renderToStaticMarkup(<AdminRolesPage />)).toContain('admin@demo.com');
+  });
+
+  it('renders every theme settings group', () => {
+    useLoadingState();
+    const html = renderToStaticMarkup(<AdminThemeSettingsPage />);
+    expect(html).toContain('Primary color');
+    expect(html).toContain('Page spacing');
+    expect(html).toContain('Sidebar background');
+  });
   it('renders dashboard loading state without crashing', () => {
     useLoadingState();
 
