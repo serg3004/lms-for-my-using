@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, StatCard, StatsGrid, StatusBadge, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import '../styles/admin.css';
 
@@ -148,6 +148,30 @@ export function AdminResultsCertificatesPage() {
         subtitle={t('admin.results.subtitle', 'Review learner progress, assessment results, and issue certificates.')}
       />
 
+      {(() => {
+        const completedProgress = loadState.progressItems.filter((p) => p.status === 'completed');
+        const avgCompletion =
+          loadState.progressItems.length > 0
+            ? Math.round((completedProgress.length / loadState.progressItems.length) * 100)
+            : 0;
+        const scored = loadState.progressItems.filter((p) => p.score != null);
+        const avgScore =
+          scored.length > 0
+            ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0), 0) / scored.length)
+            : null;
+        const issuedCertificates = loadState.certificates.filter((c) => c.status === 'issued').length;
+        const overdueCount = loadState.progressItems.filter((p) => p.status !== 'completed').length;
+
+        return (
+          <StatsGrid>
+            <StatCard label={t('admin.results.stats.avgCompletion', 'Avg. completion')} value={`${avgCompletion}%`} />
+            <StatCard label={t('admin.results.stats.avgScore', 'Avg. score')} value={avgScore != null ? `${avgScore}%` : '—'} />
+            <StatCard label={t('admin.results.stats.certificates', 'Certificates issued')} value={issuedCertificates} />
+            <StatCard label={t('admin.results.stats.pending', 'In progress')} value={overdueCount} />
+          </StatsGrid>
+        );
+      })()}
+
       <section className="admin-content-grid">
         <AdminCard>
           <h2>{t('admin.results.issueCertTitle', 'Issue certificate')}</h2>
@@ -205,65 +229,62 @@ export function AdminResultsCertificatesPage() {
                   ))}
                 </select>
               </label>
-              {loadState.assessmentResults.length === 0 ? (
-                <EmptyState message={t('admin.results.noResults', 'No assessment results found.')} />
-              ) : (
-                <table>
-                  <tbody>
-                    {loadState.assessmentResults.map((result) => (
-                      <tr key={result.id}>
-                        <td>{findUserLabel(loadState.users, result.userId)}</td>
-                        <td>{result.score}/{result.maxScore} · {result.percentage}%</td>
-                        <td>
-                          <StatusBadge>{result.passed ? 'passed' : 'failed'}</StatusBadge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <DataTable<AssessmentResult>
+                columns={[
+                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.users, r.userId) },
+                  { key: 'score', label: t('admin.results.col.score', 'Score'), render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },
+                  { key: 'status', label: t('admin.results.col.status', 'Status'), render: (r) => <StatusBadge tone={r.passed ? 'success' : 'danger'}>{r.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed')}</StatusBadge> },
+                ] satisfies Column<AssessmentResult>[]}
+                rows={loadState.assessmentResults}
+                keyExtractor={(r) => r.id}
+                emptyMessage={t('admin.results.noResults', 'No assessment results found.')}
+              />
             </>
           )}
         </AdminCard>
 
         <AdminCard>
           <h2>{t('admin.results.progressTitle', 'Course progress')}</h2>
-          {loadState.progressItems.length === 0 ? (
-            <EmptyState message={t('admin.results.noProgress', 'No progress records found.')} />
-          ) : (
-            <table>
-              <tbody>
-                {loadState.progressItems.map((progress) => (
-                  <tr key={progress.id}>
-                    <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
-                    <td>{findUserLabel(loadState.users, progress.userId)}</td>
-                    <td><StatusBadge>{progress.status}</StatusBadge></td>
-                    <td>{progress.score ?? t('admin.results.noScore', 'No score')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable<Progress>
+            columns={[
+              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
+              { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.users, p.userId) },
+              { key: 'status', label: t('admin.results.col.status', 'Status'), render: (p) => <StatusBadge tone={p.status === 'completed' ? 'success' : 'neutral'}>{p.status}</StatusBadge> },
+              {
+                key: 'score',
+                label: t('admin.results.col.score', 'Score'),
+                render: (p) =>
+                  p.score != null ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '60px', height: '6px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ width: `${p.score}%`, height: '100%', background: '#4f46e5', borderRadius: '999px' }} />
+                      </div>
+                      <span>{p.score}%</span>
+                    </div>
+                  ) : (
+                    t('admin.results.noScore', 'No score')
+                  ),
+              },
+            ] satisfies Column<Progress>[]}
+            rows={loadState.progressItems}
+            keyExtractor={(p) => p.id}
+            emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
+          />
         </AdminCard>
 
         <AdminCard>
           <h2>{t('admin.results.certificatesTitle', 'Issued certificates')}</h2>
-          {loadState.certificates.length === 0 ? (
-            <EmptyState message={t('admin.results.noCertificates', 'No certificates issued yet.')} />
-          ) : (
-            <table>
-              <tbody>
-                {loadState.certificates.map((certificate) => (
-                  <tr key={certificate.id}>
-                    <td>{findCourseTitle(loadState.courses, certificate.courseId)}</td>
-                    <td>{findUserLabel(loadState.users, certificate.userId)}</td>
-                    <td><StatusBadge>{certificate.status}</StatusBadge></td>
-                    <td>{new Date(certificate.issuedAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <DataTable<Certificate>
+            columns={[
+              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (c) => findCourseTitle(loadState.courses, c.courseId) },
+              { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (c) => findUserLabel(loadState.users, c.userId) },
+              { key: 'status', label: t('admin.results.col.status', 'Status'), render: (c) => <StatusBadge tone={c.status === 'issued' ? 'success' : 'danger'}>{c.status}</StatusBadge> },
+              { key: 'issuedAt', label: t('admin.results.col.issuedAt', 'Issued'), render: (c) => new Date(c.issuedAt).toLocaleDateString() },
+            ] satisfies Column<Certificate>[]}
+            rows={loadState.certificates}
+            keyExtractor={(c) => c.id}
+            emptyMessage={t('admin.results.noCertificates', 'No certificates issued yet.')}
+          />
         </AdminCard>
       </section>
     </AdminPageLayout>
