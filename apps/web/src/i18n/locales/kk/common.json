@@ -285,7 +285,14 @@
     "completeAction": "Сабақты аяқтау",
     "completing": "Сақталуда...",
     "completionSuccess": "Сабақ аяқталды деп белгіленді.",
-    "completionError": "Сабақты аяқталды деп белгілеу мүмкін болмады. Кейінірек қайталаңыз."
+    "completionError": "Сабақты аяқталды деп белгілеу мүмкін болмады. Кейінірек қайталаңыз.",
+    "inProgress": "● Орындалуда",
+    "donePill": "● Аяқталды",
+    "videoLabel": "Видео",
+    "videoSubtitles": "Субтитрлер қолжетімді",
+    "progressTitle": "Курс прогресі",
+    "contentsTitle": "Мазмұны",
+    "previousLesson": "← Алдыңғы"
   },
   "materials": {
     "navLink": "Материалдар",

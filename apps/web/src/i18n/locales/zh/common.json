@@ -285,7 +285,14 @@
     "completeAction": "完成课时",
     "completing": "保存中...",
     "completionSuccess": "课时已标记为完成。",
-    "completionError": "无法标记课时完成。请稍后重试。"
+    "completionError": "无法标记课时完成。请稍后重试。",
+    "inProgress": "● 进行中",
+    "donePill": "● 已完成",
+    "videoLabel": "视频",
+    "videoSubtitles": "提供字幕",
+    "progressTitle": "课程进度",
+    "contentsTitle": "内容",
+    "previousLesson": "← 上一课"
   },
   "materials": {
     "navLink": "资料",

@@ -285,7 +285,14 @@
     "completeAction": "Завершить урок",
     "completing": "Сохранение...",
     "completionSuccess": "Урок отмечен как завершённый.",
-    "completionError": "Unable to mark lesson completed. Try again later."
+    "completionError": "Unable to mark lesson completed. Try again later.",
+    "inProgress": "● В процессе",
+    "donePill": "● Завершён",
+    "videoLabel": "Видео",
+    "videoSubtitles": "Субтитры доступны",
+    "progressTitle": "Прогресс курса",
+    "contentsTitle": "Содержание",
+    "previousLesson": "← Предыдущий"
   },
   "materials": {
     "navLink": "Материалы",
