@@ -39,14 +39,14 @@ describe('admin page toolkit', () => {
     const html = renderLayout();
 
     expect(html).toContain('class="admin-mobile-bar"');
-    expect(html).toContain('aria-label="Open navigation"');
+    expect(html).toContain('aria-label="Открыть навигацию"');
     expect(html).toContain('aria-expanded="false"');
   });
 
   it('renders sidebar close button', () => {
     const html = renderLayout();
 
-    expect(html).toContain('aria-label="Close navigation"');
+    expect(html).toContain('aria-label="Закрыть навигацию"');
     expect(html).toContain('class="admin-sidebar-close"');
   });
 });

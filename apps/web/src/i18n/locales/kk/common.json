@@ -13,6 +13,21 @@
     "navLink": "Әкімші",
     "eyebrow": "Әкімші",
     "sidebarLabel": "Әкімші навигациясы",
+    "nav": {
+      "managementSection": "Басқару",
+      "dashboard": "Дашборд",
+      "courses": "Курстар",
+      "lessons": "Сабақтар",
+      "materials": "Материалдар",
+      "assessments": "Тесттер",
+      "users": "Пайдаланушылар",
+      "assignments": "Тапсырмалар",
+      "results": "Нәтижелер",
+      "settingsSection": "Баптаулар",
+      "orgStructure": "Ұйым құрылымы",
+      "roles": "Рөлдер",
+      "themeSettings": "Безендіру"
+    },
     "title": "Басқару панелі",
     "subtitle": "Қайта қош келдіңіз, {{name}}.",
     "loading": "Әкімші панелі жүктелуде...",
@@ -421,6 +436,7 @@
       "previewTitle": "Алдын ала қарау",
       "previewBadge": "Әкімші",
       "previewHeading": "Жұмыс кеңістігін алдын ала қарау",
+      "previewText": "Карточкалар, басқару элементтері, макет аралықтары мен сайдбар токендері таңдалған баптауларды пайдаланады.",
       "previewAction": "Негізгі әрекет",
       "sidebarPreviewTitle": "Сайдбар",
       "sidebarPreviewText": "Навигация мәтіні",
@@ -1058,6 +1074,8 @@
   },
   "a11y": {
     "skipToContent": "Негізгі мазмұнға өту",
-    "breadcrumb": "Шолу жолы"
+    "breadcrumb": "Шолу жолы",
+    "openNav": "Навигацияны ашу",
+    "closeNav": "Навигацияны жабу"
   }
 }
