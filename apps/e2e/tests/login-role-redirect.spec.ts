@@ -68,25 +68,31 @@ test.describe('login and role redirects', () => {
     expect(accessCookie).toBeDefined();
     await context.addCookies([{ ...accessCookie!, value: 'expired.e2e.access-token' }]);
 
-    const authStatuses: Array<{ path: string; status: number }> = [];
+    const refreshResponses: number[] = [];
     page.on('response', (response) => {
-      const path = new URL(response.url()).pathname;
-      if (path === '/api/v1/auth/me' || path === '/api/v1/auth/refresh') {
-        authStatuses.push({ path, status: response.status() });
-      }
+      if (new URL(response.url()).pathname === '/api/v1/auth/refresh') refreshResponses.push(response.status());
     });
 
+    // Wait on each network round-trip separately (registered before the navigation that
+    // triggers them) so a failure names exactly which step stalled, instead of a single
+    // expect.poll timing out over the whole chain with no indication of where it broke.
+    const expiredAccessRejected = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/me' && response.status() === 401,
+    );
+    const refreshSucceeded = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/refresh' && response.status() === 201,
+    );
+    const retrySucceeded = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/me' && response.status() === 200,
+    );
+
     await page.goto('/learn/courses');
+
+    await expiredAccessRejected;
+    await refreshSucceeded;
+    await retrySucceeded;
     await expect(page).toHaveURL(/\/learn\/courses$/);
-    await expect.poll(() => ({
-      expiredAccessRejected: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 401),
-      refreshSucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/refresh' && status === 201),
-      retrySucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 200),
-    }), { timeout: 10_000 }).toEqual({
-      expiredAccessRejected: true,
-      refreshSucceeded: true,
-      retrySucceeded: true,
-    });
-    expect(authStatuses.filter(({ path }) => path === '/api/v1/auth/refresh')).toHaveLength(1);
+
+    expect(refreshResponses).toEqual([201]);
   });
 });
