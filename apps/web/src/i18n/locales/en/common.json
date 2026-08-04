@@ -181,8 +181,8 @@
       "sessionExpired": "Your session expired. Sign in again.",
       "loadError": "Unable to load lesson editor.",
       "loading": "Loading lesson editor...",
-      "title": "Lesson editor",
-      "subtitle": "Create and edit lessons, control display order and status.",
+      "title": "Lessons",
+      "subtitle": "Manage lessons and publishing.",
       "backToDashboard": "Back to dashboard",
       "createTitle": "Create lesson",
       "noCourses": "Create a course before adding lessons.",
@@ -209,7 +209,13 @@
       "close": "Close",
       "updating": "Saving...",
       "update": "Save changes",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "searchPlaceholder": "Find lesson",
+      "allTypes": "All types",
+      "typeVideo": "Video",
+      "typeText": "Text",
+      "fieldType": "Type",
+      "noResults": "No lessons found."
     },
     "materials": {
       "eyebrow": "Files and resources",

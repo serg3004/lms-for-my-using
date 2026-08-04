@@ -395,6 +395,52 @@
   font-size: var(--text-sm, 0.875rem);
 }
 
+.admin-lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-lesson-card {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg, 18px);
+  padding: 20px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.admin-lesson-card:hover {
+  border-color: var(--color-primary);
+}
+
+.admin-lesson-card h3 {
+  margin: 10px 0 4px;
+  font-size: 1rem;
+}
+
+.admin-lesson-card p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+@media (max-width: 1000px) {
+  .admin-lesson-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .admin-lesson-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .admin-activity-list {
   display: grid;
   gap: 10px;

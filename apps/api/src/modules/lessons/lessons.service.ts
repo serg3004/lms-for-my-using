@@ -10,10 +10,16 @@ const lessonSelect = {
   title: true,
   slug: true,
   description: true,
+  type: true,
   order: true,
   status: true,
   createdAt: true,
   updatedAt: true,
+} as const;
+
+const lessonWithCourseSelect = {
+  ...lessonSelect,
+  course: { select: { title: true } },
 } as const;
 
 @Injectable()
@@ -32,6 +38,16 @@ export class LessonsService {
       orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
       select: lessonSelect,
     });
+  }
+
+  async listAllLessons(organizationId: string, page: number, pageSize: number) {
+    const skip = (page - 1) * pageSize;
+    const where = { organizationId, deletedAt: null } as const;
+    const [items, total] = await Promise.all([
+      this.prisma.lesson.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: lessonWithCourseSelect }),
+      this.prisma.lesson.count({ where }),
+    ]);
+    return { items, page, pageSize, total };
   }
 
   async getLesson(lessonId: string, organizationId: string) {
