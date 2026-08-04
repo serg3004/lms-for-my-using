@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { filterLessons, parseLessonOrder } from './admin-lessons/model.js';
 import { slugify } from '../shared/slugify.js';
 import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
@@ -108,13 +109,13 @@ export function AdminLessonsPage() {
 
     const lessonTitle = title.trim();
     const slug = slugify(lessonTitle);
-    const orderValue = Number(order);
 
     const errors = validateRequiredFields([{ name: 'title', value: lessonTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
     if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
     setCreateErrors({});
 
-    if (!Number.isInteger(orderValue) || orderValue < 0) {
+    const orderValue = parseLessonOrder(order);
+    if (orderValue === null) {
       setSubmitState({ status: 'error', message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.') });
       return;
     }
@@ -162,13 +163,13 @@ export function AdminLessonsPage() {
     if (!editLesson) return;
 
     const newTitle = editTitle.trim();
-    const newOrder = Number(editOrder);
 
     const titleErrors = validateRequiredFields([{ name: 'title', value: newTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
     if (hasValidationErrors(titleErrors)) { setEditErrors(titleErrors); return; }
     setEditErrors({});
 
-    if (!Number.isInteger(newOrder) || newOrder < 0) {
+    const newOrder = parseLessonOrder(editOrder);
+    if (newOrder === null) {
       setEditState({ status: 'error', message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.') });
       return;
     }
@@ -210,11 +211,7 @@ export function AdminLessonsPage() {
     );
   }
 
-  const filteredLessons = loadState.lessons.filter((lesson) => {
-    const matchesSearch = lesson.title.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === 'all' || lesson.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
+  const filteredLessons = filterLessons(loadState.lessons, search, typeFilter);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
