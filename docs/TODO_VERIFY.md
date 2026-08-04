@@ -26,7 +26,7 @@ DONE — реализовано и подтверждено в коде/тест
 | TV-001 | Backend framework | NestJS | PROPOSED | Лучше для modular monolith, DI, guards, RBAC, AI-agent readability. |
 | TV-002 | ORM / migration tool | Prisma | PROPOSED | Быстрый старт, понятные миграции, хорошо для TypeScript. |
 | TV-003 | Frontend setup | React + Vite + TypeScript | PROPOSED | Проще Next.js для MVP без SSR. |
-| TV-004 | UI library | shadcn/ui + Tailwind или простой custom UI | TODO VERIFY | Нужно выбрать до активной frontend-разработки. |
+| TV-004 | UI library | Custom UI | ACCEPTED | Реализовано как обычные CSS-классы + CSS custom properties для темизации (`shared/theme.ts`, `tokens.css`), без Tailwind/shadcn-зависимостей. |
 | TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | PROPOSED | MVP использует stateless JWT access token. Refresh/session store deferred. |
 | TV-006 | Password hashing | Argon2id или bcrypt | PROPOSED | Выбрать библиотеку перед auth implementation. |
 | TV-007 | Local object storage | MinIO | PROPOSED | S3-compatible, удобно для local dev. |
@@ -154,6 +154,7 @@ ACCEPTED:
 - MVP AI: out of scope
 - Mobile app: out of MVP
 - Auth current state: stateless JWT access token with hardened verification and current-user lookup bound to JWT subject
+- UI library: Custom UI (plain CSS + CSS custom properties for theming), no Tailwind/shadcn
 ```
 
 ---
