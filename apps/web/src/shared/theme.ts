@@ -1,3 +1,5 @@
+import { apiRequest } from './apiClient.js';
+
 export type ThemeSettings = {
   colorPrimary: string;
   colorPrimaryHover: string;
@@ -150,4 +152,55 @@ export function saveThemeSettings(settings: ThemeSettings) {
 export function resetThemeSettings() {
   localStorage.removeItem(storageKey);
   applyThemeSettings(defaultThemeSettings);
+}
+
+type OrganizationThemeResponse = { themeSettings: unknown };
+
+export async function fetchOrganizationThemeSettings(organizationId: string): Promise<ThemeSettings> {
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/theme`);
+
+  return normalizeThemeSettings(response.themeSettings);
+}
+
+export async function saveOrganizationThemeSettings(organizationId: string, settings: ThemeSettings): Promise<ThemeSettings> {
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/theme`, {
+    method: 'PATCH',
+    body: JSON.stringify(settings),
+  });
+  const saved = normalizeThemeSettings(response.themeSettings);
+
+  saveThemeSettings(saved);
+
+  return saved;
+}
+
+export async function resetOrganizationThemeSettings(organizationId: string): Promise<ThemeSettings> {
+  await apiRequest(`/organizations/${organizationId}/theme`, { method: 'DELETE' });
+  resetThemeSettings();
+
+  return defaultThemeSettings;
+}
+
+let lastSyncedOrganizationId: string | null = null;
+
+/**
+ * Reconciles the cached (instant-on-boot) theme with the organization's saved
+ * theme from the server. Deduped per organizationId so repeated calls (e.g. on
+ * every protected-route navigation) don't re-fetch. Swallows errors — a stale
+ * or default local theme is an acceptable fallback if the request fails.
+ */
+export async function syncOrganizationTheme(organizationId: string): Promise<void> {
+  if (lastSyncedOrganizationId === organizationId) {
+    return;
+  }
+
+  lastSyncedOrganizationId = organizationId;
+
+  try {
+    const settings = await fetchOrganizationThemeSettings(organizationId);
+
+    saveThemeSettings(settings);
+  } catch {
+    lastSyncedOrganizationId = null;
+  }
 }

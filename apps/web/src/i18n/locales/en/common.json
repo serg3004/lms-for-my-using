@@ -425,8 +425,10 @@
     "themeSettings": {
       "eyebrow": "Platform branding",
       "title": "Theme settings",
-      "subtitle": "Tune the admin workspace colors, layout tokens, and sidebar locally without changing organization data.",
-      "saved": "Theme settings saved locally.",
+      "subtitle": "Tune the admin workspace colors, layout tokens, and sidebar for your organization.",
+      "saved": "Theme settings saved.",
+      "saving": "Saving...",
+      "saveError": "Unable to save theme settings. Try again.",
       "resetDone": "Theme settings reset.",
       "imported": "Theme settings imported.",
       "importError": "Unable to import theme settings.",
