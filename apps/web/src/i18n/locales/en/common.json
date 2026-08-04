@@ -13,6 +13,21 @@
     "navLink": "Admin",
     "eyebrow": "Administrator",
     "sidebarLabel": "Admin navigation",
+    "nav": {
+      "managementSection": "Management",
+      "dashboard": "Dashboard",
+      "courses": "Courses",
+      "lessons": "Lessons",
+      "materials": "Materials",
+      "assessments": "Assessments",
+      "users": "Users",
+      "assignments": "Assignments",
+      "results": "Results",
+      "settingsSection": "Settings",
+      "orgStructure": "Org structure",
+      "roles": "Roles",
+      "themeSettings": "Theme settings"
+    },
     "title": "Dashboard",
     "subtitle": "Welcome back, {{name}}.",
     "loading": "Loading admin dashboard...",
@@ -421,6 +436,7 @@
       "previewTitle": "Preview",
       "previewBadge": "Admin",
       "previewHeading": "Workspace preview",
+      "previewText": "Cards, controls, layout spacing, and sidebar tokens use the selected settings.",
       "previewAction": "Primary action",
       "sidebarPreviewTitle": "Sidebar",
       "sidebarPreviewText": "Navigation text",
@@ -1040,6 +1056,8 @@
   },
   "a11y": {
     "skipToContent": "Skip to main content",
-    "breadcrumb": "Breadcrumb"
+    "breadcrumb": "Breadcrumb",
+    "openNav": "Open navigation",
+    "closeNav": "Close navigation"
   }
 }

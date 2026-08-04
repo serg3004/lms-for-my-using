@@ -13,6 +13,21 @@
     "navLink": "管理员",
     "eyebrow": "管理员",
     "sidebarLabel": "管理员导航",
+    "nav": {
+      "managementSection": "管理",
+      "dashboard": "仪表盘",
+      "courses": "课程",
+      "lessons": "课时",
+      "materials": "资料",
+      "assessments": "测试",
+      "users": "用户",
+      "assignments": "任务",
+      "results": "结果",
+      "settingsSection": "设置",
+      "orgStructure": "组织结构",
+      "roles": "角色",
+      "themeSettings": "外观设置"
+    },
     "title": "管理面板",
     "subtitle": "欢迎回来，{{name}}。",
     "loading": "正在加载管理面板...",
@@ -421,6 +436,7 @@
       "previewTitle": "预览",
       "previewBadge": "管理员",
       "previewHeading": "工作区预览",
+      "previewText": "卡片、控件、布局间距和侧边栏样式都使用当前选择的设置。",
       "previewAction": "主要操作",
       "sidebarPreviewTitle": "侧边栏",
       "sidebarPreviewText": "导航文本",
@@ -1010,6 +1026,8 @@
   },
   "a11y": {
     "skipToContent": "跳到主要内容",
-    "breadcrumb": "面包屑导航"
+    "breadcrumb": "面包屑导航",
+    "openNav": "打开导航",
+    "closeNav": "关闭导航"
   }
 }

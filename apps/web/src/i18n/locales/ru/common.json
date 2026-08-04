@@ -13,6 +13,21 @@
     "navLink": "Админ",
     "eyebrow": "Администратор",
     "sidebarLabel": "Навигация администратора",
+    "nav": {
+      "managementSection": "Управление",
+      "dashboard": "Дашборд",
+      "courses": "Курсы",
+      "lessons": "Уроки",
+      "materials": "Материалы",
+      "assessments": "Тесты",
+      "users": "Пользователи",
+      "assignments": "Назначения",
+      "results": "Результаты",
+      "settingsSection": "Настройки",
+      "orgStructure": "Структура орг.",
+      "roles": "Роли",
+      "themeSettings": "Оформление"
+    },
     "title": "Панель управления",
     "subtitle": "С возвращением, {{name}}.",
     "loading": "Загрузка панели администратора...",
@@ -421,6 +436,7 @@
       "previewTitle": "Предпросмотр",
       "previewBadge": "Админ",
       "previewHeading": "Предпросмотр рабочего пространства",
+      "previewText": "Карточки, элементы управления, отступы макета и токены сайдбара используют выбранные настройки.",
       "previewAction": "Основное действие",
       "sidebarPreviewTitle": "Сайдбар",
       "sidebarPreviewText": "Текст навигации",
@@ -1057,6 +1073,8 @@
   },
   "a11y": {
     "skipToContent": "Перейти к основному содержимому",
-    "breadcrumb": "Хлебные крошки"
+    "breadcrumb": "Хлебные крошки",
+    "openNav": "Открыть навигацию",
+    "closeNav": "Закрыть навигацию"
   }
 }

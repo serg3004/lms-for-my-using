@@ -31,37 +31,6 @@ export function SkipLink({ label, targetId = 'main-content' }: SkipLinkProps) {
   );
 }
 
-export type BreadcrumbItem = {
-  label: string;
-  href?: string;
-};
-
-type BreadcrumbsProps = {
-  items: BreadcrumbItem[];
-};
-
-export function Breadcrumbs({ items }: BreadcrumbsProps) {
-  if (items.length === 0) {
-    return null;
-  }
-
-  return (
-    <nav className="ui-breadcrumbs" aria-label="Breadcrumbs">
-      <ol>
-        {items.map((item, index) => {
-          const isCurrent = index === items.length - 1 || !item.href;
-
-          return (
-            <li key={`${item.label}-${index}`} aria-current={isCurrent ? 'page' : undefined}>
-              {isCurrent ? <span>{item.label}</span> : <a href={item.href}>{item.label}</a>}
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
 type PageSkeletonProps = {
   title?: string;
   message?: string;

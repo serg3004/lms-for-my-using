@@ -12,7 +12,8 @@
   grid-template-rows: auto 1fr;
   width: 100%;
   max-width: none;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   margin: 0;
   padding: 0;
 }
@@ -297,13 +298,33 @@
   font-size: 1rem;
 }
 
+.admin-topheader__logout {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 9px 14px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-topheader__logout:hover {
+  background: var(--color-surface-muted);
+}
+
 .admin-shell {
   grid-column: 2;
   grid-row: 2;
   min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 32px;
+}
+
+.admin-shell__inner {
   width: min(1360px, 100%);
   margin: 0 auto;
-  padding: 32px;
 }
 
 .admin-topbar {
@@ -727,6 +748,8 @@
 @media (max-width: 860px) {
   .admin-layout {
     display: block;
+    height: auto;
+    overflow: visible;
   }
 
   .admin-mobile-bar {
@@ -776,6 +799,8 @@
   }
 
   .admin-shell {
+    height: auto;
+    overflow: visible;
     padding: 20px 16px;
   }
 
