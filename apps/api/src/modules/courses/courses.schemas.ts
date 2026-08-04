@@ -9,11 +9,15 @@ const courseSlugSchema = z
   .max(80)
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
+export const courseCategorySchema = z.enum(['safety', 'management']);
+
 export const createCourseSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(160),
   slug: courseSlugSchema,
   description: z.string().trim().max(1000).optional(),
+  category: courseCategorySchema.optional(),
+  durationMinutes: z.number().int().min(1).max(10_000).optional(),
   status: courseStatusSchema.default('draft'),
 });
 

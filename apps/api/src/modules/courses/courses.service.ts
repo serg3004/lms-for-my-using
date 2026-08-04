@@ -9,6 +9,8 @@ const courseSelect = {
   title: true,
   slug: true,
   description: true,
+  category: true,
+  durationMinutes: true,
   status: true,
   createdAt: true,
   updatedAt: true,

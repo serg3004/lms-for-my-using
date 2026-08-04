@@ -54,6 +54,8 @@ export type CourseSummary = {
   title: string;
   slug: string;
   description: string | null;
+  category: string | null;
+  durationMinutes: number | null;
   status: string;
   createdAt: string;
   updatedAt: string;

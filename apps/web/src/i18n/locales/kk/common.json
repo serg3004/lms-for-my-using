@@ -39,10 +39,22 @@
     "organizationId": "Ұйым ID",
     "sectionsTitle": "Жылдам сілтемелер",
     "sections": {
-      "courses": { "title": "Курстар", "description": "Оқу курстарын жасаңыз және басқарыңыз." },
-      "users": { "title": "Пайдаланушылар", "description": "Ұйым мүшелерін және олардың рөлдерін басқарыңыз." },
-      "assignments": { "title": "Тапсырмалар", "description": "Оқушыларға курстар тағайындаңыз." },
-      "reports": { "title": "Нәтижелер", "description": "Сертификаттар мен тест нәтижелерін қараңыз." }
+      "courses": {
+        "title": "Курстар",
+        "description": "Оқу курстарын жасаңыз және басқарыңыз."
+      },
+      "users": {
+        "title": "Пайдаланушылар",
+        "description": "Ұйым мүшелерін және олардың рөлдерін басқарыңыз."
+      },
+      "assignments": {
+        "title": "Тапсырмалар",
+        "description": "Оқушыларға курстар тағайындаңыз."
+      },
+      "reports": {
+        "title": "Нәтижелер",
+        "description": "Сертификаттар мен тест нәтижелерін қараңыз."
+      }
     },
     "dashboard": {
       "downloadReport": "Есепті жүктеу",
@@ -471,8 +483,12 @@
         "adminSidebarTextMuted": "Сайдбардың күңгірт мәтіні"
       }
     },
-    "orgStructure": { "eyebrow": "Компания құрылымы" },
-    "courseBuilder": { "eyebrow": "Курс редакторы" }
+    "orgStructure": {
+      "eyebrow": "Компания құрылымы"
+    },
+    "courseBuilder": {
+      "eyebrow": "Курс редакторы"
+    }
   },
   "notFound": {
     "title": "Бет табылмады",
@@ -735,7 +751,15 @@
     "weeklyGoalDone": "Сіз апталық мақсатқа жеттіңіз!",
     "weeklyGoalRemaining": "Мақсатқа дейін қалған сабақтар: {{count}}",
     "streakTitle": "Оқу сериясы",
-    "streakDays": ["Дс", "Сс", "Ср", "Бс", "Жм", "Сб", "Жс"],
+    "streakDays": [
+      "Дс",
+      "Сс",
+      "Ср",
+      "Бс",
+      "Жм",
+      "Сб",
+      "Жс"
+    ],
     "activityTitle": "Соңғы белсенділік",
     "activityEmpty": "Таңдалған кезеңде белсенділік жоқ.",
     "activity": {
@@ -1049,7 +1073,30 @@
       "publicationStatus": "Жариялау мәртебесі",
       "lastUpdated": "Соңғы жаңарту: {{date}}",
       "lessonsTitle": "Сабақтар ({{count}})",
-      "lessonsEmpty": "Сабақтар әлі қосылмаған."
+      "lessonsEmpty": "Сабақтар әлі қосылмаған.",
+      "eyebrowCreate": "Жаңа курс",
+      "eyebrowEdit": "Өңдеу",
+      "subCreate": "Негізгі деректерді енгізіп, жобаны сақтаңыз.",
+      "subEdit": "Курс мазмұны мен құрылымын жаңартыңыз.",
+      "fieldCategory": "Санат",
+      "categoryNone": "Санатсыз",
+      "categorySafety": "Қауіпсіздік",
+      "categoryManagement": "Басқару",
+      "fieldDuration": "Ұзақтығы (мин.)",
+      "nextStepsTitle": "Келесі қадамдар",
+      "nextStep1": "Сабақтар қосыңыз",
+      "nextStep2": "Материалдар қосыңыз",
+      "nextStep3": "Тестті реттеңіз",
+      "addLesson": "Сабақ қосу",
+      "editLesson": "Өзгерту",
+      "addLessonDialogTitle": "Сабақ қосу",
+      "editLessonDialogTitle": "Сабақты өзгерту",
+      "lessonFieldTitle": "Сабақ атауы",
+      "lessonTitleRequired": "Сабақ атауын енгізіңіз",
+      "lessonSaveError": "Сабақты сақтау мүмкін болмады. Қайталап көріңіз.",
+      "dialogClose": "Жабу",
+      "dialogCancel": "Бас тарту",
+      "dialogSave": "Сақтау"
     },
     "courseStudents": {
       "loading": "Жүктелуде...",
