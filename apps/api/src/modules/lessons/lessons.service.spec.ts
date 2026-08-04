@@ -14,6 +14,7 @@ describe('Lessons validation', () => {
       courseId: '22222222-2222-2222-2222-222222222222',
       title: 'Intro',
       slug: 'intro',
+      type: 'text',
       order: 0,
       status: 'draft',
     });

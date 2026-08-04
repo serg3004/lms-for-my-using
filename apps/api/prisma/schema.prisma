@@ -276,6 +276,7 @@ model Lesson {
   title          String
   slug           String
   description    String?
+  type           String       @default("text")
   order          Int          @default(0)
   status         LessonStatus @default(draft)
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz

@@ -69,11 +69,14 @@ export type LessonSummary = {
   title: string;
   slug: string;
   description: string | null;
+  type: string;
   order: number;
   status: string;
   createdAt: string;
   updatedAt: string;
 };
+
+export type LessonWithCourseSummary = LessonSummary & { course: { title: string } };
 
 export type CourseMaterialSummary = {
   id: string;

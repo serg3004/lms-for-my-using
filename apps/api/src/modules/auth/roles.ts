@@ -21,6 +21,7 @@ export const rolePolicies = {
   coursesRead: ['admin', 'manager', 'instructor', 'learner'],
   coursesCreate: ['admin', 'instructor'],
   lessonsRead: ['admin', 'manager', 'instructor', 'learner'],
+  lessonsReadAll: ['admin'],
   lessonsCreate: ['admin', 'instructor'],
   courseMaterialsRead: ['admin', 'manager', 'instructor', 'learner'],
   courseMaterialsCreate: ['admin', 'instructor'],

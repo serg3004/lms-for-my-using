@@ -71,7 +71,7 @@ const currentUser = {
 };
 
 const course = { id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', slug: 'workplace-safety', description: null as null, status: 'published' };
-const lesson = { id: 'lesson-1', title: 'Fire Safety Basics', slug: 'fire-safety-basics', description: null as null, order: 1, status: 'published' };
+const lesson = { id: 'lesson-1', title: 'Fire Safety Basics', slug: 'fire-safety-basics', description: null as null, type: 'text' as const, order: 1, status: 'published' };
 
 describe('admin page smoke rendering', () => {
   it('renders courses loading and loaded table states', () => {
@@ -227,7 +227,7 @@ describe('admin page smoke rendering', () => {
     useFirstCallReadyState({
       status: 'loaded',
       courses: [course],
-      lessons: [lesson],
+      lessons: [{ ...lesson, course: { title: course.title } }],
     });
 
     const html = renderToStaticMarkup(<AdminLessonsPage />);

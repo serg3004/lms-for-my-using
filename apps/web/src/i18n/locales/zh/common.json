@@ -181,8 +181,8 @@
       "sessionExpired": "会话已过期。请重新登录。",
       "loadError": "无法加载课时编辑器。",
       "loading": "正在加载课时编辑器...",
-      "title": "课时编辑器",
-      "subtitle": "创建和编辑课时，管理显示顺序和状态。",
+      "title": "课时",
+      "subtitle": "管理课时及其发布。",
       "backToDashboard": "返回控制台",
       "createTitle": "创建课时",
       "noCourses": "请先创建课程，再添加课时。",
@@ -209,7 +209,13 @@
       "close": "关闭",
       "updating": "保存中...",
       "update": "保存更改",
-      "cancel": "取消"
+      "cancel": "取消",
+      "searchPlaceholder": "搜索课时",
+      "allTypes": "所有类型",
+      "typeVideo": "视频",
+      "typeText": "文字",
+      "fieldType": "类型",
+      "noResults": "未找到课时。"
     },
     "materials": {
       "eyebrow": "文件与资源",
