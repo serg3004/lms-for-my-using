@@ -1,4 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -28,10 +29,25 @@ type LoadState =
   | { status: 'error'; message: string };
 
 type LessonStatus = 'draft' | 'published' | 'archived';
-type LessonType = 'video' | 'text';
+type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical';
 
 const LESSON_STATUSES: LessonStatus[] = ['draft', 'published', 'archived'];
-const LESSON_TYPES: LessonType[] = ['video', 'text'];
+const LESSON_TYPES: LessonType[] = ['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical'];
+
+const LESSON_TYPE_LABEL_KEYS: Record<LessonType, string> = {
+  video: 'typeVideo',
+  text: 'typeText',
+  test: 'typeTest',
+  checklist: 'typeChecklist',
+  workplace_check: 'typeWorkplaceCheck',
+  photo: 'typePhoto',
+  practical: 'typePractical',
+};
+
+function lessonTypeLabel(t: TFunction, type: string) {
+  const labelKey = LESSON_TYPE_LABEL_KEYS[type as LessonType] ?? 'typeText';
+  return t(`admin.lessons.${labelKey}`, type);
+}
 
 export function AdminLessonsPage() {
   const { t } = useTranslation();
@@ -250,8 +266,11 @@ export function AdminLessonsPage() {
             onChange={(e) => setTypeFilter(e.target.value as 'all' | LessonType)}
           >
             <option value="all">{t('admin.lessons.allTypes', 'All types')}</option>
-            <option value="video">{t('admin.lessons.typeVideo', 'Video')}</option>
-            <option value="text">{t('admin.lessons.typeText', 'Text')}</option>
+            {LESSON_TYPES.map((lessonType) => (
+              <option key={lessonType} value={lessonType}>
+                {lessonTypeLabel(t, lessonType)}
+              </option>
+            ))}
           </select>
         }
       />
@@ -262,7 +281,7 @@ export function AdminLessonsPage() {
         <div className="admin-lesson-grid">
           {filteredLessons.map((lesson) => (
             <button key={lesson.id} type="button" className="admin-lesson-card" onClick={() => openEditDialog(lesson)}>
-              <Badge>{lesson.type === 'video' ? t('admin.lessons.typeVideo', 'Video') : t('admin.lessons.typeText', 'Text')}</Badge>
+              <Badge>{lessonTypeLabel(t, lesson.type)}</Badge>
               <h3>{lesson.title}</h3>
               <p>{lesson.course.title}</p>
             </button>
@@ -297,7 +316,7 @@ export function AdminLessonsPage() {
               <select id="lesson-create-type" value={type} onChange={(event) => setType(event.target.value as LessonType)}>
                 {LESSON_TYPES.map((lessonType) => (
                   <option key={lessonType} value={lessonType}>
-                    {lessonType === 'video' ? t('admin.lessons.typeVideo', 'Video') : t('admin.lessons.typeText', 'Text')}
+                    {lessonTypeLabel(t, lessonType)}
                   </option>
                 ))}
               </select>
@@ -343,7 +362,7 @@ export function AdminLessonsPage() {
             <select id="lesson-edit-type" value={editType} onChange={(event) => setEditType(event.target.value as LessonType)}>
               {LESSON_TYPES.map((lessonType) => (
                 <option key={lessonType} value={lessonType}>
-                  {lessonType === 'video' ? t('admin.lessons.typeVideo', 'Video') : t('admin.lessons.typeText', 'Text')}
+                  {lessonTypeLabel(t, lessonType)}
                 </option>
               ))}
             </select>
