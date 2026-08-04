@@ -30,7 +30,7 @@ DONE — реализовано и подтверждено в коде/тест
 | TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | PROPOSED | MVP использует stateless JWT access token. Refresh/session store deferred. |
 | TV-006 | Password hashing | Argon2id или bcrypt | PROPOSED | Выбрать библиотеку перед auth implementation. |
 | TV-007 | Local object storage | MinIO | PROPOSED | S3-compatible, удобно для local dev. |
-| TV-008 | Production object storage | Cloudflare R2 / AWS S3 / Wasabi | TODO VERIFY | Зависит от бюджета и региона. |
+| TV-008 | Production object storage | MinIO on Railway | ACCEPTED | Развёрнут как отдельный сервис в том же Railway-проекте (bucket `lms-uploads`), настроен через стандартные S3_* переменные `api`. Личный/пилотный проект, self-hosted вариант выбран сознательно вместо R2/S3/Wasabi — код уже на S3 API, миграция на управляемого провайдера в будущем не потребует правок кода. |
 | TV-009 | Deployment target | Railway-first | ACCEPTED | Production/staging через Railway, Docker portability обязательно. |
 | TV-010 | Package manager | pnpm workspaces | PROPOSED | Удобно для monorepo. |
 
@@ -149,6 +149,7 @@ ACCEPTED:
 - DB: PostgreSQL
 - ORM: Prisma
 - Storage local: MinIO
+- Storage production: MinIO on Railway (bucket `lms-uploads`, self-hosted alongside api/web/Postgres)
 - Deployment: Railway-first
 - Portability: Docker
 - MVP AI: out of scope
