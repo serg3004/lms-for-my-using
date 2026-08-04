@@ -14,7 +14,19 @@ export const createGroupSchema = z.object({
   name: z.string().trim().min(1).max(120),
   slug: groupSlugSchema,
   description: z.string().trim().max(500).optional(),
+  location: z.string().trim().max(120).optional(),
   status: groupStatusSchema.default('active'),
 });
 
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+
+export const updateGroupSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(500).nullable(),
+    location: z.string().trim().max(120).nullable(),
+    status: groupStatusSchema,
+  })
+  .partial();
+
+export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;

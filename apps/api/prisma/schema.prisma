@@ -181,6 +181,7 @@ model Group {
   name           String
   slug           String
   description    String?
+  location       String?
   status         GroupStatus  @default(active)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
