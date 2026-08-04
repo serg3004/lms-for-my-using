@@ -69,7 +69,7 @@ DONE — реализовано и подтверждено в коде/тест
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
 | TV-025 | API base path | `/api/v1` | ACCEPTED | REST/JSON. |
-| TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 100. |
+| TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 200 (bumped from 100: 12 frontend call sites request `pageSize=200` to populate full dropdown/context lists, and the mismatch was causing live 400 errors on multiple admin/learner pages — see `pagination.schema.ts`). |
 | TV-027 | Error format | `{ error: { code, message, details, requestId } }` | PROPOSED | Удобно для frontend и debugging. |
 | TV-028 | DTO validation | Zod | DONE | Runtime validation uses Zod schemas in auth/API areas touched so far. |
 | TV-029 | OpenAPI generation | После стабилизации первых endpoints | DEFERRED | Не блокирует MVP foundation. |
