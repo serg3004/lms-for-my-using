@@ -112,6 +112,7 @@ model Organization {
   slug                            String                         @unique
   status                          OrganizationStatus             @default(active)
   plan                            OrganizationPlan               @default(trial)
+  themeSettings                   Json?                          @map("theme_settings")
   createdAt                       DateTime                       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                       DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                       DateTime?                      @map("deleted_at") @db.Timestamptz

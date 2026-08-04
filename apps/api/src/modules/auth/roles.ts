@@ -10,6 +10,8 @@ export type EndpointAccess = 'public' | 'authenticated';
 export const rolePolicies = {
   organizationsRead: ['admin'],
   organizationsCreate: ['admin'],
+  themeSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
+  themeSettingsWrite: ['admin'],
   usersRead: ['admin', 'manager'],
   usersCreate: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],

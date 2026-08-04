@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
@@ -8,8 +8,10 @@ import { RolesGuard } from '../auth/roles.guard.js';
 import {
   CreateOrganizationInput,
   RegisterOrganizationInput,
+  ThemeSettingsInput,
   createOrganizationSchema,
   registerOrganizationSchema,
+  themeSettingsSchema,
 } from './organizations.schemas.js';
 import { OrganizationsService } from './organizations.service.js';
 
@@ -47,5 +49,31 @@ export class OrganizationsController {
     const input: CreateOrganizationInput = createOrganizationSchema.parse(body);
 
     return this.organizationsService.createOrganization(input);
+  }
+
+  @Get(':id/theme')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.themeSettingsRead)
+  @OrganizationScope('param', 'id')
+  getThemeSettings(@Param('id') organizationId: string) {
+    return this.organizationsService.getThemeSettings(organizationId);
+  }
+
+  @Patch(':id/theme')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.themeSettingsWrite)
+  @OrganizationScope('param', 'id')
+  updateThemeSettings(@Param('id') organizationId: string, @Body() body: unknown) {
+    const input: ThemeSettingsInput = themeSettingsSchema.parse(body);
+
+    return this.organizationsService.updateThemeSettings(organizationId, input);
+  }
+
+  @Delete(':id/theme')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.themeSettingsWrite)
+  @OrganizationScope('param', 'id')
+  resetThemeSettings(@Param('id') organizationId: string) {
+    return this.organizationsService.resetThemeSettings(organizationId);
   }
 }

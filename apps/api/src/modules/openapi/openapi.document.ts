@@ -129,6 +129,11 @@ export function getOpenApiDocument(): OpenApiDocument {
       '/organizations/{id}': {
         get: operation('Get organization', ['Organizations'], true),
       },
+      '/organizations/{id}/theme': {
+        get: operation('Get organization theme settings', ['Organizations'], true),
+        patch: operation('Update organization theme settings', ['Organizations'], true),
+        delete: operation('Reset organization theme settings', ['Organizations'], true),
+      },
       '/users': {
         get: operation('List users', ['Users'], true),
         post: operation('Create user', ['Users'], true),
