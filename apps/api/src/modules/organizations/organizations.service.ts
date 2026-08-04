@@ -1,8 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { hashPassword } from '../auth/passwords.js';
-import { CreateOrganizationInput, RegisterOrganizationInput } from './organizations.schemas.js';
+import { CreateOrganizationInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 const organizationSelect = {
   id: true,
@@ -109,6 +110,46 @@ export class OrganizationsService {
       organization,
       admin,
     };
+  }
+
+  async getThemeSettings(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({
+      where: {
+        id: organizationId,
+        deletedAt: null,
+      },
+      select: { themeSettings: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return { themeSettings: organization.themeSettings };
+  }
+
+  async updateThemeSettings(organizationId: string, themeSettings: ThemeSettingsInput) {
+    await this.getThemeSettings(organizationId);
+
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { themeSettings },
+      select: { themeSettings: true },
+    });
+
+    return { themeSettings: updated.themeSettings };
+  }
+
+  async resetThemeSettings(organizationId: string) {
+    await this.getThemeSettings(organizationId);
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { themeSettings: Prisma.JsonNull },
+      select: { id: true },
+    });
+
+    return { themeSettings: null };
   }
 
   private async ensureOrganizationSlugIsAvailable(slug: string) {
