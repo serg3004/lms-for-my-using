@@ -39,10 +39,22 @@
     "organizationId": "Organization ID",
     "sectionsTitle": "Quick links",
     "sections": {
-      "courses": { "title": "Courses", "description": "Create and manage training courses." },
-      "users": { "title": "Users", "description": "Manage organization members and roles." },
-      "assignments": { "title": "Assignments", "description": "Assign courses to learners." },
-      "reports": { "title": "Results", "description": "View certificates and assessment scores." }
+      "courses": {
+        "title": "Courses",
+        "description": "Create and manage training courses."
+      },
+      "users": {
+        "title": "Users",
+        "description": "Manage organization members and roles."
+      },
+      "assignments": {
+        "title": "Assignments",
+        "description": "Assign courses to learners."
+      },
+      "reports": {
+        "title": "Results",
+        "description": "View certificates and assessment scores."
+      }
     },
     "dashboard": {
       "downloadReport": "Download report",
@@ -471,8 +483,12 @@
         "adminSidebarTextMuted": "Sidebar muted text"
       }
     },
-    "orgStructure": { "eyebrow": "Company structure" },
-    "courseBuilder": { "eyebrow": "Course editor" }
+    "orgStructure": {
+      "eyebrow": "Company structure"
+    },
+    "courseBuilder": {
+      "eyebrow": "Course editor"
+    }
   },
   "notFound": {
     "title": "Page not found",
@@ -735,7 +751,15 @@
     "weeklyGoalDone": "You've reached your weekly goal!",
     "weeklyGoalRemaining": "Lessons left to reach your goal: {{count}}",
     "streakTitle": "Learning streak",
-    "streakDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "streakDays": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
     "activityTitle": "Recent activity",
     "activityEmpty": "No activity in the selected period.",
     "activity": {
@@ -1031,7 +1055,30 @@
       "publicationStatus": "Publication status",
       "lastUpdated": "Last updated: {{date}}",
       "lessonsTitle": "Lessons ({{count}})",
-      "lessonsEmpty": "No lessons added yet."
+      "lessonsEmpty": "No lessons added yet.",
+      "eyebrowCreate": "New course",
+      "eyebrowEdit": "Editing",
+      "subCreate": "Enter the main details and save a draft.",
+      "subEdit": "Update course content and structure.",
+      "fieldCategory": "Category",
+      "categoryNone": "No category",
+      "categorySafety": "Safety",
+      "categoryManagement": "Management",
+      "fieldDuration": "Duration (min)",
+      "nextStepsTitle": "Next steps",
+      "nextStep1": "Add lessons",
+      "nextStep2": "Add materials",
+      "nextStep3": "Configure assessment",
+      "addLesson": "Add lesson",
+      "editLesson": "Edit",
+      "addLessonDialogTitle": "Add lesson",
+      "editLessonDialogTitle": "Edit lesson",
+      "lessonFieldTitle": "Lesson title",
+      "lessonTitleRequired": "Enter a lesson title",
+      "lessonSaveError": "Could not save the lesson. Try again.",
+      "dialogClose": "Close",
+      "dialogCancel": "Cancel",
+      "dialogSave": "Save"
     },
     "courseStudents": {
       "loading": "Loading...",

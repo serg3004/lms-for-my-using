@@ -39,10 +39,22 @@
     "organizationId": "ID организации",
     "sectionsTitle": "Быстрые ссылки",
     "sections": {
-      "courses": { "title": "Курсы", "description": "Создавайте и управляйте учебными курсами." },
-      "users": { "title": "Пользователи", "description": "Управляйте участниками организации и их ролями." },
-      "assignments": { "title": "Назначения", "description": "Назначайте курсы ученикам." },
-      "reports": { "title": "Результаты", "description": "Просматривайте сертификаты и результаты тестов." }
+      "courses": {
+        "title": "Курсы",
+        "description": "Создавайте и управляйте учебными курсами."
+      },
+      "users": {
+        "title": "Пользователи",
+        "description": "Управляйте участниками организации и их ролями."
+      },
+      "assignments": {
+        "title": "Назначения",
+        "description": "Назначайте курсы ученикам."
+      },
+      "reports": {
+        "title": "Результаты",
+        "description": "Просматривайте сертификаты и результаты тестов."
+      }
     },
     "dashboard": {
       "downloadReport": "Скачать отчёт",
@@ -471,8 +483,12 @@
         "adminSidebarTextMuted": "Приглушённый текст сайдбара"
       }
     },
-    "orgStructure": { "eyebrow": "Структура компании" },
-    "courseBuilder": { "eyebrow": "Редактор курса" }
+    "orgStructure": {
+      "eyebrow": "Структура компании"
+    },
+    "courseBuilder": {
+      "eyebrow": "Редактор курса"
+    }
   },
   "notFound": {
     "title": "Страница не найдена",
@@ -735,7 +751,15 @@
     "weeklyGoalDone": "Вы выполнили недельную цель!",
     "weeklyGoalRemaining": "Осталось уроков до цели: {{count}}",
     "streakTitle": "Учебная серия",
-    "streakDays": ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"],
+    "streakDays": [
+      "Пн",
+      "Вт",
+      "Ср",
+      "Чт",
+      "Пт",
+      "Сб",
+      "Вс"
+    ],
     "activityTitle": "Последняя активность",
     "activityEmpty": "Нет активности за выбранный период.",
     "activity": {
@@ -1048,7 +1072,30 @@
       "publicationStatus": "Статус публикации",
       "lastUpdated": "Последнее обновление: {{date}}",
       "lessonsTitle": "Уроки ({{count}})",
-      "lessonsEmpty": "Уроки ещё не добавлены."
+      "lessonsEmpty": "Уроки ещё не добавлены.",
+      "eyebrowCreate": "Новый курс",
+      "eyebrowEdit": "Редактирование",
+      "subCreate": "Заполните основные данные и сохраните черновик.",
+      "subEdit": "Обновите содержание и структуру курса.",
+      "fieldCategory": "Категория",
+      "categoryNone": "Без категории",
+      "categorySafety": "Безопасность",
+      "categoryManagement": "Управление",
+      "fieldDuration": "Длительность (мин.)",
+      "nextStepsTitle": "Следующие шаги",
+      "nextStep1": "Добавьте уроки",
+      "nextStep2": "Добавьте материалы",
+      "nextStep3": "Настройте тест",
+      "addLesson": "Добавить урок",
+      "editLesson": "Изменить",
+      "addLessonDialogTitle": "Добавить урок",
+      "editLessonDialogTitle": "Изменить урок",
+      "lessonFieldTitle": "Название урока",
+      "lessonTitleRequired": "Введите название урока",
+      "lessonSaveError": "Не удалось сохранить урок. Попробуйте ещё раз.",
+      "dialogClose": "Закрыть",
+      "dialogCancel": "Отмена",
+      "dialogSave": "Сохранить"
     },
     "courseStudents": {
       "loading": "Загрузка...",

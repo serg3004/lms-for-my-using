@@ -39,10 +39,22 @@
     "organizationId": "组织 ID",
     "sectionsTitle": "快捷链接",
     "sections": {
-      "courses": { "title": "课程", "description": "创建并管理培训课程。" },
-      "users": { "title": "用户", "description": "管理组织成员及其角色。" },
-      "assignments": { "title": "任务", "description": "为学员分配课程。" },
-      "reports": { "title": "结果", "description": "查看证书和测试成绩。" }
+      "courses": {
+        "title": "课程",
+        "description": "创建并管理培训课程。"
+      },
+      "users": {
+        "title": "用户",
+        "description": "管理组织成员及其角色。"
+      },
+      "assignments": {
+        "title": "任务",
+        "description": "为学员分配课程。"
+      },
+      "reports": {
+        "title": "结果",
+        "description": "查看证书和测试成绩。"
+      }
     },
     "dashboard": {
       "downloadReport": "下载报告",
@@ -471,8 +483,12 @@
         "adminSidebarTextMuted": "侧边栏浅色文本"
       }
     },
-    "orgStructure": { "eyebrow": "公司结构" },
-    "courseBuilder": { "eyebrow": "课程编辑器" }
+    "orgStructure": {
+      "eyebrow": "公司结构"
+    },
+    "courseBuilder": {
+      "eyebrow": "课程编辑器"
+    }
   },
   "notFound": {
     "title": "页面未找到",
@@ -735,7 +751,15 @@
     "weeklyGoalDone": "您已完成本周目标！",
     "weeklyGoalRemaining": "距离目标还差 {{count}} 节课",
     "streakTitle": "学习连续记录",
-    "streakDays": ["一", "二", "三", "四", "五", "六", "日"],
+    "streakDays": [
+      "一",
+      "二",
+      "三",
+      "四",
+      "五",
+      "六",
+      "日"
+    ],
     "activityTitle": "最近活动",
     "activityEmpty": "所选时间段内没有活动。",
     "activity": {
@@ -1001,7 +1025,30 @@
       "publicationStatus": "发布状态",
       "lastUpdated": "最后更新：{{date}}",
       "lessonsTitle": "课时（{{count}}）",
-      "lessonsEmpty": "尚未添加课时。"
+      "lessonsEmpty": "尚未添加课时。",
+      "eyebrowCreate": "新课程",
+      "eyebrowEdit": "编辑",
+      "subCreate": "填写主要信息并保存草稿。",
+      "subEdit": "更新课程内容和结构。",
+      "fieldCategory": "分类",
+      "categoryNone": "无分类",
+      "categorySafety": "安全",
+      "categoryManagement": "管理",
+      "fieldDuration": "时长（分钟）",
+      "nextStepsTitle": "下一步",
+      "nextStep1": "添加课时",
+      "nextStep2": "添加资料",
+      "nextStep3": "配置测试",
+      "addLesson": "添加课时",
+      "editLesson": "编辑",
+      "addLessonDialogTitle": "添加课时",
+      "editLessonDialogTitle": "编辑课时",
+      "lessonFieldTitle": "课时名称",
+      "lessonTitleRequired": "请输入课时名称",
+      "lessonSaveError": "无法保存课时，请重试。",
+      "dialogClose": "关闭",
+      "dialogCancel": "取消",
+      "dialogSave": "保存"
     },
     "courseStudents": {
       "loading": "加载中...",

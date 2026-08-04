@@ -22,6 +22,8 @@ export type CreateCourseInput = {
   title: string;
   slug: string;
   description?: string;
+  category?: string;
+  durationMinutes?: number;
   status?: string;
 };
 
@@ -29,6 +31,8 @@ export type UpdateCourseInput = {
   title?: string;
   slug?: string;
   description?: string;
+  category?: string;
+  durationMinutes?: number;
   status?: string;
 };
 
