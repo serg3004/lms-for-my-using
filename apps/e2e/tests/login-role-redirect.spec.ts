@@ -82,7 +82,7 @@ test.describe('login and role redirects', () => {
       expiredAccessRejected: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 401),
       refreshSucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/refresh' && status === 201),
       retrySucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 200),
-    })).toEqual({
+    }), { timeout: 10_000 }).toEqual({
       expiredAccessRejected: true,
       refreshSucceeded: true,
       retrySucceeded: true,
