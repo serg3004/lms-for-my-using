@@ -132,7 +132,7 @@ DONE — реализовано и подтверждено в коде/тест
 | TV-051 | Staging нужен сразу? | Да, если Railway budget позволяет | PROPOSED | Иначе local + production позже. |
 | TV-052 | Web hosting | Railway service или static hosting | TODO VERIFY | Зависит от выбранной схемы. |
 | TV-053 | DB migrations in deploy | Manual controlled command first | PROPOSED | Не запускать risky migrations автоматически без контроля. |
-| TV-054 | Backups | Railway/DB provider backups + documented restore | TODO VERIFY | До пилота обязательно. |
+| TV-054 | Backups | Railway scheduled volume backups (Postgres + MinIO) | DEFERRED | Railway поддерживает scheduled volume backups и опционально Point-in-Time Recovery для Postgres (Backups tab, включается только из дашборда — недоступно через API/MCP). Сознательно не включено сейчас: личный/пилотный проект, потеря данных приемлема на этой стадии. Включить перед тем как появятся реальные пользователи/данные, которые жалко потерять. |
 | TV-055 | Observability | logs + healthcheck in MVP | PROPOSED | Sentry/OpenTelemetry позже. |
 
 ---
