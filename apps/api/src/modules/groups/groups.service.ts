@@ -1,7 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateGroupInput } from './groups.schemas.js';
+import { CreateGroupInput, UpdateGroupInput } from './groups.schemas.js';
 
 const groupSelect = {
   id: true,
@@ -9,9 +9,16 @@ const groupSelect = {
   name: true,
   slug: true,
   description: true,
+  location: true,
   status: true,
   createdAt: true,
   updatedAt: true,
+  _count: { select: { members: true } },
+  managers: {
+    select: {
+      manager: { select: { id: true, firstName: true, lastName: true } },
+    },
+  },
 } as const;
 
 @Injectable()
@@ -74,6 +81,23 @@ export class GroupsService {
     }
 
     return this.prisma.group.create({
+      data: input,
+      select: groupSelect,
+    });
+  }
+
+  async updateGroup(groupId: string, organizationId: string, input: UpdateGroupInput) {
+    const group = await this.prisma.group.findFirst({
+      where: { id: groupId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    return this.prisma.group.update({
+      where: { id: groupId, organizationId },
       data: input,
       select: groupSelect,
     });

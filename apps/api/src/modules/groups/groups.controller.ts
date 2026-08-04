@@ -1,11 +1,11 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
-import { createGroupSchema, CreateGroupInput } from './groups.schemas.js';
+import { createGroupSchema, CreateGroupInput, updateGroupSchema } from './groups.schemas.js';
 import { GroupsService } from './groups.service.js';
 
 @Controller('groups')
@@ -33,5 +33,12 @@ export class GroupsController {
     const input: CreateGroupInput = createGroupSchema.parse(body);
 
     return this.groupsService.createGroup(input);
+  }
+
+  @Patch(':id')
+  @Roles(...rolePolicies.groupsCreate)
+  updateGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateGroupSchema.parse(body);
+    return this.groupsService.updateGroup(groupId, request.currentUser!.organizationId, input);
   }
 }

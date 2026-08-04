@@ -91,11 +91,21 @@ describe('admin page smoke rendering', () => {
 
     useFirstCallReadyState({
       status: 'loaded',
-      organizations: [{ id: 'org-1', name: 'Demo Company', slug: 'demo', status: 'active' }],
-      groups: [{ id: 'group-1', name: 'Safety', slug: 'safety', status: 'active' }],
-      users: [{ id: 'user-1', email: 'admin@demo.com', position: 'Manager', shift: 'Day' }],
+      organizationId: 'org-1',
+      employeeCount: 1,
+      groups: [{
+        id: 'group-1',
+        organizationId: 'org-1',
+        name: 'Safety',
+        slug: 'safety',
+        description: null,
+        location: 'Almaty',
+        status: 'active',
+        _count: { members: 3 },
+        managers: [{ manager: { id: 'user-1', firstName: 'Admin', lastName: 'User' } }],
+      }],
     });
-    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('Demo Company');
+    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('Safety');
   });
 
   it('renders roles loading and populated states', () => {
