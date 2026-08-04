@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
+import { getCurrentUser } from '../shared/api/auth.js';
 import {
   ThemeSettings,
-  defaultThemeSettings,
   getStoredThemeSettings,
-  resetThemeSettings,
-  saveThemeSettings,
+  resetOrganizationThemeSettings,
+  saveOrganizationThemeSettings,
   themePresets,
 } from '../shared/theme.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
@@ -74,6 +74,7 @@ export function AdminThemeSettingsPage() {
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => getStoredThemeSettings());
   const [statusMessage, setStatusMessage] = useState('');
   const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
+  const [isSaving, setIsSaving] = useState(false);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.themeSettings.title', 'Theme settings'), href: '/admin/theme-settings', isCurrent: true },
@@ -102,29 +103,49 @@ export function AdminThemeSettingsPage() {
     }
   }
 
-  function saveTheme() {
-    saveThemeSettings(themeSettings);
-    setStatusMessage(t('admin.themeSettings.saved', 'Theme settings saved locally.'));
+  async function saveTheme() {
+    setIsSaving(true);
+    try {
+      const { organizationId } = await getCurrentUser();
+      const saved = await saveOrganizationThemeSettings(organizationId, themeSettings);
+
+      syncThemeSettings(saved);
+      setStatusMessage(t('admin.themeSettings.saved', 'Theme settings saved.'));
+    } catch {
+      setStatusMessage(t('admin.themeSettings.saveError', 'Unable to save theme settings. Try again.'));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function resetTheme() {
-    resetThemeSettings();
-    syncThemeSettings(defaultThemeSettings);
-    setStatusMessage(t('admin.themeSettings.resetDone', 'Theme settings reset.'));
+  async function resetTheme() {
+    setIsSaving(true);
+    try {
+      const { organizationId } = await getCurrentUser();
+      const reset = await resetOrganizationThemeSettings(organizationId);
+
+      syncThemeSettings(reset);
+      setStatusMessage(t('admin.themeSettings.resetDone', 'Theme settings reset.'));
+    } catch {
+      setStatusMessage(t('admin.themeSettings.saveError', 'Unable to save theme settings. Try again.'));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  function importSettings() {
+  async function importSettings() {
+    setIsSaving(true);
     try {
       const importedSettings = JSON.parse(settingsJson) as ThemeSettings;
+      const { organizationId } = await getCurrentUser();
+      const saved = await saveOrganizationThemeSettings(organizationId, importedSettings);
 
-      saveThemeSettings(importedSettings);
-      const storedSettings = getStoredThemeSettings();
-
-      setThemeSettings(storedSettings);
-      setSettingsJson(getSettingsJson(storedSettings));
+      syncThemeSettings(saved);
       setStatusMessage(t('admin.themeSettings.imported', 'Theme settings imported.'));
     } catch {
       setStatusMessage(t('admin.themeSettings.importError', 'Unable to import theme settings.'));
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -139,7 +160,7 @@ export function AdminThemeSettingsPage() {
         title={t('admin.themeSettings.title', 'Theme settings')}
         subtitle={t(
           'admin.themeSettings.subtitle',
-          'Tune the admin workspace colors, layout tokens, and sidebar locally without changing organization data.',
+          'Tune the admin workspace colors, layout tokens, and sidebar for your organization.',
         )}
       />
 
@@ -248,16 +269,16 @@ export function AdminThemeSettingsPage() {
             {t('admin.themeSettings.jsonLabel', 'Theme JSON')}
             <textarea value={settingsJson} rows={10} onChange={(event) => setSettingsJson(event.target.value)} />
           </label>
-          <button type="button" onClick={importSettings}>
+          <button type="button" disabled={isSaving} onClick={() => void importSettings()}>
             {t('admin.themeSettings.import', 'Import JSON')}
           </button>
         </section>
 
         <footer className="admin-theme-settings__actions">
-          <button type="button" onClick={saveTheme}>
-            {t('admin.themeSettings.save', 'Save theme')}
+          <button type="button" disabled={isSaving} onClick={() => void saveTheme()}>
+            {isSaving ? t('admin.themeSettings.saving', 'Saving...') : t('admin.themeSettings.save', 'Save theme')}
           </button>
-          <button type="button" className="admin-theme-settings__secondary-action" onClick={resetTheme}>
+          <button type="button" className="admin-theme-settings__secondary-action" disabled={isSaving} onClick={() => void resetTheme()}>
             {t('admin.themeSettings.reset', 'Reset')}
           </button>
           {statusMessage ? <p role="status">{statusMessage}</p> : null}
