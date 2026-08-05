@@ -218,6 +218,9 @@ export function AdminThemeSettingsPage() {
       <section className="admin-theme-settings">
         <section className="admin-card">
           <h2>{t('admin.themeSettings.presetsTitle', 'Presets')}</h2>
+          <p className="admin-theme-settings__hint">
+            {t('admin.themeSettings.presetsHint', 'Quickly apply a ready-made color scheme on top of your current settings.')}
+          </p>
           <label>
             {t('admin.themeSettings.presetLabel', 'Theme preset')}
             <select value={selectedPresetId} onChange={(event) => applyPreset(event.target.value)}>
