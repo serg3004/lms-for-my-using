@@ -529,7 +529,8 @@
       "close": "Close"
     },
     "courseBuilder": {
-      "eyebrow": "Course editor"
+      "eyebrow": "Course editor",
+      "title": "Courses"
     }
   },
   "notFound": {

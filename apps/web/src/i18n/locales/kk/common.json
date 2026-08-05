@@ -529,7 +529,8 @@
       "close": "Жабу"
     },
     "courseBuilder": {
-      "eyebrow": "Курс редакторы"
+      "eyebrow": "Курс редакторы",
+      "title": "Курстар"
     }
   },
   "notFound": {
