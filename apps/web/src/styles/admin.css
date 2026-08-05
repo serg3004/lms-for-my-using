@@ -1098,11 +1098,28 @@
     padding: 1rem;
   }
 }
-.admin-users-filters .ui-toolbar__left {
-  align-items: end;
+.admin-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-toolbar__left {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  min-width: 220px;
+}
+
+.admin-toolbar__right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
 }
 
 .admin-users-filter {

@@ -181,7 +181,13 @@
       "passwordRequired": "请填写密码",
       "passwordTooShort": "密码至少需要8个字符",
       "duplicateEmail": "该邮箱的用户已存在",
-      "saveFailed": "保存用户失败，请重试。"
+      "saveFailed": "保存用户失败，请重试。",
+      "status": {
+        "active": "启用",
+        "invited": "已邀请",
+        "suspended": "已暂停",
+        "archived": "已归档"
+      }
     },
     "lessons": {
       "eyebrow": "学习内容",
