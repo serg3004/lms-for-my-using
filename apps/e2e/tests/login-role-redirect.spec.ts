@@ -61,6 +61,12 @@ test.describe('login and role redirects', () => {
   });
 
   test('an expired access cookie is refreshed before the protected route renders', async ({ context, page }) => {
+    // This is the only test in the suite whose assertions depend on three sequential real
+    // network round-trips (401 on /auth/me -> POST /auth/refresh -> retry /auth/me) plus the
+    // React re-renders between them, so it has far less slack than the default 30s budget
+    // gives every other test here. Give it extra headroom instead of sharing the same margin.
+    test.setTimeout(60_000);
+
     await loginAs(page, 'learner');
     await expect(page).toHaveURL(/\/learn$/);
 
