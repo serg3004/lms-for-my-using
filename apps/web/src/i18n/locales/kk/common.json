@@ -276,7 +276,11 @@
       "close": "Жабу",
       "updating": "Сақталуда...",
       "update": "Өзгерістерді сақтау",
-      "cancel": "Бас тарту"
+      "cancel": "Бас тарту",
+      "status": {
+        "active": "Белсенді",
+        "archived": "Мұрағатталды"
+      }
     },
     "assessmentBuilder": {
       "eyebrow": "Білімді бақылау",
