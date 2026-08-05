@@ -419,6 +419,7 @@
       "issueError": "Не удалось выдать сертификат.",
       "issuing": "Выдача...",
       "issue": "Выдать сертификат",
+      "export": "Экспорт CSV",
       "assessmentResultsTitle": "Результаты тестов",
       "noAssessments": "Тесты не найдены.",
       "assessment": "Тест",
@@ -427,16 +428,13 @@
         "score": "Результат",
         "status": "Статус",
         "course": "Курс",
-        "issuedAt": "Выдан"
+        "issuedAt": "Выдан",
+        "progress": "Прогресс"
       },
       "passed": "Пройден",
       "failed": "Не пройден",
       "noResults": "Результаты тестов не найдены.",
-      "progressTitle": "Прогресс по курсам",
-      "noScore": "Нет результата",
-      "noProgress": "Записи о прогрессе не найдены.",
-      "certificatesTitle": "Выданные сертификаты",
-      "noCertificates": "Сертификаты пока не выданы."
+      "noProgress": "Записи о прогрессе не найдены."
     },
     "roles": {
       "eyebrow": "Контроль доступа",

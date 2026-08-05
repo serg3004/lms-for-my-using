@@ -419,6 +419,7 @@
       "issueError": "颁发证书失败。",
       "issuing": "颁发中...",
       "issue": "颁发证书",
+      "export": "导出 CSV",
       "assessmentResultsTitle": "测试结果",
       "noAssessments": "未找到测试。",
       "assessment": "测试",
@@ -427,16 +428,13 @@
         "score": "成绩",
         "status": "状态",
         "course": "课程",
-        "issuedAt": "颁发时间"
+        "issuedAt": "颁发时间",
+        "progress": "进度"
       },
       "passed": "已通过",
       "failed": "未通过",
       "noResults": "未找到测试结果。",
-      "progressTitle": "课程进度",
-      "noScore": "无成绩",
-      "noProgress": "未找到进度记录。",
-      "certificatesTitle": "已颁发证书",
-      "noCertificates": "尚未颁发证书。"
+      "noProgress": "未找到进度记录。"
     },
     "roles": {
       "eyebrow": "访问控制",

@@ -419,6 +419,7 @@
       "issueError": "Сертификатты беру мүмкін болмады.",
       "issuing": "Берілуде...",
       "issue": "Сертификат беру",
+      "export": "CSV экспорттау",
       "assessmentResultsTitle": "Тест нәтижелері",
       "noAssessments": "Тесттер табылмады.",
       "assessment": "Тест",
@@ -427,16 +428,13 @@
         "score": "Нәтиже",
         "status": "Күй",
         "course": "Курс",
-        "issuedAt": "Берілген күні"
+        "issuedAt": "Берілген күні",
+        "progress": "Прогресс"
       },
       "passed": "Өтті",
       "failed": "Өтпеді",
       "noResults": "Тест нәтижелері табылмады.",
-      "progressTitle": "Курс бойынша прогресс",
-      "noScore": "Нәтиже жоқ",
-      "noProgress": "Прогресс жазбалары табылмады.",
-      "certificatesTitle": "Берілген сертификаттар",
-      "noCertificates": "Әлі сертификат берілмеген."
+      "noProgress": "Прогресс жазбалары табылмады."
     },
     "roles": {
       "eyebrow": "Қолжетімділікті бақылау",
