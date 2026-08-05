@@ -270,7 +270,11 @@
       "close": "关闭",
       "updating": "保存中...",
       "update": "保存更改",
-      "cancel": "取消"
+      "cancel": "取消",
+      "status": {
+        "active": "启用",
+        "archived": "已归档"
+      }
     },
     "assessmentBuilder": {
       "eyebrow": "知识控制",

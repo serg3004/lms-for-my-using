@@ -51,6 +51,10 @@ const ACCEPTED_FILE_TYPES = [
 
 export function AdminMaterialsPage() {
   const { t } = useTranslation();
+  const statusLabels: Record<MaterialStatus, string> = {
+    active: t('admin.materials.status.active', 'Active'),
+    archived: t('admin.materials.status.archived', 'Archived'),
+  };
   const materialMutations = useMaterialMutations();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
@@ -526,7 +530,7 @@ export function AdminMaterialsPage() {
             <input id="material-edit-filename" value={editFileName} onChange={(event) => setEditFileName(event.target.value)} maxLength={255} />
           </FormField>
           <FormField id="material-edit-status" label={t('admin.materials.col.status', 'Status')}>
-            <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
+            <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} labels={statusLabels} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
           </FormField>
           <FormField id="material-edit-description" label={t('admin.materials.description', 'Description')}>
             <textarea id="material-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />

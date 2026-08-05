@@ -270,7 +270,11 @@
       "close": "Close",
       "updating": "Saving...",
       "update": "Save changes",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "status": {
+        "active": "Active",
+        "archived": "Archived"
+      }
     },
     "assessmentBuilder": {
       "eyebrow": "Knowledge control",

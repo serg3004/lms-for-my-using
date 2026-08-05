@@ -270,7 +270,11 @@
       "close": "Закрыть",
       "updating": "Сохранение...",
       "update": "Сохранить изменения",
-      "cancel": "Отмена"
+      "cancel": "Отмена",
+      "status": {
+        "active": "Активен",
+        "archived": "Архивирован"
+      }
     },
     "assessmentBuilder": {
       "eyebrow": "Контроль знаний",

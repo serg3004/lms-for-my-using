@@ -261,7 +261,7 @@ export function AdminRolesPage() {
                   <tr key={membership.id}>
                     <td>{getMembershipUserLabel(loadState.users, membership.userId)}</td>
                     <td>
-                      <StatusBadge>{membership.role}</StatusBadge>
+                      <StatusBadge>{t(`admin.roles.options.${membership.role}`, membership.role)}</StatusBadge>
                     </td>
                     <td>{formatDate(membership.createdAt)}</td>
                   </tr>
