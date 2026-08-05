@@ -89,6 +89,40 @@ export class UploadService {
     return `organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
   }
 
+  async uploadOrganizationLogo(file: Express.Multer.File, organizationId: string): Promise<string> {
+    if (!this.s3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const key = `organizations/${organizationId}/branding/${randomUUID()}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return key;
+  }
+
+  async getLogoUrl(key: string, mimeType: string, expiresIn = 300): Promise<string> {
+    if (!this.downloadS3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const safeTtl = Math.min(Math.max(expiresIn, 1), 300);
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ResponseContentType: mimeType,
+    });
+    return getSignedUrl(this.downloadS3, command, { expiresIn: safeTtl });
+  }
+
   createQuarantineObjectKey(organizationId: string, materialId: string): string {
     return `quarantine/organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
   }

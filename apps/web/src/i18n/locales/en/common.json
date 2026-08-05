@@ -488,12 +488,20 @@
       "import": "Import JSON",
       "save": "Save theme",
       "reset": "Reset",
+      "brandingTitle": "Branding",
+      "brandingHint": "Platform name and logo shown in the header and sidebar.",
+      "logoLabel": "Logo",
+      "logoAlt": "Organization logo",
+      "logoUploading": "Uploading logo...",
+      "logoUploaded": "Logo uploaded.",
+      "logoUploadError": "Unable to upload the logo. Try again.",
       "groups": {
         "colors": "Colors",
         "layout": "Layout",
         "sidebar": "Admin sidebar"
       },
       "fields": {
+        "platformName": "Platform name",
         "colorPrimary": "Primary color",
         "colorPrimaryHover": "Primary hover",
         "colorBackground": "Background",

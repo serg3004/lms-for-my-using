@@ -17,6 +17,11 @@ export type ThemeSettings = {
   adminSidebarBackground: string;
   adminSidebarText: string;
   adminSidebarTextMuted: string;
+  platformName: string;
+  /** Server-managed S3 object key; set by uploadOrganizationLogo, round-tripped as-is. */
+  logoObjectKey?: string;
+  /** Server-resolved, short-lived display URL for logoObjectKey; not sent back on save. */
+  logoUrl?: string;
 };
 
 export type ThemePreset = {
@@ -44,6 +49,7 @@ export const defaultThemeSettings: ThemeSettings = {
   adminSidebarBackground: '#111827',
   adminSidebarText: '#ffffff',
   adminSidebarTextMuted: '#cbd5e1',
+  platformName: 'LearnSpace',
 };
 
 export const themePresets: ThemePreset[] = [
@@ -79,7 +85,9 @@ export const themePresets: ThemePreset[] = [
   },
 ];
 
-const themeVariables: Record<keyof ThemeSettings, string> = {
+type CssThemeKey = Exclude<keyof ThemeSettings, 'platformName' | 'logoObjectKey' | 'logoUrl'>;
+
+const themeVariables: Record<CssThemeKey, string> = {
   colorPrimary: '--color-primary',
   colorPrimaryHover: '--color-primary-hover',
   colorBackground: '--color-background',
@@ -105,13 +113,20 @@ function normalizeThemeSettings(value: unknown): ThemeSettings {
 
   const candidate = value as Partial<Record<keyof ThemeSettings, unknown>>;
 
-  return (Object.keys(themeVariables) as Array<keyof ThemeSettings>).reduce<ThemeSettings>(
+  const settings = (Object.keys(themeVariables) as Array<CssThemeKey>).reduce<ThemeSettings>(
     (settings, key) => ({
       ...settings,
       [key]: typeof candidate[key] === 'string' ? candidate[key] : defaultThemeSettings[key],
     }),
     defaultThemeSettings,
   );
+
+  return {
+    ...settings,
+    platformName: typeof candidate.platformName === 'string' ? candidate.platformName : defaultThemeSettings.platformName,
+    logoObjectKey: typeof candidate.logoObjectKey === 'string' ? candidate.logoObjectKey : undefined,
+    logoUrl: typeof candidate.logoUrl === 'string' ? candidate.logoUrl : undefined,
+  };
 }
 
 export function applyThemeSettings(settings: ThemeSettings) {
@@ -121,8 +136,8 @@ export function applyThemeSettings(settings: ThemeSettings) {
 
   const root = document.documentElement;
 
-  Object.entries(themeVariables).forEach(([key, variable]) => {
-    root.style.setProperty(variable, settings[key as keyof ThemeSettings]);
+  (Object.entries(themeVariables) as Array<[CssThemeKey, string]>).forEach(([key, variable]) => {
+    root.style.setProperty(variable, settings[key]);
   });
 }
 
@@ -166,6 +181,21 @@ export async function saveOrganizationThemeSettings(organizationId: string, sett
   const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/theme`, {
     method: 'PATCH',
     body: JSON.stringify(settings),
+  });
+  const saved = normalizeThemeSettings(response.themeSettings);
+
+  saveThemeSettings(saved);
+
+  return saved;
+}
+
+export async function uploadOrganizationThemeLogo(organizationId: string, file: File): Promise<ThemeSettings> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/logo`, {
+    method: 'POST',
+    body: formData,
   });
   const saved = normalizeThemeSettings(response.themeSettings);
 

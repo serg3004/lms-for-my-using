@@ -488,12 +488,20 @@
       "import": "JSON импорттау",
       "save": "Теманы сақтау",
       "reset": "Қалпына келтіру",
+      "brandingTitle": "Брендинг",
+      "brandingHint": "Тақырыпта және сайдбарда көрсетілетін платформа атауы мен логотипі.",
+      "logoLabel": "Логотип",
+      "logoAlt": "Ұйым логотипі",
+      "logoUploading": "Логотип жүктелуде...",
+      "logoUploaded": "Логотип жүктелді.",
+      "logoUploadError": "Логотипті жүктеу мүмкін болмады. Қайталап көріңіз.",
       "groups": {
         "colors": "Түстер",
         "layout": "Макет",
         "sidebar": "Әкімші сайдбары"
       },
       "fields": {
+        "platformName": "Платформа атауы",
         "colorPrimary": "Негізгі түс",
         "colorPrimaryHover": "Негізгі түс (үстінен өткенде)",
         "colorBackground": "Фон",

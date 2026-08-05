@@ -488,12 +488,20 @@
       "import": "Импортировать JSON",
       "save": "Сохранить тему",
       "reset": "Сбросить",
+      "brandingTitle": "Брендинг",
+      "brandingHint": "Название платформы и логотип, отображаемые в шапке и сайдбаре.",
+      "logoLabel": "Логотип",
+      "logoAlt": "Логотип организации",
+      "logoUploading": "Загрузка логотипа...",
+      "logoUploaded": "Логотип загружен.",
+      "logoUploadError": "Не удалось загрузить логотип. Попробуйте снова.",
       "groups": {
         "colors": "Цвета",
         "layout": "Макет",
         "sidebar": "Сайдбар админки"
       },
       "fields": {
+        "platformName": "Название платформы",
         "colorPrimary": "Основной цвет",
         "colorPrimaryHover": "Основной цвет (наведение)",
         "colorBackground": "Фон",
