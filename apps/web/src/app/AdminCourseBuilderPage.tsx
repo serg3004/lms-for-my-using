@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -35,24 +36,24 @@ function slugify(value: string) {
     .slice(0, 80);
 }
 
-function lessonStatusBadge(status: string): { variant: 'published' | 'draft' | 'neutral'; label: string } {
-  if (status === 'published') return { variant: 'published', label: 'Готов' };
-  if (status === 'archived') return { variant: 'neutral', label: 'Архив' };
-  return { variant: 'draft', label: 'Черновик' };
+function lessonStatusBadge(status: string, t: TFunction): { variant: 'published' | 'draft' | 'neutral'; label: string } {
+  if (status === 'published') return { variant: 'published', label: t('admin.courseBuilder.lessonStatus.published', 'Ready') };
+  if (status === 'archived') return { variant: 'neutral', label: t('admin.courseBuilder.lessonStatus.archived', 'Archived') };
+  return { variant: 'draft', label: t('admin.courseBuilder.lessonStatus.draft', 'Draft') };
 }
 
-function courseStatusBadge(status: string): { variant: 'published' | 'draft' | 'neutral'; label: string } {
-  if (status === 'published') return { variant: 'published', label: 'Опубликован' };
-  if (status === 'archived') return { variant: 'neutral', label: 'Архив' };
-  return { variant: 'draft', label: 'Черновик' };
+function courseStatusBadge(status: string, t: TFunction): { variant: 'published' | 'draft' | 'neutral'; label: string } {
+  if (status === 'published') return { variant: 'published', label: t('admin.courses.status.published', 'Published') };
+  if (status === 'archived') return { variant: 'neutral', label: t('admin.courses.status.archived', 'Archived') };
+  return { variant: 'draft', label: t('admin.courses.status.draft', 'Draft') };
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+function formatDate(value: string, language: string): string {
+  return new Date(value).toLocaleDateString(language, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export function AdminCourseBuilderPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { courseId } = useParams<{ courseId: string }>();
   const mutations = useCourseBuilderMutations();
 
@@ -92,12 +93,15 @@ export function AdminCourseBuilderPage() {
       setPageState({ status: 'loaded', course, lessons, currentUser });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
-        setPageState({ status: 'unauthenticated', message: 'Сессия истекла. Войдите снова.' });
+        setPageState({
+          status: 'unauthenticated',
+          message: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
+        });
         return;
       }
-      setPageState({ status: 'error', message: 'Не удалось загрузить курс.' });
+      setPageState({ status: 'error', message: t('admin.courseBuilder.loadError', 'Unable to load the course.') });
     }
-  }, [courseId]);
+  }, [courseId, t]);
 
   useEffect(() => { void loadData(); }, [loadData]);
 
@@ -110,7 +114,7 @@ export function AdminCourseBuilderPage() {
   async function handleSaveCourse(e: React.FormEvent) {
     e.preventDefault();
     if (!courseId) return;
-    const nextCourseErrors = validateCourseForm({ title: formTitle, description: formDescription });
+    const nextCourseErrors = validateCourseForm({ title: formTitle, description: formDescription }, t);
     setCourseErrors(nextCourseErrors);
     if (hasValidationErrors(nextCourseErrors)) return;
     setSaveState({ status: 'saving' });
@@ -122,7 +126,7 @@ export function AdminCourseBuilderPage() {
     } catch (error) {
       setSaveState({
         status: 'error',
-        message: error instanceof ApiClientError ? error.message : 'Не удалось сохранить.',
+        message: error instanceof ApiClientError ? error.message : t('admin.courseBuilder.saveError', 'Unable to save.'),
       });
     }
   }
@@ -151,7 +155,7 @@ export function AdminCourseBuilderPage() {
     e.preventDefault();
     if (!courseId || pageState.status !== 'loaded') return;
     const title = lessonTitle.trim();
-    const nextLessonErrors = validateLessonForm({ title, description: lessonDesc });
+    const nextLessonErrors = validateLessonForm({ title, description: lessonDesc }, t);
     setLessonErrors(nextLessonErrors);
     if (hasValidationErrors(nextLessonErrors)) return;
     const slug = slugify(title);
@@ -173,7 +177,7 @@ export function AdminCourseBuilderPage() {
     } catch (error) {
       setLessonFormState({
         status: 'error',
-        message: error instanceof ApiClientError ? error.message : 'Не удалось создать урок.',
+        message: error instanceof ApiClientError ? error.message : t('admin.courseBuilder.lessonSaveError', 'Unable to create the lesson.'),
       });
     }
   }
@@ -191,7 +195,7 @@ export function AdminCourseBuilderPage() {
   if (pageState.status === 'idle' || pageState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message="Загрузка курса..." variant="loading" />
+        <PageState message={t('admin.courseBuilder.loading', 'Loading course...')} variant="loading" />
       </main>
     );
   }
@@ -199,7 +203,11 @@ export function AdminCourseBuilderPage() {
   if (pageState.status === 'unauthenticated') {
     return (
       <main className="admin-state">
-        <PageState message={pageState.message} variant="error" action={<a href="/login">Войти</a>} />
+        <PageState
+          message={pageState.message}
+          variant="error"
+          action={<a href="/login">{t('admin.courseBuilder.signIn', 'Sign in')}</a>}
+        />
       </main>
     );
   }
@@ -213,7 +221,7 @@ export function AdminCourseBuilderPage() {
   }
 
   const { course, lessons } = pageState;
-  const { variant: statusVariant, label: statusLabel } = courseStatusBadge(course.status);
+  const { variant: statusVariant, label: statusLabel } = courseStatusBadge(course.status, t);
 
   return (
     <AdminPageLayout
@@ -224,10 +232,10 @@ export function AdminCourseBuilderPage() {
       <AdminPageHeader
         eyebrow={t('admin.courseBuilder.eyebrow', 'Course editor')}
         title={course.title}
-        subtitle={`${lessons.length} уроков · обновлён ${formatDate(course.updatedAt)}`}
+        subtitle={`${t('admin.courseBuilder.lessonsCount', { count: lessons.length })} · ${t('admin.courseBuilder.updatedAt', { date: formatDate(course.updatedAt, i18n.language) })}`}
         action={
           <Button variant="secondary" size="sm" type="button" onClick={() => window.location.assign('/admin/courses')}>
-            ← К списку
+            ← {t('admin.courseBuilder.backToList', 'Back to list')}
           </Button>
         }
       />
@@ -236,9 +244,9 @@ export function AdminCourseBuilderPage() {
         {/* Left: main content */}
         <div>
           <Card style={{ marginBottom: '20px' }}>
-            <div className="ds-card__title">Основная информация</div>
+            <div className="ds-card__title">{t('admin.courseBuilder.infoTitle', 'Basic information')}</div>
             <form onSubmit={(e) => void handleSaveCourse(e)}>
-              <FormField id="cb-title" label="Название курса" required error={courseErrors.title}>
+              <FormField id="cb-title" label={t('admin.courses.form.title', 'Course title')} required error={courseErrors.title}>
                 <input
                   id="cb-title"
                   type="text"
@@ -252,7 +260,7 @@ export function AdminCourseBuilderPage() {
                   }}
                 />
               </FormField>
-              <FormField id="cb-desc" label="Описание">
+              <FormField id="cb-desc" label={t('admin.courses.form.description', 'Description')}>
                 <textarea
                   id="cb-desc"
                   rows={4}
@@ -273,10 +281,10 @@ export function AdminCourseBuilderPage() {
                   type="submit"
                   disabled={saveState.status === 'saving'}
                 >
-                  {saveState.status === 'saving' ? 'Сохранение...' : 'Сохранить'}
+                  {saveState.status === 'saving' ? t('admin.courseBuilder.saving', 'Saving...') : t('admin.courseBuilder.save', 'Save')}
                 </Button>
                 {saveState.status === 'saved' ? (
-                  <span style={{ fontSize: '13px', color: 'var(--color-success)' }}>Сохранено ✓</span>
+                  <span style={{ fontSize: '13px', color: 'var(--color-success)' }}>{t('admin.courseBuilder.saved', 'Saved ✓')}</span>
                 ) : null}
               </div>
             </form>
@@ -284,7 +292,7 @@ export function AdminCourseBuilderPage() {
 
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <div className="ds-card__title" style={{ marginBottom: 0 }}>Уроки</div>
+              <div className="ds-card__title" style={{ marginBottom: 0 }}>{t('admin.lessons.lessonsTitle', 'Lessons')}</div>
               <Button
                 variant="secondary"
                 size="sm"
@@ -297,13 +305,13 @@ export function AdminCourseBuilderPage() {
                   setShowAddLesson(true);
                 }}
               >
-                + Добавить урок
+                + {t('admin.courseBuilder.addLesson', 'Add lesson')}
               </Button>
             </div>
 
             {lessons.length === 0 ? (
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '14px' }}>
-                Уроков пока нет. Добавьте первый урок.
+                {t('admin.courseBuilder.noLessons', 'No lessons yet. Add the first one.')}
               </p>
             ) : (
               <div className="lesson-list">
@@ -311,7 +319,7 @@ export function AdminCourseBuilderPage() {
                   .slice()
                   .sort((a, b) => a.order - b.order)
                   .map((lesson, idx) => {
-                    const { variant, label } = lessonStatusBadge(lesson.status);
+                    const { variant, label } = lessonStatusBadge(lesson.status, t);
                     return (
                       <div key={lesson.id} className="lesson-row">
                         <span className="lesson-row__drag" aria-hidden="true">⠿</span>
@@ -323,7 +331,9 @@ export function AdminCourseBuilderPage() {
                             variant="ghost"
                             size="sm"
                             type="button"
-                            title={lesson.status === 'published' ? 'Снять с публикации' : 'Опубликовать'}
+                            title={lesson.status === 'published'
+                              ? t('admin.courseBuilder.unpublish', 'Unpublish')
+                              : t('admin.courseBuilder.publish', 'Publish')}
                             onClick={() => void handleToggleLessonStatus(lesson)}
                           >
                             ✏
@@ -345,25 +355,25 @@ export function AdminCourseBuilderPage() {
               <Badge variant={statusVariant}>{statusLabel}</Badge>
               <h2 style={{ margin: '10px 0 6px', fontSize: 'var(--text-lg)' }}>{course.title}</h2>
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-                Так карточка курса будет выглядеть для ученика.
+                {t('admin.courseBuilder.previewNote', 'This is how the course card will appear to learners.')}
               </p>
             </div>
           </Card>
 
           <Card style={{ marginBottom: '16px' }}>
-            <div className="ds-card__title">Публикация</div>
+            <div className="ds-card__title">{t('admin.courseBuilder.publicationTitle', 'Publication')}</div>
             <div className="info-row">
-              <span className="info-row__label">Статус</span>
+              <span className="info-row__label">{t('admin.courses.col.status', 'Status')}</span>
               <Badge variant={statusVariant}>{statusLabel}</Badge>
             </div>
             <div className="info-row">
-              <span className="info-row__label">Уроков</span>
+              <span className="info-row__label">{t('admin.courseBuilder.lessonsCountLabel', 'Lessons')}</span>
               <span style={{ fontSize: 'var(--text-sm)' }}>{lessons.length}</span>
             </div>
             <div className="info-row">
-              <span className="info-row__label">Создан</span>
+              <span className="info-row__label">{t('admin.courseBuilder.createdLabel', 'Created')}</span>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-                {formatDate(course.createdAt)}
+                {formatDate(course.createdAt, i18n.language)}
               </span>
             </div>
             <div style={{ marginTop: '16px', display: 'grid', gap: '8px' }}>
@@ -372,9 +382,9 @@ export function AdminCourseBuilderPage() {
                 onChange={(e) => void handleStatusChange(e.target.value as CourseStatus)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}
               >
-                <option value="draft">Черновик</option>
-                <option value="published">Опубликован</option>
-                <option value="archived">Архив</option>
+                <option value="draft">{t('admin.courses.status.draft', 'Draft')}</option>
+                <option value="published">{t('admin.courses.status.published', 'Published')}</option>
+                <option value="archived">{t('admin.courses.status.archived', 'Archived')}</option>
               </select>
               <Button
                 variant="danger"
@@ -382,23 +392,23 @@ export function AdminCourseBuilderPage() {
                 style={{ width: '100%' }}
                 onClick={() => setShowDelete(true)}
               >
-                Удалить курс
+                {t('admin.courses.deleteTitle', 'Delete course')}
               </Button>
             </div>
           </Card>
 
           <Card>
-            <div className="ds-card__title">Статистика</div>
+            <div className="ds-card__title">{t('admin.courseBuilder.statsTitle', 'Statistics')}</div>
             <div className="info-row">
-              <span className="info-row__label">Записано</span>
+              <span className="info-row__label">{t('admin.courseBuilder.enrolledLabel', 'Enrolled')}</span>
               <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
             </div>
             <div className="info-row">
-              <span className="info-row__label">Завершили</span>
+              <span className="info-row__label">{t('admin.courseBuilder.completedLabel', 'Completed')}</span>
               <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
             </div>
             <div className="info-row">
-              <span className="info-row__label">Средний балл</span>
+              <span className="info-row__label">{t('admin.courseBuilder.avgScoreLabel', 'Average score')}</span>
               <span style={{ fontSize: 'var(--text-sm)' }}>—</span>
             </div>
           </Card>
@@ -408,18 +418,18 @@ export function AdminCourseBuilderPage() {
       {/* Add lesson dialog */}
       <dialog className="admin-dialog" ref={addLessonDialogRef} onClose={() => setShowAddLesson(false)}>
         <div className="admin-dialog__header">
-          <h2>Добавить урок</h2>
+          <h2>{t('admin.courseBuilder.addLesson', 'Add lesson')}</h2>
           <button
             className="admin-dialog__close"
             type="button"
-            aria-label="Закрыть"
+            aria-label={t('admin.courseBuilder.close', 'Close')}
             onClick={() => setShowAddLesson(false)}
           >
             ✕
           </button>
         </div>
         <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
-          <FormField id="lesson-title" label="Название урока" required error={lessonErrors.title}>
+          <FormField id="lesson-title" label={t('admin.courseBuilder.lessonTitleLabel', 'Lesson title')} required error={lessonErrors.title}>
             <input
               id="lesson-title"
               maxLength={160}
@@ -433,7 +443,7 @@ export function AdminCourseBuilderPage() {
               }}
             />
           </FormField>
-          <FormField id="lesson-desc" label="Описание">
+          <FormField id="lesson-desc" label={t('admin.courses.form.description', 'Description')}>
             <textarea
               id="lesson-desc"
               maxLength={1000}
@@ -447,14 +457,14 @@ export function AdminCourseBuilderPage() {
           ) : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowAddLesson(false)}>
-              Отмена
+              {t('admin.courseBuilder.cancel', 'Cancel')}
             </button>
             <button
               className="admin-btn admin-btn--primary"
               type="submit"
               disabled={lessonFormState.status === 'submitting'}
             >
-              {lessonFormState.status === 'submitting' ? 'Сохранение...' : 'Добавить'}
+              {lessonFormState.status === 'submitting' ? t('admin.courseBuilder.saving', 'Saving...') : t('admin.courseBuilder.add', 'Add')}
             </button>
           </div>
         </form>
@@ -462,10 +472,10 @@ export function AdminCourseBuilderPage() {
 
       <ConfirmDialog
         open={showDelete}
-        title="Удалить курс"
-        message={`Удалить «${course.title}»? Это действие необратимо.`}
-        confirmLabel="Удалить"
-        cancelLabel="Отмена"
+        title={t('admin.courses.deleteTitle', 'Delete course')}
+        message={t('admin.courses.deleteConfirm', 'Delete "{{title}}"? This action cannot be undone.', { title: course.title })}
+        confirmLabel={t('admin.courseBuilder.delete', 'Delete')}
+        cancelLabel={t('admin.courseBuilder.cancel', 'Cancel')}
         variant="danger"
         onConfirm={() => void handleDeleteCourse()}
         onCancel={() => setShowDelete(false)}
