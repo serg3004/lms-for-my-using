@@ -1005,7 +1005,19 @@
     "resultYourAnswer": "Сіздің жауабыңыз",
     "retryBtn": "Қайталап көру",
     "backToAssessment": "Тестке оралу",
-    "viewCertificate": "Сертификатты қарау"
+    "viewCertificate": "Сертификатты қарау",
+    "timerLabel": "Қалған уақыт",
+    "timerExpired": "Уақыт аяқталды",
+    "questionNavTitle": "Сұрақтар бойынша навигация",
+    "legendAnswered": "Жауап сақталды",
+    "legendCurrent": "Ағымдағы сұрақ",
+    "legendNoAnswer": "Жауап жоқ",
+    "autoSaveNotice": "Жауап нұсқаны таңдағаннан кейін автоматты түрде сақталады.",
+    "questionLabel": "{{n}}-сұрақ",
+    "previousQuestion": "← Алдыңғы сұрақ",
+    "nextQuestion": "Келесі сұрақ →",
+    "progressLabel": "Тест прогресі",
+    "subtitleTaking": "{{total}} сұрақтың {{current}}-сі · өту балы {{score}}%"
   },
   "certificates": {
     "navLink": "Сертификаттар",
@@ -1051,7 +1063,14 @@
     "infoTitle": "Ақпарат",
     "owner": "Иесі",
     "courseLabel": "Курс",
-    "completedAt": "Аяқталған күні"
+    "completedAt": "Аяқталған күні",
+    "detailEyebrow": "Оқуды аяқтау растауы",
+    "detailH1": "Сертификат",
+    "detailSubtitle": "Бұл құжат оқу бағдарламасының сәтті аяқталғанын растайды.",
+    "shareBtn": "Бөлісу",
+    "actionsTitle": "Әрекеттер",
+    "verificationTitle": "Түпнұсқалықты тексеру",
+    "verificationText": "Сертификатты бірегей код арқылы тексеруге болады:"
   },
   "manager": {
     "navLink": "Менеджер",

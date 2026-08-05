@@ -1004,7 +1004,19 @@
     "resultYourAnswer": "Ваш ответ",
     "retryBtn": "Попробовать снова",
     "backToAssessment": "К тесту",
-    "viewCertificate": "Посмотреть сертификат"
+    "viewCertificate": "Посмотреть сертификат",
+    "timerLabel": "Осталось времени",
+    "timerExpired": "Время истекло",
+    "questionNavTitle": "Навигация по вопросам",
+    "legendAnswered": "Ответ сохранён",
+    "legendCurrent": "Текущий вопрос",
+    "legendNoAnswer": "Нет ответа",
+    "autoSaveNotice": "Ответ сохраняется автоматически после выбора варианта.",
+    "questionLabel": "Вопрос {{n}}",
+    "previousQuestion": "← Предыдущий вопрос",
+    "nextQuestion": "Следующий вопрос →",
+    "progressLabel": "Прогресс теста",
+    "subtitleTaking": "Вопрос {{current}} из {{total}} · проходной балл {{score}}%"
   },
   "certificates": {
     "navLink": "Сертификаты",
@@ -1050,7 +1062,14 @@
     "infoTitle": "Информация",
     "owner": "Владелец",
     "courseLabel": "Курс",
-    "completedAt": "Дата завершения"
+    "completedAt": "Дата завершения",
+    "detailEyebrow": "Подтверждение обучения",
+    "detailH1": "Сертификат",
+    "detailSubtitle": "Документ подтверждает успешное завершение учебной программы.",
+    "shareBtn": "Поделиться",
+    "actionsTitle": "Действия",
+    "verificationTitle": "Проверка подлинности",
+    "verificationText": "Сертификат можно проверить по уникальному коду:"
   },
   "manager": {
     "navLink": "Менеджер",
