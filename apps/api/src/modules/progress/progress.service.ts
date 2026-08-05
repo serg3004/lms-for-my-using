@@ -35,7 +35,7 @@ export class ProgressService {
     const where = {
       organizationId,
       ...(userId !== undefined ? { userId } : {}),
-      ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
+      ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId, deletedAt: null } } } } : {}),
       ...this.teamScope.userOwnedResource(actor),
       deletedAt: null,
     } as const;

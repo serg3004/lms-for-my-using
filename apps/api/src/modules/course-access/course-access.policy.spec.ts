@@ -33,7 +33,7 @@ describe('CourseAccessPolicy', () => {
         id: courseId,
         organizationId,
         deletedAt: null,
-        instructors: { some: { instructorId, organizationId } },
+        instructors: { some: { instructorId, organizationId, deletedAt: null } },
       },
       select: { id: true },
     });
@@ -57,9 +57,20 @@ describe('CourseAccessPolicy', () => {
   });
 
   it('creates an ownership assignment for an instructor-created course', async () => {
-    const create = jest.fn(async () => ({}));
-    const policy = new CourseAccessPolicy({ courseInstructor: { create } } as unknown as PrismaService);
+    const upsert = jest.fn(async () => ({}));
+    const policy = new CourseAccessPolicy({ courseInstructor: { upsert } } as unknown as PrismaService);
     await policy.assignInstructor(courseId, user(['instructor']));
-    expect(create).toHaveBeenCalledWith({ data: { courseId, instructorId, organizationId } });
+    expect(upsert).toHaveBeenCalledWith({
+      where: { courseId_instructorId: { courseId, instructorId } },
+      create: { courseId, instructorId, organizationId },
+      update: { deletedAt: null },
+    });
+  });
+
+  it('does nothing for admins assigning themselves (no instructor scoping)', async () => {
+    const upsert = jest.fn();
+    const policy = new CourseAccessPolicy({ courseInstructor: { upsert } } as unknown as PrismaService);
+    await policy.assignInstructor(courseId, user(['admin']));
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

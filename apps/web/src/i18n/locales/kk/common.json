@@ -119,7 +119,14 @@
       "form": {
         "title": "Курс атауы",
         "description": "Сипаттама"
-      }
+      },
+      "instructors": "Оқытушылар",
+      "instructorsDialogTitle": "Оқытушылар: {{title}}",
+      "instructorsLoadError": "Курс оқытушыларын жүктеу мүмкін болмады.",
+      "noInstructors": "Оқытушылар тағайындалмаған.",
+      "removeInstructor": "Алып тастау",
+      "selectInstructor": "Пайдаланушыны таңдаңыз…",
+      "addInstructor": "Қосу"
     },
     "users": {
       "eyebrow": "Қолжетімділікті басқару",
@@ -553,7 +560,16 @@
       "create": "Құру",
       "save": "Сақтау",
       "cancel": "Бас тарту",
-      "close": "Жабу"
+      "close": "Жабу",
+      "members": "Мүшелер",
+      "membersDialogTitle": "Басқару: {{name}}",
+      "membersLoadError": "Бөлім мүшелерін жүктеу мүмкін болмады.",
+      "managersTitle": "Басшылар",
+      "noManagers": "Басшылар тағайындалмаған.",
+      "membersTitle": "Мүшелер",
+      "noMembers": "Әзірге мүшелер жоқ.",
+      "selectUser": "Пайдаланушыны таңдаңыз…",
+      "remove": "Алып тастау"
     },
     "courseBuilder": {
       "eyebrow": "Курс редакторы",

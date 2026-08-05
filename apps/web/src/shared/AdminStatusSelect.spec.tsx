@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -22,5 +23,14 @@ describe('AdminStatusSelect', () => {
     );
 
     expect(html).toContain('admin-form-status-select');
+  });
+
+  it('forwards the selected value to onChange', () => {
+    const onChange = vi.fn();
+    const select = AdminStatusSelect({ value: 'draft', statuses, onChange });
+
+    select.props.onChange({ target: { value: 'archived' } } as unknown as ChangeEvent<HTMLSelectElement>);
+
+    expect(onChange).toHaveBeenCalledWith('archived');
   });
 });

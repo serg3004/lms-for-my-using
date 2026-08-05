@@ -30,3 +30,9 @@ export const updateCourseStatusSchema = z.object({
 export type CreateCourseInput = z.infer<typeof createCourseSchema>;
 export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type UpdateCourseStatusInput = z.infer<typeof updateCourseStatusSchema>;
+
+export const assignCourseInstructorSchema = z.object({
+  instructorId: z.string().uuid(),
+});
+
+export type AssignCourseInstructorInput = z.infer<typeof assignCourseInstructorSchema>;

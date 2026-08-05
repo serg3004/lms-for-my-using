@@ -20,7 +20,7 @@ export class CourseAccessPolicy {
       organizationId: user.organizationId,
       deletedAt: null,
       ...(this.isInstructorScoped(user)
-        ? { instructors: { some: { instructorId: user.id, organizationId: user.organizationId } } }
+        ? { instructors: { some: { instructorId: user.id, organizationId: user.organizationId, deletedAt: null } } }
         : {}),
     } as const;
   }
@@ -72,8 +72,10 @@ export class CourseAccessPolicy {
   async assignInstructor(courseId: string, user: CourseScopedUser): Promise<void> {
     if (!this.isInstructorScoped(user)) return;
 
-    await this.prisma.courseInstructor.create({
-      data: { courseId, instructorId: user.id, organizationId: user.organizationId },
+    await this.prisma.courseInstructor.upsert({
+      where: { courseId_instructorId: { courseId, instructorId: user.id } },
+      create: { courseId, instructorId: user.id, organizationId: user.organizationId },
+      update: { deletedAt: null },
     });
   }
 }

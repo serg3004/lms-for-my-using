@@ -119,7 +119,14 @@
       "form": {
         "title": "课程名称",
         "description": "描述"
-      }
+      },
+      "instructors": "讲师",
+      "instructorsDialogTitle": "讲师：{{title}}",
+      "instructorsLoadError": "无法加载课程讲师。",
+      "noInstructors": "尚未指定讲师。",
+      "removeInstructor": "移除",
+      "selectInstructor": "选择用户…",
+      "addInstructor": "添加"
     },
     "users": {
       "eyebrow": "访问管理",
@@ -553,7 +560,16 @@
       "create": "创建",
       "save": "保存",
       "cancel": "取消",
-      "close": "关闭"
+      "close": "关闭",
+      "members": "成员",
+      "membersDialogTitle": "管理：{{name}}",
+      "membersLoadError": "无法加载部门成员。",
+      "managersTitle": "负责人",
+      "noManagers": "尚未指定负责人。",
+      "membersTitle": "成员",
+      "noMembers": "暂无成员。",
+      "selectUser": "选择用户…",
+      "remove": "移除"
     },
     "courseBuilder": {
       "eyebrow": "课程编辑器",
