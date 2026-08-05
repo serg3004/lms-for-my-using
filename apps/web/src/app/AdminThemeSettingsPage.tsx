@@ -279,23 +279,43 @@ export function AdminThemeSettingsPage() {
               <fieldset className="admin-theme-settings__fieldset" key={group.title}>
                 <legend>{group.title}</legend>
                 <div className="admin-theme-settings__field-grid">
-                  {group.fields.map((field) => (
-                    <label
-                      className={
-                        field.fullWidth
-                          ? 'admin-theme-settings__field admin-theme-settings__field--full'
-                          : 'admin-theme-settings__field'
-                      }
-                      key={field.key}
-                    >
-                      {field.label}
-                      <input
-                        type={field.type}
-                        value={themeSettings[field.key]}
-                        onChange={(event) => updateThemeSetting(field.key, event.target.value)}
-                      />
-                    </label>
-                  ))}
+                  {group.fields.map((field) => {
+                    const onFieldChange = (event: ChangeEvent<HTMLInputElement>) =>
+                      updateThemeSetting(field.key, event.target.value);
+
+                    return (
+                      <label
+                        className={
+                          field.fullWidth
+                            ? 'admin-theme-settings__field admin-theme-settings__field--full'
+                            : 'admin-theme-settings__field'
+                        }
+                        key={field.key}
+                      >
+                        {field.label}
+                        {field.type === 'color' ? (
+                          <span className="admin-theme-settings__color-row">
+                            <input
+                              aria-hidden="true"
+                              className="admin-theme-settings__color-swatch"
+                              tabIndex={-1}
+                              type="color"
+                              value={themeSettings[field.key]}
+                              onChange={onFieldChange}
+                            />
+                            <input
+                              className="admin-theme-settings__color-hex"
+                              type="text"
+                              value={themeSettings[field.key]}
+                              onChange={onFieldChange}
+                            />
+                          </span>
+                        ) : (
+                          <input type="text" value={themeSettings[field.key]} onChange={onFieldChange} />
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
               </fieldset>
             ))}
