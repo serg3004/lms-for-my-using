@@ -732,7 +732,16 @@
     "detailsDueAt": "Deadline",
     "detailsNoDueAt": "Not set",
     "continueLearning": "Continue learning",
-    "backToCourses": "Back to courses"
+    "backToCourses": "Back to courses",
+    "factsDuration": "Duration",
+    "factsLevel": "Level",
+    "factsNoDuration": "—",
+    "durationH": "h",
+    "durationMin": "min",
+    "detailsAuthor": "Author",
+    "detailsNoAuthor": "—",
+    "detailsCertificate": "Certificate",
+    "detailsCertificateValue": "After completion"
   },
   "lessons": {
     "navLink": "Lessons",
@@ -881,7 +890,15 @@
     "groupId": "Group ID",
     "status": "Status",
     "dueAt": "Due at",
-    "notAvailable": "Not available"
+    "notAvailable": "Not available",
+    "filterAllTypes": "All types",
+    "filterTypeCourse": "Course",
+    "filterTypeAssessment": "Assessment",
+    "filterTypePolicy": "Acknowledgement",
+    "statusBadgeUrgent": "Urgent",
+    "statusBadgeActive": "In progress",
+    "statusBadgeDone": "Completed",
+    "typeBadgeCourse": "Course"
   },
   "assignmentDetail": {
     "eyebrow": "Required assignment",
@@ -905,7 +922,10 @@
     "stateTitle": "Status",
     "notice": "The timer starts when the assessment begins. Do not close the page until the attempt is complete.",
     "openCourse": "Open course",
-    "backToList": "Back to assignments"
+    "backToList": "Back to assignments",
+    "assignedBy": "Assigned by",
+    "assignedFallback": "Manager",
+    "attemptsLeft": "Attempts remaining"
   },
   "assessments": {
     "navLink": "Assessments",

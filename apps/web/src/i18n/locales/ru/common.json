@@ -732,7 +732,16 @@
     "detailsDueAt": "Срок",
     "detailsNoDueAt": "Не установлен",
     "continueLearning": "Продолжить обучение",
-    "backToCourses": "Вернуться к курсам"
+    "backToCourses": "Вернуться к курсам",
+    "factsDuration": "Длительность",
+    "factsLevel": "Уровень",
+    "factsNoDuration": "—",
+    "durationH": "ч",
+    "durationMin": "мин",
+    "detailsAuthor": "Автор",
+    "detailsNoAuthor": "—",
+    "detailsCertificate": "Сертификат",
+    "detailsCertificateValue": "После завершения"
   },
   "lessons": {
     "navLink": "Уроки",
@@ -896,7 +905,15 @@
     "statsCompleted": "Завершено всего",
     "open": "Открыть",
     "viewResult": "Результат",
-    "sortNearest": "Сначала ближайшие"
+    "sortNearest": "Сначала ближайшие",
+    "filterAllTypes": "Все типы",
+    "filterTypeCourse": "Курс",
+    "filterTypeAssessment": "Тест",
+    "filterTypePolicy": "Ознакомление",
+    "statusBadgeUrgent": "Срочно",
+    "statusBadgeActive": "В работе",
+    "statusBadgeDone": "Завершено",
+    "typeBadgeCourse": "Курс"
   },
   "assignmentDetail": {
     "eyebrow": "Обязательное назначение",
@@ -920,7 +937,10 @@
     "stateTitle": "Состояние",
     "notice": "После начала теста запустится таймер. Не закрывайте страницу до завершения попытки.",
     "openCourse": "Открыть курс",
-    "backToList": "Вернуться к назначениям"
+    "backToList": "Вернуться к назначениям",
+    "assignedBy": "Назначил",
+    "assignedFallback": "Менеджер",
+    "attemptsLeft": "Осталось попыток"
   },
   "assessments": {
     "navLink": "Оценивания",
