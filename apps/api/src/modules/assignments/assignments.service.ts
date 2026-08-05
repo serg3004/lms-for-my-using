@@ -28,7 +28,7 @@ export class AssignmentsService {
     const where = {
       organizationId,
       ...(userId !== undefined ? { userId } : {}),
-      ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
+      ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId, deletedAt: null } } } } : {}),
       ...this.teamScope.assignment(actor),
       deletedAt: null,
     } as const;

@@ -7,16 +7,18 @@ import {
   buildUpdateGroupPayload,
   computeOrgStats,
   formatManagerCell,
+  formatUserName,
   initialCreateFormState,
   initialEditFormState,
   resolveGroupSaveErrorMessage,
+  usersAvailableToAdd,
   validateGroupName,
 } from './admin-org-structure/model.js';
 import { slugify } from '../shared/slugify.js';
 import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
-import type { PaginatedResponse } from '../shared/api/types.js';
+import type { PaginatedResponse, UserSummary } from '../shared/api/types.js';
 
 type GroupStatus = 'active' | 'archived';
 
@@ -61,6 +63,17 @@ export function AdminOrgStructurePage() {
   const [editState, setEditState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
     status: 'idle',
   });
+
+  const membersDialogRef = useRef<HTMLDialogElement>(null);
+  const [membersGroup, setMembersGroup] = useState<Group | null>(null);
+  const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
+  const [groupMembers, setGroupMembers] = useState<UserSummary[]>([]);
+  const [groupManagers, setGroupManagers] = useState<UserSummary[]>([]);
+  const [membersState, setMembersState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({
+    status: 'idle',
+  });
+  const [addMemberUserId, setAddMemberUserId] = useState('');
+  const [addManagerUserId, setAddManagerUserId] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -163,6 +176,94 @@ export function AdminOrgStructurePage() {
     }
   }
 
+  async function openMembersDialog(group: Group) {
+    setMembersGroup(group);
+    setAddMemberUserId('');
+    setAddManagerUserId('');
+    setMembersState({ status: 'loading' });
+    membersDialogRef.current?.showModal();
+
+    try {
+      const [users, members, managers] = await Promise.all([
+        orgUsers.length > 0 ? orgUsers : apiRequest<PaginatedResponse<UserSummary>>('/users?pageSize=200').then((res) => res.items),
+        apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(group.id)}/members`),
+        apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(group.id)}/managers`),
+      ]);
+      setOrgUsers(users);
+      setGroupMembers(members);
+      setGroupManagers(managers);
+      setMembersState({ status: 'idle' });
+    } catch {
+      setMembersState({
+        status: 'error',
+        message: t('admin.orgStructure.membersLoadError', 'Unable to load department members.'),
+      });
+    }
+  }
+
+  function closeMembersDialog() {
+    membersDialogRef.current?.close();
+    setMembersGroup(null);
+  }
+
+  async function handleAddMember() {
+    if (!membersGroup || !addMemberUserId) return;
+    try {
+      const members = await apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(membersGroup.id)}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ userId: addMemberUserId }),
+      });
+      setGroupMembers(members);
+      setAddMemberUserId('');
+      await load();
+    } catch {
+      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+    }
+  }
+
+  async function handleRemoveMember(userId: string) {
+    if (!membersGroup) return;
+    try {
+      const members = await apiRequest<UserSummary[]>(
+        `/groups/${encodeURIComponent(membersGroup.id)}/members/${encodeURIComponent(userId)}`,
+        { method: 'DELETE' },
+      );
+      setGroupMembers(members);
+      await load();
+    } catch {
+      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+    }
+  }
+
+  async function handleAddManager() {
+    if (!membersGroup || !addManagerUserId) return;
+    try {
+      const managers = await apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(membersGroup.id)}/managers`, {
+        method: 'POST',
+        body: JSON.stringify({ managerId: addManagerUserId }),
+      });
+      setGroupManagers(managers);
+      setAddManagerUserId('');
+      await load();
+    } catch {
+      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+    }
+  }
+
+  async function handleRemoveManager(managerId: string) {
+    if (!membersGroup) return;
+    try {
+      const managers = await apiRequest<UserSummary[]>(
+        `/groups/${encodeURIComponent(membersGroup.id)}/managers/${encodeURIComponent(managerId)}`,
+        { method: 'DELETE' },
+      );
+      setGroupManagers(managers);
+      await load();
+    } catch {
+      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+    }
+  }
+
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
@@ -219,9 +320,14 @@ export function AdminOrgStructurePage() {
             { key: 'manager', label: t('admin.orgStructure.colHead', 'Manager'), render: (g) => formatManagerCell(g) },
             { key: 'members', label: t('admin.orgStructure.colPeople', 'Employees'), render: (g) => g._count.members },
             { key: 'actions', label: '', render: (g) => (
-              <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(g)}>
-                {t('admin.orgStructure.edit', 'Edit')}
-              </button>
+              <span className="admin-table-actions">
+                <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openMembersDialog(g)}>
+                  {t('admin.orgStructure.members', 'Members')}
+                </button>
+                <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(g)}>
+                  {t('admin.orgStructure.edit', 'Edit')}
+                </button>
+              </span>
             )},
           ] satisfies Column<Group>[]}
           rows={groups}
@@ -310,6 +416,92 @@ export function AdminOrgStructurePage() {
             </button>
           </div>
         </form>
+      </dialog>
+
+      <dialog ref={membersDialogRef} className="admin-dialog" onClose={closeMembersDialog}>
+        <header className="admin-dialog__header">
+          <h2>{membersGroup ? t('admin.orgStructure.membersDialogTitle', 'Manage {{name}}', { name: membersGroup.name }) : ''}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.orgStructure.close', 'Close')} onClick={closeMembersDialog}>
+            ×
+          </button>
+        </header>
+        <div className="admin-form">
+          {membersState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">{membersState.message}</p>
+          ) : null}
+
+          <section className="admin-membership-section">
+            <h3>{t('admin.orgStructure.managersTitle', 'Managers')}</h3>
+            <ul className="admin-membership-list">
+              {groupManagers.length === 0 ? (
+                <li className="admin-membership-list__empty">{t('admin.orgStructure.noManagers', 'No managers assigned.')}</li>
+              ) : (
+                groupManagers.map((manager) => (
+                  <li key={manager.id}>
+                    <span>{formatUserName(manager)}</span>
+                    <button
+                      className="admin-btn admin-btn--sm admin-btn--secondary"
+                      type="button"
+                      onClick={() => void handleRemoveManager(manager.id)}
+                    >
+                      {t('admin.orgStructure.remove', 'Remove')}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="admin-membership-add">
+              <select value={addManagerUserId} onChange={(e) => setAddManagerUserId(e.target.value)}>
+                <option value="">{t('admin.orgStructure.selectUser', 'Select a user…')}</option>
+                {usersAvailableToAdd(orgUsers, groupManagers.map((m) => m.id)).map((u) => (
+                  <option value={u.id} key={u.id}>{formatUserName(u)}</option>
+                ))}
+              </select>
+              <button className="admin-btn admin-btn--sm admin-btn--primary" type="button" disabled={!addManagerUserId} onClick={() => void handleAddManager()}>
+                {t('admin.orgStructure.add', 'Add')}
+              </button>
+            </div>
+          </section>
+
+          <section className="admin-membership-section">
+            <h3>{t('admin.orgStructure.membersTitle', 'Members')}</h3>
+            <ul className="admin-membership-list">
+              {groupMembers.length === 0 ? (
+                <li className="admin-membership-list__empty">{t('admin.orgStructure.noMembers', 'No members yet.')}</li>
+              ) : (
+                groupMembers.map((member) => (
+                  <li key={member.id}>
+                    <span>{formatUserName(member)}</span>
+                    <button
+                      className="admin-btn admin-btn--sm admin-btn--secondary"
+                      type="button"
+                      onClick={() => void handleRemoveMember(member.id)}
+                    >
+                      {t('admin.orgStructure.remove', 'Remove')}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="admin-membership-add">
+              <select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)}>
+                <option value="">{t('admin.orgStructure.selectUser', 'Select a user…')}</option>
+                {usersAvailableToAdd(orgUsers, groupMembers.map((m) => m.id)).map((u) => (
+                  <option value={u.id} key={u.id}>{formatUserName(u)}</option>
+                ))}
+              </select>
+              <button className="admin-btn admin-btn--sm admin-btn--primary" type="button" disabled={!addMemberUserId} onClick={() => void handleAddMember()}>
+                {t('admin.orgStructure.add', 'Add')}
+              </button>
+            </div>
+          </section>
+
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={closeMembersDialog}>
+              {t('admin.orgStructure.close', 'Close')}
+            </button>
+          </div>
+        </div>
       </dialog>
     </AdminPageLayout>
   );

@@ -119,7 +119,14 @@
       "form": {
         "title": "Course title",
         "description": "Description"
-      }
+      },
+      "instructors": "Instructors",
+      "instructorsDialogTitle": "Instructors: {{title}}",
+      "instructorsLoadError": "Unable to load course instructors.",
+      "noInstructors": "No instructors assigned.",
+      "removeInstructor": "Remove",
+      "selectInstructor": "Select a user…",
+      "addInstructor": "Add"
     },
     "users": {
       "eyebrow": "Access management",
@@ -553,7 +560,16 @@
       "create": "Create",
       "save": "Save",
       "cancel": "Cancel",
-      "close": "Close"
+      "close": "Close",
+      "members": "Members",
+      "membersDialogTitle": "Manage {{name}}",
+      "membersLoadError": "Unable to load department members.",
+      "managersTitle": "Managers",
+      "noManagers": "No managers assigned.",
+      "membersTitle": "Members",
+      "noMembers": "No members yet.",
+      "selectUser": "Select a user…",
+      "remove": "Remove"
     },
     "courseBuilder": {
       "eyebrow": "Course editor",

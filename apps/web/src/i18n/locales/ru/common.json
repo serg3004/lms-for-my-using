@@ -119,7 +119,14 @@
       "form": {
         "title": "Название курса",
         "description": "Описание"
-      }
+      },
+      "instructors": "Преподаватели",
+      "instructorsDialogTitle": "Преподаватели: {{title}}",
+      "instructorsLoadError": "Не удалось загрузить преподавателей курса.",
+      "noInstructors": "Преподаватели не назначены.",
+      "removeInstructor": "Убрать",
+      "selectInstructor": "Выберите пользователя…",
+      "addInstructor": "Добавить"
     },
     "users": {
       "eyebrow": "Управление доступом",
@@ -553,7 +560,16 @@
       "create": "Создать",
       "save": "Сохранить",
       "cancel": "Отмена",
-      "close": "Закрыть"
+      "close": "Закрыть",
+      "members": "Участники",
+      "membersDialogTitle": "Управление: {{name}}",
+      "membersLoadError": "Не удалось загрузить участников подразделения.",
+      "managersTitle": "Руководители",
+      "noManagers": "Руководители не назначены.",
+      "membersTitle": "Участники",
+      "noMembers": "Участников пока нет.",
+      "selectUser": "Выберите пользователя…",
+      "remove": "Убрать"
     },
     "courseBuilder": {
       "eyebrow": "Редактор курса",

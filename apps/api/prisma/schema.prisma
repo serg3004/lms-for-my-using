@@ -198,10 +198,11 @@ model Group {
 }
 
 model GroupMember {
-  groupId        String   @map("group_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  groupId        String    @map("group_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -213,10 +214,11 @@ model GroupMember {
 }
 
 model ManagerGroup {
-  groupId        String   @map("group_id") @db.Uuid
-  managerId      String   @map("manager_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  groupId        String    @map("group_id") @db.Uuid
+  managerId      String    @map("manager_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   manager      User         @relation(fields: [managerId], references: [id], onDelete: Cascade)
@@ -255,10 +257,11 @@ model Course {
 }
 
 model CourseInstructor {
-  courseId       String   @map("course_id") @db.Uuid
-  instructorId   String   @map("instructor_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  assignedAt     DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  courseId       String    @map("course_id") @db.Uuid
+  instructorId   String    @map("instructor_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  assignedAt     DateTime  @default(now()) @map("assigned_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)

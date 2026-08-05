@@ -30,3 +30,15 @@ export const updateGroupSchema = z
   .partial();
 
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
+
+export const assignGroupMemberSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+export type AssignGroupMemberInput = z.infer<typeof assignGroupMemberSchema>;
+
+export const assignGroupManagerSchema = z.object({
+  managerId: z.string().uuid(),
+});
+
+export type AssignGroupManagerInput = z.infer<typeof assignGroupManagerSchema>;
