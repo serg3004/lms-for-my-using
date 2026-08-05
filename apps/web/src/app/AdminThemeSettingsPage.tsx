@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
@@ -9,6 +9,7 @@ import {
   resetOrganizationThemeSettings,
   saveOrganizationThemeSettings,
   themePresets,
+  uploadOrganizationThemeLogo,
 } from '../shared/theme.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 
@@ -60,7 +61,9 @@ function getThemeFieldGroups(t: TFunction): ThemeFieldGroup[] {
 }
 
 function getMatchingPresetId(settings: ThemeSettings) {
-  const matchingPreset = themePresets.find((preset) => JSON.stringify(preset.settings) === JSON.stringify(settings));
+  const matchingPreset = themePresets.find(
+    (preset) => JSON.stringify({ ...preset.settings, platformName: settings.platformName }) === JSON.stringify(settings),
+  );
 
   return matchingPreset?.id ?? 'custom';
 }
@@ -75,6 +78,7 @@ export function AdminThemeSettingsPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.themeSettings.title', 'Theme settings'), href: '/admin/theme-settings', isCurrent: true },
@@ -99,7 +103,7 @@ export function AdminThemeSettingsPage() {
     const preset = themePresets.find((themePreset) => themePreset.id === presetId);
 
     if (preset) {
-      syncThemeSettings(preset.settings);
+      syncThemeSettings({ ...preset.settings, platformName: themeSettings.platformName });
     }
   }
 
@@ -149,6 +153,27 @@ export function AdminThemeSettingsPage() {
     }
   }
 
+  async function handleLogoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    try {
+      const { organizationId } = await getCurrentUser();
+      const saved = await uploadOrganizationThemeLogo(organizationId, file);
+
+      syncThemeSettings(saved);
+      setStatusMessage(t('admin.themeSettings.logoUploaded', 'Logo uploaded.'));
+    } catch {
+      setStatusMessage(t('admin.themeSettings.logoUploadError', 'Unable to upload the logo. Try again.'));
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  }
+
+  const logoInitial = themeSettings.platformName.trim().charAt(0).toUpperCase() || 'L';
+
   return (
     <AdminPageLayout
       brandLabel={t('admin.navLink', 'Admin')}
@@ -162,7 +187,33 @@ export function AdminThemeSettingsPage() {
           'admin.themeSettings.subtitle',
           'Tune the admin workspace colors, layout tokens, and sidebar for your organization.',
         )}
+        action={
+          <div className="admin-header-actions">
+            <button
+              className="admin-btn admin-btn--secondary"
+              disabled={isSaving}
+              onClick={() => void resetTheme()}
+              type="button"
+            >
+              {t('admin.themeSettings.reset', 'Reset')}
+            </button>
+            <button
+              className="admin-btn admin-btn--primary"
+              disabled={isSaving}
+              onClick={() => void saveTheme()}
+              type="button"
+            >
+              {isSaving ? t('admin.themeSettings.saving', 'Saving...') : t('admin.themeSettings.save', 'Save theme')}
+            </button>
+          </div>
+        }
       />
+
+      {statusMessage ? (
+        <p className="admin-theme-settings__status" role="status">
+          {statusMessage}
+        </p>
+      ) : null}
 
       <section className="admin-theme-settings">
         <section className="admin-card">
@@ -182,6 +233,44 @@ export function AdminThemeSettingsPage() {
 
         <section className="admin-theme-settings__grid">
           <form className="admin-card admin-theme-settings__form" onSubmit={(event) => event.preventDefault()}>
+            <fieldset className="admin-theme-settings__fieldset">
+              <legend>{t('admin.themeSettings.brandingTitle', 'Branding')}</legend>
+              <p className="admin-theme-settings__hint">
+                {t('admin.themeSettings.brandingHint', 'Platform name and logo shown in the header and sidebar.')}
+              </p>
+              <label className="admin-theme-settings__field">
+                {t('admin.themeSettings.fields.platformName', 'Platform name')}
+                <input
+                  type="text"
+                  value={themeSettings.platformName}
+                  onChange={(event) => updateThemeSetting('platformName', event.target.value)}
+                />
+              </label>
+              <label className="admin-theme-settings__field">
+                {t('admin.themeSettings.logoLabel', 'Logo')}
+                <span className="admin-theme-settings__logo-row">
+                  <span className="admin-theme-settings__logo-preview">
+                    {themeSettings.logoUrl ? (
+                      <img alt={t('admin.themeSettings.logoAlt', 'Organization logo')} src={themeSettings.logoUrl} />
+                    ) : (
+                      logoInitial
+                    )}
+                  </span>
+                  <input
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    disabled={isUploadingLogo}
+                    onChange={(event) => void handleLogoChange(event)}
+                    type="file"
+                  />
+                </span>
+                {isUploadingLogo ? (
+                  <span className="admin-theme-settings__hint">
+                    {t('admin.themeSettings.logoUploading', 'Uploading logo...')}
+                  </span>
+                ) : null}
+              </label>
+            </fieldset>
+
             {getThemeFieldGroups(t).map((group) => (
               <fieldset className="admin-theme-settings__fieldset" key={group.title}>
                 <legend>{group.title}</legend>
@@ -204,17 +293,34 @@ export function AdminThemeSettingsPage() {
             <div
               className="admin-theme-preview__surface"
               style={{
-                color: themeSettings.colorText,
                 background: themeSettings.colorBackground,
                 borderRadius: themeSettings.radiusLg,
                 padding: themeSettings.spacePage,
               }}
             >
+              <div
+                className="admin-theme-preview__hero"
+                style={{
+                  background: `linear-gradient(135deg, ${themeSettings.colorPrimary}, #7c3aed)`,
+                  borderRadius: `${themeSettings.radiusMd} ${themeSettings.radiusMd} 0 0`,
+                }}
+              >
+                <span className="admin-theme-preview__logo-chip">
+                  {themeSettings.logoUrl ? (
+                    <img alt="" src={themeSettings.logoUrl} />
+                  ) : (
+                    logoInitial
+                  )}
+                </span>
+                <strong>{themeSettings.platformName}</strong>
+              </div>
+
               <article
                 className="admin-theme-preview__card"
                 style={{
+                  color: themeSettings.colorText,
                   borderColor: themeSettings.colorBorder,
-                  borderRadius: themeSettings.radiusMd,
+                  borderRadius: `0 0 ${themeSettings.radiusMd} ${themeSettings.radiusMd}`,
                   background: themeSettings.colorSurface,
                   boxShadow: themeSettings.shadowCard,
                 }}
@@ -269,20 +375,10 @@ export function AdminThemeSettingsPage() {
             {t('admin.themeSettings.jsonLabel', 'Theme JSON')}
             <textarea value={settingsJson} rows={10} onChange={(event) => setSettingsJson(event.target.value)} />
           </label>
-          <button type="button" disabled={isSaving} onClick={() => void importSettings()}>
+          <button className="admin-btn admin-btn--secondary" type="button" disabled={isSaving} onClick={() => void importSettings()}>
             {t('admin.themeSettings.import', 'Import JSON')}
           </button>
         </section>
-
-        <footer className="admin-theme-settings__actions">
-          <button type="button" disabled={isSaving} onClick={() => void saveTheme()}>
-            {isSaving ? t('admin.themeSettings.saving', 'Saving...') : t('admin.themeSettings.save', 'Save theme')}
-          </button>
-          <button type="button" className="admin-theme-settings__secondary-action" disabled={isSaving} onClick={() => void resetTheme()}>
-            {t('admin.themeSettings.reset', 'Reset')}
-          </button>
-          {statusMessage ? <p role="status">{statusMessage}</p> : null}
-        </footer>
       </section>
     </AdminPageLayout>
   );

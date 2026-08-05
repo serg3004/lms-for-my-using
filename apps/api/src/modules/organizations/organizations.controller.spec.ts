@@ -93,6 +93,7 @@ describe('OrganizationsController', () => {
       adminSidebarBackground: '#111827',
       adminSidebarText: '#ffffff',
       adminSidebarTextMuted: '#cbd5e1',
+      platformName: 'LearnSpace',
     };
     const controller = new OrganizationsController({
       updateThemeSettings: (organizationId: string, input: ThemeSettingsInput) => {

@@ -488,12 +488,20 @@
       "import": "导入 JSON",
       "save": "保存主题",
       "reset": "重置",
+      "brandingTitle": "品牌",
+      "brandingHint": "显示在页眉和侧边栏中的平台名称与标志。",
+      "logoLabel": "标志",
+      "logoAlt": "组织标志",
+      "logoUploading": "正在上传标志...",
+      "logoUploaded": "标志已上传。",
+      "logoUploadError": "无法上传标志，请重试。",
       "groups": {
         "colors": "颜色",
         "layout": "布局",
         "sidebar": "管理员侧边栏"
       },
       "fields": {
+        "platformName": "平台名称",
         "colorPrimary": "主色",
         "colorPrimaryHover": "主色（悬停）",
         "colorBackground": "背景",

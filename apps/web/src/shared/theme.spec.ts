@@ -72,7 +72,10 @@ describe('theme settings', () => {
 
     expect(setProperty).toHaveBeenCalledWith('--color-primary', '#4f46e5');
     expect(setProperty).toHaveBeenCalledWith('--admin-sidebar-text', '#ffffff');
-    expect(setProperty).toHaveBeenCalledTimes(Object.keys(defaultThemeSettings).length);
+    // platformName/logoObjectKey/logoUrl aren't CSS custom properties.
+    const nonCssPropertyKeys = ['platformName', 'logoObjectKey', 'logoUrl'];
+    const expectedCssPropertyCount = Object.keys(defaultThemeSettings).filter((key) => !nonCssPropertyKeys.includes(key)).length;
+    expect(setProperty).toHaveBeenCalledTimes(expectedCssPropertyCount);
   });
 
   it('does nothing when rendered outside a browser', () => {

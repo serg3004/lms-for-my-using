@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { PublicAccess, Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/upload.validation.js';
 import {
   CreateOrganizationInput,
   RegisterOrganizationInput,
@@ -76,4 +79,21 @@ export class OrganizationsController {
   resetThemeSettings(@Param('id') organizationId: string) {
     return this.organizationsService.resetThemeSettings(organizationId);
   }
+
+  @Post(':id/logo')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.themeSettingsWrite)
+  @OrganizationScope('param', 'id')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }))
+  async uploadLogo(@Param('id') organizationId: string, @UploadedFile() file: Express.Multer.File | undefined) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (!LOGO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException(`File type "${file.mimetype}" is not allowed for a logo`);
+    }
+    validateUploadFile(file);
+
+    return this.organizationsService.uploadLogo(organizationId, file);
+  }
 }
+
+const LOGO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
