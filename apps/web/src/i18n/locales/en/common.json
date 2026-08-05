@@ -419,6 +419,7 @@
       "issueError": "Unable to issue certificate.",
       "issuing": "Issuing...",
       "issue": "Issue certificate",
+      "export": "Export CSV",
       "assessmentResultsTitle": "Assessment results",
       "noAssessments": "No assessments found.",
       "assessment": "Assessment",
@@ -427,16 +428,13 @@
         "score": "Score",
         "status": "Status",
         "course": "Course",
-        "issuedAt": "Issued"
+        "issuedAt": "Issued",
+        "progress": "Progress"
       },
       "passed": "Passed",
       "failed": "Failed",
       "noResults": "No assessment results found.",
-      "progressTitle": "Course progress",
-      "noScore": "No score",
-      "noProgress": "No progress records found.",
-      "certificatesTitle": "Issued certificates",
-      "noCertificates": "No certificates issued yet."
+      "noProgress": "No progress records found."
     },
     "roles": {
       "eyebrow": "Access control",

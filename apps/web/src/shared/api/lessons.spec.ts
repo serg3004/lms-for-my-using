@@ -4,6 +4,7 @@ import {
   deleteLesson,
   getCourseLessonsPath,
   getLessonPath,
+  listAllLessons,
   markLessonComplete,
   markLessonCompleted,
   reorderLessons,
@@ -41,6 +42,22 @@ describe('lessons api paths', () => {
 });
 
 describe('lessons api mutations', () => {
+  it('lists all lessons without params', async () => {
+    const fetchMock = mockJsonFetch({ items: [], total: 0 });
+
+    await listAllLessons();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/lessons', expect.anything());
+  });
+
+  it('lists all lessons with a query string built from params', async () => {
+    const fetchMock = mockJsonFetch({ items: [], total: 0 });
+
+    await listAllLessons({ page: 2, pageSize: 50 });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/lessons?page=2&pageSize=50', expect.anything());
+  });
+
   it('reorders lessons', async () => {
     const fetchMock = mockJsonFetch([]);
 
