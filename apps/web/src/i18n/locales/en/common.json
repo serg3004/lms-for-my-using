@@ -989,7 +989,19 @@
     "resultYourAnswer": "Your answer",
     "retryBtn": "Try again",
     "backToAssessment": "Back to assessment",
-    "viewCertificate": "View certificate"
+    "viewCertificate": "View certificate",
+    "timerLabel": "Time remaining",
+    "timerExpired": "Time expired",
+    "questionNavTitle": "Question navigation",
+    "legendAnswered": "Answer saved",
+    "legendCurrent": "Current question",
+    "legendNoAnswer": "No answer",
+    "autoSaveNotice": "Your answer is saved automatically after selecting an option.",
+    "questionLabel": "Question {{n}}",
+    "previousQuestion": "← Previous question",
+    "nextQuestion": "Next question →",
+    "progressLabel": "Assessment progress",
+    "subtitleTaking": "Question {{current}} of {{total}} · passing score {{score}}%"
   },
   "certificates": {
     "navLink": "Certificates",
@@ -1035,7 +1047,14 @@
     "infoTitle": "Information",
     "owner": "Owner",
     "courseLabel": "Course",
-    "completedAt": "Completion date"
+    "completedAt": "Completion date",
+    "detailEyebrow": "Certificate of completion",
+    "detailH1": "Certificate",
+    "detailSubtitle": "This document confirms successful completion of the learning program.",
+    "shareBtn": "Share",
+    "actionsTitle": "Actions",
+    "verificationTitle": "Authenticity verification",
+    "verificationText": "Verify the certificate using its unique code:"
   },
   "manager": {
     "navLink": "Manager",

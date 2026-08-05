@@ -40,6 +40,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   const loadAssessment = useCallback(async () => {
     setLoadState({ status: 'loading' });
@@ -61,6 +62,23 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   useEffect(() => {
     void loadAssessment();
   }, [loadAssessment]);
+
+  useEffect(() => {
+    if (loadState.status !== 'loaded') return;
+    setSecondsLeft(15 * 60);
+  }, [loadState.status]);
+
+  useEffect(() => {
+    if (secondsLeft === null || secondsLeft <= 0) return;
+    const id = setInterval(() => setSecondsLeft((s) => (s !== null && s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [secondsLeft]);
+
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
 
   function selectSingle(questionId: string, optionId: string) {
     setSelected((prev) => ({ ...prev, [questionId]: optionId }));
@@ -140,7 +158,6 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   }
 
   const { assessment, questions } = loadState;
-  const answeredCount = countAnsweredQuestions(questions, selected);
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
@@ -212,6 +229,8 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     );
   }
 
+  const timerWarning = secondsLeft !== null && secondsLeft < 120;
+
   return (
     <div className="learner-quiz">
       <nav className="learner-breadcrumb">
@@ -220,123 +239,192 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
         <a href={backLink}>{assessment.title}</a>
       </nav>
 
-      <header className="learner-quiz__header">
-        <h1>{assessment.title}</h1>
-        {assessment.description ? <p className="learner-quiz__description">{assessment.description}</p> : null}
-        <div className="learner-quiz__meta">
-          <span>{t('assessments.resultPassingScore', { score: assessment.passingScore })}</span>
-          {assessment.maxAttempts ? <span>{t('assessments.maxAttempts')}: {assessment.maxAttempts}</span> : null}
+      <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '18px', flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+            {t('assessments.eyebrow')}
+          </div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, color: '#172033', lineHeight: 1.2 }}>
+            {assessment.title}
+          </h1>
+          <p style={{ margin: '8px 0 0', color: '#6b7280', fontSize: '14px' }}>
+            {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
+          </p>
         </div>
-      </header>
+        {secondsLeft !== null && (
+          <div
+            aria-live="polite"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', background: timerWarning ? '#fef2f2' : '#f8fafc', border: `1px solid ${timerWarning ? '#fca5a5' : '#e3e8ef'}`, borderRadius: '16px', minWidth: '120px' }}
+          >
+            <span style={{ color: timerWarning ? '#dc2626' : '#6b7280', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {t('assessments.timerLabel')}
+            </span>
+            <strong style={{ color: timerWarning ? '#dc2626' : '#172033', fontSize: '26px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginTop: '4px' }}>
+              {secondsLeft > 0 ? formatTime(secondsLeft) : t('assessments.timerExpired')}
+            </strong>
+          </div>
+        )}
+      </section>
+
+      <section style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
+          <span>{t('assessments.progressLabel')}</span>
+          <strong>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</strong>
+        </div>
+        <div style={{ height: '8px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+          <div style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: '999px' }} />
+        </div>
+      </section>
 
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <form className="learner-quiz__form" onSubmit={handleSubmit}>
-          <div className="learner-quiz__progress">
-            {t('assessments.answered', { answered: answeredCount, total: questions.length })}
-          </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
+          <form className="learner-quiz__form" onSubmit={handleSubmit}>
+            {(() => {
+              const question = questions[currentIndex];
+              const isAnswered =
+                question.type === 'multiple_choice'
+                  ? selectedIds(selected[question.id]).length > 0
+                  : typeof selected[question.id] === 'string';
+              const isLastQuestion = currentIndex === questions.length - 1;
 
-          <div style={{ height: '8px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden', marginBottom: '20px' }}>
-            <div
-              style={{
-                width: `${((currentIndex + 1) / questions.length) * 100}%`,
-                height: '100%',
-                background: 'linear-gradient(90deg,#4f46e5,#7c3aed)',
-                borderRadius: '999px',
-              }}
-            />
-          </div>
+              return (
+                <ol className="learner-quiz__questions">
+                  <li className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+                    <div className="learner-quiz__question-header">
+                      <span className="learner-quiz__question-num">{currentIndex + 1}</span>
+                      <h3 className="learner-quiz__question-title">{question.title}</h3>
+                      <span className="learner-quiz__question-points">{question.points} pt</span>
+                    </div>
+                    {question.text ? <p className="learner-quiz__question-text">{question.text}</p> : null}
 
-          {(() => {
-            const question = questions[currentIndex];
-            const isAnswered =
-              question.type === 'multiple_choice'
-                ? selectedIds(selected[question.id]).length > 0
-                : typeof selected[question.id] === 'string';
-            const isLastQuestion = currentIndex === questions.length - 1;
-
-            return (
-              <ol className="learner-quiz__questions">
-                <li className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
-                  <div className="learner-quiz__question-header">
-                    <span className="learner-quiz__question-num">{currentIndex + 1}</span>
-                    <h3 className="learner-quiz__question-title">{question.title}</h3>
-                    <span className="learner-quiz__question-points">{question.points} pt</span>
-                  </div>
-                  {question.text ? <p className="learner-quiz__question-text">{question.text}</p> : null}
-
-                  <ul className="learner-quiz__options">
-                    {question.options.map((option) => {
-                      const label = getAssessmentOptionLabel(option);
-                      if (question.type === 'multiple_choice') {
-                        const checked = selectedIds(selected[question.id]).includes(option.id);
+                    <ul className="learner-quiz__options">
+                      {question.options.map((option) => {
+                        const label = getAssessmentOptionLabel(option);
+                        if (question.type === 'multiple_choice') {
+                          const checked = selectedIds(selected[question.id]).includes(option.id);
+                          return (
+                            <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
+                              <label className="learner-quiz__option-label">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => selectMultiple(question.id, option.id, e.target.checked)}
+                                />
+                                <span>{label}</span>
+                              </label>
+                            </li>
+                          );
+                        }
+                        const checked = selected[question.id] === option.id;
                         return (
                           <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
                             <label className="learner-quiz__option-label">
                               <input
-                                type="checkbox"
+                                type="radio"
+                                name={question.id}
                                 checked={checked}
-                                onChange={(e) => selectMultiple(question.id, option.id, e.target.checked)}
+                                onChange={() => selectSingle(question.id, option.id)}
                               />
                               <span>{label}</span>
                             </label>
                           </li>
                         );
-                      }
-                      const checked = selected[question.id] === option.id;
-                      return (
-                        <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
-                          <label className="learner-quiz__option-label">
-                            <input
-                              type="radio"
-                              name={question.id}
-                              checked={checked}
-                              onChange={() => selectSingle(question.id, option.id)}
-                            />
-                            <span>{label}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
+                      })}
+                    </ul>
+                  </li>
 
-                <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
-                  <button
-                    className="learner-btn learner-btn--secondary"
-                    type="button"
-                    disabled={currentIndex === 0}
-                    onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                  >
-                    {t('assessments.previousQuestion', '← Предыдущий вопрос')}
-                  </button>
-                  {isLastQuestion ? (
+                  <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
                     <button
-                      className="learner-btn learner-btn--primary"
-                      disabled={submitState.status === 'submitting'}
-                      type="submit"
-                    >
-                      {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
-                    </button>
-                  ) : (
-                    <button
-                      className="learner-btn learner-btn--primary"
+                      className="learner-btn learner-btn--secondary"
                       type="button"
-                      onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                      disabled={currentIndex === 0}
+                      onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
                     >
-                      {t('assessments.nextQuestion', 'Следующий вопрос →')}
+                      {t('assessments.previousQuestion')}
                     </button>
-                  )}
-                </li>
-              </ol>
-            );
-          })()}
+                    {isLastQuestion ? (
+                      <button
+                        className="learner-btn learner-btn--primary"
+                        disabled={submitState.status === 'submitting'}
+                        type="submit"
+                      >
+                        {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
+                      </button>
+                    ) : (
+                      <button
+                        className="learner-btn learner-btn--primary"
+                        type="button"
+                        onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                      >
+                        {t('assessments.nextQuestion')}
+                      </button>
+                    )}
+                  </li>
+                </ol>
+              );
+            })()}
 
-          {submitState.status === 'error' ? (
-            <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
-          ) : null}
-        </form>
+            {submitState.status === 'error' ? (
+              <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
+            ) : null}
+          </form>
+
+          <aside style={{ position: 'sticky', top: '98px' }}>
+            <div style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: '#172033' }}>{t('assessments.questionNavTitle')}</h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                {questions.map((q, i) => {
+                  const isDone =
+                    q.type === 'multiple_choice'
+                      ? selectedIds(selected[q.id]).length > 0
+                      : typeof selected[q.id] === 'string';
+                  const isCurrent = i === currentIndex;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => setCurrentIndex(i)}
+                      style={{
+                        border: `1px solid ${isCurrent ? '#4f46e5' : isDone ? '#b7ead6' : '#e3e8ef'}`,
+                        background: isCurrent ? '#4f46e5' : isDone ? '#e9f8f2' : '#fff',
+                        color: isCurrent ? '#fff' : isDone ? '#0f9f6e' : '#172033',
+                        borderRadius: '10px',
+                        height: '40px',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: '#6b7280', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#e9f8f2', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendAnswered')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#4f46e5', border: '1px solid #4f46e5', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendCurrent')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#fff', border: '1px solid #e3e8ef', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendNoAnswer')}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '16px', padding: '14px', background: '#fff7e8', color: '#8a4b05', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
+                {t('assessments.autoSaveNotice')}
+              </div>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );

@@ -966,7 +966,19 @@
     "retryBtn": "再次尝试",
     "backToAssessment": "返回测验",
     "viewCertificate": "查看证书",
-    "availableAfterCourseCompletion": "课程完成后可用"
+    "availableAfterCourseCompletion": "课程完成后可用",
+    "timerLabel": "剩余时间",
+    "timerExpired": "时间已到",
+    "questionNavTitle": "题目导航",
+    "legendAnswered": "答案已保存",
+    "legendCurrent": "当前题目",
+    "legendNoAnswer": "未作答",
+    "autoSaveNotice": "选择选项后答案会自动保存。",
+    "questionLabel": "第 {{n}} 题",
+    "previousQuestion": "← 上一题",
+    "nextQuestion": "下一题 →",
+    "progressLabel": "测试进度",
+    "subtitleTaking": "第 {{current}}/{{total}} 题 · 及格分数 {{score}}%"
   },
   "certificates": {
     "navLink": "证书",
@@ -1006,7 +1018,14 @@
     "infoTitle": "信息",
     "owner": "持有人",
     "courseLabel": "课程",
-    "completedAt": "完成日期"
+    "completedAt": "完成日期",
+    "detailEyebrow": "学习完成证明",
+    "detailH1": "证书",
+    "detailSubtitle": "此文件证明已成功完成学习项目。",
+    "shareBtn": "分享",
+    "actionsTitle": "操作",
+    "verificationTitle": "真伪验证",
+    "verificationText": "可使用唯一代码验证证书："
   },
   "manager": {
     "navLink": "经理",
