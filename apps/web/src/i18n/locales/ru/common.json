@@ -529,7 +529,8 @@
       "close": "Закрыть"
     },
     "courseBuilder": {
-      "eyebrow": "Редактор курса"
+      "eyebrow": "Редактор курса",
+      "title": "Курсы"
     }
   },
   "notFound": {

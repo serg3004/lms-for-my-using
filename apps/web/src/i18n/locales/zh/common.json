@@ -529,7 +529,8 @@
       "close": "关闭"
     },
     "courseBuilder": {
-      "eyebrow": "课程编辑器"
+      "eyebrow": "课程编辑器",
+      "title": "课程"
     }
   },
   "notFound": {
