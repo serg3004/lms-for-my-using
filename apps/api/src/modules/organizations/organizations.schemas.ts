@@ -51,6 +51,8 @@ export const themeSettingsSchema = z.object({
   adminSidebarBackground: z.string().trim().min(1).max(64),
   adminSidebarText: z.string().trim().min(1).max(64),
   adminSidebarTextMuted: z.string().trim().min(1).max(64),
+  platformName: z.string().trim().min(1).max(120),
+  logoUrl: z.string().trim().max(2048).optional(),
 });
 
 export type ThemeSettingsInput = z.infer<typeof themeSettingsSchema>;
