@@ -181,7 +181,13 @@
       "passwordRequired": "Password is required",
       "passwordTooShort": "Password must be at least 8 characters",
       "duplicateEmail": "A user with this email already exists",
-      "saveFailed": "Failed to save user. Try again."
+      "saveFailed": "Failed to save user. Try again.",
+      "status": {
+        "active": "Active",
+        "invited": "Invited",
+        "suspended": "Suspended",
+        "archived": "Archived"
+      }
     },
     "lessons": {
       "eyebrow": "Learning content",
