@@ -15,6 +15,7 @@ import {
   saveThemeSettings,
   syncOrganizationTheme,
   themePresets,
+  uploadOrganizationThemeLogo,
 } from './theme.js';
 
 function storageStub(initial?: string) {
@@ -133,6 +134,22 @@ describe('organization theme settings', () => {
       body: JSON.stringify(defaultThemeSettings),
     });
     expect(getStoredThemeSettings()).toEqual(defaultThemeSettings);
+  });
+
+  it('uploads a logo file and caches the returned theme settings locally', async () => {
+    const saved = { ...defaultThemeSettings, logoObjectKey: 'organizations/org-1/branding/1', logoUrl: 'https://files.example.com/logo' };
+    mocks.apiRequest.mockResolvedValueOnce({ themeSettings: saved });
+    const file = new File(['logo-bytes'], 'logo.png', { type: 'image/png' });
+
+    await expect(uploadOrganizationThemeLogo('org-1', file)).resolves.toEqual(saved);
+
+    expect(mocks.apiRequest).toHaveBeenCalledTimes(1);
+    const [path, init] = mocks.apiRequest.mock.calls[0] as [string, { method: string; body: FormData }];
+    expect(path).toBe('/organizations/org-1/logo');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.body.get('file')).toBe(file);
+    expect(getStoredThemeSettings()).toEqual(saved);
   });
 
   it('resets theme settings on the server and clears the local cache', async () => {
