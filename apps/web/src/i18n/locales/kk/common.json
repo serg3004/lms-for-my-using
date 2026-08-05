@@ -297,7 +297,9 @@
       "col": {
         "title": "Атауы",
         "score": "Өту балы",
-        "status": "Күй"
+        "status": "Күй",
+        "questions": "Сұрақтар",
+        "attempts": "Әрекеттер"
       },
       "edit": "Өңдеу",
       "questions": "Сұрақтар",
@@ -321,7 +323,17 @@
       "multipleChoice": "Бірнеше вариант",
       "trueFalse": "Дұрыс / Бұрыс",
       "points": "Балл",
-      "saving": "Құрылуда..."
+      "saving": "Құрылуда...",
+      "create": "Тест құру",
+      "update": "Өзгерістерді сақтау",
+      "updating": "Сақталуда...",
+      "allStatuses": "Барлық мәртебелер",
+      "searchPlaceholder": "Тестті табу",
+      "status": {
+        "draft": "Жоба",
+        "published": "Жарияланды",
+        "archived": "Мұрағатта"
+      }
     },
     "assignments": {
       "eyebrow": "Міндетті оқу",
@@ -370,7 +382,13 @@
       "empty": "Тапсырмалар табылмады.",
       "progressListTitle": "Курс бойынша прогресс",
       "noScore": "—",
-      "progressEmpty": "Курс бойынша прогресс табылмады."
+      "progressEmpty": "Курс бойынша прогресс табылмады.",
+      "status": {
+        "assigned": "Тағайындалды",
+        "cancelled": "Болдырылмады"
+      },
+      "cancel": "Бас тарту",
+      "close": "Жабу"
     },
     "results": {
       "eyebrow": "Аналитика",

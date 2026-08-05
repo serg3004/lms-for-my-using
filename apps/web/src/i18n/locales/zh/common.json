@@ -297,7 +297,9 @@
       "col": {
         "title": "标题",
         "score": "及格分数",
-        "status": "状态"
+        "status": "状态",
+        "questions": "问题",
+        "attempts": "尝试次数"
       },
       "edit": "编辑",
       "questions": "题目",
@@ -321,7 +323,17 @@
       "multipleChoice": "多选",
       "trueFalse": "对 / 错",
       "points": "分值",
-      "saving": "创建中..."
+      "saving": "创建中...",
+      "create": "创建测试",
+      "update": "保存更改",
+      "updating": "保存中...",
+      "allStatuses": "所有状态",
+      "searchPlaceholder": "搜索测试",
+      "status": {
+        "draft": "草稿",
+        "published": "已发布",
+        "archived": "已归档"
+      }
     },
     "assignments": {
       "eyebrow": "必修学习",
@@ -370,7 +382,13 @@
       "empty": "未找到任务。",
       "progressListTitle": "课程进度",
       "noScore": "—",
-      "progressEmpty": "未找到课程进度。"
+      "progressEmpty": "未找到课程进度。",
+      "status": {
+        "assigned": "已分配",
+        "cancelled": "已取消"
+      },
+      "cancel": "取消",
+      "close": "关闭"
     },
     "results": {
       "eyebrow": "分析",

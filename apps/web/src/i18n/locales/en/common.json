@@ -297,7 +297,9 @@
       "col": {
         "title": "Title",
         "score": "Pass score",
-        "status": "Status"
+        "status": "Status",
+        "questions": "Questions",
+        "attempts": "Attempts"
       },
       "edit": "Edit",
       "questions": "Questions",
@@ -321,7 +323,17 @@
       "multipleChoice": "Multiple choice",
       "trueFalse": "True / False",
       "points": "Points",
-      "saving": "Creating..."
+      "saving": "Creating...",
+      "create": "Create assessment",
+      "update": "Save changes",
+      "updating": "Saving...",
+      "allStatuses": "All statuses",
+      "searchPlaceholder": "Find assessment",
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      }
     },
     "assignments": {
       "eyebrow": "Required learning",
@@ -370,7 +382,13 @@
       "empty": "No assignments found.",
       "progressListTitle": "Course progress",
       "noScore": "—",
-      "progressEmpty": "No course progress found."
+      "progressEmpty": "No course progress found.",
+      "status": {
+        "assigned": "Assigned",
+        "cancelled": "Cancelled"
+      },
+      "cancel": "Cancel",
+      "close": "Close"
     },
     "results": {
       "eyebrow": "Analytics",

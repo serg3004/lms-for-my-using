@@ -33,3 +33,12 @@ export function mapAssessmentForm(form: AssessmentForm): ValidAssessmentForm | n
 export function appendOption(options: Record<string, AnswerOption[]>, questionId: string, option: AnswerOption) {
   return { ...options, [questionId]: [...(options[questionId] ?? []), option] };
 }
+
+export function filterAssessments(assessments: Assessment[], search: string, statusFilter: 'all' | AssessmentStatus): Assessment[] {
+  const query = search.trim().toLowerCase();
+  return assessments.filter((assessment) => {
+    const matchesSearch = !query || assessment.title.toLowerCase().includes(query);
+    const matchesStatus = statusFilter === 'all' || assessment.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+}

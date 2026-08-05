@@ -297,7 +297,9 @@
       "col": {
         "title": "Название",
         "score": "Проходной балл",
-        "status": "Статус"
+        "status": "Статус",
+        "questions": "Вопросы",
+        "attempts": "Попытки"
       },
       "edit": "Редактировать",
       "questions": "Вопросы",
@@ -321,7 +323,17 @@
       "multipleChoice": "Несколько вариантов",
       "trueFalse": "Верно / Неверно",
       "points": "Баллы",
-      "saving": "Создание..."
+      "saving": "Создание...",
+      "create": "Создать тест",
+      "update": "Сохранить изменения",
+      "updating": "Сохранение...",
+      "allStatuses": "Все статусы",
+      "searchPlaceholder": "Найти тест",
+      "status": {
+        "draft": "Черновик",
+        "published": "Опубликован",
+        "archived": "В архиве"
+      }
     },
     "assignments": {
       "eyebrow": "Обязательное обучение",
@@ -370,7 +382,13 @@
       "empty": "Назначения не найдены.",
       "progressListTitle": "Прогресс по курсам",
       "noScore": "—",
-      "progressEmpty": "Прогресс по курсам не найден."
+      "progressEmpty": "Прогресс по курсам не найден.",
+      "status": {
+        "assigned": "Назначено",
+        "cancelled": "Отменено"
+      },
+      "cancel": "Отмена",
+      "close": "Закрыть"
     },
     "results": {
       "eyebrow": "Аналитика",
