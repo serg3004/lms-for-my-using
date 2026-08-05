@@ -466,7 +466,7 @@
     "themeSettings": {
       "eyebrow": "平台品牌",
       "title": "外观设置",
-      "subtitle": "为您的组织调整管理工作区的颜色、布局标记和侧边栏。",
+      "subtitle": "为您的组织调整平台名称、徽标、颜色和布局标记。",
       "saved": "主题设置已保存。",
       "saving": "保存中...",
       "saveError": "无法保存主题设置，请重试。",
@@ -474,6 +474,7 @@
       "imported": "主题设置已导入。",
       "importError": "无法导入主题设置。",
       "presetsTitle": "预设",
+      "presetsHint": "在当前设置的基础上快速应用现成的配色方案。",
       "presetLabel": "主题预设",
       "customPreset": "自定义",
       "previewTitle": "预览",

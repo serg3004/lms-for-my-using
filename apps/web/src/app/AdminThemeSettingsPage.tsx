@@ -17,6 +17,7 @@ type ThemeField = {
   key: keyof ThemeSettings;
   label: string;
   type: 'color' | 'text';
+  fullWidth?: boolean;
 };
 
 type ThemeFieldGroup = {
@@ -46,7 +47,7 @@ function getThemeFieldGroups(t: TFunction): ThemeFieldGroup[] {
         { key: 'radiusMd', label: t('admin.themeSettings.fields.radiusMd', 'Medium radius'), type: 'text' },
         { key: 'radiusLg', label: t('admin.themeSettings.fields.radiusLg', 'Large radius'), type: 'text' },
         { key: 'spacePage', label: t('admin.themeSettings.fields.spacePage', 'Page spacing'), type: 'text' },
-        { key: 'shadowCard', label: t('admin.themeSettings.fields.shadowCard', 'Card shadow'), type: 'text' },
+        { key: 'shadowCard', label: t('admin.themeSettings.fields.shadowCard', 'Card shadow'), type: 'text', fullWidth: true },
       ],
     },
     {
@@ -218,6 +219,9 @@ export function AdminThemeSettingsPage() {
       <section className="admin-theme-settings">
         <section className="admin-card">
           <h2>{t('admin.themeSettings.presetsTitle', 'Presets')}</h2>
+          <p className="admin-theme-settings__hint">
+            {t('admin.themeSettings.presetsHint', 'Quickly apply a ready-made color scheme on top of your current settings.')}
+          </p>
           <label>
             {t('admin.themeSettings.presetLabel', 'Theme preset')}
             <select value={selectedPresetId} onChange={(event) => applyPreset(event.target.value)}>
@@ -274,16 +278,25 @@ export function AdminThemeSettingsPage() {
             {getThemeFieldGroups(t).map((group) => (
               <fieldset className="admin-theme-settings__fieldset" key={group.title}>
                 <legend>{group.title}</legend>
-                {group.fields.map((field) => (
-                  <label className="admin-theme-settings__field" key={field.key}>
-                    {field.label}
-                    <input
-                      type={field.type}
-                      value={themeSettings[field.key]}
-                      onChange={(event) => updateThemeSetting(field.key, event.target.value)}
-                    />
-                  </label>
-                ))}
+                <div className="admin-theme-settings__field-grid">
+                  {group.fields.map((field) => (
+                    <label
+                      className={
+                        field.fullWidth
+                          ? 'admin-theme-settings__field admin-theme-settings__field--full'
+                          : 'admin-theme-settings__field'
+                      }
+                      key={field.key}
+                    >
+                      {field.label}
+                      <input
+                        type={field.type}
+                        value={themeSettings[field.key]}
+                        onChange={(event) => updateThemeSetting(field.key, event.target.value)}
+                      />
+                    </label>
+                  ))}
+                </div>
               </fieldset>
             ))}
           </form>
