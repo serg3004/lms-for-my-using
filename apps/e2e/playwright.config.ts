@@ -26,7 +26,11 @@ const startApiCommand = [
     `--confirm-environment=${nodeEnvironment}`,
     `--confirm-database=${databaseName}`,
   ].join(' '),
-  'pnpm --filter @lms/api dev',
+  // Run the same compiled bundle production uses (apps/api/Dockerfile's `node dist/main.js`),
+  // not `nest start --watch` — the dev-mode watcher's live recompilation competes for CPU
+  // with the 2 parallel Playwright workers and was the likely source of the auth-refresh
+  // e2e test's inconsistent timing failures (docs/CONCERNS.md, 2026-08-05).
+  'pnpm --filter @lms/api start:prod',
 ].join(' && ');
 
 export default defineConfig({
