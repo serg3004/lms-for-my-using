@@ -27,6 +27,15 @@ function formatDueAt(dueAt: string): string {
   return new Date(dueAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+function formatDuration(minutes: number | null, h: string, m: string, none: string): string {
+  if (!minutes) return none;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hrs === 0) return `${mins} ${m}`;
+  if (mins === 0) return `${hrs} ${h}`;
+  return `${hrs} ${h} ${mins} ${m}`;
+}
+
 export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<CourseDetailLoadState>({ status: 'idle' });
@@ -169,12 +178,14 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
                 <div className="lcd-fact__label">{t('courseDetail.factsLessons')}</div>
               </div>
               <div className="lcd-fact">
-                <div className="lcd-fact__value">{completedLessons}</div>
-                <div className="lcd-fact__label">{t('courseDetail.factsCompleted')}</div>
+                <div className="lcd-fact__value">
+                  {formatDuration(course.durationMinutes, t('courseDetail.durationH'), t('courseDetail.durationMin'), t('courseDetail.factsNoDuration'))}
+                </div>
+                <div className="lcd-fact__label">{t('courseDetail.factsDuration')}</div>
               </div>
               <div className="lcd-fact">
-                <div className="lcd-fact__value">{progressPercent}%</div>
-                <div className="lcd-fact__label">{t('courseDetail.factsProgress')}</div>
+                <div className="lcd-fact__value">{course.category ?? t('courseDetail.factsNoDuration')}</div>
+                <div className="lcd-fact__label">{t('courseDetail.factsLevel')}</div>
               </div>
             </div>
 
@@ -219,12 +230,16 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
           <div className="ds-card" style={{ padding: '24px' }}>
             <h3 className="lcd-section-title">{t('courseDetail.detailsTitle')}</h3>
             <div className="info-row">
-              <span className="info-row__label">{t('courseDetail.detailsStatus')}</span>
-              <span>{course.status}</span>
+              <span className="info-row__label">{t('courseDetail.detailsAuthor')}</span>
+              <span>{t('courseDetail.detailsNoAuthor')}</span>
             </div>
             <div className="info-row">
               <span className="info-row__label">{t('courseDetail.detailsDueAt')}</span>
               <span>{dueAt ? formatDueAt(dueAt) : t('courseDetail.detailsNoDueAt')}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-row__label">{t('courseDetail.detailsCertificate')}</span>
+              <span>{t('courseDetail.detailsCertificateValue')}</span>
             </div>
           </div>
 

@@ -772,7 +772,16 @@
     "detailsDueAt": "Мерзім",
     "detailsNoDueAt": "Белгіленбеген",
     "continueLearning": "Оқуды жалғастыру",
-    "backToCourses": "Курстарға оралу"
+    "backToCourses": "Курстарға оралу",
+    "factsDuration": "Ұзақтығы",
+    "factsLevel": "Деңгей",
+    "factsNoDuration": "—",
+    "durationH": "сағ",
+    "durationMin": "мин",
+    "detailsAuthor": "Автор",
+    "detailsNoAuthor": "—",
+    "detailsCertificate": "Сертификат",
+    "detailsCertificateValue": "Аяқтағаннан кейін"
   },
   "lessons": {
     "navLink": "Сабақтар",
@@ -937,7 +946,15 @@
     "statsCompleted": "Барлығы аяқталды",
     "open": "Ашу",
     "viewResult": "Нәтиже",
-    "sortNearest": "Ең жақын мерзім алдымен"
+    "sortNearest": "Ең жақын мерзім алдымен",
+    "filterAllTypes": "Барлық түрлер",
+    "filterTypeCourse": "Курс",
+    "filterTypeAssessment": "Тест",
+    "filterTypePolicy": "Танысу",
+    "statusBadgeUrgent": "Шұғыл",
+    "statusBadgeActive": "Жұмыста",
+    "statusBadgeDone": "Аяқталды",
+    "typeBadgeCourse": "Курс"
   },
   "assignmentDetail": {
     "eyebrow": "Міндетті тапсырма",
@@ -961,7 +978,10 @@
     "stateTitle": "Күй",
     "notice": "Тест басталғанда таймер іске қосылады. Әрекет аяқталғанша бетті жаппаңыз.",
     "openCourse": "Курсты ашу",
-    "backToList": "Тапсырмаларға оралу"
+    "backToList": "Тапсырмаларға оралу",
+    "assignedBy": "Тағайындаған",
+    "assignedFallback": "Менеджер",
+    "attemptsLeft": "Қалған әрекеттер"
   },
   "assessments": {
     "navLink": "Тесттер",

@@ -13,6 +13,8 @@ import { PageState } from '../shared/ui.js';
 type ReadableAssignmentSummary = AssignmentSummary & {
   courseTitle?: string | null;
   course?: { title?: string | null } | null;
+  userName?: string | null;
+  groupName?: string | null;
 };
 
 type AssignmentDetailLoadState =
@@ -177,6 +179,10 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
           </div>
           <div style={{ background: 'rgba(255,255,255,.12)', border: '1px solid rgba(255,255,255,.18)', borderRadius: '18px', padding: '20px', display: 'grid', gap: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', color: '#dbeafe', fontSize: '13px' }}>
+              <span>{t('assignmentDetail.assignedBy')}</span>
+              <strong style={{ color: '#fff' }}>{assignment.userName ?? assignment.groupName ?? t('assignmentDetail.assignedFallback')}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', color: '#dbeafe', fontSize: '13px' }}>
               <span>{t('assignmentDetail.createdAt')}</span>
               <strong style={{ color: '#fff' }}>{createdLabel}</strong>
             </div>
@@ -233,10 +239,16 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
                 <strong>{isOverdue ? t('assignmentDetail.statusOverdue') : t('assignmentDetail.statusPending')}</strong>
               </div>
               {assessment ? (
-                <div style={metaRowStyle}>
-                  <span style={{ color: COLORS.muted }}>{t('assessments.metaPassingScore')}</span>
-                  <strong>{assessment.passingScore}%</strong>
-                </div>
+                <>
+                  <div style={metaRowStyle}>
+                    <span style={{ color: COLORS.muted }}>{t('assignmentDetail.attemptsLeft')}</span>
+                    <strong>{assessment.maxAttempts} {t('assessments.of', 'из')} {assessment.maxAttempts}</strong>
+                  </div>
+                  <div style={metaRowStyle}>
+                    <span style={{ color: COLORS.muted }}>{t('assessments.metaPassingScore')}</span>
+                    <strong>{assessment.passingScore}%</strong>
+                  </div>
+                </>
               ) : null}
             </div>
           </section>

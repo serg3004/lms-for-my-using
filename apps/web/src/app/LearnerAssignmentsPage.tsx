@@ -21,6 +21,7 @@ type LoadState =
   | { status: 'error'; message: string };
 
 type StatusFilter = 'all' | 'assigned' | 'completed' | 'overdue';
+type TypeFilter = 'all' | 'course';
 
 function getCourseTitle(a: ExtendedAssignment) {
   return a.courseTitle ?? a.course?.title ?? null;
@@ -51,12 +52,12 @@ function getEffectiveStatus(a: ExtendedAssignment): 'overdue' | 'completed' | 'a
 }
 
 const STATUS_BADGE = {
-  overdue:   { label: 'Срочно',    bg: '#fef2f2', color: '#dc2626' },
-  assigned:  { label: 'В работе',  bg: '#eef2ff', color: '#4f46e5' },
-  completed: { label: 'Завершено', bg: '#e9f8f2', color: '#0f9f6e' },
+  overdue:   { labelKey: 'assignments.statusBadgeUrgent',  bg: '#fef2f2', color: '#dc2626' },
+  assigned:  { labelKey: 'assignments.statusBadgeActive',  bg: '#eef2ff', color: '#4f46e5' },
+  completed: { labelKey: 'assignments.statusBadgeDone',    bg: '#e9f8f2', color: '#0f9f6e' },
 } as const;
 
-const TYPE_BADGE = { label: 'Курс', bg: '#eef2ff', color: '#4f46e5' } as const;
+const TYPE_BADGE = { labelKey: 'assignments.typeBadgeCourse', bg: '#eef2ff', color: '#4f46e5' } as const;
 
 function Badge({ bg, color, label }: { bg: string; color: string; label: string }) {
   return (
@@ -82,11 +83,11 @@ function SummaryCard({ value, label }: { value: number; label: string }) {
   );
 }
 
-function ProgressBar({ pct, success }: { pct: number; success?: boolean }) {
+function ProgressBar({ pct, success, label }: { pct: number; success?: boolean; label: string }) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px', fontSize: '13px' }}>
-        <span style={{ color: '#6b7280' }}>Прогресс</span>
+        <span style={{ color: '#6b7280' }}>{label}</span>
         <strong style={{ color: '#172033' }}>{pct}%</strong>
       </div>
       <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
@@ -106,6 +107,7 @@ export function LearnerAssignmentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   useEffect(() => {
     let isMounted = true;
@@ -144,9 +146,10 @@ export function LearnerAssignmentsPage() {
       const matchesSearch = !q || title.toLowerCase().includes(q);
       const effective = getEffectiveStatus(a);
       const matchesStatus = statusFilter === 'all' || effective === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesType = typeFilter === 'all' || typeFilter === 'course';
+      return matchesSearch && matchesStatus && matchesType;
     });
-  }, [loadState, search, statusFilter]);
+  }, [loadState, search, statusFilter, typeFilter]);
 
   if (loadState.status === 'idle' || loadState.status === 'loading') {
     return <PageState message={t('assignments.loading')} variant="loading" />;
@@ -214,6 +217,14 @@ export function LearnerAssignmentsPage() {
           <option value="overdue">{t('assignments.filterOverdue')}</option>
           <option value="completed">{t('assignments.filterCompleted')}</option>
         </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+          style={{ padding: '11px 13px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', fontSize: '14px', color: '#172033' }}
+        >
+          <option value="all">{t('assignments.filterAllTypes')}</option>
+          <option value="course">{t('assignments.filterTypeCourse')}</option>
+        </select>
         <div style={{ flex: 1 }} />
         <button
           type="button"
@@ -260,8 +271,8 @@ export function LearnerAssignmentsPage() {
                   {/* Main column */}
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                      <Badge bg={statusBadge.bg} color={statusBadge.color} label={statusBadge.label} />
-                      <Badge bg={TYPE_BADGE.bg} color={TYPE_BADGE.color} label={TYPE_BADGE.label} />
+                      <Badge bg={statusBadge.bg} color={statusBadge.color} label={t(statusBadge.labelKey)} />
+                      <Badge bg={TYPE_BADGE.bg} color={TYPE_BADGE.color} label={t(TYPE_BADGE.labelKey)} />
                     </div>
                     <h2 style={{ margin: '0 0 7px', fontSize: '20px', fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
                       {courseTitle ?? t('assignments.courseLabel')}
@@ -279,7 +290,7 @@ export function LearnerAssignmentsPage() {
 
                   {/* Progress column */}
                   <div style={{ minWidth: 0 }}>
-                    <ProgressBar pct={pct} success={assignment.status === 'completed'} />
+                    <ProgressBar pct={pct} success={assignment.status === 'completed'} label={t('courseDetail.factsProgress')} />
                   </div>
 
                   {/* Due date column */}
