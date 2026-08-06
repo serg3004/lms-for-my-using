@@ -6,6 +6,31 @@
 
 ---
 
+## 0. Текущий статус реализации (пересчитано 2026-08-06)
+
+Сам scope (раздел 2) — зафиксированное решение, не менялся. Ниже — что из него реально построено в коде на текущий `main` (PR #505). Статус сверен с Prisma-схемой и контроллерами `apps/api/src`, не с прошлыми отчётами.
+
+| Раздел | Статус | Комментарий |
+|---|---|---|
+| 2.1 Identity & Access | ✅ Сделано | login/logout/me, password hashing (`scrypt`), JWT access + refresh token в httpOnly cookie, 4 фиксированные роли, backend RBAC (`RolesGuard` + `CourseAccessGuard`), protected routes — всё реализовано и покрыто тестами. |
+| 2.2 Users & Organization | ✅ Сделано | `organizations`, `users` CRUD, `UserStatus` enum совпадает 1:1 (`active/invited/suspended/archived`), роли через `Membership`, `organizationId` во всех бизнес-сущностях. |
+| 2.3 Groups | ✅ Сделано | `groups` CRUD, `group_members` (с soft-delete через `deletedAt`), назначение пользователей в группу, `manager-team-scope` модуль для manager readiness. |
+| 2.4 Courses & Lessons | ⚠️ Частично | courses CRUD/status/lessons/ordering/publish validation/редактор — всё есть. Отдельной таблицы `course_modules` нет — уроки крепятся к курсу напрямую, без промежуточного слоя «модуль». Не заявлено как допустимое упрощение в разделе 4, но работает и не блокирует пилот. |
+| 2.5 Files | ✅ Сделано | file metadata в Postgres, S3-совместимое хранилище (MinIO на Railway), signed URLs, tenant-scoped access checks. |
+| 2.6 Assignments & Enrollments | ⚠️ Частично | `Assignment` (courseId + userId\|groupId + dueAt опционально) есть, learner видит назначенные курсы. Отдельной модели `enrollments` нет — роль enrollment фактически выполняют `Assignment` + `Progress` вместе. Не заявлено как упрощение в разделе 4. |
+| 2.7 Learner Experience | ✅ Сделано | dashboard, мои курсы, страница курса, lesson player, responsive UI — все страницы реализованы. |
+| 2.8 Progress | ✅ Сделано | `lesson_progress`/`course_progress`, complete action, расчёт завершения курса. |
+| 2.9 Assessments | ✅ Сделано | тесты, вопросы, варианты ответов, попытки, backend-скоринг, pass/fail, ответы не раскрываются до сдачи. |
+| 2.10 Certificates | ✅ Сделано | запись сертификата, уникальный номер, статус, HTML-страница, доступна learner. |
+| 2.11 Reports | ⚠️ Частично | Выделенного `reports`-модуля/API нет. Функционально закрыто через `AdminResultsCertificatesPage` (таблица прогресс+результаты) и `ManagerDashboardPage`/`ManagerTeamPage` (прогресс команды) поверх существующих `/progress`, `/certificates`, `/assessments/:id/report`. |
+| 2.12 Notifications | 🚨 Не сделано | Модуля нет вообще — ни таблиц, ни API, ни UI. См. открытый вопрос в `docs/CONCERNS.md` (2026-08-06). |
+| 2.13 Audit Log | 🚨 Не сделано | Модуля нет вообще. См. открытый вопрос в `docs/CONCERNS.md` (2026-08-06) — это прямо противоречит критерию §5.17 ниже. |
+| 2.14 Deployment & DevOps | ✅ Сделано | pnpm workspace, Dockerfile/docker-compose, Postgres+MinIO на Railway, `.env.example`, health endpoint, CI (lint/typecheck/test/build/CodeQL/audit). Продакшн реально развёрнут и используется (не просто «фундамент задеплоя» — жив на Railway). |
+
+**Итог:** 9 из 14 разделов scope полностью реализованы, 3 — частично (архитектура работает, но не 1:1 повторяет исходное описание таблиц), 2 — не начаты (`notifications`, `audit log`) и напрямую противоречат критерию готовности §5.17.
+
+---
+
 ## 1. Главная цель MVP
 
 MVP должен доказать, что базовый корпоративный learning loop работает end-to-end:
@@ -281,6 +306,8 @@ MVP считается готовым, если можно пройти сцен
 17. Audit log содержит важные действия.
 18. Приложение деплоится на Railway.
 ```
+
+**[2026-08-06] Статус сценария:** пункты 1–16 и 18 подтверждены в коде и реально работают (в т.ч. 18 — прод на Railway живой, не гипотетический). Пункт 17 — единственный незакрытый: audit log не реализован (см. раздел 0 выше и открытый вопрос в `docs/CONCERNS.md`). Формально сценарий целиком не проходит, пока это не решено — либо реализовать, либо снять пункт из критерия.
 
 ---
 

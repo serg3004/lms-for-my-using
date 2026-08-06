@@ -5,6 +5,8 @@
 **Язык продукта:** русский  
 **Назначение:** зафиксировать единые правила, чтобы документация, GitHub Issues и AI coding agents не расходились в решениях.
 
+**[2026-08-06] Статус:** документ писался «перед стартом разработки» — сейчас проект на PR #505+, большинство решений здесь (стек, роли, архитектурные ограничения из §6) подтвердились и не менялись. Актуальный статус реализации по каждому пункту — `docs/MVP_SCOPE_LOCK.md` §0. Список backend-модулей в §7 ниже обновлён с пометками статуса.
+
 ---
 
 ## 1. Что создаётся
@@ -145,22 +147,24 @@ Admin       — управляет пользователями, группам�
 
 ## 7. Минимальные backend modules MVP
 
+**[2026-08-06]** Статус по факту (`apps/api/src/modules/`) отмечен инлайн. `roles` реализован не отдельным модулем, а частью `auth`; `files` — как `upload` + `course-materials`.
+
 ```text
-auth
-users
-roles
-organizations
-groups
-courses
-lessons
-files
-assignments
-progress
-assessments
-certificates
-notifications
-reports
-audit
+auth            — ✅ есть
+users           — ✅ есть
+roles           — ✅ есть (часть auth, не отдельный модуль)
+organizations   — ✅ есть
+groups          — ✅ есть
+courses         — ✅ есть
+lessons         — ✅ есть
+files           — ✅ есть (upload + course-materials)
+assignments     — ✅ есть
+progress        — ✅ есть
+assessments     — ✅ есть
+certificates    — ✅ есть
+notifications   — 🚨 не реализован, открытый вопрос (docs/CONCERNS.md)
+reports         — ⚠️ нет отдельного модуля, покрыто функционально через admin/manager UI
+audit           — 🚨 не реализован, открытый вопрос (docs/CONCERNS.md)
 ```
 
 ---

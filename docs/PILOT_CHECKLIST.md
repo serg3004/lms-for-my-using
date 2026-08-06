@@ -4,6 +4,8 @@
 
 This checklist defines the minimum operational steps before running a controlled LMS MVP pilot.
 
+**[2026-08-06] Status:** most of this checklist describes local/dev verification steps, but the app has since been deployed to Railway production (`web-production-b1f01.up.railway.app`) and is in active use — a pilot can run against that live environment instead of only local. See `docs/MVP_READINESS_DASHBOARD.md` for the current full readiness picture; the sections below are updated to reflect what's actually implemented rather than "once implemented."
+
 ## 1. Scope confirmation
 
 - Confirm pilot organization.
@@ -64,7 +66,7 @@ Before pilot, verify:
 - Learner course list is reachable.
 - Course detail is reachable.
 - Lesson view is reachable.
-- Complete lesson action can be tested once implemented.
+- Complete lesson action works and records progress (implemented and tested, not pending).
 
 ## 7. Security validation
 
@@ -77,18 +79,16 @@ Before pilot, verify:
 
 ## 8. Documentation validation
 
-Required documents:
+Required documents — **[2026-08-06] all now exist**, none still "planned":
 
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/API_STATUS.md`
-- `docs/PROJECT_LOG.md`
-
-Planned documents before pilot operations:
-
+- `docs/DEVELOPMENT_PLAN.md` (project changelog — replaces the retired `docs/PROJECT_LOG.md`)
 - `docs/MVP_LOCAL_RUNBOOK.md`
 - `docs/API_RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
+- `docs/MVP_SCOPE_LOCK.md` §0 and `docs/MVP_READINESS_DASHBOARD.md` — current full status
 
 ## 9. CI validation
 
@@ -102,6 +102,8 @@ Before merge or pilot use, confirm:
 ```
 
 ## 10. Pilot go / no-go
+
+**[2026-08-06]** MVP Definition of Done is satisfied (see `docs/MVP_DEFINITION_OF_DONE.md`). Known accepted risks for a pilot today: no audit log, no notifications (both required by `docs/MVP_SCOPE_LOCK.md` but not built — open product question, see `docs/CONCERNS.md`), rate limiting runs in-memory in production (Redis not yet provisioned), password reset is a skeleton (503).
 
 Go only if:
 
