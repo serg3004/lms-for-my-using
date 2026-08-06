@@ -75,7 +75,6 @@ Before enabling password reset, create a separate implementation plan covering:
 ## Related docs
 
 - `docs/MVP_READINESS_DASHBOARD.md`
-- `docs/API_STATUS.md`
 - `docs/API_CONTRACTS.md`
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
