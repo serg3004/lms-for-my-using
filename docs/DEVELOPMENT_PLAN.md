@@ -2963,3 +2963,481 @@ frontend quality и observability.
 - performance baseline, correlation ID, метрики, SLO и alerts работают;
 - backup восстановлен на практике, incident response проверен tabletop exercise;
 - dependency, secret, SAST и container scans являются CI gates.
+
+---
+
+# ЧАСТЬ 8 — Расширение схемы базы данных (новые типы контента)
+
+> Добавлено 2026-08-06. Источник: архитектурный анализ текущей схемы Prisma.
+> Цель — понять чего не хватает для реализации полноценных типов контента:
+> видео-уроки, лонгриды, презентации, чек-листы, расширенные тесты, опросы.
+
+## Текущее состояние схемы
+
+Существующие сущности покрывают базовый учебный цикл:
+- `Organization`, `User`, `Membership`, `Session` — пользователи и роли
+- `Group`, `GroupMember`, `ManagerGroup` — структура команд
+- `Course`, `Lesson`, `CourseMaterial`, `MultipartUpload`, `CourseInstructor` — контент
+- `Assignment`, `Progress` — назначения и прогресс
+- `Assessment`, `AssessmentQuestion`, `AssessmentAnswerOption`, `AssessmentAttempt`, `AssessmentAttemptAnswer` — тесты
+- `Certificate` — сертификаты
+- `MaterialFileDeletionAudit` — аудит удалений
+
+**Ключевые пробелы:** `Lesson` не имеет поля `body` для хранения контента; `Assignment` не знает кто назначил; нет типов контента для видео-трекинга, слайдов, чек-листов; ограниченный набор типов вопросов.
+
+---
+
+## P0 — Критично. Блокирует базовый функционал
+
+### P0.1 — Контент урока (`Lesson.body`, видео-поля)
+
+**Проблема:** `Lesson` существует, но текст/видео/контент хранить негде. Уроки сейчас пустые.
+
+**Что добавить в схему:**
+
+```prisma
+model Lesson {
+  // ... существующие поля ...
+  body             String?  // rich text / Markdown для лонгридов и статей
+  videoUrl         String?  @map("video_url")
+  videoDurationSec Int?     @map("video_duration_sec")
+  thumbnailUrl     String?  @map("thumbnail_url")
+  videoProvider    String?  @map("video_provider") // "youtube" | "vimeo" | "s3"
+}
+```
+
+**Что даёт:**
+- Уроки типа `text` хранят тело статьи/лонгрида в `body`
+- Уроки типа `video` хранят URL видео и длительность
+- Показывать превью, длительность в списке уроков
+
+**Что входит:**
+- Миграция Prisma (добавить поля)
+- API: `PATCH /lessons/:id` принимает `body`, `videoUrl` и т.д.
+- Course Builder — редактор контента урока (rich text или видео-embed)
+
+---
+
+### P0.2 — `Assignment.assignedById`
+
+**Проблема:** Нельзя узнать кто назначил курс. В UI показывается "Менеджер" как заглушка.
+
+**Что добавить:**
+
+```prisma
+model Assignment {
+  // ... существующие поля ...
+  assignedById String? @map("assigned_by_id") @db.Uuid
+  assignedBy   User?   @relation("AssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+}
+```
+
+**Что даёт:**
+- Learner видит реальное имя менеджера который назначил курс
+- Аудит — кто и когда создал назначение
+
+**Что входит:**
+- Миграция Prisma
+- API: при `POST /assignments` — записывать `assignedById = currentUser.id`
+- Фронтенд: убрать заглушку, показать реальное имя
+
+---
+
+## P1 — Важно. Нужно для полноценного контента
+
+### P1.1 — Видео-уроки (трекинг просмотра + главы)
+
+**Проблема:** Нельзя понять досмотрел ли учащийся видео и отметить урок завершённым.
+
+**Что добавить:**
+
+```prisma
+model VideoWatchProgress {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  lessonId       String    @map("lesson_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  watchedSeconds Int       @default(0) @map("watched_seconds")
+  totalSeconds   Int       @map("total_seconds")
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId])
+  @@index([organizationId, userId])
+  @@map("video_watch_progress")
+}
+
+model VideoChapter {
+  id           String   @id @default(uuid()) @db.Uuid
+  lessonId     String   @map("lesson_id") @db.Uuid
+  title        String
+  startSeconds Int      @map("start_seconds")
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, order])
+  @@map("video_chapters")
+}
+```
+
+**Что даёт:**
+- Трекинг — посмотрел ли учащийся ≥80% видео → автозачёт урока
+- Главы — навигация по таймкодам
+- Аналитика — сколько % видео в среднем досматривают
+
+**Что входит:**
+- Миграция Prisma
+- API: `POST /lessons/:id/video-progress` — обновлять каждые 10–15 сек с плеера
+- Плеер на фронтенде с трекингом времени
+
+---
+
+### P1.2 — Чек-листы
+
+**Проблема:** Нет возможности создать урок-чеклист с пунктами, которые учащийся отмечает.
+
+**Что добавить:**
+
+```prisma
+model ChecklistItem {
+  id          String    @id @default(uuid()) @db.Uuid
+  lessonId    String    @map("lesson_id") @db.Uuid
+  text        String
+  order       Int       @default(0)
+  isRequired  Boolean   @default(true) @map("is_required")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  lesson      Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completions ChecklistCompletion[]
+
+  @@index([lessonId, order])
+  @@map("checklist_items")
+}
+
+model ChecklistCompletion {
+  itemId      String   @map("item_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  completedAt DateTime @default(now()) @map("completed_at") @db.Timestamptz
+
+  item ChecklistItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, userId])
+  @@map("checklist_completions")
+}
+```
+
+**Что даёт:**
+- Урок типа `checklist` — список пунктов, каждый отмечается галочкой
+- Автозачёт урока когда все обязательные пункты отмечены
+- Инструктор видит кто что отметил
+
+**Что входит:**
+- Миграция Prisma
+- API: `POST /checklist-items/:id/complete`, `DELETE /checklist-items/:id/complete`
+- Course Builder — редактор чеклиста
+- Learner UI — урок с чекбоксами
+
+---
+
+### P1.3 — Презентации / Слайды
+
+**Проблема:** Нет структуры для хранения слайдов как отдельных сущностей с трекингом просмотра.
+
+**Что добавить:**
+
+```prisma
+model Slide {
+  id        String   @id @default(uuid()) @db.Uuid
+  lessonId  String   @map("lesson_id") @db.Uuid
+  order     Int      @default(0)
+  title     String?
+  body      String?  // текст / HTML контент слайда
+  imageUrl  String?  @map("image_url")
+  notes     String?  // заметки спикера
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  lesson Slide @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  views  SlideView[]
+
+  @@index([lessonId, order])
+  @@map("slides")
+}
+
+model SlideView {
+  slideId  String   @map("slide_id") @db.Uuid
+  userId   String   @map("user_id") @db.Uuid
+  viewedAt DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+
+  slide Slide @relation(fields: [slideId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([slideId, userId])
+  @@map("slide_views")
+}
+```
+
+**Что даёт:**
+- Урок типа `slides` — встроенный слайдер
+- Трекинг — какие слайды просмотрены
+- Автозачёт — когда просмотрен последний слайд
+
+**Что входит:**
+- Миграция Prisma
+- API: CRUD слайдов, `POST /slides/:id/view`
+- Course Builder — редактор слайдов с drag-and-drop порядком
+- Learner UI — слайдер с навигацией
+
+---
+
+## P2 — Желательно. Улучшает качество обучения
+
+### P2.1 — Опрос (Survey) — обратная связь после курса
+
+**Проблема:** `Assessment` — тест с оценкой. `Survey` — анонимный опрос без балла. Нет способа собрать обратную связь.
+
+**Что добавить:**
+
+```prisma
+model Survey {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("organization_id") @db.Uuid
+  courseId    String?  @map("course_id") @db.Uuid
+  title       String
+  description String?
+  isAnonymous Boolean  @default(true) @map("is_anonymous")
+  status      String   @default("draft") // draft | published | closed
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+}
+
+model SurveyQuestion {
+  id         String  @id @default(uuid()) @db.Uuid
+  surveyId   String  @map("survey_id") @db.Uuid
+  type       String  // "rating" | "text" | "single_choice" | "multiple_choice"
+  text       String
+  order      Int     @default(0)
+  isRequired Boolean @default(true) @map("is_required")
+  options    Json?   // массив вариантов для choice-вопросов
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid()) @db.Uuid
+  surveyId    String   @map("survey_id") @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid // null если анонимно
+  answers     Json     // { questionId: answer }
+  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+}
+```
+
+**Что даёт:**
+- После завершения курса — автоматически предлагается опрос
+- Оценка курса по звёздам, NPS, открытые вопросы
+- Аналитика для менеджеров и инструкторов
+
+**Что входит:**
+- Миграция Prisma
+- API: CRUD Survey, `POST /surveys/:id/respond`
+- Learner UI — форма опроса после прохождения курса
+- Admin/Manager UI — просмотр результатов
+
+---
+
+### P2.2 — Банк вопросов (QuestionBank)
+
+**Проблема:** Вопросы жёстко привязаны к конкретному тесту. Нельзя переиспользовать или генерировать случайную выборку.
+
+**Что добавить:**
+
+```prisma
+model QuestionBank {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  courseId       String?  @map("course_id") @db.Uuid
+  title          String
+  description    String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  questions BankQuestion[]
+}
+
+model BankQuestion {
+  id             String                 @id @default(uuid()) @db.Uuid
+  bankId         String                 @map("bank_id") @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  type           AssessmentQuestionType
+  title          String
+  text           String?
+  points         Int                    @default(1)
+  tags           String[]
+  options        BankAnswerOption[]
+}
+
+model BankAnswerOption {
+  id         String  @id @default(uuid()) @db.Uuid
+  questionId String  @map("question_id") @db.Uuid
+  text       String
+  isCorrect  Boolean @default(false) @map("is_correct")
+  order      Int     @default(0)
+}
+
+// Связь: тест берёт N случайных вопросов из банка
+model AssessmentQuestionPool {
+  assessmentId String @map("assessment_id") @db.Uuid
+  bankId       String @map("bank_id") @db.Uuid
+  count        Int    // сколько вопросов взять из банка
+
+  @@id([assessmentId, bankId])
+}
+```
+
+**Что даёт:**
+- Один вопрос — в нескольких тестах
+- Случайная выборка → каждый учащийся получает разный набор
+- Тегирование вопросов по темам для аналитики усвоения
+
+**Что входит:**
+- Миграция Prisma
+- API: CRUD QuestionBank, привязка к тесту
+- Course Builder — выбор вопросов из банка при создании теста
+
+---
+
+## P3 — На будущее. Не нужно для MVP
+
+### P3.1 — Геймификация
+
+```prisma
+// Badge — достижение
+model Badge {
+  id          String @id @default(uuid()) @db.Uuid
+  orgId       String @map("organization_id") @db.Uuid
+  title       String
+  description String?
+  imageUrl    String? @map("image_url")
+  condition   Json   // условие получения
+}
+
+// UserBadge — заработанный бейдж
+model UserBadge {
+  userId   String   @map("user_id") @db.Uuid
+  badgeId  String   @map("badge_id") @db.Uuid
+  earnedAt DateTime @default(now()) @map("earned_at") @db.Timestamptz
+
+  @@id([userId, badgeId])
+}
+
+// UserPoints — баллы пользователя
+model UserPoints {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  orgId     String   @map("organization_id") @db.Uuid
+  points    Int
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+}
+```
+
+**Что даёт:** Мотивация через достижения, рейтинги, баллы за активность.
+
+---
+
+### P3.2 — Домашние задания
+
+```prisma
+model Homework {
+  id          String    @id @default(uuid()) @db.Uuid
+  lessonId    String    @map("lesson_id") @db.Uuid
+  title       String
+  description String?
+  dueAt       DateTime? @map("due_at") @db.Timestamptz
+}
+
+model HomeworkSubmission {
+  id          String    @id @default(uuid()) @db.Uuid
+  homeworkId  String    @map("homework_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  fileUrl     String?   @map("file_url")
+  text        String?
+  submittedAt DateTime  @default(now()) @map("submitted_at") @db.Timestamptz
+}
+
+model HomeworkReview {
+  submissionId String   @map("submission_id") @db.Uuid @unique
+  reviewerId   String   @map("reviewer_id") @db.Uuid
+  grade        Int?
+  comment      String?
+  reviewedAt   DateTime @default(now()) @map("reviewed_at") @db.Timestamptz
+}
+```
+
+**Что даёт:** Инструктор задаёт задание, учащийся сдаёт файл/текст, инструктор проверяет и ставит оценку.
+
+---
+
+### P3.3 — Живые занятия / Вебинары
+
+```prisma
+model LiveSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  courseId     String    @map("course_id") @db.Uuid
+  title        String
+  scheduledAt  DateTime  @map("scheduled_at") @db.Timestamptz
+  durationMin  Int       @map("duration_min")
+  meetingUrl   String?   @map("meeting_url")
+  recordingUrl String?   @map("recording_url")
+}
+
+model LiveSessionAttendance {
+  sessionId String   @map("session_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  joinedAt  DateTime @map("joined_at") @db.Timestamptz
+  leftAt    DateTime? @map("left_at") @db.Timestamptz
+
+  @@id([sessionId, userId])
+}
+```
+
+**Что даёт:** Планирование онлайн-занятий, запись посещаемости.
+
+---
+
+### P3.4 — Уведомления
+
+```prisma
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  orgId     String    @map("organization_id") @db.Uuid
+  type      String    // "assignment_created" | "deadline_reminder" | "certificate_issued" | ...
+  title     String
+  body      String
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+}
+```
+
+**Что даёт:** Push/in-app уведомления о назначениях, дедлайнах, результатах тестов.
+
+---
+
+## Итоговая таблица приоритетов
+
+| Приоритет | Сущности | Трудоёмкость | Статус |
+|-----------|----------|--------------|--------|
+| **P0** | `Lesson.body/videoUrl`, `Assignment.assignedById` | ~1–2 дня | 🔲 НЕ НАЧАТО |
+| **P1** | `VideoWatchProgress`, `VideoChapter`, `ChecklistItem`, `ChecklistCompletion`, `Slide`, `SlideView` | ~1–2 недели | 🔲 НЕ НАЧАТО |
+| **P2** | `Survey`, `SurveyQuestion`, `SurveyResponse`, `QuestionBank`, `BankQuestion`, `AssessmentQuestionPool` | ~2–3 недели | 🔲 НЕ НАЧАТО |
+| **P3** | `Badge`, `UserBadge`, `UserPoints`, `Homework`, `HomeworkSubmission`, `HomeworkReview`, `LiveSession`, `Notification` | ~месяц+ | 🔲 НЕ НАЧАТО |
