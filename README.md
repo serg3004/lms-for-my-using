@@ -133,7 +133,7 @@ POST /api/v1/certificates
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
 - `docs/MVP_READINESS_DASHBOARD.md`
-- `docs/RBAC_MATRIX.md`
+- `docs/API_RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
 - `docs/API_STATUS.md`
 - `docs/PROJECT_LOG.md`

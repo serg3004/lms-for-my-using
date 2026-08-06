@@ -13,7 +13,7 @@ It is a status document only. It does not replace the detailed source documents:
 - `docs/API_STATUS.md`
 - `docs/STORAGE_UPLOAD_STATUS.md`
 - `docs/PASSWORD_RESET_STATUS.md`
-- `docs/RBAC_MATRIX.md`
+- `docs/API_RBAC_MATRIX.md`
 - `docs/TODO_VERIFY.md`
 - `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
 

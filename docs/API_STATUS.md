@@ -113,4 +113,4 @@ GET  /api/v1/certificates/:id
 - `docs/API_CONTRACTS.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
 - `docs/PILOT_CHECKLIST.md`
-- `docs/RBAC_MATRIX.md`
+- `docs/API_RBAC_MATRIX.md`
