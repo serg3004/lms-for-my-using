@@ -28,6 +28,8 @@
 **Severity:** 🟡  
 Audit-тест (`api-policy.audit.spec.ts`) проверяет что у каждого endpoint есть `@Roles()` — но это не то же самое что проверить поведение guard. Dedicated `.rbac.spec.ts` файлы есть только у `assignments` и `progress`. Остальные 12 контроллеров без поведенческих RBAC-тестов.
 
+**[2026-08-06] Дополнение:** при ревизии `docs/API_RBAC_MATRIX.md` обнаружил, что и `roles.spec.ts` (`matches the audited learner/admin RBAC matrix`) не спасает от тихого дрейфа — тест сравнивает `rolePolicies` с захардкоженным списком из 28 политик (`it.each([...])`), а не с `Object.keys(rolePolicies)`. Когда добавили `themeSettingsRead`/`themeSettingsWrite`/`managerTeamSummaryRead` — тест не упал, потому что этих ключей просто нет в списке проверки. Follow-up: заменить захардкоженный список на `Object.keys(rolePolicies)` с явным ожидаемым маппингом, чтобы новая политика без ожидания в тесте валила CI, а не молча проходила.
+
 ---
 
 ### [2026-07-31] Redis rate limiting не реализован — счётчики in-memory

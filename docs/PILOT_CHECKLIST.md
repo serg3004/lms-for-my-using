@@ -87,7 +87,7 @@ Required documents:
 Planned documents before pilot operations:
 
 - `docs/MVP_LOCAL_RUNBOOK.md`
-- `docs/RBAC_MATRIX.md`
+- `docs/API_RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
 
 ## 9. CI validation
