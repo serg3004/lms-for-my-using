@@ -23,16 +23,16 @@ DONE — реализовано и подтверждено в коде/тест
 
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
-| TV-001 | Backend framework | NestJS | PROPOSED | Лучше для modular monolith, DI, guards, RBAC, AI-agent readability. |
-| TV-002 | ORM / migration tool | Prisma | PROPOSED | Быстрый старт, понятные миграции, хорошо для TypeScript. |
-| TV-003 | Frontend setup | React + Vite + TypeScript | PROPOSED | Проще Next.js для MVP без SSR. |
+| TV-001 | Backend framework | NestJS | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — реализовано и в проде с первого коммита, статус PROPOSED не отражал реальность. |
+| TV-002 | ORM / migration tool | Prisma | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется как единственный ORM, миграции применяются в проде. |
+| TV-003 | Frontend setup | React + Vite + TypeScript | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь `apps/web` на этом стеке. |
 | TV-004 | UI library | Custom UI | ACCEPTED | Реализовано как обычные CSS-классы + CSS custom properties для темизации (`shared/theme.ts`, `tokens.css`), без Tailwind/shadcn-зависимостей. |
-| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | PROPOSED | MVP использует stateless JWT access token. Refresh/session store deferred. |
-| TV-006 | Password hashing | Argon2id или bcrypt | PROPOSED | Выбрать библиотеку перед auth implementation. |
-| TV-007 | Local object storage | MinIO | PROPOSED | S3-compatible, удобно для local dev. |
+| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | ACCEPTED | **[2026-08-06]** Refresh token больше не «later» — реализован (`Session.refreshTokenHash`/`refreshExpiresAt`, `POST /auth/refresh`, ротация), см. `docs/AUTH_SESSION_STORE_DESIGN.md`, `docs/AUTH_TOKEN_REVOCATION.md`. |
+| TV-006 | Password hashing | Argon2id или bcrypt | DONE | **[2026-08-06]** Реализовано, но не одним из предложенных вариантов: `apps/api/src/modules/auth/passwords.ts` использует `scrypt` из `node:crypto` (без внешней зависимости), а не bcrypt/Argon2id. Решение принято, но никогда не было явно записано как выбор именно scrypt. |
+| TV-007 | Local object storage | MinIO | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется локально и на Railway (см. TV-008). |
 | TV-008 | Production object storage | MinIO on Railway | ACCEPTED | Развёрнут как отдельный сервис в том же Railway-проекте (bucket `lms-uploads`), настроен через стандартные S3_* переменные `api`. Личный/пилотный проект, self-hosted вариант выбран сознательно вместо R2/S3/Wasabi — код уже на S3 API, миграция на управляемого провайдера в будущем не потребует правок кода. |
 | TV-009 | Deployment target | Railway-first | ACCEPTED | Production/staging через Railway, Docker portability обязательно. |
-| TV-010 | Package manager | pnpm workspaces | PROPOSED | Удобно для monorepo. |
+| TV-010 | Package manager | pnpm workspaces | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь монорепо на pnpm workspaces. |
 
 ---
 
