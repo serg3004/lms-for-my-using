@@ -32,10 +32,14 @@ Audit-тест (`api-policy.audit.spec.ts`) проверяет что у каж�
 
 ---
 
-### [2026-07-31] Redis rate limiting не реализован — счётчики in-memory
-**Файл:** `apps/api/src/modules/auth/`  
+### [2026-07-31] Redis rate limiting не развёрнут в проде — счётчики in-memory
+**Файл:** `apps/api/src/modules/auth/`, инфраструктура Railway  
 **Severity:** 🟡  
-PR 123 в плане. Текущий rate limit хранится в памяти процесса. При перезапуске NestJS на Railway — счётчики сбрасываются. При горизонтальном масштабировании (несколько инстансов) — счётчики не синхронизированы. На продакшне это дыра в защите от брутфорса.
+**[2026-08-06] Уточнение после перепроверки:** формулировка «не реализован» была неточной — код полностью готов: `createRedisRateLimitStore` (`apps/api/src/common/middleware/api-hardening.ts`) реализован, `main.ts` подключает его условно (`redis = apiEnv.REDIS_URL ? new Redis(...) : undefined`), `env.ts` требует `REDIS_URL` в production, если явно не выставлен `ALLOW_IN_MEMORY_RATE_LIMIT=true`.
+
+Проблема не в коде, а в инфраструктуре: проверил через Railway MCP реальный прод-проект (`reasonable-reprieve` → сервис `api`) — сервиса Redis в проекте нет вообще, переменной `REDIS_URL` среди env vars сервиса `api` нет, а `ALLOW_IN_MEMORY_RATE_LIMIT` присутствует. То есть прямо сейчас в проде rate limiting реально работает в in-memory-режиме через явно включённый escape hatch — счётчики сбрасываются при рестарте, не синхронизированы при горизонтальном масштабировании.
+
+**Что нужно сделать:** создать Redis-сервис на Railway в проекте `reasonable-reprieve`, прописать `REDIS_URL` для сервиса `api`, убрать `ALLOW_IN_MEMORY_RATE_LIMIT`. Это ops-задача, не задача на код.
 
 ---
 
@@ -60,24 +64,12 @@ Threshold `functions: 25%`. После фикса PR 172 — 25.6%, запас �
 
 ---
 
-### [2026-07-31] `sessionStore` @Optional — logout-all молча не работает без Redis
-**Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
-**Severity:** 🔴  
-`AuthSessionStore` помечен `@Optional()`. Если Redis не сконфигурирован — `logout-all` возвращает `{ accepted: true }` но сессии не отзывает. Пользователь считает что вышел со всех устройств — нет.
-
----
-
 ### [2026-07-31] `ALLOW_IN_MEMORY_RATE_LIMIT=true` — escape хatch без предупреждения
 **Файл:** `apps/api/src/config/env.ts`  
 **Severity:** 🟡  
 Флаг позволяет запустить production без Redis. Нет Warning в логах при старте что включён небезопасный режим. Легко выставить на Railway и забыть.
 
----
-
-### [2026-07-31] Fail-open при недоступном Redis — rate limit полностью отключается
-**Файл:** `apps/api/src/common/middleware/api-hardening.ts`  
-**Severity:** 🟡  
-При ошибке Redis store middleware делает `catch {}` и пропускает запрос. Атакующий может положить Redis и брутфорсить `/auth/login` без ограничений.
+**[2026-08-06] Подтверждено:** флаг реально выставлен в проде сегодня (см. запись выше про Redis rate limiting) — это не гипотетический риск, а факт текущего деплоя.
 
 ---
 
@@ -166,5 +158,15 @@ PR #492 (`fix(admin): contain horizontal overflow in admin layout at high browse
 
 ### [2026-07-31] Покрытие функций ниже threshold 25% в CI → **закрыто**
 PR 172 — экспортированы `computeStats` и `buildStudentRows`, добавлен `InstructorUtils.spec.ts`. Coverage поднялась до 25.6%.
+
+---
+
+### [2026-07-31] `sessionStore` @Optional — logout-all молча не работает без Redis → **закрыто, при перепроверке не подтвердилось (2026-08-06)**
+Утверждение было неверным. Проверил `apps/api/src/modules/auth/auth.session-store.ts` от первого коммита (28.07) до текущего состояния — `AuthSessionStore` всегда был реализован на `PrismaService`, к Redis отношения не имеет и никогда не имел. `@Optional()` в конструкторе контроллера — не защита от отсутствия Redis, а vestigial DI-guard: провайдер всегда зарегистрирован в `AuthModule`, поэтому фактически always-injected. `logout-all` отзывает сессии через `prisma.session.updateMany`, зависит только от Postgres — который в проде обязателен для всего приложения, а не опционален.
+
+---
+
+### [2026-07-31] Fail-open при недоступном Redis — rate limit полностью отключается → **закрыто, при перепроверке не подтвердилось (2026-08-06)**
+Утверждение было неверным. Проверил `apps/api/src/common/middleware/api-hardening.ts`: при ошибке `resolvedStore.increment` (случай реального сбоя Redis) код не пропускает запрос — переключается на `fallbackStore` (тот же in-memory лимитер, что и при полном отсутствии Redis) и продолжает считать лимиты, `429` по-прежнему возвращается. Поведение соответствует описанию в `docs/RATE_LIMIT_FAILURE_POLICY.md` («Local emergency limiter with the same limits»), а не «полностью отключается».
 
 ---

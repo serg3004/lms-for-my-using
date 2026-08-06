@@ -13,9 +13,18 @@
 | 105 | Dependency audit (`pnpm audit --audit-level high`) + Gitleaks secret scan в каждом PR | `.github/workflows/ci.yml` |
 | 106 | CodeQL SAST для JS/TS с `security-extended` ruleset | `.github/workflows/codeql.yml` |
 | 107 | Upload hardening — проверка типа файла по extension + magic bytes, тесты | `upload.validation.ts` |
-| 108 | Auth/session production readiness — задокументированы gaps (нет refresh, нет revocation, custom JWT, in-memory rate limit) | `docs/AUTH_SESSION_PRODUCTION_READINESS.md` |
+| 108 | Auth/session production readiness — задокументированы gaps (нет refresh, нет revocation, custom JWT, in-memory rate limit) | `docs/AUTH_SESSION_PRODUCTION_READINESS.md` (документ с тех пор удалён — все перечисленные gaps закрыты, см. ниже) |
 | 109 | Frontend maintainability audit, упрощён course list | `docs/FRONTEND_MVP_MAINTAINABILITY_AUDIT.md` |
 | 110 | MVP smoke tests — все learner и admin страницы (loading + happy path, Vitest/SSR) | `LearnerPages.smoke.spec.tsx`, `AdminPages.smoke.spec.tsx` |
+
+**[2026-08-06] Дополнение — P0-пункты из бэклога ниже фактически тоже закрыты**, при ревизии документации перепроверено по коду в `origin/main`:
+
+| PR | Что сделано | Подтверждение |
+|----|-------------|--------|
+| 118 | Auth/session minimal tests and hardening — CSRF/session edge-case покрытие | `apps/api/src/modules/auth/auth.csrf.spec.ts` (47 строк) |
+| 120 | Refresh/session store — реализовано не отдельной моделью `RefreshSession`, а полями `refreshTokenHash`/`refreshExpiresAt` прямо в модели `Session` | `apps/api/prisma/schema.prisma`, `docs/AUTH_SESSION_STORE_DESIGN.md` |
+| 121 | Token revocation and logout hardening — logout revokes текущую сессию, `POST /auth/logout-all` отзывает все сессии пользователя в организации | `docs/AUTH_TOKEN_REVOCATION.md`, `auth.controller.ts` |
+| 122 | Custom JWT заменён на `jose` | `apps/api/src/modules/auth/auth.tokens.ts` — `import { SignJWT, jwtVerify } from 'jose'` |
 
 ---
 
@@ -23,26 +32,7 @@
 
 ### P0 — Критично для production
 
-#### PR 118 — Auth/session minimal tests and hardening
-**Проблема:** Auth тесты сейчас покрывают отдельные guard/service. Нет сквозного теста login → protected route → logout с cookie/CSRF.  
-**Что делать:** Tests for login/logout, unauthorized access, role guard, Cookie/CSRF unsafe request behavior. Minimal hardening без schema/migration.  
-**Риск без него:** Регрессия в auth может пройти незамеченной.
-
-#### PR 120 — Refresh/session store + Prisma migration
-**Проблема:** JWT-токен выдаётся на фиксированный срок, нет способа аннулировать сессию без смены секрета.  
-**Что делать:** Session/refresh token Prisma model, migration, safe storage design, tests для session creation/expiration.  
-**Риск без него:** Скомпрометированный токен активен до истечения срока.  
-**Зависимости:** Требует Prisma migration на staging/prod.
-
-#### PR 121 — Token revocation and logout hardening
-**Проблема:** Logout сейчас только удаляет cookie на клиенте; токен остаётся валидным на сервере.  
-**Что делать:** Revoke текущую сессию при logout, optional logout-all endpoint, tests для revoked session.  
-**Зависит от:** PR 120.
-
-#### PR 122 — Replace custom JWT with `jose`
-**Проблема:** JWT реализован вручную (PR 108 это зафиксировал). Кастомная реализация может иметь уязвимости.  
-**Что делать:** Заменить на `jose` (RFC-compliant), сохранить JWT payload contract, тесты sign/verify/expired/invalid.  
-**Риск:** При некорректной замене ломается весь auth.
+Все P0-пункты закрыты (см. таблицу выше).
 
 ---
 
@@ -53,10 +43,10 @@
 **Что делать:** Вынести один leaf component/helper из одного файла, сохранить UX/API/routes.  
 **Риск без него:** Технический долг растёт, сложнее добавлять фичи.
 
-#### PR 123 — Redis-backed rate limit
-**Проблема:** Rate limit сейчас in-memory (указано в AUTH_SESSION_PRODUCTION_READINESS.md). При перезапуске сервиса счётчики сбрасываются, при горизонтальном масштабировании не работает.  
-**Что делать:** Redis-backed limiter вместо in-memory, env config, safe fallback при отсутствии Redis, tests.  
-**Зависимости:** Требует Redis в production инфраструктуре.  
+#### PR 123 — Развернуть Redis в production (код готов, ops-шаг не сделан)
+**[2026-08-06] Переформулировано после проверки:** код-часть полностью готова — `createRedisRateLimitStore` реализован (`apps/api/src/common/middleware/api-hardening.ts`), `main.ts` подключает его условно по `REDIS_URL`, есть safe fallback на in-memory при сбое Redis (не fail-open, см. `docs/CONCERNS.md`), `env.ts` требует `REDIS_URL` в production если не выставлен явный escape hatch.  
+**Проблема теперь чисто инфраструктурная:** проверил через Railway MCP реальный прод-проект (`reasonable-reprieve`, сервис `api`) — Redis-сервиса в проекте нет, `REDIS_URL` не задан, вместо этого выставлен `ALLOW_IN_MEMORY_RATE_LIMIT=true`. Rate limit прямо сейчас работает в in-memory-режиме в реальном проде.  
+**Что делать:** создать Redis-сервис в Railway-проекте `reasonable-reprieve`, прописать `REDIS_URL` для сервиса `api`, убрать `ALLOW_IN_MEMORY_RATE_LIMIT`. Код-изменений не требуется.  
 **Триггер:** Обязательно перед (а) запуском нагрузочного теста (PR 136) — без Redis тест будет мерить срабатывание rate limiter, а не реальную производительность API; (б) любым горизонтальным масштабированием `api` до нескольких инстансов.
 
 #### PR 124 — Stronger upload scanning
@@ -114,14 +104,14 @@
 
 ## Сводная таблица
 
-| PR | Название | Приоритет | Риск | Зависит от |
-|----|----------|-----------|------|------------|
-| 118 | Auth/session тесты | P0 | Нет | — |
-| 119 | Frontend cleanup | P1 | Нет | — |
-| 120 | Refresh/session store | P0 | DB migration | — |
-| 121 | Token revocation | P0 | Auth behavior | PR 120 |
-| 122 | Custom JWT → jose | P0 | Auth behavior | — |
-| 123 | Redis rate limit | P1 | Требует Redis | — |
+| PR | Название | Приоритет | Риск | Зависит от | Статус |
+|----|----------|-----------|------|------------|--------|
+| 118 | Auth/session тесты | P0 | Нет | — | ✅ закрыто |
+| 119 | Frontend cleanup | P1 | Нет | — | |
+| 120 | Refresh/session store | P0 | DB migration | — | ✅ закрыто |
+| 121 | Token revocation | P0 | Auth behavior | PR 120 | ✅ закрыто |
+| 122 | Custom JWT → jose | P0 | Auth behavior | — | ✅ закрыто |
+| 123 | Развернуть Redis в проде | P1 | Ops, не код | — | код готов, ops не сделан |
 | 124 | Upload scanning | P1 | Upload behavior | — |
 | 125 | Malware scan | P2 | Внешний сервис | — |
 | 126 | Coverage threshold | P1 | Нет | — |
@@ -138,11 +128,13 @@
 ## Рекомендуемый порядок
 
 ```
-Сейчас (без Railway):  PR 118 → PR 119 → PR 122 → PR 120 → PR 121 → PR 126
-После Railway staging: PR 127 → PR 123 → PR 124
-После стабилизации:    PR 125 → PR 128 → PR 129 → PR 130 → PR 131
-После Redis:            PR 136
-Мажорные зависимости:  PR 132 → PR 133 → PR 134 → PR 135
+[2026-08-06] PR 118, 120, 121, 122 закрыты — см. таблицу выше.
+
+Осталось:               PR 119 → PR 126
+После Railway staging:  PR 127 → PR 123 (развернуть Redis) → PR 124
+После стабилизации:     PR 125 → PR 128 → PR 129 → PR 130 → PR 131
+После Redis:             PR 136
+Мажорные зависимости:   PR 132 → PR 133 → PR 134 → PR 135
 ```
 
 ---
