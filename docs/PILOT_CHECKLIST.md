@@ -83,7 +83,7 @@ Required documents — **[2026-08-06] all now exist**, none still "planned":
 
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
-- `docs/API_STATUS.md`
+- `docs/API_CONTRACTS.md` (status section merged in 2026-08-06; `API_STATUS.md` retired)
 - `docs/DEVELOPMENT_PLAN.md` (project changelog — replaces the retired `docs/PROJECT_LOG.md`)
 - `docs/MVP_LOCAL_RUNBOOK.md`
 - `docs/API_RBAC_MATRIX.md`

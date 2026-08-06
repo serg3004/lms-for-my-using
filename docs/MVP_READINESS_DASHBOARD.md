@@ -8,8 +8,7 @@ This dashboard summarizes the current MVP readiness state. It is a status docume
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
-- `docs/API_CONTRACTS.md`
-- `docs/API_STATUS.md`
+- `docs/API_CONTRACTS.md` (status section merged in 2026-08-06; `API_STATUS.md` retired)
 - `docs/STORAGE_UPLOAD_STATUS.md`
 - `docs/PASSWORD_RESET_STATUS.md`
 - `docs/API_RBAC_MATRIX.md`

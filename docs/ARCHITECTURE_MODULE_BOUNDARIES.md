@@ -35,11 +35,14 @@ Current modules include:
 - `assignments`
 - `auth`
 - `certificates`
+- `course-access`
 - `course-materials`
 - `courses`
 - `groups`
 - `health`
 - `lessons`
+- `manager`
+- `manager-team-scope`
 - `memberships`
 - `openapi`
 - `organizations`
