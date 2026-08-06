@@ -136,7 +136,7 @@ POST /api/v1/certificates
 - `docs/API_RBAC_MATRIX.md`
 - `docs/API_CONTRACTS.md`
 - `docs/API_STATUS.md`
-- `docs/PROJECT_LOG.md`
+- `docs/DEVELOPMENT_PLAN.md` (project changelog — `docs/PROJECT_LOG.md` retired 2026-08-06)
 - `docs/TODO_VERIFY.md`
 
 ## Current Prisma baseline

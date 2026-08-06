@@ -2,10 +2,9 @@
 
 ## Purpose
 
-This dashboard summarizes the current MVP readiness state after backend smoke, web smoke, OpenAPI, env loading, startup safety, response contract, CI hardening, upload, and dependency maintenance work.
+This dashboard summarizes the current MVP readiness state. It is a status document only — it does not replace the detailed source documents:
 
-It is a status document only. It does not replace the detailed source documents:
-
+- `docs/MVP_SCOPE_LOCK.md` (§0 has the full per-feature status table this dashboard summarizes)
 - `docs/MVP_DEFINITION_OF_DONE.md`
 - `docs/PILOT_CHECKLIST.md`
 - `docs/MVP_LOCAL_RUNBOOK.md`
@@ -16,24 +15,30 @@ It is a status document only. It does not replace the detailed source documents:
 - `docs/API_RBAC_MATRIX.md`
 - `docs/TODO_VERIFY.md`
 - `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
+- `docs/CONCERNS.md`
+
+**[2026-08-06] Full recalculation.** The previous version of this dashboard was frozen at the "PR 70 / PR 71 still pending" era (early MVP). Both are long since done, production has been live on Railway for weeks, and the project has since added refresh tokens, full RBAC object-level scoping, group/manager/instructor management, i18n across the admin surface, and more. Rewritten from scratch against the current `main` (PR #505) instead of patching the old table.
 
 ## Overall status
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Backend MVP flow | Ready for controlled pilot validation | Backend smoke covers login, course setup, lesson, assignment, progress, completion, and certificate issuing. |
-| Web smoke coverage | Ready for controlled pilot validation | Web tests cover login, route protection, API client auth errors, shared UI states, admin pages, and learner page smoke rendering. |
-| API documentation | Synced baseline | Manual OpenAPI paths are synced with current controllers. |
-| Local env loading | Ready | API explicitly loads local `.env` / `.env.local` before env validation and skips this in production/CI. |
-| Startup failure handling | Ready | API bootstrap failures are caught, redacted, logged, and mark the process as failed. |
-| API error response contract | Ready | Error envelope construction is centralized through the API response helper. |
-| CI quality gates | Ready | CI runs install, lint, Prisma generate, typecheck, tests, and build with concurrency, timeout, pnpm cache, and Prisma auto-install protection. |
-| Dependency automation | Ready | Dependabot npm updates use workspace-level `directories` so nested manifests stay aligned with the shared root `pnpm-lock.yaml`. |
-| Storage uploads | Ready for controlled MVP usage with object storage configured | Material file endpoints use tenant-scoped private keys; authorized downloads receive short-lived presigned URLs. |
-| Password reset | Documented as skeleton only | Current password reset status is documented in `docs/PASSWORD_RESET_STATUS.md`; endpoints validate input but return `503 Service Unavailable`. |
-| Demo seed data | Needs follow-up | Local demo seed coverage is planned for PR 70. |
-| Full RBAC audit | Needs follow-up | Full learner/admin RBAC audit is planned for PR 71. |
-| Deployment | Not ready as a fully automated production process | Deployment foundation exists, but production deployment automation remains outside the current MVP baseline. |
+| Backend MVP flow | Ready — in active use | Auth, organizations, users, memberships, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates all implemented and tested. |
+| Web smoke coverage | Ready | 347 web tests passing; admin, learner, instructor, and manager surfaces all covered. |
+| Auth / sessions | Ready | Stateless JWT access token + rotating refresh token in httpOnly cookie, server-side revocation, `logout-all`. See `docs/AUTH_TOKEN_REVOCATION.md`, `docs/AUTH_SESSION_STORE_DESIGN.md`. |
+| RBAC | Ready | Role-policy matrix + object-level `CourseAccessGuard` (instructor course ownership) + manager team scope. See `docs/API_RBAC_MATRIX.md`, `docs/INSTRUCTOR_COURSE_OWNERSHIP.md`. |
+| API documentation | Synced baseline | Manual OpenAPI paths synced with current controllers. |
+| CI quality gates | Ready | Lint, Prisma generate, typecheck, tests, build, CodeQL, `pnpm audit`, Gitleaks all run per PR. |
+| Dependency automation | Ready | Dependabot workspace-level `directories` config. |
+| Storage uploads | Ready for controlled MVP usage | Tenant-scoped private keys, short-lived presigned URLs, MinIO deployed as its own Railway service (bucket `lms-uploads`). |
+| Rate limiting | ⚠️ Partial | Code is Redis-ready (`createRedisRateLimitStore`, conditional wiring), but **no Redis service is provisioned on Railway** — production currently runs on the `ALLOW_IN_MEMORY_RATE_LIMIT` escape hatch. See `docs/CONCERNS.md` (2026-08-06) and `docs/PRODUCTION_HARDENING_BACKLOG.md` PR 123. |
+| Password reset | Documented as skeleton only | Still returns `503 Service Unavailable`; see `docs/PASSWORD_RESET_STATUS.md`. Unchanged, intentional for this pilot stage. |
+| Demo seed data | ✅ Done | `docs/ADMIN_DEMO_SEED.md` — guarded admin-only seed task, opt-in flag for prod, covers all 4 roles. |
+| Full RBAC audit | ✅ Done | Consolidated into `docs/API_RBAC_MATRIX.md` (2026-08-06), including the `CourseAccessGuard` object-level layer that earlier audits missed. |
+| Deployment | ✅ Live in production | Railway: `web`, `api`, `Postgres`, `minio` services running. Not just "foundation" — actively used throughout this session's work. |
+| Notifications | 🚨 Not built | No module, no schema, no UI. Required by `docs/MVP_SCOPE_LOCK.md` §2.12 — open product question, not yet resolved. |
+| Audit log | 🚨 Not built | No module, no schema. Required by `docs/MVP_SCOPE_LOCK.md` §2.13 and §5 success-criterion 17 — open product question, not yet resolved. |
+| Dedicated reports module | ⚠️ Partial | No standalone `reports` API; covered functionally through admin/manager pages composing `/progress` and `/certificates`. |
 
 ## Pilot go / no-go summary
 
@@ -43,7 +48,7 @@ Go for a controlled technical pilot only if:
 - Local env follows `docs/MVP_LOCAL_RUNBOOK.md`.
 - Pilot data uses disposable credentials and no real secrets.
 - S3-compatible storage variables are configured when upload testing is in scope.
-- Known limitations are accepted: password reset skeleton behavior, no completed full RBAC audit yet, no production deployment automation, and storage upload hardening gaps listed in `docs/STORAGE_UPLOAD_STATUS.md`.
+- Known limitations are accepted: password reset skeleton behavior, no audit log, no notifications, in-memory rate limiting (Redis not yet provisioned), no dedicated reports API (covered functionally by admin/manager UI instead).
 
 No-go if:
 
@@ -54,34 +59,35 @@ No-go if:
 - Upload testing is required but object storage env variables are not configured.
 - A required limitation is not explicitly accepted by the pilot owner.
 
+**[2026-08-06]** Given the table above, a controlled technical pilot is realistically go-able today — the only hard product gaps (audit log, notifications) are pilot-scale acceptable risks for known internal users, not blockers, provided the pilot owner explicitly accepts them.
+
 ## Current MVP baseline
 
 Implemented baseline:
 
-- Backend health, auth, organization, users, memberships, groups, courses, lessons, materials, assignments, progress, assessments, attempts, reports, and certificates API surface.
-- Centralized API error envelope.
-- Manual OpenAPI skeleton synced with current controllers.
-- Runtime API env validation.
-- Explicit local env loading.
-- Safe API startup error logging.
-- Backend MVP flow smoke coverage.
-- Web login, protected route, API client error, shared state UI, admin page, and learner page smoke coverage.
-- CI gates for lint, typecheck, tests, build, and Prisma generate.
-- Storage upload flow for controlled material uploads when S3-compatible object storage is configured.
-- Dependabot workspace-level pnpm update policy and documentation.
-- Password reset status documented as skeleton-only for current MVP.
+- Full backend API surface: auth, organizations, users, memberships, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates.
+- Refresh-token auth with server-side session revocation and `logout-all`.
+- Role-policy RBAC + object-level course ownership scoping (`CourseAccessGuard`).
+- Group/manager/course-instructor management (list/add/remove, soft-delete, admin UI).
+- Full admin web surface: courses, course builder, lessons, materials, assessments, assignments, results/certificates, users, roles, org structure, theme settings — all localized (ru/en/kk/zh).
+- Learner, instructor, and manager web surfaces.
+- Centralized API error envelope, runtime env validation, safe startup error handling.
+- CI gates: lint, typecheck, tests, build, Prisma generate, CodeQL, dependency audit, secret scanning.
+- Storage uploads via tenant-scoped MinIO on Railway.
+- Live Railway production deployment (`web`, `api`, `Postgres`, `minio`).
+- Playwright browser E2E suite covering login/role redirects, admin/instructor/manager workspaces.
 
-Known non-goals for current MVP:
+Known non-goals / open gaps for current MVP:
 
-- Production deployment automation.
-- Production-grade file storage hardening beyond the documented MVP upload constraints.
-- Full password reset delivery.
+- Notifications (in-app) — scope-required, not built. Open product question.
+- Audit log — scope-required, not built. Open product question.
+- Full password reset delivery (skeleton only, intentional for pilot stage).
+- Dedicated reports module (covered functionally by admin/manager UI).
+- Redis-backed rate limiting in production (code ready, Redis not provisioned).
 - Advanced analytics.
-- Full admin CRUD expansion.
-- Full RBAC audit completion.
 
 ## Next planned doc/status work
 
-1. PR 70 — verify/expand local demo seed data.
-2. PR 71 — full learner/admin RBAC audit.
-3. Update this dashboard after PR 70 and PR 71 are completed.
+1. Product decision needed: build audit log + notifications, or formally descope them from `docs/MVP_SCOPE_LOCK.md`.
+2. Ops task: provision Redis on Railway and set `REDIS_URL` (`docs/PRODUCTION_HARDENING_BACKLOG.md` PR 123).
+3. Re-update this dashboard once either of the above lands.

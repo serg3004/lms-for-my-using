@@ -1,5 +1,13 @@
 # Project Log
 
+## [2026-08-06] Retired — superseded by `docs/DEVELOPMENT_PLAN.md`
+
+This log stopped at PR 42 (2026-05-30). The project is now at PR #505+; `docs/DEVELOPMENT_PLAN.md`'s "Факт:" entries have been the de facto changelog since — every PR's actual implementation is recorded there per plan item, cross-checked against code rather than just reported.
+
+Kept below as historical record of PR 20–42 (auth/session hardening, admin layout, workspace registration). Not updated further — new entries go in `docs/DEVELOPMENT_PLAN.md`.
+
+---
+
 ## 2026-05-30
 
 ### Auth/session hardening series
