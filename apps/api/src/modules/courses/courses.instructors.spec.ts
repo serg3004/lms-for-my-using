@@ -2,11 +2,14 @@ import { NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
 import { CoursesService } from './courses.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const courseId = '22222222-2222-2222-2222-222222222222';
 const instructorId = '33333333-3333-3333-3333-333333333333';
+// Unused by the methods under test in this file (createCourse is covered separately).
+const courseAccess = {} as unknown as CourseAccessPolicy;
 
 describe('CoursesService instructors', () => {
   it('adds an instructor by upserting so re-assigning a removed instructor clears deletedAt', async () => {
@@ -17,7 +20,7 @@ describe('CoursesService instructors', () => {
       user: { findFirst: async () => ({ id: instructorId }) },
       courseInstructor: { upsert, findMany },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await service.addInstructor(courseId, organizationId, { instructorId });
 
@@ -33,7 +36,7 @@ describe('CoursesService instructors', () => {
       course: { findFirst: async () => ({ id: courseId }) },
       user: { findFirst: async () => null },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(service.addInstructor(courseId, organizationId, { instructorId })).rejects.toThrow(NotFoundException);
   });
@@ -48,7 +51,7 @@ describe('CoursesService instructors', () => {
         findMany,
       },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await service.removeInstructor(courseId, organizationId, instructorId);
 
@@ -62,7 +65,7 @@ describe('CoursesService instructors', () => {
     const prisma = {
       courseInstructor: { findFirst: async () => null },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(service.removeInstructor(courseId, organizationId, instructorId)).rejects.toThrow(NotFoundException);
   });

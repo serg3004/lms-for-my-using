@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { CourseAccessPolicy, CourseScopedUser } from '../course-access/course-access.policy.js';
 import { AssignCourseInstructorInput, CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
 
 const instructorSummarySelect = {
@@ -30,7 +31,10 @@ const completedProgressStatus = 'completed' as const;
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly courseAccess: CourseAccessPolicy,
+  ) {}
 
   async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string) {
     const skip = (page - 1) * pageSize;
@@ -105,7 +109,7 @@ export class CoursesService {
     };
   }
 
-  async createCourse(input: CreateCourseInput) {
+  async createCourse(input: CreateCourseInput, user: CourseScopedUser) {
     const organization = await this.prisma.organization.findFirst({
       where: {
         id: input.organizationId,
@@ -132,9 +136,18 @@ export class CoursesService {
       throw new ConflictException('Course slug already exists in organization');
     }
 
-    return this.prisma.course.create({
-      data: input,
-      select: courseSelect,
+    // Course creation and instructor ownership assignment must succeed or fail together —
+    // otherwise a failed assignInstructor leaves an orphaned course the creator can't see
+    // (CourseAccessGuard filters instructors by CourseInstructor rows).
+    return this.prisma.$transaction(async (tx) => {
+      const course = await tx.course.create({
+        data: input,
+        select: courseSelect,
+      });
+
+      await this.courseAccess.assignInstructor(course.id, user, tx);
+
+      return course;
     });
   }
 

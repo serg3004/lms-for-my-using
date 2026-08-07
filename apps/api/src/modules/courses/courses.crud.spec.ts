@@ -2,11 +2,14 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
 import { updateCourseSchema } from './courses.schemas.js';
 import { CoursesService } from './courses.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const courseId = '22222222-2222-2222-2222-222222222222';
+// Unused by the methods under test in this file (createCourse is covered separately).
+const courseAccess = {} as unknown as CourseAccessPolicy;
 
 describe('CoursesService CRUD updates', () => {
   it('accepts valid editable course input', () => {
@@ -48,7 +51,7 @@ describe('CoursesService CRUD updates', () => {
         update: async () => updatedCourse,
       },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(
       service.updateCourse(courseId, organizationId, {
@@ -66,7 +69,7 @@ describe('CoursesService CRUD updates', () => {
         findUnique: async () => ({ id: 'existing-course' }),
       },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(
       service.updateCourse(courseId, organizationId, {
@@ -84,7 +87,7 @@ describe('CoursesService CRUD updates', () => {
         update,
       },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(service.deleteCourse(courseId, organizationId)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith(
@@ -101,7 +104,7 @@ describe('CoursesService CRUD updates', () => {
         findFirst: async () => null,
       },
     } as unknown as PrismaService;
-    const service = new CoursesService(prisma);
+    const service = new CoursesService(prisma, courseAccess);
 
     await expect(service.deleteCourse(courseId, organizationId)).rejects.toThrow(NotFoundException);
   });
