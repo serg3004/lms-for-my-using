@@ -23,6 +23,7 @@
 | 5 | `API_RBAC_MATRIX.md` | ⚠️ Частично актуален | Role matrix актуальна; исправить public inventory и число course-scoped controllers |
 | 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ Частично актуален | API-границы в основном актуальны; Web structure и docs-only CI guidance требуют обновления |
 | 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ Частично актуален | Исторический PR 120 описан верно, но текущая Session model и login flow уже расширены refresh-состоянием |
+| 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после появления refresh endpoint |
 
 ---
 
@@ -204,11 +205,8 @@ Live production URL и фактическое Railway/Redis состояние �
 ### Несоответствия
 
 1. **Раздел `Модель данных` устарел как описание текущей Session model.** Он говорит, что `Session` хранит «только метаданные сессии» и перечисляет только `id`, `jti`, `userId`, `organizationId`, `createdAt`, `expiresAt`, `revokedAt`. Сейчас модель дополнительно хранит `refreshTokenHash` и `refreshExpiresAt`.
-
 2. **Раздел `Safe token storage` содержит устаревшую формулировку `База хранит только jti и метаданные связи`.** Полный JWT и сырой refresh token действительно не хранятся, но база теперь хранит также криптографический hash refresh token и его expiry.
-
 3. **Раздел `Жизненный цикл сессии` неполон для текущего login.** Сейчас login не только подписывает access JWT и создаёт Session по `jti`, но одновременно создаёт refresh token, сохраняет его hash/expiry и отдаёт refresh token через cookie flow.
-
 4. Документ остаётся привязан к **PR 120**, а update про PR 137 добавлен отдельной вставкой. Поэтому ранние нормативно звучащие разделы и позднее обновление противоречат друг другу, если документ читать как описание текущего состояния, а не исторический snapshot.
 
 ### Что изменить
@@ -228,3 +226,61 @@ Live production URL и фактическое Railway/Redis состояние �
 ### Итог
 
 Документ корректно фиксирует основу Session store, появившуюся в PR 120, и содержит правильное позднее замечание о refresh flow. Но он не полностью актуален как описание текущей Session model: refresh hash/expiry и расширенный login/rotation lifecycle находятся только в update, тогда как основные разделы продолжают описывать старое состояние.
+
+---
+
+## 8. `AUTH_TOKEN_REVOCATION.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+
+- current-session logout;
+- logout-all и tenant isolation;
+- CSRF для cookie-based logout/logout-all;
+- bearer behavior;
+- cookie clearing;
+- idempotent invalid/revoked-token behavior;
+- access-session и refresh-session revocation checks;
+- историческая привязка к PR 121.
+
+### Подтверждённые факты
+
+- `POST /auth/logout` по-прежнему разрешает bearer либо access cookie, для cookie source вызывает `assertValidCsrf()`, очищает auth cookies и затем вызывает `AuthService.logout()`.
+- `AuthService.logout()` остаётся идемпотентным: валидный access JWT приводит к `session.updateMany({ where: { jti, revokedAt: null }, data: { revokedAt } })`, а invalid/already-revoked token перехватывается и всё равно возвращается `{ accepted: true }`.
+- `POST /auth/logout-all` получает текущего пользователя из access token и вызывает `AuthSessionStore.revokeAllUserSessions(user.id, user.organizationId)`.
+- `revokeAllUserSessions()` обновляет только Session rows с точным `userId`, точным `organizationId` и `revokedAt: null`, что подтверждает описанную tenant isolation.
+- Для bearer source `assertValidCsrf()` сразу возвращает управление, поэтому bearer-authenticated logout/logout-all не требуют CSRF.
+- Для cookie source `POST` logout/logout-all требуют совпадения `lms_csrf_token` cookie и `x-csrf-token` header; это подтверждается `auth.controller.spec.ts` и `auth.logout-all.spec.ts`.
+- Оба logout варианта вызывают `clearAuthCookies()`. В текущей реализации очищаются уже три cookie: access, CSRF и refresh.
+- Revoked access sessions исключаются `AuthService.validateSession()` через `revokedAt: null` и `expiresAt > now`.
+- Refresh path также отвергает revoked/expired session: `AuthSessionStore.consumeRefreshSession()` после одноразового consume проверяет `revokedAt` и `refreshExpiresAt`, а invalid/stale refresh приводит к `401` и очистке cookies.
+- Историческое утверждение, что PR 121 не требовал Prisma schema/migration changes, согласуется с тем, что Session schema была создана предыдущим PR 120; refresh storage migration появилась позже.
+
+### Несоответствие
+
+**Формулировка `cookie-authenticated unsafe requests require a matching CSRF token` теперь слишком широкая.** После появления refresh flow существует `POST /auth/refresh`, который аутентифицируется через HttpOnly `lms_refresh_token` cookie, помечен `@PublicAccess()` и не вызывает `assertValidCsrf()`. Поэтому как общее правило для всех cookie-authenticated unsafe requests утверждение больше неверно.
+
+Это не означает, что текущий refresh endpoint обязательно небезопасен: refresh cookie имеет `SameSite: lax` и path `/api/v1/auth/refresh`, но фактический механизм отличается от описанного универсального CSRF-правила.
+
+### Дополнительное уточнение
+
+Фраза `auth cookies are cleared for both logout variants` остаётся верной, но текущая реализация очищает не две исторические cookie, а **access + CSRF + refresh**. Если документ должен описывать current behavior, это полезно указать явно.
+
+### Что изменить
+
+Поскольку документ заголовком и Scope привязан к PR 121, предпочтительно сохранить его как исторический snapshot и:
+
+1. В начале явно отметить, что security behavior описывает состояние на момент PR 121.
+2. Заменить широкую present-tense формулировку про cookie-authenticated unsafe requests на scoped вариант: **cookie-based logout и logout-all требуют matching CSRF token**.
+3. Добавить короткое current-state update: `POST /auth/refresh` использует отдельную HttpOnly refresh cookie без CSRF-header проверки; refresh cookie ограничена `SameSite=lax` и path `/api/v1/auth/refresh`.
+4. Уточнить, что оба logout endpoint сейчас очищают access, CSRF и refresh cookies.
+5. Сослаться на актуальный refresh/session design, чтобы исторический PR 121 record не воспринимался как полный текущий auth contract.
+
+### [НЕ ПРОВЕРЕНО]
+
+Исторический checklist `Lint / Types / Tests / Build / CI` именно для merge PR 121 не перепроверялся по старому workflow run в рамках этого шага; текущие auth tests и текущий CI подтверждают нынешнее поведение, но не заменяют историческую проверку PR 121.
+
+### Итог
+
+Logout, logout-all, tenant isolation, idempotency и CSRF enforcement именно для logout endpoints по-прежнему соответствуют документу. Основное устаревание появилось после добавления refresh flow: универсальное CSRF-утверждение теперь имеет исключение и должно быть ограничено logout endpoints либо историческим контекстом PR 121.
