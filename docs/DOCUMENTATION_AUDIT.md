@@ -24,6 +24,7 @@
 | 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ Частично актуален | API-границы в основном актуальны; Web structure и docs-only CI guidance требуют обновления |
 | 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ Частично актуален | Исторический PR 120 описан верно, но текущая Session model и login flow уже расширены refresh-состоянием |
 | 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после появления refresh endpoint |
+| 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection теперь подтверждён как выключенный |
 
 ---
 
@@ -284,3 +285,56 @@ Live production URL и фактическое Railway/Redis состояние �
 ### Итог
 
 Logout, logout-all, tenant isolation, idempotency и CSRF enforcement именно для logout endpoints по-прежнему соответствуют документу. Основное устаревание появилось после добавления refresh flow: универсальное CSRF-утверждение теперь имеет исключение и должно быть ограничено logout endpoints либо историческим контекстом PR 121.
+
+---
+
+## 9. `CI_AUDIT_BASELINE.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+
+- `.github/workflows/ci.yml`;
+- `.github/workflows/codeql.yml`;
+- `.github/workflows/staging-smoke.yml`;
+- `.github/dependabot.yml`;
+- trigger/permissions/concurrency/timeout;
+- CI service container и порядок gates;
+- security audit baseline;
+- branch protection текущей `main`;
+- актуальность даты baseline.
+
+### Подтверждённые факты
+
+- Основные workflow paths и names соответствуют документу: `CI`, `CodeQL`, `Staging smoke`.
+- `Staging smoke` действительно запускается только через `workflow_dispatch` и использует GitHub environment `staging`.
+- Dependabot существует и настроен weekly по понедельникам: GitHub Actions одним group, npm/pnpm workspace одним multi-directory update config с production/development groups.
+- `CI` запускается на каждом `pull_request` и на `push` в `main`, имеет один job `Checks` на `ubuntu-latest` с `timeout-minutes: 15`.
+- Concurrency соответствует описанию: для `main` новые push не отменяют предыдущий run; для остальных refs `cancel-in-progress` включён.
+- CI permissions ограничены `contents: read` и `pull-requests: read`.
+- CI использует `postgres:16-alpine` как in-job service с БД `lms_test`, а не внешнюю Railway database.
+- Последовательность основных gates соответствует документу: Gitleaks, pnpm/Node setup, frozen install, `pnpm audit --audit-level high`, waiver validation, lint, Prisma generate, typecheck, coverage tests, smoke-script tests, migrations, DB integration tests, build, Playwright install, browser E2E, accessibility, visual matrix, failure artifacts, API/Web Docker builds и Trivy scans.
+- Trivy запускается для обоих built images с `HIGH,CRITICAL`, `--ignore-unfixed` и generated ignore file из validated security waivers.
+- CodeQL — отдельный workflow на PR и push в `main`, JavaScript/TypeScript, `security-extended`, `timeout-minutes: 15`, с `security-events: write`. Дополнительно текущий workflow имеет `packages: read`, чего status document отдельно не перечисляет, но это не противоречит его утверждениям.
+- Semgrep workflow в `.github/workflows/` отсутствует; строка `Semgrep | Not present in CI` соответствует текущему репозиторию.
+
+### Несоответствие
+
+**Branch protection больше не является `[НЕ ПРОВЕРЕНО]`.** Текущий GitHub branch state для `main` возвращает `protected: false`; protection `enabled: false`, required status checks enforcement — `off`, contexts/checks — пустые. Следовательно, строка `Branch protection verification | Not verified by this document — manual repository settings review` уже неполна как current baseline: фактическое состояние можно подтвердить и оно означает, что branch protection сейчас не включена.
+
+Это также важно для формулировки `comprehensive CI gate`: workflow действительно существует и запускается, но GitHub branch settings не заставляют `main` требовать эти checks перед merge.
+
+### Дополнительное уточнение
+
+Поле `Verified at | 2026-08-06` корректно описывает прошлую дату проверки, но после текущего повторного аудита status document логично обновить на `2026-08-07` и указать, что сверены не только `ci.yml`, но также `codeql.yml`, `staging-smoke.yml`, `dependabot.yml` и branch settings.
+
+### Что изменить
+
+1. Заменить branch-protection строку на подтверждённое текущее состояние: **`main` is not protected; required status checks are not enforced by branch protection**.
+2. В `MVP readiness impact` отделить наличие CI workflows от enforceability: checks выполняются на PR/main push, но защита ветки сейчас не требует их успешного прохождения перед merge.
+3. Обновить `Verified at` на дату текущего аудита и перечислить реально проверенные workflow/config sources.
+4. Если отсутствие branch protection считается readiness gap, сослаться на соответствующий backlog/readiness document; включать protection — отдельное изменение repository settings и не должно выполняться автоматически в рамках документационного аудита.
+
+### Итог
+
+CI, CodeQL, Dependabot, staging-smoke и security gates в документе практически полностью соответствуют текущим конфигурациям. Существенно устарел только статус branch protection: теперь подтверждено, что `main` не защищена и required checks не enforced на уровне branch settings.
