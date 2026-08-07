@@ -27,6 +27,7 @@
 | 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection подтверждён как выключенный |
 | 10 | `CONCERNS.md` | ⚠️ Существенно требует ревизии | Несколько open concerns уже закрыты кодом; часть остаётся актуальной; live Railway claims требуют повторной проверки |
 | 11 | `CSS_ARCHITECTURE.md` | ⚠️ Частично актуален | CSS layers/checks актуальны; уточнить single-entry формулировку и фактическое Stylelint ID-правило |
+| 12 | `DEAD_CODE_AUDIT.md` | ⚠️ Исторический snapshot | Методика ценна, но findings и limitations нужно пересчитать по текущему `main` |
 
 ---
 
@@ -252,51 +253,34 @@ Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch s
 
 **Статус:** ⚠️ существенно требует ревизии.
 
-`CONCERNS.md` задуман как живой реестр открытых технических и продуктовых рисков, но часть записей больше не отражает текущий `main`. Проверка выполнена по текущему коду, тестам, migrations, `MVP_SCOPE_LOCK.md`, истории релевантных файлов и уже подтверждённому PR #513.
+`CONCERNS.md` задуман как живой реестр открытых технических и продуктовых рисков, но часть записей больше не отражает текущий `main`.
 
 ### Open concerns, которые остаются актуальными
 
-1. **`CourseAccessPolicy.assertResourceAccess()` выполняет два последовательных DB lookup для nested `attempt` / `question`.** Первый запрос получает `courseId`, затем `assertCourseAccess()` выполняет отдельный `course.findFirst`. Concern остаётся корректным как low-priority optimization.
-2. **Ручные timestamp migration names.** Миграции `20260731120000_add_course_instructors` и `20260731150000_add_manager_team_scope` по-прежнему существуют. Риск коллизии/неожиданного порядка — процедурный, а не воспроизведённая ошибка; запись можно оставить как preventive concern, но не формулировать как установленный defect.
-3. **`roles.spec.ts` содержит вручную поддерживаемый список policy names.** Риск drift остаётся. Более широкая старая формулировка устарела: `api-policy.audit.spec.ts` теперь выполняет `RolesGuard` для всех четырёх ролей и сверяет allow/deny с metadata.
-4. **Отсутствует явное startup warning для осознанного in-memory rate-limit режима.** Код разрешает production без `REDIS_URL` только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`, но режим явно не логируется как архитектурно значимый degraded choice.
-5. **`createCourse` + автоматическое назначение instructor не атомарны.** Сначала вызывается `coursesService.createCourse()`, затем отдельно `courseAccess.assignInstructor()` без общей транзакции.
-6. **Login возвращает access token и в HttpOnly cookie, и в JSON body.** Это остаётся текущим API behavior и ослабляет практический смысл HttpOnly-only storage model.
-7. **Generic Notifications и Audit Log для MVP отсутствуют.** `MVP_SCOPE_LOCK.md` по-прежнему отмечает их как не реализованные и относящиеся к readiness.
+1. `CourseAccessPolicy.assertResourceAccess()` выполняет два последовательных DB lookup для nested `attempt` / `question`.
+2. Ручные timestamp migration names остаются процедурным preventive concern.
+3. `roles.spec.ts` содержит вручную поддерживаемый список policy names; риск drift остаётся.
+4. Отсутствует явное startup warning для осознанного in-memory rate-limit режима.
+5. `createCourse` + автоматическое назначение instructor не атомарны.
+6. Login возвращает access token и в HttpOnly cookie, и в JSON body.
+7. Generic Notifications и Audit Log для MVP отсутствуют.
 
-### Open concerns, которые устарели и должны быть закрыты/перенесены
+### Open concerns, которые устарели
 
-1. **Frontend function coverage 25% / 25.6% margin — устарело.** Текущий `apps/web/vitest.config.ts` задаёт глобальные thresholds `40` и отдельный threshold `80` для `assessment-taking/model.ts`. `[НЕ ПРОВЕРЕНО]` Текущий фактический coverage percentage в этом шаге не запускался.
-2. **Instructor видит все курсы организации — устарело.** `CoursesController.listCourses()` передаёт `instructorId`, а `CoursesService.listCourses()` фильтрует через active `CourseInstructor` relation.
-3. **Password reset silently returns 200 — устарело.** `requestPasswordReset()` и `confirmPasswordReset()` теперь выбрасывают `ServiceUnavailableException`.
-4. **429 имеет нестандартный raw JSON envelope — устарело.** `api-hardening.ts` формирует 429 через `createApiErrorResponse(...)`.
-5. **Flaky E2E refresh-flow — закрыт PR #513.** Исправление слито в `main`; последующий CI на `main` прошёл успешно.
-6. **Custom role builder как открытый MVP question — устарело.** `MVP_SCOPE_LOCK.md` фиксирует fixed roles как MVP simplification и custom role builder как out-of-MVP.
+- Frontend coverage 25%: текущие global thresholds уже 40%.
+- Instructor all-courses: server-side list фильтруется через active `CourseInstructor`.
+- Password reset false 200: теперь `ServiceUnavailableException`.
+- Raw 429 envelope: теперь `createApiErrorResponse(...)`.
+- Flaky E2E refresh-flow: закрыт PR #513.
+- Custom role builder как MVP question: `MVP_SCOPE_LOCK.md` фиксирует его как out-of-MVP.
 
-### Concerns, текущий production-статус которых нельзя подтвердить только GitHub
+### [НЕ ПРОВЕРЕНО]
 
-1. **Redis в Railway production.** Код подтверждает поддержку Redis и явного in-memory fallback, но live services/env требуют реальной Railway проверки. **[НЕ ПРОВЕРЕНО]**.
-2. **S3/R2/MinIO production configuration.** Код и `STORAGE_UPLOAD_STATUS.md` подтверждают реализованный private S3-compatible storage contract, но `CONCERNS.md` и `MVP_SCOPE_LOCK.md` противоречат друг другу по фактическому production provisioning. **[НЕ ПРОВЕРЕНО]** live Railway storage service/env.
-3. **Admin sidebar при 150%+ browser zoom.** История `admin.css` подтверждает PR #492, но текущее визуальное воспроизведение в Chromium в рамках этого шага не выполнялось. **[НЕ ПРОВЕРЕНО]**.
-
-### Closed concerns в документе
-
-- Старый concern о coverage ниже прежнего 25% threshold исторически корректно закрыт, но threshold уже поднят до 40%.
-- Concern про `@Optional() sessionStore` остаётся корректно закрытым: текущая реализация использует Prisma-backed Session store.
-- Concern «Redis unavailable => fail-open без rate limiting» корректно закрыт: middleware переключается на local degraded store и продолжает применять limits.
+Live Railway status для Redis/storage и визуальное воспроизведение sidebar при 150%+ zoom требуют внешней проверки.
 
 ### Что изменить
 
-1. Перенести в Closed устаревшие open entries: coverage 25%, instructor all-courses, password-reset false 200, raw 429 envelope, E2E refresh flake, custom-role MVP question.
-2. Сузить RBAC testing concern до manual policy inventory в `roles.spec.ts`.
-3. Разделить operational concerns Redis/storage на `code/config ready` и `live infrastructure status`.
-4. Устранить конфликт `CONCERNS.md` ↔ `MVP_SCOPE_LOCK.md` по production storage после live verification.
-5. Сохранить актуальными concerns про nested ownership double-query, migration naming, startup warning, non-transactional course creation/assignment, access token in JSON body и отсутствие Notifications/Audit Log.
-6. Для zoom/sidebar concern добавить дату реального browser reproduction или закрывающий PR.
-
-### Итог
-
-`CONCERNS.md` полезен как журнал истории рисков, но сейчас раздел Open смешивает реально открытые проблемы, уже закрытые кодом проблемы, исторические product questions и неподтверждённые live-infrastructure assertions. Нужна существенная сортировка.
+Пересортировать Open/Closed, сузить RBAC concern, отделить code/config readiness от live infrastructure status и устранить конфликт документов по production storage после live verification.
 
 ---
 
@@ -304,45 +288,77 @@ Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch s
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
+### Подтверждено
 
-- application-owned CSS entry point;
-- наличие прямых CSS-файлов в `app`, `features`, `shared`;
-- cascade layer declaration и фактические imports;
-- token ownership и runtime theme mutation;
-- `lint:css`, Stylelint rules и architecture guard;
-- 80 KiB emitted CSS budget;
-- visual-regression gate в CI.
-
-### Подтверждённые факты
-
-- `apps/web/src/styles/index.css` является единственной точкой импорта **application-owned** stylesheets: `main.tsx` импортирует `./styles/index.css`, а recursive trees `apps/web/src/app`, `features` и `shared` не содержат собственных `.css` файлов.
-- `index.css` объявляет канонический порядок `@layer tokens, base, layout, components, features, utilities, overrides;`.
-- Все семь non-entry CSS-файлов из `src/styles/` импортируются в `index.css` ровно по одному разу и в именованные layers: `tokens.css` → `tokens`, `global.css` → `base`, `ui.css` → `components`, `admin.css`/`public-home.css`/`login-prototype-final-alignment.css` → `features`, `login-remember-checkbox-fix.css` → `overrides`. Layers `layout` и `utilities` сейчас зарезервированы и не имеют отдельных imports.
-- `apps/web/scripts/check-css-architecture.mjs` проверяет наличие канонического layer order, ровно один named-layer import для каждого CSS-файла из `src/styles` и уникальность custom-property definitions. Он также требует, чтобы все CSS custom properties были определены в `tokens.css` и чтобы файл содержал `:root`.
-- Runtime theme behavior соответствует документу: `apps/web/src/shared/theme.ts` применяет theme settings через `document.documentElement.style.setProperty(...)`, то есть обновляет значения token variables на root element без создания альтернативного CSS token-owner файла.
-- `pnpm --filter @lms/web lint:css` существует и запускает Stylelint по `src/styles/**/*.css`, затем `check-css-architecture.mjs`.
-- Stylelint действительно проверяет unknown at-rules/properties, invalid hex colors, duplicate properties/selectors, максимум один ID в selector и specificity ceiling `1,5,2`.
-- `pnpm --filter @lms/web build` после Vite build запускает `check:css-bundle`; `check-css-bundle.mjs` суммирует emitted `.css` assets и падает при превышении `80 * 1024` bytes.
-- Корневой `test:visual` использует Playwright visual config, а CI содержит responsive visual-regression matrix; утверждение о Playwright как visual-regression gate соответствует текущему workflow.
+- `apps/web/src/styles/index.css` — единая точка импорта application-owned stylesheets.
+- `index.css` объявляет canonical cascade layers и импортирует каждый stylesheet из `src/styles` ровно один раз в named layer.
+- `check-css-architecture.mjs` проверяет layer order, imports, token ownership и unique custom-property definitions.
+- Runtime theme меняет root token variables через `document.documentElement.style.setProperty(...)`.
+- `lint:css` запускает Stylelint и architecture guard.
+- CSS bundle budget — 80 KiB и проверяется после build.
+- Playwright visual-regression gate присутствует в CI.
 
 ### Несоответствия и уточнения
 
-1. **Фраза `The web application has a single CSS entry point` требует уточнения.** `apps/web/src/main.tsx` кроме `./styles/index.css` напрямую импортирует внешний stylesheet `@fontsource-variable/manrope/wght.css`. Поэтому буквально CSS entry points два. Архитектурное правило фактически верно только для **application-owned CSS**. Сторонний font stylesheet загружается отдельно до `styles/index.css`.
-
-2. **Фраза `IDs beyond the root-level allowance` сильнее фактической Stylelint-конфигурации.** `apps/web/stylelint.config.mjs` использует только `selector-max-id: 1`; это разрешает любой selector с одним ID и не ограничивает ID именем `#root` или только root-level usage. Если намерение действительно «разрешён только root ID», текущий lint этого не обеспечивает.
-
-3. **Запрет прямых stylesheet imports компонентами сейчас соблюдается, но architecture guard не проверяет это правило полностью.** Guard сканирует только CSS-файлы внутри `src/styles` и их imports в `index.css`; он не анализирует TS/TSX imports и не запретит будущий direct CSS import из component/route module либо CSS-файл вне `src/styles`. Это важное различие между документированным architecture rule и реально автоматизированным enforcement.
-
-4. **Требование менять 80 KiB budget только с объяснением measured impact в PR является процессным, а не машинно проверяемым.** Скрипт жёстко проверяет числовой budget, но не может подтвердить наличие объяснения в PR. Формулировку можно оставить как review policy, но не представлять как automated check.
+1. `main.tsx` отдельно импортирует `@fontsource-variable/manrope/wght.css`, поэтому single-entry утверждение буквально верно только для application-owned CSS.
+2. `selector-max-id: 1` разрешает любой один ID в selector и не ограничивает его `#root`.
+3. Architecture guard не анализирует TS/TSX imports, поэтому запрет direct component CSS imports сейчас является convention, а не полным fail-closed enforcement.
+4. Требование объяснять изменение 80 KiB budget в PR — human review policy, а не автоматическая проверка.
 
 ### Что изменить
 
-1. Заменить начало на формулировку вроде: **`The web application has a single entry point for application-owned CSS: apps/web/src/styles/index.css. Third-party font CSS is imported separately from main.tsx.`**
-2. В разделе automated checks заменить `IDs beyond the root-level allowance` на точное текущее поведение: **`selectors containing more than one ID`**. Альтернатива — усилить Stylelint/architecture guard, если действительно должен быть разрешён только `#root`.
-3. Явно отметить, что запрет component/route CSS imports — архитектурное правило, которое текущий guard лишь косвенно поддерживает. Если требуется fail-closed enforcement, добавить отдельную проверку TS/TSX imports и CSS files outside `src/styles`.
-4. Отделить machine-enforced `80 KiB` threshold от human review policy об обязательном объяснении изменения budget.
+Уточнить single-entry scope, буквально описать Stylelint ID rule, разделить architecture convention и machine enforcement для CSS imports и отделить numeric bundle gate от PR review policy.
+
+---
+
+## 12. `DEAD_CODE_AUDIT.md`
+
+**Статус:** ⚠️ исторический snapshot; как current dead-code inventory не актуален.
+
+### Проверено
+
+- базовый commit и встроенное предупреждение об устаревании;
+- оба перечисленных dead-code candidate;
+- текущие layout/logout реализации;
+- текущий API TypeScript/NodeNext build contract;
+- `vite-env.d.ts`;
+- E2E dependency, typecheck script и недавний CI status;
+- ограничения методики.
+
+### Подтверждённые факты
+
+- Сам документ корректно сообщает, что исходный аудит выполнен 2 августа 2026 на commit `76edd162e56e2f485d069724c567501309f2cc06` и 6 августа был явно помечен как устаревшая база. Поэтому его findings уже заявлены как snapshot, а не гарантированное описание текущего `main`.
+- `apps/web/src/vite-env.d.ts` по-прежнему существует и содержит ambient reference `vite/client`; его классификация как не-мёртвого declaration file остаётся корректной.
+- `apps/api/src/modules/auth/auth.cookies.js` по-прежнему существует и содержит только `export * from './auth.cookies.ts';`.
+- `apps/api/tsconfig.json` использует `module/moduleResolution: NodeNext`, включает только `src/**/*.ts` и не включает исходные `.js` файлы. `apps/api/package.json` запускает production через `node dist/main.js`. Эти факты по-прежнему поддерживают исходный вывод, что source `auth.cookies.js` не требуется TypeScript build/runtime и выглядит лишним compatibility adapter.
+- `apps/web/src/app/LogoutButton.tsx` по-прежнему существует, но ситуация изменилась: с commit `88b23cf3` от 3 августа существует `LogoutButton.spec.tsx`, который напрямую импортирует и тестирует компонент. Поэтому утверждение документа «не импортируется ни одним файлом приложения или теста» больше неверно.
+- Production layouts всё ещё не переиспользуют `LogoutButton`: проверенные `learnerLayout.tsx`, `managerLayout.tsx`, `instructorLayout.tsx` и `adminPage.tsx` импортируют `shared/logout.ts` и реализуют собственный handler/button. Это поддерживает вывод, что `LogoutButton.tsx` может оставаться **неиспользуемым production component**, хотя теперь он уже не является файлом без входящих ссылок вообще.
+- Старое ограничение про E2E typecheck, который не находит `@axe-core/playwright`, больше не соответствует текущему workspace: `apps/e2e/package.json` объявляет `@axe-core/playwright` `4.12.1` и `typecheck: tsc --noEmit`; корневой `pnpm typecheck` идёт через Turbo и недавний полный CI #1256 завершился `success`. Следовательно, старую dependency-resolution проблему нельзя оставлять как current limitation.
+
+### Несоответствия
+
+1. **Candidate `LogoutButton.tsx` описан устаревшим способом.** Он больше не «без входящих ссылок»: его импортирует `LogoutButton.spec.tsx`. Если задача — найти именно production-dead code, формулировку нужно изменить на «не используется runtime/application composition, но имеет unit tests» и повторно подтвердить полный import graph на текущем `main`.
+
+2. **Раздел `Ограничения и следующий шаг` содержит уже устранённую E2E dependency-проблему.** `@axe-core/playwright` сейчас присутствует в E2E package, а полный CI/typecheck проходит. Это историческое ограничение нужно либо датировать состоянием snapshot, либо удалить из current guidance.
+
+3. **Документ не является текущим пересчётом dead code.** Встроенное предупреждение это честно признаёт, но дальнейший imperative `Что сделать: удалить файл` может быть воспринят как current action. После значительного количества последующих PR такие действия должны выполняться только после нового полного static/import audit.
+
+4. **Knip по-прежнему не является доказанным current source of truth.** Исторический запуск был заблокирован `403`, а в текущем репозитории Knip не добавлен как штатная dependency/script. Нельзя утверждать, что современный full dead-code scan выполнен автоматически.
+
+### Что изменить
+
+1. Лучше сохранить файл как **historical dead-code audit snapshot**: перенести предупреждение прямо под заголовок и явно написать, что секции `Найденные кандидаты` не являются текущими инструкциями к удалению.
+2. Для `LogoutButton.tsx` обновить статус: есть unit test, но проверенные production layouts по-прежнему реализуют logout отдельно; перед удалением нужен новый full import-graph check на текущем `main`.
+3. Для `auth.cookies.js` отметить, что текущий NodeNext/tsconfig/start:prod contract всё ещё поддерживает его удаление как кандидата, но само удаление должно выполняться отдельным code PR с lint/typecheck/tests/build.
+4. Удалить или исторически датировать limitation про отсутствующий `@axe-core/playwright`, поскольку текущий E2E workspace и CI его больше не подтверждают.
+5. Если проекту нужен **current** dead-code baseline, провести новый отдельный пересчёт: lint + typecheck с unused flags, current import graph, package exports/entrypoints и специализированный scanner при доступности. Не переносить findings snapshot 2026-08-02 автоматически.
+
+### [НЕ ПРОВЕРЕНО]
+
+- Полный текущий граф относительных/alias/dynamic imports для всего workspace в рамках этого документационного шага заново не строился.
+- Knip или аналогичный специализированный dead-code scanner на текущем `main` не запускался.
+- Поэтому `LogoutButton.tsx` и `auth.cookies.js` здесь подтверждены как **кандидаты для повторной проверки**, а не как безопасные к удалению файлы в рамках текущего PR.
 
 ### Итог
 
-Cascade layers, centralized tokens, current stylesheet ownership, lint/architecture guard, CSS bundle budget и visual-regression gate соответствуют текущему проекту. Документ требует небольших, но важных уточнений: single-entry claim должен относиться только к application-owned CSS, Stylelint ID rule нужно описать буквально, а convention-level запрет direct CSS imports не следует выдавать за полностью автоматизированный guard.
+Документ полезен как исторический журнал методики и состояния на 2 августа 2026 и уже содержит корректное предупреждение об устаревании. Однако текущие детали разошлись: `LogoutButton` получил тест, E2E dependency limitation исчезла, а полный scan после десятков PR не повторялся. Файл следует либо окончательно позиционировать как historical snapshot, либо полностью пересчитать на текущем `main` перед использованием его рекомендаций.
