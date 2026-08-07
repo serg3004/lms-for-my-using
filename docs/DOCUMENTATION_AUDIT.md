@@ -19,6 +19,7 @@
 | 1 | `ACCESSIBILITY.md` | ✅ Актуален | Изменения не требуются |
 | 2 | `ADMIN_DEMO_SEED.md` | ⚠️ Частично актуален | Требуется уточнить полноту проверки demo dataset либо расширить реализацию |
 | 3 | `AI_AGENT_STARTER_PROMPT.md` | ⚠️ Частично актуален | Требуется обновить visibility, пути к документам, backend pattern и bootstrap-инструкции |
+| 4 | `API_CONTRACTS.md` | ⚠️ Частично актуален | Основной runtime-контракт актуален, но утверждение о синхронизации manual OpenAPI неверно |
 
 ---
 
@@ -183,3 +184,64 @@
 ### Итог
 
 Документ полезен как общий шаблон работы AI-агента, но в текущем виде содержит устаревшие стартовые сведения и несколько инструкций, способных направить агента по неверным путям или к несовместимому стилю реализации. Перед повторным использованием starter prompt следует обновить перечисленные пункты.
+
+---
+
+## 4. `API_CONTRACTS.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+
+- глобальный API prefix;
+- error response envelope;
+- pagination query schema;
+- auth/session endpoints;
+- наличие основных API-модулей и маршрутов;
+- health endpoints;
+- manual OpenAPI document и его соответствие runtime controllers;
+- production/Redis утверждения, насколько это подтверждается репозиторием.
+
+### Подтверждённые факты
+
+- `apps/api/src/main.ts` устанавливает глобальный prefix `api/v1`, поэтому базовый путь `/api/v1` актуален.
+- `apps/api/src/common/api-response.ts` содержит `ApiErrorResponse` с `statusCode`, `error.code`, `error.message`, optional `error.details`, `path` и `timestamp`, что соответствует описанному error envelope.
+- `apps/api/src/common/pagination.schema.ts` задаёт `page` как positive integer с default `1`, а `pageSize` как positive integer с max `200` и default `20`.
+- `apps/api/src/modules/auth/auth.controller.ts` подтверждает login, refresh, logout, logout-all, password-reset request/confirm и `GET /auth/me`.
+- `apps/api/src/modules/health/health.controller.ts` подтверждает `/health`, `/health/live` и `/health/ready`.
+- `apps/api/src/app.module.ts` подключает перечисленные предметные модули: auth, organizations, users, groups, memberships, courses, lessons, materials, assignments, progress, assessments, assessment questions/attempts, certificates, manager и OpenAPI.
+- `apps/api/src/config/env.ts` действительно поддерживает Redis rate-limit store через `REDIS_URL`; для production без Redis старт разрешён только при явном `ALLOW_IN_MEMORY_RATE_LIMIT=true`.
+- Runtime OpenAPI endpoint реализован `OpenapiController` как `GET /api/v1/openapi`.
+
+### Несоответствие
+
+Документ в разделе Current status утверждает: **`Manual OpenAPI document synced with current controllers.`** Это не соответствует текущему `apps/api/src/modules/openapi/openapi.document.ts`.
+
+Manual OpenAPI содержит только часть фактических runtime маршрутов. Например:
+
+- runtime controller имеет `/health/live` и `/health/ready`, но manual OpenAPI описывает только `/health`;
+- runtime auth controller имеет `POST /auth/refresh`, но manual OpenAPI его не содержит;
+- `API_CONTRACTS.md` и текущие controllers содержат дополнительные update/status/sub-resource маршруты для users, groups, courses, lessons, materials и других модулей, а manual OpenAPI описывает преимущественно базовые list/get/create операции;
+- runtime имеет `GET /manager/team-summary`, но этот endpoint отсутствует в `openapi.document.ts`;
+- сам manual OpenAPI объявляет путь `/openapi.json`, тогда как фактический controller публикует документ по `/api/v1/openapi`.
+
+Следовательно, route map в `API_CONTRACTS.md` заметно полнее manual OpenAPI, и утверждение о полной синхронизации OpenAPI с controllers сейчас неверно.
+
+### Что изменить
+
+Возможны два корректных варианта:
+
+1. **Если OpenAPI пока намеренно неполный:** заменить утверждение `Manual OpenAPI document synced with current controllers` на явное описание, что документ является частичным/manual skeleton, и перечислить известный gap.
+2. **Если OpenAPI должен быть источником текущего публичного API:** обновить `apps/api/src/modules/openapi/openapi.document.ts`, добавив отсутствующие runtime endpoints/methods и исправив self-path `/openapi.json` на фактический `/openapi`; после этого оставить утверждение о синхронизации.
+
+Предпочтителен второй вариант, поскольку текущий `API_CONTRACTS.md` прямо позиционирует controllers/schemas/services как runtime source of truth и одновременно заявляет OpenAPI sync.
+
+### [НЕ ПРОВЕРЕНО]
+
+- Фактическая доступность production URL `web-production-b1f01.up.railway.app` в момент этого аудита не подтверждена через GitHub; репозиторий не является доказательством live deployment.
+- Утверждение, что в production сейчас **не provisioned Redis service** и используется именно `ALLOW_IN_MEMORY_RATE_LIMIT`, нельзя подтвердить только кодом/конфигурацией репозитория без чтения фактической Railway environment/service configuration. Код подтверждает лишь поддержку и условия такого fallback.
+- Полное покомандное сравнение каждого RBAC-примечания в таблице со всеми guards будет выполнено при аудите `API_RBAC_MATRIX.md`; здесь проверена структура и ключевые маршруты.
+
+### Итог
+
+Основной runtime API contract в документе в значительной части соответствует текущему backend: prefix, error envelope, pagination baseline, auth, health и модульная карта подтверждаются кодом. Однако утверждение о синхронизации manual OpenAPI с runtime controllers неверно и требует исправления документа либо самой OpenAPI-спецификации.
