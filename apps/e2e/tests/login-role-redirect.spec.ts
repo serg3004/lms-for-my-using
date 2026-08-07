@@ -6,12 +6,14 @@ const organization = 'demo-company';
 const password = 'Demo1234!';
 
 type DemoRole = 'admin' | 'manager' | 'instructor' | 'learner';
+
 const roleDestinations: Array<{ role: DemoRole; destination: string }> = [
   { role: 'admin', destination: '/admin' },
   { role: 'manager', destination: '/manager/dashboard' },
   { role: 'instructor', destination: '/instructor/dashboard' },
   { role: 'learner', destination: '/learn' },
 ];
+
 async function loginAs(page: Page, role: DemoRole) {
   await page.goto('/login');
   await page.locator('input[name="organizationId"]').fill(organization);
@@ -19,6 +21,7 @@ async function loginAs(page: Page, role: DemoRole) {
   await page.locator('input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
 }
+
 test.describe('login and role redirects', () => {
   for (const { role, destination } of roleDestinations) {
     test(`${role} signs in to the correct workspace without a redirect loop`, async ({ page }) => {
@@ -29,6 +32,7 @@ test.describe('login and role redirects', () => {
       expect(new URL(page.url()).pathname).toBe(destination);
     });
   }
+
   test('a guest is returned to login from a protected route', async ({ page }) => {
     await page.goto('/learn/courses');
 
@@ -39,6 +43,7 @@ test.describe('login and role redirects', () => {
   test('a learner sees the forbidden contract for the admin workspace and API', async ({ page }) => {
     await loginAs(page, 'learner');
     await expect(page).toHaveURL(/\/learn$/);
+
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/admin$/);
     await expect(page.getByRole('heading', { name: 'Доступ запрещён' })).toBeVisible();
@@ -48,17 +53,20 @@ test.describe('login and role redirects', () => {
       const response = await fetch('/api/v1/users');
       return { body: await response.json(), status: response.status };
     });
+
     expect(forbiddenResponse).toMatchObject({
       status: 403,
       body: { error: { code: 'FORBIDDEN' }, statusCode: 403 },
     });
   });
+
   test('an expired access cookie is refreshed before the protected route renders', async ({ context, page }) => {
     // This is the only test in the suite whose assertions depend on three sequential real
     // network round-trips (401 on /auth/me -> POST /auth/refresh -> retry /auth/me) plus the
     // React re-renders between them, so it has far less slack than the default 30s budget
     // gives every other test here. Give it extra headroom instead of sharing the same margin.
     test.setTimeout(60_000);
+
     await loginAs(page, 'learner');
     await expect(page).toHaveURL(/\/learn$/);
 
@@ -76,6 +84,7 @@ test.describe('login and role redirects', () => {
     page.on('response', (response) => {
       if (new URL(response.url()).pathname === '/api/v1/auth/refresh') refreshResponses.push(response.status());
     });
+
     // Wait on each network round-trip separately (registered before the navigation that
     // triggers them) so a failure names exactly which step stalled, instead of a single
     // expect.poll timing out over the whole chain with no indication of where it broke.
@@ -88,6 +97,7 @@ test.describe('login and role redirects', () => {
     const retrySucceeded = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/api/v1/auth/me' && response.status() === 200,
     );
+
     await page.goto('/learn/courses');
 
     await expiredAccessRejected;
