@@ -26,6 +26,7 @@
 | 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после refresh endpoint |
 | 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection подтверждён как выключенный |
 | 10 | `CONCERNS.md` | ⚠️ Существенно требует ревизии | Несколько open concerns уже закрыты кодом; часть остаётся актуальной; live Railway claims требуют повторной проверки |
+| 11 | `CSS_ARCHITECTURE.md` | ⚠️ Частично актуален | CSS layers/checks актуальны; уточнить single-entry формулировку и фактическое Stylelint ID-правило |
 
 ---
 
@@ -256,56 +257,92 @@ Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch s
 ### Open concerns, которые остаются актуальными
 
 1. **`CourseAccessPolicy.assertResourceAccess()` выполняет два последовательных DB lookup для nested `attempt` / `question`.** Первый запрос получает `courseId`, затем `assertCourseAccess()` выполняет отдельный `course.findFirst`. Concern остаётся корректным как low-priority optimization.
-
-2. **Ручные timestamp migration names.** Миграции `20260731120000_add_course_instructors` и `20260731150000_add_manager_team_scope` по-прежнему существуют. Риск коллизии/неожиданного порядка — процедурный, а не воспроизведённая ошибка; запись можно оставить как 🟢 preventive concern, но не формулировать как установленный defect.
-
-3. **`roles.spec.ts` содержит вручную поддерживаемый список policy names.** Это подтверждено: тест не итерирует автоматически `Object.keys(rolePolicies)`. Риск drift остаётся. При этом исходная более широкая формулировка concern устарела: `api-policy.audit.spec.ts` сейчас не только проверяет наличие `@Roles()`, а также выполняет `RolesGuard` для всех четырёх ролей и сверяет allow/deny с metadata. Поэтому concern нужно сузить именно до manual policy inventory в `roles.spec.ts`.
-
-4. **Отсутствует явное startup warning для осознанного in-memory rate-limit режима.** Код разрешает production без `REDIS_URL` только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`, но concern о том, что такой режим должен явно логироваться при startup, остаётся архитектурно обоснованным.
-
-5. **`createCourse` + автоматическое назначение instructor не атомарны.** В `CoursesController.createCourse()` сначала вызывается `coursesService.createCourse()`, затем отдельно `courseAccess.assignInstructor()`. Общей транзакции нет; при второй ошибке курс может остаться созданным без ожидаемого assignment.
-
-6. **Login возвращает access token и в HttpOnly cookie, и в JSON body.** `AuthController.login()` устанавливает auth cookies, но также возвращает `accessToken` в response body. Concern актуален: это уменьшает практическую пользу HttpOnly-only storage model и должно быть осознанным контрактом либо исправлено.
-
-7. **Generic Notifications и Audit Log для MVP отсутствуют.** `MVP_SCOPE_LOCK.md` по-прежнему отмечает Notifications и Audit Log как не реализованные и относящиеся к MVP readiness. Отдельный file-deletion audit не заменяет общий продуктовый Audit Log.
+2. **Ручные timestamp migration names.** Миграции `20260731120000_add_course_instructors` и `20260731150000_add_manager_team_scope` по-прежнему существуют. Риск коллизии/неожиданного порядка — процедурный, а не воспроизведённая ошибка; запись можно оставить как preventive concern, но не формулировать как установленный defect.
+3. **`roles.spec.ts` содержит вручную поддерживаемый список policy names.** Риск drift остаётся. Более широкая старая формулировка устарела: `api-policy.audit.spec.ts` теперь выполняет `RolesGuard` для всех четырёх ролей и сверяет allow/deny с metadata.
+4. **Отсутствует явное startup warning для осознанного in-memory rate-limit режима.** Код разрешает production без `REDIS_URL` только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`, но режим явно не логируется как архитектурно значимый degraded choice.
+5. **`createCourse` + автоматическое назначение instructor не атомарны.** Сначала вызывается `coursesService.createCourse()`, затем отдельно `courseAccess.assignInstructor()` без общей транзакции.
+6. **Login возвращает access token и в HttpOnly cookie, и в JSON body.** Это остаётся текущим API behavior и ослабляет практический смысл HttpOnly-only storage model.
+7. **Generic Notifications и Audit Log для MVP отсутствуют.** `MVP_SCOPE_LOCK.md` по-прежнему отмечает их как не реализованные и относящиеся к readiness.
 
 ### Open concerns, которые устарели и должны быть закрыты/перенесены
 
-1. **Frontend function coverage 25% / 25.6% margin — устарело.** Текущий `apps/web/vitest.config.ts` задаёт глобальные thresholds `40` для statements/branches/functions/lines и отдельный threshold `80` для `assessment-taking/model.ts`. Старую запись про 25% следует перенести в Closed или заменить текущим coverage risk, если новый фактический процент снова близок к 40. `[НЕ ПРОВЕРЕНО]` Текущий фактический coverage percentage в этом шаге не запускался.
-
-2. **Instructor видит все курсы организации — устарело.** `CoursesController.listCourses()` определяет instructor-only user и передаёт `instructorId`; `CoursesService.listCourses()` фильтрует через active `CourseInstructor` relation. Frontend действительно вызывает общий `listCourses()`, но серверная выборка уже owner-scoped. Concern следует закрыть.
-
-3. **Password reset silently returns 200 — устарело.** Endpoint остаётся не реализован функционально, но `AuthService.requestPasswordReset()` и `confirmPasswordReset()` теперь выбрасывают `ServiceUnavailableException`; ложного успешного 200 больше нет. Concern следует закрыть и при необходимости заменить отдельным backlog item «password reset unavailable».
-
-4. **429 имеет нестандартный raw JSON envelope — устарело.** `api-hardening.ts` теперь формирует 429 через `createApiErrorResponse(...)`, то есть использует канонический API error envelope. Concern следует закрыть.
-
-5. **Flaky E2E refresh-flow concern — закрыт PR #513.** Причиной была race window между заменой access cookie и регистрацией network observers. Исправление останавливает уже смонтированное приложение через `about:blank` перед cookie mutation; PR #513 слит в `main`, последующий CI на `main` прошёл успешно. Open entry нужно перенести в Closed с фактической причиной и PR.
-
-6. **Custom role builder как открытый MVP product question — устарело.** `MVP_SCOPE_LOCK.md` прямо фиксирует fixed roles как MVP simplification и относит `custom roles builder` к out-of-MVP. Поэтому вопрос «нужна ли кнопка Создать роль?» для MVP уже решён: нет. Отдельный вопрос о цветном badge остаётся только низкоприоритетным UI/design concern, если нейтральное отображение не принято окончательно.
+1. **Frontend function coverage 25% / 25.6% margin — устарело.** Текущий `apps/web/vitest.config.ts` задаёт глобальные thresholds `40` и отдельный threshold `80` для `assessment-taking/model.ts`. `[НЕ ПРОВЕРЕНО]` Текущий фактический coverage percentage в этом шаге не запускался.
+2. **Instructor видит все курсы организации — устарело.** `CoursesController.listCourses()` передаёт `instructorId`, а `CoursesService.listCourses()` фильтрует через active `CourseInstructor` relation.
+3. **Password reset silently returns 200 — устарело.** `requestPasswordReset()` и `confirmPasswordReset()` теперь выбрасывают `ServiceUnavailableException`.
+4. **429 имеет нестандартный raw JSON envelope — устарело.** `api-hardening.ts` формирует 429 через `createApiErrorResponse(...)`.
+5. **Flaky E2E refresh-flow — закрыт PR #513.** Исправление слито в `main`; последующий CI на `main` прошёл успешно.
+6. **Custom role builder как открытый MVP question — устарело.** `MVP_SCOPE_LOCK.md` фиксирует fixed roles как MVP simplification и custom role builder как out-of-MVP.
 
 ### Concerns, текущий production-статус которых нельзя подтвердить только GitHub
 
-1. **Redis в Railway production.** Код подтверждает поддержку Redis и явного in-memory fallback, но утверждения `Redis service отсутствует`, `REDIS_URL отсутствует`, `ALLOW_IN_MEMORY_RATE_LIMIT=true в live production` требуют чтения текущих Railway services/env. **[НЕ ПРОВЕРЕНО]** в рамках GitHub-only аудита.
-
-2. **S3/R2/MinIO production configuration.** Код и `STORAGE_UPLOAD_STATUS.md` подтверждают реализованный private S3-compatible storage contract, multipart/quarantine flow и обязательные S3 env vars. При этом `CONCERNS.md` утверждает, что production storage не provisioned, а `MVP_SCOPE_LOCK.md` одновременно говорит `Files ✅` и упоминает MinIO on Railway. Это внутреннее противоречие документации. **[НЕ ПРОВЕРЕНО]** фактическое текущее Railway storage service/env; требуется live infrastructure check и затем синхронизация документов.
-
-3. **Admin sidebar при 150%+ browser zoom.** История `admin.css` подтверждает PR #492, который ограничивал horizontal overflow, но сам concern утверждает, что 2-column layout после этого сохранился. Более позднего явно направленного fix по истории файла не найдено. **[НЕ ПРОВЕРЕНО]** текущее визуальное воспроизведение в Chromium в рамках этого шага; concern нельзя закрыть только по коду.
+1. **Redis в Railway production.** Код подтверждает поддержку Redis и явного in-memory fallback, но live services/env требуют реальной Railway проверки. **[НЕ ПРОВЕРЕНО]**.
+2. **S3/R2/MinIO production configuration.** Код и `STORAGE_UPLOAD_STATUS.md` подтверждают реализованный private S3-compatible storage contract, но `CONCERNS.md` и `MVP_SCOPE_LOCK.md` противоречат друг другу по фактическому production provisioning. **[НЕ ПРОВЕРЕНО]** live Railway storage service/env.
+3. **Admin sidebar при 150%+ browser zoom.** История `admin.css` подтверждает PR #492, но текущее визуальное воспроизведение в Chromium в рамках этого шага не выполнялось. **[НЕ ПРОВЕРЕНО]**.
 
 ### Closed concerns в документе
 
-- Старый concern о coverage ниже прежнего 25% threshold исторически корректно закрыт, но сам threshold уже поднят до 40%; closed note стоит дополнить новой конфигурацией.
-- Concern про `@Optional() sessionStore` как причину неработающего logout-all остаётся корректно закрытым: текущая реализация использует Prisma-backed Session store.
-- Concern «Redis unavailable => fail-open без rate limiting» остаётся корректно закрытым: при ошибке Redis middleware переключается на local degraded store и продолжает применять limits.
+- Старый concern о coverage ниже прежнего 25% threshold исторически корректно закрыт, но threshold уже поднят до 40%.
+- Concern про `@Optional() sessionStore` остаётся корректно закрытым: текущая реализация использует Prisma-backed Session store.
+- Concern «Redis unavailable => fail-open без rate limiting» корректно закрыт: middleware переключается на local degraded store и продолжает применять limits.
 
 ### Что изменить
 
-1. Перенести в Closed как минимум устаревшие open entries: coverage 25%, instructor all-courses, password-reset false 200, raw 429 envelope, E2E refresh flake, custom-role MVP question.
-2. Переписать RBAC testing concern: убрать утверждение, что central audit не проверяет guard behavior; оставить риск ручного списка policy names в `roles.spec.ts`.
-3. Разделить operational concerns Redis и storage на `code/config ready` и `live infrastructure status`; live status обновлять только после реальной проверки Railway.
-4. Явно отметить конфликт `CONCERNS.md` ↔ `MVP_SCOPE_LOCK.md` по production storage и устранить его после live verification.
-5. Сохранить актуальными concerns про nested ownership double-query, migration naming process, explicit in-memory startup warning, non-transactional course creation/assignment, access token in JSON body и отсутствие Notifications/Audit Log.
-6. Для zoom/sidebar concern добавить дату последнего реального browser reproduction или закрывающий PR; без такой проверки не считать его ни закрытым, ни подтверждённым текущим дефектом.
+1. Перенести в Closed устаревшие open entries: coverage 25%, instructor all-courses, password-reset false 200, raw 429 envelope, E2E refresh flake, custom-role MVP question.
+2. Сузить RBAC testing concern до manual policy inventory в `roles.spec.ts`.
+3. Разделить operational concerns Redis/storage на `code/config ready` и `live infrastructure status`.
+4. Устранить конфликт `CONCERNS.md` ↔ `MVP_SCOPE_LOCK.md` по production storage после live verification.
+5. Сохранить актуальными concerns про nested ownership double-query, migration naming, startup warning, non-transactional course creation/assignment, access token in JSON body и отсутствие Notifications/Audit Log.
+6. Для zoom/sidebar concern добавить дату реального browser reproduction или закрывающий PR.
 
 ### Итог
 
-`CONCERNS.md` полезен как журнал истории рисков, но сейчас его раздел Open смешивает: действительно открытые проблемы, уже закрытые кодом проблемы, исторические product questions и неподтверждённые live-infrastructure assertions. Документ требует существенной сортировки, чтобы Open снова означал только фактически актуальные и проверяемые concerns.
+`CONCERNS.md` полезен как журнал истории рисков, но сейчас раздел Open смешивает реально открытые проблемы, уже закрытые кодом проблемы, исторические product questions и неподтверждённые live-infrastructure assertions. Нужна существенная сортировка.
+
+---
+
+## 11. `CSS_ARCHITECTURE.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+
+- application-owned CSS entry point;
+- наличие прямых CSS-файлов в `app`, `features`, `shared`;
+- cascade layer declaration и фактические imports;
+- token ownership и runtime theme mutation;
+- `lint:css`, Stylelint rules и architecture guard;
+- 80 KiB emitted CSS budget;
+- visual-regression gate в CI.
+
+### Подтверждённые факты
+
+- `apps/web/src/styles/index.css` является единственной точкой импорта **application-owned** stylesheets: `main.tsx` импортирует `./styles/index.css`, а recursive trees `apps/web/src/app`, `features` и `shared` не содержат собственных `.css` файлов.
+- `index.css` объявляет канонический порядок `@layer tokens, base, layout, components, features, utilities, overrides;`.
+- Все семь non-entry CSS-файлов из `src/styles/` импортируются в `index.css` ровно по одному разу и в именованные layers: `tokens.css` → `tokens`, `global.css` → `base`, `ui.css` → `components`, `admin.css`/`public-home.css`/`login-prototype-final-alignment.css` → `features`, `login-remember-checkbox-fix.css` → `overrides`. Layers `layout` и `utilities` сейчас зарезервированы и не имеют отдельных imports.
+- `apps/web/scripts/check-css-architecture.mjs` проверяет наличие канонического layer order, ровно один named-layer import для каждого CSS-файла из `src/styles` и уникальность custom-property definitions. Он также требует, чтобы все CSS custom properties были определены в `tokens.css` и чтобы файл содержал `:root`.
+- Runtime theme behavior соответствует документу: `apps/web/src/shared/theme.ts` применяет theme settings через `document.documentElement.style.setProperty(...)`, то есть обновляет значения token variables на root element без создания альтернативного CSS token-owner файла.
+- `pnpm --filter @lms/web lint:css` существует и запускает Stylelint по `src/styles/**/*.css`, затем `check-css-architecture.mjs`.
+- Stylelint действительно проверяет unknown at-rules/properties, invalid hex colors, duplicate properties/selectors, максимум один ID в selector и specificity ceiling `1,5,2`.
+- `pnpm --filter @lms/web build` после Vite build запускает `check:css-bundle`; `check-css-bundle.mjs` суммирует emitted `.css` assets и падает при превышении `80 * 1024` bytes.
+- Корневой `test:visual` использует Playwright visual config, а CI содержит responsive visual-regression matrix; утверждение о Playwright как visual-regression gate соответствует текущему workflow.
+
+### Несоответствия и уточнения
+
+1. **Фраза `The web application has a single CSS entry point` требует уточнения.** `apps/web/src/main.tsx` кроме `./styles/index.css` напрямую импортирует внешний stylesheet `@fontsource-variable/manrope/wght.css`. Поэтому буквально CSS entry points два. Архитектурное правило фактически верно только для **application-owned CSS**. Сторонний font stylesheet загружается отдельно до `styles/index.css`.
+
+2. **Фраза `IDs beyond the root-level allowance` сильнее фактической Stylelint-конфигурации.** `apps/web/stylelint.config.mjs` использует только `selector-max-id: 1`; это разрешает любой selector с одним ID и не ограничивает ID именем `#root` или только root-level usage. Если намерение действительно «разрешён только root ID», текущий lint этого не обеспечивает.
+
+3. **Запрет прямых stylesheet imports компонентами сейчас соблюдается, но architecture guard не проверяет это правило полностью.** Guard сканирует только CSS-файлы внутри `src/styles` и их imports в `index.css`; он не анализирует TS/TSX imports и не запретит будущий direct CSS import из component/route module либо CSS-файл вне `src/styles`. Это важное различие между документированным architecture rule и реально автоматизированным enforcement.
+
+4. **Требование менять 80 KiB budget только с объяснением measured impact в PR является процессным, а не машинно проверяемым.** Скрипт жёстко проверяет числовой budget, но не может подтвердить наличие объяснения в PR. Формулировку можно оставить как review policy, но не представлять как automated check.
+
+### Что изменить
+
+1. Заменить начало на формулировку вроде: **`The web application has a single entry point for application-owned CSS: apps/web/src/styles/index.css. Third-party font CSS is imported separately from main.tsx.`**
+2. В разделе automated checks заменить `IDs beyond the root-level allowance` на точное текущее поведение: **`selectors containing more than one ID`**. Альтернатива — усилить Stylelint/architecture guard, если действительно должен быть разрешён только `#root`.
+3. Явно отметить, что запрет component/route CSS imports — архитектурное правило, которое текущий guard лишь косвенно поддерживает. Если требуется fail-closed enforcement, добавить отдельную проверку TS/TSX imports и CSS files outside `src/styles`.
+4. Отделить machine-enforced `80 KiB` threshold от human review policy об обязательном объяснении изменения budget.
+
+### Итог
+
+Cascade layers, centralized tokens, current stylesheet ownership, lint/architecture guard, CSS bundle budget и visual-regression gate соответствуют текущему проекту. Документ требует небольших, но важных уточнений: single-entry claim должен относиться только к application-owned CSS, Stylelint ID rule нужно описать буквально, а convention-level запрет direct CSS imports не следует выдавать за полностью автоматизированный guard.
