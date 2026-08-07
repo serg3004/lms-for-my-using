@@ -17,7 +17,8 @@ The current repository layout supports a split-service Railway deployment:
 |---|---|---|
 | `web` | React SPA served by nginx | `apps/web/Dockerfile`, `apps/web/railway.json`, `infra/nginx/nginx.conf` |
 | `api` | NestJS REST API | `apps/api/Dockerfile`, `apps/api/railway.json` |
-| `database` | Railway-managed PostgreSQL | Railway PostgreSQL plugin |
+| `Postgres` | Railway-managed PostgreSQL | Railway PostgreSQL plugin |
+| `minio` | Self-hosted S3-compatible object storage (`minio/minio` image) | See `docs/RAILWAY_DEPLOY_GUIDE.md` "File storage" section |
 
 The existing Railway guide remains the operational setup reference:
 
@@ -86,16 +87,18 @@ Real values must be stored only in the deployment provider dashboard or secret m
 
 ### API
 
-The API service uses the existing healthcheck endpoint:
+The API service exposes three related endpoints (`docs/READINESS_AND_SECURITY_GATES.md`):
 
 ```text
-GET /api/v1/health
+GET /api/v1/health/live   liveness only, no dependency checks
+GET /api/v1/health/ready  readiness — checks Postgres, Redis, S3/object storage
+GET /api/v1/health        backwards-compatible alias for /health/ready
 ```
 
-Railway API config currently points to:
+Railway API config (`apps/api/railway.json`) currently points to:
 
 ```text
-/api/v1/health
+/api/v1/health/ready
 ```
 
 The healthcheck should validate that the HTTP server is running. It should stay lightweight and should not depend on slow or destructive operations.

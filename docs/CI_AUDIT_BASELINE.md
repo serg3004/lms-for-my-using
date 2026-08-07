@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document captures the current `main` CI baseline and security-audit gate status before staging verification work.
+This document captures the current `main` CI baseline and security-audit gate status.
 
 This is a status document only. It does not change runtime behavior, dependencies, environment variables, secrets, auth, Prisma schema, or migrations.
 
@@ -11,31 +11,44 @@ This is a status document only. It does not change runtime behavior, dependencie
 | Item | Baseline |
 | --- | --- |
 | Base branch | `main` |
-| PR 104 baseline commit | `0d4cd5da1f9d8f8e1d7d2e7a8ae26902ffc936c9` |
-| PR 105 base commit | `6a25e71d5e1c3faae11d0893783a47773d660b35` |
-| PR 106 base commit | `33f058946090551cce16b490d50b5bedc3377ae5` |
 | Baseline workflow | `.github/workflows/ci.yml` |
 | CodeQL workflow | `.github/workflows/codeql.yml` |
-| Workflow names | `CI`, `CodeQL` |
-| Latest verified PR 105 run | `26998484814` |
-| Latest verified PR 105 result | `success` |
-| Verified at | 2026-06-05 |
+| Staging smoke workflow | `.github/workflows/staging-smoke.yml` (manual `workflow_dispatch` only) |
+| Dependabot config | `.github/dependabot.yml` (present; GitHub Actions weekly + npm workspace-grouped weekly) |
+| Workflow names | `CI`, `CodeQL`, `Staging smoke` |
+| Verified at | 2026-08-06, against `.github/workflows/ci.yml` directly |
 
 ## Current CI gates
 
-The current CI workflow runs one `Checks` job on `ubuntu-latest`.
+The current CI workflow runs one `Checks` job on `ubuntu-latest` with a 15 minute timeout, in this order:
 
-| Gate | Current status |
+| Gate | Notes |
 | --- | --- |
-| Secret scan | Added in PR 105 via Gitleaks |
-| Install dependencies | Passing in PR 105 |
-| Dependency audit | Added in PR 105 via `pnpm audit --audit-level high` |
-| Lint | Passing in PR 105 |
-| Generate Prisma Client | Passing in PR 105 |
-| Typecheck | Passing in PR 105 |
-| Tests | Passing in PR 105 |
-| Build | Passing in PR 105 |
-| CodeQL | Added in PR 106 via GitHub CodeQL |
+| Secret scan | Gitleaks |
+| Set up pnpm / Node.js | pnpm 9.15.0, Node 22, pnpm cache |
+| Install dependencies | `pnpm install --frozen-lockfile` |
+| Dependency audit | `pnpm audit --audit-level high` |
+| Validate security waivers | `scripts/validate-security-waivers.mjs` against `security-waivers.json` |
+| Lint | `pnpm --recursive lint` |
+| Generate Prisma Client | `pnpm --filter @lms/api prisma:generate` |
+| Typecheck | `pnpm --recursive typecheck` |
+| Tests | `pnpm --recursive test:coverage` |
+| Staging smoke script tests | `bash scripts/smoke-staging.test.sh` (tests the smoke script itself, not a live staging call) |
+| Apply database migrations | `pnpm --filter @lms/api prisma:migrate:deploy` against the CI Postgres service |
+| API database integration tests | `pnpm --filter @lms/api test:integration:db` |
+| Build | `pnpm --recursive build` |
+| Install Playwright browser | Chromium with deps |
+| Browser E2E | `pnpm test:e2e` |
+| Accessibility baseline | `pnpm test:a11y` |
+| Responsive visual matrix | `pnpm test:visual` |
+| Upload Playwright failure artifacts | On failure only |
+| Build API Docker image | `apps/api/Dockerfile` |
+| Build Web Docker image | `apps/web/Dockerfile` |
+| Scan API Docker image | Trivy, `HIGH`/`CRITICAL`, fails on unfixed findings not covered by a waiver |
+| Scan Web Docker image | Trivy, `HIGH`/`CRITICAL`, fails on unfixed findings not covered by a waiver |
+| CodeQL | Separate `CodeQL` workflow, `security-extended` query suite |
+
+CI runs against an in-job Postgres 16 service container (`postgres:16-alpine`), not an external database.
 
 ## Current workflow characteristics
 
@@ -43,14 +56,10 @@ Current CI includes:
 
 - `pull_request` checks.
 - `push` checks for `main`.
-- Gitleaks secret scanning.
-- `pnpm audit --audit-level high`.
-- pnpm install with frozen lockfile.
-- pnpm cache through `actions/setup-node`.
-- concurrency cancellation by Git ref.
-- read-only `contents` permission.
+- Concurrency cancellation by Git ref (`main` runs are not cancelled by newer pushes; other branches are).
+- `contents: read`, `pull-requests: read` permissions.
 - 15 minute job timeout.
-- Prisma generate with auto-install disabled.
+- Prisma generate with auto-install disabled (`PRISMA_GENERATE_SKIP_AUTOINSTALL=true`).
 
 Current CodeQL includes:
 
@@ -64,42 +73,25 @@ Current CodeQL includes:
 
 ## Security audit baseline
 
-| Gate | Current baseline | Follow-up |
-| --- | --- | --- |
-| Dependency audit | Added in PR 105 | Monitor CI signal after merge |
-| Secret scan | Added in PR 105 | Monitor CI signal after merge |
-| CodeQL | Added in PR 106 | Monitor CI signal after merge |
-| Semgrep | Not present in CI | Optional post-staging hardening |
-| Dependabot or Renovate | Not present in repository config | Separate decision |
-| Branch protection verification | Not verified by this PR | Manual repository settings review |
-| Upload MIME/magic-byte hardening | Not changed by this PR | PR 107 |
-| Upload memory/DoS hardening | Not changed by this PR | PR 107 |
-| Upload negative tests | Not changed by this PR | PR 107 |
+| Gate | Status |
+| --- | --- |
+| Dependency audit | In CI: `pnpm audit --audit-level high` |
+| Secret scan | In CI: Gitleaks |
+| CodeQL | In CI: separate workflow, `security-extended` |
+| Container image scanning | In CI: Trivy against both built images, `HIGH`/`CRITICAL`, waiver-gated via `security-waivers.json` (see `docs/READINESS_AND_SECURITY_GATES.md`) |
+| Dependabot | Present: `.github/dependabot.yml` — see `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md` |
+| Semgrep | Not present in CI |
+| Branch protection verification | Not verified by this document — manual repository settings review |
 
 ## MVP readiness impact
 
-This baseline confirms that the current `main` branch has green CI for the existing quality gates and now adds supply-chain, secret-leak, and CodeQL static analysis gates for new PRs.
+This baseline confirms `main` has a comprehensive CI gate covering lint/typecheck/tests/build, DB migration + integration tests, browser E2E, accessibility, visual regression, container build, and container vulnerability scanning, plus supply-chain (audit, Dependabot), secret-leak (Gitleaks), and static-analysis (CodeQL) gates.
 
-It does not confirm:
+It does not run against live Railway infrastructure — CI's Postgres, migration, and smoke-script steps run against an ephemeral in-job database, not the production database. Live production/deploy verification is tracked separately in `docs/RAILWAY_PRODUCTION_SMOKE_STATUS.md`.
 
-- Railway staging deployment.
-- Runtime smoke checks on staging.
-- `/api/v1/health` on staging.
-- Web `/` on staging.
-- `prisma migrate deploy` on staging.
-- Staging seed execution.
-- Learner smoke flow.
-- Admin smoke flow.
-- Real S3 upload behavior.
+## Related docs
 
-Those items remain part of staging verification and smoke reporting.
-
-## Recommended next PRs
-
-1. PR 107 — upload security hardening for MVP.
-2. PR 108 — auth/session production-readiness notes or minimal hardening.
-3. PR 109 — frontend maintainability cleanup for MVP-critical pages.
-
-## Rollback
-
-This PR changes CI and this status document only. Rollback by reverting the PR 106 workflow and documentation changes.
+- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
+- `docs/DEPENDENCY_UPDATE_POLICY.md`
+- `docs/RAILWAY_PRODUCTION_SMOKE_STATUS.md`

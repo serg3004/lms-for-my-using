@@ -45,6 +45,8 @@ Demo credentials:
 | Role | Organization | Email | Password |
 |---|---|---|---|
 | Admin | `demo-company` | `admin@demo.com` | `Demo1234!` |
+| Manager | `demo-company` | `manager@demo.com` | `Demo1234!` |
+| Instructor | `demo-company` | `instructor@demo.com` | `Demo1234!` |
 | Learner | `demo-company` | `learner@demo.com` | `Demo1234!` |
 
 If the credentials fail, re-run the demo seed for the `api` service.
@@ -288,6 +290,9 @@ Dashboard → service → **Deployments** tab → click any previous deploy → 
 | `JWT_SECRET` | ✅ | Min 32 chars, used for signing access tokens |
 | `FRONTEND_URL` | ✅ | Web service public URL (for CORS) |
 | `NODE_ENV` | ✅ | Set to `production` |
+| `API_PORT` | ✅ | Must match the Railway service's Public Networking port (`3000` in production — see Troubleshooting) |
+| `TRUST_PROXY` | ☐ | Set when the API sits behind Railway's/nginx's reverse proxy, so client IP resolution (rate limiting) uses `X-Forwarded-For` correctly |
+| `ALLOW_IN_MEMORY_RATE_LIMIT` | ☐ | Set to `true` when no Redis service is provisioned, to allow the in-memory rate-limit fallback instead of failing startup |
 | `S3_ENDPOINT` | ☐ | S3-compatible endpoint URL — the `minio` service's public domain in production, see "File storage" above |
 | `S3_BUCKET` | ☐ | Bucket name — `lms-uploads` in production |
 | `S3_ACCESS_KEY_ID` | ☐ | Access key — references `minio`'s `MINIO_ROOT_USER` in production |

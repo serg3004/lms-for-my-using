@@ -2,7 +2,9 @@
 
 Last verified: 2026-07-08
 
-Status: **OK**
+**[2026-08-06] Stale.** ~60 PRs have merged to `main` since this was last verified (including a client-timeout/nginx-proxy fix). A fresh live smoke run against production could not be performed from this environment — outbound network access to `web-production-b1f01.up.railway.app` is blocked by the sandbox's egress policy (`403 Host not in allowlist`). The status below is the last known-good result, not a current one; re-run the smoke command from an environment with production network access before trusting it.
+
+Status: **OK (as of 2026-07-08, unverified since)**
 
 ## Production endpoints
 
