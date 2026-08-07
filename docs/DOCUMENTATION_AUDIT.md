@@ -2,7 +2,7 @@
 
 ## Назначение
 
-Этот файл фиксирует результаты последовательной проверки документов в `docs/` на соответствие текущему состоянию ветки `main`.
+Этот файл фиксирует результаты последовательной проверки документов в `docs/` на соответствие текущему состоянию `main`.
 
 Исключены из аудита:
 
@@ -10,7 +10,7 @@
 - `docs/master-context/`;
 - `.gitkeep` как служебный пустой файл.
 
-Для каждого документа проверяются утверждения о коде, конфигурации, командах, тестах, CI и связанных компонентах. Неподтверждённые пункты помечаются `[НЕ ПРОВЕРЕНО]`.
+Для каждого документа сверяются проверяемые утверждения с кодом, конфигурацией, тестами, CI и GitHub settings. Неподтверждённые операционные утверждения помечаются `[НЕ ПРОВЕРЕНО]`.
 
 ## Сводка
 
@@ -22,9 +22,10 @@
 | 4 | `API_CONTRACTS.md` | ⚠️ Частично актуален | Runtime contract в основном актуален; manual OpenAPI не синхронизирован полностью |
 | 5 | `API_RBAC_MATRIX.md` | ⚠️ Частично актуален | Role matrix актуальна; исправить public inventory и число course-scoped controllers |
 | 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ Частично актуален | API-границы в основном актуальны; Web structure и docs-only CI guidance требуют обновления |
-| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ Частично актуален | Исторический PR 120 описан верно, но текущая Session model и login flow уже расширены refresh-состоянием |
-| 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после появления refresh endpoint |
-| 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection теперь подтверждён как выключенный |
+| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ Частично актуален | Исторический PR 120 описан верно, но текущая Session model расширена refresh-состоянием |
+| 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после refresh endpoint |
+| 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection подтверждён как выключенный |
+| 10 | `CONCERNS.md` | ⚠️ Существенно требует ревизии | Несколько open concerns уже закрыты кодом; часть остаётся актуальной; live Railway claims требуют повторной проверки |
 
 ---
 
@@ -80,24 +81,23 @@
 
 ### Подтверждено
 
-- Текущий стек: NestJS/TypeScript/Prisma для API, React/Vite/TypeScript для Web, pnpm workspace.
+- Стек соответствует проекту: NestJS/TypeScript/Prisma, React/Vite/TypeScript, pnpm workspace.
 - Docker Compose находится в `infra/docker/docker-compose.yml`.
-- Backend-модули уже существуют.
 - Master-context файлы находятся в `docs/master-context/`.
-- `courses` использует service + `PrismaService` без отдельного repository layer; входные данные валидируются Zod schemas.
+- `courses` использует service + `PrismaService` без отдельного repository layer; validation — Zod schemas.
 
 ### Несоответствия
 
-1. Репозиторий назван private, но GitHub API возвращает `visibility: public`.
-2. Пути к `01_LMS_...`—`23_LMS_...` указаны как `docs/...`, а фактически находятся в `docs/master-context/...`.
+1. Репозиторий назван private, GitHub возвращает `visibility: public`.
+2. Пути к `01_LMS_...`—`23_LMS_...` указаны как `docs/...`, фактически они в `docs/master-context/...`.
 3. Требование `module/controller/service/repository` не соответствует текущей структуре как минимум `courses`.
-4. DTO-specific формулировка не отражает Zod-based validation.
+4. DTO-specific правило не отражает Zod-based validation.
 5. Bootstrap-порядок предлагает создавать уже существующие monorepo/API/Web/Prisma/Docker/health/CI.
-6. Не задан приоритет между актуальными root-документами и историческим `master-context`.
+6. Не задан приоритет current root docs/code над историческим `master-context`.
 
 ### Что изменить
 
-Обновить visibility/пути, требовать следовать существующей структуре конкретного модуля, заменить DTO-specific правило на существующий механизм валидации, пометить bootstrap как исторический и задать приоритет current code/config + root docs над master-context drafts.
+Обновить visibility и пути; требовать следовать существующей структуре модуля; заменить DTO-specific правило на существующий механизм validation; пометить bootstrap как исторический; задать приоритет current code/config + root docs над master-context drafts.
 
 ---
 
@@ -112,21 +112,20 @@
 - Pagination baseline: `page=1`, `pageSize=20`, max `200`.
 - Auth controller содержит login, refresh, logout, logout-all, password-reset request/confirm и `/auth/me`.
 - Health controller содержит `/health`, `/health/live`, `/health/ready`.
-- `AppModule` подключает описанные предметные модули.
-- `env.ts` поддерживает Redis rate-limit store через `REDIS_URL` и production fallback только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`.
+- Redis rate-limit store поддерживается через `REDIS_URL`, production fallback — только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`.
 - Runtime OpenAPI endpoint: `GET /api/v1/openapi`.
 
 ### Несоответствие
 
-Фраза `Manual OpenAPI document synced with current controllers` неверна. `openapi.document.ts` не содержит часть runtime routes, включая `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/sub-resource endpoints. Кроме того, manual document объявляет self-path `/openapi.json`, тогда как controller публикует `/api/v1/openapi`.
+Фраза `Manual OpenAPI document synced with current controllers` неверна. `openapi.document.ts` не содержит часть runtime routes, включая `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/sub-resource endpoints. Manual document также объявляет self-path `/openapi.json`, тогда как controller публикует `/api/v1/openapi`.
 
 ### Что изменить
 
-Либо явно назвать manual OpenAPI частичным skeleton, либо синхронизировать `openapi.document.ts` со всеми runtime endpoints и исправить self-path.
+Либо явно назвать manual OpenAPI частичным skeleton, либо синхронизировать его со всеми runtime endpoints и исправить self-path.
 
 ### [НЕ ПРОВЕРЕНО]
 
-Live production URL и фактическое Railway/Redis состояние не подтверждались GitHub-данными.
+Live production URL и фактическое Railway/Redis состояние не подтверждаются данными GitHub.
 
 ---
 
@@ -138,18 +137,18 @@ Live production URL и фактическое Railway/Redis состояние �
 
 - `rolePolicies` соответствует основной таблице ролей.
 - `RolesGuard` работает fail-closed при отсутствии role metadata.
-- `api-policy.audit.spec.ts` проверяет явную access-классификацию production HTTP handlers и `RolesGuard` для role handlers.
+- `api-policy.audit.spec.ts` проверяет явную access-классификацию production HTTP handlers и поведение `RolesGuard` для всех четырёх ролей.
 - Instructor ownership реализован через `CourseAccessGuard` / `CourseAccessPolicy` с 404 для недоступного instructor ресурса и admin bypass.
 - Manager team scope применяется в Prisma query через `ManagerTeamScope`.
 
 ### Несоответствия
 
-1. В public inventory отсутствует `POST /internal/material-scans/:id/result` с `@PublicAccess()`. Endpoint дополнительно защищён callback Authorization secret через `verifyCallbackSecret()`.
-2. Документ говорит о `8 controllers`, но перечисляет 9: courses, lessons, course-materials, assessments, assessment-questions, assessment-attempts, assignments, progress, certificates.
+1. В public inventory отсутствует `POST /internal/material-scans/:id/result` с `@PublicAccess()`; endpoint дополнительно защищён callback Authorization secret.
+2. Документ говорит о `8 controllers`, но перечисляет 9 course-scoped controllers.
 
 ### Что изменить
 
-Добавить malware-scan callback в public inventory с пояснением secret-based machine-to-machine защиты и исправить `8 controllers` на `9 controllers` либо убрать хрупкий счётчик.
+Добавить malware-scan callback в public inventory с пояснением machine-to-machine secret protection и исправить `8` на `9` либо убрать хрупкий счётчик.
 
 ---
 
@@ -160,20 +159,20 @@ Live production URL и фактическое Railway/Redis состояние �
 ### Подтверждено
 
 - Основные API/database paths и список API modules соответствуют репозиторию.
-- `AppModule` связывает runtime modules, а `PrismaService` находится в database boundary.
+- `AppModule` связывает runtime modules, `PrismaService` находится в database boundary.
 - Frontend API boundary существует: `shared/apiClient.ts` — low-level client, `shared/api/*` — domain wrappers/types.
 - `infra/` содержит `docker`, `nginx`, `railway`.
 
 ### Несоответствия
 
-1. Не описан `apps/web/src/features`; текущий `features/admin-users` уже содержит UI, hooks, model, validation и mappers.
-2. `apps/web/src/app/` содержит не только pages, но и feature/domain subdirectories (`admin-assignments`, `admin-courses`, `admin-lessons`, `admin-org-structure`, `assessment-builder`, `assessment-taking`, `course-builder`, `materials`).
+1. Не описан `apps/web/src/features`; `features/admin-users` уже содержит UI, hooks, model, validation и mappers.
+2. `apps/web/src/app/` содержит не только pages, но и feature/domain subdirectories.
 3. Универсальное правило «каждый API domain module имеет controller/service/schema» не подходит support/policy modules вроде `course-access` и `manager-team-scope`.
-4. Docs-only testing guidance расходится с `.github/workflows/ci.yml`: PR без path filters запускает полный CI даже для чистых docs changes.
+4. Docs-only testing guidance расходится с CI: PR без path filters запускает полный workflow даже для docs-only changes.
 
 ### Что изменить
 
-Добавить `features/` в Web architecture, описать гибрид `app/pages + features + shared`, различить route-owning и support/policy API modules и привести docs-only testing rule к фактическому обязательному CI.
+Добавить `features/`, описать гибрид `app/pages + features + shared`, различить route-owning и support/policy API modules и привести docs-only testing guidance к фактическому CI.
 
 ---
 
@@ -181,52 +180,25 @@ Live production URL и фактическое Railway/Redis состояние �
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
+### Подтверждено
 
-- исходная Session model и миграция PR 120;
-- текущая Prisma model `Session`;
-- login/session creation;
-- access-token session validation;
-- logout/revocation;
-- refresh token storage и rotation;
-- миграция refresh storage;
-- исторические staging assertions.
-
-### Подтверждённые факты
-
-- Историческая миграция `20260606000000_add_sessions` действительно создаёт `sessions` с `id`, `jti`, `user_id`, `organization_id`, `created_at`, `expires_at`, `revoked_at`, уникальным индексом `jti`, индексами и FK.
-- Текущая Prisma model `Session` по-прежнему содержит исходные поля PR 120 и индексы по user/organization и expiry.
-- Access-token validation в `AuthService.getCurrentUser()` проверяет JWT, затем ищет Session по `jti` с `revokedAt: null` и `expiresAt > now`.
-- Logout отзывает текущую Session через `revokedAt` по `jti`.
-- Обновление от 2026-08-06 верно сообщает о появлении refresh flow на той же Session model.
-- Миграция `20260728000000_add_session_refresh_storage` добавляет `refresh_token_hash`, `refresh_expires_at`, unique index для hash и индекс для refresh expiry.
-- Текущий login создаёт random refresh token, хранит в Session только SHA-256 hash (`refreshTokenHash`) и `refreshExpiresAt`, а сырой refresh token возвращает для HttpOnly cookie.
-- Текущий refresh flow consume/rotate использует `AuthSessionStore` и `auth.refresh-tokens.ts`; сырой refresh token в базе не хранится.
+- Историческая миграция PR 120 действительно создала `sessions` с `id`, `jti`, `user_id`, `organization_id`, timestamps, expiry/revocation и индексами.
+- Access-token validation ищет Session по `jti`, `revokedAt: null`, `expiresAt > now`.
+- Logout отзывает Session через `revokedAt`.
+- Поздняя refresh migration добавляет `refresh_token_hash`, `refresh_expires_at`, unique/indexes.
+- Login хранит только SHA-256 hash refresh token и expiry; raw refresh token в БД не хранится.
 
 ### Несоответствия
 
-1. **Раздел `Модель данных` устарел как описание текущей Session model.** Он говорит, что `Session` хранит «только метаданные сессии» и перечисляет только `id`, `jti`, `userId`, `organizationId`, `createdAt`, `expiresAt`, `revokedAt`. Сейчас модель дополнительно хранит `refreshTokenHash` и `refreshExpiresAt`.
-2. **Раздел `Safe token storage` содержит устаревшую формулировку `База хранит только jti и метаданные связи`.** Полный JWT и сырой refresh token действительно не хранятся, но база теперь хранит также криптографический hash refresh token и его expiry.
-3. **Раздел `Жизненный цикл сессии` неполон для текущего login.** Сейчас login не только подписывает access JWT и создаёт Session по `jti`, но одновременно создаёт refresh token, сохраняет его hash/expiry и отдаёт refresh token через cookie flow.
-4. Документ остаётся привязан к **PR 120**, а update про PR 137 добавлен отдельной вставкой. Поэтому ранние нормативно звучащие разделы и позднее обновление противоречат друг другу, если документ читать как описание текущего состояния, а не исторический snapshot.
+Основные разделы всё ещё описывают PR 120 и утверждают, что Session хранит только `jti` и базовые metadata, хотя текущая модель содержит `refreshTokenHash` и `refreshExpiresAt`; login lifecycle также расширен refresh flow.
 
 ### Что изменить
 
-Есть два корректных варианта:
-
-1. **Сохранить документ как исторический PR 120 record.** Тогда в начале явно пометить его как исторический snapshot, а разделы `Модель данных`, `Safe token storage` и `Жизненный цикл` — как состояние на момент PR 120; добавить ссылку на `AUTH_TOKEN_REVOCATION.md` как источник текущего refresh/session поведения.
-2. **Сделать документ текущим session-store design.** Тогда обновить модель полями `refreshTokenHash`/`refreshExpiresAt`, safe-storage формулировку, login lifecycle, refresh consume/rotation и logout-all behavior, убрав формулировки о refresh как внешней будущей работе.
-
-Для текущей структуры документа предпочтителен первый вариант: заголовок и Scope явно привязаны к PR 120, поэтому безопаснее сохранить историческую ценность и чётко отделить её от текущего design.
+Предпочтительно явно пометить документ как historical snapshot PR 120 и сослаться на current refresh/session design. Альтернатива — полностью обновить модель, login, rotation и logout-all sections до current state.
 
 ### [НЕ ПРОВЕРЕНО]
 
-- Историческое утверждение, что миграция PR 120 была применена на staging «без pending migrations», не подтверждалось live/staging environment в рамках текущего аудита.
-- Историческое утверждение «существующий поток login не изменён» относится к состоянию PR 120 и не может быть подтверждено текущим кодом без воспроизведения той исторической версии.
-
-### Итог
-
-Документ корректно фиксирует основу Session store, появившуюся в PR 120, и содержит правильное позднее замечание о refresh flow. Но он не полностью актуален как описание текущей Session model: refresh hash/expiry и расширенный login/rotation lifecycle находятся только в update, тогда как основные разделы продолжают описывать старое состояние.
+Исторические staging assertions PR 120 в текущем аудите не воспроизводились.
 
 ---
 
@@ -234,57 +206,22 @@ Live production URL и фактическое Railway/Redis состояние �
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
+### Подтверждено
 
-- current-session logout;
-- logout-all и tenant isolation;
-- CSRF для cookie-based logout/logout-all;
-- bearer behavior;
-- cookie clearing;
-- idempotent invalid/revoked-token behavior;
-- access-session и refresh-session revocation checks;
-- историческая привязка к PR 121.
-
-### Подтверждённые факты
-
-- `POST /auth/logout` по-прежнему разрешает bearer либо access cookie, для cookie source вызывает `assertValidCsrf()`, очищает auth cookies и затем вызывает `AuthService.logout()`.
-- `AuthService.logout()` остаётся идемпотентным: валидный access JWT приводит к `session.updateMany({ where: { jti, revokedAt: null }, data: { revokedAt } })`, а invalid/already-revoked token перехватывается и всё равно возвращается `{ accepted: true }`.
-- `POST /auth/logout-all` получает текущего пользователя из access token и вызывает `AuthSessionStore.revokeAllUserSessions(user.id, user.organizationId)`.
-- `revokeAllUserSessions()` обновляет только Session rows с точным `userId`, точным `organizationId` и `revokedAt: null`, что подтверждает описанную tenant isolation.
-- Для bearer source `assertValidCsrf()` сразу возвращает управление, поэтому bearer-authenticated logout/logout-all не требуют CSRF.
-- Для cookie source `POST` logout/logout-all требуют совпадения `lms_csrf_token` cookie и `x-csrf-token` header; это подтверждается `auth.controller.spec.ts` и `auth.logout-all.spec.ts`.
-- Оба logout варианта вызывают `clearAuthCookies()`. В текущей реализации очищаются уже три cookie: access, CSRF и refresh.
-- Revoked access sessions исключаются `AuthService.validateSession()` через `revokedAt: null` и `expiresAt > now`.
-- Refresh path также отвергает revoked/expired session: `AuthSessionStore.consumeRefreshSession()` после одноразового consume проверяет `revokedAt` и `refreshExpiresAt`, а invalid/stale refresh приводит к `401` и очистке cookies.
-- Историческое утверждение, что PR 121 не требовал Prisma schema/migration changes, согласуется с тем, что Session schema была создана предыдущим PR 120; refresh storage migration появилась позже.
+- Logout поддерживает bearer/access cookie, cookie flow требует CSRF.
+- Logout идемпотентен для invalid/already-revoked access token.
+- Logout-all отзывает Session по точным `userId` + `organizationId`.
+- Bearer logout/logout-all не требуют CSRF.
+- Оба logout endpoint очищают access + CSRF + refresh cookies.
+- Revoked/expired access и refresh sessions отклоняются.
 
 ### Несоответствие
 
-**Формулировка `cookie-authenticated unsafe requests require a matching CSRF token` теперь слишком широкая.** После появления refresh flow существует `POST /auth/refresh`, который аутентифицируется через HttpOnly `lms_refresh_token` cookie, помечен `@PublicAccess()` и не вызывает `assertValidCsrf()`. Поэтому как общее правило для всех cookie-authenticated unsafe requests утверждение больше неверно.
-
-Это не означает, что текущий refresh endpoint обязательно небезопасен: refresh cookie имеет `SameSite: lax` и path `/api/v1/auth/refresh`, но фактический механизм отличается от описанного универсального CSRF-правила.
-
-### Дополнительное уточнение
-
-Фраза `auth cookies are cleared for both logout variants` остаётся верной, но текущая реализация очищает не две исторические cookie, а **access + CSRF + refresh**. Если документ должен описывать current behavior, это полезно указать явно.
+Общее правило `cookie-authenticated unsafe requests require a matching CSRF token` теперь слишком широкое: `POST /auth/refresh` использует HttpOnly refresh cookie, `@PublicAccess()` и не вызывает `assertValidCsrf()`.
 
 ### Что изменить
 
-Поскольку документ заголовком и Scope привязан к PR 121, предпочтительно сохранить его как исторический snapshot и:
-
-1. В начале явно отметить, что security behavior описывает состояние на момент PR 121.
-2. Заменить широкую present-tense формулировку про cookie-authenticated unsafe requests на scoped вариант: **cookie-based logout и logout-all требуют matching CSRF token**.
-3. Добавить короткое current-state update: `POST /auth/refresh` использует отдельную HttpOnly refresh cookie без CSRF-header проверки; refresh cookie ограничена `SameSite=lax` и path `/api/v1/auth/refresh`.
-4. Уточнить, что оба logout endpoint сейчас очищают access, CSRF и refresh cookies.
-5. Сослаться на актуальный refresh/session design, чтобы исторический PR 121 record не воспринимался как полный текущий auth contract.
-
-### [НЕ ПРОВЕРЕНО]
-
-Исторический checklist `Lint / Types / Tests / Build / CI` именно для merge PR 121 не перепроверялся по старому workflow run в рамках этого шага; текущие auth tests и текущий CI подтверждают нынешнее поведение, но не заменяют историческую проверку PR 121.
-
-### Итог
-
-Logout, logout-all, tenant isolation, idempotency и CSRF enforcement именно для logout endpoints по-прежнему соответствуют документу. Основное устаревание появилось после добавления refresh flow: универсальное CSRF-утверждение теперь имеет исключение и должно быть ограничено logout endpoints либо историческим контекстом PR 121.
+Ограничить CSRF-формулировку cookie-based logout/logout-all, добавить current-state note для refresh cookie (`SameSite=lax`, path `/api/v1/auth/refresh`) и явно пометить historical scope PR 121.
 
 ---
 
@@ -292,49 +229,83 @@ Logout, logout-all, tenant isolation, idempotency и CSRF enforcement именн
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
+### Подтверждено
 
-- `.github/workflows/ci.yml`;
-- `.github/workflows/codeql.yml`;
-- `.github/workflows/staging-smoke.yml`;
-- `.github/dependabot.yml`;
-- trigger/permissions/concurrency/timeout;
-- CI service container и порядок gates;
-- security audit baseline;
-- branch protection текущей `main`;
-- актуальность даты baseline.
-
-### Подтверждённые факты
-
-- Основные workflow paths и names соответствуют документу: `CI`, `CodeQL`, `Staging smoke`.
-- `Staging smoke` действительно запускается только через `workflow_dispatch` и использует GitHub environment `staging`.
-- Dependabot существует и настроен weekly по понедельникам: GitHub Actions одним group, npm/pnpm workspace одним multi-directory update config с production/development groups.
-- `CI` запускается на каждом `pull_request` и на `push` в `main`, имеет один job `Checks` на `ubuntu-latest` с `timeout-minutes: 15`.
-- Concurrency соответствует описанию: для `main` новые push не отменяют предыдущий run; для остальных refs `cancel-in-progress` включён.
-- CI permissions ограничены `contents: read` и `pull-requests: read`.
-- CI использует `postgres:16-alpine` как in-job service с БД `lms_test`, а не внешнюю Railway database.
-- Последовательность основных gates соответствует документу: Gitleaks, pnpm/Node setup, frozen install, `pnpm audit --audit-level high`, waiver validation, lint, Prisma generate, typecheck, coverage tests, smoke-script tests, migrations, DB integration tests, build, Playwright install, browser E2E, accessibility, visual matrix, failure artifacts, API/Web Docker builds и Trivy scans.
-- Trivy запускается для обоих built images с `HIGH,CRITICAL`, `--ignore-unfixed` и generated ignore file из validated security waivers.
-- CodeQL — отдельный workflow на PR и push в `main`, JavaScript/TypeScript, `security-extended`, `timeout-minutes: 15`, с `security-events: write`. Дополнительно текущий workflow имеет `packages: read`, чего status document отдельно не перечисляет, но это не противоречит его утверждениям.
-- Semgrep workflow в `.github/workflows/` отсутствует; строка `Semgrep | Not present in CI` соответствует текущему репозиторию.
+- `CI`, `CodeQL`, `Staging smoke` и Dependabot configs существуют и в основном соответствуют документу.
+- CI запускается на PR и push в `main`, job `Checks` имеет timeout 15 минут.
+- CI использует `postgres:16-alpine` и выполняет Gitleaks, frozen install, audit/waivers, lint, Prisma generate, typecheck, coverage, migrations/integration, build, browser E2E, accessibility, visual tests, Docker builds и Trivy.
+- CodeQL — отдельный JS/TS workflow с `security-extended`.
+- Semgrep workflow отсутствует.
 
 ### Несоответствие
 
-**Branch protection больше не является `[НЕ ПРОВЕРЕНО]`.** Текущий GitHub branch state для `main` возвращает `protected: false`; protection `enabled: false`, required status checks enforcement — `off`, contexts/checks — пустые. Следовательно, строка `Branch protection verification | Not verified by this document — manual repository settings review` уже неполна как current baseline: фактическое состояние можно подтвердить и оно означает, что branch protection сейчас не включена.
-
-Это также важно для формулировки `comprehensive CI gate`: workflow действительно существует и запускается, но GitHub branch settings не заставляют `main` требовать эти checks перед merge.
-
-### Дополнительное уточнение
-
-Поле `Verified at | 2026-08-06` корректно описывает прошлую дату проверки, но после текущего повторного аудита status document логично обновить на `2026-08-07` и указать, что сверены не только `ci.yml`, но также `codeql.yml`, `staging-smoke.yml`, `dependabot.yml` и branch settings.
+Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch state для `main` возвращает `protected: false`, protection disabled, required status checks enforcement `off`. CI выполняется, но GitHub branch settings не требуют успешных checks перед merge.
 
 ### Что изменить
 
-1. Заменить branch-protection строку на подтверждённое текущее состояние: **`main` is not protected; required status checks are not enforced by branch protection**.
-2. В `MVP readiness impact` отделить наличие CI workflows от enforceability: checks выполняются на PR/main push, но защита ветки сейчас не требует их успешного прохождения перед merge.
-3. Обновить `Verified at` на дату текущего аудита и перечислить реально проверенные workflow/config sources.
-4. Если отсутствие branch protection считается readiness gap, сослаться на соответствующий backlog/readiness document; включать protection — отдельное изменение repository settings и не должно выполняться автоматически в рамках документационного аудита.
+Зафиксировать фактическое отсутствие branch protection, отделить наличие CI workflows от enforceability и обновить дату/источники проверки.
+
+---
+
+## 10. `CONCERNS.md`
+
+**Статус:** ⚠️ существенно требует ревизии.
+
+`CONCERNS.md` задуман как живой реестр открытых технических и продуктовых рисков, но часть записей больше не отражает текущий `main`. Проверка выполнена по текущему коду, тестам, migrations, `MVP_SCOPE_LOCK.md`, истории релевантных файлов и уже подтверждённому PR #513.
+
+### Open concerns, которые остаются актуальными
+
+1. **`CourseAccessPolicy.assertResourceAccess()` выполняет два последовательных DB lookup для nested `attempt` / `question`.** Первый запрос получает `courseId`, затем `assertCourseAccess()` выполняет отдельный `course.findFirst`. Concern остаётся корректным как low-priority optimization.
+
+2. **Ручные timestamp migration names.** Миграции `20260731120000_add_course_instructors` и `20260731150000_add_manager_team_scope` по-прежнему существуют. Риск коллизии/неожиданного порядка — процедурный, а не воспроизведённая ошибка; запись можно оставить как 🟢 preventive concern, но не формулировать как установленный defect.
+
+3. **`roles.spec.ts` содержит вручную поддерживаемый список policy names.** Это подтверждено: тест не итерирует автоматически `Object.keys(rolePolicies)`. Риск drift остаётся. При этом исходная более широкая формулировка concern устарела: `api-policy.audit.spec.ts` сейчас не только проверяет наличие `@Roles()`, а также выполняет `RolesGuard` для всех четырёх ролей и сверяет allow/deny с metadata. Поэтому concern нужно сузить именно до manual policy inventory в `roles.spec.ts`.
+
+4. **Отсутствует явное startup warning для осознанного in-memory rate-limit режима.** Код разрешает production без `REDIS_URL` только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`, но concern о том, что такой режим должен явно логироваться при startup, остаётся архитектурно обоснованным.
+
+5. **`createCourse` + автоматическое назначение instructor не атомарны.** В `CoursesController.createCourse()` сначала вызывается `coursesService.createCourse()`, затем отдельно `courseAccess.assignInstructor()`. Общей транзакции нет; при второй ошибке курс может остаться созданным без ожидаемого assignment.
+
+6. **Login возвращает access token и в HttpOnly cookie, и в JSON body.** `AuthController.login()` устанавливает auth cookies, но также возвращает `accessToken` в response body. Concern актуален: это уменьшает практическую пользу HttpOnly-only storage model и должно быть осознанным контрактом либо исправлено.
+
+7. **Generic Notifications и Audit Log для MVP отсутствуют.** `MVP_SCOPE_LOCK.md` по-прежнему отмечает Notifications и Audit Log как не реализованные и относящиеся к MVP readiness. Отдельный file-deletion audit не заменяет общий продуктовый Audit Log.
+
+### Open concerns, которые устарели и должны быть закрыты/перенесены
+
+1. **Frontend function coverage 25% / 25.6% margin — устарело.** Текущий `apps/web/vitest.config.ts` задаёт глобальные thresholds `40` для statements/branches/functions/lines и отдельный threshold `80` для `assessment-taking/model.ts`. Старую запись про 25% следует перенести в Closed или заменить текущим coverage risk, если новый фактический процент снова близок к 40. `[НЕ ПРОВЕРЕНО]` Текущий фактический coverage percentage в этом шаге не запускался.
+
+2. **Instructor видит все курсы организации — устарело.** `CoursesController.listCourses()` определяет instructor-only user и передаёт `instructorId`; `CoursesService.listCourses()` фильтрует через active `CourseInstructor` relation. Frontend действительно вызывает общий `listCourses()`, но серверная выборка уже owner-scoped. Concern следует закрыть.
+
+3. **Password reset silently returns 200 — устарело.** Endpoint остаётся не реализован функционально, но `AuthService.requestPasswordReset()` и `confirmPasswordReset()` теперь выбрасывают `ServiceUnavailableException`; ложного успешного 200 больше нет. Concern следует закрыть и при необходимости заменить отдельным backlog item «password reset unavailable».
+
+4. **429 имеет нестандартный raw JSON envelope — устарело.** `api-hardening.ts` теперь формирует 429 через `createApiErrorResponse(...)`, то есть использует канонический API error envelope. Concern следует закрыть.
+
+5. **Flaky E2E refresh-flow concern — закрыт PR #513.** Причиной была race window между заменой access cookie и регистрацией network observers. Исправление останавливает уже смонтированное приложение через `about:blank` перед cookie mutation; PR #513 слит в `main`, последующий CI на `main` прошёл успешно. Open entry нужно перенести в Closed с фактической причиной и PR.
+
+6. **Custom role builder как открытый MVP product question — устарело.** `MVP_SCOPE_LOCK.md` прямо фиксирует fixed roles как MVP simplification и относит `custom roles builder` к out-of-MVP. Поэтому вопрос «нужна ли кнопка Создать роль?» для MVP уже решён: нет. Отдельный вопрос о цветном badge остаётся только низкоприоритетным UI/design concern, если нейтральное отображение не принято окончательно.
+
+### Concerns, текущий production-статус которых нельзя подтвердить только GitHub
+
+1. **Redis в Railway production.** Код подтверждает поддержку Redis и явного in-memory fallback, но утверждения `Redis service отсутствует`, `REDIS_URL отсутствует`, `ALLOW_IN_MEMORY_RATE_LIMIT=true в live production` требуют чтения текущих Railway services/env. **[НЕ ПРОВЕРЕНО]** в рамках GitHub-only аудита.
+
+2. **S3/R2/MinIO production configuration.** Код и `STORAGE_UPLOAD_STATUS.md` подтверждают реализованный private S3-compatible storage contract, multipart/quarantine flow и обязательные S3 env vars. При этом `CONCERNS.md` утверждает, что production storage не provisioned, а `MVP_SCOPE_LOCK.md` одновременно говорит `Files ✅` и упоминает MinIO on Railway. Это внутреннее противоречие документации. **[НЕ ПРОВЕРЕНО]** фактическое текущее Railway storage service/env; требуется live infrastructure check и затем синхронизация документов.
+
+3. **Admin sidebar при 150%+ browser zoom.** История `admin.css` подтверждает PR #492, который ограничивал horizontal overflow, но сам concern утверждает, что 2-column layout после этого сохранился. Более позднего явно направленного fix по истории файла не найдено. **[НЕ ПРОВЕРЕНО]** текущее визуальное воспроизведение в Chromium в рамках этого шага; concern нельзя закрыть только по коду.
+
+### Closed concerns в документе
+
+- Старый concern о coverage ниже прежнего 25% threshold исторически корректно закрыт, но сам threshold уже поднят до 40%; closed note стоит дополнить новой конфигурацией.
+- Concern про `@Optional() sessionStore` как причину неработающего logout-all остаётся корректно закрытым: текущая реализация использует Prisma-backed Session store.
+- Concern «Redis unavailable => fail-open без rate limiting» остаётся корректно закрытым: при ошибке Redis middleware переключается на local degraded store и продолжает применять limits.
+
+### Что изменить
+
+1. Перенести в Closed как минимум устаревшие open entries: coverage 25%, instructor all-courses, password-reset false 200, raw 429 envelope, E2E refresh flake, custom-role MVP question.
+2. Переписать RBAC testing concern: убрать утверждение, что central audit не проверяет guard behavior; оставить риск ручного списка policy names в `roles.spec.ts`.
+3. Разделить operational concerns Redis и storage на `code/config ready` и `live infrastructure status`; live status обновлять только после реальной проверки Railway.
+4. Явно отметить конфликт `CONCERNS.md` ↔ `MVP_SCOPE_LOCK.md` по production storage и устранить его после live verification.
+5. Сохранить актуальными concerns про nested ownership double-query, migration naming process, explicit in-memory startup warning, non-transactional course creation/assignment, access token in JSON body и отсутствие Notifications/Audit Log.
+6. Для zoom/sidebar concern добавить дату последнего реального browser reproduction или закрывающий PR; без такой проверки не считать его ни закрытым, ни подтверждённым текущим дефектом.
 
 ### Итог
 
-CI, CodeQL, Dependabot, staging-smoke и security gates в документе практически полностью соответствуют текущим конфигурациям. Существенно устарел только статус branch protection: теперь подтверждено, что `main` не защищена и required checks не enforced на уровне branch settings.
+`CONCERNS.md` полезен как журнал истории рисков, но сейчас его раздел Open смешивает: действительно открытые проблемы, уже закрытые кодом проблемы, исторические product questions и неподтверждённые live-infrastructure assertions. Документ требует существенной сортировки, чтобы Open снова означал только фактически актуальные и проверяемые concerns.
