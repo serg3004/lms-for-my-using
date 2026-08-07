@@ -72,6 +72,12 @@ test.describe('login and role redirects', () => {
 
     const accessCookie = (await context.cookies()).find(({ name }) => name === 'lms_access_token');
     expect(accessCookie).toBeDefined();
+
+    // Stop the authenticated app before replacing its access cookie. Otherwise the already
+    // mounted learner page can issue a background API request in the small window between
+    // addCookies() and waitForResponse(), refresh the cookie early, and make the later
+    // navigation skip the 401 -> refresh sequence this test is supposed to observe.
+    await page.goto('about:blank');
     await context.addCookies([{ ...accessCookie!, value: 'expired.e2e.access-token' }]);
 
     const refreshResponses: number[] = [];
