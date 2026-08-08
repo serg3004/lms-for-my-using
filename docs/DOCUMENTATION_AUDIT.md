@@ -29,6 +29,7 @@
 | 12 | `DEAD_CODE_AUDIT.md` | ⚠️ historical | Findings нужно пересчитать по current `main` |
 | 13 | `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` | ⚠️ | Dependabot scope не охватывает E2E/shared manifests |
 | 14 | `DEPENDENCY_UPDATE_POLICY.md` | ⚠️ | Основные правила верны; ownership/verification/non-goals отстали от workspace |
+| 15 | `DEPLOY_FOUNDATION.md` | ⚠️ | Railway config/health/migrations актуальны; staging/storage/follow-up sections противоречат current docs |
 
 ---
 
@@ -301,35 +302,87 @@ Live Railway status Redis/storage и sidebar 150%+ zoom.
 - Root `package.json` уже содержит `pnpm.overrides` для transitive security/version constraints, то есть проект фактически использует override-based remediation как часть dependency contract.
 
 ### Несоответствия
+1. `Current package manager` неполно описывает package-level scripts: отсутствуют E2E и Shared.
+2. `Dependency ownership` содержит только Root/API/Web/Lockfile и не включает E2E/Shared; narrowest scope должен учитывать все workspace packages.
+3. Verification matrix не покрывает E2E/shared dependency changes.
+4. `Non-goals` устарел: Dependabot config уже существует.
+5. Policy не описывает current automated dependency controls и использование `pnpm.overrides`.
+6. Root/API/Web формулируются как исчерпывающая ownership architecture, хотя `pnpm-workspace.yaml` включает `apps/*` и `packages/*`.
 
-1. **`Current package manager` неполно описывает package-level scripts.** Документ упоминает только `apps/api/package.json` и `apps/web/package.json`, но `apps/e2e/package.json` имеет собственные `lint`, `typecheck`, `test:a11y`, `test:visual`, а `packages/shared/package.json` — `build`, `lint`, `typecheck`, `test`.
+### Что изменить
+1. Добавить E2E и Shared в package manager/ownership sections.
+2. Определить narrowest scope по фактическим workspace packages.
+3. Добавить verification rows для E2E и Shared dependencies.
+4. Переписать `Non-goals`, поскольку Dependabot уже существует.
+5. Описать/сослаться на Dependabot controls и допустимое `pnpm.overrides` для минимальной transitive security remediation.
+6. Сохранить scoped PR, no manual lockfile edits, no unrelated churn, explicit rollback, verification before merge.
 
-2. **`Dependency ownership` неполон.** Таблица содержит только Root/API/Web/Lockfile и не содержит E2E и Shared. Это делает правило «dependency added at narrowest package scope: root, API, or Web» устаревшим: фактические допустимые package scopes также включают E2E и Shared.
+### [НЕ ПРОВЕРЕНО]
+История каждого dependency PR не пересматривалась; аудит проверяет current policy/config, а не соблюдение правил каждым прошлым PR.
 
-3. **Verification matrix не покрывает E2E/shared dependency changes.** Для E2E test/tooling dependency нужен как минимум E2E lint/typecheck и релевантный Playwright gate; для Shared runtime/dev dependency нужны shared lint/typecheck/test/build и проверки потребителей, если меняется runtime/types behavior.
+### Итог
+Документ остаётся хорошей базовой policy по безопасным dependency changes, lockfile discipline, security updates и rollback. Главное устаревание — структура workspace и уже существующая automation.
 
-4. **`Non-goals` устарел.** Документ говорит, что policy не добавляет Dependabot/Renovate configuration. Dependabot configuration уже существует в `.github/dependabot.yml`, поэтому такой non-goal больше не описывает current repository state.
+---
 
-5. **Policy не описывает current automated dependency controls.** В repository уже действуют Dependabot groups/limits/major ignores, а root `pnpm.overrides` используется для transitive constraints/security fixes. Для current source-of-truth policy стоит либо описать эти механизмы, либо дать точные ссылки на `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` и security-waiver/audit process.
+## 15. `DEPLOY_FOUNDATION.md`
 
-6. **Root/API/Web формулируются как исчерпывающая архитектура ownership.** Это уже противоречит реальному `pnpm-workspace.yaml`, который включает `apps/*` и `packages/*`.
+**Статус:** ⚠️ частично актуален; runtime/config foundation в основном верна, environment strategy и часть operational assumptions устарели или противоречат другим current docs.
+
+### Проверено
+- `apps/api/railway.json` и `apps/web/railway.json`;
+- API/Web Dockerfiles;
+- API health controller;
+- `.env.production.example`;
+- `infra/railway/README.md`;
+- `RAILWAY_DEPLOY_GUIDE.md`;
+- `MIGRATION_BACKUP_POLICY.md`;
+- `STAGING_SMOKE_REPORT.md`;
+- `RAILWAY_PRODUCTION_SMOKE_STATUS.md`;
+- `PR_89_102_VERIFICATION.md`.
+
+### Подтверждённые факты
+- Railway остаётся документированным deployment target, а split-service конфигурация `web` + `api` + Railway PostgreSQL соответствует repository config.
+- `apps/web/railway.json` использует Dockerfile `apps/web/Dockerfile`, healthcheck `/`, timeout 60, restart `ON_FAILURE`/3 retries.
+- Web Dockerfile действительно собирает React/Vite application и обслуживает build через nginx; его container healthcheck также проверяет `/`.
+- `apps/api/railway.json` использует `apps/api/Dockerfile`, start command `prisma migrate deploy && node dist/main.js`, healthcheck `/api/v1/health/ready`, timeout 300 и restart `ON_FAILURE`/3 retries.
+- API Dockerfile содержит тот же production startup contract и container healthcheck `/api/v1/health/ready`.
+- `HealthController` реализует:
+  - `GET /health/live` — только liveness;
+  - `GET /health/ready` — readiness через PostgreSQL, Redis и storage checks;
+  - `GET /health` — compatibility alias, который вызывает readiness.
+- Правило использовать committed `prisma migrate deploy`, а не `migrate dev`, соответствует `MIGRATION_BACKUP_POLICY.md` и текущему Railway startup.
+- Production secret guidance в целом согласуется с `.env.production.example`: реальные значения не должны коммититься; `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, Redis/storage variables задаются через deployment environment.
+- Rollback guidance «redeploy previous deployment для runtime-only проблемы; schema/data rollback требует отдельного решения» согласуется с migration policy на уровне принципа.
+
+### Несоответствия
+
+1. **Раздел `Staging` противоречит текущей migration/environment policy.** `DEPLOY_FOUNDATION.md` описывает staging как отдельное production-like Railway environment с web/api/Postgres и staging-only secrets. Однако `MIGRATION_BACKUP_POLICY.md` прямо фиксирует: **отдельного staging environment у проекта нет**, Railway project имеет один `production` environment, а ближайший migration dry-run — ephemeral PostgreSQL в CI. Одновременно исторический `STAGING_SMOKE_REPORT.md` использует production-like Railway URLs и старое понятие staging. Current source-of-truth нужно унифицировать.
+
+2. **Storage target не имеет единого current source of truth.** `DEPLOY_FOUNDATION.md` и `RAILWAY_DEPLOY_GUIDE.md` называют self-hosted Railway MinIO текущим storage target. Но `.env.production.example` говорит: `Use Cloudflare R2 or AWS S3 in production` и описывает MinIO только через path-style/self-hosted compatibility. `infra/railway/README.md` вообще описывает только три Railway services — web, api и PostgreSQL — без MinIO. Поэтому утверждение `current MVP deployment target = minio` нельзя считать надёжным current contract без live infrastructure verification.
+
+3. **`Follow-up candidates` устарели как список будущей работы.** Документ предлагает PR 89 verification, PR 90 env verification и PR 103 staging deploy/smoke как будущие шаги. В repository уже существуют `PR_89_102_VERIFICATION.md`, `STAGING_SMOKE_REPORT.md` и более поздний `RAILWAY_PRODUCTION_SMOKE_STATUS.md`. То есть эти пункты теперь исторические и должны быть заменены текущими verification gaps, а не оставаться как pending roadmap.
+
+4. **Release checklist предполагает staging-before-production, которого current migration policy не имеет.** Пункты `staging deploy complete` и `staging smoke complete` не могут быть обязательными gates, если отдельного staging environment действительно нет. Нужно либо восстановить/создать staging как реальный environment, либо переписать checklist под current reality: CI migration dry-run + production deploy verification.
+
+5. **Deployment docs расходятся по сетевой архитектуре API.** `infra/railway/README.md` требует не включать Public Networking для API и направлять `/api/` только через web nginx/private network. Исторические `STAGING_SMOKE_REPORT.md` и `RAILWAY_PRODUCTION_SMOKE_STATUS.md` фиксируют прямой public API URL. Это не обязательно ошибка `DEPLOY_FOUNDATION.md`, но его split-service target не определяет, является ли public API endpoint допустимым current contract. Для production perimeter это нужно сделать явно.
 
 ### Что изменить
 
-1. Расширить `Current package manager` и `Dependency ownership` строками E2E и Shared.
-2. Заменить «narrowest scope: root, API, or Web» на фактические workspace scopes; dependency должна жить в самом узком package, который её использует.
-3. Добавить verification rows:
-   - E2E dev/test dependency → E2E lint + typecheck + релевантный Playwright/a11y/visual check;
-   - Shared runtime dependency → shared lint/typecheck/test/build + affected consumer checks;
-   - Shared dev/test dependency → shared lint/typecheck/tests/build when applicable.
-4. Переписать `Non-goals`: Dependabot уже существует; policy не должна утверждать обратное.
-5. Явно описать либо сослаться на current Dependabot controls и допустимое использование `pnpm.overrides` для минимальной transitive security remediation.
-6. Сохранить без изменений основные правила: scoped PR, no manual lockfile edits, no unrelated dependency churn, explicit rollback, verification before merge.
+1. Выбрать и зафиксировать **одну current environment model**:
+   - если staging реально отсутствует — убрать staging как существующий environment из `DEPLOY_FOUNDATION.md`, заменить на CI ephemeral DB + production verification;
+   - если staging должен существовать — создать/подтвердить его отдельно и затем синхронизировать `MIGRATION_BACKUP_POLICY.md`.
+2. Выбрать единый current storage target и синхронизировать `DEPLOY_FOUNDATION.md`, `.env.production.example`, `RAILWAY_DEPLOY_GUIDE.md` и `infra/railway/README.md`: self-hosted MinIO либо managed R2/S3. До live verification не утверждать MinIO как факт текущего production provisioning.
+3. Перенести PR 89/90/103 из `Follow-up candidates` в historical/completed context и заменить их актуальными gaps, например fresh production smoke, storage/Redis live verification и branch/release controls.
+4. Переписать release checklist так, чтобы он соответствовал фактической environment strategy.
+5. Явно определить network perimeter: public API разрешён или API должен быть private-only за web nginx. Синхронизировать это с Railway guide/status docs.
+6. Сохранить без изменений корректные части: health endpoints, Railway healthcheck paths, Dockerfile ownership, migration deploy command, secret-handling и rollback principles.
 
 ### [НЕ ПРОВЕРЕНО]
-- История каждого dependency PR не пересматривалась; аудит проверяет current policy/config, а не соблюдение правил каждым прошлым PR.
-- Текущий security-fix для `nanoid` выполняется параллельно другим агентом; его итоговый manifest/lockfile diff и CI будут проверены после merge в `main` перед следующей синхронизацией audit-ветки.
+- Фактическое live Railway topology: наличие отдельного staging environment, MinIO/Redis services, public API networking и текущие env values — GitHub repository этого не доказывает.
+- Production smoke status после 2026-07-08: `RAILWAY_PRODUCTION_SMOKE_STATUS.md` сам помечен stale и требует свежего live smoke.
+- Реальный backup/restore readiness перед текущим production deploy не проверялся в рамках документационного аудита.
 
 ### Итог
 
-Документ остаётся хорошей базовой policy по безопасным dependency changes, lockfile discipline, security updates и rollback. Главное устаревание — структура workspace: current policy фактически написана для root/API/Web, тогда как репозиторий уже содержит полноценные E2E и Shared packages. Дополнительно `Non-goals` и automation sections нужно привести к реальному наличию Dependabot и `pnpm.overrides`.
+`DEPLOY_FOUNDATION.md` остаётся полезным описанием repository-level deploy mechanics: Dockerfiles, Railway service configs, healthchecks, migration command и rollback principles в основном соответствуют коду. Но как **current operational deployment plan** документ уже ненадёжен без правок: отдельный staging конфликтует с current migration policy, storage target расходится между MinIO и managed S3/R2 guidance, а follow-up roadmap PR 89/90/103 давно превратился в историю.
