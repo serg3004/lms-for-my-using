@@ -18,6 +18,7 @@ describe('Assessment questions validation', () => {
       type: 'single_choice',
       points: 2,
       order: 1,
+      scoringMode: 'all_or_nothing',
     });
   });
 
@@ -66,6 +67,27 @@ describe('Assessment questions validation', () => {
     expect(() =>
       createAssessmentQuestionSchema.parse({
         organizationId: '11111111-1111-1111-1111-111111111111',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts an explicit scoringMode', () => {
+    const input = createAssessmentQuestionSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      title: 'Pick all correct',
+      type: 'multiple_choice',
+      scoringMode: 'proportional_with_penalty',
+    });
+
+    expect(input.scoringMode).toBe('proportional_with_penalty');
+  });
+
+  it('rejects an unknown scoringMode', () => {
+    expect(() =>
+      createAssessmentQuestionSchema.parse({
+        organizationId: '11111111-1111-1111-1111-111111111111',
+        title: 'Pick all correct',
+        scoringMode: 'weighted',
       }),
     ).toThrow();
   });
