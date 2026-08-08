@@ -1,3 +1,5 @@
+import { apiRequest } from './apiClient.js';
+
 export type ThemeSettings = {
   colorPrimary: string;
   colorPrimaryHover: string;
@@ -15,6 +17,11 @@ export type ThemeSettings = {
   adminSidebarBackground: string;
   adminSidebarText: string;
   adminSidebarTextMuted: string;
+  platformName: string;
+  /** Server-managed S3 object key; set by uploadOrganizationLogo, round-tripped as-is. */
+  logoObjectKey?: string;
+  /** Server-resolved, short-lived display URL for logoObjectKey; not sent back on save. */
+  logoUrl?: string;
 };
 
 export type ThemePreset = {
@@ -26,22 +33,23 @@ export type ThemePreset = {
 const storageKey = 'lms.adminThemeSettings';
 
 export const defaultThemeSettings: ThemeSettings = {
-  colorPrimary: '#2563eb',
-  colorPrimaryHover: '#1d4ed8',
+  colorPrimary: '#4f46e5',
+  colorPrimaryHover: '#4338ca',
   colorBackground: '#f5f7fb',
   colorSurface: '#ffffff',
-  colorSurfaceMuted: '#eef2f7',
-  colorBorder: '#d8e0ec',
+  colorSurfaceMuted: '#f8fafc',
+  colorBorder: '#e3e8ef',
   colorText: '#172033',
-  colorTextMuted: '#566176',
-  shadowCard: '0 10px 30px rgb(15 23 42 / 8%)',
+  colorTextMuted: '#667085',
+  shadowCard: '0 8px 24px rgb(23 32 51 / 5%)',
   radiusSm: '6px',
-  radiusMd: '10px',
-  radiusLg: '16px',
+  radiusMd: '11px',
+  radiusLg: '18px',
   spacePage: 'clamp(16px, 4vw, 48px)',
   adminSidebarBackground: '#111827',
   adminSidebarText: '#ffffff',
-  adminSidebarTextMuted: '#dbeafe',
+  adminSidebarTextMuted: '#cbd5e1',
+  platformName: 'LearnSpace',
 };
 
 export const themePresets: ThemePreset[] = [
@@ -77,7 +85,9 @@ export const themePresets: ThemePreset[] = [
   },
 ];
 
-const themeVariables: Record<keyof ThemeSettings, string> = {
+type CssThemeKey = Exclude<keyof ThemeSettings, 'platformName' | 'logoObjectKey' | 'logoUrl'>;
+
+const themeVariables: Record<CssThemeKey, string> = {
   colorPrimary: '--color-primary',
   colorPrimaryHover: '--color-primary-hover',
   colorBackground: '--color-background',
@@ -103,13 +113,20 @@ function normalizeThemeSettings(value: unknown): ThemeSettings {
 
   const candidate = value as Partial<Record<keyof ThemeSettings, unknown>>;
 
-  return (Object.keys(themeVariables) as Array<keyof ThemeSettings>).reduce<ThemeSettings>(
+  const settings = (Object.keys(themeVariables) as Array<CssThemeKey>).reduce<ThemeSettings>(
     (settings, key) => ({
       ...settings,
       [key]: typeof candidate[key] === 'string' ? candidate[key] : defaultThemeSettings[key],
     }),
     defaultThemeSettings,
   );
+
+  return {
+    ...settings,
+    platformName: typeof candidate.platformName === 'string' ? candidate.platformName : defaultThemeSettings.platformName,
+    logoObjectKey: typeof candidate.logoObjectKey === 'string' ? candidate.logoObjectKey : undefined,
+    logoUrl: typeof candidate.logoUrl === 'string' ? candidate.logoUrl : undefined,
+  };
 }
 
 export function applyThemeSettings(settings: ThemeSettings) {
@@ -119,8 +136,8 @@ export function applyThemeSettings(settings: ThemeSettings) {
 
   const root = document.documentElement;
 
-  Object.entries(themeVariables).forEach(([key, variable]) => {
-    root.style.setProperty(variable, settings[key as keyof ThemeSettings]);
+  (Object.entries(themeVariables) as Array<[CssThemeKey, string]>).forEach(([key, variable]) => {
+    root.style.setProperty(variable, settings[key]);
   });
 }
 
@@ -150,4 +167,70 @@ export function saveThemeSettings(settings: ThemeSettings) {
 export function resetThemeSettings() {
   localStorage.removeItem(storageKey);
   applyThemeSettings(defaultThemeSettings);
+}
+
+type OrganizationThemeResponse = { themeSettings: unknown };
+
+export async function fetchOrganizationThemeSettings(organizationId: string): Promise<ThemeSettings> {
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/theme`);
+
+  return normalizeThemeSettings(response.themeSettings);
+}
+
+export async function saveOrganizationThemeSettings(organizationId: string, settings: ThemeSettings): Promise<ThemeSettings> {
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/theme`, {
+    method: 'PATCH',
+    body: JSON.stringify(settings),
+  });
+  const saved = normalizeThemeSettings(response.themeSettings);
+
+  saveThemeSettings(saved);
+
+  return saved;
+}
+
+export async function uploadOrganizationThemeLogo(organizationId: string, file: File): Promise<ThemeSettings> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await apiRequest<OrganizationThemeResponse>(`/organizations/${organizationId}/logo`, {
+    method: 'POST',
+    body: formData,
+  });
+  const saved = normalizeThemeSettings(response.themeSettings);
+
+  saveThemeSettings(saved);
+
+  return saved;
+}
+
+export async function resetOrganizationThemeSettings(organizationId: string): Promise<ThemeSettings> {
+  await apiRequest(`/organizations/${organizationId}/theme`, { method: 'DELETE' });
+  resetThemeSettings();
+
+  return defaultThemeSettings;
+}
+
+let lastSyncedOrganizationId: string | null = null;
+
+/**
+ * Reconciles the cached (instant-on-boot) theme with the organization's saved
+ * theme from the server. Deduped per organizationId so repeated calls (e.g. on
+ * every protected-route navigation) don't re-fetch. Swallows errors — a stale
+ * or default local theme is an acceptable fallback if the request fails.
+ */
+export async function syncOrganizationTheme(organizationId: string): Promise<void> {
+  if (lastSyncedOrganizationId === organizationId) {
+    return;
+  }
+
+  lastSyncedOrganizationId = organizationId;
+
+  try {
+    const settings = await fetchOrganizationThemeSettings(organizationId);
+
+    saveThemeSettings(settings);
+  } catch {
+    lastSyncedOrganizationId = null;
+  }
 }

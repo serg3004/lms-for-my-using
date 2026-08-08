@@ -49,7 +49,8 @@
 
 - В базе не хранится нехэшированный refresh token.
 - Текущий объект `Session` хранит информацию для проверки и отзыва.
-- При добавлении refresh flow необходимо хранить в базе только хеш или хэшировать его fingerprint.
+
+**[2026-08-06] Обновление:** refresh flow (тогда описанный как будущая работа) с тех пор реализован — не отдельной моделью, а полями `refreshTokenHash` (хеш, не сырой токен) и `refreshExpiresAt` прямо на той же модели `Session`. Логика хранения/ротации: `apps/api/src/modules/auth/auth.session-store.ts`, `auth.refresh-tokens.ts`. Подробности — `docs/AUTH_TOKEN_REVOCATION.md`.
 
 ## Критерии готовности PR 120
 

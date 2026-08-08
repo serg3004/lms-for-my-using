@@ -1,4 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
+import { AxeBuilder } from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
@@ -89,9 +89,9 @@ test.describe('keyboard and focus baseline', () => {
   test('mobile navigation receives focus and returns it after Escape', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await loginAs(page, 'admin');
-    const openButton = page.getByRole('button', { name: 'Open navigation' });
+    const openButton = page.getByRole('button', { name: 'Открыть навигацию' });
     await openButton.click();
-    await expect(page.getByRole('button', { name: 'Close navigation' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Закрыть навигацию' })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(openButton).toBeFocused();
   });

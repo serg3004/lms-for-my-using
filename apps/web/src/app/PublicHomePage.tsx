@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, type CurrentUser } from '../shared/apiClient.js';
@@ -12,6 +12,7 @@ const LANGUAGE_LABELS: Record<string, string> = { ru: 'Русский', en: 'Eng
 
 export function PublicHomePage() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<Pick<CurrentUser, 'roles'> | null>(null);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement>(null);
@@ -22,7 +23,9 @@ export function PublicHomePage() {
     async function loadCurrentUser() {
       try {
         const user = await getCurrentUser();
-        if (isMounted) setCurrentUser({ roles: user.roles });
+        if (!isMounted) return;
+        setCurrentUser({ roles: user.roles });
+        navigate(getRootNavigationItems({ roles: user.roles })[0].href, { replace: true });
       } catch {
         if (isMounted) setCurrentUser(null);
       }
@@ -33,7 +36,7 @@ export function PublicHomePage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {

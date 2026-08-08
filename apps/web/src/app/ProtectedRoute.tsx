@@ -5,6 +5,7 @@ import { ForbiddenPage } from './ForbiddenPage.js';
 import { getCurrentUser } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/api/types.js';
+import { syncOrganizationTheme } from '../shared/theme.js';
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -53,6 +54,7 @@ export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: P
         }
 
         setAuthState(getProtectedRouteAuthState(user, canAccess));
+        void syncOrganizationTheme(user.organizationId);
       } catch (error) {
         if (!isMounted) {
           return;

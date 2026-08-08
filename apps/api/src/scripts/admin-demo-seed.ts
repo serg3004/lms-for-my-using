@@ -3,12 +3,14 @@ import { pathToFileURL } from 'node:url';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const APPLY_FLAG = '--apply';
+const ALLOW_DEMO_ENVIRONMENT_FLAG = '--allow-demo-environment';
 const CONFIRM_ENVIRONMENT_PREFIX = '--confirm-environment=';
 const CONFIRM_DATABASE_PREFIX = '--confirm-database=';
 const TRANSACTION_TIMEOUT_MS = 60_000;
 
 export type AdminDemoSeedOptions = {
   apply: boolean;
+  allowDemoEnvironment: boolean;
   confirmedEnvironment?: string;
   confirmedDatabase?: string;
 };
@@ -30,22 +32,25 @@ type SeedDemo = DemoSeedModule['seedDemo'];
 export function parseAdminDemoSeedArgs(args: string[]): AdminDemoSeedOptions {
   const allowed = args.every((arg) =>
     arg === APPLY_FLAG
+    || arg === ALLOW_DEMO_ENVIRONMENT_FLAG
     || arg.startsWith(CONFIRM_ENVIRONMENT_PREFIX)
     || arg.startsWith(CONFIRM_DATABASE_PREFIX));
   if (!allowed) {
-    throw new Error('Unknown argument. Expected --apply, --confirm-environment, or --confirm-database');
+    throw new Error('Unknown argument. Expected --apply, --allow-demo-environment, --confirm-environment, or --confirm-database');
   }
 
   const values = (prefix: string) => args.filter((arg) => arg.startsWith(prefix));
   const applyCount = args.filter((arg) => arg === APPLY_FLAG).length;
+  const allowDemoEnvironmentCount = args.filter((arg) => arg === ALLOW_DEMO_ENVIRONMENT_FLAG).length;
   const environments = values(CONFIRM_ENVIRONMENT_PREFIX);
   const databases = values(CONFIRM_DATABASE_PREFIX);
-  if (applyCount > 1 || environments.length > 1 || databases.length > 1) {
+  if (applyCount > 1 || allowDemoEnvironmentCount > 1 || environments.length > 1 || databases.length > 1) {
     throw new Error('Seed arguments must not be repeated');
   }
 
   return {
     apply: applyCount === 1,
+    allowDemoEnvironment: allowDemoEnvironmentCount === 1,
     ...(environments[0]
       ? { confirmedEnvironment: environments[0].slice(CONFIRM_ENVIRONMENT_PREFIX.length) }
       : {}),
@@ -84,10 +89,15 @@ export function getSafeDatabaseTarget(databaseUrl: string | undefined, environme
   };
 }
 
-function assertSafeToApply(options: AdminDemoSeedOptions, target: SafeDatabaseTarget): void {
-  if (target.environment === 'production') {
-    throw new Error('Demo seed is disabled in production');
+function assertEnvironmentAllowed(options: AdminDemoSeedOptions, target: SafeDatabaseTarget): void {
+  if (target.environment === 'production' && !options.allowDemoEnvironment) {
+    throw new Error(
+      'Demo seed is disabled in production. Pass --allow-demo-environment only for a confirmed demo-only deployment.',
+    );
   }
+}
+
+function assertSafeToApply(options: AdminDemoSeedOptions, target: SafeDatabaseTarget): void {
   if (options.confirmedEnvironment !== target.environment) {
     throw new Error(`Apply requires --confirm-environment=${target.environment}`);
   }
@@ -152,10 +162,7 @@ export async function runAdminDemoSeed(
     const options = parseAdminDemoSeedArgs(args);
     const target = getSafeDatabaseTarget(databaseUrl, environment);
     console.log(JSON.stringify({ target, mode: options.apply ? 'apply' : 'dry-run' }));
-
-    if (target.environment === 'production') {
-      throw new Error('Demo seed is disabled in production');
-    }
+    assertEnvironmentAllowed(options, target);
 
     const missingBefore = await findMissingDemoData(prisma);
     if (!options.apply) {

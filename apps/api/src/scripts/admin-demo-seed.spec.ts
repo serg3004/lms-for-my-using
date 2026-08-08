@@ -45,7 +45,7 @@ describe('admin demo seed safety', () => {
   });
 
   it('uses dry-run mode by default', () => {
-    expect(parseAdminDemoSeedArgs([])).toEqual({ apply: false });
+    expect(parseAdminDemoSeedArgs([])).toEqual({ apply: false, allowDemoEnvironment: false });
   });
 
   it('parses the exact environment and database confirmations', () => {
@@ -55,14 +55,25 @@ describe('admin demo seed safety', () => {
       '--confirm-database=lms_demo',
     ])).toEqual({
       apply: true,
+      allowDemoEnvironment: false,
       confirmedEnvironment: 'development',
       confirmedDatabase: 'lms_demo',
+    });
+  });
+
+  it('parses the allow-demo-environment flag', () => {
+    expect(parseAdminDemoSeedArgs(['--allow-demo-environment'])).toEqual({
+      apply: false,
+      allowDemoEnvironment: true,
     });
   });
 
   it('rejects unknown and repeated arguments', () => {
     expect(() => parseAdminDemoSeedArgs(['--force'])).toThrow('Unknown argument');
     expect(() => parseAdminDemoSeedArgs(['--apply', '--apply'])).toThrow('must not be repeated');
+    expect(() => parseAdminDemoSeedArgs(['--allow-demo-environment', '--allow-demo-environment'])).toThrow(
+      'must not be repeated',
+    );
   });
 
   it('builds a target summary without credentials or unrelated query values', () => {
@@ -101,6 +112,43 @@ describe('admin demo seed safety', () => {
 
     expect(prisma.organization.findUnique).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('allows a production dry-run read when --allow-demo-environment is passed', async () => {
+    const prisma = createPrisma();
+
+    await runAdminDemoSeed(['--allow-demo-environment'], prisma as never, 'production', databaseUrl);
+
+    expect(prisma.organization.findUnique).toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('still requires exact confirmations to apply in production with --allow-demo-environment', async () => {
+    const prisma = createPrisma();
+
+    await expect(runAdminDemoSeed(
+      ['--apply', '--allow-demo-environment'],
+      prisma as never,
+      'production',
+      databaseUrl,
+    )).rejects.toThrow('--confirm-environment=production');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('applies in production when --allow-demo-environment and confirmations are all present', async () => {
+    const prisma = createPrisma();
+    const seedDemo = jest.fn(async () => prisma.markComplete());
+
+    await runAdminDemoSeed([
+      '--apply',
+      '--allow-demo-environment',
+      '--confirm-environment=production',
+      '--confirm-database=lms_demo',
+    ], prisma as never, 'production', databaseUrl, seedDemo as never);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(seedDemo).toHaveBeenCalledWith(prisma);
+    expect(prisma.isComplete()).toBe(true);
   });
 
   it('requires exact environment and database confirmations for apply', async () => {

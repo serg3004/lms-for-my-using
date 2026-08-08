@@ -1,8 +1,14 @@
-import { type ChangeEvent, type FormEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
-import { createCourse, getCourse, getCurrentUser, updateCourse } from '../shared/apiClient.js';
+import { ApiClientError, createCourse, getCourse, getCurrentUser, updateCourse } from '../shared/apiClient.js';
+import { createLesson, listLessons, updateLesson } from '../shared/api/lessons.js';
+import type { LessonSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { FormField } from '../shared/adminPage.js';
+import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
+import { slugify } from '../shared/slugify.js';
 
 type Mode = 'create' | 'edit';
 
@@ -10,13 +16,18 @@ type FormState = {
   title: string;
   slug: string;
   description: string;
+  category: string;
+  durationMinutes: string;
   status: string;
 };
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'loaded'; organizationId: string; firstName: string; lastName: string | null }
+  | { status: 'loaded'; organizationId: string; firstName: string; lastName: string | null; lessons: LessonSummary[]; updatedAt: string | null }
   | { status: 'error'; message: string };
+
+type LessonField = 'title';
+type LessonDialogState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
 
 type InstructorCourseFormPageProps = {
   mode: Mode;
@@ -24,11 +35,26 @@ type InstructorCourseFormPageProps = {
 };
 
 export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFormPageProps) {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [form, setForm] = useState<FormState>({ title: '', slug: '', description: '', status: 'draft' });
+  const [form, setForm] = useState<FormState>({ title: '', slug: '', description: '', category: '', durationMinutes: '', status: 'draft' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const [showAddLesson, setShowAddLesson] = useState(false);
+  const [editingLesson, setEditingLesson] = useState<LessonSummary | null>(null);
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonErrors, setLessonErrors] = useState<FormValidationErrors<LessonField>>({});
+  const [lessonDialogState, setLessonDialogState] = useState<LessonDialogState>({ status: 'idle' });
+  const addLessonDialogRef = useRef<HTMLDialogElement>(null);
+  const editLessonDialogRef = useRef<HTMLDialogElement>(null);
+
+  async function reloadLessons() {
+    if (mode !== 'edit' || !courseId) return;
+    const refreshedLessons = await listLessons(courseId);
+    setLoadState((prev) => (prev.status === 'loaded' ? { ...prev, lessons: [...refreshedLessons].sort((a, b) => a.order - b.order) } : prev));
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -38,10 +64,22 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
         const user = await getCurrentUser();
         if (!isMounted) return;
 
+        let lessons: LessonSummary[] = [];
+        let updatedAt: string | null = null;
+
         if (mode === 'edit' && courseId) {
-          const course = await getCourse(courseId);
+          const [course, courseLessons] = await Promise.all([getCourse(courseId), listLessons(courseId)]);
           if (!isMounted) return;
-          setForm({ title: course.title, slug: course.slug, description: course.description ?? '', status: course.status });
+          setForm({
+            title: course.title,
+            slug: course.slug,
+            description: course.description ?? '',
+            category: course.category ?? '',
+            durationMinutes: course.durationMinutes != null ? String(course.durationMinutes) : '',
+            status: course.status,
+          });
+          lessons = [...courseLessons].sort((a, b) => a.order - b.order);
+          updatedAt = course.updatedAt;
         }
 
         setLoadState({
@@ -49,15 +87,27 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           organizationId: user.organizationId,
           firstName: user.firstName,
           lastName: user.lastName,
+          lessons,
+          updatedAt,
         });
       } catch {
-        if (isMounted) setLoadState({ status: 'error', message: 'Не удалось загрузить данные.' });
+        if (isMounted) setLoadState({ status: 'error', message: t('instructor.courseForm.loadError') });
       }
     }
 
     void load();
     return () => { isMounted = false; };
-  }, [mode, courseId]);
+  }, [mode, courseId, t]);
+
+  useEffect(() => {
+    if (showAddLesson) addLessonDialogRef.current?.showModal();
+    else addLessonDialogRef.current?.close();
+  }, [showAddLesson]);
+
+  useEffect(() => {
+    if (editingLesson) editLessonDialogRef.current?.showModal();
+    else editLessonDialogRef.current?.close();
+  }, [editingLesson]);
 
   function updateField(field: keyof FormState) {
     return (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -71,6 +121,9 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
     setSubmitError(null);
     setIsSubmitting(true);
 
+    const category = form.category || undefined;
+    const durationMinutes = form.durationMinutes ? Number(form.durationMinutes) : undefined;
+
     try {
       if (mode === 'create') {
         await createCourse({
@@ -78,7 +131,9 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           title: form.title.trim(),
           slug: form.slug.trim(),
           description: form.description.trim() || undefined,
-          status: form.status,
+          category,
+          durationMinutes,
+          status: 'draft',
         });
       } else if (courseId) {
         await updateCourse(courseId, {
@@ -90,94 +145,286 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
       }
       navigate('/instructor/courses');
     } catch {
-      setSubmitError('Не удалось сохранить курс. Попробуйте ещё раз.');
+      setSubmitError(t('instructor.courseForm.saveError'));
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  async function handleAddLesson(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (loadState.status !== 'loaded' || !courseId) return;
+    const title = lessonTitle.trim();
+    const nextErrors = title ? {} : { title: t('instructor.courseForm.lessonTitleRequired') };
+    setLessonErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
+
+    setLessonDialogState({ status: 'submitting' });
+    try {
+      await createLesson(courseId, {
+        organizationId: loadState.organizationId,
+        title,
+        slug: slugify(title),
+        order: loadState.lessons.length,
+        status: 'draft',
+      });
+      setShowAddLesson(false);
+      setLessonTitle('');
+      setLessonDialogState({ status: 'idle' });
+      await reloadLessons();
+    } catch (error) {
+      setLessonDialogState({
+        status: 'error',
+        message: error instanceof ApiClientError ? error.message : t('instructor.courseForm.lessonSaveError'),
+      });
+    }
+  }
+
+  async function handleEditLesson(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingLesson) return;
+    const title = lessonTitle.trim();
+    const nextErrors = title ? {} : { title: t('instructor.courseForm.lessonTitleRequired') };
+    setLessonErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) return;
+
+    setLessonDialogState({ status: 'submitting' });
+    try {
+      await updateLesson(editingLesson.id, { title });
+      setEditingLesson(null);
+      setLessonTitle('');
+      setLessonDialogState({ status: 'idle' });
+      await reloadLessons();
+    } catch (error) {
+      setLessonDialogState({
+        status: 'error',
+        message: error instanceof ApiClientError ? error.message : t('instructor.courseForm.lessonSaveError'),
+      });
+    }
+  }
+
+  function openAddLessonDialog() {
+    setLessonTitle('');
+    setLessonErrors({});
+    setLessonDialogState({ status: 'idle' });
+    setShowAddLesson(true);
+  }
+
+  function openEditLessonDialog(lesson: LessonSummary) {
+    setLessonTitle(lesson.title);
+    setLessonErrors({});
+    setLessonDialogState({ status: 'idle' });
+    setEditingLesson(lesson);
+  }
+
   const firstName = loadState.status === 'loaded' ? loadState.firstName : undefined;
   const lastName = loadState.status === 'loaded' ? (loadState.lastName ?? undefined) : undefined;
-  const pageTitle = mode === 'create' ? 'Создать курс' : 'Редактировать курс';
+  const eyebrow = mode === 'create' ? t('instructor.courseForm.eyebrowCreate') : t('instructor.courseForm.eyebrowEdit');
+  const pageTitle = mode === 'create' ? t('instructor.courseForm.createTitle') : t('instructor.courseForm.editTitle');
+  const subtitle = mode === 'create' ? t('instructor.courseForm.subCreate') : t('instructor.courseForm.subEdit');
+  const submitLabel = mode === 'create' ? t('instructor.courseForm.submitCreate') : t('instructor.courseForm.submitSave');
+  const lessons = loadState.status === 'loaded' ? loadState.lessons : [];
+  const updatedAt = loadState.status === 'loaded' ? loadState.updatedAt : null;
 
   return (
     <InstructorPageLayout firstName={firstName} lastName={lastName}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-        <Link to="/instructor/courses">← Курсы</Link>
-        <h1 style={{ margin: 0 }}>{pageTitle}</h1>
-      </div>
+      <Link to="/instructor/courses">← {t('instructor.courseForm.backToCourses')}</Link>
 
-      {loadState.status === 'loading' && <p role="status">Загрузка...</p>}
+      {loadState.status === 'loading' && <p role="status">{t('instructor.courseForm.loading')}</p>}
       {loadState.status === 'error' && <p role="alert">{loadState.message}</p>}
 
       {loadState.status === 'loaded' && (
-        <form onSubmit={handleSubmit} style={{ maxWidth: '36rem' }}>
-          <label htmlFor="title" style={{ display: 'block', marginBottom: '1rem' }}>
-            Название
-            <input
-              id="title"
-              name="title"
-              type="text"
-              required
-              value={form.title}
-              onChange={updateField('title')}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-            />
-          </label>
+        <form id="course-form" onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '18px', alignItems: 'flex-start', margin: '12px 0 20px' }}>
+            <div>
+              <div style={{ color: '#4f46e5', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '7px' }}>
+                {eyebrow}
+              </div>
+              <h1 style={{ margin: 0, fontSize: '2rem' }}>{pageTitle}</h1>
+              <p style={{ color: '#6b7280', margin: '8px 0 0' }}>{subtitle}</p>
+            </div>
+            <button type="submit" form="course-form" disabled={isSubmitting} className="admin-btn admin-btn--primary">
+              {isSubmitting ? t('instructor.courseForm.saving') : submitLabel}
+            </button>
+          </div>
 
-          <label htmlFor="slug" style={{ display: 'block', marginBottom: '1rem' }}>
-            Slug
-            <input
-              id="slug"
-              name="slug"
-              type="text"
-              required
-              minLength={3}
-              maxLength={80}
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              value={form.slug}
-              onChange={updateField('slug')}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-            />
-          </label>
+          <div className="admin-content-grid">
+            <article className="admin-card">
+              <FormField id="title" label={t('instructor.courseForm.fieldTitle')} required>
+                <input id="title" name="title" type="text" required value={form.title} onChange={updateField('title')} />
+              </FormField>
 
-          <label htmlFor="description" style={{ display: 'block', marginBottom: '1rem' }}>
-            Описание
-            <textarea
-              id="description"
-              name="description"
-              value={form.description}
-              onChange={updateField('description')}
-              rows={4}
-              style={{ display: 'block', width: '100%', marginTop: '0.25rem' }}
-            />
-          </label>
+              <FormField id="slug" label={t('instructor.courseForm.fieldSlug')} required>
+                <input
+                  id="slug"
+                  name="slug"
+                  type="text"
+                  required
+                  minLength={3}
+                  maxLength={80}
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  value={form.slug}
+                  onChange={updateField('slug')}
+                />
+              </FormField>
 
-          <label htmlFor="status" style={{ display: 'block', marginBottom: '1.5rem' }}>
-            Статус
-            <select
-              id="status"
-              name="status"
-              value={form.status}
-              onChange={updateField('status')}
-              style={{ display: 'block', marginTop: '0.25rem' }}
-            >
-              <option value="draft">Черновик</option>
-              <option value="published">Опубликован</option>
-            </select>
-          </label>
+              {mode === 'create' && (
+                <FormField id="category" label={t('instructor.courseForm.fieldCategory')}>
+                  <select id="category" name="category" value={form.category} onChange={updateField('category')}>
+                    <option value="">{t('instructor.courseForm.categoryNone')}</option>
+                    <option value="safety">{t('instructor.courseForm.categorySafety')}</option>
+                    <option value="management">{t('instructor.courseForm.categoryManagement')}</option>
+                  </select>
+                </FormField>
+              )}
 
-          {submitError && (
-            <p role="alert" style={{ color: 'red' }}>
-              {submitError}
-            </p>
-          )}
+              <FormField id="description" label={t('instructor.courseForm.fieldDescription')}>
+                <textarea id="description" name="description" value={form.description} onChange={updateField('description')} rows={mode === 'create' ? 6 : 5} />
+              </FormField>
 
-          <button type="submit" disabled={isSubmitting} className="admin-btn admin-btn--primary">
-            {isSubmitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
-          </button>
+              {mode === 'create' && (
+                <FormField id="duration" label={t('instructor.courseForm.fieldDuration')}>
+                  <input id="duration" name="duration" type="number" min={1} value={form.durationMinutes} onChange={updateField('durationMinutes')} />
+                </FormField>
+              )}
+
+              {mode === 'edit' && (
+                <>
+                  <h3>{t('instructor.courseForm.lessonsTitle', { count: lessons.length })}</h3>
+                  {lessons.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '14px' }}>{t('instructor.courseForm.lessonsEmpty')}</p>
+                  ) : (
+                    <div style={{ display: 'grid', gap: '10px', marginBottom: '10px' }}>
+                      {lessons.map((lesson) => (
+                        <div
+                          key={lesson.id}
+                          style={{ display: 'grid', gridTemplateColumns: '42px 1fr auto', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e3e8ef', borderRadius: '14px' }}
+                        >
+                          <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: '#eef2ff', color: '#4f46e5', fontWeight: 800 }}>
+                            {lesson.order}
+                          </div>
+                          <span>{lesson.title}</span>
+                          <button type="button" className="admin-btn" onClick={() => openEditLessonDialog(lesson)}>
+                            {t('instructor.courseForm.editLesson')}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" className="admin-btn" onClick={openAddLessonDialog}>
+                    {t('instructor.courseForm.addLesson')}
+                  </button>
+                </>
+              )}
+
+              {submitError && (
+                <p role="alert" style={{ color: 'red' }}>
+                  {submitError}
+                </p>
+              )}
+            </article>
+
+            <article className="admin-card">
+              {mode === 'create' ? (
+                <>
+                  <h3>{t('instructor.courseForm.nextStepsTitle')}</h3>
+                  {[1, 2, 3].map((step) => (
+                    <div key={step} style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e3e8ef', borderRadius: '14px', marginBottom: '10px' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: '#eef2ff', color: '#4f46e5', fontWeight: 800 }}>
+                        {step}
+                      </div>
+                      <div>{t(`instructor.courseForm.nextStep${step}`)}</div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <h3>{t('instructor.courseForm.publicationStatus')}</h3>
+                  <FormField id="status" label={t('instructor.courseForm.fieldStatus')}>
+                    <select id="status" name="status" value={form.status} onChange={updateField('status')}>
+                      <option value="draft">{t('instructor.courseForm.statusDraft')}</option>
+                      <option value="published">{t('instructor.courseForm.statusPublished')}</option>
+                    </select>
+                  </FormField>
+                  {updatedAt ? (
+                    <p style={{ color: '#6b7280', fontSize: '13px' }}>
+                      {t('instructor.courseForm.lastUpdated', { date: new Date(updatedAt).toLocaleDateString(i18n.language) })}
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </article>
+          </div>
         </form>
       )}
+
+      <dialog className="admin-dialog" ref={addLessonDialogRef} onClose={() => setShowAddLesson(false)}>
+        <div className="admin-dialog__header">
+          <h2>{t('instructor.courseForm.addLessonDialogTitle')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('instructor.courseForm.dialogClose')} onClick={() => setShowAddLesson(false)}>
+            ✕
+          </button>
+        </div>
+        <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
+          <FormField id="lesson-title" label={t('instructor.courseForm.lessonFieldTitle')} required error={lessonErrors.title}>
+            <input
+              id="lesson-title"
+              maxLength={160}
+              type="text"
+              value={lessonTitle}
+              onChange={(e) => {
+                setLessonTitle(e.target.value);
+                setLessonErrors((err) => clearFieldError(err, 'title'));
+              }}
+            />
+          </FormField>
+          {lessonDialogState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">{lessonDialogState.message}</p>
+          ) : null}
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowAddLesson(false)}>
+              {t('instructor.courseForm.dialogCancel')}
+            </button>
+            <button className="admin-btn admin-btn--primary" type="submit" disabled={lessonDialogState.status === 'submitting'}>
+              {lessonDialogState.status === 'submitting' ? t('instructor.courseForm.saving') : t('instructor.courseForm.addLesson')}
+            </button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog className="admin-dialog" ref={editLessonDialogRef} onClose={() => setEditingLesson(null)}>
+        <div className="admin-dialog__header">
+          <h2>{t('instructor.courseForm.editLessonDialogTitle')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('instructor.courseForm.dialogClose')} onClick={() => setEditingLesson(null)}>
+            ✕
+          </button>
+        </div>
+        <form className="admin-form" onSubmit={(e) => void handleEditLesson(e)}>
+          <FormField id="edit-lesson-title" label={t('instructor.courseForm.lessonFieldTitle')} required error={lessonErrors.title}>
+            <input
+              id="edit-lesson-title"
+              maxLength={160}
+              type="text"
+              value={lessonTitle}
+              onChange={(e) => {
+                setLessonTitle(e.target.value);
+                setLessonErrors((err) => clearFieldError(err, 'title'));
+              }}
+            />
+          </FormField>
+          {lessonDialogState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">{lessonDialogState.message}</p>
+          ) : null}
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setEditingLesson(null)}>
+              {t('instructor.courseForm.dialogCancel')}
+            </button>
+            <button className="admin-btn admin-btn--primary" type="submit" disabled={lessonDialogState.status === 'submitting'}>
+              {lessonDialogState.status === 'submitting' ? t('instructor.courseForm.saving') : t('instructor.courseForm.dialogSave')}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </InstructorPageLayout>
   );
 }

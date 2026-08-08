@@ -1,70 +1,30 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
-import { DataTable, EmptyState, PageState, StatusBadge, type Column } from '../shared/ui.js';
+import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
-
-type Course = { id: string; organizationId: string; title: string; status: string };
-type User = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  middleName: string | null;
-  status: string;
-};
-type Group = { id: string; organizationId: string; name: string; status: string };
-type Assignment = {
-  id: string;
-  courseId: string;
-  userId: string | null;
-  groupId: string | null;
-  status: string;
-  dueAt: string | null;
-};
-type Progress = {
-  id: string;
-  courseId: string;
-  lessonId: string | null;
-  userId: string;
-  status: string;
-  score: number | null;
-  completedAt: string | null;
-};
+import {
+  ASSIGNMENT_STATUSES,
+  computeAssignmentStats,
+  findCourseTitle,
+  findGroupLabel,
+  findUserLabel,
+  getUserLabel,
+  type Assignment,
+  type AssignmentStatus,
+  type Course,
+  type Group,
+  type Progress,
+  type User,
+} from './admin-assignments/model.js';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'loaded'; courses: Course[]; users: User[]; groups: Group[]; assignments: Assignment[]; progressItems: Progress[] }
   | { status: 'error'; message: string };
-
-type AssignmentStatus = 'assigned' | 'completed' | 'cancelled';
-
-const ASSIGNMENT_STATUSES: AssignmentStatus[] = ['assigned', 'completed', 'cancelled'];
-
-function getUserLabel(user: User) {
-  const fullName = [user.lastName, user.firstName].filter(Boolean).join(' ');
-  return fullName || user.email;
-}
-
-function findCourseTitle(courses: Course[], courseId: string) {
-  return courses.find((c) => c.id === courseId)?.title ?? courseId;
-}
-
-function findUserLabel(users: User[], userId: string | null, fallback: string) {
-  if (!userId) return fallback;
-  const user = users.find((u) => u.id === userId);
-  return user ? getUserLabel(user) : userId;
-}
-
-function findGroupLabel(groups: Group[], groupId: string | null, fallback: string) {
-  if (!groupId) return fallback;
-  const group = groups.find((g) => g.id === groupId);
-  return group ? group.name : groupId;
-}
 
 export function AdminAssignmentCompletionPage() {
   const { t } = useTranslation();
@@ -80,10 +40,18 @@ export function AdminAssignmentCompletionPage() {
     status: 'idle',
   });
   const [recordErrors, setRecordErrors] = useState<FormValidationErrors<'score'>>({});
+  const assignDialogRef = useRef<HTMLDialogElement>(null);
+  const progressDialogRef = useRef<HTMLDialogElement>(null);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.assignments.title', 'Assignments'), href: '/admin/assignments', isCurrent: true },
   ];
+
+  const assignmentStatusLabels: Record<AssignmentStatus, string> = {
+    assigned: t('admin.assignments.status.assigned', 'Assigned'),
+    completed: t('admin.assignments.completed', 'Completed'),
+    cancelled: t('admin.assignments.status.cancelled', 'Cancelled'),
+  };
 
   const loadData = useCallback(async (nextCourseId?: string) => {
     try {
@@ -117,6 +85,17 @@ export function AdminAssignmentCompletionPage() {
     return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === courseId) : undefined;
   }, [courseId, loadState]);
 
+  function openAssignDialog() {
+    setSubmitState({ status: 'idle' });
+    assignDialogRef.current?.showModal();
+  }
+
+  function openProgressDialog() {
+    setSubmitState({ status: 'idle' });
+    setRecordErrors({});
+    progressDialogRef.current?.showModal();
+  }
+
   async function handleCreateAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -139,6 +118,7 @@ export function AdminAssignmentCompletionPage() {
       });
       setDueAt('');
       setSubmitState({ status: 'idle' });
+      assignDialogRef.current?.close();
       await loadData(selectedCourse.id);
     } catch (error) {
       const message =
@@ -196,6 +176,7 @@ export function AdminAssignmentCompletionPage() {
       });
       setScore('');
       setSubmitState({ status: 'idle' });
+      progressDialogRef.current?.close();
       await loadData(selectedCourse.id);
     } catch {
       setSubmitState({
@@ -221,6 +202,8 @@ export function AdminAssignmentCompletionPage() {
     );
   }
 
+  const stats = computeAssignmentStats(loadState.assignments, Date.now());
+
   return (
     <AdminPageLayout
       brandLabel={t('admin.navLink', 'Admin')}
@@ -228,105 +211,139 @@ export function AdminAssignmentCompletionPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.assignments.eyebrow', 'Required learning')}
         title={t('admin.assignments.title', 'Assignments')}
         subtitle={t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}
+        action={
+          <div className="admin-header-actions">
+            <Button
+              variant="primary"
+              type="button"
+              onClick={openAssignDialog}
+              disabled={loadState.courses.length === 0 || loadState.users.length === 0}
+            >
+              + {t('admin.assignments.create', 'Assign course')}
+            </Button>
+            <Button variant="secondary" type="button" onClick={openProgressDialog} disabled={!selectedCourse || !userId}>
+              {t('admin.assignments.recordProgress', 'Record progress')}
+            </Button>
+          </div>
+        }
       />
 
-      <section className="admin-content-grid">
-        <AdminCard>
+      <StatsGrid>
+        <StatCard label={t('admin.assignments.stats.active', 'Active assignments')} value={stats.active} />
+        <StatCard label={t('admin.assignments.stats.dueWeek', 'Due this week')} value={stats.dueThisWeek} />
+        <StatCard label={t('admin.assignments.stats.overdue', 'Overdue')} value={stats.overdue} />
+        <StatCard label={t('admin.assignments.stats.completed', 'Completed total')} value={stats.completed} />
+      </StatsGrid>
+
+      <AdminCard>
+        <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
+        <DataTable<Assignment>
+          columns={[
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.courses, a.courseId) },
+            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
+              ? findUserLabel(loadState.users, a.userId, a.userId)
+              : findGroupLabel(loadState.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
+            { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
+              ? new Date(a.dueAt).toLocaleDateString()
+              : t('admin.assignments.noDueDate', '—') },
+            { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (a) => (
+              <select
+                className="admin-status-select"
+                value={a.status}
+                onChange={(event) => void handleUpdateAssignmentStatus(a.id, event.target.value)}
+              >
+                {ASSIGNMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>{assignmentStatusLabels[s]}</option>
+                ))}
+              </select>
+            )},
+          ] satisfies Column<Assignment>[]}
+          rows={loadState.assignments}
+          keyExtractor={(a) => a.id}
+          emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
+        />
+      </AdminCard>
+
+      <AdminCard>
+        <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
+        <DataTable<Progress>
+          columns={[
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
+            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
+            { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (p) => (
+              p.status === 'completed'
+                ? t('admin.assignments.completed', 'Completed')
+                : t('admin.assignments.inProgress', 'In progress')
+            )},
+            { key: 'score', label: t('admin.assignments.col.score', 'Score'), render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
+          ] satisfies Column<Progress>[]}
+          rows={loadState.progressItems}
+          keyExtractor={(p) => p.id}
+          emptyMessage={t('admin.assignments.progressEmpty', 'No course progress found.')}
+        />
+      </AdminCard>
+
+      <dialog ref={assignDialogRef} className="admin-dialog">
+        <header className="admin-dialog__header">
           <h2>{t('admin.assignments.createTitle', 'Assign course')}</h2>
-          {loadState.courses.length === 0 || loadState.users.length === 0 ? (
-            <EmptyState
-              message={t(
-                'admin.assignments.noData',
-                'Create at least one course and user before assigning courses.',
-              )}
-            />
-          ) : (
-            <form className="admin-form" onSubmit={handleCreateAssignment}>
-              <FormField id="assign-create-course" label={t('admin.assignments.course', 'Course')}>
-                <select id="assign-create-course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-                  {loadState.courses.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.title}
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.assignments.close', 'Close')} onClick={() => assignDialogRef.current?.close()}>×</button>
+        </header>
+        {loadState.courses.length === 0 || loadState.users.length === 0 ? (
+          <EmptyState
+            message={t(
+              'admin.assignments.noData',
+              'Create at least one course and user before assigning courses.',
+            )}
+          />
+        ) : (
+          <form className="admin-form" onSubmit={handleCreateAssignment}>
+            <FormField id="assign-create-course" label={t('admin.assignments.course', 'Course')}>
+              <select id="assign-create-course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
+                {loadState.courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField id="assign-create-assign-to" label={t('admin.assignments.assignTo', 'Assign to')}>
+              <select id="assign-create-assign-to" value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
+                <option value="user">{t('admin.assignments.assignToUser', 'User')}</option>
+                <option value="group">{t('admin.assignments.assignToGroup', 'Group')}</option>
+              </select>
+            </FormField>
+            {assignTo === 'user' ? (
+              <FormField id="assign-create-user" label={t('admin.assignments.learner', 'Learner')}>
+                <select id="assign-create-user" value={userId} onChange={(event) => setUserId(event.target.value)}>
+                  {loadState.users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {getUserLabel(user)}
                     </option>
                   ))}
                 </select>
               </FormField>
-              <FormField id="assign-create-assign-to" label={t('admin.assignments.assignTo', 'Assign to')}>
-                <select id="assign-create-assign-to" value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
-                  <option value="user">{t('admin.assignments.assignToUser', 'User')}</option>
-                  <option value="group">{t('admin.assignments.assignToGroup', 'Group')}</option>
-                </select>
-              </FormField>
-              {assignTo === 'user' ? (
-                <FormField id="assign-create-user" label={t('admin.assignments.learner', 'Learner')}>
-                  <select id="assign-create-user" value={userId} onChange={(event) => setUserId(event.target.value)}>
-                    {loadState.users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {getUserLabel(user)}
+            ) : (
+              <FormField id="assign-create-group" label={t('admin.assignments.group', 'Group')}>
+                {loadState.groups.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                    {t('admin.assignments.noGroups', 'No groups found. Create a group first.')}
+                  </p>
+                ) : (
+                  <select id="assign-create-group" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
+                    {loadState.groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
                       </option>
                     ))}
                   </select>
-                </FormField>
-              ) : (
-                <FormField id="assign-create-group" label={t('admin.assignments.group', 'Group')}>
-                  {loadState.groups.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                      {t('admin.assignments.noGroups', 'No groups found. Create a group first.')}
-                    </p>
-                  ) : (
-                    <select id="assign-create-group" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-                      {loadState.groups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </FormField>
-              )}
-              <FormField id="assign-create-due-at" label={t('admin.assignments.dueAt', 'Due date')}>
-                <input id="assign-create-due-at" value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
+                )}
               </FormField>
-              {submitState.status === 'error' ? (
-                <p className="admin-form__error" role="alert">
-                  {submitState.message}
-                </p>
-              ) : null}
-              <div className="admin-form__actions">
-                <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
-                  {submitState.status === 'saving'
-                    ? t('admin.assignments.saving', 'Saving...')
-                    : t('admin.assignments.create', 'Assign course')}
-                </button>
-              </div>
-            </form>
-          )}
-        </AdminCard>
-
-        <AdminCard>
-          <h2>{t('admin.assignments.progressTitle', 'Record progress')}</h2>
-          <form className="admin-form" onSubmit={handleRecordCompletion}>
-            <FormField id="record-status" label={t('admin.assignments.completionStatus', 'Status')}>
-              <select
-                id="record-status"
-                value={completionStatus}
-                onChange={(event) => setCompletionStatus(event.target.value as 'in_progress' | 'completed')}
-              >
-                <option value="in_progress">{t('admin.assignments.inProgress', 'In progress')}</option>
-                <option value="completed">{t('admin.assignments.completed', 'Completed')}</option>
-              </select>
-            </FormField>
-            <FormField id="record-score" label={t('admin.assignments.score', 'Score (0–100)')} error={recordErrors.score}>
-              <input
-                id="record-score"
-                aria-describedby={recordErrors.score ? 'record-score-error' : undefined}
-                aria-invalid={Boolean(recordErrors.score)}
-                value={score}
-                onChange={(event) => { setScore(event.target.value); setRecordErrors((prev) => clearFieldError(prev, 'score')); }}
-                inputMode="numeric"
-              />
+            )}
+            <FormField id="assign-create-due-at" label={t('admin.assignments.dueAt', 'Due date')}>
+              <input id="assign-create-due-at" value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />
             </FormField>
             {submitState.status === 'error' ? (
               <p className="admin-form__error" role="alert">
@@ -334,63 +351,66 @@ export function AdminAssignmentCompletionPage() {
               </p>
             ) : null}
             <div className="admin-form__actions">
-              <button
-                className="admin-btn admin-btn--secondary"
-                type="submit"
-                disabled={submitState.status === 'saving' || !selectedCourse || !userId}
-              >
+              <button className="admin-btn admin-btn--secondary" type="button" onClick={() => assignDialogRef.current?.close()}>
+                {t('admin.assignments.cancel', 'Cancel')}
+              </button>
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
                 {submitState.status === 'saving'
                   ? t('admin.assignments.saving', 'Saving...')
-                  : t('admin.assignments.recordProgress', 'Record progress')}
+                  : t('admin.assignments.create', 'Assign course')}
               </button>
             </div>
           </form>
-        </AdminCard>
+        )}
+      </dialog>
 
-        <AdminCard>
-          <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
-          <DataTable<Assignment>
-            columns={[
-              { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.courses, a.courseId) },
-              { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
-                ? findUserLabel(loadState.users, a.userId, a.userId)
-                : findGroupLabel(loadState.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
-              { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (a) => (
-                <select
-                  className="admin-status-select"
-                  value={a.status}
-                  onChange={(event) => void handleUpdateAssignmentStatus(a.id, event.target.value)}
-                >
-                  {ASSIGNMENT_STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              )},
-              { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
-                ? new Date(a.dueAt).toLocaleDateString()
-                : t('admin.assignments.noDueDate', '—') },
-            ] satisfies Column<Assignment>[]}
-            rows={loadState.assignments}
-            keyExtractor={(a) => a.id}
-            emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
-          />
-        </AdminCard>
-
-        <AdminCard>
-          <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
-          <DataTable<Progress>
-            columns={[
-              { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
-              { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
-              { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (p) => <StatusBadge>{p.status}</StatusBadge> },
-              { key: 'score', label: t('admin.assignments.col.score', 'Score'), render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
-            ] satisfies Column<Progress>[]}
-            rows={loadState.progressItems}
-            keyExtractor={(p) => p.id}
-            emptyMessage={t('admin.assignments.progressEmpty', 'No course progress found.')}
-          />
-        </AdminCard>
-      </section>
+      <dialog ref={progressDialogRef} className="admin-dialog">
+        <header className="admin-dialog__header">
+          <h2>{t('admin.assignments.progressTitle', 'Record progress')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.assignments.close', 'Close')} onClick={() => progressDialogRef.current?.close()}>×</button>
+        </header>
+        <form className="admin-form" onSubmit={handleRecordCompletion}>
+          <FormField id="record-status" label={t('admin.assignments.completionStatus', 'Status')}>
+            <select
+              id="record-status"
+              value={completionStatus}
+              onChange={(event) => setCompletionStatus(event.target.value as 'in_progress' | 'completed')}
+            >
+              <option value="in_progress">{t('admin.assignments.inProgress', 'In progress')}</option>
+              <option value="completed">{t('admin.assignments.completed', 'Completed')}</option>
+            </select>
+          </FormField>
+          <FormField id="record-score" label={t('admin.assignments.score', 'Score (0–100)')} error={recordErrors.score}>
+            <input
+              id="record-score"
+              aria-describedby={recordErrors.score ? 'record-score-error' : undefined}
+              aria-invalid={Boolean(recordErrors.score)}
+              value={score}
+              onChange={(event) => { setScore(event.target.value); setRecordErrors((prev) => clearFieldError(prev, 'score')); }}
+              inputMode="numeric"
+            />
+          </FormField>
+          {submitState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">
+              {submitState.message}
+            </p>
+          ) : null}
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => progressDialogRef.current?.close()}>
+              {t('admin.assignments.cancel', 'Cancel')}
+            </button>
+            <button
+              className="admin-btn admin-btn--primary"
+              type="submit"
+              disabled={submitState.status === 'saving' || !selectedCourse || !userId}
+            >
+              {submitState.status === 'saving'
+                ? t('admin.assignments.saving', 'Saving...')
+                : t('admin.assignments.recordProgress', 'Record progress')}
+            </button>
+          </div>
+        </form>
+      </dialog>
     </AdminPageLayout>
   );
 }

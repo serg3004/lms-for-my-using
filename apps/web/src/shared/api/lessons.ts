@@ -1,6 +1,6 @@
 import { apiRequest } from '../apiClient.js';
 
-import type { CreateLessonCompletionInput, LessonSummary, ProgressSummary } from './types.js';
+import type { CreateLessonCompletionInput, LessonSummary, LessonWithCourseSummary, PaginatedResponse, ProgressSummary } from './types.js';
 
 export function getCourseLessonsPath(courseId: string) {
   return `/courses/${encodeURIComponent(courseId)}/lessons`;
@@ -14,6 +14,11 @@ export function listLessons(courseId: string) {
   return apiRequest<LessonSummary[]>(getCourseLessonsPath(courseId));
 }
 
+export function listAllLessons(params?: { page?: number; pageSize?: number }) {
+  const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
+  return apiRequest<PaginatedResponse<LessonWithCourseSummary>>(`/lessons${qs}`);
+}
+
 export function getLesson(lessonId: string) {
   return apiRequest<LessonSummary>(getLessonPath(lessonId));
 }
@@ -23,6 +28,7 @@ export type CreateLessonInput = {
   title: string;
   slug: string;
   description?: string;
+  type?: string;
   order?: number;
   status?: string;
 };
@@ -30,6 +36,7 @@ export type CreateLessonInput = {
 export type UpdateLessonInput = {
   title?: string;
   description?: string | null;
+  type?: string;
   order?: number;
   status?: string;
 };

@@ -45,6 +45,8 @@ Demo credentials:
 | Role | Organization | Email | Password |
 |---|---|---|---|
 | Admin | `demo-company` | `admin@demo.com` | `Demo1234!` |
+| Manager | `demo-company` | `manager@demo.com` | `Demo1234!` |
+| Instructor | `demo-company` | `instructor@demo.com` | `Demo1234!` |
 | Learner | `demo-company` | `learner@demo.com` | `Demo1234!` |
 
 If the credentials fail, re-run the demo seed for the `api` service.
@@ -99,6 +101,40 @@ Railway automatically sets `DATABASE_URL` for services in the same project.
 3. No extra environment variables needed.
 4. Deploy → wait for build.
 5. Update API's `FRONTEND_URL` to the web service public URL → redeploy API.
+
+---
+
+## File storage (MinIO on Railway)
+
+Production object storage (TV-008 in `docs/TODO_VERIFY.md`) is a self-hosted **MinIO** service in the same Railway project, not a managed provider (R2/S3/Wasabi) — see the decision record there for why.
+
+```text
+Railway Project
+├── web
+├── api
+├── Postgres
+└── minio   (minio/minio image)  → public URL, bucket "lms-uploads"
+```
+
+- **Service**: `minio`, image `minio/minio`, start command `minio server /data --console-address ":9001"`.
+- **Volume**: persistent volume mounted at `/data` (holds `.minio.sys` + one directory per bucket).
+- **Public domain**: generated for container port `9000` (the S3 API port). This must stay public — uploads use presigned URLs that the browser PUTs to directly, not proxied through `api`.
+- **Credentials**: `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`, set as Railway variables on the `minio` service (generated once at setup, not stored in this repo).
+- **Bucket**: `lms-uploads`. MinIO does **not** auto-create buckets on boot — see "Recreating the bucket" below if it's ever missing.
+- **`api` wiring**: `api`'s `S3_*` variables (see reference table below) reference the `minio` service's credentials via Railway variable syntax (`${{minio.MINIO_ROOT_USER}}` etc.), so they stay in sync if the root credentials are ever rotated.
+
+### Recreating the bucket
+
+If `GET /api/v1/health/ready` reports storage as not ready, the bucket may be missing. Confirm by checking the `minio` service's volume contents (Railway dashboard → `minio` → volume) for a `lms-uploads` directory.
+
+To recreate it, run a one-off job against MinIO's private network address (`http://minio.railway.internal:9000`) using the `mc` client. Two gotchas hit during initial setup, worth avoiding:
+
+1. The `minio/mc` Docker image has `ENTRYPOINT ["mc"]` baked in — a custom Railway start command gets appended *after* that entrypoint, so `mc mb ...` as a start command actually runs as `mc mb ...` prefixed by another `mc`, which just prints `--help`. Use a shell-based image (e.g. `alpine`) and install/invoke `mc` explicitly instead of relying on the `minio/mc` image's entrypoint.
+2. Deploy status showing `SUCCESS` does **not** mean the command inside actually ran or succeeded — it only means the container started. Verify bucket creation by inspecting the volume directly (or hitting `/api/v1/health/ready`), not by trusting deploy logs/status alone — logs on one-off jobs were unreliable during setup (stale/duplicated output across redeploys).
+
+### Cost / risk tradeoffs (accepted for this project's scale)
+
+This is a single-instance, self-hosted setup with no automated backup/replication beyond Railway's own volume snapshots — acceptable for a personal/pilot-scale project, not for one with real user data at stake. If usage grows, migrate to a managed provider (R2 recommended for egress cost) by changing only the `S3_*` env vars on `api` — the upload code is S3-API-generic (`apps/api/src/modules/upload/upload.service.ts`), no code changes needed.
 
 ---
 
@@ -254,12 +290,15 @@ Dashboard → service → **Deployments** tab → click any previous deploy → 
 | `JWT_SECRET` | ✅ | Min 32 chars, used for signing access tokens |
 | `FRONTEND_URL` | ✅ | Web service public URL (for CORS) |
 | `NODE_ENV` | ✅ | Set to `production` |
-| `S3_ENDPOINT` | ☐ | S3-compatible endpoint URL |
-| `S3_BUCKET` | ☐ | Bucket name |
-| `S3_ACCESS_KEY_ID` | ☐ | Access key |
-| `S3_SECRET_ACCESS_KEY` | ☐ | Secret key |
+| `API_PORT` | ✅ | Must match the Railway service's Public Networking port (`3000` in production — see Troubleshooting) |
+| `TRUST_PROXY` | ☐ | Set when the API sits behind Railway's/nginx's reverse proxy, so client IP resolution (rate limiting) uses `X-Forwarded-For` correctly |
+| `ALLOW_IN_MEMORY_RATE_LIMIT` | ☐ | Set to `true` when no Redis service is provisioned, to allow the in-memory rate-limit fallback instead of failing startup |
+| `S3_ENDPOINT` | ☐ | S3-compatible endpoint URL — the `minio` service's public domain in production, see "File storage" above |
+| `S3_BUCKET` | ☐ | Bucket name — `lms-uploads` in production |
+| `S3_ACCESS_KEY_ID` | ☐ | Access key — references `minio`'s `MINIO_ROOT_USER` in production |
+| `S3_SECRET_ACCESS_KEY` | ☐ | Secret key — references `minio`'s `MINIO_ROOT_PASSWORD` in production |
 | `S3_REGION` | ☐ | Default: `auto` |
-| `S3_FORCE_PATH_STYLE` | ☐ | Default: `false` (set `true` for MinIO) |
+| `S3_FORCE_PATH_STYLE` | ☐ | `true` in production (required for MinIO) |
 
 ### Web service
 

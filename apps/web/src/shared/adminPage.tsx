@@ -1,7 +1,13 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
+import { AccountSwitcher } from './accountSwitcher.js';
+import { LanguageSwitcher } from './learnerLayout.js';
+import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
+
+const BRAND_NAME = 'LearnSpace';
 
 export type AdminNavItem = {
   label: string;
@@ -14,29 +20,31 @@ type AdminSidebarSection = {
   items: readonly { label: string; href: string }[];
 };
 
-const ADMIN_NAV: readonly AdminSidebarSection[] = [
-  {
-    label: 'Управление',
-    items: [
-      { label: 'Дашборд', href: '/admin' },
-      { label: 'Курсы', href: '/admin/courses' },
-      { label: 'Уроки', href: '/admin/lessons' },
-      { label: 'Материалы', href: '/admin/materials' },
-      { label: 'Тесты', href: '/admin/assessments' },
-      { label: 'Пользователи', href: '/admin/users' },
-      { label: 'Назначения', href: '/admin/assignments' },
-      { label: 'Результаты', href: '/admin/results' },
-    ],
-  },
-  {
-    label: 'Настройки',
-    items: [
-      { label: 'Структура орг.', href: '/admin/org-structure' },
-      { label: 'Роли', href: '/admin/roles' },
-      { label: 'Оформление', href: '/admin/theme-settings' },
-    ],
-  },
-] as const;
+function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
+  return [
+    {
+      label: t('admin.nav.managementSection', 'Management'),
+      items: [
+        { label: t('admin.nav.dashboard', 'Dashboard'), href: '/admin' },
+        { label: t('admin.nav.courses', 'Courses'), href: '/admin/courses' },
+        { label: t('admin.nav.lessons', 'Lessons'), href: '/admin/lessons' },
+        { label: t('admin.nav.materials', 'Materials'), href: '/admin/materials' },
+        { label: t('admin.nav.assessments', 'Assessments'), href: '/admin/assessments' },
+        { label: t('admin.nav.users', 'Users'), href: '/admin/users' },
+        { label: t('admin.nav.assignments', 'Assignments'), href: '/admin/assignments' },
+        { label: t('admin.nav.results', 'Results'), href: '/admin/results' },
+      ],
+    },
+    {
+      label: t('admin.nav.settingsSection', 'Settings'),
+      items: [
+        { label: t('admin.nav.orgStructure', 'Org structure'), href: '/admin/org-structure' },
+        { label: t('admin.nav.roles', 'Roles'), href: '/admin/roles' },
+        { label: t('admin.nav.themeSettings', 'Theme settings'), href: '/admin/theme-settings' },
+      ],
+    },
+  ];
+}
 
 type AdminPageLayoutProps = {
   brandLabel: string;
@@ -62,6 +70,15 @@ export function AdminPageLayout({
   function closeNavigation() {
     setIsOpen(false);
     menuButtonRef.current?.focus();
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      /* ignore */
+    }
+    window.location.href = '/login';
   }
 
   const currentHrefs = new Set(
@@ -99,7 +116,7 @@ export function AdminPageLayout({
       <div className="admin-mobile-bar">
         <button
           aria-expanded={isOpen}
-          aria-label="Open navigation"
+          aria-label={t('a11y.openNav', 'Open navigation')}
           className="admin-hamburger"
           onClick={() => {
             setIsOpen(true);
@@ -110,7 +127,7 @@ export function AdminPageLayout({
         >
           ☰
         </button>
-        <span className="admin-mobile-brand">{brandLabel}</span>
+        <span className="admin-mobile-brand">{BRAND_NAME}</span>
       </div>
 
       {isOpen && (
@@ -128,14 +145,14 @@ export function AdminPageLayout({
       >
         <div className="admin-sidebar-header">
           <a className="admin-brand" href="/admin">
-            <span className="admin-brand__logo">{brandLabel[0]}</span>
+            <span className="admin-brand__logo">{BRAND_NAME[0]}</span>
             <span className="admin-brand__text">
-              <span>{brandLabel}</span>
-              <span className="admin-brand__role">Admin Panel</span>
+              <span>{BRAND_NAME}</span>
+              <span className="admin-brand__role">{brandLabel}</span>
             </span>
           </a>
           <button
-            aria-label="Close navigation"
+            aria-label={t('a11y.closeNav', 'Close navigation')}
             className="admin-sidebar-close"
             onClick={closeNavigation}
             ref={closeButtonRef}
@@ -146,7 +163,7 @@ export function AdminPageLayout({
         </div>
 
         <nav className="admin-nav">
-          {ADMIN_NAV.map((section) => (
+          {getAdminNav(t).map((section) => (
             <div className="admin-nav-section" key={section.label}>
               <div className="admin-nav-section-label">{section.label}</div>
               {section.items.map((item) => (
@@ -163,14 +180,9 @@ export function AdminPageLayout({
           ))}
         </nav>
 
-        {currentUser ? (
-          <div className="admin-sidebar-footer">
+        <div className="admin-sidebar-footer">
+          {currentUser ? (
             <div className="admin-sidebar-user">
-              <Avatar
-                firstName={currentUser.firstName}
-                lastName={currentUser.lastName}
-                size="sm"
-              />
               <div className="admin-sidebar-user__info">
                 <div className="admin-sidebar-user__name">
                   {[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')}
@@ -178,25 +190,72 @@ export function AdminPageLayout({
                 <div className="admin-sidebar-user__email">{currentUser.email}</div>
               </div>
             </div>
+          ) : null}
+          <div className="admin-sidebar-footer__mobile-actions">
+            <AccountSwitcher />
+            <LanguageSwitcher />
+            <button
+              className="admin-sidebar-logout"
+              onClick={() => { void handleLogout(); }}
+              type="button"
+            >
+              {t('nav.logout')}
+            </button>
           </div>
-        ) : null}
+        </div>
       </aside>
 
-      <main className="admin-shell" id="main-content" tabIndex={-1}>{children}</main>
+      <header className="admin-topheader">
+        <nav aria-label={t('a11y.breadcrumb', 'Breadcrumb')} className="admin-breadcrumbs">
+          {navItems.map((item, index) =>
+            index === navItems.length - 1 ? (
+              <span aria-current="page" key={item.href}>{item.label}</span>
+            ) : (
+              <span key={item.href}>
+                <a href={item.href}>{item.label}</a>
+                <span aria-hidden="true"> / </span>
+              </span>
+            ),
+          )}
+        </nav>
+        <div className="admin-topheader__actions">
+          <span aria-hidden="true" className="admin-topheader__bell">🔔</span>
+          <AccountSwitcher />
+          <LanguageSwitcher />
+          <button
+            className="admin-topheader__logout"
+            onClick={() => { void handleLogout(); }}
+            type="button"
+          >
+            {t('nav.logout')}
+          </button>
+          {currentUser ? (
+            <span title={`${[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')} — ${currentUser.email}`}>
+              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} size="sm" />
+            </span>
+          ) : null}
+        </div>
+      </header>
+
+      <main className="admin-shell" id="main-content" tabIndex={-1}>
+        <div className="admin-shell__inner">{children}</div>
+      </main>
     </div>
   );
 }
 
 type AdminPageHeaderProps = {
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   action?: ReactNode;
 };
 
-export function AdminPageHeader({ title, subtitle, action }: AdminPageHeaderProps) {
+export function AdminPageHeader({ eyebrow, title, subtitle, action }: AdminPageHeaderProps) {
   return (
     <header className="admin-topbar">
       <div>
+        {eyebrow ? <p className="admin-topbar__eyebrow">{eyebrow}</p> : null}
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>

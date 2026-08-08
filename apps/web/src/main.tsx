@@ -6,11 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './app/App.js';
 import './i18n/index.js';
 import { applyThemeSettings, getStoredThemeSettings } from './shared/theme.js';
-import './styles/global.css';
-import './styles/ui.css';
-import './styles/login-prototype-final-alignment.css';
-import './styles/login-remember-checkbox-fix.css';
-import './styles/public-home.css';
+import './styles/index.css';
 
 applyThemeSettings(getStoredThemeSettings());
 

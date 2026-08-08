@@ -6,6 +6,8 @@ This document defines what must be true before the LMS MVP can be considered rea
 
 The MVP is not a full production release. It is a stable pilot baseline for validating core learning workflows with a small tenant and known users.
 
+**[2026-08-06] Status:** every "Required" checklist item below is satisfied — the project has grown well past this minimum bar. This document predates `docs/MVP_SCOPE_LOCK.md`'s full scope (which added notifications, audit log, richer reports, RBAC object-level scoping, etc.) and describes an earlier, lighter definition of "done." Where the two disagree, `docs/MVP_SCOPE_LOCK.md` §0 is the current, more complete picture — treat this document as the historical minimum bar that was cleared, not the current target.
+
 ## MVP scope
 
 The MVP is done when the project supports the following end-to-end workflows:
@@ -33,11 +35,11 @@ Required:
 
 Not required for MVP DoD:
 
-- Full password reset delivery.
-- Refresh token/logout flow.
-- Production-grade file storage.
-- Production deployment automation.
-- Advanced reporting.
+- Full password reset delivery. **Still true (2026-08-06)** — `docs/PASSWORD_RESET_STATUS.md`, endpoints still return `503`.
+- ~~Refresh token/logout flow.~~ **Done (2026-08-06)** — implemented since (`Session.refreshTokenHash`, `POST /auth/refresh`, `POST /auth/logout-all`), no longer an exemption.
+- ~~Production deployment automation.~~ **Done (2026-08-06)** — Railway deployment is live and used, not just "foundation."
+- Production-grade file storage. **Still true (2026-08-06)** — see `docs/STORAGE_UPLOAD_STATUS.md` for the current constraints.
+- Advanced reporting. **Still true (2026-08-06)** — no dedicated reports module; covered functionally by admin/manager pages over `/progress` and `/certificates`.
 
 ## Frontend readiness
 
@@ -81,10 +83,10 @@ Required docs before pilot:
 - MVP Definition of Done.
 - Pilot Checklist.
 - Local runbook.
-- RBAC matrix.
+- RBAC matrix (`docs/API_RBAC_MATRIX.md`).
 - API contracts.
 - Current API status.
-- Project log.
+- Project changelog — **[2026-08-06]** `docs/PROJECT_LOG.md` retired (stopped at PR 42 of 505+); `docs/DEVELOPMENT_PLAN.md`'s "Факт:" entries have served this role since.
 
 ## Test readiness
 

@@ -112,6 +112,7 @@ model Organization {
   slug                            String                         @unique
   status                          OrganizationStatus             @default(active)
   plan                            OrganizationPlan               @default(trial)
+  themeSettings                   Json?                          @map("theme_settings")
   createdAt                       DateTime                       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                       DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                       DateTime?                      @map("deleted_at") @db.Timestamptz
@@ -180,6 +181,7 @@ model Group {
   name           String
   slug           String
   description    String?
+  location       String?
   status         GroupStatus  @default(active)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
@@ -196,10 +198,11 @@ model Group {
 }
 
 model GroupMember {
-  groupId        String   @map("group_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  groupId        String    @map("group_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -211,10 +214,11 @@ model GroupMember {
 }
 
 model ManagerGroup {
-  groupId        String   @map("group_id") @db.Uuid
-  managerId      String   @map("manager_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  groupId        String    @map("group_id") @db.Uuid
+  managerId      String    @map("manager_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   manager      User         @relation(fields: [managerId], references: [id], onDelete: Cascade)
@@ -231,6 +235,8 @@ model Course {
   title          String
   slug           String
   description    String?
+  category       String?
+  durationMinutes Int?            @map("duration_minutes")
   status         CourseStatus     @default(draft)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
@@ -251,10 +257,11 @@ model Course {
 }
 
 model CourseInstructor {
-  courseId       String   @map("course_id") @db.Uuid
-  instructorId   String   @map("instructor_id") @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  assignedAt     DateTime @default(now()) @map("assigned_at") @db.Timestamptz
+  courseId       String    @map("course_id") @db.Uuid
+  instructorId   String    @map("instructor_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  assignedAt     DateTime  @default(now()) @map("assigned_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
   instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
@@ -273,6 +280,7 @@ model Lesson {
   title          String
   slug           String
   description    String?
+  type           String       @default("text")
   order          Int          @default(0)
   status         LessonStatus @default(draft)
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz

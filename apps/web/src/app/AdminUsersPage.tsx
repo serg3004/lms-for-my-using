@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import type { FormValidationErrors } from '../shared/formValidation.js';
@@ -11,13 +12,13 @@ import { EMPTY_USER_FORM, toEditUserForm, withoutPassword, type AdminUserSummary
 import { useAdminUserMutations } from '../features/admin-users/useAdminUserMutations.js';
 import { useAdminUsers } from '../features/admin-users/useAdminUsers.js';
 import { validateUserForm } from '../features/admin-users/validation.js';
-import '../styles/admin.css';
-
-const navItems: AdminNavItem[] = [
-  { label: 'Admin dashboard', href: '/admin' }, { label: 'Users', href: '/admin/users', isCurrent: true },
-];
 
 export function AdminUsersPage() {
+  const { t } = useTranslation();
+  const navItems: AdminNavItem[] = [
+    { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
+    { label: t('admin.users.title', 'Users'), href: '/admin/users', isCurrent: true },
+  ];
   const usersQuery = useAdminUsers();
   const mutations = useAdminUserMutations(usersQuery.reload);
   const [form, setForm] = useState<UserForm>(EMPTY_USER_FORM);
@@ -36,7 +37,7 @@ export function AdminUsersPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!mode || usersQuery.state.status !== 'loaded') return;
-    const nextErrors = validateUserForm(form, mode);
+    const nextErrors = validateUserForm(form, mode, t);
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
     setMessage(null);
@@ -49,13 +50,18 @@ export function AdminUsersPage() {
     }
   }
 
-  if (usersQuery.state.status === 'idle' || usersQuery.state.status === 'loading') return <main className="admin-state"><PageState message="Loading users..." variant="loading" /></main>;
-  if (usersQuery.state.status === 'unauthenticated' || usersQuery.state.status === 'error') return <main className="admin-state"><PageState title="Users" message={usersQuery.state.message} variant="error" /></main>;
+  if (usersQuery.state.status === 'idle' || usersQuery.state.status === 'loading') return <main className="admin-state"><PageState message={t('admin.users.loading', 'Loading users...')} variant="loading" /></main>;
+  if (usersQuery.state.status === 'unauthenticated' || usersQuery.state.status === 'error') return <main className="admin-state"><PageState title={t('admin.users.title', 'Users')} message={usersQuery.state.message} variant="error" /></main>;
   if (usersQuery.state.status !== 'loaded') return null;
   const loadedState = usersQuery.state;
 
-  return <AdminPageLayout brandLabel="Admin" sidebarLabel="Admin navigation" navItems={navItems}>
-    <AdminPageHeader title="Users" subtitle="Manage organization users and their roles." action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">Create user</button>} />
+  return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
+    <AdminPageHeader
+      eyebrow={t('admin.users.eyebrow', 'Access management')}
+      title={t('admin.users.title', 'Users')}
+      subtitle={t('admin.users.subtitle', 'Manage organization users and their roles.')}
+      action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button>}
+    />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void mutations.toggleStatus(user)} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />

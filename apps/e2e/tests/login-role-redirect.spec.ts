@@ -61,32 +61,50 @@ test.describe('login and role redirects', () => {
   });
 
   test('an expired access cookie is refreshed before the protected route renders', async ({ context, page }) => {
+    // This is the only test in the suite whose assertions depend on three sequential real
+    // network round-trips (401 on /auth/me -> POST /auth/refresh -> retry /auth/me) plus the
+    // React re-renders between them, so it has far less slack than the default 30s budget
+    // gives every other test here. Give it extra headroom instead of sharing the same margin.
+    test.setTimeout(60_000);
+
     await loginAs(page, 'learner');
     await expect(page).toHaveURL(/\/learn$/);
 
     const accessCookie = (await context.cookies()).find(({ name }) => name === 'lms_access_token');
     expect(accessCookie).toBeDefined();
+
+    // Stop the authenticated app before replacing its access cookie. Otherwise the already
+    // mounted learner page can issue a background API request in the small window between
+    // addCookies() and waitForResponse(), refresh the cookie early, and make the later
+    // navigation skip the 401 -> refresh sequence this test is supposed to observe.
+    await page.goto('about:blank');
     await context.addCookies([{ ...accessCookie!, value: 'expired.e2e.access-token' }]);
 
-    const authStatuses: Array<{ path: string; status: number }> = [];
+    const refreshResponses: number[] = [];
     page.on('response', (response) => {
-      const path = new URL(response.url()).pathname;
-      if (path === '/api/v1/auth/me' || path === '/api/v1/auth/refresh') {
-        authStatuses.push({ path, status: response.status() });
-      }
+      if (new URL(response.url()).pathname === '/api/v1/auth/refresh') refreshResponses.push(response.status());
     });
 
+    // Wait on each network round-trip separately (registered before the navigation that
+    // triggers them) so a failure names exactly which step stalled, instead of a single
+    // expect.poll timing out over the whole chain with no indication of where it broke.
+    const expiredAccessRejected = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/me' && response.status() === 401,
+    );
+    const refreshSucceeded = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/refresh' && response.status() === 201,
+    );
+    const retrySucceeded = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/v1/auth/me' && response.status() === 200,
+    );
+
     await page.goto('/learn/courses');
+
+    await expiredAccessRejected;
+    await refreshSucceeded;
+    await retrySucceeded;
     await expect(page).toHaveURL(/\/learn\/courses$/);
-    await expect.poll(() => ({
-      expiredAccessRejected: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 401),
-      refreshSucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/refresh' && status === 201),
-      retrySucceeded: authStatuses.some(({ path, status }) => path === '/api/v1/auth/me' && status === 200),
-    })).toEqual({
-      expiredAccessRejected: true,
-      refreshSucceeded: true,
-      retrySucceeded: true,
-    });
-    expect(authStatuses.filter(({ path }) => path === '/api/v1/auth/refresh')).toHaveLength(1);
+
+    expect(refreshResponses).toEqual([201]);
   });
 });

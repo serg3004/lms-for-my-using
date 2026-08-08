@@ -2669,7 +2669,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 203 — CSS architecture и Stylelint 🔲
+## PR 203 — CSS architecture и Stylelint ✅
 
 **Проблема:** Большие глобальные CSS создают конфликты и усложняют удаление правил.
 
@@ -2683,9 +2683,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Import order не влияет на компоненты
 - Bundle контролируется.
 
+> **Факт:** CSS подключается через единый `styles/index.css` с фиксированными
+> cascade layers; route-компоненты больше не управляют порядком каскада. Все
+> custom properties вынесены в `tokens.css`. Stylelint проверяет корректность и
+> потолок specificity, дополнительный architecture guard — named-layer imports
+> и уникальность tokens, а production build — лимит CSS bundle 80 KiB.
+
 ---
 
-## PR 204 — Frontend coverage roadmap 🔲
+## PR 204 — Frontend coverage roadmap ✅
 
 **Проблема:** Threshold около 25% недостаточен для role-based LMS.
 
@@ -2699,9 +2705,16 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Business files не исключены
 - CI ловит регрессию.
 
+> **Факт:** Зафиксирован baseline 34.25/36.01/29.65/37.67 и первый gate 40%
+> для statements/branches/functions/lines. Добавлены проверки role/redirect,
+> route error boundary, theme/session/domain API, form errors и page states.
+> Assessment-taking calculations вынесены в отдельную model с собственным
+> порогом 80% по всем метрикам. Следующие этапы 50% и 65% описаны в
+> `docs/FRONTEND_COVERAGE_ROADMAP.md`; business source files не исключались.
+
 ---
 
-## PR 205 — Shared package tests/contracts 🔲
+## PR 205 — Shared package tests/contracts ✅
 
 **Проблема:** Shared test проходит с `--passWithNoTests`, contracts не имеют собственных проверок.
 
@@ -2714,6 +2727,13 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Roles синхронны
 - Breaking contracts обнаруживаются
 - Циклических зависимостей нет.
+
+> Реализовано: `@lms/shared` запускает обязательные contract tests и coverage без
+> `--passWithNoTests`; pagination, roles/locales, API error envelope и paginated
+> DTO имеют проверки. API и web используют focused package exports, роль имеет
+> единый runtime schema, а boundary test запрещает зависимости от applications и
+> циклы внутри shared. Правила ownership и команды проверки зафиксированы в
+> `docs/SHARED_CONTRACTS.md`.
 
 ---
 

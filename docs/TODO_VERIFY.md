@@ -23,16 +23,16 @@ DONE — реализовано и подтверждено в коде/тест
 
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
-| TV-001 | Backend framework | NestJS | PROPOSED | Лучше для modular monolith, DI, guards, RBAC, AI-agent readability. |
-| TV-002 | ORM / migration tool | Prisma | PROPOSED | Быстрый старт, понятные миграции, хорошо для TypeScript. |
-| TV-003 | Frontend setup | React + Vite + TypeScript | PROPOSED | Проще Next.js для MVP без SSR. |
-| TV-004 | UI library | shadcn/ui + Tailwind или простой custom UI | TODO VERIFY | Нужно выбрать до активной frontend-разработки. |
-| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | PROPOSED | MVP использует stateless JWT access token. Refresh/session store deferred. |
-| TV-006 | Password hashing | Argon2id или bcrypt | PROPOSED | Выбрать библиотеку перед auth implementation. |
-| TV-007 | Local object storage | MinIO | PROPOSED | S3-compatible, удобно для local dev. |
-| TV-008 | Production object storage | Cloudflare R2 / AWS S3 / Wasabi | TODO VERIFY | Зависит от бюджета и региона. |
+| TV-001 | Backend framework | NestJS | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — реализовано и в проде с первого коммита, статус PROPOSED не отражал реальность. |
+| TV-002 | ORM / migration tool | Prisma | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется как единственный ORM, миграции применяются в проде. |
+| TV-003 | Frontend setup | React + Vite + TypeScript | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь `apps/web` на этом стеке. |
+| TV-004 | UI library | Custom UI | ACCEPTED | Реализовано как обычные CSS-классы + CSS custom properties для темизации (`shared/theme.ts`, `tokens.css`), без Tailwind/shadcn-зависимостей. |
+| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | ACCEPTED | **[2026-08-06]** Refresh token больше не «later» — реализован (`Session.refreshTokenHash`/`refreshExpiresAt`, `POST /auth/refresh`, ротация), см. `docs/AUTH_SESSION_STORE_DESIGN.md`, `docs/AUTH_TOKEN_REVOCATION.md`. |
+| TV-006 | Password hashing | Argon2id или bcrypt | DONE | **[2026-08-06]** Реализовано, но не одним из предложенных вариантов: `apps/api/src/modules/auth/passwords.ts` использует `scrypt` из `node:crypto` (без внешней зависимости), а не bcrypt/Argon2id. Решение принято, но никогда не было явно записано как выбор именно scrypt. |
+| TV-007 | Local object storage | MinIO | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется локально и на Railway (см. TV-008). |
+| TV-008 | Production object storage | MinIO on Railway | ACCEPTED | Развёрнут как отдельный сервис в том же Railway-проекте (bucket `lms-uploads`), настроен через стандартные S3_* переменные `api`. Личный/пилотный проект, self-hosted вариант выбран сознательно вместо R2/S3/Wasabi — код уже на S3 API, миграция на управляемого провайдера в будущем не потребует правок кода. |
 | TV-009 | Deployment target | Railway-first | ACCEPTED | Production/staging через Railway, Docker portability обязательно. |
-| TV-010 | Package manager | pnpm workspaces | PROPOSED | Удобно для monorepo. |
+| TV-010 | Package manager | pnpm workspaces | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь монорепо на pnpm workspaces. |
 
 ---
 
@@ -69,7 +69,7 @@ DONE — реализовано и подтверждено в коде/тест
 | ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
 |---|---|---|---|---|
 | TV-025 | API base path | `/api/v1` | ACCEPTED | REST/JSON. |
-| TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 100. |
+| TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 200 (bumped from 100: 12 frontend call sites request `pageSize=200` to populate full dropdown/context lists, and the mismatch was causing live 400 errors on multiple admin/learner pages — see `pagination.schema.ts`). |
 | TV-027 | Error format | `{ error: { code, message, details, requestId } }` | PROPOSED | Удобно для frontend и debugging. |
 | TV-028 | DTO validation | Zod | DONE | Runtime validation uses Zod schemas in auth/API areas touched so far. |
 | TV-029 | OpenAPI generation | После стабилизации первых endpoints | DEFERRED | Не блокирует MVP foundation. |
@@ -132,7 +132,7 @@ DONE — реализовано и подтверждено в коде/тест
 | TV-051 | Staging нужен сразу? | Да, если Railway budget позволяет | PROPOSED | Иначе local + production позже. |
 | TV-052 | Web hosting | Railway service или static hosting | TODO VERIFY | Зависит от выбранной схемы. |
 | TV-053 | DB migrations in deploy | Manual controlled command first | PROPOSED | Не запускать risky migrations автоматически без контроля. |
-| TV-054 | Backups | Railway/DB provider backups + documented restore | TODO VERIFY | До пилота обязательно. |
+| TV-054 | Backups | Railway scheduled volume backups (Postgres + MinIO) | DEFERRED | Railway поддерживает scheduled volume backups и опционально Point-in-Time Recovery для Postgres (Backups tab, включается только из дашборда — недоступно через API/MCP). Сознательно не включено сейчас: личный/пилотный проект, потеря данных приемлема на этой стадии. Включить перед тем как появятся реальные пользователи/данные, которые жалко потерять. |
 | TV-055 | Observability | logs + healthcheck in MVP | PROPOSED | Sentry/OpenTelemetry позже. |
 
 ---
@@ -149,11 +149,13 @@ ACCEPTED:
 - DB: PostgreSQL
 - ORM: Prisma
 - Storage local: MinIO
+- Storage production: MinIO on Railway (bucket `lms-uploads`, self-hosted alongside api/web/Postgres)
 - Deployment: Railway-first
 - Portability: Docker
 - MVP AI: out of scope
 - Mobile app: out of MVP
 - Auth current state: stateless JWT access token with hardened verification and current-user lookup bound to JWT subject
+- UI library: Custom UI (plain CSS + CSS custom properties for theming), no Tailwind/shadcn
 ```
 
 ---

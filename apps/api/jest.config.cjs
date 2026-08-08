@@ -2,6 +2,10 @@ module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
+    '^@lms/shared/constants/roles$': '<rootDir>/../../packages/shared/src/constants/roles.ts',
+    '^@lms/shared/constants/locales$': '<rootDir>/../../packages/shared/src/constants/locales.ts',
+    '^@lms/shared/schemas/pagination$': '<rootDir>/../../packages/shared/src/schemas/pagination.schema.ts',
+    '^@lms/shared/types/api$': '<rootDir>/../../packages/shared/src/types/api.ts',
     '^\\./api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\.\\./common/filters/api-exception\\.filter\\.js$': '<rootDir>/src/common/filters/api-exception.filter.ts',
     '^\\.\\./api-response\\.js$': '<rootDir>/src/common/api-response.ts',

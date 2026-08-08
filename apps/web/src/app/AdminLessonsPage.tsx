@@ -1,17 +1,27 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { filterLessons, parseLessonOrder } from './admin-lessons/model.js';
 import { slugify } from '../shared/slugify.js';
-import { sortLessons } from '../shared/sortLessons.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
+import { Badge, Button, EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; slug: string; status: string };
-type Lesson = { id: string; title: string; slug: string; description: string | null; order: number; status: string };
+type Lesson = {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  type: string;
+  order: number;
+  status: string;
+  courseId: string;
+  course: { title: string };
+};
 
 type LoadState =
   | { status: 'loading' }
@@ -19,16 +29,37 @@ type LoadState =
   | { status: 'error'; message: string };
 
 type LessonStatus = 'draft' | 'published' | 'archived';
+type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical';
 
 const LESSON_STATUSES: LessonStatus[] = ['draft', 'published', 'archived'];
+const LESSON_TYPES: LessonType[] = ['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical'];
 
+const LESSON_TYPE_LABEL_KEYS: Record<LessonType, string> = {
+  video: 'typeVideo',
+  text: 'typeText',
+  test: 'typeTest',
+  checklist: 'typeChecklist',
+  workplace_check: 'typeWorkplaceCheck',
+  photo: 'typePhoto',
+  practical: 'typePractical',
+};
+
+function lessonTypeLabel(t: TFunction, type: string) {
+  const labelKey = LESSON_TYPE_LABEL_KEYS[type as LessonType] ?? 'typeText';
+  return t(`admin.lessons.${labelKey}`, type);
+}
 
 export function AdminLessonsPage() {
   const { t } = useTranslation();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | LessonType>('all');
 
+  const createDialogRef = useRef<HTMLDialogElement>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [createCourseId, setCreateCourseId] = useState('');
   const [title, setTitle] = useState('');
+  const [type, setType] = useState<LessonType>('text');
   const [description, setDescription] = useState('');
   const [order, setOrder] = useState('0');
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
@@ -39,6 +70,7 @@ export function AdminLessonsPage() {
   const editDialogRef = useRef<HTMLDialogElement>(null);
   const [editLesson, setEditLesson] = useState<Lesson | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [editType, setEditType] = useState<LessonType>('text');
   const [editDescription, setEditDescription] = useState('');
   const [editOrder, setEditOrder] = useState('0');
   const [editStatus, setEditStatus] = useState<LessonStatus>('draft');
@@ -47,16 +79,15 @@ export function AdminLessonsPage() {
   });
   const [editErrors, setEditErrors] = useState<FormValidationErrors<'title'>>({});
 
-  const loadLessons = useCallback(async (courseId?: string) => {
+  const load = useCallback(async () => {
     try {
-      const { items: courses } = await apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200');
-      const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');
-      const lessons = nextCourseId
-        ? await apiRequest<Lesson[]>(`/courses/${encodeURIComponent(nextCourseId)}/lessons`)
-        : [];
+      const [{ items: courses }, { items: lessons }] = await Promise.all([
+        apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
+        apiRequest<PaginatedResponse<Lesson>>('/lessons?pageSize=200'),
+      ]);
 
-      setSelectedCourseId(nextCourseId);
-      setLoadState({ status: 'loaded', courses, lessons: sortLessons(lessons) });
+      setLoadState({ status: 'loaded', courses, lessons });
+      setCreateCourseId((prev) => prev || courses[0]?.id || '');
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 401
@@ -64,64 +95,64 @@ export function AdminLessonsPage() {
           : t('admin.lessons.loadError', 'Unable to load lesson editor.');
       setLoadState({ status: 'error', message });
     }
-  }, [t, selectedCourseId]);
+  }, [t]);
 
   useEffect(() => {
-    void loadLessons();
-  }, [loadLessons]);
+    void load();
+  }, [load]);
 
-  const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === selectedCourseId) : undefined;
-  }, [loadState, selectedCourseId]);
+  useEffect(() => {
+    if (showCreate) createDialogRef.current?.showModal();
+    else createDialogRef.current?.close();
+  }, [showCreate]);
 
-  async function handleCourseChange(courseId: string) {
-    setSelectedCourseId(courseId);
+  function openCreateDialog() {
+    setTitle('');
+    setType('text');
+    setDescription('');
+    setOrder('0');
+    setCreateErrors({});
     setSubmitState({ status: 'idle' });
-    await loadLessons(courseId);
+    setShowCreate(true);
   }
 
   async function handleCreateLesson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loadState.status !== 'loaded' || !selectedCourse) {
-      return;
-    }
+    if (loadState.status !== 'loaded') return;
+    const course = loadState.courses.find((c) => c.id === createCourseId);
+    if (!course) return;
 
     const lessonTitle = title.trim();
     const slug = slugify(lessonTitle);
-    const orderValue = Number(order);
 
     const errors = validateRequiredFields([{ name: 'title', value: lessonTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
     if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
     setCreateErrors({});
 
-    if (!Number.isInteger(orderValue) || orderValue < 0) {
-      setSubmitState({
-        status: 'error',
-        message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.'),
-      });
+    const orderValue = parseLessonOrder(order);
+    if (orderValue === null) {
+      setSubmitState({ status: 'error', message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.') });
       return;
     }
 
     setSubmitState({ status: 'saving' });
 
     try {
-      await apiRequest<Lesson>(`/courses/${encodeURIComponent(selectedCourse.id)}/lessons`, {
+      await apiRequest<Lesson>(`/courses/${encodeURIComponent(course.id)}/lessons`, {
         method: 'POST',
         body: JSON.stringify({
-          organizationId: selectedCourse.organizationId,
+          organizationId: course.organizationId,
           title: lessonTitle,
           slug,
+          type,
           description: description.trim() || undefined,
           order: orderValue,
           status: 'draft',
         }),
       });
-      setTitle('');
-      setDescription('');
-      setOrder(String(orderValue + 1));
-      setSubmitState({ status: 'idle' });
-      await loadLessons(selectedCourse.id);
+      setShowCreate(false);
+      await load();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
@@ -131,25 +162,10 @@ export function AdminLessonsPage() {
     }
   }
 
-  async function handleUpdateStatus(lessonId: string, newStatus: string) {
-    try {
-      const updated = await apiRequest<Lesson>(`/lessons/${encodeURIComponent(lessonId)}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: newStatus }),
-      });
-      setLoadState((prev) =>
-        prev.status === 'loaded'
-          ? { ...prev, lessons: sortLessons(prev.lessons.map((l) => (l.id === lessonId ? updated : l))) }
-          : prev,
-      );
-    } catch {
-      await loadLessons(selectedCourseId);
-    }
-  }
-
   function openEditDialog(lesson: Lesson) {
     setEditLesson(lesson);
     setEditTitle(lesson.title);
+    setEditType(lesson.type as LessonType);
     setEditDescription(lesson.description ?? '');
     setEditOrder(String(lesson.order));
     setEditStatus(lesson.status as LessonStatus);
@@ -160,49 +176,38 @@ export function AdminLessonsPage() {
 
   async function handleUpdateLesson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!editLesson) {
-      return;
-    }
+    if (!editLesson) return;
 
     const newTitle = editTitle.trim();
-    const newOrder = Number(editOrder);
 
     const titleErrors = validateRequiredFields([{ name: 'title', value: newTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
     if (hasValidationErrors(titleErrors)) { setEditErrors(titleErrors); return; }
     setEditErrors({});
 
-    if (!Number.isInteger(newOrder) || newOrder < 0) {
-      setEditState({
-        status: 'error',
-        message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.'),
-      });
+    const newOrder = parseLessonOrder(editOrder);
+    if (newOrder === null) {
+      setEditState({ status: 'error', message: t('admin.lessons.invalidInput', 'Enter a non-negative order number.') });
       return;
     }
 
     setEditState({ status: 'saving' });
 
     try {
-      const updated = await apiRequest<Lesson>(`/lessons/${encodeURIComponent(editLesson.id)}`, {
+      await apiRequest<Lesson>(`/lessons/${encodeURIComponent(editLesson.id)}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title: newTitle,
           description: editDescription.trim() || null,
+          type: editType,
           order: newOrder,
           status: editStatus,
         }),
       });
       editDialogRef.current?.close();
-      setLoadState((prev) =>
-        prev.status === 'loaded'
-          ? { ...prev, lessons: sortLessons(prev.lessons.map((l) => (l.id === editLesson.id ? updated : l))) }
-          : prev,
-      );
+      setEditLesson(null);
+      await load();
     } catch {
-      setEditState({
-        status: 'error',
-        message: t('admin.lessons.editError', 'Unable to update lesson.'),
-      });
+      setEditState({ status: 'error', message: t('admin.lessons.editError', 'Unable to update lesson.') });
     }
   }
 
@@ -217,14 +222,16 @@ export function AdminLessonsPage() {
   if (loadState.status === 'error') {
     return (
       <main className="admin-state">
-        <PageState title={t('admin.lessons.title', 'Lesson editor')} message={loadState.message} variant="error" />
+        <PageState title={t('admin.lessons.title', 'Lessons')} message={loadState.message} variant="error" />
       </main>
     );
   }
 
+  const filteredLessons = filterLessons(loadState.lessons, search, typeFilter);
+
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
-    { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons', isCurrent: true },
+    { label: t('admin.lessons.title', 'Lessons'), href: '/admin/lessons', isCurrent: true },
   ];
 
   return (
@@ -234,86 +241,108 @@ export function AdminLessonsPage() {
       navItems={navItems}
     >
       <AdminPageHeader
-        title={t('admin.lessons.title', 'Lesson editor')}
-        subtitle={t('admin.lessons.subtitle', 'Create and edit lessons, control display order and status.')}
-        action={<a href="/admin">{t('admin.lessons.backToDashboard', 'Back to dashboard')}</a>}
+        eyebrow={t('admin.lessons.eyebrow', 'Learning content')}
+        title={t('admin.lessons.title', 'Lessons')}
+        subtitle={t('admin.lessons.subtitle', 'Manage lessons and publishing.')}
+        action={
+          <Button variant="primary" type="button" onClick={openCreateDialog} disabled={loadState.courses.length === 0}>
+            + {t('admin.lessons.createTitle', 'Create lesson')}
+          </Button>
+        }
       />
 
-      <section className="admin-content-grid">
-        <AdminCard>
-            <h2>{t('admin.lessons.createTitle', 'Create lesson')}</h2>
-            {loadState.courses.length === 0 ? (
-              <EmptyState message={t('admin.lessons.noCourses', 'Create a course before adding lessons.')} />
-            ) : (
-              <form className="admin-form" onSubmit={handleCreateLesson}>
-                <FormField id="lesson-create-course" label={t('admin.lessons.course', 'Course')}>
-                  <select id="lesson-create-course" value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
-                    {loadState.courses.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.title}
-                      </option>
-                    ))}
-                  </select>
-                </FormField>
-                <FormField id="lesson-create-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={createErrors.title}>
-                  <input id="lesson-create-title" aria-describedby={createErrors.title ? 'lesson-create-title-error' : undefined} aria-invalid={Boolean(createErrors.title)} value={title} onChange={(event) => { setTitle(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
-                </FormField>
-                <FormField id="lesson-create-order" label={t('admin.lessons.order', 'Order')}>
-                  <input id="lesson-create-order" value={order} onChange={(event) => setOrder(event.target.value)} inputMode="numeric" />
-                </FormField>
-                <FormField id="lesson-create-description" label={t('admin.lessons.description', 'Description')}>
-                  <textarea id="lesson-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </FormField>
-                {submitState.status === 'error' ? (
-                  <p className="admin-form__error" role="alert">
-                    {submitState.message}
-                  </p>
-                ) : null}
-                <div className="admin-form__actions">
-                  <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
-                    {submitState.status === 'saving'
-                      ? t('admin.lessons.saving', 'Creating...')
-                      : t('admin.lessons.create', 'Create draft')}
-                  </button>
-                </div>
-              </form>
-            )}
-        </AdminCard>
+      <Toolbar
+        left={
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('admin.lessons.searchPlaceholder', 'Find lesson')}
+          />
+        }
+        right={
+          <select
+            className="admin-status-select"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as 'all' | LessonType)}
+          >
+            <option value="all">{t('admin.lessons.allTypes', 'All types')}</option>
+            {LESSON_TYPES.map((lessonType) => (
+              <option key={lessonType} value={lessonType}>
+                {lessonTypeLabel(t, lessonType)}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
-        <AdminCard>
-            <h2>{t('admin.lessons.lessonsTitle', 'Lessons')}</h2>
-            <DataTable<Lesson>
-              columns={[
-                { key: 'order', label: '#', render: (l) => l.order },
-                { key: 'title', label: t('admin.lessons.col.title', 'Title'), render: (l) => l.title },
-                { key: 'slug', label: t('admin.lessons.col.slug', 'Slug'), render: (l) => l.slug },
-                { key: 'status', label: t('admin.lessons.col.status', 'Status'), render: (l) => (
-                  <select
-                    className="admin-status-select"
-                    value={l.status}
-                    onChange={(event) => void handleUpdateStatus(l.id, event.target.value)}
-                  >
-                    {LESSON_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                )},
-                { key: 'actions', label: '', render: (l) => (
-                  <button
-                    className="admin-btn admin-btn--sm admin-btn--secondary"
-                    type="button"
-                    onClick={() => openEditDialog(l)}
-                  >
-                    {t('admin.lessons.edit', 'Edit')}
-                  </button>
-                )},
-              ] satisfies Column<Lesson>[]}
-              rows={loadState.lessons}
-              keyExtractor={(l) => l.id}
-              emptyMessage={t('admin.lessons.empty', 'No lessons found for the selected course.')}
-            />
-        </AdminCard>
-      </section>
+      {filteredLessons.length === 0 ? (
+        <EmptyState message={t('admin.lessons.noResults', 'No lessons found.')} />
+      ) : (
+        <div className="admin-lesson-grid">
+          {filteredLessons.map((lesson) => (
+            <button key={lesson.id} type="button" className="admin-lesson-card" onClick={() => openEditDialog(lesson)}>
+              <Badge>{lessonTypeLabel(t, lesson.type)}</Badge>
+              <h3>{lesson.title}</h3>
+              <p>{lesson.course.title}</p>
+            </button>
+          ))}
+        </div>
+      )}
 
-      <dialog ref={editDialogRef} className="admin-dialog">
+      <dialog ref={createDialogRef} className="admin-dialog" onClose={() => setShowCreate(false)}>
+        <header className="admin-dialog__header">
+          <h2>{t('admin.lessons.createTitle', 'Create lesson')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.lessons.close', 'Close')} onClick={() => setShowCreate(false)}>
+            ×
+          </button>
+        </header>
+        {loadState.courses.length === 0 ? (
+          <EmptyState message={t('admin.lessons.noCourses', 'Create a course before adding lessons.')} />
+        ) : (
+          <form className="admin-form" onSubmit={handleCreateLesson}>
+            <FormField id="lesson-create-course" label={t('admin.lessons.course', 'Course')}>
+              <select id="lesson-create-course" value={createCourseId} onChange={(event) => setCreateCourseId(event.target.value)}>
+                {loadState.courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.title}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField id="lesson-create-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={createErrors.title}>
+              <input id="lesson-create-title" aria-describedby={createErrors.title ? 'lesson-create-title-error' : undefined} aria-invalid={Boolean(createErrors.title)} value={title} onChange={(event) => { setTitle(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+            </FormField>
+            <FormField id="lesson-create-type" label={t('admin.lessons.fieldType', 'Type')}>
+              <select id="lesson-create-type" value={type} onChange={(event) => setType(event.target.value as LessonType)}>
+                {LESSON_TYPES.map((lessonType) => (
+                  <option key={lessonType} value={lessonType}>
+                    {lessonTypeLabel(t, lessonType)}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField id="lesson-create-order" label={t('admin.lessons.order', 'Order')}>
+              <input id="lesson-create-order" value={order} onChange={(event) => setOrder(event.target.value)} inputMode="numeric" />
+            </FormField>
+            <FormField id="lesson-create-description" label={t('admin.lessons.description', 'Description')}>
+              <textarea id="lesson-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
+            </FormField>
+            {submitState.status === 'error' ? (
+              <p className="admin-form__error" role="alert">{submitState.message}</p>
+            ) : null}
+            <div className="admin-form__actions">
+              <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowCreate(false)}>
+                {t('admin.lessons.cancel', 'Cancel')}
+              </button>
+              <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
+                {submitState.status === 'saving' ? t('admin.lessons.saving', 'Creating...') : t('admin.lessons.create', 'Create draft')}
+              </button>
+            </div>
+          </form>
+        )}
+      </dialog>
+
+      <dialog ref={editDialogRef} className="admin-dialog" onClose={() => setEditLesson(null)}>
         <header className="admin-dialog__header">
           <h2>{t('admin.lessons.editTitle', 'Edit lesson')}</h2>
           <button
@@ -328,6 +357,15 @@ export function AdminLessonsPage() {
         <form className="admin-form" onSubmit={handleUpdateLesson}>
           <FormField id="lesson-edit-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={editErrors.title}>
             <input id="lesson-edit-title" aria-describedby={editErrors.title ? 'lesson-edit-title-error' : undefined} aria-invalid={Boolean(editErrors.title)} value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />
+          </FormField>
+          <FormField id="lesson-edit-type" label={t('admin.lessons.fieldType', 'Type')}>
+            <select id="lesson-edit-type" value={editType} onChange={(event) => setEditType(event.target.value as LessonType)}>
+              {LESSON_TYPES.map((lessonType) => (
+                <option key={lessonType} value={lessonType}>
+                  {lessonTypeLabel(t, lessonType)}
+                </option>
+              ))}
+            </select>
           </FormField>
           <FormField id="lesson-edit-order" label={t('admin.lessons.order', 'Order')}>
             <input id="lesson-edit-order" value={editOrder} onChange={(event) => setEditOrder(event.target.value)} inputMode="numeric" />
@@ -345,22 +383,14 @@ export function AdminLessonsPage() {
             <textarea id="lesson-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />
           </FormField>
           {editState.status === 'error' ? (
-            <p className="admin-form__error" role="alert">
-              {editState.message}
-            </p>
+            <p className="admin-form__error" role="alert">{editState.message}</p>
           ) : null}
           <div className="admin-form__actions">
-            <button className="admin-btn admin-btn--primary" type="submit" disabled={editState.status === 'saving'}>
-              {editState.status === 'saving'
-                ? t('admin.lessons.updating', 'Saving...')
-                : t('admin.lessons.update', 'Save changes')}
-            </button>
-            <button
-              className="admin-btn admin-btn--secondary"
-              type="button"
-              onClick={() => editDialogRef.current?.close()}
-            >
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={() => editDialogRef.current?.close()}>
               {t('admin.lessons.cancel', 'Cancel')}
+            </button>
+            <button className="admin-btn admin-btn--primary" type="submit" disabled={editState.status === 'saving'}>
+              {editState.status === 'saving' ? t('admin.lessons.updating', 'Saving...') : t('admin.lessons.update', 'Save changes')}
             </button>
           </div>
         </form>

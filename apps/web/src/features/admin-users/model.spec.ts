@@ -1,5 +1,7 @@
+import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
+import '../../i18n/index.js';
 import { EMPTY_USER_FORM, toEditUserForm, withoutPassword, type AdminUserSummary } from './model.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
 import { validateUserForm } from './validation.js';
@@ -13,8 +15,8 @@ const user: AdminUserSummary = {
 describe('admin users model', () => {
   it('maps a user to an edit form without a password', () => expect(toEditUserForm(user)).toMatchObject({ id: 'u1', password: '', role: 'admin', middleName: '' }));
   it('removes the password without changing non-sensitive fields', () => expect(withoutPassword({ ...EMPTY_USER_FORM, email: 'kept@example.com', password: 'Secret123!' })).toMatchObject({ email: 'kept@example.com', password: '' }));
-  it('validates create fields and password strength', () => expect(validateUserForm({ ...EMPTY_USER_FORM, email: 'bad', password: 'short' }, 'create')).toEqual({ lastName: 'Last name is required', firstName: 'First name is required', email: 'Enter a valid email address', password: 'Password must be at least 8 characters' }));
-  it('does not require a password while editing', () => expect(validateUserForm(toEditUserForm(user), 'edit')).toEqual({}));
+  it('validates create fields and password strength', () => expect(validateUserForm({ ...EMPTY_USER_FORM, email: 'bad', password: 'short' }, 'create', i18next.t)).toEqual({ lastName: 'Укажите фамилию', firstName: 'Укажите имя', email: 'Введите корректный email', password: 'Пароль должен быть не короче 8 символов' }));
+  it('does not require a password while editing', () => expect(validateUserForm(toEditUserForm(user), 'edit', i18next.t)).toEqual({}));
 });
 
 describe('admin users payload mappers', () => {

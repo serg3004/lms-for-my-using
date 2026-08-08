@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, getCurrentUser, type CurrentUser } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
@@ -18,6 +19,7 @@ export function filterAdminUsers(users: AdminUserSummary[], filters: AdminUsersF
 }
 
 export function useAdminUsers() {
+  const { t } = useTranslation();
   const [state, setState] = useState<AdminUsersLoadState>({ status: 'idle' });
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AdminUsersFilters>(EMPTY_USER_FILTERS);
@@ -31,10 +33,10 @@ export function useAdminUsers() {
       setState({ status: 'loaded', users: result.items, currentUser, total: result.total, pageSize: result.pageSize });
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 401) {
-        setState({ status: 'unauthenticated', message: 'Your session expired. Sign in again.' });
-      } else setState({ status: 'error', message: 'Unable to load users. Try again later.' });
+        setState({ status: 'unauthenticated', message: t('admin.users.sessionExpired', 'Your session expired. Sign in again.') });
+      } else setState({ status: 'error', message: t('admin.users.loadError', 'Unable to load users. Try again later.') });
     }
-  }, [page]);
+  }, [page, t]);
 
   useEffect(() => { void reload(); }, [reload]);
   const users = useMemo(() => state.status === 'loaded' ? filterAdminUsers(state.users, filters) : [], [filters, state]);

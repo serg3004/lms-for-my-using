@@ -1,8 +1,12 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { hashPassword } from '../auth/passwords.js';
-import { CreateOrganizationInput, RegisterOrganizationInput } from './organizations.schemas.js';
+import { UploadService } from '../upload/upload.service.js';
+import { CreateOrganizationInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+
+type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
 const organizationSelect = {
   id: true,
@@ -33,7 +37,10 @@ const firstAdminSelect = {
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   async listOrganizations(organizationId: string) {
     return this.prisma.organization.findMany({
@@ -109,6 +116,92 @@ export class OrganizationsService {
       organization,
       admin,
     };
+  }
+
+  async getThemeSettings(organizationId: string) {
+    const themeSettings = await this.findRawThemeSettings(organizationId);
+
+    return { themeSettings: await this.withResolvedLogoUrl(themeSettings) };
+  }
+
+  async updateThemeSettings(organizationId: string, themeSettings: ThemeSettingsInput) {
+    const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
+
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        themeSettings: {
+          ...themeSettings,
+          logoObjectKey: existing?.logoObjectKey,
+          logoMimeType: existing?.logoMimeType,
+        },
+      },
+      select: { themeSettings: true },
+    });
+
+    return { themeSettings: await this.withResolvedLogoUrl(updated.themeSettings) };
+  }
+
+  async uploadLogo(organizationId: string, file: Express.Multer.File) {
+    const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
+    const previousLogoObjectKey = existing?.logoObjectKey;
+
+    const logoObjectKey = await this.uploadService.uploadOrganizationLogo(file, organizationId);
+
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        themeSettings: { ...existing, logoObjectKey, logoMimeType: file.mimetype },
+      },
+      select: { themeSettings: true },
+    });
+
+    if (previousLogoObjectKey) {
+      await this.uploadService.deleteObject(previousLogoObjectKey).catch(() => undefined);
+    }
+
+    return { themeSettings: await this.withResolvedLogoUrl(updated.themeSettings) };
+  }
+
+  async resetThemeSettings(organizationId: string) {
+    const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
+
+    if (existing?.logoObjectKey) {
+      await this.uploadService.deleteObject(existing.logoObjectKey).catch(() => undefined);
+    }
+
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { themeSettings: Prisma.JsonNull },
+      select: { id: true },
+    });
+
+    return { themeSettings: null };
+  }
+
+  private async findRawThemeSettings(organizationId: string): Promise<Prisma.JsonValue | null> {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId, deletedAt: null },
+      select: { themeSettings: true },
+    });
+
+    if (!organization) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return organization.themeSettings;
+  }
+
+  private async withResolvedLogoUrl(themeSettings: Prisma.JsonValue | null): Promise<Prisma.JsonValue | null> {
+    const settings = themeSettings as StoredThemeSettings | null;
+
+    if (!settings?.logoObjectKey) {
+      return themeSettings;
+    }
+
+    const logoUrl = await this.uploadService.getLogoUrl(settings.logoObjectKey, settings.logoMimeType ?? 'image/png');
+
+    return { ...settings, logoUrl } as unknown as Prisma.JsonValue;
   }
 
   private async ensureOrganizationSlugIsAvailable(slug: string) {

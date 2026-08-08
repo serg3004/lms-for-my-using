@@ -27,6 +27,7 @@ import { LearnerCertificatesPage } from './LearnerCertificatesPage';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage';
 import { LearnerCoursesPage } from './LearnerCoursesPage';
 import { LearnerLessonDetailPage } from './LearnerLessonDetailPage';
+import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage';
 import { LearnerLessonsPage } from './LearnerLessonsPage';
 import { LearnerProgressPage } from './LearnerProgressPage';
 
@@ -35,11 +36,17 @@ function isIdleLoadState(value: unknown) {
 }
 
 function useLoadingState() {
-  reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => [
+    typeof initialState === 'function' ? (initialState as () => unknown)() : initialState,
+    vi.fn(),
+  ]);
 }
 
 function useReadyState(value: unknown) {
-  reactMocks.useState.mockImplementation((initialState: unknown) => [isIdleLoadState(initialState) ? value : initialState, vi.fn()]);
+  reactMocks.useState.mockImplementation((initialState: unknown) => {
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [isIdleLoadState(resolvedInitial) ? value : resolvedInitial, vi.fn()];
+  });
 }
 
 afterEach(() => {
@@ -48,6 +55,21 @@ afterEach(() => {
 });
 
 describe('learner page smoke rendering', () => {
+  it('renders lesson materials loading and loaded states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<LearnerLessonMaterialsPage lessonId="lesson-1" />)).toContain('role="status"');
+
+    useReadyState({
+      status: 'loaded',
+      lesson: {
+        id: 'lesson-1', organizationId: 'org-1', courseId: 'course-1', title: 'Fire safety', slug: 'fire-safety', description: null, order: 1, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      materials: [{
+        id: 'material-1', organizationId: 'org-1', courseId: 'course-1', lessonId: 'lesson-1', title: 'Checklist', slug: 'checklist', description: 'Inspection steps', kind: 'file', fileName: 'checklist.pdf', fileUrl: '/file.pdf', mimeType: 'application/pdf', sizeBytes: 100, status: 'active', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      }],
+    });
+    expect(renderToStaticMarkup(<LearnerLessonMaterialsPage lessonId="lesson-1" />)).toContain('Checklist');
+  });
   it('renders courses loading state without crashing', () => {
     useLoadingState();
 
@@ -127,22 +149,28 @@ describe('learner page smoke rendering', () => {
   it('renders assessments happy path without crashing', () => {
     useReadyState({
       status: 'loaded',
-      assessments: [
+      rows: [
         {
-          id: 'assessment-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          lessonId: 'lesson-1',
-          title: 'MVP Quiz',
-          slug: 'mvp-quiz',
-          description: 'Check MVP understanding',
-          status: 'published',
-          passingScore: 70,
-          maxAttempts: 3,
-          availableAfterCourseCompletion: false,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
+          assessment: {
+            id: 'assessment-1',
+            organizationId: 'org-1',
+            courseId: 'course-1',
+            lessonId: 'lesson-1',
+            title: 'MVP Quiz',
+            slug: 'mvp-quiz',
+            description: 'Check MVP understanding',
+            status: 'published',
+            passingScore: 70,
+            maxAttempts: 3,
+            availableAfterCourseCompletion: false,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
           courseTitle: 'MVP Onboarding Course',
+          questionCount: 5,
+          attemptsUsed: 0,
+          bestPercentage: null,
+          completed: false,
         },
       ],
     });
@@ -388,6 +416,62 @@ describe('learner page smoke rendering', () => {
     const html = renderToStaticMarkup(<LearnerAssessmentTakingPage assessmentId="assessment-1" />);
 
     expect(html).toContain('role="status"');
+  });
+
+  it('renders assessment taking happy path without crashing', () => {
+    const loadedAssessment = {
+      status: 'loaded',
+      assessment: {
+        id: 'assessment-1',
+        organizationId: 'org-1',
+        courseId: 'course-1',
+        lessonId: null,
+        title: 'Safety Knowledge Test',
+        slug: 'safety-knowledge-test',
+        description: null,
+        status: 'published',
+        passingScore: 70,
+        maxAttempts: 3,
+        availableAfterCourseCompletion: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+      questions: [
+        {
+          id: 'q-1',
+          type: 'single_choice',
+          title: 'What is the primary safety rule?',
+          text: null,
+          points: 1,
+          order: 1,
+          options: [
+            { id: 'opt-1', questionId: 'q-1', text: 'Always wear PPE', imageUrl: null, order: 1 },
+            { id: 'opt-2', questionId: 'q-1', text: 'Run when in doubt', imageUrl: null, order: 2 },
+          ],
+        },
+      ],
+    };
+
+    reactMocks.useState.mockImplementation((initialState: unknown) => {
+      if (
+        typeof initialState === 'object' &&
+        initialState !== null &&
+        'status' in initialState &&
+        (initialState as { status: string }).status === 'loading'
+      ) {
+        return [loadedAssessment, vi.fn()];
+      }
+      if (initialState === null) {
+        return [900, vi.fn()]; // secondsLeft — renders timer and covers formatTime
+      }
+      return [typeof initialState === 'function' ? (initialState as () => unknown)() : initialState, vi.fn()];
+    });
+
+    const html = renderToStaticMarkup(<LearnerAssessmentTakingPage assessmentId="assessment-1" />);
+
+    expect(html).toContain('Safety Knowledge Test');
+    expect(html).toContain('What is the primary safety rule?');
+    expect(html).toContain('15:00'); // formatTime(900)
   });
 
   it('renders certificate detail loading state without crashing', () => {

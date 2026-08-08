@@ -110,6 +110,23 @@ export class UsersService {
 
     const { role, ...userData } = input;
 
+    if (role !== undefined && role !== 'admin') {
+      const holdsAdmin = await this.prisma.membership.findFirst({
+        where: { organizationId, userId, role: 'admin' },
+        select: { id: true },
+      });
+
+      if (holdsAdmin) {
+        const remainingAdmins = await this.prisma.membership.count({
+          where: { organizationId, role: 'admin', userId: { not: userId } },
+        });
+
+        if (remainingAdmins === 0) {
+          throw new ConflictException('Cannot remove the last admin from the organization');
+        }
+      }
+    }
+
     return this.prisma.$transaction(async (transaction) => {
       await transaction.user.update({
         where: { id: userId, organizationId },

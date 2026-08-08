@@ -11,9 +11,8 @@ import { MaterialTable } from './materials/MaterialTable.js';
 import { MaterialMetadataForm } from './materials/MaterialMetadataForm.js';
 import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState } from '../shared/ui.js';
+import { EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
 type Lesson = { id: string; title: string; order: number };
@@ -52,10 +51,16 @@ const ACCEPTED_FILE_TYPES = [
 
 export function AdminMaterialsPage() {
   const { t } = useTranslation();
+  const statusLabels: Record<MaterialStatus, string> = {
+    active: t('admin.materials.status.active', 'Active'),
+    archived: t('admin.materials.status.archived', 'Archived'),
+  };
   const materialMutations = useMaterialMutations();
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
+  const [materialSearch, setMaterialSearch] = useState('');
+  const [materialKindFilter, setMaterialKindFilter] = useState<'all' | 'file' | 'link'>('all');
 
   // Create form
   const [title, setTitle] = useState('');
@@ -315,6 +320,7 @@ export function AdminMaterialsPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.materials.eyebrow', 'Files and resources')}
         title={t('admin.materials.title', 'Materials')}
         subtitle={t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}
         action={<a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>}
@@ -423,8 +429,33 @@ export function AdminMaterialsPage() {
 
         <AdminCard>
             <h2>{t('admin.materials.materialsTitle', 'Materials')}</h2>
+            <Toolbar
+              left={
+                <SearchInput
+                  value={materialSearch}
+                  onChange={setMaterialSearch}
+                  placeholder={t('admin.materials.searchPlaceholder', 'Search materials...')}
+                />
+              }
+              right={
+                <select
+                  className="admin-status-select"
+                  value={materialKindFilter}
+                  onChange={(e) => setMaterialKindFilter(e.target.value as 'all' | 'file' | 'link')}
+                >
+                  <option value="all">{t('admin.materials.filterAllTypes', 'All types')}</option>
+                  <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
+                  <option value="link">{t('admin.materials.link', 'External link')}</option>
+                </select>
+              }
+            />
             <MaterialTable
-              materials={loadState.materials}
+              materials={loadState.materials.filter((material) => {
+                const matchesSearch =
+                  !materialSearch.trim() || material.title.toLowerCase().includes(materialSearch.trim().toLowerCase());
+                const matchesKind = materialKindFilter === 'all' || material.kind === materialKindFilter;
+                return matchesSearch && matchesKind;
+              })}
               t={t}
               onEdit={(materialId) => {
                 const material = loadState.materials.find((item) => item.id === materialId);
@@ -499,7 +530,7 @@ export function AdminMaterialsPage() {
             <input id="material-edit-filename" value={editFileName} onChange={(event) => setEditFileName(event.target.value)} maxLength={255} />
           </FormField>
           <FormField id="material-edit-status" label={t('admin.materials.col.status', 'Status')}>
-            <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
+            <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} labels={statusLabels} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
           </FormField>
           <FormField id="material-edit-description" label={t('admin.materials.description', 'Description')}>
             <textarea id="material-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />

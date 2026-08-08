@@ -32,7 +32,7 @@ export class AssessmentsService {
       where: {
         organizationId,
         deletedAt: null,
-        ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId } } } } : {}),
+        ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId, deletedAt: null } } } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       select: assessmentSelect,

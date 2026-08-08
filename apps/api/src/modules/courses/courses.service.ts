@@ -1,7 +1,15 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
+import { CourseAccessPolicy, CourseScopedUser } from '../course-access/course-access.policy.js';
+import { AssignCourseInstructorInput, CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
+
+const instructorSummarySelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+} as const;
 
 const courseSelect = {
   id: true,
@@ -9,6 +17,8 @@ const courseSelect = {
   title: true,
   slug: true,
   description: true,
+  category: true,
+  durationMinutes: true,
   status: true,
   createdAt: true,
   updatedAt: true,
@@ -21,14 +31,17 @@ const completedProgressStatus = 'completed' as const;
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly courseAccess: CourseAccessPolicy,
+  ) {}
 
   async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string) {
     const skip = (page - 1) * pageSize;
     const where = {
       organizationId,
       deletedAt: null,
-      ...(instructorId ? { instructors: { some: { instructorId, organizationId } } } : {}),
+      ...(instructorId ? { instructors: { some: { instructorId, organizationId, deletedAt: null } } } : {}),
     } as const;
     const [items, total] = await Promise.all([
       this.prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: courseSelect }),
@@ -96,7 +109,7 @@ export class CoursesService {
     };
   }
 
-  async createCourse(input: CreateCourseInput) {
+  async createCourse(input: CreateCourseInput, user: CourseScopedUser) {
     const organization = await this.prisma.organization.findFirst({
       where: {
         id: input.organizationId,
@@ -123,9 +136,18 @@ export class CoursesService {
       throw new ConflictException('Course slug already exists in organization');
     }
 
-    return this.prisma.course.create({
-      data: input,
-      select: courseSelect,
+    // Course creation and instructor ownership assignment must succeed or fail together —
+    // otherwise a failed assignInstructor leaves an orphaned course the creator can't see
+    // (CourseAccessGuard filters instructors by CourseInstructor rows).
+    return this.prisma.$transaction(async (tx) => {
+      const course = await tx.course.create({
+        data: input,
+        select: courseSelect,
+      });
+
+      await this.courseAccess.assignInstructor(course.id, user, tx);
+
+      return course;
     });
   }
 
@@ -198,6 +220,61 @@ export class CoursesService {
       data: { deletedAt: new Date() },
       select: { id: true },
     });
+  }
+
+  async listInstructors(courseId: string, organizationId: string) {
+    await this.ensureCourseExists(courseId, organizationId);
+
+    return this.fetchInstructors(courseId, organizationId);
+  }
+
+  async addInstructor(courseId: string, organizationId: string, input: AssignCourseInstructorInput) {
+    await this.ensureCourseExists(courseId, organizationId);
+
+    const instructor = await this.prisma.user.findFirst({
+      where: { id: input.instructorId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!instructor) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.courseInstructor.upsert({
+      where: { courseId_instructorId: { courseId, instructorId: input.instructorId } },
+      create: { courseId, instructorId: input.instructorId, organizationId },
+      update: { deletedAt: null },
+    });
+
+    return this.fetchInstructors(courseId, organizationId);
+  }
+
+  async removeInstructor(courseId: string, organizationId: string, instructorId: string) {
+    const assignment = await this.prisma.courseInstructor.findFirst({
+      where: { courseId, instructorId, organizationId, deletedAt: null },
+      select: { courseId: true, instructorId: true },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('Course instructor not found');
+    }
+
+    await this.prisma.courseInstructor.update({
+      where: { courseId_instructorId: { courseId, instructorId } },
+      data: { deletedAt: new Date() },
+    });
+
+    return this.fetchInstructors(courseId, organizationId);
+  }
+
+  private async fetchInstructors(courseId: string, organizationId: string) {
+    const instructors = await this.prisma.courseInstructor.findMany({
+      where: { courseId, organizationId, deletedAt: null },
+      orderBy: { assignedAt: 'asc' },
+      select: { instructor: { select: instructorSummarySelect } },
+    });
+
+    return instructors.map((entry) => entry.instructor);
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {

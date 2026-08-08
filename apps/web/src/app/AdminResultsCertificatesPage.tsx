@@ -1,11 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
+import { DataTable, EmptyState, PageState, StatCard, StatsGrid, StatusBadge, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import '../styles/admin.css';
 
 type Course = { id: string; organizationId: string; title: string };
 type User = { id: string; email: string; name: string | null };
@@ -27,13 +27,49 @@ type LoadState =
     }
   | { status: 'error'; message: string };
 
-function findCourseTitle(courses: Course[], courseId: string) {
+export function findCourseTitle(courses: Course[], courseId: string) {
   return courses.find((course) => course.id === courseId)?.title ?? courseId;
 }
 
-function findUserLabel(users: User[], userId: string) {
+export function findUserLabel(users: User[], userId: string) {
   const user = users.find((item) => item.id === userId);
   return user?.name || user?.email || userId;
+}
+
+export function findUserEmail(users: User[], userId: string) {
+  return users.find((item) => item.id === userId)?.email ?? '';
+}
+
+export function progressPercent(progress: Progress) {
+  return progress.status === 'completed' ? 100 : (progress.score ?? 0);
+}
+
+export function downloadResultsCsv(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
+  const header = [
+    t('admin.results.col.learner', 'Learner'),
+    t('admin.results.col.course', 'Course'),
+    t('admin.results.col.progress', 'Progress'),
+    t('admin.results.col.score', 'Score'),
+  ];
+  const rows = progressItems.map((progress) => [
+    findUserLabel(users, progress.userId),
+    findCourseTitle(courses, progress.courseId),
+    `${progressPercent(progress)}%`,
+    progress.score != null ? `${progress.score}%` : '',
+  ]);
+  const lines = [header, ...rows]
+    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `results-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function AdminResultsCertificatesPage() {
@@ -144,11 +180,87 @@ export function AdminResultsCertificatesPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.results.eyebrow', 'Analytics')}
         title={t('admin.results.title', 'Results')}
         subtitle={t('admin.results.subtitle', 'Review learner progress, assessment results, and issue certificates.')}
+        action={
+          <button
+            className="admin-btn admin-btn--primary"
+            disabled={loadState.progressItems.length === 0}
+            onClick={() => downloadResultsCsv(loadState.courses, loadState.users, loadState.progressItems, t)}
+            type="button"
+          >
+            {t('admin.results.export', 'Export CSV')}
+          </button>
+        }
       />
 
-      <section className="admin-content-grid">
+      {(() => {
+        const completedProgress = loadState.progressItems.filter((p) => p.status === 'completed');
+        const avgCompletion =
+          loadState.progressItems.length > 0
+            ? Math.round((completedProgress.length / loadState.progressItems.length) * 100)
+            : 0;
+        const scored = loadState.progressItems.filter((p) => p.score != null);
+        const avgScore =
+          scored.length > 0
+            ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0), 0) / scored.length)
+            : null;
+        const issuedCertificates = loadState.certificates.filter((c) => c.status === 'issued').length;
+        const overdueCount = loadState.progressItems.filter((p) => p.status !== 'completed').length;
+
+        return (
+          <StatsGrid>
+            <StatCard label={t('admin.results.stats.avgCompletion', 'Avg. completion')} value={`${avgCompletion}%`} />
+            <StatCard label={t('admin.results.stats.avgScore', 'Avg. score')} value={avgScore != null ? `${avgScore}%` : '—'} />
+            <StatCard label={t('admin.results.stats.certificates', 'Certificates issued')} value={issuedCertificates} />
+            <StatCard label={t('admin.results.stats.pending', 'In progress')} value={overdueCount} />
+          </StatsGrid>
+        );
+      })()}
+
+      <DataTable<Progress>
+        columns={[
+          {
+            key: 'learner',
+            label: t('admin.results.col.learner', 'Learner'),
+            render: (p) => (
+              <>
+                <div className="td-title">{findUserLabel(loadState.users, p.userId)}</div>
+                <div className="td-meta">{findUserEmail(loadState.users, p.userId)}</div>
+              </>
+            ),
+          },
+          { key: 'course', label: t('admin.results.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
+          {
+            key: 'progress',
+            label: t('admin.results.col.progress', 'Progress'),
+            render: (p) => (
+              <div className="admin-results-bar">
+                <span className="admin-results-bar__track">
+                  <span className="admin-results-bar__fill" style={{ width: `${progressPercent(p)}%` }} />
+                </span>
+                <span className="admin-results-bar__value">{progressPercent(p)}%</span>
+              </div>
+            ),
+          },
+          {
+            key: 'score',
+            label: t('admin.results.col.score', 'Score'),
+            render: (p) =>
+              p.score != null ? (
+                <StatusBadge tone={p.score >= 70 ? 'success' : 'danger'}>{`${p.score}%`}</StatusBadge>
+              ) : (
+                <StatusBadge>—</StatusBadge>
+              ),
+          },
+        ] satisfies Column<Progress>[]}
+        rows={loadState.progressItems}
+        keyExtractor={(p) => p.id}
+        emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
+      />
+
+      <section className="admin-results-secondary">
         <AdminCard>
           <h2>{t('admin.results.issueCertTitle', 'Issue certificate')}</h2>
           {loadState.courses.length === 0 || loadState.users.length === 0 ? (
@@ -205,64 +317,17 @@ export function AdminResultsCertificatesPage() {
                   ))}
                 </select>
               </label>
-              {loadState.assessmentResults.length === 0 ? (
-                <EmptyState message={t('admin.results.noResults', 'No assessment results found.')} />
-              ) : (
-                <table>
-                  <tbody>
-                    {loadState.assessmentResults.map((result) => (
-                      <tr key={result.id}>
-                        <td>{findUserLabel(loadState.users, result.userId)}</td>
-                        <td>{result.score}/{result.maxScore} · {result.percentage}%</td>
-                        <td>
-                          <StatusBadge>{result.passed ? 'passed' : 'failed'}</StatusBadge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <DataTable<AssessmentResult>
+                columns={[
+                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.users, r.userId) },
+                  { key: 'score', label: t('admin.results.col.score', 'Score'), render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },
+                  { key: 'status', label: t('admin.results.col.status', 'Status'), render: (r) => <StatusBadge tone={r.passed ? 'success' : 'danger'}>{r.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed')}</StatusBadge> },
+                ] satisfies Column<AssessmentResult>[]}
+                rows={loadState.assessmentResults}
+                keyExtractor={(r) => r.id}
+                emptyMessage={t('admin.results.noResults', 'No assessment results found.')}
+              />
             </>
-          )}
-        </AdminCard>
-
-        <AdminCard>
-          <h2>{t('admin.results.progressTitle', 'Course progress')}</h2>
-          {loadState.progressItems.length === 0 ? (
-            <EmptyState message={t('admin.results.noProgress', 'No progress records found.')} />
-          ) : (
-            <table>
-              <tbody>
-                {loadState.progressItems.map((progress) => (
-                  <tr key={progress.id}>
-                    <td>{findCourseTitle(loadState.courses, progress.courseId)}</td>
-                    <td>{findUserLabel(loadState.users, progress.userId)}</td>
-                    <td><StatusBadge>{progress.status}</StatusBadge></td>
-                    <td>{progress.score ?? t('admin.results.noScore', 'No score')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </AdminCard>
-
-        <AdminCard>
-          <h2>{t('admin.results.certificatesTitle', 'Issued certificates')}</h2>
-          {loadState.certificates.length === 0 ? (
-            <EmptyState message={t('admin.results.noCertificates', 'No certificates issued yet.')} />
-          ) : (
-            <table>
-              <tbody>
-                {loadState.certificates.map((certificate) => (
-                  <tr key={certificate.id}>
-                    <td>{findCourseTitle(loadState.courses, certificate.courseId)}</td>
-                    <td>{findUserLabel(loadState.users, certificate.userId)}</td>
-                    <td><StatusBadge>{certificate.status}</StatusBadge></td>
-                    <td>{new Date(certificate.issuedAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           )}
         </AdminCard>
       </section>

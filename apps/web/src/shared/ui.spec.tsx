@@ -1,9 +1,26 @@
+import { Children, isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, DataTable, Input, ProgressBar, SearchInput, Spinner, Toolbar } from './ui';
+import { Avatar, Badge, Button, Card, DataTable, Input, Pagination, ProgressBar, SearchInput, Spinner, Toolbar } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
+
+function visitElements(node: ReactNode, visit: (element: ReactElement<Record<string, unknown>>) => void) {
+  Children.forEach(node, (child) => {
+    if (!isValidElement<Record<string, unknown>>(child)) return;
+    visit(child);
+    visitElements(child.props.children as ReactNode, visit);
+  });
+}
+
+function findButtons(tree: ReactNode) {
+  const buttons: ReactElement<Record<string, unknown>>[] = [];
+  visitElements(tree, (element) => {
+    if (element.type === 'button') buttons.push(element);
+  });
+  return buttons;
+}
 
 describe('shared UI state components', () => {
   it('renders StatusBadge with neutral tone by default', () => {
@@ -214,6 +231,37 @@ describe('design system — Toolbar', () => {
 
     expect(html).not.toContain('admin-toolbar__left');
     expect(html).toContain('admin-toolbar__right');
+  });
+});
+
+describe('design system — Pagination', () => {
+  it('renders nothing when there is only one page', () => {
+    const html = renderToStaticMarkup(<Pagination page={1} pageSize={20} total={10} onPage={vi.fn()} />);
+    expect(html).toBe('');
+  });
+
+  it('renders page info and disables Prev on the first page', () => {
+    const html = renderToStaticMarkup(<Pagination page={1} pageSize={20} total={100} onPage={vi.fn()} />);
+    expect(html).toContain('1 / 5');
+    expect(html).toContain('disabled=""');
+  });
+
+  it('calls onPage with the previous and next page numbers when clicked', () => {
+    const onPage = vi.fn();
+    const tree = Pagination({ page: 2, pageSize: 20, total: 100, onPage });
+    const [prevButton, nextButton] = findButtons(tree);
+
+    (prevButton.props.onClick as () => void)();
+    (nextButton.props.onClick as () => void)();
+
+    expect(onPage).toHaveBeenNthCalledWith(1, 1);
+    expect(onPage).toHaveBeenNthCalledWith(2, 3);
+  });
+
+  it('disables Next on the last page', () => {
+    const tree = Pagination({ page: 5, pageSize: 20, total: 100, onPage: vi.fn() });
+    const [, nextButton] = findButtons(tree);
+    expect(nextButton.props.disabled).toBe(true);
   });
 });
 

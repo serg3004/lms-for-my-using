@@ -71,7 +71,7 @@ function buildHeaders(init: RequestInit) {
   const hasBody = Boolean(init.body);
   const headers = new Headers(init.headers);
 
-  if (hasBody && !headers.has('Content-Type')) {
+  if (hasBody && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -207,7 +207,7 @@ export async function uploadMaterialFileMultipart(
   }
 }
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 let refreshRequest: Promise<boolean> | null = null;
 let successfulRefreshCount = 0;
 

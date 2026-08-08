@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const lessonStatusSchema = z.enum(['draft', 'published', 'archived']);
+export const lessonTypeSchema = z.enum(['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical']);
 
 const lessonSlugSchema = z
   .string()
@@ -15,6 +16,7 @@ export const createLessonSchema = z.object({
   title: z.string().trim().min(1).max(160),
   slug: lessonSlugSchema,
   description: z.string().trim().max(1000).optional(),
+  type: lessonTypeSchema.default('text'),
   order: z.number().int().min(0).default(0),
   status: lessonStatusSchema.default('draft'),
 });
@@ -30,6 +32,7 @@ export const updateLessonSchema = z
   .object({
     title: z.string().trim().min(1).max(160),
     description: z.string().trim().max(1000).nullable(),
+    type: lessonTypeSchema,
     order: z.number().int().min(0),
     status: lessonStatusSchema,
   })

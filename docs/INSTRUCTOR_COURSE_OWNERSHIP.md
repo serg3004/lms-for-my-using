@@ -19,3 +19,22 @@ instructor operations. It applies these rules:
 The seed assigns `instructor@demo.com` to the demo course. The
 `course_instructors` primary key prevents duplicate assignments, while its
 organization indexes support scoped list and ownership queries.
+
+## Soft delete
+
+`course_instructors` rows (and the analogous `group_members` / `manager_groups`
+rows) are never hard-deleted. Removing an instructor from a course sets
+`deletedAt` instead of dropping the row; `CourseAccessPolicy.courseWhere`
+and `assertResourceAccess` filter on `deletedAt: null`, so a soft-deleted
+assignment stops granting access immediately without losing the historical
+record. Re-assigning the same instructor to the same course clears
+`deletedAt` on the existing row (`assignInstructor`'s `upsert`) rather than
+creating a duplicate.
+
+## Managing assignments from the admin UI
+
+`AdminCoursesPage` has a dialog to add/remove a course's assigned
+instructors (`GET/POST/DELETE courses/:id/instructors`). Group membership
+and group manager assignment follow the identical soft-delete pattern but
+are a separate resource managed from `AdminOrgStructurePage` — not part of
+`CourseAccessPolicy`.

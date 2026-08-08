@@ -5,11 +5,19 @@ import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { Badge, Button, DataTable, Pagination, PageState, SectionHeader, StatCard, StatsGrid, type Column } from '../shared/ui.js';
-import type { PaginatedResponse } from '../shared/api/types.js';
-import { createCourse, deleteCourse, listCourses } from '../shared/api/courses.js';
-import '../styles/admin.css';
-import '../styles/ui.css';
+import { Badge, Button, DataTable, Pagination, PageState, SearchInput, SectionHeader, StatCard, StatsGrid, Toolbar, type Column } from '../shared/ui.js';
+import type { PaginatedResponse, UserSummary } from '../shared/api/types.js';
+import { apiRequest } from '../shared/apiClient.js';
+import {
+  addCourseInstructor,
+  createCourse,
+  deleteCourse,
+  listCourseInstructors,
+  listCourses,
+  removeCourseInstructor,
+  type CourseInstructor,
+} from '../shared/api/courses.js';
+import { formatUserName, usersAvailableToAdd } from './admin-courses/model.js';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 
@@ -70,7 +78,18 @@ export function AdminCoursesPage() {
   const [formState, setFormState] = useState<CreateFormState>({ status: 'idle' });
   const [createErrors, setCreateErrors] = useState<FormValidationErrors<'title'>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
   const dialogRef = useRef<HTMLDialogElement>(null);
+
+  const instructorsDialogRef = useRef<HTMLDialogElement>(null);
+  const [instructorsCourse, setInstructorsCourse] = useState<AdminCourseSummary | null>(null);
+  const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
+  const [courseInstructors, setCourseInstructors] = useState<CourseInstructor[]>([]);
+  const [instructorsState, setInstructorsState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({
+    status: 'idle',
+  });
+  const [addInstructorId, setAddInstructorId] = useState('');
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin'), href: '/admin' },
@@ -167,6 +186,54 @@ export function AdminCoursesPage() {
     }
   }
 
+  async function openInstructorsDialog(course: AdminCourseSummary) {
+    setInstructorsCourse(course);
+    setAddInstructorId('');
+    setInstructorsState({ status: 'loading' });
+    instructorsDialogRef.current?.showModal();
+
+    try {
+      const [users, instructors] = await Promise.all([
+        orgUsers.length > 0 ? orgUsers : apiRequest<PaginatedResponse<UserSummary>>('/users?pageSize=200').then((res) => res.items),
+        listCourseInstructors(course.id),
+      ]);
+      setOrgUsers(users);
+      setCourseInstructors(instructors);
+      setInstructorsState({ status: 'idle' });
+    } catch {
+      setInstructorsState({
+        status: 'error',
+        message: t('admin.courses.instructorsLoadError', 'Unable to load course instructors.'),
+      });
+    }
+  }
+
+  function closeInstructorsDialog() {
+    instructorsDialogRef.current?.close();
+    setInstructorsCourse(null);
+  }
+
+  async function handleAddInstructor() {
+    if (!instructorsCourse || !addInstructorId) return;
+    try {
+      const instructors = await addCourseInstructor(instructorsCourse.id, addInstructorId);
+      setCourseInstructors(instructors);
+      setAddInstructorId('');
+    } catch {
+      setInstructorsState({ status: 'error', message: t('admin.courses.saveError', 'Failed to create course. Try again.') });
+    }
+  }
+
+  async function handleRemoveInstructor(instructorId: string) {
+    if (!instructorsCourse) return;
+    try {
+      const instructors = await removeCourseInstructor(instructorsCourse.id, instructorId);
+      setCourseInstructors(instructors);
+    } catch {
+      setInstructorsState({ status: 'error', message: t('admin.courses.saveError', 'Failed to create course. Try again.') });
+    }
+  }
+
   if (pageState.status === 'idle' || pageState.status === 'loading') {
     return (
       <main className="admin-state">
@@ -201,6 +268,12 @@ export function AdminCoursesPage() {
   const draft = courses.filter((c) => c.status === 'draft').length;
   const archived = courses.filter((c) => c.status === 'archived').length;
   const deletingCourse = courses.find((c) => c.id === deletingId);
+
+  const filteredCourses = courses.filter((course) => {
+    const matchesSearch = !search.trim() || course.title.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const courseColumns: Column<AdminCourseSummary>[] = [
     {
@@ -245,6 +318,9 @@ export function AdminCoursesPage() {
       label: '',
       render: (course) => (
         <div className="td-actions">
+          <Button variant="ghost" size="sm" type="button" onClick={() => void openInstructorsDialog(course)}>
+            {t('admin.courses.instructors', 'Instructors')}
+          </Button>
           <Button variant="ghost" size="sm" type="button" onClick={() => window.location.assign(`/admin/courses/${course.id}`)}>
             ✏ {t('common.edit', 'Edit')}
           </Button>
@@ -263,6 +339,7 @@ export function AdminCoursesPage() {
       navItems={navItems}
     >
       <AdminPageHeader
+        eyebrow={t('admin.courses.eyebrow', 'Learning content')}
         title={t('admin.courses.title', 'Courses')}
         subtitle={t('admin.courses.subtitle', 'Create and manage courses for your organization.')}
         action={
@@ -283,18 +360,33 @@ export function AdminCoursesPage() {
         <StatCard label={t('admin.courses.stats.archived', 'Archived')} value={archived} />
       </StatsGrid>
 
-      <SectionHeader
-        title={t('admin.courses.title', 'Courses')}
-        actions={
-          <Button variant="secondary" size="sm" type="button">
-            {t('admin.courses.allStatuses', 'All statuses')} ▾
-          </Button>
+      <SectionHeader title={t('admin.courses.title', 'Courses')} />
+
+      <Toolbar
+        left={
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={t('admin.courses.searchPlaceholder', 'Search courses...')}
+          />
+        }
+        right={
+          <select
+            className="admin-status-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'all' | CourseStatus)}
+          >
+            <option value="all">{t('admin.courses.allStatuses', 'All statuses')}</option>
+            <option value="published">{t('admin.courses.status.published', 'Published')}</option>
+            <option value="draft">{t('admin.courses.status.draft', 'Draft')}</option>
+            <option value="archived">{t('admin.courses.status.archived', 'Archived')}</option>
+          </select>
         }
       />
 
       <DataTable
         columns={courseColumns}
-        rows={courses}
+        rows={filteredCourses}
         keyExtractor={(c) => c.id}
         emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
       />
@@ -369,6 +461,67 @@ export function AdminCoursesPage() {
             </button>
           </div>
         </form>
+      </dialog>
+
+      <dialog ref={instructorsDialogRef} className="admin-dialog" onClose={closeInstructorsDialog}>
+        <div className="admin-dialog__header">
+          <h2>
+            {instructorsCourse
+              ? t('admin.courses.instructorsDialogTitle', 'Instructors: {{title}}', { title: instructorsCourse.title })
+              : ''}
+          </h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('common.close', 'Close')} onClick={closeInstructorsDialog}>
+            ✕
+          </button>
+        </div>
+        <div className="admin-form">
+          {instructorsState.status === 'error' ? (
+            <p className="admin-form__error" role="alert">{instructorsState.message}</p>
+          ) : null}
+
+          <section className="admin-membership-section">
+            <ul className="admin-membership-list">
+              {courseInstructors.length === 0 ? (
+                <li className="admin-membership-list__empty">{t('admin.courses.noInstructors', 'No instructors assigned.')}</li>
+              ) : (
+                courseInstructors.map((instructor) => (
+                  <li key={instructor.id}>
+                    <span>{formatUserName(instructor)}</span>
+                    <button
+                      className="admin-btn admin-btn--sm admin-btn--secondary"
+                      type="button"
+                      onClick={() => void handleRemoveInstructor(instructor.id)}
+                    >
+                      {t('admin.courses.removeInstructor', 'Remove')}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+            <div className="admin-membership-add">
+              <select value={addInstructorId} onChange={(e) => setAddInstructorId(e.target.value)}>
+                <option value="">{t('admin.courses.selectInstructor', 'Select a user…')}</option>
+                {usersAvailableToAdd(orgUsers, courseInstructors.map((i) => i.id)).map((u) => (
+                  <option value={u.id} key={u.id}>{formatUserName(u)}</option>
+                ))}
+              </select>
+              <button
+                className="admin-btn admin-btn--sm admin-btn--primary"
+                type="button"
+                disabled={!addInstructorId}
+                onClick={() => void handleAddInstructor()}
+              >
+                {t('admin.courses.addInstructor', 'Add')}
+              </button>
+            </div>
+          </section>
+
+          <div className="admin-form__actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={closeInstructorsDialog}>
+              {t('common.close', 'Close')}
+            </button>
+          </div>
+        </div>
       </dialog>
 
       <ConfirmDialog

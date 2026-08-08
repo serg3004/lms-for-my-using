@@ -1,6 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
+import type { UserRole } from '@lms/shared/constants/roles';
 
-export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
+export type { UserRole } from '@lms/shared/constants/roles';
 
 export const rolesMetadataKey = 'roles';
 export const accessMetadataKey = 'access';
@@ -10,6 +11,8 @@ export type EndpointAccess = 'public' | 'authenticated';
 export const rolePolicies = {
   organizationsRead: ['admin'],
   organizationsCreate: ['admin'],
+  themeSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
+  themeSettingsWrite: ['admin'],
   usersRead: ['admin', 'manager'],
   usersCreate: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],
@@ -19,6 +22,7 @@ export const rolePolicies = {
   coursesRead: ['admin', 'manager', 'instructor', 'learner'],
   coursesCreate: ['admin', 'instructor'],
   lessonsRead: ['admin', 'manager', 'instructor', 'learner'],
+  lessonsReadAll: ['admin'],
   lessonsCreate: ['admin', 'instructor'],
   courseMaterialsRead: ['admin', 'manager', 'instructor', 'learner'],
   courseMaterialsCreate: ['admin', 'instructor'],

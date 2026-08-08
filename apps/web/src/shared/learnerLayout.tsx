@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AccountSwitcher } from './accountSwitcher.js';
 import { getCurrentUser } from './apiClient.js';
 import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
@@ -18,6 +19,8 @@ type LearnerTopNavProps = {
   lastName?: string;
   navItems?: LearnerNavItem[];
   onLogout: () => void;
+  showLanguageSwitcher?: boolean;
+  showAccountSwitcher?: boolean;
 };
 
 export function LearnerTopNav({
@@ -26,6 +29,8 @@ export function LearnerTopNav({
   lastName,
   navItems = [],
   onLogout,
+  showLanguageSwitcher = false,
+  showAccountSwitcher = false,
 }: LearnerTopNavProps) {
   return (
     <header className="learner-topnav">
@@ -49,6 +54,8 @@ export function LearnerTopNav({
       ) : null}
 
       <div className="learner-topnav__end">
+        {showAccountSwitcher ? <AccountSwitcher /> : null}
+        {showLanguageSwitcher ? <LanguageSwitcher /> : null}
         {firstName ? (
           <Avatar firstName={firstName} lastName={lastName} size="sm" />
         ) : null}
@@ -188,6 +195,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
       <div className="learner-content">
         <header className="learner-header">
           <div className="learner-header__end">
+            <AccountSwitcher />
             <LanguageSwitcher />
             {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
             <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>

@@ -1,4 +1,7 @@
-export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
+import type { UserRole } from '@lms/shared/constants/roles';
+
+export { USER_ROLES } from '@lms/shared/constants/roles';
+export type { UserRole } from '@lms/shared/constants/roles';
 export type UserStatus = 'active' | 'invited' | 'suspended' | 'archived';
 
 export type AdminUserSummary = {
@@ -47,7 +50,6 @@ export const EMPTY_USER_FORM: UserForm = {
 };
 
 export const EMPTY_USER_FILTERS: AdminUsersFilters = { query: '', role: '', status: '' };
-export const USER_ROLES: UserRole[] = ['learner', 'instructor', 'manager', 'admin'];
 export const USER_STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
 
 export function userName(user: AdminUserSummary) {

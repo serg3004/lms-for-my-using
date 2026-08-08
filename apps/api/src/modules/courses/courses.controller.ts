@@ -8,6 +8,7 @@ import { Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
 import {
+  assignCourseInstructorSchema,
   createCourseSchema,
   CreateCourseInput,
   updateCourseSchema,
@@ -56,9 +57,7 @@ export class CoursesController {
   async createCourse(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateCourseInput = createCourseSchema.parse(body);
 
-    const course = await this.coursesService.createCourse(input);
-    await this.courseAccess.assignInstructor(course.id, request.currentUser!);
-    return course;
+    return this.coursesService.createCourse(input, request.currentUser!);
   }
 
   @Patch(':id')
@@ -82,5 +81,34 @@ export class CoursesController {
   async deleteCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
     await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
     return this.coursesService.deleteCourse(courseId, request.currentUser!.organizationId);
+  }
+
+  @Get(':id/instructors')
+  @Roles(...rolePolicies.coursesRead)
+  async listInstructors(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.courseAccess.assertCourseAccess(courseId, user);
+    return this.coursesService.listInstructors(courseId, user.organizationId);
+  }
+
+  @Post(':id/instructors')
+  @Roles(...rolePolicies.coursesCreate)
+  async addInstructor(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const input = assignCourseInstructorSchema.parse(body);
+    await this.courseAccess.assertCourseAccess(courseId, user);
+    return this.coursesService.addInstructor(courseId, user.organizationId, input);
+  }
+
+  @Delete(':id/instructors/:instructorId')
+  @Roles(...rolePolicies.coursesCreate)
+  async removeInstructor(
+    @Param('id') courseId: string,
+    @Param('instructorId') instructorId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const user = request.currentUser!;
+    await this.courseAccess.assertCourseAccess(courseId, user);
+    return this.coursesService.removeInstructor(courseId, user.organizationId, instructorId);
   }
 }

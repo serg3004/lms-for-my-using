@@ -1,30 +1,13 @@
-export type ApiErrorDetail = {
-  field?: string;
-  message: string;
-  code?: string;
-};
+import type { UserRole } from '@lms/shared/constants/roles';
 
-export type ApiErrorResponse = {
-  statusCode: number;
-  error: { code: string; message: string; details?: ApiErrorDetail[] };
-  path: string;
-  timestamp: string;
-};
-
-export type PaginatedResponse<T> = {
-  items: T[];
-  page: number;
-  pageSize: number;
-  total: number;
-};
+export type { UserRole } from '@lms/shared/constants/roles';
+export type { ApiErrorDetail, ApiErrorResponse, PaginatedResponse } from '@lms/shared/types/api';
 
 export type LoginInput = {
   organizationId: string;
   email: string;
   password: string;
 };
-
-export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
 
 export type CurrentUser = {
   id: string;
@@ -54,6 +37,8 @@ export type CourseSummary = {
   title: string;
   slug: string;
   description: string | null;
+  category: string | null;
+  durationMinutes: number | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -67,11 +52,14 @@ export type LessonSummary = {
   title: string;
   slug: string;
   description: string | null;
+  type: string;
   order: number;
   status: string;
   createdAt: string;
   updatedAt: string;
 };
+
+export type LessonWithCourseSummary = LessonSummary & { course: { title: string } };
 
 export type CourseMaterialSummary = {
   id: string;
@@ -228,6 +216,34 @@ export type AttemptAnswerResult = {
   score: number;
   question: { id: string; title: string; type: string; points: number; order: number };
   selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
+};
+
+export type AssessmentQuestionSummary = {
+  id: string;
+  organizationId: string;
+  assessmentId: string;
+  type: string;
+  title: string;
+  text: string | null;
+  imageUrl: string | null;
+  points: number;
+  order: number;
+};
+
+export type AssessmentAttemptSummary = {
+  id: string;
+  organizationId: string;
+  assessmentId: string;
+  userId: string;
+  status: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  passed: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type AssessmentAttemptResult = {

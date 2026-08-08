@@ -33,3 +33,26 @@ export const registerOrganizationSchema = z.object({
 
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 export type RegisterOrganizationInput = z.infer<typeof registerOrganizationSchema>;
+
+export const themeSettingsSchema = z.object({
+  colorPrimary: z.string().trim().min(1).max(64),
+  colorPrimaryHover: z.string().trim().min(1).max(64),
+  colorBackground: z.string().trim().min(1).max(64),
+  colorSurface: z.string().trim().min(1).max(64),
+  colorSurfaceMuted: z.string().trim().min(1).max(64),
+  colorBorder: z.string().trim().min(1).max(64),
+  colorText: z.string().trim().min(1).max(64),
+  colorTextMuted: z.string().trim().min(1).max(64),
+  shadowCard: z.string().trim().min(1).max(160),
+  radiusSm: z.string().trim().min(1).max(32),
+  radiusMd: z.string().trim().min(1).max(32),
+  radiusLg: z.string().trim().min(1).max(32),
+  spacePage: z.string().trim().min(1).max(160),
+  adminSidebarBackground: z.string().trim().min(1).max(64),
+  adminSidebarText: z.string().trim().min(1).max(64),
+  adminSidebarTextMuted: z.string().trim().min(1).max(64),
+  platformName: z.string().trim().min(1).max(120),
+  logoObjectKey: z.string().trim().max(512).optional(),
+});
+
+export type ThemeSettingsInput = z.infer<typeof themeSettingsSchema>;

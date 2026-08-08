@@ -13,18 +13,33 @@
     "./types/api": {
       "types": "./src/types/api.ts",
       "import": "./dist/types/api.js"
+    },
+    "./constants/roles": {
+      "types": "./src/constants/roles.ts",
+      "import": "./dist/constants/roles.js"
+    },
+    "./constants/locales": {
+      "types": "./src/constants/locales.ts",
+      "import": "./dist/constants/locales.js"
+    },
+    "./schemas/pagination": {
+      "types": "./src/schemas/pagination.schema.ts",
+      "import": "./dist/schemas/pagination.schema.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/node": "^25.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

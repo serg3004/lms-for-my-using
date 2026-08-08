@@ -3,7 +3,11 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@lms/shared": ["../../packages/shared/src/index.ts"]
+      "@lms/shared": ["../../packages/shared/src/index.ts"],
+      "@lms/shared/constants/roles": ["../../packages/shared/src/constants/roles.ts"],
+      "@lms/shared/constants/locales": ["../../packages/shared/src/constants/locales.ts"],
+      "@lms/shared/schemas/pagination": ["../../packages/shared/src/schemas/pagination.schema.ts"],
+      "@lms/shared/types/api": ["../../packages/shared/src/types/api.ts"]
     }
   }
 }

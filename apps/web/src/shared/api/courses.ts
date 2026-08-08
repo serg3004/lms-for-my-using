@@ -22,6 +22,8 @@ export type CreateCourseInput = {
   title: string;
   slug: string;
   description?: string;
+  category?: string;
+  durationMinutes?: number;
   status?: string;
 };
 
@@ -29,6 +31,8 @@ export type UpdateCourseInput = {
   title?: string;
   slug?: string;
   description?: string;
+  category?: string;
+  durationMinutes?: number;
   status?: string;
 };
 
@@ -48,4 +52,23 @@ export function updateCourse(courseId: string, input: UpdateCourseInput) {
 
 export function deleteCourse(courseId: string) {
   return apiRequest<void>(getCoursePath(courseId), { method: 'DELETE' });
+}
+
+export type CourseInstructor = { id: string; firstName: string; lastName: string | null; email: string };
+
+export function listCourseInstructors(courseId: string) {
+  return apiRequest<CourseInstructor[]>(`${getCoursePath(courseId)}/instructors`);
+}
+
+export function addCourseInstructor(courseId: string, instructorId: string) {
+  return apiRequest<CourseInstructor[]>(`${getCoursePath(courseId)}/instructors`, {
+    method: 'POST',
+    body: JSON.stringify({ instructorId }),
+  });
+}
+
+export function removeCourseInstructor(courseId: string, instructorId: string) {
+  return apiRequest<CourseInstructor[]>(`${getCoursePath(courseId)}/instructors/${encodeURIComponent(instructorId)}`, {
+    method: 'DELETE',
+  });
 }

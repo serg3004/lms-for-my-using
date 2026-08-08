@@ -3,6 +3,7 @@ import { AssignmentsService } from '../modules/assignments/assignments.service';
 import { AuthService } from '../modules/auth/auth.service';
 import { hashPassword } from '../modules/auth/passwords';
 import { CertificatesService } from '../modules/certificates/certificates.service';
+import { CourseAccessPolicy } from '../modules/course-access/course-access.policy';
 import { CoursesService } from '../modules/courses/courses.service';
 import { LessonsService } from '../modules/lessons/lessons.service';
 import { ProgressService } from '../modules/progress/progress.service';
@@ -31,7 +32,8 @@ function createAsyncMock<T>(): AsyncMock<T> {
 }
 
 function createPrismaMock() {
-  return {
+  const mock = {
+    $transaction: async <T>(callback: (tx: unknown) => Promise<T>) => callback(mock),
     assessmentAttempt: {
       findFirst: createAsyncMock<unknown>(),
     },
@@ -81,6 +83,8 @@ function createPrismaMock() {
       findFirst: createAsyncMock<unknown>(),
     },
   };
+
+  return mock;
 }
 
 describe('backend MVP smoke flow', () => {
@@ -91,7 +95,8 @@ describe('backend MVP smoke flow', () => {
   it('covers login, course setup, assignment, progress, and certificate issuing', async () => {
     const prisma = createPrismaMock();
     const authService = new AuthService(prisma as unknown as PrismaService);
-    const coursesService = new CoursesService(prisma as unknown as PrismaService);
+    const courseAccessPolicy = new CourseAccessPolicy(prisma as unknown as PrismaService);
+    const coursesService = new CoursesService(prisma as unknown as PrismaService, courseAccessPolicy);
     const lessonsService = new LessonsService(prisma as unknown as PrismaService);
     const assignmentsService = new AssignmentsService(prisma as unknown as PrismaService);
     const progressService = new ProgressService(prisma as unknown as PrismaService);
@@ -205,12 +210,15 @@ describe('backend MVP smoke flow', () => {
     });
 
     await expect(
-      coursesService.createCourse({
-        organizationId,
-        title: course.title,
-        slug: course.slug,
-        status: course.status,
-      }),
+      coursesService.createCourse(
+        {
+          organizationId,
+          title: course.title,
+          slug: course.slug,
+          status: course.status,
+        },
+        { id: userId, organizationId, roles: ['admin'] },
+      ),
     ).resolves.toEqual(course);
 
     await expect(

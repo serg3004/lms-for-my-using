@@ -18,9 +18,10 @@ type Props = {
   onCancel?: () => void;
   titleError?: string;
   onTitleChange?: (value: string) => void;
+  statusLabels?: Partial<Record<AssessmentForm['status'], string>>;
 };
 
-export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, lessons, lessonId, onLessonChange, editing = false, onCancel, titleError, onTitleChange }: Props) {
+export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, lessons, lessonId, onLessonChange, editing = false, onCancel, titleError, onTitleChange, statusLabels }: Props) {
   const uid = useId();
   const change = (field: keyof AssessmentForm, value: string | boolean) => dispatch({ type: 'change', field, value });
 
@@ -64,7 +65,7 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
 
       {editing ? (
         <FormField id={`${uid}-status`} label={t('admin.assessmentBuilder.col.status', 'Status')}>
-          <AdminStatusSelect value={form.status} statuses={ASSESSMENT_STATUSES} onChange={(value) => change('status', value)} className="admin-form-status-select" />
+          <AdminStatusSelect value={form.status} statuses={ASSESSMENT_STATUSES} labels={statusLabels} onChange={(value) => change('status', value)} className="admin-form-status-select" />
         </FormField>
       ) : null}
 
@@ -85,7 +86,7 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
         <button className="admin-btn admin-btn--primary" type="submit" disabled={state.status === 'saving'}>
           {state.status === 'saving'
             ? t(`admin.assessmentBuilder.${editing ? 'updating' : 'saving'}`, editing ? 'Saving...' : 'Creating...')
-            : t(`admin.assessmentBuilder.${editing ? 'update' : 'create'}`, editing ? 'Save changes' : 'Create draft')}
+            : t(`admin.assessmentBuilder.${editing ? 'update' : 'create'}`, editing ? 'Save changes' : 'Create assessment')}
         </button>
         {onCancel ? (
           <button className="admin-btn admin-btn--secondary" type="button" onClick={onCancel}>
