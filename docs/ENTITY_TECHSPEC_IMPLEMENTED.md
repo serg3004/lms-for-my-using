@@ -51,10 +51,10 @@
 
 **RBAC:** доступна только самому пользователю через `authenticated`-эндпоинты (`logout`, `logout-all`, `auth/me`) — прямого CRUD через роли `admin/manager/instructor/learner` нет; `logout-all` отзывает через `prisma.session.updateMany` (задокументировано как закрытый concern в `docs/CONCERNS.md` — зависит только от Postgres, не от Redis).
 
-**Edge cases:**
-- Rate limiting входа завязан на отдельный in-memory/Redis механизм, не на саму модель `Session` — сейчас в проде это работает в in-memory режиме (открытый concern, `ALLOW_IN_MEMORY_RATE_LIMIT=true`), что не масштабируется горизонтально.
-- `revokedAt` устанавливается, но истёкшая по `expiresAt`/`refreshExpiresAt` сессия физически не удаляется — нужен periodic cleanup, иначе таблица растёт бесконечно.
-- Login возвращает access token одновременно и в cookie, и в JSON body — известный открытый concern (избыточность, риск при переходе на cookie-only).
+**Edge cases:** проверены (2026-08-08).
+- Rate limiting входа завязан на отдельный in-memory/Redis механизм — сейчас в проде in-memory режим (тот же открытый concern из `docs/CONCERNS.md`, что и раньше). **Не трогали** — это инфра-задача (нужен Redis на Railway), не код.
+- ~~`revokedAt` устанавливается, но истёкшая сессия физически не удаляется — нужен periodic cleanup~~ — **закрыто частично (2026-08-08):** добавлен `AuthSessionStore.cleanupExpired(dryRun, now)` + скрипт `apps/api/src/scripts/session-cleanup.ts` (`pnpm --filter @lms/api session:cleanup [-- --execute]`), удаляющий сессии, у которых истёк `refreshExpiresAt` (или `expiresAt`, если `refreshExpiresAt` не задан) либо стоит `revokedAt`. Автозапуска по расписанию нет — только ручной запуск, аналогично `storage:cleanup`/`storage:multipart-cleanup`.
+- ~~Login возвращает access token одновременно и в cookie, и в JSON body — избыточность~~ — **закрыто, при перепроверке не подтвердилось (2026-08-08).** Это не избыточность — `accessToken` в теле реально используется для Bearer-авторизации не-браузерными клиентами (подтверждено в `apps/api/src/integration/api.database-smoke.spec.ts`, где токен из тела передаётся как `Authorization: Bearer`). Убрать нельзя, не сломав этот путь авторизации. Код не менялся.
 
 ---
 

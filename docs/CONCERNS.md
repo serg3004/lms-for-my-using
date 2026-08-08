@@ -57,13 +57,6 @@ Threshold `functions: 25%`. После фикса PR 172 — 25.6%, запас �
 
 ---
 
-### [2026-07-31] Login возвращает `accessToken` и в теле и в cookie одновременно
-**Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
-**Severity:** 🟢  
-После PR 137 refresh token убран из тела — правильно. Но access token дублируется: и в Set-Cookie и в JSON body. При переходе на cookie-only — избыточность.
-
----
-
 ### [2026-08-05] Сайдбар админки разъезжается на 2 колонки при зуме браузера 150%+ — причина не найдена
 **Файл:** `apps/web/src/styles/admin.css` (`.admin-layout`, `.admin-sidebar`, `.admin-nav`), `apps/web/src/shared/adminPage.tsx`
 **Severity:** 🟡
@@ -133,6 +126,11 @@ PR #492 (`fix(admin): contain horizontal overflow in admin layout at high browse
 ---
 
 ## Закрытые
+
+### [2026-07-31] Login возвращает `accessToken` и в теле и в cookie одновременно → **закрыто, при перепроверке не подтвердилось (2026-08-08)**
+Утверждение было неточным. `accessToken` в JSON-теле — не избыточность, а самостоятельный путь Bearer-авторизации для не-браузерных клиентов (скрипты, интеграции), независимый от cookie. Подтверждено использованием в `apps/api/src/integration/api.database-smoke.spec.ts` — токен из тела ответа login передаётся как `Authorization: Bearer ${login.accessToken}` в последующих запросах. Убрать нельзя без поломки этого сценария. Код не менялся.
+
+---
 
 ### [2026-08-06] `roles.spec.ts` — захардкоженный список политик вместо `Object.keys(rolePolicies)` → **закрыто (2026-08-08)**
 **Файл:** `apps/api/src/modules/auth/roles.spec.ts`, `docs/API_RBAC_MATRIX.md`

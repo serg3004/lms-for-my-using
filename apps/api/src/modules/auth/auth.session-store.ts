@@ -31,4 +31,26 @@ export class AuthSessionStore {
       data: { revokedAt: new Date() },
     });
   }
+
+  // A session row is safe to delete once nothing can use it anymore: it was explicitly revoked,
+  // or its refresh window has passed (refresh always outlives the access token — see login()/
+  // refreshSession() in auth.service.ts, both always set refreshExpiresAt on create). Without this,
+  // expired sessions accumulate in the table forever (docs/CONCERNS.md).
+  async cleanupExpired(dryRun = true, now = new Date()) {
+    const where = {
+      OR: [
+        { revokedAt: { not: null } },
+        { refreshExpiresAt: { lte: now } },
+        { refreshExpiresAt: null, expiresAt: { lte: now } },
+      ],
+    };
+
+    if (dryRun) {
+      const count = await this.prisma.session.count({ where });
+      return { dryRun, count };
+    }
+
+    const result = await this.prisma.session.deleteMany({ where });
+    return { dryRun, count: result.count };
+  }
 }
