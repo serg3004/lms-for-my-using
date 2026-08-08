@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Unauthor
 import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { AuthenticatedRequest } from './auth.guard.js';
+import type { AuthenticatedRequest } from './auth.guard.js';
 import { CurrentUser } from './auth.schemas.js';
 import { rolesMetadataKey, UserRole } from './roles.js';
 
