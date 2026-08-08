@@ -25,6 +25,7 @@ describe('Courses validation', () => {
       title: 'Safety Basics',
       slug: 'safety-basics',
       status: 'draft',
+      selfEnrollmentEnabled: false,
     });
   });
 

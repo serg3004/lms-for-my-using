@@ -92,7 +92,7 @@
 ---
 
 ## 8. Course
-**Модель данных:** `id, organizationId (FK Cascade), title, slug, description?, category?, durationMinutes?, status (draft/published/archived), createdAt/updatedAt, deletedAt`. Уникальность `[organizationId, slug]`.
+**Модель данных:** `id, organizationId (FK Cascade), title, slug, description?, category?, durationMinutes?, status (draft/published/archived), selfEnrollmentEnabled (Boolean, default false — добавлено 2026-08-08), createdAt/updatedAt, deletedAt`. Уникальность `[organizationId, slug]`.
 
 **RBAC:** все роли — read (`Courses — read: ✓ admin ✓ manager ✓ instructor ✓ learner`); create/update/delete — только admin и instructor (`✓ admin, ✓ instructor`, manager/learner — нет). Дополнительно объектный `CourseAccessGuard`: instructor видит/меняет только свои курсы (через `CourseInstructor`), admin — без ограничения scope.
 
@@ -168,7 +168,7 @@
 
 **Edge cases:**
 - Нет отдельной неизменяемой записи о завершении (см. п. 3.4 `Completion Record` нереализованных) — `Progress` может теоретически быть изменён/пересчитан после факта, юридически значимого «снимка на момент завершения» не существует.
-- Поскольку `learner` сам может создавать `Progress`, нужна серверная валидация, что прогресс создаётся только по курсам, на которые у пользователя есть активный `Assignment`/доступ — иначе возможна подделка прогресса по произвольному курсу через прямой вызов API.
+- ~~Поскольку `learner` сам может создавать `Progress`, нужна серверная валидация, что прогресс создаётся только по курсам, на которые у пользователя есть активный `Assignment`/доступ~~ — **закрыто (2026-08-08):** `ProgressService.createProgress` теперь для learner-only акторов требует либо активное `Assignment` (прямое на пользователя, либо через группу — `GroupMember`), либо флаг `Course.selfEnrollmentEnabled = true` (новое поле, миграция `20260808070000_add_course_self_enrollment`). Без обоих условий — `ForbiddenException`. Для admin/manager/instructor проверка не применяется (доверенное ручное простановление прогресса, как и раньше). Тумблер самозаписи включается через `updateCourse` (`selfEnrollmentEnabled` в теле запроса) — UI-переключателя в админке пока нет, только API.
 - `lessonId` опционален — `Progress` может быть как по уроку, так и агрегированно по курсу целиком; логика агрегации курсового прогресса из построчных урочных записей должна быть согласованной (не задвоенный подсчёт).
 
 ---

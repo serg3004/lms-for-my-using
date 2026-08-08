@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { isLearnerOnly } from '../auth/roles.js';
 import { ManagerTeamScope, TeamScopeActor, normalizeActor, unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
 import { CreateProgressInput } from './progress.schemas.js';
 
@@ -67,8 +68,12 @@ export class ProgressService {
   }
 
   async createProgress(input: CreateProgressInput, actor: TeamScopeActor = unrestrictedActor(input.organizationId)) {
-    await this.ensureCourseExists(input.courseId, input.organizationId);
+    const course = await this.ensureCourseExists(input.courseId, input.organizationId);
     await this.ensureUserExists(input.userId, input.organizationId, actor);
+
+    if (isLearnerOnly(actor.roles)) {
+      await this.ensureLearnerCanRecordProgress(input.courseId, input.userId, input.organizationId, course.selfEnrollmentEnabled);
+    }
 
     if (input.lessonId) {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
@@ -102,11 +107,41 @@ export class ProgressService {
         organizationId,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, selfEnrollmentEnabled: true },
     });
 
     if (!course) {
       throw new NotFoundException('Course not found');
+    }
+
+    return course;
+  }
+
+  // A learner may only record progress on a course they're actually assigned to (directly, or
+  // via a group they belong to) — unless the course is explicitly opened up for self-paced access.
+  // Without this, any learner could fabricate progress on any course in their org just by knowing
+  // its id, including courses never assigned to them (see docs/CONCERNS.md).
+  private async ensureLearnerCanRecordProgress(
+    courseId: string,
+    userId: string,
+    organizationId: string,
+    selfEnrollmentEnabled: boolean,
+  ) {
+    if (selfEnrollmentEnabled) return;
+
+    const assignment = await this.prisma.assignment.findFirst({
+      where: {
+        organizationId,
+        courseId,
+        deletedAt: null,
+        status: { not: 'cancelled' },
+        OR: [{ userId }, { group: { members: { some: { userId, organizationId, deletedAt: null } } } }],
+      },
+      select: { id: true },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException('Course is not assigned to this user and does not allow self-enrollment');
     }
   }
 

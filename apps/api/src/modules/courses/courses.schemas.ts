@@ -19,6 +19,7 @@ export const createCourseSchema = z.object({
   category: courseCategorySchema.optional(),
   durationMinutes: z.number().int().min(1).max(10_000).optional(),
   status: courseStatusSchema.default('draft'),
+  selfEnrollmentEnabled: z.boolean().default(false),
 });
 
 export const updateCourseSchema = createCourseSchema.omit({ organizationId: true }).partial();
