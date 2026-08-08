@@ -1,4 +1,12 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals';
+
+import { PrismaService } from '../../database/prisma.service.js';
 import { createAssessmentSchema, updateAssessmentSchema, updateAssessmentStatusSchema } from './assessments.schemas.js';
+import { AssessmentsService } from './assessments.service.js';
+
+const organizationId = '11111111-1111-1111-1111-111111111111';
+const assessmentId = '22222222-2222-2222-2222-222222222222';
 
 describe('Assessments validation', () => {
   it('accepts valid assessment input for future automatic grading', () => {
@@ -85,5 +93,66 @@ describe('updateAssessmentSchema', () => {
 
   it('accepts empty object', () => {
     expect(updateAssessmentSchema.parse({})).toEqual({});
+  });
+});
+
+describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
+  it('rejects publishing when a question has no correct answer option', async () => {
+    const update = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessmentQuestion: {
+        findMany: async () => [
+          { title: 'Q1', options: [{ id: 'opt-1' }] },
+          { title: 'Q2 (no correct option)', options: [] },
+        ],
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'published')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('publishes when every question has at least one correct answer option', async () => {
+    const updatedAssessment = { id: assessmentId, status: 'published' };
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update: async () => updatedAssessment },
+      assessmentQuestion: {
+        findMany: async () => [
+          { title: 'Q1', options: [{ id: 'opt-1' }] },
+          { title: 'Q2', options: [{ id: 'opt-2' }] },
+        ],
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'published')).resolves.toEqual(
+      updatedAssessment,
+    );
+  });
+
+  it('does not run the guard when changing status to something other than published', async () => {
+    const findMany = jest.fn(async () => []);
+    const updatedAssessment = { id: assessmentId, status: 'archived' };
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update: async () => updatedAssessment },
+      assessmentQuestion: { findMany },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'archived')).resolves.toEqual(updatedAssessment);
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when the assessment does not exist', async () => {
+    const prisma = { assessment: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'published')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });
