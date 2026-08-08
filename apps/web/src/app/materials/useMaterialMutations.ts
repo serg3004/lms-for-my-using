@@ -7,7 +7,7 @@ export type MaterialMutationResult = {
   description: string | null;
   kind: 'file' | 'link';
   fileName: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   mimeType: string | null;
   sizeBytes: number | null;
   status: string;
