@@ -161,3 +161,63 @@ describe('CoursesService completion', () => {
     });
   });
 });
+
+describe('CoursesService draft visibility', () => {
+  it('listCourses does not filter by status when hideDrafts is not set (admin/manager/instructor)', async () => {
+    const findMany = jest.fn(async () => []);
+    const count = jest.fn(async () => 0);
+    const prisma = { course: { findMany, count } } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await service.listCourses(organizationId, 1, 20);
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId, deletedAt: null } }));
+  });
+
+  it('listCourses excludes draft courses when hideDrafts is true (learner)', async () => {
+    const findMany = jest.fn(async () => []);
+    const count = jest.fn(async () => 0);
+    const prisma = { course: { findMany, count } } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await service.listCourses(organizationId, 1, 20, undefined, true);
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { organizationId, deletedAt: null, status: { not: 'draft' } },
+      }),
+    );
+  });
+
+  it('getCourse does not filter by status when hideDrafts is not set', async () => {
+    const findFirst = jest.fn(async () => ({ id: courseId, status: 'draft' }));
+    const prisma = { course: { findFirst } } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.getCourse(courseId, organizationId)).resolves.toMatchObject({ id: courseId });
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: courseId, organizationId, deletedAt: null } }),
+    );
+  });
+
+  it('getCourse hides a draft course from a learner (404, not the draft content)', async () => {
+    const findFirst = jest.fn(async () => null);
+    const prisma = { course: { findFirst } } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.getCourse(courseId, organizationId, true)).rejects.toBeInstanceOf(NotFoundException);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: courseId, organizationId, deletedAt: null, status: { not: 'draft' } },
+      }),
+    );
+  });
+
+  it('getCourse still returns a published course to a learner when hideDrafts is true', async () => {
+    const findFirst = jest.fn(async () => ({ id: courseId, status: 'published' }));
+    const prisma = { course: { findFirst } } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.getCourse(courseId, organizationId, true)).resolves.toMatchObject({ id: courseId });
+  });
+});

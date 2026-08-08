@@ -4,7 +4,7 @@ import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
+import { isLearnerOnly, Roles, rolePolicies } from '../auth/roles.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
 import {
@@ -31,7 +31,7 @@ export class CoursesController {
     const { page, pageSize } = paginationQuerySchema.parse(query);
     const user = request.currentUser!;
     const instructorId = this.courseAccess.isInstructorScoped(user) ? user.id : undefined;
-    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId);
+    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles));
   }
 
   @Get(':id')
@@ -39,7 +39,7 @@ export class CoursesController {
   async getCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     await this.courseAccess.assertCourseAccess(courseId, user);
-    return this.coursesService.getCourse(courseId, user.organizationId);
+    return this.coursesService.getCourse(courseId, user.organizationId, isLearnerOnly(user.roles));
   }
 
   @Get(':id/completion')
