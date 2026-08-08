@@ -17,6 +17,7 @@
     "admin:demo-seed": "node dist/scripts/admin-demo-seed.js",
     "storage:cleanup": "node dist/scripts/material-storage-cleanup.js",
     "storage:multipart-cleanup": "node dist/scripts/multipart-upload-cleanup.js",
+    "session:cleanup": "node dist/scripts/session-cleanup.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

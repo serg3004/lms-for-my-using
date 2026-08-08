@@ -94,3 +94,45 @@ describe('AuthSessionStore.consumeRefreshSession', () => {
     });
   });
 });
+
+describe('AuthSessionStore.cleanupExpired', () => {
+  const now = new Date('2026-08-08T00:00:00.000Z');
+  const expectedWhere = {
+    OR: [
+      { revokedAt: { not: null } },
+      { refreshExpiresAt: { lte: now } },
+      { refreshExpiresAt: null, expiresAt: { lte: now } },
+    ],
+  };
+
+  it('only counts matching sessions in dry-run mode, without deleting', async () => {
+    const count = async () => 4;
+    const deleteMany = async () => ({ count: 999 });
+    const prisma = { session: { count, deleteMany } } as unknown as PrismaService;
+    const store = new AuthSessionStore(prisma);
+
+    await expect(store.cleanupExpired(true, now)).resolves.toEqual({ dryRun: true, count: 4 });
+  });
+
+  it('deletes matching sessions when not a dry run, using the same where clause as the count', async () => {
+    const countCalls: unknown[] = [];
+    const deleteCalls: unknown[] = [];
+    const prisma = {
+      session: {
+        count: async (args: unknown) => {
+          countCalls.push(args);
+          return 0;
+        },
+        deleteMany: async (args: unknown) => {
+          deleteCalls.push(args);
+          return { count: 4 };
+        },
+      },
+    } as unknown as PrismaService;
+    const store = new AuthSessionStore(prisma);
+
+    await expect(store.cleanupExpired(false, now)).resolves.toEqual({ dryRun: false, count: 4 });
+    expect(countCalls).toHaveLength(0);
+    expect(deleteCalls[0]).toEqual({ where: expectedWhere });
+  });
+});
