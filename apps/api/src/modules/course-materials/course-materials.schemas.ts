@@ -40,6 +40,7 @@ export const updateCourseMaterialSchema = z
     fileName: z.string().trim().max(255).nullable(),
     fileUrl: z.string().trim().url().max(2048).nullable(),
     status: courseMaterialStatusSchema,
+    lessonId: z.string().uuid().nullable(),
   })
   .partial();
 export type UpdateCourseMaterialInput = z.infer<typeof updateCourseMaterialSchema>;

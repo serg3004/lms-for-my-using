@@ -169,4 +169,15 @@ export class CourseMaterialsController {
     const input = updateCourseMaterialSchema.parse(body);
     return this.courseMaterialsService.updateCourseMaterial(materialId, request.currentUser!.organizationId, input);
   }
+
+  @Delete('materials/:id')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  async deleteCourseMaterial(@Param('id') materialId: string, @Req() request: AuthenticatedRequest) {
+    const organizationId = request.currentUser!.organizationId;
+    const material = await this.courseMaterialsService.getMaterialStorageReference(materialId, organizationId);
+    if (material.objectKey) await this.uploadService.deleteObject(material.objectKey);
+    if (material.quarantineKey) await this.uploadService.deleteObject(material.quarantineKey);
+    return this.courseMaterialsService.deleteCourseMaterial(materialId, organizationId);
+  }
 }

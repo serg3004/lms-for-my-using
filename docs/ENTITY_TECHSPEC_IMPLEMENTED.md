@@ -132,12 +132,14 @@
 ## 11. CourseMaterial
 **Модель данных:** `id, organizationId, courseId (FK Cascade), lessonId? (FK SetNull), title, slug, description?, kind (file/link), fileName?, fileUrl?, objectKey? (unique), quarantineKey? (unique), mimeType?, sizeBytes?, scanStatus? (pending/scanning/available/rejected), scanReason?, scanExpiresAt?, scannedAt?, status (active/archived), createdAt/updatedAt, deletedAt`. Уникальность `[courseId, slug]`.
 
-**RBAC:** все роли — read; create/update (включая загрузку) — admin/instructor.
+**RBAC:** все роли — read; create/update/delete/reassign-to-lesson (включая загрузку) — admin/instructor.
+- **(2026-08-08) Добавлено:** `DELETE /materials/:id` — полное (soft-delete) удаление записи материала, ранее существовал только `DELETE /materials/:id/file` (удаляет только прикреплённый файл, запись материала оставалась). Перед soft-delete чистит `objectKey`/`quarantineKey` в хранилище, как и `deleteMaterialFile`.
+- **(2026-08-08) Добавлено:** `lessonId` теперь можно менять через `PATCH /materials/:id` (назначение материала на урок, переназначение на другой урок курса, снятие привязки через `lessonId: null`). Новый `lessonId` валидируется — должен принадлежать тому же курсу, что и материал (переиспользует существующую `ensureLessonBelongsToCourse`). Ранее `lessonId` можно было задать только один раз, при создании.
 
-**Edge cases:**
-- **Подтверждённый открытый concern:** S3/R2-инфраструктура на Railway не настроена — код загрузки написан (`objectKey`/`quarantineKey`/malware-scan pipeline), но бакет и env-переменные отсутствуют, поэтому функциональность загрузки материалов сейчас нерабочая в проде.
-- `scanStatus: rejected` — материал не прошёл проверку на вредоносность; модель не содержит явного правила автоочистки отклонённых файлов из `quarantineKey`-хранилища по истечении `scanExpiresAt`.
-- `lessonId` опционален (`SetNull` при удалении урока) — материал может «пережить» удаление своего урока и остаться привязанным только к курсу, что нужно явно отражать в UI (материал без урока — не баг).
+**Edge cases:** проверены (2026-08-08).
+- **Открытый concern (не проверялся в этом заходе):** S3/R2-инфраструктура на Railway не настроена — код загрузки написан (`objectKey`/`quarantineKey`/malware-scan pipeline), но бакет и env-переменные отсутствуют, поэтому функциональность загрузки материалов сейчас нерабочая в проде.
+- ~~`scanStatus: rejected` — нет автоочистки отклонённых файлов~~ — **закрыто, при перепроверке не подтвердилось.** `MaterialMalwareScanService.deleteAndReject`/`recordVerdict` уже удаляют объект из `quarantineKey`-хранилища и обнуляют `quarantineKey` сразу при переводе материала в `rejected` (не откладывая до истечения `scanExpiresAt`). Отдельно есть `MaterialStorageLifecycleService`/`material-storage-cleanup.ts` — периодическая уборка осиротевших объектов в S3, не привязанных ни к одной записи `CourseMaterial` (аналог `session-cleanup`/`multipart-upload-cleanup`, без авто-расписания).
+- `lessonId` опционален (`SetNull` при удалении урока) — материал может «пережить» удаление своего урока и остаться привязанным только к курсу, что нужно явно отражать в UI (материал без урока — не баг). Подтверждено, осталось как есть.
 
 ---
 
