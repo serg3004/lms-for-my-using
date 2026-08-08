@@ -36,43 +36,41 @@ export class CourseAccessPolicy {
     if (!course) throw new NotFoundException('Course not found');
   }
 
+  /**
+   * Single-query ownership check: filters the resource directly through its course relation
+   * (nested `course`/`assessment.course`) instead of a separate follow-up query to `course`.
+   */
   async assertResourceAccess(resource: CourseResource, resourceId: string, user: CourseScopedUser): Promise<void> {
     if (!this.isInstructorScoped(user)) return;
 
     const where = { id: resourceId, organizationId: user.organizationId, deletedAt: null };
-    let record: { courseId: string } | null;
+    const course = this.courseWhere(user);
+    let record: { id: string } | null;
     switch (resource) {
-      case 'lesson': record = await this.prisma.lesson.findFirst({ where, select: { courseId: true } }); break;
-      case 'material': record = await this.prisma.courseMaterial.findFirst({ where, select: { courseId: true } }); break;
-      case 'assessment': record = await this.prisma.assessment.findFirst({ where, select: { courseId: true } }); break;
-      case 'assignment': record = await this.prisma.assignment.findFirst({ where, select: { courseId: true } }); break;
-      case 'progress': record = await this.prisma.progress.findFirst({ where, select: { courseId: true } }); break;
-      case 'attempt': {
-        const attempt = await this.prisma.assessmentAttempt.findFirst({
-          where,
-          select: { assessment: { select: { courseId: true } } },
-        });
-        record = attempt ? { courseId: attempt.assessment.courseId } : null;
+      case 'lesson': record = await this.prisma.lesson.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'material': record = await this.prisma.courseMaterial.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'assessment': record = await this.prisma.assessment.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'assignment': record = await this.prisma.assignment.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'progress': record = await this.prisma.progress.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'attempt':
+        record = await this.prisma.assessmentAttempt.findFirst({ where: { ...where, assessment: { course } }, select: { id: true } });
         break;
-      }
-      case 'certificate': record = await this.prisma.certificate.findFirst({ where, select: { courseId: true } }); break;
-      case 'question': {
-        const question = await this.prisma.assessmentQuestion.findFirst({
-          where,
-          select: { assessment: { select: { courseId: true } } },
-        });
-        record = question ? { courseId: question.assessment.courseId } : null;
+      case 'certificate': record = await this.prisma.certificate.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      case 'question':
+        record = await this.prisma.assessmentQuestion.findFirst({ where: { ...where, assessment: { course } }, select: { id: true } });
         break;
-      }
     }
     if (!record) throw new NotFoundException('Course resource not found');
-    await this.assertCourseAccess(record.courseId, user);
   }
 
-  async assignInstructor(courseId: string, user: CourseScopedUser): Promise<void> {
+  async assignInstructor(
+    courseId: string,
+    user: CourseScopedUser,
+    client: Pick<PrismaService, 'courseInstructor'> = this.prisma,
+  ): Promise<void> {
     if (!this.isInstructorScoped(user)) return;
 
-    await this.prisma.courseInstructor.upsert({
+    await client.courseInstructor.upsert({
       where: { courseId_instructorId: { courseId, instructorId: user.id } },
       create: { courseId, instructorId: user.id, organizationId: user.organizationId },
       update: { deletedAt: null },
