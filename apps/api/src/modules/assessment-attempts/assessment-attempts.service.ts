@@ -40,6 +40,7 @@ type QuestionWithOptions = {
   id: string;
   type: 'single_choice' | 'multiple_choice' | 'true_false';
   points: number;
+  scoringMode: 'all_or_nothing' | 'proportional' | 'proportional_with_penalty' | 'per_option';
   options: {
     id: string;
     isCorrect: boolean;
@@ -292,6 +293,7 @@ export class AssessmentAttemptsService {
         id: true,
         type: true,
         points: true,
+        scoringMode: true,
         options: {
           where: { deletedAt: null },
           select: {
@@ -384,13 +386,56 @@ export class AssessmentAttemptsService {
 
     const selected = selectedOptionIds.sort();
     const correct = [...correctOptionIds].sort();
-    const isCorrect = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
+    const isFullMatch = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
+    const score = this.scoreMultipleChoiceAnswer(question, new Set(selectedOptionIds), new Set(correctOptionIds), isFullMatch);
 
     return {
       questionId: question.id,
       selectedOptionIds,
-      isCorrect,
-      score: isCorrect ? question.points : 0,
+      isCorrect: isFullMatch,
+      score,
     };
+  }
+
+  /**
+   * `isCorrect` always means an exact match with the correct set — score is what varies by
+   * scoringMode. all_or_nothing is the only mode where a non-exact selection scores 0; the other
+   * three award partial credit for a partially-correct multiple_choice selection.
+   */
+  private scoreMultipleChoiceAnswer(
+    question: QuestionWithOptions,
+    selectedSet: Set<string>,
+    correctSet: Set<string>,
+    isFullMatch: boolean,
+  ): number {
+    const correctCount = correctSet.size;
+
+    switch (question.scoringMode) {
+      case 'all_or_nothing':
+        return isFullMatch ? question.points : 0;
+
+      case 'proportional': {
+        if (correctCount === 0) return 0;
+        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
+        return Math.round((correctSelectedCount / correctCount) * question.points);
+      }
+
+      case 'proportional_with_penalty': {
+        if (correctCount === 0) return 0;
+        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
+        const incorrectSelectedCount = selectedSet.size - correctSelectedCount;
+        const ratio = Math.max(0, (correctSelectedCount - incorrectSelectedCount) / correctCount);
+        return Math.round(ratio * question.points);
+      }
+
+      case 'per_option': {
+        const totalOptions = question.options.length;
+        if (totalOptions === 0) return 0;
+        const correctJudgments = question.options.filter(
+          (option) => selectedSet.has(option.id) === option.isCorrect,
+        ).length;
+        return Math.round((correctJudgments / totalOptions) * question.points);
+      }
+    }
   }
 }

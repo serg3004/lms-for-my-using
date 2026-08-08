@@ -210,3 +210,118 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
     expect(createAttemptCalled).toBe(false);
   });
 });
+
+describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
+  const optionA = 'aaaaaaaa-0000-4000-8000-000000000001'; // correct
+  const optionB = 'bbbbbbbb-0000-4000-8000-000000000002'; // correct
+  const optionC = 'cccccccc-0000-4000-8000-000000000003'; // incorrect
+  const optionD = 'dddddddd-0000-4000-8000-000000000004'; // incorrect
+  const points = 10;
+
+  function buildPrisma(scoringMode: string, selectedOptionIds: string[]) {
+    const createManyCalls: { data: { score: number; isCorrect: boolean }[] }[] = [];
+    const prisma = {
+      assessment: {
+        findFirst: async () => ({
+          id: assessmentId,
+          courseId,
+          status: 'published',
+          passingScore: 0,
+          maxAttempts: null,
+          availableAfterCourseCompletion: false,
+        }),
+      },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentQuestion: {
+        findMany: async () => [
+          {
+            id: questionId,
+            type: 'multiple_choice',
+            points,
+            scoringMode,
+            options: [
+              { id: optionA, isCorrect: true },
+              { id: optionB, isCorrect: true },
+              { id: optionC, isCorrect: false },
+              { id: optionD, isCorrect: false },
+            ],
+          },
+        ],
+      },
+      assessmentAttempt: {
+        findFirst: async () => ({
+          id: 'attempt-id',
+          organizationId,
+          assessmentId,
+          userId,
+          status: 'completed',
+          score: 0,
+          maxScore: points,
+          percentage: 0,
+          passed: false,
+          startedAt: new Date('2026-05-28T00:00:00.000Z'),
+          completedAt: new Date('2026-05-28T00:00:00.000Z'),
+          createdAt: new Date('2026-05-28T00:00:00.000Z'),
+          updatedAt: new Date('2026-05-28T00:00:00.000Z'),
+        }),
+      },
+      $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
+        callback({
+          assessmentAttempt: { create: async () => ({ id: 'attempt-id' }) },
+          assessmentAttemptAnswer: {
+            createMany: async (args: { data: { score: number; isCorrect: boolean }[] }) => {
+              createManyCalls.push(args);
+
+              return { count: args.data.length };
+            },
+          },
+          certificate: { upsert: async () => ({ id: 'certificate-id' }) },
+        }),
+    } as unknown as PrismaService;
+
+    const input: CreateAssessmentAttemptInput = { answers: [{ questionId, selectedOptionIds }] };
+
+    return { service: new AssessmentAttemptsService(prisma), input, createManyCalls };
+  }
+
+  it('all_or_nothing: partial selection scores 0, only an exact match scores full points', async () => {
+    const partial = buildPrisma('all_or_nothing', [optionA]);
+    await partial.service.createAttempt(assessmentId, userId, organizationId, partial.input);
+    expect(partial.createManyCalls[0].data[0]).toMatchObject({ score: 0, isCorrect: false });
+
+    const exact = buildPrisma('all_or_nothing', [optionA, optionB]);
+    await exact.service.createAttempt(assessmentId, userId, organizationId, exact.input);
+    expect(exact.createManyCalls[0].data[0]).toMatchObject({ score: points, isCorrect: true });
+  });
+
+  it('proportional: awards credit per correct option selected, ignores extra wrong picks', async () => {
+    const oneOfTwo = buildPrisma('proportional', [optionA]);
+    await oneOfTwo.service.createAttempt(assessmentId, userId, organizationId, oneOfTwo.input);
+    expect(oneOfTwo.createManyCalls[0].data[0]).toMatchObject({ score: 5, isCorrect: false });
+
+    const plusWrong = buildPrisma('proportional', [optionA, optionB, optionC]);
+    await plusWrong.service.createAttempt(assessmentId, userId, organizationId, plusWrong.input);
+    expect(plusWrong.createManyCalls[0].data[0]).toMatchObject({ score: points, isCorrect: false });
+  });
+
+  it('proportional_with_penalty: wrong picks reduce the score, floored at 0', async () => {
+    const oneCorrectOneWrong = buildPrisma('proportional_with_penalty', [optionA, optionC]);
+    await oneCorrectOneWrong.service.createAttempt(assessmentId, userId, organizationId, oneCorrectOneWrong.input);
+    expect(oneCorrectOneWrong.createManyCalls[0].data[0]).toMatchObject({ score: 0, isCorrect: false });
+
+    const allWrong = buildPrisma('proportional_with_penalty', [optionC, optionD]);
+    await allWrong.service.createAttempt(assessmentId, userId, organizationId, allWrong.input);
+    expect(allWrong.createManyCalls[0].data[0]).toMatchObject({ score: 0, isCorrect: false });
+  });
+
+  it('per_option: scores each option (selected-and-correct or left-unselected-and-incorrect)', async () => {
+    const oneOfTwo = buildPrisma('per_option', [optionA]);
+    await oneOfTwo.service.createAttempt(assessmentId, userId, organizationId, oneOfTwo.input);
+    // A selected+correct, C/D unselected+incorrect = 3 right judgments; B unselected but correct = wrong judgment.
+    expect(oneOfTwo.createManyCalls[0].data[0]).toMatchObject({ score: 8, isCorrect: false });
+
+    const exact = buildPrisma('per_option', [optionA, optionB]);
+    await exact.service.createAttempt(assessmentId, userId, organizationId, exact.input);
+    expect(exact.createManyCalls[0].data[0]).toMatchObject({ score: points, isCorrect: true });
+  });
+});

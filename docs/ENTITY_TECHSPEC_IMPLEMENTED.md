@@ -192,13 +192,18 @@
 ---
 
 ## 16. AssessmentQuestion
-**Модель данных:** `id, organizationId, assessmentId (FK Cascade), type (single_choice/multiple_choice/true_false), title, text?, imageUrl?, points (default 1), order, createdAt/updatedAt, deletedAt`.
+**Модель данных:** `id, organizationId, assessmentId (FK Cascade), type (single_choice/multiple_choice/true_false), title, text?, imageUrl?, points (default 1), order, scoringMode (all_or_nothing/proportional/proportional_with_penalty/per_option, default all_or_nothing), createdAt/updatedAt, deletedAt`.
 
 **RBAC:** read — admin/manager/instructor (learner не имеет прямого read к вопросам вне контекста попытки — `Assessment questions/options — read: ✓ admin ✓ manager ✓ instructor`, без learner); create — admin/instructor.
 
 **Edge cases:** проверены (2026-08-08).
 - ~~Learner исключён из прямого read вопросов — нужен отдельный узкий эндпоинт попытки~~ — **закрыто, подтверждено уже реализованным правильно.** `GET /assessments/:assessmentId/quiz` (`listLearnerQuizQuestions`, доступен learner через `assessmentsRead`) отдаёт вопросы через отдельный `learnerAssessmentQuestionSelect`, который физически не включает `isCorrect` у вариантов ответа — правильные ответы не попадают в ответ API. Именно то разделение, которое предполагал этот пункт.
-- `points` независим от количества вариантов ответа — при `multiple_choice` нет правила частичного начисления. Подтверждено буквально: `gradeMultipleChoiceAnswer` (`assessment-attempts.service.ts`) — строго всё-или-ничего, полный балл только при точном совпадении выбранных опций с правильными. Работает консистентно, не баг — но partial credit не реализован. Открытый продуктовый вопрос (нужно ли частичное начисление), не гэп безопасности данных.
+- ~~`points` независим от количества вариантов ответа — при `multiple_choice` нет правила частичного начисления~~ — **закрыто (2026-08-08), реализовано по решению пользователя.** Добавлено поле `scoringMode` на `AssessmentQuestion` (миграция `20260808180000_add_assessment_question_scoring_mode`, дефолт `all_or_nothing` — поведение для всех существующих вопросов не меняется). `gradeMultipleChoiceAnswer`/`scoreMultipleChoiceAnswer` (`assessment-attempts.service.ts`) теперь поддерживают 4 схемы начисления для `multiple_choice`:
+  - `all_or_nothing` — как раньше, полный балл только при точном совпадении, иначе 0.
+  - `proportional` — балл = (верно отмеченные / всего правильных) × `points`, без штрафа за лишнее.
+  - `proportional_with_penalty` — балл = max(0, (верно отмеченные − неверно отмеченные) / всего правильных) × `points`.
+  - `per_option` — `points` делится поровну между всеми вариантами вопроса; балл начисляется за каждый верно оставленный/отмеченный вариант (и правильно неотмеченный неверный).
+  `isCorrect` во всех режимах означает точное совпадение с правильным набором (не «получил хоть какие-то баллы») — используется как раньше для флага полного успеха по вопросу. `single_choice`/`true_false` не затронуты — там всегда всё-или-ничего, `scoringMode` для них не учитывается. Автор теста выбирает режим через `scoringMode` в теле `POST /assessments/:assessmentId/questions` — update-эндпоинта для вопросов пока не существует (as-is, не в объёме этой задачи).
 
 ---
 
