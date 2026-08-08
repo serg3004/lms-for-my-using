@@ -31,7 +31,7 @@ token flows. All other protected endpoints use `AuthGuard` and `RolesGuard`.
 | Course materials — read | ✓ | ✓ | ✓ | ✓ |
 | Course materials/upload — create/update/delete/reassign to lesson | ✓ |  | ✓ |  |
 | Assignments — read | ✓ | ✓ | ✓ | ✓ |
-| Assignments — create/update | ✓ | ✓ | ✓ |  |
+| Assignments — create/update (learner: нет self-enrollment, см. §13 `ENTITY_TECHSPEC_IMPLEMENTED.md`) | ✓ | ✓ | ✓ |  |
 | Progress — read/create | ✓ | ✓ | ✓ | ✓ |
 | Assessments — read | ✓ | ✓ | ✓ | ✓ |
 | Assessments — create/update | ✓ |  | ✓ |  |
