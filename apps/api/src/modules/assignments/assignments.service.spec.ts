@@ -1,3 +1,7 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
+
+import { PrismaService } from '../../database/prisma.service.js';
+import { AssignmentsService } from './assignments.service.js';
 import { createAssignmentSchema, updateAssignmentStatusSchema } from './assignments.schemas.js';
 
 describe('Assignments validation', () => {
@@ -56,5 +60,42 @@ describe('updateAssignmentStatusSchema', () => {
 
   it('rejects unknown status', () => {
     expect(() => updateAssignmentStatusSchema.parse({ status: 'active' })).toThrow();
+  });
+});
+
+describe('AssignmentsService createAssignment — group targeting', () => {
+  const organizationId = '11111111-1111-1111-1111-111111111111';
+  const courseId = '22222222-2222-2222-2222-222222222222';
+  const groupId = '44444444-4444-4444-4444-444444444444';
+
+  function buildService(groupStatus: 'active' | 'archived' | null) {
+    const created = { id: 'assignment-1' };
+    const prisma = {
+      course: { findFirst: async () => ({ id: courseId }) },
+      group: { findFirst: async () => (groupStatus ? { id: groupId, status: groupStatus } : null) },
+      assignment: { create: async () => created },
+    } as unknown as PrismaService;
+
+    return new AssignmentsService(prisma);
+  }
+
+  const input = createAssignmentSchema.parse({ organizationId, courseId, groupId });
+
+  it('rejects assigning a course to an archived group', async () => {
+    const service = buildService('archived');
+
+    await expect(service.createAssignment(input)).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('creates the assignment when the group is active', async () => {
+    const service = buildService('active');
+
+    await expect(service.createAssignment(input)).resolves.toMatchObject({ id: 'assignment-1' });
+  });
+
+  it('still throws NotFoundException when the group does not exist', async () => {
+    const service = buildService(null);
+
+    await expect(service.createAssignment(input)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

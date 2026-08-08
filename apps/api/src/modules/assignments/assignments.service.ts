@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { ManagerTeamScope, TeamScopeActor, normalizeActor, unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
@@ -136,11 +136,15 @@ export class AssignmentsService {
         ...this.teamScope.group(actor),
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!group) {
       throw new NotFoundException('Group not found');
+    }
+
+    if (group.status === 'archived') {
+      throw new ConflictException('Cannot assign a course to an archived group');
     }
   }
 }
