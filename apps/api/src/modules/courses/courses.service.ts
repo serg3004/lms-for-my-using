@@ -37,12 +37,13 @@ export class CoursesService {
     private readonly courseAccess: CourseAccessPolicy,
   ) {}
 
-  async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string) {
+  async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string, hideDrafts = false) {
     const skip = (page - 1) * pageSize;
     const where = {
       organizationId,
       deletedAt: null,
       ...(instructorId ? { instructors: { some: { instructorId, organizationId, deletedAt: null } } } : {}),
+      ...(hideDrafts ? { status: { not: 'draft' as const } } : {}),
     } as const;
     const [items, total] = await Promise.all([
       this.prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: courseSelect }),
@@ -51,12 +52,13 @@ export class CoursesService {
     return { items, page, pageSize, total };
   }
 
-  async getCourse(courseId: string, organizationId: string) {
+  async getCourse(courseId: string, organizationId: string, hideDrafts = false) {
     const course = await this.prisma.course.findFirst({
       where: {
         id: courseId,
         organizationId,
         deletedAt: null,
+        ...(hideDrafts ? { status: { not: 'draft' as const } } : {}),
       },
       select: courseSelect,
     });
