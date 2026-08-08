@@ -31,7 +31,8 @@
 | 14 | `DEPENDENCY_UPDATE_POLICY.md` | ⚠️ | Основные правила верны; ownership/verification/non-goals отстали от workspace |
 | 15 | `DEPLOY_FOUNDATION.md` | ⚠️ | Railway mechanics актуальны; staging/storage/follow-up sections расходятся с current docs |
 | 16 | `DEVELOPMENT_PLAN.md` | ⚠️ historical/current mix | Полезный implementation ledger, но статусы и PR-нумерация не являются надёжным current roadmap |
-| 17 | `FRONTEND_COVERAGE_ROADMAP.md` | ⚠️ | Stage 1 gate актуален; 80% rule для всех новых domain/validation modules не enforced, follow-up progress не отражён |
+| 17 | `FRONTEND_COVERAGE_ROADMAP.md` | ⚠️ | Stage 1 gate актуален; универсальный 80% rule не machine-enforced |
+| 18 | `FRONTEND_MVP_MAINTAINABILITY_AUDIT.md` | ⚠️ | Hotspot page sizes актуальны; risk methodology и production-status claims требуют уточнения |
 
 ---
 
@@ -189,7 +190,7 @@ Logout/logout-all, tenant isolation, idempotency, bearer behavior, cookie cleari
 CI, CodeQL, staging-smoke, Dependabot, Postgres service, Gitleaks, frozen install, audit/waivers, lint/typecheck/tests/build, E2E/a11y/visual, Docker builds и Trivy соответствуют workflow-файлам. Semgrep workflow отсутствует.
 
 ### Несоответствие
-GitHub возвращает для `main` `protected: false`, protection disabled, required status checks enforcement `off`. Значит branch protection подтверждённо выключена.
+GitHub возвращает для `main` `protected: false`, protection disabled, required status checks enforcement `off`. Branch protection подтверждённо выключена.
 
 ### Что изменить
 Зафиксировать отсутствие branch protection и отделить наличие checks от их обязательности перед merge.
@@ -292,7 +293,7 @@ Live Railway status Redis/storage и sidebar 150%+ zoom.
 - Root build/lint/typecheck/test идут через Turbo.
 - Один root lockfile и frozen-install policy актуальны.
 - Scoped PR, changelog/release-note review, отдельные major upgrades, security priority, revert rollback и Prisma CLI/client alignment остаются правильными.
-- Root `pnpm.overrides` фактически используется для transitive security/version constraints.
+- Root `pnpm.overrides` используется для transitive security/version constraints.
 
 ### Несоответствия
 - Package-level scripts/ownership описывают только Root/API/Web, но не E2E/Shared.
@@ -336,13 +337,13 @@ Live Railway topology, MinIO/Redis provisioning, public/private API networking, 
 
 ## 16. `DEVELOPMENT_PLAN.md`
 
-**Статус:** ⚠️ исторический implementation ledger, частично пригодный как roadmap, но не надёжный current source of truth.
+**Статус:** ⚠️ historical implementation ledger, частично пригодный как roadmap, но не надёжный current source of truth.
 
 ### Подтверждено
 - Документ последним обновлением указывает `2026-07-30`; `✅` трактуется как «реализовано и проверено в коде».
-- Поздняя внутренняя нумерация `PR N` расходится с реальными GitHub PR. Например, plan item `PR 197 — Responsive visual matrix` не является GitHub PR #197; реальный #197 — learner assessment change. Аналогично для `PR 205`.
+- Поздняя внутренняя нумерация `PR N` расходится с реальными GitHub PR. Например, plan item `PR 197 — Responsive visual matrix` не является GitHub PR #197; аналогично для `PR 205`.
 - Responsive visual matrix уже реализован и выполняется в CI, хотя соответствующий plan item всё ещё `🔲`.
-- Shared package tests/contracts по current code остаются фактически незавершёнными: shared использует `vitest run --passWithNoTests`, test/spec files не обнаружены.
+- Shared package tests/contracts по current code остаются незавершёнными: shared использует `vitest run --passWithNoTests`, test/spec files не обнаружены.
 - Manual OpenAPI item исторически помечен `✅`, но current manual OpenAPI снова отстал от runtime routes.
 - `PROJECT_SOURCE_OF_TRUTH.md` имеет более высокий current-source priority.
 
@@ -369,54 +370,76 @@ Live Railway topology, MinIO/Redis provisioning, public/private API networking, 
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
-- baseline и Stage 1 claims документа;
-- `apps/web/vitest.config.ts`;
-- `apps/web/package.json`;
-- `.github/workflows/ci.yml`;
-- current Web source tree (`app`, `features`, `shared`);
-- наличие новых domain `model.ts`/validation modules и связанных tests;
-- фактический scope per-file coverage thresholds.
-
-### Подтверждённые факты
-- Stage 1 global gate по-прежнему равен **40%** для statements, branches, functions и lines в `apps/web/vitest.config.ts`.
+### Подтверждено
+- Stage 1 global gate равен **40%** для statements, branches, functions и lines в `apps/web/vitest.config.ts`.
 - `apps/web/package.json` содержит `test:coverage: vitest run --coverage`.
-- CI шаг `Tests` запускает `pnpm --recursive test:coverage`, поэтому Web coverage gate реально является blocking CI check: падение Vitest coverage threshold завершит шаг с ошибкой.
-- Production source inclusion соответствует документу: coverage включает `src/**/*.{ts,tsx}` и исключает только `src/main.tsx`, `src/vite-env.d.ts`, `src/**/*.spec.{ts,tsx}` и `src/**/*.d.ts`.
-- `apps/web/src/app/assessment-taking/model.ts` действительно имеет отдельный **80%** threshold по всем четырём метрикам.
-- После Stage 1 в коде появились и существуют другие domain models с собственными tests, например `admin-assignments/model.ts`, `admin-courses/model.ts`, `admin-lessons/model.ts`, `admin-org-structure/model.ts`, `assessment-builder/model.ts`, `course-builder/model.ts`, `materials/model.ts` и `features/admin-users/model.ts`.
-- Существует отдельный production validation module `features/admin-users/validation.ts`; он используется как часть feature code.
-- Current tree содержит дополнительные unit/render tests, которые частично покрывают направления из follow-up stages: `LogoutButton.spec.tsx`, certificate/page tests, admin user dialog/model tests, manager/instructor/learner page tests и API contract tests.
+- CI запускает `pnpm --recursive test:coverage`, поэтому Web coverage gate является blocking check.
+- Coverage включает production `src/**/*.{ts,tsx}` и исключает `main.tsx`, `vite-env.d.ts`, specs и `.d.ts`.
+- `assessment-taking/model.ts` имеет отдельный **80%** threshold.
+- После Stage 1 существуют другие domain models и `features/admin-users/validation.ts`, которые подпадают только под global gate.
 
-### Несоответствия и уточнения
-
-1. **Правило `Every new domain model or validation module must ship with at least 80% coverage` не является текущим machine-enforced contract.** `vitest.config.ts` задаёт per-file 80% threshold только для `src/app/assessment-taking/model.ts`. Остальные перечисленные `model.ts` и `features/admin-users/validation.ts` подпадают только под глобальный 40% gate. Они могут иметь хорошее фактическое покрытие, но конфигурация не гарантирует 80% для каждого такого файла.
-
-2. **Документ смешивает policy и automated enforcement.** Формулировка рядом с утверждением, что CI блокирует merges ниже `these gates`, создаёт впечатление, что CI enforce-ит и глобальные 40%, и универсальные per-domain 80%. Фактически CI enforce-ит 40% global + 80% только для одного конкретного assessment-taking model.
-
-3. **Follow-up stages 50% и 65% остаются roadmap, а не текущими thresholds.** Current config всё ещё 40%. При этом часть перечисленных Stage 50/65 областей уже получила тесты, поэтому список полезен как направление, но не отражает прогресс по отдельным подпунктам.
-
-4. **Status `PR 204, stage 1 complete` исторически понятен, но внутренняя `PR 204` нумерация может быть неоднозначной в контексте `DEVELOPMENT_PLAN.md`.** Если это plan item, а не реальный GitHub PR, стоит использовать `Plan item 204` либо явно указать настоящий GitHub PR.
-
-5. **Baseline percentages — исторический snapshot.** Они могут оставаться в разделе Baseline, но не должны восприниматься как current coverage. Документ не указывает current measured percentages после последующих изменений.
+### Несоответствия
+1. Правило `Every new domain model or validation module must ship with at least 80% coverage` не machine-enforced: отдельный 80% threshold задан только для `assessment-taking/model.ts`.
+2. Документ смешивает desired policy и automated enforcement.
+3. Follow-up stages 50% и 65% остаются roadmap; current global threshold всё ещё 40%.
+4. Часть областей из follow-up stages уже получила tests, но progress в документе не отражён.
+5. Принцип «global thresholds only move upward» является policy; отдельного guard от уменьшения threshold не обнаружено.
 
 ### Что изменить
-
-1. Разделить **enforced gates** и **coverage policy**:
-   - enforced сейчас: global 40% для всех четырёх метрик;
-   - enforced отдельно: 80% только для `assessment-taking/model.ts`;
-   - desired policy: 80% для каждого нового domain/validation module.
-2. Если универсальный 80% rule действительно обязателен, расширить Vitest thresholds на все соответствующие domain/validation files либо внедрить устойчивый автоматизированный механизм, который не требует вручную добавлять каждый новый файл.
-3. Для follow-up stages добавить статус/progress: какие области уже покрыты тестами, какие ещё остаются gap, и отделить это от момента повышения global gate до 50/65%.
-4. Добавить `Verified at` / `Verified against main SHA` для current threshold section; исторический baseline оставить явно датированным snapshot.
-5. Уточнить идентификатор `PR 204`: plan item или реальный GitHub Pull Request.
-6. Сохранить принцип «global thresholds only move upward» как policy, но не утверждать автоматическое предотвращение их понижения: текущая конфигурация хранит числовые значения, а отдельного guard, запрещающего уменьшить threshold в PR, не обнаружено.
+Разделить enforced gates и desired policy; при обязательном universal 80% rule автоматизировать per-domain enforcement; добавить progress для 50/65%, `Verified at`/SHA и уточнить идентификатор `PR 204`.
 
 ### [НЕ ПРОВЕРЕНО]
-- Текущие фактические проценты frontend coverage после всех последующих изменений в рамках этого шага отдельно не извлекались из coverage report; проверены именно configured gates и наличие tests.
-- Для каждого нового `model.ts`/validation module не вычислялось индивидуальное фактическое покрытие. Вывод касается отсутствия универсального **per-file enforcement**, а не утверждает, что эти файлы имеют меньше 80% фактического покрытия.
-- Исторические baseline percentages до Stage 1 не воспроизводились повторным checkout старого commit.
+Текущие фактические проценты coverage и индивидуальное фактическое покрытие каждого domain/validation файла отдельно не измерялись.
+
+---
+
+## 18. `FRONTEND_MVP_MAINTAINABILITY_AUDIT.md`
+
+**Статус:** ⚠️ частично актуален; current hotspot table и cleanup priorities в основном соответствуют `main`, но методика risk и live production claims требуют уточнения.
+
+### Проверено
+- текущие размеры direct page files в `apps/web/src/app`;
+- заявленные shrink/refactor результаты для `App.tsx`, `AdminUsersPage.tsx`, `AdminAssessmentBuilderPage.tsx`;
+- структура extracted feature/domain modules;
+- четыре текущих cleanup target;
+- смысл `Risk` column и единицы измерения;
+- production/staging statement;
+- behavior-preserving guardrails.
+
+### Подтверждённые факты
+- Все девять значений в `Largest current pages` соответствуют текущим размерам файлов при пересчёте `bytes / 1024`: `AdminMaterialsPage` ≈ 24.7, `AdminOrgStructurePage` ≈ 21.9, `AdminCourseBuilderPage` ≈ 20.5, `AdminCoursesPage` ≈ 19.6, `LearnerAssessmentTakingPage` ≈ 19.1, `InstructorCourseFormPage` ≈ 18.5, `AdminAssignmentCompletionPage` ≈ 18.1, `AdminThemeSettingsPage` ≈ 16.8, `AdminLessonsPage` ≈ 16.8 KiB.
+- В `apps/web/src/app` это крупнейшие direct `*Page.tsx` files.
+- Текущие конечные shrink values подтверждаются: `App.tsx` ≈ 1.25 KiB, `AdminUsersPage.tsx` ≈ 4.20 KiB, `AdminAssessmentBuilderPage.tsx` ≈ 14.35 KiB.
+- `App.tsx` route composition вынесена в `app/routes`; `AdminUsersPage` использует `features/admin-users`; assessment builder использует вынесенные model/components/hook.
+- `AdminMaterialsPage.tsx` уже использует `materials/model`, `MaterialTable`, `MaterialMetadataForm`, `useMaterialMutations`, но upload field/progress UI остаётся в page file.
+- `AdminOrgStructurePage.tsx` использует `admin-org-structure/model`, но dialog orchestration остаётся в page.
+- `AdminCourseBuilderPage.tsx` использует `course-builder/model` и `useCourseBuilderMutations`, но lesson list/editor/add-dialog composition остаётся в page.
+- `AdminCoursesPage.tsx` использует `admin-courses/model`, но instructor-management dialog остаётся в page.
+- PR #517, вошедший в `main` перед записью этого результата, меняет API users service/tests и entity techspec; frontend hotspot findings он не затрагивает.
+
+### Несоответствия и уточнения
+1. **`Size` фактически измерен в KiB, а не decimal KB.** Числа совпадают с `bytes / 1024`; обозначение `KB` технически неточно.
+2. **`Risk: High/Medium` не имеет воспроизводимой методики.** Не заданы thresholds или weighting по state/effects/API calls/dialogs/complexity; это qualitative assessment.
+3. **Размер root page file не равен total feature complexity.** Уменьшение page files частично достигнуто переносом logic/UI в `routes`, `features` и domain submodules. Это улучшает orchestration boundary, но page-size table не измеряет aggregate feature LOC/complexity.
+4. **Утверждение `The app is deployed to production, so the old staging smoke gate no longer applies` требует live operational подтверждения.** Repository содержит historical production/staging artifacts, но deploy/migration docs расходятся по наличию отдельного staging, а production smoke status требует свежей проверки.
+5. **Исторические before-size values не были повторно воспроизведены.** Current after-values подтверждены, но `21.1 → 14.4`, `14.3 → 1.2`, `12.8 → 4.2` должны быть привязаны к конкретным старым SHA, если используются как строгие измерения.
+6. Формулировка `Tests only where extraction touches logic rather than pure JSX separation` не означает, что PR может пропустить CI: repository workflow всё равно запускает полный набор checks.
+
+### Что изменить
+1. Переименовать `KB` в `KiB` либо явно задать метод `file bytes / 1024`.
+2. Добавить `Verified at` и `Verified against main SHA` к current-size table.
+3. Явно определить `Risk` как qualitative либо задать воспроизводимые критерии.
+4. Уточнить scope: таблица измеряет размер **page orchestration file**, а не total feature complexity после extraction.
+5. Production/staging statement снабдить датой и authoritative live source; без live verification не использовать как бессрочный current fact.
+6. Historical before-size values привязать к commit SHA либо оставить narrative history.
+7. Сохранить четыре текущих cleanup priorities: current code подтверждает, что соответствующая orchestration/UI всё ещё находится в этих page files.
+8. Для более устойчивой метрики дополнить page size feature-module size/complexity indicator, чтобы extraction не выглядела автоматическим снижением общей complexity только за счёт перемещения кода.
+
+### [НЕ ПРОВЕРЕНО]
+- Фактическое live состояние production и наличие/отсутствие отдельного staging environment на 2026-08-08.
+- Исторические исходные размеры до выполненных refactor без checkout старых commits.
+- Runtime behavior будущих cleanup extractions: в audit PR они не выполнялись.
+- Полная cyclomatic/cognitive complexity каждого hotspot; проверены file-size/orchestration facts, а не специализированные complexity metrics.
 
 ### Итог
-
-Stage 1 документа остаётся точным как описание текущего **40% global gate**, inclusion/exclusion rules и отдельного 80% gate для assessment-taking model. Главный drift — последняя policy-фраза стала сильнее реального CI enforcement: после появления новых domain/validation modules только один файл защищён отдельным 80% threshold. Roadmap следует обновить так, чтобы он явно различал текущие автоматические gates, желаемую policy и фактический прогресс к 50%/65%.
+Текущая page-size table и четыре cleanup target остаются точными и полезными. Основной drift находится в методологии вокруг findings: `KB` фактически означает KiB, `Risk` не формализован, уменьшение page file не равно уменьшению total feature complexity, а production/staging statement требует свежего operational подтверждения.
