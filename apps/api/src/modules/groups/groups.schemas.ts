@@ -42,3 +42,11 @@ export const assignGroupManagerSchema = z.object({
 });
 
 export type AssignGroupManagerInput = z.infer<typeof assignGroupManagerSchema>;
+
+export const listGroupsFilterSchema = z.enum(['active', 'archived', 'deleted']);
+export type ListGroupsFilter = z.infer<typeof listGroupsFilterSchema>;
+
+export const listGroupsQuerySchema = z.object({
+  status: listGroupsFilterSchema.default('active'),
+});
+export type ListGroupsQuery = z.infer<typeof listGroupsQuerySchema>;

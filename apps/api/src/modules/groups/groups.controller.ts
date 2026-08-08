@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
@@ -10,6 +10,7 @@ import {
   assignGroupMemberSchema,
   createGroupSchema,
   CreateGroupInput,
+  listGroupsQuerySchema,
   updateGroupSchema,
 } from './groups.schemas.js';
 import { GroupsService } from './groups.service.js';
@@ -21,8 +22,9 @@ export class GroupsController {
 
   @Get()
   @Roles(...rolePolicies.groupsRead)
-  listGroups(@Req() request: AuthenticatedRequest) {
-    return this.groupsService.listGroups(request.currentUser!.organizationId);
+  listGroups(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { status } = listGroupsQuerySchema.parse(query);
+    return this.groupsService.listGroups(request.currentUser!.organizationId, status);
   }
 
   @Get(':id')

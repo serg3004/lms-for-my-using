@@ -1,7 +1,13 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { AssignGroupManagerInput, AssignGroupMemberInput, CreateGroupInput, UpdateGroupInput } from './groups.schemas.js';
+import {
+  AssignGroupManagerInput,
+  AssignGroupMemberInput,
+  CreateGroupInput,
+  ListGroupsFilter,
+  UpdateGroupInput,
+} from './groups.schemas.js';
 
 const groupSelect = {
   id: true,
@@ -33,12 +39,14 @@ const userSummarySelect = {
 export class GroupsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listGroups(organizationId: string) {
+  async listGroups(organizationId: string, filter: ListGroupsFilter = 'active') {
+    const where =
+      filter === 'deleted'
+        ? { organizationId, deletedAt: { not: null } }
+        : { organizationId, deletedAt: null, status: filter };
+
     return this.prisma.group.findMany({
-      where: {
-        organizationId,
-        deletedAt: null,
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       select: groupSelect,
     });
