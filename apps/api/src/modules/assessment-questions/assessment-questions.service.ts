@@ -13,6 +13,7 @@ const assessmentQuestionSelect = {
   imageUrl: true,
   points: true,
   order: true,
+  scoringMode: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -39,6 +40,7 @@ const learnerAssessmentQuestionSelect = {
   imageUrl: true,
   points: true,
   order: true,
+  scoringMode: true,
   options: {
     where: { deletedAt: null },
     orderBy: { order: 'asc' },

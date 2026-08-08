@@ -97,6 +97,13 @@ enum AssessmentQuestionType {
   true_false
 }
 
+enum AssessmentQuestionScoringMode {
+  all_or_nothing
+  proportional
+  proportional_with_penalty
+  per_option
+}
+
 enum AssessmentAttemptStatus {
   completed
 }
@@ -446,6 +453,7 @@ model AssessmentQuestion {
   imageUrl       String?               @map("image_url")
   points         Int                   @default(1)
   order          Int                   @default(0)
+  scoringMode    AssessmentQuestionScoringMode @default(all_or_nothing) @map("scoring_mode")
   createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt     DateTime?             @map("deleted_at") @db.Timestamptz
