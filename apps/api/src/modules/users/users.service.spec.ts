@@ -1,10 +1,12 @@
 import { ConflictException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { createBulkUsersSchema, createUserSchema, importUsersSchema } from './users.schemas.js';
+import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
+import { createBulkUsersSchema, createUserSchema, importUsersSchema, updateUserSchema } from './users.schemas.js';
 import { UsersService } from './users.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
+const userId = '99999999-9999-9999-9999-999999999999';
 
 function createBulkUser(email: string) {
   return {
@@ -235,5 +237,93 @@ describe('UsersService import', () => {
         { index: 1, email: 'existing@example.com', status: 'skipped', userId: null },
       ],
     });
+  });
+});
+
+describe('UsersService updateUser role changes', () => {
+  const baseUser = { id: userId, email: 'admin@example.com' };
+  const actor = unrestrictedActor(organizationId);
+
+  it('rejects demoting the organization\'s last admin', async () => {
+    const membershipCount = async () => 0;
+    const prisma = {
+      user: { findFirst: async () => baseUser },
+      membership: {
+        findFirst: async () => ({ id: 'membership-1' }),
+        count: membershipCount,
+      },
+      $transaction: async () => {
+        throw new Error('$transaction must not run when the last-admin guard rejects the change');
+      },
+    } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    const input = updateUserSchema.parse({
+      email: baseUser.email,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      role: 'instructor',
+    });
+
+    await expect(service.updateUser(userId, actor, input)).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('allows demoting an admin when another admin remains in the organization', async () => {
+    const updatedUser = { id: userId, role: 'instructor' };
+    const update = async () => ({ id: userId });
+    const deleteMany = async () => ({ count: 1 });
+    const create = async () => ({});
+    const findUniqueOrThrow = async () => updatedUser;
+    const prisma = {
+      user: {
+        findFirst: async () => baseUser,
+        update,
+        findUniqueOrThrow,
+      },
+      membership: {
+        findFirst: async () => ({ id: 'membership-1' }),
+        count: async () => 1,
+        deleteMany,
+        create,
+      },
+      $transaction: async (callback: (tx: PrismaService) => Promise<unknown>) => callback(prisma as unknown as PrismaService),
+    } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    const input = updateUserSchema.parse({
+      email: baseUser.email,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      role: 'instructor',
+    });
+
+    await expect(service.updateUser(userId, actor, input)).resolves.toEqual(updatedUser);
+  });
+
+  it('allows changing role when the user does not currently hold admin', async () => {
+    const updatedUser = { id: userId, role: 'manager' };
+    const prisma = {
+      user: {
+        findFirst: async () => baseUser,
+        update: async () => ({ id: userId }),
+        findUniqueOrThrow: async () => updatedUser,
+      },
+      membership: {
+        findFirst: async () => null,
+        deleteMany: async () => ({ count: 1 }),
+        create: async () => ({}),
+      },
+      $transaction: async (callback: (tx: PrismaService) => Promise<unknown>) => callback(prisma as unknown as PrismaService),
+    } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    const input = updateUserSchema.parse({
+      email: baseUser.email,
+      firstName: 'Ada',
+      lastName: 'Lovelace',
+      role: 'manager',
+    });
+
+    await expect(service.updateUser(userId, actor, input)).resolves.toEqual(updatedUser);
   });
 });
