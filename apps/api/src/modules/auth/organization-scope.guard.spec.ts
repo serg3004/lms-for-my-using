@@ -1,7 +1,7 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { AuthenticatedRequest } from './auth.guard.js';
+import type { AuthenticatedRequest } from './auth.guard.js';
 import { OrganizationScopeGuard } from './organization-scope.guard';
 
 const currentUser = {

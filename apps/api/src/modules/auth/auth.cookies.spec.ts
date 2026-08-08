@@ -1,10 +1,10 @@
 import {
-  AuthCookieResponse,
   accessTokenCookieName,
   clearAuthCookies,
   csrfTokenCookieName,
   setAuthCookies,
 } from './auth.cookies';
+import type { AuthCookieResponse } from './auth.cookies';
 
 type CookieCall = [name: string, value: string, options: Record<string, unknown>];
 type ClearCookieContainerContainer = [name: string, options: Record<string, unknown>];

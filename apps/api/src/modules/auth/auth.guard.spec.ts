@@ -5,7 +5,8 @@ import {
   csrfHeaderName,
   csrfTokenCookieName,
 } from './auth.cookies';
-import { AuthGuard, AuthenticatedRequest } from './auth.guard';
+import { AuthGuard } from './auth.guard';
+import type { AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
 
 const currentUser = {

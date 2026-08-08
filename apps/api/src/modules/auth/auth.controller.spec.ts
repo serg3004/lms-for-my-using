@@ -1,11 +1,11 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import {
-  AuthCookieResponse,
   accessTokenCookieName,
   csrfHeaderName,
   csrfTokenCookieName,
 } from './auth.cookies';
+import type { AuthCookieResponse } from './auth.cookies';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
