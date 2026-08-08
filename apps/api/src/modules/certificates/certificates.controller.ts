@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
+import { AuthGuard } from '../auth/auth.guard.js';
+import type { AuthenticatedRequest } from '../auth/auth.guard.js';
 import { OrganizationScope } from '../auth/organization-scope.js';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
 import { Roles, rolePolicies } from '../auth/roles.js';

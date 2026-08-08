@@ -1,7 +1,8 @@
 import { jest } from '@jest/globals';
 import { UnauthorizedException } from '@nestjs/common';
 
-import { AuthCookieResponse, refreshTokenCookieName } from './auth.cookies.js';
+import { refreshTokenCookieName } from './auth.cookies.js';
+import type { AuthCookieResponse } from './auth.cookies.js';
 import { AuthController } from '../auth/auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthSessionStore } from './auth.session-store.js';

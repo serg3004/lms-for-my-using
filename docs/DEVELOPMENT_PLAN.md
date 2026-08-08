@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-07-30 (добавлена Часть 7 — консолидированный план по итогам аудита)
+**Обновлён:** 2026-08-08 (перепроверены PR 205–206: shared contracts и ESM/test configuration)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -2728,9 +2728,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Breaking contracts обнаруживаются
 - Циклических зависимостей нет.
 
+> **Факт:** повторная проверка подтвердила, что PR 205 ещё не реализован:
+> `packages/shared` не содержит `*.spec.ts`, а его test script по-прежнему
+> запускает Vitest с `--passWithNoTests`. Не смешивать этот пункт плана с
+> одноимённым историческим GitHub PR: shared contract tests остаются отдельной
+> незавершённой задачей.
+
 ---
 
-## PR 206 — ESM/test configuration cleanup 🔲
+## PR 206 — ESM/test configuration cleanup ✅
 
 **Проблема:** ts-jest и ESLint выводят module warnings, diagnostics частично отключены.
 
@@ -2744,6 +2750,16 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Diagnostics включены
 - Mapper hacks не растут
 - Build/runtime остаются ESM-compatible.
+
+> **Факт:** API test config переведён на `isolatedModules` с включённой
+> диагностикой ts-jest; устаревший `baseUrl` удалён, а десятки точечных mapper
+> rules заменены единым ESM `.js`→TypeScript mapper и alias для `@lms/shared`.
+> Type-only auth imports сделаны явными, чтобы isolated transpilation не создавала
+> несуществующие runtime imports. Корневой package объявлен ESM, поэтому ESLint
+> config загружается без `MODULE_TYPELESS_PACKAGE_JSON`. Полный API suite, lint,
+> typecheck и build проходят; обязательный Node flag для Jest ESM всё ещё выводит
+> стандартный `ExperimentalWarning`, но предупреждения ts-jest/ESLint, являвшиеся
+> предметом задачи, устранены.
 
 ---
 

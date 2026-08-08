@@ -7,7 +7,7 @@ export type MaterialRow = {
   id: string;
   title: string;
   kind: 'file' | 'link';
-  fileUrl: string;
+  fileUrl: string | null;
   sizeBytes: number | null;
   status: string;
 };
@@ -34,7 +34,13 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
     link: t('admin.materials.link', 'Link (URL)'),
   };
   const columns: Column<MaterialRow>[] = [
-    { key: 'title', label: t('admin.materials.col.title', 'Title'), render: (m) => <a href={m.fileUrl} target="_blank" rel="noreferrer">{m.title}</a> },
+    {
+      key: 'title',
+      label: t('admin.materials.col.title', 'Title'),
+      render: (material) => material.fileUrl
+        ? <a href={material.fileUrl} target="_blank" rel="noreferrer">{material.title}</a>
+        : material.title,
+    },
     { key: 'kind', label: t('admin.materials.col.kind', 'Kind'), render: (m) => <StatusBadge>{kindLabels[m.kind]}</StatusBadge> },
     { key: 'status', label: t('admin.materials.col.status', 'Status'), render: (m) => <AdminStatusSelect value={m.status} statuses={['active', 'archived']} labels={statusLabels} onChange={(status) => onStatusChange(m.id, status)} /> },
     { key: 'size', label: t('admin.materials.col.size', 'Size'), render: (m) => formatSize(m.sizeBytes, t('admin.materials.unknownSize', '—')) },
