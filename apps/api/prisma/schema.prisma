@@ -398,6 +398,7 @@ model Progress {
   lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
   @@index([courseId, status])
   @@index([lessonId])
