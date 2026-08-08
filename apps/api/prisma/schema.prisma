@@ -238,6 +238,7 @@ model Course {
   category       String?
   durationMinutes Int?            @map("duration_minutes")
   status         CourseStatus     @default(draft)
+  selfEnrollmentEnabled Boolean    @default(false) @map("self_enrollment_enabled")
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz

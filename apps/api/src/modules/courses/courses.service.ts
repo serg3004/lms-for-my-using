@@ -20,6 +20,7 @@ const courseSelect = {
   category: true,
   durationMinutes: true,
   status: true,
+  selfEnrollmentEnabled: true,
   createdAt: true,
   updatedAt: true,
   _count: {
