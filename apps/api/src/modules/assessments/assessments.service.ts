@@ -18,6 +18,7 @@ const assessmentSelect = {
   status: true,
   passingScore: true,
   maxAttempts: true,
+  timeLimitMinutes: true,
   availableAfterCourseCompletion: true,
   createdAt: true,
   updatedAt: true,
@@ -126,7 +127,10 @@ export class AssessmentsService {
     }
   }
 
-  /** Publishing with a question nobody can answer correctly would silently fail every attempt. */
+  /**
+   * Publishing an empty test or one with a question nobody can answer correctly would otherwise
+   * only surface as a hard failure for the first learner to attempt it (createAttempt).
+   */
   private async ensureQuestionsHaveCorrectOption(assessmentId: string, organizationId: string) {
     const questions = await this.prisma.assessmentQuestion.findMany({
       where: { assessmentId, organizationId, deletedAt: null },
@@ -135,6 +139,10 @@ export class AssessmentsService {
         options: { where: { deletedAt: null, isCorrect: true }, select: { id: true }, take: 1 },
       },
     });
+
+    if (questions.length === 0) {
+      throw new BadRequestException('Cannot publish assessment: it has no questions');
+    }
 
     const missing = questions.filter((question) => question.options.length === 0);
 

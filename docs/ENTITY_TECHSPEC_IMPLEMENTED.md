@@ -180,7 +180,7 @@
 ---
 
 ## 15. Assessment
-**Модель данных:** `id, organizationId, courseId (FK Cascade), lessonId? (FK SetNull), title, slug, description?, status (draft/published/archived), passingScore (default 70), maxAttempts?, availableAfterCourseCompletion (default true), createdAt/updatedAt, deletedAt`. Уникальность `[courseId, slug]`.
+**Модель данных:** `id, organizationId, courseId (FK Cascade), lessonId? (FK SetNull), title, slug, description?, status (draft/published/archived), passingScore (default 70), maxAttempts?, timeLimitMinutes? (2026-08-08, nullable = без лимита), availableAfterCourseCompletion (default true), createdAt/updatedAt, deletedAt`. Уникальность `[courseId, slug]`.
 
 **RBAC:** все роли — read; create/update — admin/instructor (та же логика ownership через `CourseAccessGuard`, что и Course/Lesson).
 
@@ -219,14 +219,19 @@
 ---
 
 ## 18. AssessmentAttempt
-**Модель данных:** `id, organizationId, assessmentId (FK Cascade), userId (FK Restrict), status (единственное значение enum: completed), score (default 0), maxScore (default 0), percentage (default 0), passed (default false), startedAt, completedAt?, createdAt/updatedAt, deletedAt`.
+**Модель данных:** `id, organizationId, assessmentId (FK Cascade), userId (FK Restrict), status (in_progress/completed — in_progress добавлен 2026-08-08), score (default 0), maxScore (default 0), percentage (default 0), passed (default false), startedAt, completedAt?, createdAt/updatedAt, deletedAt`.
 
 **RBAC:** read (список попыток) — admin/manager/instructor, без learner; read результатов конкретной попытки — все роли; create (начать/сдать попытку) — все роли, включая learner.
+- **(2026-08-08) Добавлено:** `POST /assessments/:id/attempts/start` — та же ролевая политика (`assessmentAttemptsCreate`), что и у отправки ответов.
 
-**Edge cases:**
-- **Важное структурное наблюдение:** `AssessmentAttemptStatus` enum содержит только одно значение — `completed`. Это означает, что модель на уровне схемы не различает «попытка в процессе» и «попытка завершена» — вероятно, API создаёт запись только по факту полной сдачи, без промежуточного состояния. Любая будущая фича «сохранить прогресс теста и вернуться позже» потребует добавления нового статуса (например, `in_progress`) — сейчас это не предусмотрено.
-- `maxAttempts` у родительского `Assessment` опционален — enforcement лимита попыток целиком на уровне бизнес-логики контроллера при создании новой попытки, не на уровне БД.
-- Прямая зависимость от 2-запросного `assertResourceAccess` (см. п. 13 Assignment) — попытки теста тоже вложенный ресурс, подверженный той же проблеме производительности.
+**Edge cases:** проверены (2026-08-08).
+- ~~`AssessmentAttemptStatus` enum содержит только одно значение — `completed`, нет промежуточного состояния~~ — **закрыто (2026-08-08), реализовано по решению пользователя.** Добавлен `timeLimitMinutes Int?` на `Assessment` (nullable = без лимита) и статус `in_progress`. Для тестов **без** лимита времени (подавляющее большинство, поведение по умолчанию не меняется) всё работает как раньше — один вызов `POST /assessments/:id/attempts` сразу создаёт `completed`-попытку. Для тестов **с** лимитом:
+  - `POST /assessments/:id/attempts/start` — идемпотентно создаёт (или переиспользует уже существующую) `in_progress`-попытку с серверным `startedAt`; не доверяет часам браузера. Учитывает `maxAttempts` при создании новой (не при резюме существующей).
+  - `POST /assessments/:id/attempts` (отправка ответов) — требует существующую `in_progress`-попытку (иначе 400 «Attempt was not started»); переводит её в `completed`, а не создаёт новую запись.
+  - **Просроченная отправка (по решению пользователя, вариант b):** если `now − startedAt > timeLimitMinutes`, ответы всё равно принимаются и оцениваются как обычно (`score`/`percentage` считаются честно), но `passed` принудительно `false` независимо от процента — попытка считается использованной (расходуется из `maxAttempts`), не отклоняется.
+  - Известное принятое ограничение: если ученик стартовал `in_progress`-попытку и никогда её не отправил (закрыл вкладку), эта попытка навсегда занимает слот в `maxAttempts` — авто-финализации брошенных попыток нет. Не реализовывалось — не было явно запрошено, отдельное решение при необходимости.
+- `maxAttempts` у родительского `Assessment` опционален — enforcement лимита попыток целиком на уровне бизнес-логики контроллера при создании новой попытки, не на уровне БД. Подтверждено, работает как задокументировано, не проблема.
+- ~~Прямая зависимость от 2-запросного `assertResourceAccess`~~ — **закрыто (устаревшая запись, реально закрыто 2026-08-07, см. §13).** `assertResourceAccess('attempt', ...)` уже использует один запрос с вложенным `assessment: { course: courseWhere(user) }`. Секция §18 просто не была обновлена вовремя, как и §13 ранее.
 
 ---
 

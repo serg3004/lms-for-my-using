@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
@@ -29,6 +30,7 @@ type AssessmentStatus = 'draft' | 'published' | 'archived';
 type AssessmentAttemptTransaction = {
   assessmentAttempt: {
     create: () => Promise<{ id: string }>;
+    update?: (args: unknown) => Promise<{ id: string }>;
   };
   assessmentAttemptAnswer: {
     createMany: () => Promise<{ count: number }>;
@@ -323,5 +325,156 @@ describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
     const exact = buildPrisma('per_option', [optionA, optionB]);
     await exact.service.createAttempt(assessmentId, userId, organizationId, exact.input);
     expect(exact.createManyCalls[0].data[0]).toMatchObject({ score: points, isCorrect: true });
+  });
+});
+
+describe('AssessmentAttemptsService timed assessments (startAttempt / late submission)', () => {
+  const timeLimitMinutes = 10;
+
+  function buildAssessment(overrides: { timeLimitMinutes?: number | null; maxAttempts?: number | null } = {}) {
+    return {
+      id: assessmentId,
+      courseId,
+      status: 'published' as const,
+      passingScore: 70,
+      maxAttempts: 'maxAttempts' in overrides ? overrides.maxAttempts : null,
+      timeLimitMinutes: 'timeLimitMinutes' in overrides ? overrides.timeLimitMinutes : timeLimitMinutes,
+      availableAfterCourseCompletion: false,
+    };
+  }
+
+  it('starts a new in_progress attempt when none exists', async () => {
+    const create = jest.fn(async () => ({ id: 'attempt-id' }));
+    let findFirstCalls = 0;
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment() },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: {
+        findFirst: async () => {
+          findFirstCalls += 1;
+          // 1st call: no existing in_progress attempt. 2nd call: the final getAttempt read-back.
+          return findFirstCalls === 1 ? null : { id: 'attempt-id', status: 'in_progress', startedAt: new Date() };
+        },
+        create,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.startAttempt(assessmentId, userId, organizationId);
+
+    expect(result).toMatchObject({ id: 'attempt-id', status: 'in_progress' });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'in_progress', startedAt: expect.any(Date) }),
+      }),
+    );
+  });
+
+  it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {
+    const create = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment() },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: {
+        findFirst: async () => ({ id: 'existing-attempt-id', status: 'in_progress', startedAt: new Date() }),
+        create,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.startAttempt(assessmentId, userId, organizationId);
+
+    expect(result).toMatchObject({ id: 'existing-attempt-id' });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects starting an attempt for an assessment with no time limit', async () => {
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment({ timeLimitMinutes: null }) },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('enforces the attempts limit before starting a fresh attempt', async () => {
+    const create = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment({ maxAttempts: 1 }) },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: {
+        findFirst: async () => null,
+        count: async () => 1,
+        create,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects submitting answers for a timed assessment that was never started', async () => {
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment() },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: { findFirst: async () => null },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.createAttempt(assessmentId, userId, organizationId, attemptInput)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  function buildSubmitPrisma(startedAt: Date) {
+    const update = jest.fn(async (args: { data: { passed: boolean; percentage: number } }) => ({
+      id: 'attempt-id',
+      ...args.data,
+    }));
+    let findFirstCalls = 0;
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment() },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: {
+        findFirst: async () => {
+          findFirstCalls += 1;
+          // 1st call: the in_progress lookup. 2nd call: the final getAttempt read-back.
+          return findFirstCalls === 1
+            ? { id: 'attempt-id', startedAt }
+            : { id: 'attempt-id', status: 'completed', startedAt, answers: [] };
+        },
+      },
+      assessmentQuestion: {
+        findMany: async () => [
+          { id: questionId, type: 'single_choice', points: 1, scoringMode: 'all_or_nothing', options: [{ id: optionId, isCorrect: true }] },
+        ],
+      },
+      $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
+        callback({
+          assessmentAttempt: { create: async () => ({ id: 'attempt-id' }), update },
+          assessmentAttemptAnswer: { createMany: async () => ({ count: 1 }) },
+          certificate: { upsert: async () => ({ id: 'certificate-id' }) },
+        }),
+    } as unknown as PrismaService;
+
+    return { service: new AssessmentAttemptsService(prisma), update };
+  }
+
+  it('grades normally and passes a correct, on-time submission', async () => {
+    const { service, update } = buildSubmitPrisma(new Date());
+
+    await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ passed: true, percentage: 100 }) }));
+  });
+
+  it('forces passed: false for a correct but late submission, without discarding the score', async () => {
+    const startedLongAgo = new Date(Date.now() - (timeLimitMinutes + 5) * 60_000);
+    const { service, update } = buildSubmitPrisma(startedLongAgo);
+
+    await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ passed: false, percentage: 100 }) }));
   });
 });

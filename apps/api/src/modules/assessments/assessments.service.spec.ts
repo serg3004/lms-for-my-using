@@ -46,6 +46,18 @@ describe('Assessments validation', () => {
     expect(input.availableAfterCourseCompletion).toBe(false);
   });
 
+  it('accepts a timeLimitMinutes value', () => {
+    const input = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Timed test',
+      slug: 'timed-test',
+      timeLimitMinutes: 30,
+    });
+
+    expect(input.timeLimitMinutes).toBe(30);
+  });
+
   it('rejects assessment input without title', () => {
     expect(() =>
       createAssessmentSchema.parse({
@@ -91,12 +103,30 @@ describe('updateAssessmentSchema', () => {
     expect(updateAssessmentSchema.parse({ maxAttempts: null })).toEqual({ maxAttempts: null });
   });
 
+  it('accepts timeLimitMinutes null to remove the time limit', () => {
+    expect(updateAssessmentSchema.parse({ timeLimitMinutes: null })).toEqual({ timeLimitMinutes: null });
+  });
+
   it('accepts empty object', () => {
     expect(updateAssessmentSchema.parse({})).toEqual({});
   });
 });
 
 describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
+  it('rejects publishing an assessment with no questions', async () => {
+    const update = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessmentQuestion: { findMany: async () => [] },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'published')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('rejects publishing when a question has no correct answer option', async () => {
     const update = jest.fn();
     const prisma = {
