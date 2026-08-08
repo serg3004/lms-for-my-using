@@ -212,9 +212,9 @@
 
 **RBAC:** аналогично `AssessmentQuestion` — read admin/manager/instructor, create admin/instructor, без прямого доступа learner.
 
-**Edge cases:**
-- `isCorrect` хранится прямо на варианте ответа, доступном через обычный `read` для manager/instructor — при отдаче вопросов ученику (через отдельный, ограниченный эндпоинт попытки) нужно явно убедиться, что поле `isCorrect` не утекает в ответ API до завершения попытки.
-- Ни один вариант вопроса не помечен `isCorrect: true` — валидация целостности теста (хотя бы один правильный вариант обязателен) должна быть на уровне приложения при публикации `Assessment`, схема это не гарантирует.
+**Edge cases:** проверены (2026-08-08).
+- ~~`isCorrect` не должен утекать ученику до/во время попытки~~ — **закрыто, подтверждено уже реализованным правильно.** Прослежен весь код: `learnerAssessmentQuestionSelect` (вопросы для прохождения, §16) без `isCorrect`; `AssessmentResultsService` (результат после завершения попытки) отдаёт `AssessmentAttemptAnswer.isCorrect` (верен ли свой ответ) и текст/картинку выбранного варианта, но нигде не селектит `AssessmentAnswerOption.isCorrect` — ученик не узнаёт, какие варианты были правильными, даже после завершения. Единственный путь к `AssessmentAnswerOption.isCorrect` — `GET /questions/:questionId/options`, RBAC `assessmentAnswerOptionsRead` без learner. Утечки нет.
+- ~~Нет валидации «хотя бы один правильный вариант обязателен» при публикации~~ — **закрыто (2026-08-08), реализовано по решению пользователя.** `AssessmentsService.updateAssessmentStatus` при переходе в `published` теперь вызывает `ensureQuestionsHaveCorrectOption` — проверяет каждый активный вопрос теста на наличие хотя бы одного активного варианта с `isCorrect: true`; если хоть один вопрос без правильного варианта — `BadRequestException` со списком названий проблемных вопросов, публикация блокируется. Проверка запускается только при переходе именно в `published` (не при `draft`/`archived`).
 
 ---
 
