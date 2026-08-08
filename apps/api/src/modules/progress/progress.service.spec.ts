@@ -1,3 +1,6 @@
+import { ForbiddenException } from '@nestjs/common';
+import { jest } from '@jest/globals';
+
 import { PrismaService } from '../../database/prisma.service.js';
 import { createProgressSchema } from './progress.schemas.js';
 import { ProgressService } from './progress.service.js';
@@ -187,5 +190,70 @@ describe('Progress validation', () => {
     });
     expect(input.status).toBe('completed');
     expect(input.completedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe('ProgressService createProgress — learner access without an admin/manager/instructor actor', () => {
+  const learnerActor = { id: userId, organizationId, roles: ['learner'] as const };
+  const baseInput = {
+    organizationId,
+    courseId: courseAId,
+    userId,
+    status: 'in_progress' as const,
+  };
+
+  function buildPrisma(overrides: {
+    selfEnrollmentEnabled?: boolean;
+    assignment?: unknown;
+  }) {
+    const created = { id: 'progress-1', ...baseInput };
+    return {
+      course: {
+        findFirst: async () => ({ id: courseAId, selfEnrollmentEnabled: overrides.selfEnrollmentEnabled ?? false }),
+      },
+      user: {
+        findFirst: async () => ({ id: userId }),
+      },
+      assignment: {
+        findFirst: async () => overrides.assignment ?? null,
+      },
+      progress: {
+        findFirst: async () => null,
+        create: async () => created,
+      },
+    } as unknown as PrismaService;
+  }
+
+  it('rejects when the learner has no assignment and the course does not allow self-enrollment', async () => {
+    const service = new ProgressService(buildPrisma({}));
+
+    await expect(service.createProgress(baseInput, learnerActor)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('allows the learner when directly assigned to the course', async () => {
+    const service = new ProgressService(buildPrisma({ assignment: { id: 'assignment-1' } }));
+
+    await expect(service.createProgress(baseInput, learnerActor)).resolves.toMatchObject({ id: 'progress-1' });
+  });
+
+  it('allows the learner when the course has self-enrollment enabled, without checking assignments', async () => {
+    const assignmentFindFirst = jest.fn(async () => null);
+    const prisma = buildPrisma({ selfEnrollmentEnabled: true });
+    (prisma as unknown as { assignment: { findFirst: typeof assignmentFindFirst } }).assignment.findFirst = assignmentFindFirst;
+    const service = new ProgressService(prisma);
+
+    await expect(service.createProgress(baseInput, learnerActor)).resolves.toMatchObject({ id: 'progress-1' });
+    expect(assignmentFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('does not require an assignment for non-learner actors (e.g. instructor recording progress manually)', async () => {
+    const assignmentFindFirst = jest.fn(async () => null);
+    const prisma = buildPrisma({});
+    (prisma as unknown as { assignment: { findFirst: typeof assignmentFindFirst } }).assignment.findFirst = assignmentFindFirst;
+    const service = new ProgressService(prisma);
+    const instructorActor = { id: 'instructor-1', organizationId, roles: ['instructor'] as const };
+
+    await expect(service.createProgress(baseInput, instructorActor)).resolves.toMatchObject({ id: 'progress-1' });
+    expect(assignmentFindFirst).not.toHaveBeenCalled();
   });
 });
