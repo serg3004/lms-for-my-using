@@ -117,6 +117,28 @@ export class CourseMaterialsService {
   async updateCourseMaterial(materialId: string, organizationId: string, input: UpdateCourseMaterialInput) {
     const material = await this.prisma.courseMaterial.findFirst({
       where: { id: materialId, organizationId, deletedAt: null },
+      select: { id: true, courseId: true },
+    });
+
+    if (!material) {
+      throw new NotFoundException('Course material not found');
+    }
+
+    if (input.lessonId) {
+      await this.ensureLessonBelongsToCourse(input.lessonId, material.courseId, organizationId);
+    }
+
+    return this.prisma.courseMaterial.update({
+      where: { id: materialId, organizationId },
+      data: input,
+      select: courseMaterialSelect,
+    });
+  }
+
+  /** Soft-deletes the material record. Any attached file/quarantine object is purged first via clearUploadedFile. */
+  async deleteCourseMaterial(materialId: string, organizationId: string) {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, deletedAt: null },
       select: { id: true },
     });
 
@@ -124,10 +146,10 @@ export class CourseMaterialsService {
       throw new NotFoundException('Course material not found');
     }
 
-    return this.prisma.courseMaterial.update({
+    await this.prisma.courseMaterial.update({
       where: { id: materialId, organizationId },
-      data: input,
-      select: courseMaterialSelect,
+      data: { deletedAt: new Date() },
+      select: { id: true },
     });
   }
 
