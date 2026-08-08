@@ -28,6 +28,7 @@
 | 10 | `CONCERNS.md` | ⚠️ Существенно требует ревизии | Несколько open concerns уже закрыты кодом; часть остаётся актуальной; live Railway claims требуют повторной проверки |
 | 11 | `CSS_ARCHITECTURE.md` | ⚠️ Частично актуален | CSS layers/checks актуальны; уточнить single-entry формулировку и фактическое Stylelint ID-правило |
 | 12 | `DEAD_CODE_AUDIT.md` | ⚠️ Исторический snapshot | Методика ценна, но findings и limitations нужно пересчитать по текущему `main` |
+| 13 | `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` | ⚠️ Частично актуален | Lockfile policy верна, но Dependabot scope не охватывает `apps/e2e` и `packages/shared`; текущие group/ignore rules не описаны |
 
 ---
 
@@ -333,17 +334,14 @@ Live Railway status для Redis/storage и визуальное воспрои�
 - `apps/api/tsconfig.json` использует `module/moduleResolution: NodeNext`, включает только `src/**/*.ts` и не включает исходные `.js` файлы. `apps/api/package.json` запускает production через `node dist/main.js`. Эти факты по-прежнему поддерживают исходный вывод, что source `auth.cookies.js` не требуется TypeScript build/runtime и выглядит лишним compatibility adapter.
 - `apps/web/src/app/LogoutButton.tsx` по-прежнему существует, но ситуация изменилась: с commit `88b23cf3` от 3 августа существует `LogoutButton.spec.tsx`, который напрямую импортирует и тестирует компонент. Поэтому утверждение документа «не импортируется ни одним файлом приложения или теста» больше неверно.
 - Production layouts всё ещё не переиспользуют `LogoutButton`: проверенные `learnerLayout.tsx`, `managerLayout.tsx`, `instructorLayout.tsx` и `adminPage.tsx` импортируют `shared/logout.ts` и реализуют собственный handler/button. Это поддерживает вывод, что `LogoutButton.tsx` может оставаться **неиспользуемым production component**, хотя теперь он уже не является файлом без входящих ссылок вообще.
-- Старое ограничение про E2E typecheck, который не находит `@axe-core/playwright`, больше не соответствует текущему workspace: `apps/e2e/package.json` объявляет `@axe-core/playwright` `4.12.1` и `typecheck: tsc --noEmit`; корневой `pnpm typecheck` идёт через Turbo и недавний полный CI #1256 завершился `success`. Следовательно, старую dependency-resolution проблему нельзя оставлять как current limitation.
+- Старое ограничение про E2E typecheck, который не находит `@axe-core/playwright`, больше не соответствует текущему workspace: `apps/e2e/package.json` объявляет `@axe-core/playwright` `4.12.1` и `typecheck: tsc --noEmit`; полный CI проходит. Следовательно, старую dependency-resolution проблему нельзя оставлять как current limitation.
 
 ### Несоответствия
 
 1. **Candidate `LogoutButton.tsx` описан устаревшим способом.** Он больше не «без входящих ссылок»: его импортирует `LogoutButton.spec.tsx`. Если задача — найти именно production-dead code, формулировку нужно изменить на «не используется runtime/application composition, но имеет unit tests» и повторно подтвердить полный import graph на текущем `main`.
-
 2. **Раздел `Ограничения и следующий шаг` содержит уже устранённую E2E dependency-проблему.** `@axe-core/playwright` сейчас присутствует в E2E package, а полный CI/typecheck проходит. Это историческое ограничение нужно либо датировать состоянием snapshot, либо удалить из current guidance.
-
 3. **Документ не является текущим пересчётом dead code.** Встроенное предупреждение это честно признаёт, но дальнейший imperative `Что сделать: удалить файл` может быть воспринят как current action. После значительного количества последующих PR такие действия должны выполняться только после нового полного static/import audit.
-
-4. **Knip по-прежнему не является доказанным current source of truth.** Исторический запуск был заблокирован `403`, а в текущем репозитории Knip не добавлен как штатная dependency/script. Нельзя утверждать, что современный full dead-code scan выполнен автоматически.
+4. **Knip по-прежнему не является доказанным current source of truth.** Исторический запуск был заблокирован `403`, а в текущем репозитории Knip не добавлен как штатная dependency/script.
 
 ### Что изменить
 
@@ -362,3 +360,62 @@ Live Railway status для Redis/storage и визуальное воспрои�
 ### Итог
 
 Документ полезен как исторический журнал методики и состояния на 2 августа 2026 и уже содержит корректное предупреждение об устаревании. Однако текущие детали разошлись: `LogoutButton` получил тест, E2E dependency limitation исчезла, а полный scan после десятков PR не повторялся. Файл следует либо окончательно позиционировать как historical snapshot, либо полностью пересчитать на текущем `main` перед использованием его рекомендаций.
+
+---
+
+## 13. `DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+
+- `pnpm-workspace.yaml` и фактические workspace package manifests;
+- `.github/dependabot.yml` npm/pnpm update entry;
+- lockfile contract и CI frozen install;
+- Dependabot grouping, open PR limits и major-update ignore rules;
+- manual recovery workflow;
+- связанный `DEPENDENCY_UPDATE_POLICY.md`.
+
+### Подтверждённые факты
+
+- Репозиторий действительно использует один общий root `pnpm-lock.yaml` и workspace, определённый через `pnpm-workspace.yaml`.
+- `pnpm-workspace.yaml` включает два glob: `apps/*` и `packages/*`.
+- В текущем workspace существуют как минимум четыре вложенных package manifests: `apps/api/package.json`, `apps/web/package.json`, `apps/e2e/package.json` и `packages/shared/package.json` плюс root `package.json`.
+- `apps/e2e/package.json` содержит реальные devDependencies (`@axe-core/playwright`, `@playwright/test`, `@types/node`, `eslint`, `typescript`), а `packages/shared/package.json` содержит production dependency `zod` и devDependencies `eslint`, `typescript`, `vitest`; это не пустые служебные manifests.
+- Текущий npm Dependabot entry использует `directories`, но перечисляет только `/`, `/apps/api`, `/apps/web`.
+- GitHub Dependabot определяет `directories` как locations package manifests, которые должны обслуживаться version updates; следовательно, текущий config не включает manifests из `/apps/e2e` и `/packages/shared` в этот update entry.
+- Weekly schedule по понедельникам соответствует policy.
+- CI действительно выполняет `pnpm install --frozen-lockfile`, поэтому stale manifest/lockfile combination блокируется до дальнейших gates.
+- CI также выполняет `pnpm audit --audit-level high`; правило policy не смешивать unrelated audit remediation с текущим PR соответствует принципу scoped changes.
+- `.github/dependabot.yml` содержит дополнительные действующие правила, которых нет в этом документе: `open-pull-requests-limit: 1` для GitHub Actions, `2` для npm; GitHub Actions updates сгруппированы в один `github-actions` group; npm minor/patch updates группируются отдельно как `workspace-prod` и `workspace-dev`; major updates для ряда ключевых packages явно ignored.
+- Manual recovery через `pnpm install --lockfile-only` согласуется с заявленной целью регенерировать shared lockfile pnpm, а не редактировать его вручную.
+
+### Несоответствия
+
+1. **Current rule больше не охватывает весь pnpm workspace.** Документ предписывает один npm update entry только для `/`, `/apps/api`, `/apps/web`, но workspace сейчас также содержит `/apps/e2e` и `/packages/shared`. Поэтому формулировка `workspace level` и обещание держать workspace manifests в одном Dependabot update context неполны.
+
+2. **Та же неполнота существует в самой `.github/dependabot.yml`.** Это уже не только документальное расхождение: два реальных package manifests отсутствуют в `directories` текущего npm update entry. Исправление configuration следует делать отдельным dependency/config PR после завершения аудита.
+
+3. **Документ не описывает существенные current Dependabot controls.** В нём отсутствуют действующие prod/dev minor/patch groups, open PR limits и explicit major-version ignores. Для документа с названием `Current rule` это делает описание конфигурации неполным.
+
+4. **`Dependabot merge order` является human process, а не enforced scheduling/merge mechanism.** `.github/dependabot.yml` задаёт weekly Monday schedule для Actions и npm, но не кодирует порядок `GitHub Actions → dev dependencies → prod dependencies → security PR`. Эту последовательность следует маркировать как review/merge convention, а не как автоматически гарантируемое поведение Dependabot.
+
+5. **Связанный `DEPENDENCY_UPDATE_POLICY.md` также отражает старую структуру ownership.** Его `Current package manager` и `Dependency ownership` перечисляют package-level scripts/ownership только для root, API и Web и не включают E2E/shared. Это отдельный документ следующего шага аудита, но текущая policy должна не создавать впечатление, что root/API/Web исчерпывают workspace.
+
+### Что изменить
+
+1. В разделе `Current rule` перечислить все текущие workspace manifests: `/`, `/apps/api`, `/apps/web`, `/apps/e2e`, `/packages/shared`.
+2. Отдельным конфигурационным PR синхронизировать `.github/dependabot.yml`, добавив отсутствующие manifest locations в тот же npm update entry; после изменения проверить, что Dependabot продолжает обновлять общий root lockfile и CI с `--frozen-lockfile` проходит.
+3. Документировать current grouping/limits: Actions group, `workspace-prod`, `workspace-dev`, `open-pull-requests-limit`, а также policy для major updates/ignore list либо дать точную ссылку на один source-of-truth document.
+4. Явно пометить merge order как **manual review convention**.
+5. Синхронизировать `DEPENDENCY_UPDATE_POLICY.md` с фактическими E2E/shared package ownership; не исправлять его молча в рамках этого audit finding — он проверяется следующим отдельным шагом.
+6. Сохранить правила: не редактировать `pnpm-lock.yaml` вручную, проверять matching lockfile diff и не смешивать unrelated audit remediation с dependency PR.
+
+### [НЕ ПРОВЕРЕНО]
+
+- Фактическая история последних Dependabot version-update PR для каждого manifest не использовалась как доказательство coverage: массовый PR-list запрос вернул слишком большой ответ. Вывод о scope основан на текущем `dependabot.yml`, workspace manifests и официальной семантике `directories`.
+- Не выполнялся реальный Dependabot update job после добавления `/apps/e2e` и `/packages/shared`, поскольку конфигурация в рамках аудита не изменялась.
+
+### Итог
+
+Lockfile safety, frozen-install gate, manual recovery и scoped security remediation остаются актуальными. Основное устаревание связано с расширением workspace: policy и текущий Dependabot config всё ещё считают npm update context состоящим только из root/API/Web, хотя workspace уже включает E2E и shared package. Дополнительно документу нужно описать реально действующие grouping/limit/major-ignore правила и отделить ручной merge order от автоматизированной конфигурации.
