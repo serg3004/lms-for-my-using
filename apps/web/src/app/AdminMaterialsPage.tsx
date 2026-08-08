@@ -1,7 +1,7 @@
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, apiRequest, uploadFileWithProgress } from '../shared/apiClient.js';
+import { ApiClientError, apiRequest, uploadMaterialFileWithProgress } from '../shared/apiClient.js';
 import { slugify } from '../shared/slugify.js';
 import { uploadReducer, type MaterialKind, type MaterialStatus } from './materials/model.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
@@ -23,7 +23,7 @@ type Material = {
   description: string | null;
   kind: 'file' | 'link';
   fileName: string | null;
-  fileUrl: string;
+  fileUrl: string | null;
   mimeType: string | null;
   sizeBytes: number | null;
   status: string;
@@ -69,6 +69,8 @@ export function AdminMaterialsPage() {
   const [fileName, setFileName] = useState('');
   const [mimeType, setMimeType] = useState('');
   const [sizeBytes, setSizeBytes] = useState<number | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pendingMaterialId, setPendingMaterialId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [uploadState, dispatchUpload] = useReducer(uploadReducer, { status: 'idle' });
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
@@ -85,6 +87,7 @@ export function AdminMaterialsPage() {
   const [editKind, setEditKind] = useState<MaterialKind>('link');
   const [editFileUrl, setEditFileUrl] = useState('');
   const [editFileName, setEditFileName] = useState('');
+  const [editSelectedFile, setEditSelectedFile] = useState<File | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editStatus, setEditStatus] = useState<MaterialStatus>('active');
   const [editUploadState, dispatchEditUpload] = useReducer(uploadReducer, { status: 'idle' });
@@ -130,44 +133,30 @@ export function AdminMaterialsPage() {
     await loadMaterials(courseId);
   }
 
-  async function handleFileSelect(event: ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') {
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    const dispatch = target === 'create' ? dispatchUpload : dispatchEditUpload;
-    const setUrl = target === 'create' ? setFileUrl : setEditFileUrl;
-    const setName = target === 'create' ? setFileName : setEditFileName;
-    const setError = target === 'create'
-      ? (msg: string) => setSubmitState({ status: 'error', message: msg })
-      : (msg: string) => setEditState({ status: 'error', message: msg });
 
     if (target === 'create') {
       setTitle((prev) => prev || file.name.replace(/\.[^.]+$/, ''));
       setKind('file');
+      setSelectedFile(file);
+      setFileName(file.name);
+      setMimeType(file.type);
+      setSizeBytes(file.size);
+      setFileUrl('');
+      setPendingMaterialId(null);
+      dispatchUpload({ type: 'reset' });
+      setSubmitState({ status: 'idle' });
     } else {
       setEditKind('file');
+      setEditSelectedFile(file);
+      setEditFileName(file.name);
+      setEditFileUrl('');
+      dispatchEditUpload({ type: 'reset' });
+      setEditState({ status: 'idle' });
     }
-
-    dispatch({ type: 'start' });
-    try {
-      const result = await uploadFileWithProgress(file, (progress) => dispatch({ type: 'progress', progress }));
-      dispatch({ type: 'success' });
-      setUrl(result.fileUrl);
-      setName(result.fileName);
-      if (target === 'create') {
-        setMimeType(result.mimeType);
-        setSizeBytes(result.sizeBytes);
-      }
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 503
-          ? t('admin.materials.uploadUnconfigured', 'File storage is not configured on this server.')
-          : t('admin.materials.uploadError', 'Upload failed. Try again.');
-      dispatch({ type: 'error', message });
-      setError(message);
-    } finally {
-      event.target.value = '';
-    }
+    event.target.value = '';
   }
 
   async function handleCreateMaterial(event: FormEvent<HTMLFormElement>) {
@@ -182,15 +171,20 @@ export function AdminMaterialsPage() {
 
     const errors = validateRequiredFields([
       { name: 'title', value: materialTitle, message: t('admin.materials.titleRequired', 'Material title is required.') },
-      { name: 'fileUrl', value: fileUrl, message: t('admin.materials.urlRequired', 'URL is required.') },
+      ...(kind === 'link'
+        ? [{ name: 'fileUrl' as const, value: fileUrl, message: t('admin.materials.urlRequired', 'URL is required.') }]
+        : [{ name: 'fileUrl' as const, value: selectedFile ? 'selected' : '', message: t('admin.materials.fileRequired', 'Select a file to upload.') }]),
     ]);
     if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
     setCreateErrors({});
 
     setSubmitState({ status: 'saving' });
+    let uploadAttempted = false;
 
     try {
-      await materialMutations.create(selectedCourse.id, {
+      const material = pendingMaterialId
+        ? { id: pendingMaterialId }
+        : await materialMutations.create(selectedCourse.id, {
           organizationId: selectedCourse.organizationId,
           courseId: selectedCourse.id,
           lessonId: selectedLessonId || undefined,
@@ -199,21 +193,42 @@ export function AdminMaterialsPage() {
           description: description.trim() || undefined,
           kind,
           fileName: fileName.trim() || undefined,
-          fileUrl: fileUrl.trim(),
-          mimeType: mimeType || undefined,
-          sizeBytes: sizeBytes ?? undefined,
+          fileUrl: kind === 'link' ? fileUrl.trim() : undefined,
+          mimeType: kind === 'link' ? mimeType || undefined : undefined,
+          sizeBytes: kind === 'link' ? sizeBytes ?? undefined : undefined,
           status: 'active',
-      });
+        });
+
+      if (kind === 'file' && selectedFile) {
+        setPendingMaterialId(material.id);
+        uploadAttempted = true;
+        dispatchUpload({ type: 'start' });
+        await uploadMaterialFileWithProgress(material.id, selectedFile, (progress) =>
+          dispatchUpload({ type: 'progress', progress }),
+        );
+        dispatchUpload({ type: 'success' });
+        uploadAttempted = false;
+      }
 
       setTitle('');
       setFileUrl('');
       setFileName('');
       setMimeType('');
       setSizeBytes(null);
+      setSelectedFile(null);
+      setPendingMaterialId(null);
       setDescription('');
       setSubmitState({ status: 'idle' });
       await loadMaterials(selectedCourse.id);
     } catch (error) {
+      if (uploadAttempted) {
+        const message = error instanceof ApiClientError && error.status === 503
+          ? t('admin.materials.uploadUnconfigured', 'File storage is not configured on this server.')
+          : t('admin.materials.uploadError', 'Material was created, but the upload failed. Try again.');
+        dispatchUpload({ type: 'error', message });
+        setSubmitState({ status: 'error', message });
+        return;
+      }
       const message =
         error instanceof ApiClientError && error.status === 409
           ? t('admin.materials.materialExists', 'A material with this slug already exists in the selected course.')
@@ -239,8 +254,9 @@ export function AdminMaterialsPage() {
     setEditMaterial(material);
     setEditTitle(material.title);
     setEditKind(material.kind);
-    setEditFileUrl(material.fileUrl);
+    setEditFileUrl(material.fileUrl ?? '');
     setEditFileName(material.fileName ?? '');
+    setEditSelectedFile(null);
     setEditDescription(material.description ?? '');
     setEditStatus(material.status as MaterialStatus);
     dispatchEditUpload({ type: 'reset' });
@@ -261,7 +277,9 @@ export function AdminMaterialsPage() {
 
     const editValidationErrors = validateRequiredFields([
       { name: 'title', value: newTitle, message: t('admin.materials.titleRequired', 'Material title is required.') },
-      { name: 'fileUrl', value: newFileUrl, message: t('admin.materials.urlRequired', 'URL is required.') },
+      ...(editKind === 'link'
+        ? [{ name: 'fileUrl' as const, value: newFileUrl, message: t('admin.materials.urlRequired', 'URL is required.') }]
+        : []),
     ]);
     if (hasValidationErrors(editValidationErrors)) { setEditErrors(editValidationErrors); return; }
     setEditErrors({});
@@ -274,9 +292,16 @@ export function AdminMaterialsPage() {
           description: editDescription.trim() || null,
           kind: editKind,
           fileName: editFileName.trim() || null,
-          fileUrl: newFileUrl,
+          fileUrl: editKind === 'link' ? newFileUrl : null,
           status: editStatus,
       });
+      if (editSelectedFile) {
+        dispatchEditUpload({ type: 'start' });
+        await uploadMaterialFileWithProgress(editMaterial.id, editSelectedFile, (progress) =>
+          dispatchEditUpload({ type: 'progress', progress }),
+        );
+        dispatchEditUpload({ type: 'success' });
+      }
       editDialogRef.current?.close();
       setLoadState((prev) =>
         prev.status === 'loaded'
@@ -358,22 +383,34 @@ export function AdminMaterialsPage() {
                   titleError={createErrors.title}
                   onChange={(field, value) => {
                     if (field === 'title') { setTitle(value); setCreateErrors((prev) => clearFieldError(prev, 'title')); }
-                    else if (field === 'kind') setKind(value as MaterialKind);
+                    else if (field === 'kind') {
+                      setKind(value as MaterialKind);
+                      setPendingMaterialId(null);
+                      setCreateErrors((prev) => clearFieldError(prev, 'fileUrl'));
+                    }
                   }}
                 />
-                <FormField id="material-create-fileurl" label={t('admin.materials.fileUrl', 'URL')} required error={createErrors.fileUrl}>
+                <FormField
+                  id="material-create-fileurl"
+                  label={kind === 'link' ? t('admin.materials.fileUrl', 'URL') : t('admin.materials.file', 'File')}
+                  required
+                  error={createErrors.fileUrl}
+                >
                   <div className="admin-upload">
                     <div className="admin-upload__row">
-                      <input
-                        id="material-create-fileurl"
-                        aria-describedby={createErrors.fileUrl ? 'material-create-fileurl-error' : undefined}
-                        aria-invalid={Boolean(createErrors.fileUrl)}
-                        value={fileUrl}
-                        onChange={(event) => { setFileUrl(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
-                        maxLength={2048}
-                        placeholder="https://..."
-                        disabled={uploadState.status === 'uploading'}
-                      />
+                      {kind === 'link' ? (
+                        <input
+                          id="material-create-fileurl"
+                          aria-describedby={createErrors.fileUrl ? 'material-create-fileurl-error' : undefined}
+                          aria-invalid={Boolean(createErrors.fileUrl)}
+                          value={fileUrl}
+                          onChange={(event) => { setFileUrl(event.target.value); setCreateErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
+                          maxLength={2048}
+                          placeholder="https://..."
+                        />
+                      ) : (
+                        <span id="material-create-fileurl">{selectedFile?.name ?? t('admin.materials.noFileSelected', 'No file selected')}</span>
+                      )}
                       <button
                         className="admin-btn admin-btn--secondary admin-btn--sm"
                         type="button"
@@ -488,18 +525,26 @@ export function AdminMaterialsPage() {
               <option value="file">{t('admin.materials.file', 'File (upload)')}</option>
             </select>
           </FormField>
-          <FormField id="material-edit-fileurl" label={t('admin.materials.fileUrl', 'URL')} required error={editErrors.fileUrl}>
+          <FormField
+            id="material-edit-fileurl"
+            label={editKind === 'link' ? t('admin.materials.fileUrl', 'URL') : t('admin.materials.file', 'File')}
+            required={editKind === 'link'}
+            error={editErrors.fileUrl}
+          >
             <div className="admin-upload">
               <div className="admin-upload__row">
-                <input
-                  id="material-edit-fileurl"
-                  aria-describedby={editErrors.fileUrl ? 'material-edit-fileurl-error' : undefined}
-                  aria-invalid={Boolean(editErrors.fileUrl)}
-                  value={editFileUrl}
-                  onChange={(event) => { setEditFileUrl(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
-                  maxLength={2048}
-                  disabled={editUploadState.status === 'uploading'}
-                />
+                {editKind === 'link' ? (
+                  <input
+                    id="material-edit-fileurl"
+                    aria-describedby={editErrors.fileUrl ? 'material-edit-fileurl-error' : undefined}
+                    aria-invalid={Boolean(editErrors.fileUrl)}
+                    value={editFileUrl}
+                    onChange={(event) => { setEditFileUrl(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'fileUrl')); }}
+                    maxLength={2048}
+                  />
+                ) : (
+                  <span id="material-edit-fileurl">{editSelectedFile?.name ?? (editFileName || t('admin.materials.noFileSelected', 'No file selected'))}</span>
+                )}
                 <button
                   className="admin-btn admin-btn--secondary admin-btn--sm"
                   type="button"
