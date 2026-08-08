@@ -9,13 +9,6 @@
 
 ## Открытые
 
-### [2026-07-31] `assertResourceAccess` — двойной запрос в БД для вложенных ресурсов
-**Файл:** `apps/api/src/modules/course-access/course-access.policy.ts`  
-**Severity:** 🟡  
-Для `attempt` и `question` метод делает 2 запроса: сначала резолвит `courseId` через промежуточную таблицу, потом проверяет доступ к курсу через `assertCourseAccess`. При высокой нагрузке это заметно. Можно объединить в один Prisma-запрос с `include`/JOIN.
-
----
-
 ### [2026-07-31] Миграции с хардкоженным timestamp в имени
 **Файлы:** `apps/api/prisma/migrations/20260731120000_*`, `20260731150000_*`  
 **Severity:** 🟢  
@@ -57,26 +50,12 @@ Threshold `functions: 25%`. После фикса PR 172 — 25.6%, запас �
 
 ---
 
-### [2026-07-31] Instructor видит все курсы организации до PR 176
-**Файл:** `apps/web/src/app/InstructorDashboardPage.tsx`, `InstructorCourseStudentsPage.tsx`  
-**Severity:** 🟡  
-Фронтенд инструктора вызывает `listCourses({ pageSize: 200 })` без фильтрации по владельцу. API-сайд ownership (`CourseAccessPolicy`) добавлен в PR 176, но фронтенд ещё не обновлён — инструктор в UI видит все курсы организации.
-
----
-
 ### [2026-07-31] `ALLOW_IN_MEMORY_RATE_LIMIT=true` — escape хatch без предупреждения
 **Файл:** `apps/api/src/config/env.ts`  
 **Severity:** 🟡  
 Флаг позволяет запустить production без Redis. Нет Warning в логах при старте что включён небезопасный режим. Легко выставить на Railway и забыть.
 
 **[2026-08-06] Подтверждено:** флаг реально выставлен в проде сегодня (см. запись выше про Redis rate limiting) — это не гипотетический риск, а факт текущего деплоя.
-
----
-
-### [2026-07-31] `createCourse` + `assignInstructor` без транзакции
-**Файл:** `apps/api/src/modules/courses/courses.controller.ts`  
-**Severity:** 🟡  
-Два последовательных запроса к БД не обёрнуты в транзакцию. Если `assignInstructor` упадёт — курс создан но без инструктора. Инструктор-создатель его больше не увидит в своём списке.
 
 ---
 
@@ -170,6 +149,23 @@ PR #492 (`fix(admin): contain horizontal overflow in admin layout at high browse
 ---
 
 ## Закрытые
+
+### [2026-07-31] `createCourse` + `assignInstructor` без транзакции → **закрыто (2026-08-07)**
+**Файл:** `apps/api/src/modules/courses/courses.service.ts`, `apps/api/src/modules/course-access/course-access.policy.ts`
+Обёрнуто в `this.prisma.$transaction(async (tx) => {...})`: `course.create` и `assignInstructor` теперь выполняются атомарно — либо оба, либо ни одного. `CourseAccessPolicy.assignInstructor` получил опциональный третий параметр (Prisma-клиент, по умолчанию `this.prisma`), чтобы его можно было вызвать как внутри транзакции, так и отдельно (как раньше, из `addInstructor`). Тесты обновлены (`courses.service.spec.ts`, `course-access.policy.spec.ts`).
+
+---
+
+### [2026-07-31] Instructor видит все курсы организации до PR 176 → **закрыто, при перепроверке не подтвердилось (2026-08-07)**
+Утверждение было неточным на момент повторной проверки. `courses.controller.ts` (`listCourses`) с самого создания файла (коммит `5ffc780`, 2026-08-03 — до этой записи concern не обновлялась) уже подставляет `instructorId` автоматически на уровне API (`isInstructorScoped(user) ? user.id : undefined`), без необходимости передавать что-либо с фронтенда. Все фронтенд-страницы (`InstructorDashboardPage.tsx`, `InstructorCoursesPage.tsx` и т.д.) вызывают `listCourses({ pageSize: 100 })` без спецпараметров — и это корректно, фильтрация уже происходит на бэкенде. Запись создана раньше фикса и не была обновлена — аналогично другим случаям в этом файле.
+
+---
+
+### [2026-07-31] `assertResourceAccess` — двойной запрос в БД для вложенных ресурсов → **закрыто (2026-08-07)**
+**Файл:** `apps/api/src/modules/course-access/course-access.policy.ts`
+Заменено на один запрос: вместо (1) найти ресурс → (2) отдельно проверить курс через `assertCourseAccess`, теперь ресурс ищется сразу с вложенным relation-фильтром (`course: this.courseWhere(user)`, для `attempt`/`question` — `assessment: { course: ... }`), Prisma транслирует это в JOIN. Побочный эффект: для случая «ресурс существует, но принадлежит чужому курсу» сообщение об ошибке изменилось с `"Course not found"` на `"Course resource not found"` — HTTP-статус (404) не изменился, задокументированный в `docs/INSTRUCTOR_COURSE_OWNERSHIP.md` контракт («тот же 404 независимо от причины») не нарушен. Тесты обновлены.
+
+---
 
 ### [2026-07-31] Покрытие функций ниже threshold 25% в CI → **закрыто**
 PR 172 — экспортированы `computeStats` и `buildStudentRows`, добавлен `InstructorUtils.spec.ts`. Coverage поднялась до 25.6%.

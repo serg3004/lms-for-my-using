@@ -57,9 +57,7 @@ export class CoursesController {
   async createCourse(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateCourseInput = createCourseSchema.parse(body);
 
-    const course = await this.coursesService.createCourse(input);
-    await this.courseAccess.assignInstructor(course.id, request.currentUser!);
-    return course;
+    return this.coursesService.createCourse(input, request.currentUser!);
   }
 
   @Patch(':id')
