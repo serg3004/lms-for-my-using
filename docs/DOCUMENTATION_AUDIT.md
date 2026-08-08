@@ -2,33 +2,33 @@
 
 ## Назначение
 
-Этот файл фиксирует результаты последовательной проверки документов в `docs/` на соответствие текущему состоянию `main`.
+Последовательная проверка документов в `docs/` на соответствие текущему `main`.
 
-Исключены из аудита:
-
+Исключены:
 - `docs/lms-ui-prototypes-complete/`;
 - `docs/master-context/`;
-- `.gitkeep` как служебный пустой файл.
+- `.gitkeep`.
 
-Для каждого документа сверяются проверяемые утверждения с кодом, конфигурацией, тестами, CI и GitHub settings. Неподтверждённые операционные утверждения помечаются `[НЕ ПРОВЕРЕНО]`.
+Статусы: ✅ актуален; ⚠️ частично актуален/исторический; ❌ устарел. Неподтверждённые live/операционные утверждения помечаются `[НЕ ПРОВЕРЕНО]`.
 
 ## Сводка
 
-| № | Документ | Статус | Итог |
+| № | Документ | Статус | Краткий итог |
 |---:|---|---|---|
-| 1 | `ACCESSIBILITY.md` | ✅ Актуален | Изменения не требуются |
-| 2 | `ADMIN_DEMO_SEED.md` | ⚠️ Частично актуален | Уточнить baseline verification либо расширить реализацию |
-| 3 | `AI_AGENT_STARTER_PROMPT.md` | ⚠️ Частично актуален | Обновить visibility, пути, backend pattern и bootstrap-инструкции |
-| 4 | `API_CONTRACTS.md` | ⚠️ Частично актуален | Runtime contract в основном актуален; manual OpenAPI не синхронизирован полностью |
-| 5 | `API_RBAC_MATRIX.md` | ⚠️ Частично актуален | Role matrix актуальна; исправить public inventory и число course-scoped controllers |
-| 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ Частично актуален | API-границы в основном актуальны; Web structure и docs-only CI guidance требуют обновления |
-| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ Частично актуален | Исторический PR 120 описан верно, но текущая Session model расширена refresh-состоянием |
-| 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ Частично актуален | Logout/revocation актуальны; общее CSRF-утверждение устарело после refresh endpoint |
-| 9 | `CI_AUDIT_BASELINE.md` | ⚠️ Частично актуален | CI/CodeQL/Dependabot baseline актуален; branch protection подтверждён как выключенный |
-| 10 | `CONCERNS.md` | ⚠️ Существенно требует ревизии | Несколько open concerns уже закрыты кодом; часть остаётся актуальной; live Railway claims требуют повторной проверки |
-| 11 | `CSS_ARCHITECTURE.md` | ⚠️ Частично актуален | CSS layers/checks актуальны; уточнить single-entry формулировку и фактическое Stylelint ID-правило |
-| 12 | `DEAD_CODE_AUDIT.md` | ⚠️ Исторический snapshot | Методика ценна, но findings и limitations нужно пересчитать по текущему `main` |
-| 13 | `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` | ⚠️ Частично актуален | Lockfile policy верна, но Dependabot scope не охватывает `apps/e2e` и `packages/shared`; текущие group/ignore rules не описаны |
+| 1 | `ACCESSIBILITY.md` | ✅ | Соответствует тестам и CI |
+| 2 | `ADMIN_DEMO_SEED.md` | ⚠️ | Verification проверяет baseline subset, а не весь demo dataset |
+| 3 | `AI_AGENT_STARTER_PROMPT.md` | ⚠️ | Устарели visibility, пути, backend pattern и bootstrap |
+| 4 | `API_CONTRACTS.md` | ⚠️ | Runtime contract в основном актуален; manual OpenAPI неполон |
+| 5 | `API_RBAC_MATRIX.md` | ⚠️ | Role matrix актуальна; public inventory и count требуют правки |
+| 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ | Web structure и docs-only CI guidance отстали от кода |
+| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ | Historical PR 120 snapshot; current Session расширена refresh state |
+| 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ | Logout/revocation актуальны; универсальное CSRF-правило уже неверно |
+| 9 | `CI_AUDIT_BASELINE.md` | ⚠️ | CI baseline актуален; `main` branch protection выключена |
+| 10 | `CONCERNS.md` | ⚠️ | Open содержит смесь актуальных, закрытых и неподтверждённых concerns |
+| 11 | `CSS_ARCHITECTURE.md` | ⚠️ | Layers/checks актуальны; нужны точные формулировки enforcement |
+| 12 | `DEAD_CODE_AUDIT.md` | ⚠️ historical | Findings нужно пересчитать по current `main` |
+| 13 | `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` | ⚠️ | Dependabot scope не охватывает E2E/shared manifests |
+| 14 | `DEPENDENCY_UPDATE_POLICY.md` | ⚠️ | Основные правила верны; ownership/verification/non-goals отстали от workspace |
 
 ---
 
@@ -37,20 +37,16 @@
 **Статус:** ✅ актуален.
 
 ### Подтверждено
-
-- WCAG 2.1 AA соответствует Axe tags в `apps/e2e/accessibility-tests/accessibility.spec.ts`.
-- `pnpm test:a11y` существует и использует `apps/e2e/playwright.accessibility.config.ts`.
-- Axe gate фильтрует `critical` и `serious`.
-- Проверяются `/`, `/login` и workspace ролей admin/manager/instructor/learner.
-- Keyboard tests покрывают skip navigation, language menu, login form, mobile navigation и возврат focus после `Escape`.
-- CI содержит обязательный шаг `Accessibility baseline` без `continue-on-error`.
+- `pnpm test:a11y` существует и использует accessibility Playwright config.
+- Axe tags соответствуют WCAG 2.1 A/AA; gate фильтрует `critical`/`serious`.
+- Проверяются public/login и workspace ролей admin/manager/instructor/learner.
+- Keyboard tests покрывают skip navigation, language menu, login, mobile navigation, focus restore.
+- CI содержит обязательный `Accessibility baseline` без `continue-on-error`.
 
 ### Несоответствия
-
 Не обнаружены.
 
 ### Что изменить
-
 Ничего.
 
 ---
@@ -60,21 +56,18 @@
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- `pnpm --filter @lms/api admin:demo-seed` существует.
-- Dry-run является режимом по умолчанию; apply требует явных environment/database confirmations.
-- Production блокируется по умолчанию и требует `--allow-demo-environment` для обхода guard.
-- Apply и post-seed verification выполняются внутри `Prisma.$transaction`.
-- Прямой `prisma/seed.mjs` и `prisma db seed` направлены через guarded path.
-- Database target не выводит username/password или полный `DATABASE_URL`.
+- Команда `pnpm --filter @lms/api admin:demo-seed` существует.
+- Dry-run по умолчанию; apply требует explicit environment/database confirmations.
+- Production guard требует `--allow-demo-environment`.
+- Apply + post-seed verification выполняются внутри `Prisma.$transaction`.
+- Прямой Prisma seed направлен через guarded path.
+- Database target не логирует username/password/full URL.
 
 ### Несоответствие
-
-`findMissingDemoData()` проверяет только baseline subset: organization, admin, learner, course, 3 lessons, assignment, assessment и 5 questions. `prisma/seed.mjs` создаёт также manager, instructor, memberships, groups, materials, progress, answer options и другие записи.
+`findMissingDemoData()` проверяет только baseline subset: organization, admin, learner, course, 3 lessons, assignment, assessment, 5 questions. Seed создаёт также manager, instructor, memberships, groups, materials, progress, answer options и др.
 
 ### Что изменить
-
-Уточнить, что dry-run/post-seed verification и `already-complete` относятся к baseline subset, либо расширить `findMissingDemoData()` до полного demo dataset.
+Либо явно назвать verification baseline subset, либо расширить `findMissingDemoData()` до полного demo dataset.
 
 ---
 
@@ -83,24 +76,18 @@
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- Стек соответствует проекту: NestJS/TypeScript/Prisma, React/Vite/TypeScript, pnpm workspace.
-- Docker Compose находится в `infra/docker/docker-compose.yml`.
-- Master-context файлы находятся в `docs/master-context/`.
-- `courses` использует service + `PrismaService` без отдельного repository layer; validation — Zod schemas.
+Стек проекта соответствует NestJS/Prisma + React/Vite + pnpm workspace; Docker Compose находится в `infra/docker`; master-context — в `docs/master-context`.
 
 ### Несоответствия
-
-1. Репозиторий назван private, GitHub возвращает `visibility: public`.
-2. Пути к `01_LMS_...`—`23_LMS_...` указаны как `docs/...`, фактически они в `docs/master-context/...`.
-3. Требование `module/controller/service/repository` не соответствует текущей структуре как минимум `courses`.
-4. DTO-specific правило не отражает Zod-based validation.
-5. Bootstrap-порядок предлагает создавать уже существующие monorepo/API/Web/Prisma/Docker/health/CI.
-6. Не задан приоритет current root docs/code над историческим `master-context`.
+- Репозиторий описан private, фактически public.
+- Пути к `01_LMS_...`—`23_LMS_...` должны указывать `docs/master-context/...`.
+- Требование `module/controller/service/repository` не соответствует фактическим модулям вроде `courses`.
+- DTO-only формулировка не учитывает Zod schemas.
+- Bootstrap предлагает создавать уже существующие monorepo/API/Web/Prisma/Docker/health/CI.
+- Нет приоритета current code/root docs над historical master-context.
 
 ### Что изменить
-
-Обновить visibility и пути; требовать следовать существующей структуре модуля; заменить DTO-specific правило на существующий механизм validation; пометить bootstrap как исторический; задать приоритет current code/config + root docs над master-context drafts.
+Обновить visibility/пути, требовать следовать существующему module pattern, обобщить validation rule и пометить bootstrap/master-context как historical/reference.
 
 ---
 
@@ -109,26 +96,18 @@
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- Глобальный prefix `/api/v1` соответствует `main.ts`.
-- Error envelope соответствует `ApiErrorResponse`.
-- Pagination baseline: `page=1`, `pageSize=20`, max `200`.
-- Auth controller содержит login, refresh, logout, logout-all, password-reset request/confirm и `/auth/me`.
-- Health controller содержит `/health`, `/health/live`, `/health/ready`.
-- Redis rate-limit store поддерживается через `REDIS_URL`, production fallback — только при `ALLOW_IN_MEMORY_RATE_LIMIT=true`.
-- Runtime OpenAPI endpoint: `GET /api/v1/openapi`.
+- `/api/v1`, error envelope, pagination defaults/max и основные auth/health routes соответствуют коду.
+- Redis rate-limit store поддерживается через `REDIS_URL`; production in-memory fallback требует explicit flag.
+- Runtime OpenAPI endpoint — `GET /api/v1/openapi`.
 
 ### Несоответствие
-
-Фраза `Manual OpenAPI document synced with current controllers` неверна. `openapi.document.ts` не содержит часть runtime routes, включая `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/sub-resource endpoints. Manual document также объявляет self-path `/openapi.json`, тогда как controller публикует `/api/v1/openapi`.
+`openapi.document.ts` не синхронизирован со всеми runtime routes: отсутствуют, среди прочего, `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/subresource endpoints. Manual document объявляет `/openapi.json`, runtime controller — `/api/v1/openapi`.
 
 ### Что изменить
-
-Либо явно назвать manual OpenAPI частичным skeleton, либо синхронизировать его со всеми runtime endpoints и исправить self-path.
+Либо назвать manual OpenAPI partial skeleton, либо полноценно синхронизировать его с runtime API.
 
 ### [НЕ ПРОВЕРЕНО]
-
-Live production URL и фактическое Railway/Redis состояние не подтверждаются данными GitHub.
+Live production URL и фактическое Railway/Redis состояние.
 
 ---
 
@@ -137,21 +116,14 @@ Live production URL и фактическое Railway/Redis состояние �
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- `rolePolicies` соответствует основной таблице ролей.
-- `RolesGuard` работает fail-closed при отсутствии role metadata.
-- `api-policy.audit.spec.ts` проверяет явную access-классификацию production HTTP handlers и поведение `RolesGuard` для всех четырёх ролей.
-- Instructor ownership реализован через `CourseAccessGuard` / `CourseAccessPolicy` с 404 для недоступного instructor ресурса и admin bypass.
-- Manager team scope применяется в Prisma query через `ManagerTeamScope`.
+`rolePolicies`, fail-closed `RolesGuard`, API policy audit, instructor ownership guard/policy и manager query scope соответствуют коду.
 
 ### Несоответствия
-
-1. В public inventory отсутствует `POST /internal/material-scans/:id/result` с `@PublicAccess()`; endpoint дополнительно защищён callback Authorization secret.
-2. Документ говорит о `8 controllers`, но перечисляет 9 course-scoped controllers.
+- Public inventory не содержит `POST /internal/material-scans/:id/result` с `@PublicAccess()`; endpoint защищён отдельным callback secret.
+- Документ говорит о 8 course-scoped controllers, но перечисляет 9.
 
 ### Что изменить
-
-Добавить malware-scan callback в public inventory с пояснением machine-to-machine secret protection и исправить `8` на `9` либо убрать хрупкий счётчик.
+Добавить malware-scan callback с пояснением machine-to-machine secret protection и исправить count/убрать хрупкий счётчик.
 
 ---
 
@@ -160,48 +132,34 @@ Live production URL и фактическое Railway/Redis состояние �
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- Основные API/database paths и список API modules соответствуют репозиторию.
-- `AppModule` связывает runtime modules, `PrismaService` находится в database boundary.
-- Frontend API boundary существует: `shared/apiClient.ts` — low-level client, `shared/api/*` — domain wrappers/types.
-- `infra/` содержит `docker`, `nginx`, `railway`.
+Основные API/database paths, modules, shared API boundary и `infra/{docker,nginx,railway}` актуальны.
 
 ### Несоответствия
-
-1. Не описан `apps/web/src/features`; `features/admin-users` уже содержит UI, hooks, model, validation и mappers.
-2. `apps/web/src/app/` содержит не только pages, но и feature/domain subdirectories.
-3. Универсальное правило «каждый API domain module имеет controller/service/schema» не подходит support/policy modules вроде `course-access` и `manager-team-scope`.
-4. Docs-only testing guidance расходится с CI: PR без path filters запускает полный workflow даже для docs-only changes.
+- Не описан `apps/web/src/features`; `features/admin-users` уже полноценный feature boundary.
+- `apps/web/src/app` содержит не только pages, но и feature/domain subdirectories.
+- Универсальное правило «каждый API module имеет controller/service/schema» не подходит support/policy modules (`course-access`, `manager-team-scope`).
+- Docs-only testing guidance расходится с CI: PR без path filters запускает полный workflow.
 
 ### Что изменить
-
-Добавить `features/`, описать гибрид `app/pages + features + shared`, различить route-owning и support/policy API modules и привести docs-only testing guidance к фактическому CI.
+Описать гибрид `app/pages + features + shared`, различать route-owning и support modules, привести docs-only guidance к реальному CI.
 
 ---
 
 ## 7. `AUTH_SESSION_STORE_DESIGN.md`
 
-**Статус:** ⚠️ частично актуален.
+**Статус:** ⚠️ исторически корректен, частично актуален как current design.
 
 ### Подтверждено
-
-- Историческая миграция PR 120 действительно создала `sessions` с `id`, `jti`, `user_id`, `organization_id`, timestamps, expiry/revocation и индексами.
-- Access-token validation ищет Session по `jti`, `revokedAt: null`, `expiresAt > now`.
-- Logout отзывает Session через `revokedAt`.
-- Поздняя refresh migration добавляет `refresh_token_hash`, `refresh_expires_at`, unique/indexes.
-- Login хранит только SHA-256 hash refresh token и expiry; raw refresh token в БД не хранится.
+PR 120 действительно ввёл `sessions`, access validation по `jti`/revocation/expiry и logout revocation. Поздняя migration добавила `refresh_token_hash` и `refresh_expires_at`; login хранит SHA-256 hash refresh token, raw token в БД не хранится.
 
 ### Несоответствия
-
-Основные разделы всё ещё описывают PR 120 и утверждают, что Session хранит только `jti` и базовые metadata, хотя текущая модель содержит `refreshTokenHash` и `refreshExpiresAt`; login lifecycle также расширен refresh flow.
+Основные разделы продолжают описывать старую Session model и login lifecycle, а current refresh state отражён только поздней вставкой.
 
 ### Что изменить
-
-Предпочтительно явно пометить документ как historical snapshot PR 120 и сослаться на current refresh/session design. Альтернатива — полностью обновить модель, login, rotation и logout-all sections до current state.
+Предпочтительно явно сохранить документ как historical PR 120 snapshot и сослаться на current refresh/session design; альтернатива — полностью обновить модель/lifecycle.
 
 ### [НЕ ПРОВЕРЕНО]
-
-Исторические staging assertions PR 120 в текущем аудите не воспроизводились.
+Исторические staging assertions PR 120.
 
 ---
 
@@ -210,21 +168,13 @@ Live production URL и фактическое Railway/Redis состояние �
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- Logout поддерживает bearer/access cookie, cookie flow требует CSRF.
-- Logout идемпотентен для invalid/already-revoked access token.
-- Logout-all отзывает Session по точным `userId` + `organizationId`.
-- Bearer logout/logout-all не требуют CSRF.
-- Оба logout endpoint очищают access + CSRF + refresh cookies.
-- Revoked/expired access и refresh sessions отклоняются.
+Logout/logout-all, tenant isolation, idempotency, bearer behavior, cookie clearing и revoked-session checks соответствуют текущему коду.
 
 ### Несоответствие
-
-Общее правило `cookie-authenticated unsafe requests require a matching CSRF token` теперь слишком широкое: `POST /auth/refresh` использует HttpOnly refresh cookie, `@PublicAccess()` и не вызывает `assertValidCsrf()`.
+Общее правило `cookie-authenticated unsafe requests require a matching CSRF token` уже слишком широкое: `POST /auth/refresh` использует HttpOnly refresh cookie и не вызывает `assertValidCsrf()`.
 
 ### Что изменить
-
-Ограничить CSRF-формулировку cookie-based logout/logout-all, добавить current-state note для refresh cookie (`SameSite=lax`, path `/api/v1/auth/refresh`) и явно пометить historical scope PR 121.
+Ограничить CSRF rule logout/logout-all, описать refresh cookie (`SameSite=lax`, path `/api/v1/auth/refresh`) и historical scope PR 121.
 
 ---
 
@@ -233,20 +183,13 @@ Live production URL и фактическое Railway/Redis состояние �
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-
-- `CI`, `CodeQL`, `Staging smoke` и Dependabot configs существуют и в основном соответствуют документу.
-- CI запускается на PR и push в `main`, job `Checks` имеет timeout 15 минут.
-- CI использует `postgres:16-alpine` и выполняет Gitleaks, frozen install, audit/waivers, lint, Prisma generate, typecheck, coverage, migrations/integration, build, browser E2E, accessibility, visual tests, Docker builds и Trivy.
-- CodeQL — отдельный JS/TS workflow с `security-extended`.
-- Semgrep workflow отсутствует.
+CI, CodeQL, staging-smoke, Dependabot, Postgres service, Gitleaks, frozen install, audit/waivers, lint/typecheck/tests/build, E2E/a11y/visual, Docker builds и Trivy соответствуют workflow-файлам. Semgrep workflow отсутствует.
 
 ### Несоответствие
-
-Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch state для `main` возвращает `protected: false`, protection disabled, required status checks enforcement `off`. CI выполняется, но GitHub branch settings не требуют успешных checks перед merge.
+Branch protection уже не `[НЕ ПРОВЕРЕНО]`: GitHub возвращает для `main` `protected: false`, protection disabled, required status checks enforcement `off`.
 
 ### Что изменить
-
-Зафиксировать фактическое отсутствие branch protection, отделить наличие CI workflows от enforceability и обновить дату/источники проверки.
+Явно зафиксировать отсутствие branch protection и отделить наличие checks от их обязательности перед merge.
 
 ---
 
@@ -254,34 +197,26 @@ Branch protection больше не `[НЕ ПРОВЕРЕНО]`: GitHub branch s
 
 **Статус:** ⚠️ существенно требует ревизии.
 
-`CONCERNS.md` задуман как живой реестр открытых технических и продуктовых рисков, но часть записей больше не отражает текущий `main`.
+### Актуальные concerns
+- manual policy inventory в `roles.spec.ts`;
+- startup warning для intentional in-memory rate-limit режима;
+- access token одновременно в HttpOnly cookie и JSON body;
+- Notifications/Audit Log отсутствуют.
 
-### Open concerns, которые остаются актуальными
-
-1. `CourseAccessPolicy.assertResourceAccess()` выполняет два последовательных DB lookup для nested `attempt` / `question`.
-2. Ручные timestamp migration names остаются процедурным preventive concern.
-3. `roles.spec.ts` содержит вручную поддерживаемый список policy names; риск drift остаётся.
-4. Отсутствует явное startup warning для осознанного in-memory rate-limit режима.
-5. `createCourse` + автоматическое назначение instructor не атомарны.
-6. Login возвращает access token и в HttpOnly cookie, и в JSON body.
-7. Generic Notifications и Audit Log для MVP отсутствуют.
-
-### Open concerns, которые устарели
-
-- Frontend coverage 25%: текущие global thresholds уже 40%.
-- Instructor all-courses: server-side list фильтруется через active `CourseInstructor`.
-- Password reset false 200: теперь `ServiceUnavailableException`.
-- Raw 429 envelope: теперь `createApiErrorResponse(...)`.
-- Flaky E2E refresh-flow: закрыт PR #513.
-- Custom role builder как MVP question: `MVP_SCOPE_LOCK.md` фиксирует его как out-of-MVP.
+### Уже устаревшие/закрытые concerns
+- frontend coverage 25% — thresholds уже 40%;
+- instructor all-courses — server list scoped через `CourseInstructor`;
+- password reset false 200 — теперь `ServiceUnavailableException`;
+- raw 429 envelope — теперь canonical API error response;
+- flaky refresh E2E — закрыт PR #513;
+- custom role builder как MVP question — out-of-MVP;
+- nested ownership double-query и non-transactional create+assignInstructor были исправлены PR #515 и должны быть перенесены в Closed после синхронизации документа.
 
 ### [НЕ ПРОВЕРЕНО]
-
-Live Railway status для Redis/storage и визуальное воспроизведение sidebar при 150%+ zoom требуют внешней проверки.
+Live Railway status Redis/storage и sidebar 150%+ zoom.
 
 ### Что изменить
-
-Пересортировать Open/Closed, сузить RBAC concern, отделить code/config readiness от live infrastructure status и устранить конфликт документов по production storage после live verification.
+Пересортировать Open/Closed, отделить code/config readiness от live infrastructure status и обновить entries после PR #515.
 
 ---
 
@@ -290,76 +225,35 @@ Live Railway status для Redis/storage и визуальное воспрои�
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
+`src/styles/index.css`, cascade layers, centralized tokens, architecture guard, Stylelint, 80 KiB CSS budget и Playwright visual regression соответствуют проекту.
 
-- `apps/web/src/styles/index.css` — единая точка импорта application-owned stylesheets.
-- `index.css` объявляет canonical cascade layers и импортирует каждый stylesheet из `src/styles` ровно один раз в named layer.
-- `check-css-architecture.mjs` проверяет layer order, imports, token ownership и unique custom-property definitions.
-- Runtime theme меняет root token variables через `document.documentElement.style.setProperty(...)`.
-- `lint:css` запускает Stylelint и architecture guard.
-- CSS bundle budget — 80 KiB и проверяется после build.
-- Playwright visual-regression gate присутствует в CI.
-
-### Несоответствия и уточнения
-
-1. `main.tsx` отдельно импортирует `@fontsource-variable/manrope/wght.css`, поэтому single-entry утверждение буквально верно только для application-owned CSS.
-2. `selector-max-id: 1` разрешает любой один ID в selector и не ограничивает его `#root`.
-3. Architecture guard не анализирует TS/TSX imports, поэтому запрет direct component CSS imports сейчас является convention, а не полным fail-closed enforcement.
-4. Требование объяснять изменение 80 KiB budget в PR — human review policy, а не автоматическая проверка.
+### Несоответствия/уточнения
+- `main.tsx` отдельно импортирует `@fontsource-variable/manrope/wght.css`; single-entry rule верен только для application-owned CSS.
+- `selector-max-id: 1` разрешает любой один ID, а не только `#root`.
+- Guard не анализирует TS/TSX imports, поэтому запрет direct CSS imports не полностью fail-closed.
+- Требование объяснить budget change в PR — human review policy, не автоматическая проверка.
 
 ### Что изменить
-
-Уточнить single-entry scope, буквально описать Stylelint ID rule, разделить architecture convention и machine enforcement для CSS imports и отделить numeric bundle gate от PR review policy.
+Уточнить scope single-entry, буквально описать ID rule и разделить conventions от machine enforcement.
 
 ---
 
 ## 12. `DEAD_CODE_AUDIT.md`
 
-**Статус:** ⚠️ исторический snapshot; как current dead-code inventory не актуален.
+**Статус:** ⚠️ historical snapshot; не current inventory.
 
-### Проверено
-
-- базовый commit и встроенное предупреждение об устаревании;
-- оба перечисленных dead-code candidate;
-- текущие layout/logout реализации;
-- текущий API TypeScript/NodeNext build contract;
-- `vite-env.d.ts`;
-- E2E dependency, typecheck script и недавний CI status;
-- ограничения методики.
-
-### Подтверждённые факты
-
-- Сам документ корректно сообщает, что исходный аудит выполнен 2 августа 2026 на commit `76edd162e56e2f485d069724c567501309f2cc06` и 6 августа был явно помечен как устаревшая база. Поэтому его findings уже заявлены как snapshot, а не гарантированное описание текущего `main`.
-- `apps/web/src/vite-env.d.ts` по-прежнему существует и содержит ambient reference `vite/client`; его классификация как не-мёртвого declaration file остаётся корректной.
-- `apps/api/src/modules/auth/auth.cookies.js` по-прежнему существует и содержит только `export * from './auth.cookies.ts';`.
-- `apps/api/tsconfig.json` использует `module/moduleResolution: NodeNext`, включает только `src/**/*.ts` и не включает исходные `.js` файлы. `apps/api/package.json` запускает production через `node dist/main.js`. Эти факты по-прежнему поддерживают исходный вывод, что source `auth.cookies.js` не требуется TypeScript build/runtime и выглядит лишним compatibility adapter.
-- `apps/web/src/app/LogoutButton.tsx` по-прежнему существует, но ситуация изменилась: с commit `88b23cf3` от 3 августа существует `LogoutButton.spec.tsx`, который напрямую импортирует и тестирует компонент. Поэтому утверждение документа «не импортируется ни одним файлом приложения или теста» больше неверно.
-- Production layouts всё ещё не переиспользуют `LogoutButton`: проверенные `learnerLayout.tsx`, `managerLayout.tsx`, `instructorLayout.tsx` и `adminPage.tsx` импортируют `shared/logout.ts` и реализуют собственный handler/button. Это поддерживает вывод, что `LogoutButton.tsx` может оставаться **неиспользуемым production component**, хотя теперь он уже не является файлом без входящих ссылок вообще.
-- Старое ограничение про E2E typecheck, который не находит `@axe-core/playwright`, больше не соответствует текущему workspace: `apps/e2e/package.json` объявляет `@axe-core/playwright` `4.12.1` и `typecheck: tsc --noEmit`; полный CI проходит. Следовательно, старую dependency-resolution проблему нельзя оставлять как current limitation.
-
-### Несоответствия
-
-1. **Candidate `LogoutButton.tsx` описан устаревшим способом.** Он больше не «без входящих ссылок»: его импортирует `LogoutButton.spec.tsx`. Если задача — найти именно production-dead code, формулировку нужно изменить на «не используется runtime/application composition, но имеет unit tests» и повторно подтвердить полный import graph на текущем `main`.
-2. **Раздел `Ограничения и следующий шаг` содержит уже устранённую E2E dependency-проблему.** `@axe-core/playwright` сейчас присутствует в E2E package, а полный CI/typecheck проходит. Это историческое ограничение нужно либо датировать состоянием snapshot, либо удалить из current guidance.
-3. **Документ не является текущим пересчётом dead code.** Встроенное предупреждение это честно признаёт, но дальнейший imperative `Что сделать: удалить файл` может быть воспринят как current action. После значительного количества последующих PR такие действия должны выполняться только после нового полного static/import audit.
-4. **Knip по-прежнему не является доказанным current source of truth.** Исторический запуск был заблокирован `403`, а в текущем репозитории Knip не добавлен как штатная dependency/script.
+### Подтверждено
+- Документ сам фиксирует snapshot commit/date.
+- `vite-env.d.ts` корректно не считается dead code.
+- `auth.cookies.js` всё ещё выглядит кандидатом на удаление по текущему NodeNext/tsconfig/start:prod contract.
+- `LogoutButton.tsx` теперь имеет unit test, поэтому больше не «без входящих ссылок», хотя production layouts всё ещё его не используют.
+- Старое limitation про отсутствующий `@axe-core/playwright` больше не актуально.
 
 ### Что изменить
-
-1. Лучше сохранить файл как **historical dead-code audit snapshot**: перенести предупреждение прямо под заголовок и явно написать, что секции `Найденные кандидаты` не являются текущими инструкциями к удалению.
-2. Для `LogoutButton.tsx` обновить статус: есть unit test, но проверенные production layouts по-прежнему реализуют logout отдельно; перед удалением нужен новый full import-graph check на текущем `main`.
-3. Для `auth.cookies.js` отметить, что текущий NodeNext/tsconfig/start:prod contract всё ещё поддерживает его удаление как кандидата, но само удаление должно выполняться отдельным code PR с lint/typecheck/tests/build.
-4. Удалить или исторически датировать limitation про отсутствующий `@axe-core/playwright`, поскольку текущий E2E workspace и CI его больше не подтверждают.
-5. Если проекту нужен **current** dead-code baseline, провести новый отдельный пересчёт: lint + typecheck с unused flags, current import graph, package exports/entrypoints и специализированный scanner при доступности. Не переносить findings snapshot 2026-08-02 автоматически.
+Явно позиционировать как historical snapshot; перед удалением кандидатов повторить current import/static audit.
 
 ### [НЕ ПРОВЕРЕНО]
-
-- Полный текущий граф относительных/alias/dynamic imports для всего workspace в рамках этого документационного шага заново не строился.
-- Knip или аналогичный специализированный dead-code scanner на текущем `main` не запускался.
-- Поэтому `LogoutButton.tsx` и `auth.cookies.js` здесь подтверждены как **кандидаты для повторной проверки**, а не как безопасные к удалению файлы в рамках текущего PR.
-
-### Итог
-
-Документ полезен как исторический журнал методики и состояния на 2 августа 2026 и уже содержит корректное предупреждение об устаревании. Однако текущие детали разошлись: `LogoutButton` получил тест, E2E dependency limitation исчезла, а полный scan после десятков PR не повторялся. Файл следует либо окончательно позиционировать как historical snapshot, либо полностью пересчитать на текущем `main` перед использованием его рекомендаций.
+Полный current import graph и специализированный scanner (Knip/аналог) не запускались.
 
 ---
 
@@ -367,55 +261,75 @@ Live Railway status для Redis/storage и визуальное воспрои�
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
+### Подтверждено
+- Один root `pnpm-lock.yaml`, workspace `apps/*` + `packages/*`.
+- CI использует `pnpm install --frozen-lockfile`.
+- Weekly Monday schedule и lockfile recovery policy актуальны.
+- Текущий Dependabot config содержит groups, open PR limits и major-version ignore rules.
 
-- `pnpm-workspace.yaml` и фактические workspace package manifests;
-- `.github/dependabot.yml` npm/pnpm update entry;
-- lockfile contract и CI frozen install;
-- Dependabot grouping, open PR limits и major-update ignore rules;
-- manual recovery workflow;
-- связанный `DEPENDENCY_UPDATE_POLICY.md`.
+### Несоответствия
+- npm Dependabot entry перечисляет только `/`, `/apps/api`, `/apps/web`, но реальные manifests есть также в `/apps/e2e` и `/packages/shared`.
+- Документ не описывает действующие `workspace-prod`, `workspace-dev`, Actions group, PR limits и major ignores.
+- Merge order — manual convention, а не enforced Dependabot behavior.
+
+### Что изменить
+Добавить E2E/shared manifests в policy и отдельным config PR — в `.github/dependabot.yml`; описать current grouping/limits/ignores; merge order пометить как manual.
+
+### [НЕ ПРОВЕРЕНО]
+История Dependabot PR по каждому manifest и реальный update job после потенциального config change.
+
+---
+
+## 14. `DEPENDENCY_UPDATE_POLICY.md`
+
+**Статус:** ⚠️ частично актуален.
+
+### Проверено
+- root `package.json` и `packageManager`;
+- `pnpm-workspace.yaml`;
+- manifests/scripts для API, Web, E2E и Shared;
+- `turbo.json`;
+- CI frozen install + audit;
+- текущий Dependabot config;
+- root `pnpm.overrides` как действующий механизм transitive security remediation.
 
 ### Подтверждённые факты
-
-- Репозиторий действительно использует один общий root `pnpm-lock.yaml` и workspace, определённый через `pnpm-workspace.yaml`.
-- `pnpm-workspace.yaml` включает два glob: `apps/*` и `packages/*`.
-- В текущем workspace существуют как минимум четыре вложенных package manifests: `apps/api/package.json`, `apps/web/package.json`, `apps/e2e/package.json` и `packages/shared/package.json` плюс root `package.json`.
-- `apps/e2e/package.json` содержит реальные devDependencies (`@axe-core/playwright`, `@playwright/test`, `@types/node`, `eslint`, `typescript`), а `packages/shared/package.json` содержит production dependency `zod` и devDependencies `eslint`, `typescript`, `vitest`; это не пустые служебные manifests.
-- Текущий npm Dependabot entry использует `directories`, но перечисляет только `/`, `/apps/api`, `/apps/web`.
-- GitHub Dependabot определяет `directories` как locations package manifests, которые должны обслуживаться version updates; следовательно, текущий config не включает manifests из `/apps/e2e` и `/packages/shared` в этот update entry.
-- Weekly schedule по понедельникам соответствует policy.
-- CI действительно выполняет `pnpm install --frozen-lockfile`, поэтому stale manifest/lockfile combination блокируется до дальнейших gates.
-- CI также выполняет `pnpm audit --audit-level high`; правило policy не смешивать unrelated audit remediation с текущим PR соответствует принципу scoped changes.
-- `.github/dependabot.yml` содержит дополнительные действующие правила, которых нет в этом документе: `open-pull-requests-limit: 1` для GitHub Actions, `2` для npm; GitHub Actions updates сгруппированы в один `github-actions` group; npm minor/patch updates группируются отдельно как `workspace-prod` и `workspace-dev`; major updates для ряда ключевых packages явно ignored.
-- Manual recovery через `pnpm install --lockfile-only` согласуется с заявленной целью регенерировать shared lockfile pnpm, а не редактировать его вручную.
+- `packageManager: pnpm@9.15.0` соответствует документу.
+- Root scripts `build`, `lint`, `typecheck`, `test` действительно идут через Turbo.
+- Lockfile policy остаётся корректной: один root `pnpm-lock.yaml`, CI использует `--frozen-lockfile`, ручное редактирование lockfile не требуется и не должно использоваться.
+- Основные update rules (scoped PR, changelog/release-note review, major upgrades отдельно, security updates приоритетны, rollback через revert, Prisma CLI/client alignment) остаются полезными и согласуются с repository process.
+- Root `package.json` уже содержит `pnpm.overrides` для transitive security/version constraints, то есть проект фактически использует override-based remediation как часть dependency contract.
 
 ### Несоответствия
 
-1. **Current rule больше не охватывает весь pnpm workspace.** Документ предписывает один npm update entry только для `/`, `/apps/api`, `/apps/web`, но workspace сейчас также содержит `/apps/e2e` и `/packages/shared`. Поэтому формулировка `workspace level` и обещание держать workspace manifests в одном Dependabot update context неполны.
+1. **`Current package manager` неполно описывает package-level scripts.** Документ упоминает только `apps/api/package.json` и `apps/web/package.json`, но `apps/e2e/package.json` имеет собственные `lint`, `typecheck`, `test:a11y`, `test:visual`, а `packages/shared/package.json` — `build`, `lint`, `typecheck`, `test`.
 
-2. **Та же неполнота существует в самой `.github/dependabot.yml`.** Это уже не только документальное расхождение: два реальных package manifests отсутствуют в `directories` текущего npm update entry. Исправление configuration следует делать отдельным dependency/config PR после завершения аудита.
+2. **`Dependency ownership` неполон.** Таблица содержит только Root/API/Web/Lockfile и не содержит E2E и Shared. Это делает правило «dependency added at narrowest package scope: root, API, or Web» устаревшим: фактические допустимые package scopes также включают E2E и Shared.
 
-3. **Документ не описывает существенные current Dependabot controls.** В нём отсутствуют действующие prod/dev minor/patch groups, open PR limits и explicit major-version ignores. Для документа с названием `Current rule` это делает описание конфигурации неполным.
+3. **Verification matrix не покрывает E2E/shared dependency changes.** Для E2E test/tooling dependency нужен как минимум E2E lint/typecheck и релевантный Playwright gate; для Shared runtime/dev dependency нужны shared lint/typecheck/test/build и проверки потребителей, если меняется runtime/types behavior.
 
-4. **`Dependabot merge order` является human process, а не enforced scheduling/merge mechanism.** `.github/dependabot.yml` задаёт weekly Monday schedule для Actions и npm, но не кодирует порядок `GitHub Actions → dev dependencies → prod dependencies → security PR`. Эту последовательность следует маркировать как review/merge convention, а не как автоматически гарантируемое поведение Dependabot.
+4. **`Non-goals` устарел.** Документ говорит, что policy не добавляет Dependabot/Renovate configuration. Dependabot configuration уже существует в `.github/dependabot.yml`, поэтому такой non-goal больше не описывает current repository state.
 
-5. **Связанный `DEPENDENCY_UPDATE_POLICY.md` также отражает старую структуру ownership.** Его `Current package manager` и `Dependency ownership` перечисляют package-level scripts/ownership только для root, API и Web и не включают E2E/shared. Это отдельный документ следующего шага аудита, но текущая policy должна не создавать впечатление, что root/API/Web исчерпывают workspace.
+5. **Policy не описывает current automated dependency controls.** В repository уже действуют Dependabot groups/limits/major ignores, а root `pnpm.overrides` используется для transitive constraints/security fixes. Для current source-of-truth policy стоит либо описать эти механизмы, либо дать точные ссылки на `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` и security-waiver/audit process.
+
+6. **Root/API/Web формулируются как исчерпывающая архитектура ownership.** Это уже противоречит реальному `pnpm-workspace.yaml`, который включает `apps/*` и `packages/*`.
 
 ### Что изменить
 
-1. В разделе `Current rule` перечислить все текущие workspace manifests: `/`, `/apps/api`, `/apps/web`, `/apps/e2e`, `/packages/shared`.
-2. Отдельным конфигурационным PR синхронизировать `.github/dependabot.yml`, добавив отсутствующие manifest locations в тот же npm update entry; после изменения проверить, что Dependabot продолжает обновлять общий root lockfile и CI с `--frozen-lockfile` проходит.
-3. Документировать current grouping/limits: Actions group, `workspace-prod`, `workspace-dev`, `open-pull-requests-limit`, а также policy для major updates/ignore list либо дать точную ссылку на один source-of-truth document.
-4. Явно пометить merge order как **manual review convention**.
-5. Синхронизировать `DEPENDENCY_UPDATE_POLICY.md` с фактическими E2E/shared package ownership; не исправлять его молча в рамках этого audit finding — он проверяется следующим отдельным шагом.
-6. Сохранить правила: не редактировать `pnpm-lock.yaml` вручную, проверять matching lockfile diff и не смешивать unrelated audit remediation с dependency PR.
+1. Расширить `Current package manager` и `Dependency ownership` строками E2E и Shared.
+2. Заменить «narrowest scope: root, API, or Web» на фактические workspace scopes; dependency должна жить в самом узком package, который её использует.
+3. Добавить verification rows:
+   - E2E dev/test dependency → E2E lint + typecheck + релевантный Playwright/a11y/visual check;
+   - Shared runtime dependency → shared lint/typecheck/test/build + affected consumer checks;
+   - Shared dev/test dependency → shared lint/typecheck/tests/build when applicable.
+4. Переписать `Non-goals`: Dependabot уже существует; policy не должна утверждать обратное.
+5. Явно описать либо сослаться на current Dependabot controls и допустимое использование `pnpm.overrides` для минимальной transitive security remediation.
+6. Сохранить без изменений основные правила: scoped PR, no manual lockfile edits, no unrelated dependency churn, explicit rollback, verification before merge.
 
 ### [НЕ ПРОВЕРЕНО]
-
-- Фактическая история последних Dependabot version-update PR для каждого manifest не использовалась как доказательство coverage: массовый PR-list запрос вернул слишком большой ответ. Вывод о scope основан на текущем `dependabot.yml`, workspace manifests и официальной семантике `directories`.
-- Не выполнялся реальный Dependabot update job после добавления `/apps/e2e` и `/packages/shared`, поскольку конфигурация в рамках аудита не изменялась.
+- История каждого dependency PR не пересматривалась; аудит проверяет current policy/config, а не соблюдение правил каждым прошлым PR.
+- Текущий security-fix для `nanoid` выполняется параллельно другим агентом; его итоговый manifest/lockfile diff и CI будут проверены после merge в `main` перед следующей синхронизацией audit-ветки.
 
 ### Итог
 
-Lockfile safety, frozen-install gate, manual recovery и scoped security remediation остаются актуальными. Основное устаревание связано с расширением workspace: policy и текущий Dependabot config всё ещё считают npm update context состоящим только из root/API/Web, хотя workspace уже включает E2E и shared package. Дополнительно документу нужно описать реально действующие grouping/limit/major-ignore правила и отделить ручной merge order от автоматизированной конфигурации.
+Документ остаётся хорошей базовой policy по безопасным dependency changes, lockfile discipline, security updates и rollback. Главное устаревание — структура workspace: current policy фактически написана для root/API/Web, тогда как репозиторий уже содержит полноценные E2E и Shared packages. Дополнительно `Non-goals` и automation sections нужно привести к реальному наличию Dependabot и `pnpm.overrides`.
