@@ -79,37 +79,55 @@ describe('rolePolicies', () => {
     expect(rolePolicies[policyName]).not.toContain('learner');
   });
 
-  it.each([
-    ['organizationsRead', ['admin']],
-    ['usersRead', ['admin', 'manager']],
-    ['usersCreate', ['admin', 'manager']],
-    ['membershipsRead', ['admin', 'manager']],
-    ['membershipsCreate', ['admin']],
-    ['groupsRead', ['admin', 'manager']],
-    ['groupsCreate', ['admin', 'manager']],
-    ['coursesRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['coursesCreate', ['admin', 'instructor']],
-    ['lessonsRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['lessonsCreate', ['admin', 'instructor']],
-    ['courseMaterialsRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['courseMaterialsCreate', ['admin', 'instructor']],
-    ['assignmentsRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['assignmentsCreate', ['admin', 'manager', 'instructor']],
-    ['progressRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['progressCreate', ['admin', 'manager', 'instructor', 'learner']],
-    ['assessmentsRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['assessmentsCreate', ['admin', 'instructor']],
-    ['assessmentQuestionsRead', ['admin', 'manager', 'instructor']],
-    ['assessmentQuestionsCreate', ['admin', 'instructor']],
-    ['assessmentAnswerOptionsRead', ['admin', 'manager', 'instructor']],
-    ['assessmentAnswerOptionsCreate', ['admin', 'instructor']],
-    ['assessmentAttemptsRead', ['admin', 'manager', 'instructor']],
-    ['assessmentAttemptResultsRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['assessmentAttemptsCreate', ['admin', 'manager', 'instructor', 'learner']],
-    ['certificatesRead', ['admin', 'manager', 'instructor', 'learner']],
-    ['certificatesCreate', ['admin', 'manager', 'instructor']],
-  ] satisfies readonly [PolicyName, readonly UserRole[]][])(
-    'matches the audited learner/admin RBAC matrix for %s',
+  // Every key of `rolePolicies` must have an entry here. `satisfies Record<PolicyName, ...>` is a
+  // type-level nudge in the editor, but apps/api/tsconfig.json excludes *.spec.ts from the
+  // `typecheck` script, so it is NOT enforced by CI's typecheck step — the completeness test right
+  // below this map is what actually catches a missing key, as a normal failing test. Verified by
+  // temporarily deleting an entry and confirming the runtime test (not tsc) fails.
+  // This replaces a fixed hand-maintained array that could silently omit new policies — see
+  // docs/CONCERNS.md and docs/API_RBAC_MATRIX.md "Enforcement" for the history of that drift.
+  const expectedRolePolicies = {
+    organizationsRead: ['admin'],
+    organizationsCreate: ['admin'],
+    themeSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
+    themeSettingsWrite: ['admin'],
+    usersRead: ['admin', 'manager'],
+    usersCreate: ['admin', 'manager'],
+    membershipsRead: ['admin', 'manager'],
+    membershipsCreate: ['admin'],
+    groupsRead: ['admin', 'manager'],
+    groupsCreate: ['admin', 'manager'],
+    coursesRead: ['admin', 'manager', 'instructor', 'learner'],
+    coursesCreate: ['admin', 'instructor'],
+    lessonsRead: ['admin', 'manager', 'instructor', 'learner'],
+    lessonsReadAll: ['admin'],
+    lessonsCreate: ['admin', 'instructor'],
+    courseMaterialsRead: ['admin', 'manager', 'instructor', 'learner'],
+    courseMaterialsCreate: ['admin', 'instructor'],
+    assignmentsRead: ['admin', 'manager', 'instructor', 'learner'],
+    assignmentsCreate: ['admin', 'manager', 'instructor'],
+    progressRead: ['admin', 'manager', 'instructor', 'learner'],
+    progressCreate: ['admin', 'manager', 'instructor', 'learner'],
+    assessmentsRead: ['admin', 'manager', 'instructor', 'learner'],
+    assessmentsCreate: ['admin', 'instructor'],
+    assessmentQuestionsRead: ['admin', 'manager', 'instructor'],
+    assessmentQuestionsCreate: ['admin', 'instructor'],
+    assessmentAnswerOptionsRead: ['admin', 'manager', 'instructor'],
+    assessmentAnswerOptionsCreate: ['admin', 'instructor'],
+    assessmentAttemptsRead: ['admin', 'manager', 'instructor'],
+    assessmentAttemptResultsRead: ['admin', 'manager', 'instructor', 'learner'],
+    assessmentAttemptsCreate: ['admin', 'manager', 'instructor', 'learner'],
+    certificatesRead: ['admin', 'manager', 'instructor', 'learner'],
+    certificatesCreate: ['admin', 'manager', 'instructor'],
+    managerTeamSummaryRead: ['admin', 'manager'],
+  } satisfies Record<PolicyName, readonly UserRole[]>;
+
+  it('has an expected-roles entry for every key of rolePolicies (and no extra ones)', () => {
+    expect(Object.keys(expectedRolePolicies).sort()).toEqual(Object.keys(rolePolicies).sort());
+  });
+
+  it.each(Object.entries(expectedRolePolicies) as [PolicyName, readonly UserRole[]][])(
+    'matches the audited RBAC matrix for %s',
     (policyName, allowedRoles) => {
       expectPolicy(policyName, allowedRoles);
     },
