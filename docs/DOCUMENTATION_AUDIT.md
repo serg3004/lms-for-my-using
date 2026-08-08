@@ -33,6 +33,7 @@
 | 16 | `DEVELOPMENT_PLAN.md` | ⚠️ historical/current mix | Полезный implementation ledger, но статусы и PR-нумерация не являются надёжным current roadmap |
 | 17 | `FRONTEND_COVERAGE_ROADMAP.md` | ⚠️ | Stage 1 gate актуален; универсальный 80% rule не machine-enforced |
 | 18 | `FRONTEND_MVP_MAINTAINABILITY_AUDIT.md` | ⚠️ | Hotspot page sizes актуальны; risk methodology и production-status claims требуют уточнения |
+| 19 | `I18N_GUIDE.md` | ⚠️ | Core locales/db/API верны; locale persistence, hardcoded-text rule, formatting и notifications описаны сильнее текущей реализации |
 
 ---
 
@@ -443,3 +444,73 @@ Live Railway topology, MinIO/Redis provisioning, public/private API networking, 
 
 ### Итог
 Текущая page-size table и четыре cleanup target остаются точными и полезными. Основной drift находится в методологии вокруг findings: `KB` фактически означает KiB, `Risk` не формализован, уменьшение page file не равно уменьшению total feature complexity, а production/staging statement требует свежего operational подтверждения.
+
+---
+
+## 19. `I18N_GUIDE.md`
+
+**Статус:** ⚠️ частично актуален. Базовая i18n infrastructure, список locales и database/API facts соответствуют текущему коду, но locale persistence/priority, полнота перевода UI, formatting guidance и notifications section описаны как более завершённые, чем фактическая реализация.
+
+### Проверено
+- `apps/web/src/i18n/index.ts`, locale directories и locale-sync test;
+- `apps/web/package.json` dependencies;
+- language switching в login, public home, learner/admin/manager/instructor layouts;
+- `User.locale` / `User.timezone`, Organization schema и registration schema;
+- `/auth/me` current-user contract и frontend `CurrentUser` type;
+- API error translation helper;
+- shared date formatter;
+- наличие notification module/model;
+- hardcoded UI literals в shared components/layouts.
+
+### Подтверждённые факты
+- `i18next` и `react-i18next` являются текущими Web dependencies.
+- `apps/web/src/i18n/index.ts` объявляет `DEFAULT_LOCALE = 'ru'`, `supportedLocales = ['ru', 'en', 'kk', 'zh']`, загружает resources для всех четырёх locales и использует `fallbackLng: 'ru'`.
+- В `apps/web/src/i18n/locales/{ru,en,kk,zh}/` существуют `common.json`; login resources также регистрируются для всех четырёх языков.
+- Login, public home и role layouts предоставляют ручное переключение языка. Admin и manager используют общий `LanguageSwitcher`; instructor использует `LearnerTopNav` с language switcher; learner layout содержит тот же общий switcher.
+- `User` в Prisma имеет `locale String @default("ru")` и `timezone String @default("Asia/Almaty")`.
+- `Organization` не имеет locale/timezone fields. В `registerOrganizationSchema` locale/timezone находятся внутри `admin`, то есть относятся к создаваемому admin user.
+- `AuthService` выбирает `locale` и `timezone`, `currentUserSchema` возвращает их, а frontend `CurrentUser` type их содержит. При этом проверенные frontend flows не используют `user.locale` для инициализации i18next.
+- Описание API error localization как узкого покрытия в основном точное: `apiErrorFeedback.ts` локализует login generic/`TOO_MANY_REQUESTS`, а для прочих `ApiClientError` возвращает `error.message`.
+- Отдельного API module `notifications` в текущем `apps/api/src/modules` нет; generic Notifications ранее также зафиксированы как отсутствующая MVP capability.
+
+### Несоответствия и уточнения
+
+1. **`Locale priority` неверно описан как общий механизм приложения.** `i18n/index.ts` всегда стартует с `lng: 'ru'` и сам localStorage не читает. `LoginPage.tsx` действительно читает/записывает `lms-prototype-language`, поэтому persistence существует на login flow. Но общий `LanguageSwitcher` для authenticated layouts и switcher в `PublicHomePage` вызывают только `i18n.changeLanguage(...)` и не записывают locale в localStorage. Следовательно, правило `localStorage → default ru` не является глобальным current startup contract.
+
+2. **Переключение языка реализовано неодинаково.** Login language switch persist-ит выбор; public home и authenticated layout switchers — нет. После SPA-навигации текущий i18next language сохраняется в памяти, но после прямой перезагрузки non-login route initialization снова начинается с `ru`, если никакой page-specific код не восстановит preference.
+
+3. **Правило `no hardcoded UI texts` сейчас является convention/целью, а не выполненным invariant.** В текущем shared UI/layout коде есть hardcoded user-visible/default strings, например `Loading…`, `No items.`, `← Prev`, `Next →`, `Confirm`, `Cancel`, `Выйти`, а также `Main navigation`. Поэтому guide не должен создавать впечатление, что hardcoded UI text уже полностью устранён или machine-enforced.
+
+4. **`All four locales are implemented` нуждается в более точной формулировке.** Resources для ru/en/kk/zh действительно существуют и подключены, но current `locale-sync.spec.ts` проверяет только, что `kk` содержит все ключи `ru`. Аналогичного parity guard для `en` и `zh` в этом тесте нет. Fallback на `ru` дополнительно может скрывать пропущенные keys во время runtime.
+
+5. **Dates/numbers section описывает желаемую практику, а не единый current implementation contract.** Shared `formatNullableDate()` использует `new Date(value).toLocaleString()` без передачи текущего `i18n.language`; это browser-locale formatting, а не явно синхронизированное с выбранным UI locale форматирование. Централизованного formatter, связывающего i18next locale с `Intl.DateTimeFormat`/`Intl.NumberFormat`, в проверенном коде не обнаружено.
+
+6. **Notifications section выглядит как current storage contract, хотя feature отсутствует.** Запись `{ translationKey, variables }` следует маркировать как future design recommendation, а не существующую модель хранения.
+
+7. **`User.locale` persisted в Postgres, но manual language switch не синхронизирует его с backend.** Guide корректно говорит, что frontend не использует `user.locale` для initial selection, но стоит также явно указать обратное направление: проверенные switchers не PATCH/PUT user locale и не сохраняют UI preference в `User.locale`.
+
+8. **Default/fallback locale `ru` подтверждён, но browser locale auto-detection отсутствует.** В `i18n/index.ts` не подключён detector; это стоит написать явно, чтобы `toLocaleString()` browser behavior не путали с i18next locale selection.
+
+### Что изменить
+1. Переписать `Locale priority` по фактическому поведению:
+   - i18next bootstrap: всегда `ru`;
+   - LoginPage: если есть `lms-prototype-language`, после mount переключает на него;
+   - login switcher persist-ит localStorage;
+   - public/authenticated switchers сейчас меняют язык только в памяти;
+   - `User.locale` не участвует в UI initialization и не обновляется этими switchers.
+2. Либо унифицировать persistence в одном shared locale service/switcher, либо честно документировать разные поведения до такого refactor.
+3. Сформулировать `no hardcoded UI texts` как правило для нового/изменяемого UI и отдельно завести cleanup/enforcement для существующих literals; не утверждать, что invariant уже соблюдён во всём Web.
+4. Расширить locale parity test минимум на `en`, `kk`, `zh` относительно canonical `ru` keys; при необходимости отдельно проверять пустые/непереведённые values.
+5. Добавить locale-aware formatting helper, принимающий/resolving current UI locale, и использовать его для dates/numbers; либо пометить раздел как target architecture.
+6. Перенести Notifications storage example в `Future design`/`Out of current MVP implementation` до появления реальной model/module.
+7. Явно отделить `supported resource bundles` от `fully localized UI`: наличие четырёх JSON bundles не доказывает отсутствие hardcoded/fallback text.
+8. Добавить `Verified at` / `Verified against main SHA` для current implementation section.
+
+### [НЕ ПРОВЕРЕНО]
+- Полная key/value parity всех `en` и `zh` translation resources вручную не пересчитывалась; подтверждено только наличие bundles и ограниченный scope current `locale-sync.spec.ts`.
+- Полный поиск каждого hardcoded user-visible literal во всём `apps/web/src` в рамках этого шага не выполнялся; приведённых подтверждённых примеров достаточно, чтобы опровергнуть абсолютное правило как current invariant.
+- Реальное пользовательское ожидание: должен ли выбранный язык сохраняться между устройствами через `User.locale` или только локально в браузере — это продуктовый выбор и в текущем guide однозначно не зафиксирован.
+- Будущая схема Notifications/course translations не реализовывалась и не проверялась как migration design в рамках этого audit PR.
+
+### Итог
+Core i18n foundation документа актуальна: четыре locale bundles, Russian default/fallback, i18next/react-i18next, `User.locale/timezone`, отсутствие organization locale и locale-agnostic API direction подтверждаются кодом. Основной drift находится в lifecycle locale preference и уровне завершённости: localStorage persistence работает только на login flow, authenticated/public switchers не persist-ят выбор, `User.locale` не синхронизируется с UI, hardcoded strings ещё существуют, parity test покрывает только `kk` против `ru`, а notifications/locale-aware formatting остаются скорее target design, чем завершённой реализацией.
