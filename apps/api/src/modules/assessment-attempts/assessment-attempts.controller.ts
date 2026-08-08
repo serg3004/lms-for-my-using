@@ -57,6 +57,17 @@ export class AssessmentAttemptsController {
     return this.assessmentResultsService.getAttemptResult(attemptId, currentUser);
   }
 
+  @Post('assessments/:assessmentId/attempts/start')
+  @Roles(...rolePolicies.assessmentAttemptsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentAttemptsService.startAttempt(
+      assessmentId,
+      request.currentUser!.id,
+      request.currentUser!.organizationId,
+    );
+  }
+
   @Post('assessments/:assessmentId/attempts')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')

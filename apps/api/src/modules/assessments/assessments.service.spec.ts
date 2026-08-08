@@ -46,6 +46,18 @@ describe('Assessments validation', () => {
     expect(input.availableAfterCourseCompletion).toBe(false);
   });
 
+  it('accepts a timeLimitMinutes value', () => {
+    const input = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Timed test',
+      slug: 'timed-test',
+      timeLimitMinutes: 30,
+    });
+
+    expect(input.timeLimitMinutes).toBe(30);
+  });
+
   it('rejects assessment input without title', () => {
     expect(() =>
       createAssessmentSchema.parse({
@@ -89,6 +101,10 @@ describe('updateAssessmentSchema', () => {
 
   it('accepts maxAttempts null to remove limit', () => {
     expect(updateAssessmentSchema.parse({ maxAttempts: null })).toEqual({ maxAttempts: null });
+  });
+
+  it('accepts timeLimitMinutes null to remove the time limit', () => {
+    expect(updateAssessmentSchema.parse({ timeLimitMinutes: null })).toEqual({ timeLimitMinutes: null });
   });
 
   it('accepts empty object', () => {

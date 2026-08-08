@@ -18,6 +18,7 @@ const assessmentSelect = {
   status: true,
   passingScore: true,
   maxAttempts: true,
+  timeLimitMinutes: true,
   availableAfterCourseCompletion: true,
   createdAt: true,
   updatedAt: true,
