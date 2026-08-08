@@ -97,6 +97,20 @@ describe('updateAssessmentSchema', () => {
 });
 
 describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
+  it('rejects publishing an assessment with no questions', async () => {
+    const update = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessmentQuestion: { findMany: async () => [] },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.updateAssessmentStatus(assessmentId, organizationId, 'published')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it('rejects publishing when a question has no correct answer option', async () => {
     const update = jest.fn();
     const prisma = {
