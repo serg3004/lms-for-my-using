@@ -56,6 +56,15 @@ async function bootstrap(): Promise<void> {
   const rateLimitStore = redis ? createRedisRateLimitStore(redis, apiEnv.RATE_LIMIT_NAMESPACE) : undefined;
   const logger = app.get(Logger);
 
+  if (!redis && apiEnv.NODE_ENV === 'production') {
+    // Only reachable when ALLOW_IN_MEMORY_RATE_LIMIT=true — env.ts otherwise requires REDIS_URL
+    // in production. Surface it loudly: this escape hatch is easy to set on Railway and forget.
+    logger.warn(
+      { event: 'rate_limit_in_memory_fallback', alert: true },
+      'ALLOW_IN_MEMORY_RATE_LIMIT is active: running production without Redis. Rate limit counters are per-instance and reset on restart.',
+    );
+  }
+
   app.use(createSecurityHeadersMiddleware());
   app.use(
     createSensitiveRouteRateLimitMiddleware(rateLimitStore, undefined, {

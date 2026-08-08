@@ -26,6 +26,7 @@ token flows. All other protected endpoints use `AuthGuard` and `RolesGuard`.
 | Courses — read | ✓ | ✓ | ✓ | ✓ |
 | Courses — create/update/delete | ✓ |  | ✓ |  |
 | Lessons — read | ✓ | ✓ | ✓ | ✓ |
+| Lessons — read all (admin listing, `lessonsReadAll`) | ✓ |  |  |  |
 | Lessons — create/update/delete | ✓ |  | ✓ |  |
 | Course materials — read | ✓ | ✓ | ✓ | ✓ |
 | Course materials/upload — create/update | ✓ |  | ✓ |  |
@@ -73,8 +74,12 @@ query level rather than as a shared guard.
   policy therefore fails the API test job in CI.
 - The audit executes `RolesGuard` for every role on every role-protected controller method, covering both allowed
   and denied decisions across the entire API rather than only selected modules.
-- `roles.spec.ts` behaviourally checks a fixed, hand-maintained list of policies against expected roles — **not**
-  every key of `rolePolicies`. A newly added policy (like `themeSettingsRead` or `managerTeamSummaryRead` were,
-  until this doc was updated) will not fail that test or this document by omission; both need a manual update
-  whenever `rolePolicies` changes. Treat `apps/api/src/modules/auth/roles.ts` as the only thing CI actually
-  guarantees is current — this document and the spec's role list are best-effort mirrors of it.
+- `roles.spec.ts` checks an `expectedRolePolicies` map against expected roles for **every key** of `rolePolicies`,
+  not a fixed hand-picked subset (fixed 2026-08-08, closing a drift that previously let `themeSettingsRead` and
+  `managerTeamSummaryRead` go unchecked until this doc was manually updated). The map's type is
+  `satisfies Record<PolicyName, readonly UserRole[]>` — note this is only an editor hint here, not a CI
+  guarantee, since `apps/api/tsconfig.json` excludes `*.spec.ts` from the `typecheck` script. The actual
+  enforcement is a runtime test asserting `Object.keys(expectedRolePolicies)` equals `Object.keys(rolePolicies)`
+  exactly (verified by deleting an entry and confirming that test — not `tsc` — fails). This document is still a
+  best-effort mirror — update it whenever `rolePolicies` changes — but the test itself can no longer silently
+  omit a new policy.

@@ -21,7 +21,7 @@
 **Severity:** 🟡  
 Audit-тест (`api-policy.audit.spec.ts`) проверяет что у каждого endpoint есть `@Roles()` — но это не то же самое что проверить поведение guard. Dedicated `.rbac.spec.ts` файлы есть только у `assignments` и `progress`. Остальные 12 контроллеров без поведенческих RBAC-тестов.
 
-**[2026-08-06] Дополнение:** при ревизии `docs/API_RBAC_MATRIX.md` обнаружил, что и `roles.spec.ts` (`matches the audited learner/admin RBAC matrix`) не спасает от тихого дрейфа — тест сравнивает `rolePolicies` с захардкоженным списком из 28 политик (`it.each([...])`), а не с `Object.keys(rolePolicies)`. Когда добавили `themeSettingsRead`/`themeSettingsWrite`/`managerTeamSummaryRead` — тест не упал, потому что этих ключей просто нет в списке проверки. Follow-up: заменить захардкоженный список на `Object.keys(rolePolicies)` с явным ожидаемым маппингом, чтобы новая политика без ожидания в тесте валила CI, а не молча проходила.
+**[2026-08-06] Дополнение:** при ревизии `docs/API_RBAC_MATRIX.md` обнаружил, что и `roles.spec.ts` (`matches the audited learner/admin RBAC matrix`) не спасает от тихого дрейфа — тест сравнивает `rolePolicies` с захардкоженным списком из 28 политик (`it.each([...])`), а не с `Object.keys(rolePolicies)`. Когда добавили `themeSettingsRead`/`themeSettingsWrite`/`managerTeamSummaryRead` — тест не упал, потому что этих ключей просто нет в списке проверки. **Этот конкретный follow-up закрыт (2026-08-08) — см. «Закрытые».** Основная часть записи (нет поведенческих `.rbac.spec.ts` для 12 из 14 контроллеров) остаётся открытой — это не решает, а только было соседним наблюдением.
 
 ---
 
@@ -50,26 +50,10 @@ Threshold `functions: 25%`. После фикса PR 172 — 25.6%, запас �
 
 ---
 
-### [2026-07-31] `ALLOW_IN_MEMORY_RATE_LIMIT=true` — escape хatch без предупреждения
-**Файл:** `apps/api/src/config/env.ts`  
-**Severity:** 🟡  
-Флаг позволяет запустить production без Redis. Нет Warning в логах при старте что включён небезопасный режим. Легко выставить на Railway и забыть.
-
-**[2026-08-06] Подтверждено:** флаг реально выставлен в проде сегодня (см. запись выше про Redis rate limiting) — это не гипотетический риск, а факт текущего деплоя.
-
----
-
 ### [2026-07-31] Password reset — нереализованная заглушка на публичном endpoint
 **Файл:** `apps/api/src/modules/auth/auth.controller.ts`  
 **Severity:** 🟡  
 `confirmPasswordReset()` принимает любые данные и возвращает 200 без действий. Endpoint публичный. Пользователь не получит ошибку при попытке сбросить пароль.
-
----
-
-### [2026-07-31] Rate limit 429 использует raw JSON вместо NestJS error формата
-**Файл:** `apps/api/src/common/middleware/api-hardening.ts`  
-**Severity:** 🟢  
-Middleware находится до NestJS pipeline — формат ошибки 429 отличается от остальных API ошибок. Клиент получает разные структуры ответа при разных ошибках.
 
 ---
 
@@ -149,6 +133,23 @@ PR #492 (`fix(admin): contain horizontal overflow in admin layout at high browse
 ---
 
 ## Закрытые
+
+### [2026-08-06] `roles.spec.ts` — захардкоженный список политик вместо `Object.keys(rolePolicies)` → **закрыто (2026-08-08)**
+**Файл:** `apps/api/src/modules/auth/roles.spec.ts`, `docs/API_RBAC_MATRIX.md`
+Заменил захардкоженный массив `it.each([...])` из 28 записей на `expectedRolePolicies` — объект, типизированный как `satisfies Record<PolicyName, readonly UserRole[]>`. **Проверил на практике, а не предположил:** `apps/api/tsconfig.json` исключает `*.spec.ts` из `typecheck`-скрипта, так что `satisfies` здесь — не реальная compile-time защита в CI (лишь подсказка в редакторе), несмотря на то, что похожая конструкция где-то могла бы им быть. Реальную защиту даёт добавленный runtime-тест, сравнивающий `Object.keys(expectedRolePolicies)` с `Object.keys(rolePolicies)` — временно удалил одну запись и подтвердил, что именно этот тест падает (а не `tsc`). Заодно нашёл и добавил недостающую документированную строку в `API_RBAC_MATRIX.md` для `lessonsReadAll` (её не было ни в одном из двух документов вообще — использовалась только в коде).
+
+---
+
+### [2026-07-31] Rate limit 429 использует raw JSON вместо NestJS error формата → **закрыто, при перепроверке не подтвердилось (2026-08-08)**
+Утверждение было неточным. `createSensitiveRouteRateLimitMiddleware` (`apps/api/src/common/middleware/api-hardening.ts`) уже вызывает тот же самый `createApiErrorResponse(...)` (`apps/api/src/common/api-response.ts`), что использует `ApiExceptionFilter` для всех остальных ошибок API — с момента создания файла (коммит `5ffc780`, 2026-08-03, до этой записи concern). Формат тела ответа (`{statusCode, error: {code, message}, path, timestamp}`) идентичен, единственное отличие — этот ответ формируется и отправляется вручную через raw `response.end()`, потому что миддлвар физически работает до того, как запрос попадает в Nest-пайплайн (иначе rate limiting не защитил бы сам парсинг тела запроса). Структура JSON от этого не меняется.
+
+---
+
+### [2026-07-31] `ALLOW_IN_MEMORY_RATE_LIMIT=true` — escape хatch без предупреждения → **закрыто (2026-08-08)**
+**Файл:** `apps/api/src/main.ts`
+Добавлен явный `logger.warn(...)` при старте, если `REDIS_URL` не задан и `NODE_ENV=production` (единственный способ дойти до этой ветки — когда `ALLOW_IN_MEMORY_RATE_LIMIT=true` в проде, иначе `env.ts` не даст стартовать). Лог структурный (`event: 'rate_limit_in_memory_fallback', alert: true`), в том же формате, что и существующий `rate_limit_degraded`-алерт. **[2026-08-06] Подтверждено:** флаг реально выставлен в проде — это не гипотетический риск, факт текущего деплоя (см. соседнюю запись про Redis rate limiting, всё ещё открыта — сам факт отсутствия Redis в инфраструктуре этим PR не решается, только видимость проблемы в логах).
+
+---
 
 ### [2026-07-31] `createCourse` + `assignInstructor` без транзакции → **закрыто (2026-08-07)**
 **Файл:** `apps/api/src/modules/courses/courses.service.ts`, `apps/api/src/modules/course-access/course-access.policy.ts`
