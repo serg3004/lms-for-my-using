@@ -338,11 +338,35 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: userId, organizationId },
       data: { status },
       select: userSelect,
     });
+
+    const orphanedCourses = status !== 'active' ? await this.findSoleInstructorCourses(userId, organizationId) : [];
+
+    return { ...updatedUser, orphanedCourses };
+  }
+
+  /** Courses where userId is the only active CourseInstructor — left without an accessible owner once deactivated. */
+  private async findSoleInstructorCourses(userId: string, organizationId: string) {
+    const courses = await this.prisma.course.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        instructors: { some: { instructorId: userId, organizationId, deletedAt: null } },
+      },
+      select: {
+        id: true,
+        title: true,
+        instructors: { where: { deletedAt: null }, select: { instructorId: true } },
+      },
+    });
+
+    return courses
+      .filter((course) => course.instructors.length === 1)
+      .map((course) => ({ id: course.id, title: course.title }));
   }
 
   private async ensureOrganizationExists(organizationId: string) {

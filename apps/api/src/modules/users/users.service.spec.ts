@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
@@ -325,5 +325,53 @@ describe('UsersService updateUser role changes', () => {
     });
 
     await expect(service.updateUser(userId, actor, input)).resolves.toEqual(updatedUser);
+  });
+});
+
+describe('UsersService updateUserStatus', () => {
+  const actor = unrestrictedActor(organizationId);
+
+  it('returns no orphaned courses when the user stays active', async () => {
+    const prisma = {
+      user: {
+        findFirst: async () => ({ id: userId }),
+        update: async () => ({ id: userId, status: 'active' }),
+      },
+      course: { findMany: async () => [{ id: 'course-1', title: 'Safety', instructors: [{ instructorId: userId }] }] },
+    } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    await expect(service.updateUserStatus(userId, actor, 'active')).resolves.toMatchObject({
+      status: 'active',
+      orphanedCourses: [],
+    });
+  });
+
+  it('lists courses left without another active instructor when deactivated', async () => {
+    const prisma = {
+      user: {
+        findFirst: async () => ({ id: userId }),
+        update: async () => ({ id: userId, status: 'suspended' }),
+      },
+      course: {
+        findMany: async () => [
+          { id: 'course-1', title: 'Safety Basics', instructors: [{ instructorId: userId }] },
+          { id: 'course-2', title: 'Co-taught', instructors: [{ instructorId: userId }, { instructorId: 'other-instructor' }] },
+        ],
+      },
+    } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    await expect(service.updateUserStatus(userId, actor, 'suspended')).resolves.toMatchObject({
+      status: 'suspended',
+      orphanedCourses: [{ id: 'course-1', title: 'Safety Basics' }],
+    });
+  });
+
+  it('throws NotFoundException when the user does not exist', async () => {
+    const prisma = { user: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new UsersService(prisma);
+
+    await expect(service.updateUserStatus(userId, actor, 'suspended')).rejects.toThrow(NotFoundException);
   });
 });
