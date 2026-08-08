@@ -1,0 +1,76 @@
+name: Multipart upload cleanup
+
+# Reports (and, when explicitly requested, aborts) expired MultipartUpload rows that
+# never completed. The cleanup logic already exists (apps/api/src/scripts/multipart-upload-cleanup.ts)
+# but was never scheduled anywhere — see docs/CONCERNS.md.
+#
+# Requires two repository secrets pointing at the production database, since this runs
+# outside Railway's private network:
+#   PRODUCTION_DATABASE_URL - the Postgres connection string using Railway's PUBLIC/external
+#                              proxy host (the auto-set internal DATABASE_URL is not reachable
+#                              from GitHub-hosted runners).
+#   PRODUCTION_JWT_SECRET    - the same JWT_SECRET configured on the api service (only needed
+#                              to satisfy app bootstrap env validation; this job never issues
+#                              or verifies tokens).
+# Until both secrets are added, every run of this workflow will fail at the "Generate report"
+# step with a clear env-validation error, not silently no-op.
+#
+# Scheduled runs are always dry-run (report only). Actually aborting expired uploads calls the
+# storage backend (S3/R2), which per docs/CONCERNS.md is not yet configured on Railway - so
+# --execute is only available via manual workflow_dispatch, once that's resolved.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: 'Actually abort expired uploads (requires storage backend configured). Leave unchecked for a dry-run report.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  PRISMA_GENERATE_SKIP_AUTOINSTALL: "true"
+  DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+  JWT_SECRET: ${{ secrets.PRODUCTION_JWT_SECRET }}
+
+jobs:
+  cleanup:
+    name: Cleanup expired multipart uploads
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
+      - name: Build API
+        run: pnpm --filter @lms/api build
+
+      - name: Report expired multipart uploads (dry-run)
+        if: ${{ github.event.inputs.execute != 'true' }}
+        run: pnpm --filter @lms/api storage:multipart-cleanup
+
+      - name: Abort expired multipart uploads
+        if: ${{ github.event.inputs.execute == 'true' }}
+        run: pnpm --filter @lms/api storage:multipart-cleanup -- --execute
