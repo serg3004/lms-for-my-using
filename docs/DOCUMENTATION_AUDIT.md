@@ -21,15 +21,16 @@
 | 4 | `API_CONTRACTS.md` | ⚠️ | Runtime contract в основном актуален; manual OpenAPI неполон |
 | 5 | `API_RBAC_MATRIX.md` | ⚠️ | Role matrix актуальна; public inventory и count требуют правки |
 | 6 | `ARCHITECTURE_MODULE_BOUNDARIES.md` | ⚠️ | Web structure и docs-only CI guidance отстали от кода |
-| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ | Historical PR 120 snapshot; current Session расширена refresh state |
+| 7 | `AUTH_SESSION_STORE_DESIGN.md` | ⚠️ historical | PR 120 snapshot; current Session расширена refresh state |
 | 8 | `AUTH_TOKEN_REVOCATION.md` | ⚠️ | Logout/revocation актуальны; универсальное CSRF-правило уже неверно |
 | 9 | `CI_AUDIT_BASELINE.md` | ⚠️ | CI baseline актуален; `main` branch protection выключена |
-| 10 | `CONCERNS.md` | ⚠️ | Open содержит смесь актуальных, закрытых и неподтверждённых concerns |
+| 10 | `CONCERNS.md` | ⚠️ | Open смешивает актуальные, закрытые и неподтверждённые concerns |
 | 11 | `CSS_ARCHITECTURE.md` | ⚠️ | Layers/checks актуальны; нужны точные формулировки enforcement |
 | 12 | `DEAD_CODE_AUDIT.md` | ⚠️ historical | Findings нужно пересчитать по current `main` |
 | 13 | `DEPENDABOT_PNPM_WORKSPACE_POLICY.md` | ⚠️ | Dependabot scope не охватывает E2E/shared manifests |
 | 14 | `DEPENDENCY_UPDATE_POLICY.md` | ⚠️ | Основные правила верны; ownership/verification/non-goals отстали от workspace |
-| 15 | `DEPLOY_FOUNDATION.md` | ⚠️ | Railway config/health/migrations актуальны; staging/storage/follow-up sections противоречат current docs |
+| 15 | `DEPLOY_FOUNDATION.md` | ⚠️ | Railway mechanics актуальны; staging/storage/follow-up sections расходятся с current docs |
+| 16 | `DEVELOPMENT_PLAN.md` | ⚠️ historical/current mix | Полезный implementation ledger, но статусы и PR-нумерация уже не являются надёжным current roadmap |
 
 ---
 
@@ -57,7 +58,7 @@
 **Статус:** ⚠️ частично актуален.
 
 ### Подтверждено
-- Команда `pnpm --filter @lms/api admin:demo-seed` существует.
+- `pnpm --filter @lms/api admin:demo-seed` существует.
 - Dry-run по умолчанию; apply требует explicit environment/database confirmations.
 - Production guard требует `--allow-demo-environment`.
 - Apply + post-seed verification выполняются внутри `Prisma.$transaction`.
@@ -65,7 +66,7 @@
 - Database target не логирует username/password/full URL.
 
 ### Несоответствие
-`findMissingDemoData()` проверяет только baseline subset: organization, admin, learner, course, 3 lessons, assignment, assessment, 5 questions. Seed создаёт также manager, instructor, memberships, groups, materials, progress, answer options и др.
+`findMissingDemoData()` проверяет baseline subset: organization, admin, learner, course, 3 lessons, assignment, assessment и 5 questions. Seed создаёт также manager, instructor, memberships, groups, materials, progress, answer options и др.
 
 ### Что изменить
 Либо явно назвать verification baseline subset, либо расширить `findMissingDemoData()` до полного demo dataset.
@@ -88,7 +89,7 @@
 - Нет приоритета current code/root docs над historical master-context.
 
 ### Что изменить
-Обновить visibility/пути, требовать следовать существующему module pattern, обобщить validation rule и пометить bootstrap/master-context как historical/reference.
+Обновить visibility/пути, следовать существующему module pattern, обобщить validation rule и пометить bootstrap/master-context как historical/reference.
 
 ---
 
@@ -102,7 +103,7 @@
 - Runtime OpenAPI endpoint — `GET /api/v1/openapi`.
 
 ### Несоответствие
-`openapi.document.ts` не синхронизирован со всеми runtime routes: отсутствуют, среди прочего, `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/subresource endpoints. Manual document объявляет `/openapi.json`, runtime controller — `/api/v1/openapi`.
+`openapi.document.ts` не синхронизирован со всеми runtime routes: отсутствуют `/health/live`, `/health/ready`, `POST /auth/refresh`, `GET /manager/team-summary` и ряд update/status/subresource endpoints. Manual document объявляет `/openapi.json`, runtime controller — `/api/v1/openapi`.
 
 ### Что изменить
 Либо назвать manual OpenAPI partial skeleton, либо полноценно синхронизировать его с runtime API.
@@ -151,13 +152,13 @@ Live production URL и фактическое Railway/Redis состояние.
 **Статус:** ⚠️ исторически корректен, частично актуален как current design.
 
 ### Подтверждено
-PR 120 действительно ввёл `sessions`, access validation по `jti`/revocation/expiry и logout revocation. Поздняя migration добавила `refresh_token_hash` и `refresh_expires_at`; login хранит SHA-256 hash refresh token, raw token в БД не хранится.
+PR 120 ввёл `sessions`, access validation по `jti`/revocation/expiry и logout revocation. Поздняя migration добавила `refresh_token_hash` и `refresh_expires_at`; login хранит SHA-256 hash refresh token, raw token в БД не хранится.
 
 ### Несоответствия
 Основные разделы продолжают описывать старую Session model и login lifecycle, а current refresh state отражён только поздней вставкой.
 
 ### Что изменить
-Предпочтительно явно сохранить документ как historical PR 120 snapshot и сослаться на current refresh/session design; альтернатива — полностью обновить модель/lifecycle.
+Предпочтительно сохранить документ как historical PR 120 snapshot и сослаться на current refresh/session design; альтернатива — полностью обновить модель/lifecycle.
 
 ### [НЕ ПРОВЕРЕНО]
 Исторические staging assertions PR 120.
@@ -172,7 +173,7 @@ PR 120 действительно ввёл `sessions`, access validation по `j
 Logout/logout-all, tenant isolation, idempotency, bearer behavior, cookie clearing и revoked-session checks соответствуют текущему коду.
 
 ### Несоответствие
-Общее правило `cookie-authenticated unsafe requests require a matching CSRF token` уже слишком широкое: `POST /auth/refresh` использует HttpOnly refresh cookie и не вызывает `assertValidCsrf()`.
+Правило `cookie-authenticated unsafe requests require a matching CSRF token` слишком широкое: `POST /auth/refresh` использует HttpOnly refresh cookie и не вызывает `assertValidCsrf()`.
 
 ### Что изменить
 Ограничить CSRF rule logout/logout-all, описать refresh cookie (`SameSite=lax`, path `/api/v1/auth/refresh`) и historical scope PR 121.
@@ -187,10 +188,10 @@ Logout/logout-all, tenant isolation, idempotency, bearer behavior, cookie cleari
 CI, CodeQL, staging-smoke, Dependabot, Postgres service, Gitleaks, frozen install, audit/waivers, lint/typecheck/tests/build, E2E/a11y/visual, Docker builds и Trivy соответствуют workflow-файлам. Semgrep workflow отсутствует.
 
 ### Несоответствие
-Branch protection уже не `[НЕ ПРОВЕРЕНО]`: GitHub возвращает для `main` `protected: false`, protection disabled, required status checks enforcement `off`.
+GitHub возвращает для `main` `protected: false`, protection disabled, required status checks enforcement `off`. Значит branch protection уже не `[НЕ ПРОВЕРЕНО]`, а подтверждённо выключена.
 
 ### Что изменить
-Явно зафиксировать отсутствие branch protection и отделить наличие checks от их обязательности перед merge.
+Зафиксировать отсутствие branch protection и отделить наличие checks от их обязательности перед merge.
 
 ---
 
@@ -204,14 +205,14 @@ Branch protection уже не `[НЕ ПРОВЕРЕНО]`: GitHub возвращ
 - access token одновременно в HttpOnly cookie и JSON body;
 - Notifications/Audit Log отсутствуют.
 
-### Уже устаревшие/закрытые concerns
+### Устаревшие/закрытые concerns
 - frontend coverage 25% — thresholds уже 40%;
 - instructor all-courses — server list scoped через `CourseInstructor`;
 - password reset false 200 — теперь `ServiceUnavailableException`;
 - raw 429 envelope — теперь canonical API error response;
 - flaky refresh E2E — закрыт PR #513;
 - custom role builder как MVP question — out-of-MVP;
-- nested ownership double-query и non-transactional create+assignInstructor были исправлены PR #515 и должны быть перенесены в Closed после синхронизации документа.
+- nested ownership double-query и non-transactional create+assignInstructor исправлены PR #515 и должны быть перенесены в Closed.
 
 ### [НЕ ПРОВЕРЕНО]
 Live Railway status Redis/storage и sidebar 150%+ zoom.
@@ -244,10 +245,10 @@ Live Railway status Redis/storage и sidebar 150%+ zoom.
 **Статус:** ⚠️ historical snapshot; не current inventory.
 
 ### Подтверждено
-- Документ сам фиксирует snapshot commit/date.
+- Документ фиксирует snapshot commit/date.
 - `vite-env.d.ts` корректно не считается dead code.
-- `auth.cookies.js` всё ещё выглядит кандидатом на удаление по текущему NodeNext/tsconfig/start:prod contract.
-- `LogoutButton.tsx` теперь имеет unit test, поэтому больше не «без входящих ссылок», хотя production layouts всё ещё его не используют.
+- `auth.cookies.js` остаётся кандидатом на удаление по текущему NodeNext/tsconfig/start:prod contract.
+- `LogoutButton.tsx` теперь имеет unit test, поэтому больше не «без входящих ссылок», хотя production layouts его не используют.
 - Старое limitation про отсутствующий `@axe-core/playwright` больше не актуально.
 
 ### Что изменить
@@ -266,11 +267,11 @@ Live Railway status Redis/storage и sidebar 150%+ zoom.
 - Один root `pnpm-lock.yaml`, workspace `apps/*` + `packages/*`.
 - CI использует `pnpm install --frozen-lockfile`.
 - Weekly Monday schedule и lockfile recovery policy актуальны.
-- Текущий Dependabot config содержит groups, open PR limits и major-version ignore rules.
+- Dependabot config содержит groups, open PR limits и major-version ignore rules.
 
 ### Несоответствия
-- npm Dependabot entry перечисляет только `/`, `/apps/api`, `/apps/web`, но реальные manifests есть также в `/apps/e2e` и `/packages/shared`.
-- Документ не описывает действующие `workspace-prod`, `workspace-dev`, Actions group, PR limits и major ignores.
+- npm Dependabot entry перечисляет только `/`, `/apps/api`, `/apps/web`, но manifests есть также в `/apps/e2e` и `/packages/shared`.
+- Документ не описывает `workspace-prod`, `workspace-dev`, Actions group, PR limits и major ignores.
 - Merge order — manual convention, а не enforced Dependabot behavior.
 
 ### Что изменить
@@ -285,104 +286,104 @@ Live Railway status Redis/storage и sidebar 150%+ zoom.
 
 **Статус:** ⚠️ частично актуален.
 
-### Проверено
-- root `package.json` и `packageManager`;
-- `pnpm-workspace.yaml`;
-- manifests/scripts для API, Web, E2E и Shared;
-- `turbo.json`;
-- CI frozen install + audit;
-- текущий Dependabot config;
-- root `pnpm.overrides` как действующий механизм transitive security remediation.
-
-### Подтверждённые факты
-- `packageManager: pnpm@9.15.0` соответствует документу.
-- Root scripts `build`, `lint`, `typecheck`, `test` действительно идут через Turbo.
-- Lockfile policy остаётся корректной: один root `pnpm-lock.yaml`, CI использует `--frozen-lockfile`, ручное редактирование lockfile не требуется и не должно использоваться.
-- Основные update rules (scoped PR, changelog/release-note review, major upgrades отдельно, security updates приоритетны, rollback через revert, Prisma CLI/client alignment) остаются полезными и согласуются с repository process.
-- Root `package.json` уже содержит `pnpm.overrides` для transitive security/version constraints, то есть проект фактически использует override-based remediation как часть dependency contract.
+### Подтверждено
+- `packageManager: pnpm@9.15.0` актуален.
+- Root build/lint/typecheck/test идут через Turbo.
+- Один root lockfile и frozen-install policy актуальны.
+- Scoped PR, changelog/release-note review, отдельные major upgrades, security priority, revert rollback и Prisma CLI/client alignment остаются правильными.
+- Root `pnpm.overrides` фактически используется для transitive security/version constraints.
 
 ### Несоответствия
-1. `Current package manager` неполно описывает package-level scripts: отсутствуют E2E и Shared.
-2. `Dependency ownership` содержит только Root/API/Web/Lockfile и не включает E2E/Shared; narrowest scope должен учитывать все workspace packages.
-3. Verification matrix не покрывает E2E/shared dependency changes.
-4. `Non-goals` устарел: Dependabot config уже существует.
-5. Policy не описывает current automated dependency controls и использование `pnpm.overrides`.
-6. Root/API/Web формулируются как исчерпывающая ownership architecture, хотя `pnpm-workspace.yaml` включает `apps/*` и `packages/*`.
+- Package-level scripts/ownership описывают только Root/API/Web, но не E2E/Shared.
+- Verification matrix не покрывает E2E/shared dependency changes.
+- `Non-goals` говорит, что Dependabot не добавляется, хотя config уже существует.
+- Policy не описывает current Dependabot automation и `pnpm.overrides`.
 
 ### Что изменить
-1. Добавить E2E и Shared в package manager/ownership sections.
-2. Определить narrowest scope по фактическим workspace packages.
-3. Добавить verification rows для E2E и Shared dependencies.
-4. Переписать `Non-goals`, поскольку Dependabot уже существует.
-5. Описать/сослаться на Dependabot controls и допустимое `pnpm.overrides` для минимальной transitive security remediation.
-6. Сохранить scoped PR, no manual lockfile edits, no unrelated churn, explicit rollback, verification before merge.
+Добавить E2E/Shared в ownership и verification, переписать `Non-goals`, описать/сослаться на Dependabot controls и override-based security remediation.
 
 ### [НЕ ПРОВЕРЕНО]
-История каждого dependency PR не пересматривалась; аудит проверяет current policy/config, а не соблюдение правил каждым прошлым PR.
-
-### Итог
-Документ остаётся хорошей базовой policy по безопасным dependency changes, lockfile discipline, security updates и rollback. Главное устаревание — структура workspace и уже существующая automation.
+История каждого dependency PR не пересматривалась.
 
 ---
 
 ## 15. `DEPLOY_FOUNDATION.md`
 
-**Статус:** ⚠️ частично актуален; runtime/config foundation в основном верна, environment strategy и часть operational assumptions устарели или противоречат другим current docs.
+**Статус:** ⚠️ частично актуален; repository-level deploy mechanics в основном верны, operational environment strategy требует синхронизации.
+
+### Подтверждено
+- Railway split-service config web + api + PostgreSQL соответствует repository config.
+- Web/API Railway configs используют соответствующие Dockerfiles и healthchecks.
+- API startup — `prisma migrate deploy && node dist/main.js`.
+- `/health/live`, `/health/ready`, `/health` соответствуют `HealthController`.
+- `prisma migrate deploy`, secret handling и rollback principles согласуются с current code/policy.
+
+### Несоответствия
+1. `Staging` описан как отдельный Railway environment, а `MIGRATION_BACKUP_POLICY.md` фиксирует отсутствие отдельного staging и CI ephemeral PostgreSQL как ближайший dry-run.
+2. Storage source of truth расходится: deploy docs называют Railway MinIO, `.env.production.example` рекомендует R2/AWS S3, `infra/railway/README.md` описывает только web/api/PostgreSQL.
+3. Follow-up PR 89/90/103 уже исторические: verification/smoke artifacts существуют.
+4. Release checklist требует staging-before-production, хотя current migration policy staging не имеет.
+5. Network perimeter API не унифицирован: Railway guide требует private-only API за nginx, исторические smoke docs используют public API URL.
+
+### Что изменить
+Унифицировать environment model, storage target, release checklist и API perimeter; перенести старые follow-up PR в historical context; сохранить health/migration/Docker/rollback sections.
+
+### [НЕ ПРОВЕРЕНО]
+Live Railway topology, MinIO/Redis provisioning, public/private API networking, env values, fresh production smoke и backup/restore readiness.
+
+---
+
+## 16. `DEVELOPMENT_PLAN.md`
+
+**Статус:** ⚠️ исторический implementation ledger, частично пригодный как roadmap, но не надёжный current source of truth без полной сверки статусов.
 
 ### Проверено
-- `apps/api/railway.json` и `apps/web/railway.json`;
-- API/Web Dockerfiles;
-- API health controller;
-- `.env.production.example`;
-- `infra/railway/README.md`;
-- `RAILWAY_DEPLOY_GUIDE.md`;
-- `MIGRATION_BACKUP_POLICY.md`;
-- `STAGING_SMOKE_REPORT.md`;
-- `RAILWAY_PRODUCTION_SMOKE_STATUS.md`;
-- `PR_89_102_VERIFICATION.md`.
+- заголовок, дата обновления, status legend и заявленное назначение документа;
+- связь документа с текущими `PROJECT_SOURCE_OF_TRUTH.md` и `MVP_SCOPE_LOCK.md`;
+- нумерация plan PR/work items против реальных GitHub PR;
+- выборочные контрольные статусы из ранней и поздней части плана: manual OpenAPI, frontend coverage, responsive visual matrix, shared package contracts;
+- текущие visual E2E tests и shared package test contract;
+- реальные GitHub PR #197 и #205 как контроль неоднозначности нумерации.
 
 ### Подтверждённые факты
-- Railway остаётся документированным deployment target, а split-service конфигурация `web` + `api` + Railway PostgreSQL соответствует repository config.
-- `apps/web/railway.json` использует Dockerfile `apps/web/Dockerfile`, healthcheck `/`, timeout 60, restart `ON_FAILURE`/3 retries.
-- Web Dockerfile действительно собирает React/Vite application и обслуживает build через nginx; его container healthcheck также проверяет `/`.
-- `apps/api/railway.json` использует `apps/api/Dockerfile`, start command `prisma migrate deploy && node dist/main.js`, healthcheck `/api/v1/health/ready`, timeout 300 и restart `ON_FAILURE`/3 retries.
-- API Dockerfile содержит тот же production startup contract и container healthcheck `/api/v1/health/ready`.
-- `HealthController` реализует:
-  - `GET /health/live` — только liveness;
-  - `GET /health/ready` — readiness через PostgreSQL, Redis и storage checks;
-  - `GET /health` — compatibility alias, который вызывает readiness.
-- Правило использовать committed `prisma migrate deploy`, а не `migrate dev`, соответствует `MIGRATION_BACKUP_POLICY.md` и текущему Railway startup.
-- Production secret guidance в целом согласуется с `.env.production.example`: реальные значения не должны коммититься; `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, Redis/storage variables задаются через deployment environment.
-- Rollback guidance «redeploy previous deployment для runtime-only проблемы; schema/data rollback требует отдельного решения» согласуется с migration policy на уровне принципа.
+- Документ помечен как рабочий план и последним обновлением указывает `2026-07-30`; legend трактует `✅` как «реализовано и проверено в коде», а `🔲` как «не начато».
+- В начале документа явно сказано, что Part 0 опирается на реальные GitHub PR 1–48, а `PR 49 в плане ChatGPT` продолжает эту нумерацию. В поздних разделах эта внутренняя нумерация визуально продолжает использовать термин `PR`, хотя уже не соответствует номеру реального GitHub Pull Request.
+- Контрольный пример: plan item `PR 197 — Responsive visual matrix` помечен `🔲`, но текущий `apps/e2e/visual-tests/responsive-matrix.spec.ts` уже существует и проверяет 320/375/768/1024/1280/1440 px, отсутствие horizontal overflow, touch targets, responsive admin UI и 200% zoom; CI уже запускает visual regression gate. Следовательно, статус этого plan item устарел.
+- Реальный GitHub PR #197 — другой change: `feat(learner): real assessment taking form with result breakdown`, merged 2026-06-04. Это доказывает, что позднее `PR 197` в плане нельзя читать как GitHub PR #197.
+- Аналогично plan item `PR 205 — Shared package tests/contracts` помечен `🔲`, а реальный GitHub PR #205 — `feat(upload): harden MVP file validation`. Нумерации расходятся.
+- При этом сам plan item про Shared tests по текущему коду остаётся правдоподобно незавершённым: `packages/shared/package.json` использует `vitest run --passWithNoTests`, а в `packages/shared/src` нет обнаруженных test/spec файлов.
+- Plan item `PR 204 — Frontend coverage roadmap` соответствует текущему направлению: global frontend coverage threshold уже поднят до 40%, что ранее подтверждено по `apps/web/vitest.config.ts`.
+- `PROJECT_SOURCE_OF_TRUTH.md` задаёт более высокий current-source priority для самого source-of-truth документа, `MVP_SCOPE_LOCK.md`, `TODO_VERIFY.md` и current code/config. Поэтому `DEVELOPMENT_PLAN.md` не должен самостоятельно переопределять текущее состояние при конфликте.
 
 ### Несоответствия
 
-1. **Раздел `Staging` противоречит текущей migration/environment policy.** `DEPLOY_FOUNDATION.md` описывает staging как отдельное production-like Railway environment с web/api/Postgres и staging-only secrets. Однако `MIGRATION_BACKUP_POLICY.md` прямо фиксирует: **отдельного staging environment у проекта нет**, Railway project имеет один `production` environment, а ближайший migration dry-run — ephemeral PostgreSQL в CI. Одновременно исторический `STAGING_SMOKE_REPORT.md` использует production-like Railway URLs и старое понятие staging. Current source-of-truth нужно унифицировать.
+1. **Внутренняя нумерация plan work items неоднозначно называется `PR`.** После первых реальных PR номера расходятся с GitHub. Это создаёт прямой риск ссылаться на неверный Pull Request. Примеры `197` и `205` подтверждают проблему.
 
-2. **Storage target не имеет единого current source of truth.** `DEPLOY_FOUNDATION.md` и `RAILWAY_DEPLOY_GUIDE.md` называют self-hosted Railway MinIO текущим storage target. Но `.env.production.example` говорит: `Use Cloudflare R2 or AWS S3 in production` и описывает MinIO только через path-style/self-hosted compatibility. `infra/railway/README.md` вообще описывает только три Railway services — web, api и PostgreSQL — без MinIO. Поэтому утверждение `current MVP deployment target = minio` нельзя считать надёжным current contract без live infrastructure verification.
+2. **Legend `✅ = реализовано и проверено в коде` не гарантирует current truth.** Например, plan item про синхронизацию manual OpenAPI (`PR 61`) помечен выполненным, но текущий `openapi.document.ts` снова отстал от runtime controllers. Значит `✅` отражает состояние на момент реализации, а не обязательную актуальность сегодня.
 
-3. **`Follow-up candidates` устарели как список будущей работы.** Документ предлагает PR 89 verification, PR 90 env verification и PR 103 staging deploy/smoke как будущие шаги. В repository уже существуют `PR_89_102_VERIFICATION.md`, `STAGING_SMOKE_REPORT.md` и более поздний `RAILWAY_PRODUCTION_SMOKE_STATUS.md`. То есть эти пункты теперь исторические и должны быть заменены текущими verification gaps, а не оставаться как pending roadmap.
+3. **Есть устаревшие `🔲`.** Responsive visual matrix (`PR 197` по внутренней нумерации плана) уже фактически реализован и выполняется в CI, но в плане остаётся «не начато».
 
-4. **Release checklist предполагает staging-before-production, которого current migration policy не имеет.** Пункты `staging deploy complete` и `staging smoke complete` не могут быть обязательными gates, если отдельного staging environment действительно нет. Нужно либо восстановить/создать staging как реальный environment, либо переписать checklist под current reality: CI migration dry-run + production deploy verification.
+4. **Дата и scope статусов отстали от текущего репозитория.** После 2026-07-30 были новые security/auth/readiness/maintainability изменения, PR #513–#516 и обновления canonical docs. План не содержит механизма обязательной повторной верификации старых статусов после изменения кода.
 
-5. **Deployment docs расходятся по сетевой архитектуре API.** `infra/railway/README.md` требует не включать Public Networking для API и направлять `/api/` только через web nginx/private network. Исторические `STAGING_SMOKE_REPORT.md` и `RAILWAY_PRODUCTION_SMOKE_STATUS.md` фиксируют прямой public API URL. Это не обязательно ошибка `DEPLOY_FOUNDATION.md`, но его split-service target не определяет, является ли public API endpoint допустимым current contract. Для production perimeter это нужно сделать явно.
+5. **Документ смешивает три разных роли:** historical implementation ledger, current status dashboard и future backlog. При таком объёме и ручном обновлении это приводит к drift: исторически верные `✅` начинают выглядеть как current assertions, а реализованные work items остаются `🔲`.
+
+6. **Эфемерные факты быстро стареют.** В документе много точных test counts, line/file references, CI-green assertions и временных branch/PR формулировок. Без привязки к конкретному SHA/date такие сведения нельзя воспринимать как current fact.
 
 ### Что изменить
 
-1. Выбрать и зафиксировать **одну current environment model**:
-   - если staging реально отсутствует — убрать staging как существующий environment из `DEPLOY_FOUNDATION.md`, заменить на CI ephemeral DB + production verification;
-   - если staging должен существовать — создать/подтвердить его отдельно и затем синхронизировать `MIGRATION_BACKUP_POLICY.md`.
-2. Выбрать единый current storage target и синхронизировать `DEPLOY_FOUNDATION.md`, `.env.production.example`, `RAILWAY_DEPLOY_GUIDE.md` и `infra/railway/README.md`: self-hosted MinIO либо managed R2/S3. До live verification не утверждать MinIO как факт текущего production provisioning.
-3. Перенести PR 89/90/103 из `Follow-up candidates` в historical/completed context и заменить их актуальными gaps, например fresh production smoke, storage/Redis live verification и branch/release controls.
-4. Переписать release checklist так, чтобы он соответствовал фактической environment strategy.
-5. Явно определить network perimeter: public API разрешён или API должен быть private-only за web nginx. Синхронизировать это с Railway guide/status docs.
-6. Сохранить без изменений корректные части: health endpoints, Railway healthcheck paths, Dockerfile ownership, migration deploy command, secret-handling и rollback principles.
+1. Добавить в начало явное правило: `DEVELOPMENT_PLAN.md` — не source of truth; при конфликте приоритет имеют `PROJECT_SOURCE_OF_TRUTH.md`, `MVP_SCOPE_LOCK.md`, `TODO_VERIFY.md`, current code/config и current CI.
+2. Переименовать внутренние `PR N` в `Plan item N` / `Work item N`. Если работа реализована, хранить отдельное поле `GitHub PR: #...` с реальным номером.
+3. Провести полную reconciliation статусов по текущему `main`, начиная как минимум с уже доказанных drift cases: manual OpenAPI и responsive visual matrix.
+4. Разделить historical ledger и current backlog: завершённые Parts/эпики можно сохранить как исторический implementation record, а активные задачи держать в короткой current queue.
+5. Для проверяемых snapshot-фактов хранить `Verified at` и `Verified against main SHA`; test counts/line numbers/CI status не оставлять как бессрочные current claims.
+6. Не дублировать вручную current readiness, если он уже поддерживается в canonical docs; вместо этого ссылаться на них.
+7. После полной сверки сохранить только те `🔲`, для которых current code/config действительно подтверждает отсутствие реализации.
 
 ### [НЕ ПРОВЕРЕНО]
-- Фактическое live Railway topology: наличие отдельного staging environment, MinIO/Redis services, public API networking и текущие env values — GitHub repository этого не доказывает.
-- Production smoke status после 2026-07-08: `RAILWAY_PRODUCTION_SMOKE_STATUS.md` сам помечен stale и требует свежего live smoke.
-- Реальный backup/restore readiness перед текущим production deploy не проверялся в рамках документационного аудита.
+- Все сотни plan items не перевалидированы по одному в рамках этого шага. Проверка была выборочной и намеренно использовала контрольные точки из разных частей файла; уже найденных противоречий достаточно, чтобы доказать, что документ нельзя считать полностью current без отдельной full reconciliation.
+- Историческое соответствие каждого внутреннего plan item конкретному GitHub PR не реконструировалось полностью.
+- Не воспроизводились все старые CI/test-count assertions, указанные в плане.
 
 ### Итог
 
-`DEPLOY_FOUNDATION.md` остаётся полезным описанием repository-level deploy mechanics: Dockerfiles, Railway service configs, healthchecks, migration command и rollback principles в основном соответствуют коду. Но как **current operational deployment plan** документ уже ненадёжен без правок: отдельный staging конфликтует с current migration policy, storage target расходится между MinIO и managed S3/R2 guidance, а follow-up roadmap PR 89/90/103 давно превратился в историю.
+`DEVELOPMENT_PLAN.md` остаётся ценным подробным журналом того, как проект развивался и какие work items планировались. Но текущая комбинация внутренней `PR`-нумерации, исторических `✅`, устаревших `🔲` и ручного дублирования readiness делает его ненадёжным как текущий roadmap. Перед дальнейшим использованием в качестве рабочего плана нужна полная reconciliation статусов и чёткое отделение `Plan item ID` от реальных GitHub PR.
