@@ -2823,7 +2823,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 209 — Transactional outbox 🔲
+## PR 209 — Transactional outbox ✅
 
 **Проблема:** DB commit и публикация job/event могут рассинхронизироваться.
 
@@ -2838,6 +2838,14 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Duplicates безопасны
 - Lag измеряется
 - Crash test проходит.
+
+> **Факт:** Добавлена PostgreSQL outbox-таблица и `OutboxService`, который
+> сохраняет бизнес-изменение и события через один Prisma transaction client.
+> Worker забирает записи с `FOR UPDATE SKIP LOCKED`, публикует jobs с постоянным
+> idempotency key на основе event id и только затем отмечает запись доставленной.
+> Поэтому rollback не оставляет событие, а crash между публикацией и отметкой
+> приводит лишь к безопасной повторной публикации. Сервис также сообщает count и
+> lag старейшего события и удаляет доставленные записи по retention policy.
 
 ---
 

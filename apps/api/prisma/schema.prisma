@@ -649,3 +649,14 @@ model Notification {
   @@index([userId, readAt])
   @@map("notifications")
 }
+
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  topic         String
+  payload       Json
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz
+
+  @@index([publishedAt, createdAt])
+  @@map("outbox_events")
+}

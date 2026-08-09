@@ -31,6 +31,7 @@ const apiEnvSchema = z
     BACKGROUND_JOBS_QUEUE: z.string().trim().min(1).max(80).default('lms-background-jobs'),
     BACKGROUND_JOBS_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(5),
     BACKGROUND_JOBS_RUN_WORKER: z.enum(['true', 'false']).default('false'),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
     RATE_LIMIT_NAMESPACE: z
       .string()
       .trim()
