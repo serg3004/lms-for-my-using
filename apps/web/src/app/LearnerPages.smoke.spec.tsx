@@ -19,6 +19,7 @@ vi.mock('react', async () => {
 });
 
 import { LearnerAssessmentDetailPage } from './LearnerAssessmentDetailPage';
+import { LearnerAssessmentReviewPage } from './LearnerAssessmentReviewPage';
 import { LearnerAssessmentsPage } from './LearnerAssessmentsPage';
 import { LearnerAssessmentTakingPage } from './LearnerAssessmentTakingPage';
 import { LearnerAssignmentsPage } from './LearnerAssignmentsPage';
@@ -482,6 +483,59 @@ describe('learner page smoke rendering', () => {
     expect(html).toContain('Safety Knowledge Test');
     expect(html).toContain('What is the primary safety rule?');
     expect(html).toContain('15:00'); // formatTime(900)
+  });
+
+  it('renders assessment review loading state without crashing', () => {
+    reactMocks.useState.mockImplementation((initialState: unknown) => [
+      typeof initialState === 'function' ? (initialState as () => unknown)() : initialState,
+      vi.fn(),
+    ]);
+
+    const html = renderToStaticMarkup(<LearnerAssessmentReviewPage attemptId="attempt-2" />);
+
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders assessment review happy path without crashing', () => {
+    const loadedResult = {
+      status: 'loaded',
+      result: {
+        id: 'attempt-2',
+        organizationId: 'org-1',
+        assessmentId: 'assessment-1',
+        userId: 'user-1',
+        status: 'completed',
+        score: 5,
+        maxScore: 10,
+        percentage: 50,
+        passed: false,
+        startedAt: '2026-01-01T00:00:00.000Z',
+        completedAt: '2026-01-01T00:10:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:10:00.000Z',
+        assessment: { id: 'assessment-1', title: 'Safety Knowledge Test', slug: 'safety-knowledge-test', passingScore: 70, passMessage: null, failMessage: null },
+        user: { id: 'user-1', email: 'learner@example.com', firstName: 'Ann', lastName: 'Smith' },
+        answers: [
+          {
+            id: 'answer-1', questionId: 'q-1', selectedOptionId: 'opt-2', selectedOptionIds: null, isCorrect: false, score: 0,
+            question: { id: 'q-1', title: 'What is the primary safety rule?', type: 'single_choice', points: 1, order: 1 },
+            selectedOption: { id: 'opt-2', text: 'Run when in doubt', imageUrl: null },
+          },
+        ],
+      },
+    };
+
+    reactMocks.useState.mockImplementation((initialState: unknown) => {
+      const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+      const isLoading = typeof resolvedInitial === 'object' && resolvedInitial !== null && 'status' in resolvedInitial && (resolvedInitial as { status: string }).status === 'loading';
+      return [isLoading ? loadedResult : resolvedInitial, vi.fn()];
+    });
+
+    const html = renderToStaticMarkup(<LearnerAssessmentReviewPage attemptId="attempt-2" />);
+
+    expect(html).toContain('Safety Knowledge Test');
+    expect(html).toContain('What is the primary safety rule?');
+    expect(html).toContain('Run when in doubt');
   });
 
   it('renders certificate detail loading state without crashing', () => {
