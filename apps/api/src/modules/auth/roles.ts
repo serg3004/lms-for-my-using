@@ -1,6 +1,7 @@
 import { SetMetadata } from '@nestjs/common';
+import type { UserRole } from '@lms/shared/types/api';
 
-export type UserRole = 'learner' | 'instructor' | 'manager' | 'admin';
+export type { UserRole } from '@lms/shared/types/api';
 
 export const rolesMetadataKey = 'roles';
 export const accessMetadataKey = 'access';
