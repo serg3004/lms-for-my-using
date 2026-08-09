@@ -6,10 +6,10 @@ import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
-import { getAssessmentOptionLabel } from './assessment-taking/model.js';
+import { buildAssessmentAnswers, countAnsweredQuestions, getAssessmentOptionLabel, selectedIds, type SelectedAnswers } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
-import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
+import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
 
 export function AdminAssessmentBuilderPage() {
@@ -42,6 +42,10 @@ export function AdminAssessmentBuilderPage() {
   const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
   const [previewOptions, setPreviewOptions] = useState<Record<string, AnswerOption[]>>({});
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewSelected, setPreviewSelected] = useState<SelectedAnswers>({});
+  const [previewSubmit, setPreviewSubmit] = useState<
+    { status: 'idle' } | { status: 'submitting' } | { status: 'done'; result: AssessmentPreviewResult } | { status: 'error'; message: string }
+  >({ status: 'idle' });
 
   const statusLabels: Record<AssessmentStatus, string> = {
     draft: t('admin.assessmentBuilder.status.draft', 'Draft'),
@@ -114,6 +118,8 @@ export function AdminAssessmentBuilderPage() {
     setPreviewQuestions([]);
     setPreviewOptions({});
     setPreviewLoading(true);
+    setPreviewSelected({});
+    setPreviewSubmit({ status: 'idle' });
     previewDialogRef.current?.showModal();
     try {
       const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`);
@@ -126,6 +132,41 @@ export function AdminAssessmentBuilderPage() {
       setPreviewQuestions([]);
     } finally {
       if (previewRequestRef.current === requestToken) setPreviewLoading(false);
+    }
+  }
+  function selectPreviewSingle(questionId: string, optionId: string) {
+    setPreviewSelected((prev) => ({ ...prev, [questionId]: optionId }));
+  }
+  function selectPreviewMultiple(questionId: string, optionId: string, checked: boolean) {
+    setPreviewSelected((prev) => {
+      const current = selectedIds(prev[questionId]);
+      const next = checked ? [...current, optionId] : current.filter((id) => id !== optionId);
+      return { ...prev, [questionId]: next };
+    });
+  }
+  function retryPreview() {
+    setPreviewSelected({});
+    setPreviewSubmit({ status: 'idle' });
+  }
+  async function submitPreview() {
+    if (!previewAssessment) return;
+    const questionsWithOptions = buildPreviewQuestionsWithOptions(previewQuestions, previewOptions);
+    if (countAnsweredQuestions(questionsWithOptions, previewSelected) < questionsWithOptions.length) {
+      setPreviewSubmit({ status: 'error', message: t('assessments.errorAnswerAll') });
+      return;
+    }
+    setPreviewSubmit({ status: 'submitting' });
+    try {
+      const result = await apiRequest<AssessmentPreviewResult>(
+        `/assessments/${encodeURIComponent(previewAssessment.id)}/attempts/preview`,
+        { method: 'POST', body: JSON.stringify({ answers: buildAssessmentAnswers(questionsWithOptions, previewSelected) }) },
+      );
+      setPreviewSubmit({ status: 'done', result });
+    } catch (error) {
+      setPreviewSubmit({
+        status: 'error',
+        message: error instanceof ApiClientError ? error.message : t('admin.assessmentBuilder.previewSubmitError', 'Unable to submit preview.'),
+      });
     }
   }
   async function confirmDelete() {
@@ -236,6 +277,49 @@ export function AdminAssessmentBuilderPage() {
         <PageState message={t('admin.assessmentBuilder.previewLoading', 'Loading preview...')} variant="loading"/>
       ) : previewQuestions.length === 0 ? (
         <EmptyState message={t('admin.assessmentBuilder.previewEmpty', 'This assessment has no questions yet.')}/>
+      ) : previewSubmit.status === 'done' ? (
+        <div className="admin-preview">
+          <div className={`learner-quiz__result-banner ${previewSubmit.result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
+            <span className="learner-quiz__result-label">
+              {previewSubmit.result.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+            </span>
+            <span className="learner-quiz__result-score">
+              {t('assessments.resultScore', { score: previewSubmit.result.score, maxScore: previewSubmit.result.maxScore, percentage: previewSubmit.result.percentage })}
+            </span>
+            <span className="learner-quiz__result-passing">
+              {t('assessments.resultPassingScore', { score: previewAssessment?.passingScore })}
+            </span>
+          </div>
+
+          <section className="learner-quiz__breakdown">
+            <h2>{t('assessments.resultBreakdown')}</h2>
+            <ol className="learner-quiz__breakdown-list">
+              {previewSubmit.result.answers.map((answer) => {
+                const question = previewQuestions.find((q) => q.id === answer.questionId);
+                const selectedLabel = describePreviewAnswerSelection(answer, previewOptions[answer.questionId] ?? []);
+                return (
+                  <li key={answer.questionId} className={`learner-quiz__breakdown-item ${answer.isCorrect ? 'learner-quiz__breakdown-item--correct' : 'learner-quiz__breakdown-item--wrong'}`}>
+                    <div className="learner-quiz__breakdown-icon">{answer.isCorrect ? '✓' : '✗'}</div>
+                    <div className="learner-quiz__breakdown-body">
+                      <p className="learner-quiz__breakdown-question">{question?.title}</p>
+                      <p className="learner-quiz__breakdown-answer">
+                        <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
+                        {selectedLabel}
+                      </p>
+                      <p className="learner-quiz__breakdown-points">
+                        {answer.score} / {question?.points ?? 0} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+
+          <div className="learner-quiz__result-actions">
+            <button className="admin-btn admin-btn--secondary" type="button" onClick={retryPreview}>{t('assessments.retryBtn')}</button>
+          </div>
+        </div>
       ) : (
         <div className="admin-preview">
           {previewAssessment?.description && <p className="admin-preview__description">{previewAssessment.description}</p>}
@@ -248,26 +332,46 @@ export function AdminAssessmentBuilderPage() {
                 <p className="admin-preview__question-title">{question.title} <span className="admin-preview__points">{question.points}pt</span></p>
                 {question.text && <p className="admin-preview__question-text">{question.text}</p>}
                 <ul className="admin-preview__options">
-                  {(previewOptions[question.id] ?? []).map((option) => (
-                    <li key={option.id}>
-                      <label>
-                        <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} disabled name={`preview-${question.id}`}/>
-                        {' '}
-                        {option.imageUrl ? (
-                          <span className="admin-preview__option-content">
-                            <img src={option.imageUrl} alt={option.text ?? ''} className="admin-preview__option-image"/>
-                            {option.text && <span>{option.text}</span>}
-                          </span>
-                        ) : (
-                          <span>{getAssessmentOptionLabel(option)}</span>
-                        )}
-                      </label>
-                    </li>
-                  ))}
+                  {(previewOptions[question.id] ?? []).map((option) => {
+                    const checked = question.type === 'multiple_choice'
+                      ? selectedIds(previewSelected[question.id]).includes(option.id)
+                      : previewSelected[question.id] === option.id;
+                    return (
+                      <li key={option.id}>
+                        <label>
+                          <input
+                            type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'}
+                            name={`preview-${question.id}`}
+                            checked={checked}
+                            onChange={(e) => question.type === 'multiple_choice' ? selectPreviewMultiple(question.id, option.id, e.target.checked) : selectPreviewSingle(question.id, option.id)}
+                          />
+                          {' '}
+                          {option.imageUrl ? (
+                            <span className="admin-preview__option-content">
+                              <img src={option.imageUrl} alt={option.text ?? ''} className="admin-preview__option-image"/>
+                              {option.text && <span>{option.text}</span>}
+                            </span>
+                          ) : (
+                            <span>{getAssessmentOptionLabel(option)}</span>
+                          )}
+                        </label>
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
             ))}
           </ol>
+
+          {previewSubmit.status === 'error' && (
+            <p className="learner-quiz__submit-error" role="alert">{previewSubmit.message}</p>
+          )}
+
+          <div className="learner-quiz__result-actions">
+            <button className="admin-btn admin-btn--primary" type="button" disabled={previewSubmit.status === 'submitting'} onClick={() => void submitPreview()}>
+              {previewSubmit.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
+            </button>
+          </div>
         </div>
       )}
     </dialog>
