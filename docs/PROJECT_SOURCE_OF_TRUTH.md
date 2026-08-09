@@ -1,285 +1,252 @@
-# PROJECT_SOURCE_OF_TRUTH.md
+# Project Source of Truth
 
-**Проект:** корпоративная LMS / Learning Operating System  
-**Статус:** главный источник решений перед стартом разработки  
-**Язык продукта:** русский  
-**Назначение:** зафиксировать единые правила, чтобы документация, GitHub Issues и AI coding agents не расходились в решениях.
+> **Статус:** `CURRENT`
+>
+> **Назначение:** канонический навигатор по решениям проекта и подтверждённым фактам реализации.
+>
+> **Проверено по `main`:** `83fdf34f5384e2d8e044590256d05149f4c39a6d` (2026-08-09).
 
-**[2026-08-06] Статус:** документ писался «перед стартом разработки» — сейчас проект на PR #505+, большинство решений здесь (стек, роли, архитектурные ограничения из §6) подтвердились и не менялись. Актуальный статус реализации по каждому пункту — `docs/MVP_SCOPE_LOCK.md` §0. Список backend-модулей в §7 ниже обновлён с пометками статуса.
+## 1. Как читать этот документ
 
----
+Каждое утверждение относится к одному из типов:
 
-## 1. Что создаётся
+- `DECISION` — нормативное решение проекта. ИИ-агент `MUST` ему следовать, пока отдельная задача явно не меняет решение.
+- `IMPLEMENTED` — факт, подтверждённый текущими code/config/schema/tests.
+- `PARTIAL` — часть поведения реализована, часть остаётся открытой.
+- `LIVE-VERIFY` — состояние внешней инфраструктуры. Его `MUST NOT` выводить только из репозитория.
+- `HISTORICAL` — исторический материал. Он `MUST NOT` переопределять current implementation.
+- `OWNER-DECISION` — требуется решение владельца продукта/репозитория. ИИ-агент `MUST NOT GUESS`.
 
-Создаётся корпоративная LMS-платформа для B2B-клиентов.
+### Приоритет источников
 
-Продукт должен позволять компаниям:
+1. Для **implementation facts**: current code, Prisma schema/migrations, configuration и tests.
+2. Для **product/scope decisions**: этот документ и `docs/MVP_SCOPE_LOCK.md`.
+3. Для **нерешённых вопросов**: `docs/TODO_VERIFY.md`.
+4. Для operational/runbook деталей: current deployment/security/storage docs, если они не помечены historical/stale.
+5. `docs/master-context/`, historical reports, old PR verification files и project logs — только `HISTORICAL`/reference material.
 
-- создавать пользователей;
-- назначать роли;
-- объединять пользователей в группы;
-- создавать курсы, модули и уроки;
-- загружать учебные материалы;
-- назначать курсы пользователям и группам;
-- отслеживать прохождение;
-- проводить тестирование;
-- выдавать сертификаты;
-- смотреть базовые отчёты;
-- получать уведомления;
-- вести audit log важных действий.
-
-Главный MVP learning loop:
-
-```text
-Admin создаёт пользователей
-→ Admin создаёт группу
-→ Instructor/Admin создаёт курс
-→ Admin назначает курс пользователю или группе
-→ Learner проходит уроки
-→ система фиксирует прогресс
-→ Learner проходит тест
-→ система выдаёт сертификат
-→ Manager/Admin видит отчёт
-```
-
-Всё, что не помогает этому циклу, не входит в MVP без отдельного решения владельца проекта.
+Если документация противоречит current code/config, ИИ-агент обязан сначала установить, это implementation drift или намеренное изменение нормативного решения. Нельзя молча исправлять одно другим.
 
 ---
 
-## 2. Канонический стартовый стек
+## 2. Нормативные решения проекта
 
-Для первой кодовой базы использовать:
+### Архитектура
 
-```text
-Architecture: modular monolith first
-Repository: private GitHub monorepo
-Package manager: pnpm workspaces
-Build orchestration: Turborepo optional
-Backend: NestJS + TypeScript
-Frontend: React + Vite + TypeScript
-Database: PostgreSQL
-ORM: Prisma
-Local storage: MinIO через S3-compatible API
-Production storage: S3-compatible provider, например Cloudflare R2 / AWS S3 / Wasabi
-Deployment: Railway-first
-Portability: Docker + docker-compose
-API style: REST / JSON /api/v1
-Auth: JWT access token + refresh token in httpOnly cookie
-UI language: Russian
-Mobile: future scope
-AI product features: future scope, not MVP
-```
+**Статус:** `DECISION`
 
-Если владелец проекта позже изменит один из пунктов, это решение нужно зафиксировать в `docs/audit/engineering-audit-log.md` или ADR.
+- Modular monolith first.
+- Backend: NestJS + TypeScript.
+- Frontend: React + Vite + TypeScript.
+- Database: PostgreSQL.
+- ORM/migrations: Prisma.
+- Package manager: pnpm workspaces.
+- UI: custom UI/CSS architecture; Tailwind/shadcn не являются базовым стеком.
+- Fixed application roles: `admin`, `manager`, `instructor`, `learner`.
+- Multi-tenant boundary: `organizationId`/organization scope.
 
----
+### API
 
-## 3. Главные роли MVP
+**Статус:** `DECISION` + `IMPLEMENTED`
 
-```text
-Learner     — проходит назначенные курсы, уроки, тесты, получает сертификаты.
-Instructor  — создаёт и редактирует курсы, уроки и тесты.
-Manager     — видит прогресс своей группы/команды.
-Admin       — управляет пользователями, группами, курсами, назначениями, отчётами и audit log.
-```
+- Base path: `/api/v1`.
+- Runtime validation: Zod schemas в текущих API areas.
+- Pagination contract: `page=1`, `pageSize=20`, maximum `pageSize=200`.
+- Canonical API error shape определён текущим API response/exception layer; не предполагать наличие `requestId`, если оно не подтверждено кодом.
 
-В MVP допускается объединить Instructor и Admin в одном административном интерфейсе, но backend permissions должны оставаться ролевыми.
+### MVP non-goals
 
----
+**Статус:** `DECISION`
 
-## 4. Главные документы проекта
+Не входят в MVP без отдельного изменения scope:
 
-Использовать документы в таком порядке:
+- AI tutor / RAG / AI course builder;
+- native mobile app;
+- SCORM/xAPI/LTI runtime integration;
+- SSO/SAML;
+- billing;
+- advanced BI/analytics platform;
+- drag-and-drop course builder;
+- custom role builder.
 
-1. `PROJECT_SOURCE_OF_TRUTH.md` — главный источник решений после утверждения.
-2. `MVP_SCOPE_LOCK.md` — границы MVP и запреты.
-3. `TODO_VERIFY.md` — открытые решения и их статус.
-4. `01_LMS_Master_Product_Specification.md` — продуктовая основа.
-5. `02_LMS_MVP_Roadmap.md` — roadmap MVP.
-6. `03_LMS_Architecture_Map.md` — архитектурная карта.
-7. `04_LMS_Database_Model_Draft.md` — модель БД.
-8. `05_LMS_API_Contracts_Draft.md` — API-контракты.
-9. `06_LMS_Repository_Structure.md` — структура репозитория.
-10. `07_LMS_Unified_Product_Backlog.md` — backlog.
-11. `08_LMS_GitHub_Issues_Import.md` — задачи для GitHub Issues.
-12. `09_LMS_Implementation_Plan_Solo_Developer_AI_Agents.md` — план разработки.
-13. `10_LMS_AI_Coding_Agent_Instructions.md` — инструкция для coding agent.
-14. `11–23` — workflow, security, testing, deployment, UX, mobile, commercial, versioning and final checks.
+Подробный scope находится в `docs/MVP_SCOPE_LOCK.md`.
 
 ---
 
-## 5. Правила при конфликте документов
+## 3. Подтверждённое текущее состояние реализации
 
-Если документы противоречат друг другу, применять порядок приоритета:
+### Monorepo/tooling
 
-```text
-1. Последнее явное решение владельца проекта
-2. PROJECT_SOURCE_OF_TRUTH.md
-3. MVP_SCOPE_LOCK.md
-4. GitHub Issue, если оно не противоречит source of truth
-5. Architecture Map
-6. API Contracts
-7. Database Model
-8. Product Backlog
-9. Остальные документы
-```
+**Статус:** `IMPLEMENTED`
 
-Если конфликт затрагивает архитектуру, безопасность, данные, API или MVP scope, AI-agent должен остановиться и пометить вопрос как `TODO VERIFY`.
+- Root package manager: `pnpm@9.15.0`.
+- Root `dev`, `build`, `lint`, `typecheck`, `test` orchestration выполняется через Turbo.
+- Workspace layout включает `apps/*` и `packages/*`.
 
----
+**Правило для ИИ:** Turbo не считать optional orchestration, пока root scripts используют его как основной механизм.
 
-## 6. Архитектурные правила
+### Backend
 
-1. Начинать с modular monolith.
-2. Не создавать микросервисы в MVP.
-3. Не добавлять Kubernetes в MVP.
-4. Не добавлять AI-функции в MVP.
-5. Не добавлять SCORM/xAPI/LTI runtime в MVP.
-6. Не добавлять полноценное mobile app как блокер MVP.
-7. Backend является source of truth для permissions.
-8. Frontend role hiding — только UX, не security.
-9. Все бизнес-сущности должны иметь `organization_id`, если они принадлежат организации.
-10. Файлы хранятся в S3-compatible storage, в БД хранится metadata.
-11. Railway используется для быстрого деплоя, но проект должен оставаться Docker-portable.
-12. Любое изменение архитектуры фиксируется в audit log или ADR.
+**Статус:** `IMPLEMENTED`
 
----
+NestJS API содержит domain modules для auth, users, organizations, groups, courses, lessons, course materials, progress, assessments/attempts, assignments/submissions, certificates, manager flows, upload/storage, health, OpenAPI и других текущих областей.
 
-## 7. Минимальные backend modules MVP
+`notifications` и универсальный domain-wide `audit` module в текущем module inventory отсутствуют.
 
-**[2026-08-06]** Статус по факту (`apps/api/src/modules/`) отмечен инлайн. `roles` реализован не отдельным модулем, а частью `auth`; `files` — как `upload` + `course-materials`.
+### Frontend/i18n
 
-```text
-auth            — ✅ есть
-users           — ✅ есть
-roles           — ✅ есть (часть auth, не отдельный модуль)
-organizations   — ✅ есть
-groups          — ✅ есть
-courses         — ✅ есть
-lessons         — ✅ есть
-files           — ✅ есть (upload + course-materials)
-assignments     — ✅ есть
-progress        — ✅ есть
-assessments     — ✅ есть
-certificates    — ✅ есть
-notifications   — 🚨 не реализован, открытый вопрос (docs/CONCERNS.md)
-reports         — ⚠️ нет отдельного модуля, покрыто функционально через admin/manager UI
-audit           — 🚨 не реализован, открытый вопрос (docs/CONCERNS.md)
-```
+**Статус:** `IMPLEMENTED` / `PARTIAL`
 
----
+- React + Vite + TypeScript.
+- Locale catalogs: `ru`, `en`, `kk`, `zh`.
+- Русский остаётся fallback/current primary language в i18n configuration.
+- Наличие locale catalogs не означает, что абсолютно все строки и date formatting полностью локализованы; связанные gaps описываются отдельной i18n документацией.
 
-## 8. Минимальные frontend зоны MVP
+### Authentication/session
 
-```text
-Auth
-Learner Dashboard
-My Courses
-Course Page
-Lesson Player
-Assessment Runner
-Certificates
-Notifications
-Profile
-Admin Dashboard
-Users
-Groups
-Courses
-Course Editor
-Assignments
-Reports
-Audit Log
-```
+**Статус:** `IMPLEMENTED`
 
-UI-тексты и пользовательская документация — на русском языке.
+Current auth включает:
+
+- access-token authentication;
+- server-side `Session` records;
+- refresh token hash/expiry;
+- `POST /auth/refresh`;
+- refresh rotation;
+- logout и logout-all/session revocation;
+- HttpOnly cookie-based auth components.
+
+**Правило для ИИ:** old документы, где refresh token описан как future work, являются `HISTORICAL` и не переопределяют current auth code.
+
+### Deployment configuration
+
+**Статус:** `IMPLEMENTED` для repository config; `LIVE-VERIFY` для фактической инфраструктуры.
+
+- Repository ориентирован на Railway-first deployment и Docker portability.
+- API Railway start command выполняет `prisma migrate deploy` перед `node dist/main.js`.
+- Canonical readiness probe: `/api/v1/health/ready`.
+- Current repository guidance использует private API behind Web/nginx/private networking, а не historical direct-public API model.
+
+### Storage/upload
+
+**Статус:** `IMPLEMENTED` для contract; `LIVE-VERIFY` для provider.
+
+Current implementation использует S3-compatible contract:
+
+- private object storage;
+- authorized/presigned downloads;
+- buffered и multipart uploads;
+- quarantine/malware-scan integration;
+- cleanup tooling;
+- storage readiness check.
+
+`S3_FILE_ORIGIN` optional. Production example рекомендует provider-neutral S3-compatible setup (например R2/AWS S3); MinIO остаётся compatible/self-hosted option.
+
+**Правило для ИИ:** `DO NOT ASSUME` конкретный production provider (MinIO/R2/AWS S3) без fresh deployment evidence.
 
 ---
 
-## 9. Минимальная database foundation
+## 4. Repository и CI facts
 
-MVP-сущности:
+### Repository visibility
 
-```text
-organizations
-users
-roles
-user_roles
-groups
-group_members
-courses
-course_modules
-lessons
-files
-course_assignments
-assignment_targets
-enrollments
-lesson_progress
-course_progress
-assessments
-assessment_questions
-assessment_options
-assessment_attempts
-assessment_answers
-certificates
-notifications
-audit_logs
-```
+**Статус:** `IMPLEMENTED-FACT`
 
-На старте можно упростить:
+GitHub repository на момент проверки публичный.
 
-- `departments` не делать отдельной таблицей, использовать `groups.type`, если нужна структура подразделений;
-- certificate PDF не делать в первом релизе, начать с HTML certificate page;
-- advanced report exports оставить на P1.
+Это operational fact, а не бессрочное product decision. Если visibility должна измениться, требуется отдельная owner/repository-setting задача.
+
+### CI/security
+
+**Статус:** `IMPLEMENTED` для workflows; `NOT-ENFORCED` для merge protection.
+
+Current CI/CodeQL workflows выполняют lint/typecheck/tests/build и security checks. Однако `main` на момент проверки не защищён required status checks.
+
+**Правило для ИИ:** green workflow ≠ machine-enforced merge gate, пока branch protection/ruleset это явно не подтверждает.
 
 ---
 
-## 10. Definition of Ready для GitHub Issue
+## 5. Внешнее состояние, которое нельзя выводить из GitHub code
 
-Issue можно отдавать AI coding agent, если в нём есть:
+Следующие утверждения всегда требуют fresh evidence и имеют статус `LIVE-VERIFY`:
 
-- title;
-- context;
-- scope;
-- out of scope;
-- affected modules;
-- acceptance criteria;
-- dependencies;
-- testing expectations;
-- relevant docs;
-- expected PR summary format.
+- фактический Railway service/environment topology;
+- наличие/отсутствие отдельного live staging environment;
+- production S3-compatible provider, bucket и CORS;
+- live Redis/scanner/Sentry/alert routing;
+- backup/PITR configuration и restore readiness;
+- current deployment domains;
+- fresh production smoke result.
 
----
-
-## 11. Definition of Done для PR
-
-PR можно принимать, если:
-
-- изменения соответствуют issue;
-- нет unrelated changes;
-- проект собирается;
-- typecheck проходит;
-- lint проходит;
-- тесты проходят или есть объяснение, почему тесты не добавлены;
-- нет hardcoded secrets;
-- RBAC и organization scope не нарушены;
-- миграции применяются, если изменена БД;
-- API docs обновлены, если изменён API;
-- audit log обновлён, если принято важное решение.
+Repository config может описывать intended architecture, но не доказывает, что live infrastructure сейчас ей соответствует.
 
 ---
 
-## 12. Первый практический порядок
+## 6. Открытые owner decisions
 
-```text
-1. Создать private GitHub repo.
-2. Добавить docs и эти 4 control-файла.
-3. Создать monorepo structure.
-4. Настроить pnpm workspace.
-5. Создать apps/api на NestJS.
-6. Создать apps/web на React + Vite.
-7. Подключить PostgreSQL + Prisma.
-8. Добавить docker-compose с PostgreSQL и MinIO.
-9. Добавить health endpoint.
-10. Добавить CI: install, typecheck, lint, test, build.
-11. Начать M1: auth, users, roles, RBAC.
-```
+### Notifications
+
+**Статус:** `OWNER-DECISION`
+
+Некоторые planning/scope документы относили Notifications к MVP, но current API module inventory не содержит Notifications implementation.
+
+Владелец должен выбрать одно:
+
+- `REQUIRED_FOR_MVP`;
+- `POST_MVP`;
+- `REMOVED_FROM_MVP`.
+
+ИИ-агент `MUST NOT` самостоятельно реализовывать Notifications или удалять их из MVP scope до решения владельца.
+
+### General Audit Log
+
+**Статус:** `OWNER-DECISION`
+
+Есть отдельные domain-specific audit/security events, но универсальный append-only application Audit Log как самостоятельная MVP capability не подтверждён current module inventory.
+
+Владелец должен определить, обязателен ли общий Audit Log для MVP.
+
+### Environment model / staging
+
+**Статус:** `OWNER-DECISION` для будущей topology; current documented state — без отдельного Railway staging.
+
+`docs/MIGRATION_BACKUP_POLICY.md` фиксирует current repository policy: отдельного Railway staging environment нет. Создавать его или объявлять обязательным без отдельного решения нельзя.
+
+---
+
+## 7. Historical/reference material
+
+**Статус:** `HISTORICAL`
+
+Следующие категории документов не являются source of truth для current implementation без fresh verification:
+
+- `docs/master-context/`;
+- old PR verification snapshots;
+- `PROJECT_LOG.md`;
+- historical smoke reports;
+- old readiness/backlog snapshots;
+- PR-specific design docs, если current code ушёл дальше.
+
+Их можно использовать для контекста, rationale и истории решений, но не для утверждения current behavior.
+
+---
+
+## 8. Правила для ИИ-агента
+
+1. `MUST` проверять implementation facts по current code/config/tests.
+2. `MUST` использовать `MVP_SCOPE_LOCK.md` для scope decisions.
+3. `MUST` использовать `TODO_VERIFY.md` только для действительно открытых решений/verification.
+4. `MUST NOT` превращать `LIVE-VERIFY` в факт без fresh evidence.
+5. `MUST NOT` трактовать historical document как current runbook/source of truth.
+6. `MUST NOT` выбирать вариант `OWNER-DECISION` самостоятельно.
+7. При обнаружении drift `MUST` обновить соответствующий canonical документ в той же задаче, если изменение входит в scope.
+8. Для быстро меняющихся status/assertions `SHOULD` указывать дату, SHA, workflow run/deployment evidence.
+
+---
+
+## 9. Связанные canonical документы
+
+- `docs/MVP_SCOPE_LOCK.md` — что входит/не входит в MVP и где требуется owner decision.
+- `docs/TODO_VERIFY.md` — decision/implementation/live verification registry.
+- `docs/DOCUMENTATION_AUDIT.md` — evidence layer аудита документации; не является заменой current canonical docs.
+- `README.md` — setup/navigation entry point, но не должен переопределять canonical decisions этого документа.

@@ -1,178 +1,183 @@
-# TODO_VERIFY.md
+# TODO_VERIFY — decision / implementation / live verification registry
 
-**Проект:** корпоративная LMS / Learning Operating System  
-**Назначение:** список решений, которые нужно подтвердить перед кодом или перед конкретной реализацией.  
-**Правило:** AI coding agent не должен принимать скрытые решения по пунктам со статусом `TODO VERIFY`.
-
----
+> **Статус:** `CURRENT`
+>
+> Этот файл хранит только вопросы, для которых полезно различать **решение**, **реализацию** и **live verification**. Он не должен быть свалкой уже известных repository facts.
+>
+> **Проверено по `main`:** `83fdf34f5384e2d8e044590256d05149f4c39a6d` (2026-08-09).
 
 ## 1. Статусы
 
-```text
-TODO VERIFY — требуется решение владельца проекта
-PROPOSED — есть рекомендуемое решение, но оно ещё не утверждено
-ACCEPTED — решение принято
-OUT OF MVP — не реализовывать в MVP
-DEFERRED — перенесено на P1/P2/Future
-DONE — реализовано и подтверждено в коде/тестах
-```
+### Decision status
+
+- `ACCEPTED` — нормативное решение принято.
+- `OUT-OF-MVP` — сознательно не входит в MVP.
+- `DEFERRED` — отложено на post-MVP/P1/P2.
+- `OWNER-DECISION` — требуется явное решение владельца; ИИ-агент `MUST NOT GUESS`.
+
+### Implementation status
+
+- `DONE` — current repository подтверждает реализацию решения.
+- `PARTIAL` — реализована только часть.
+- `NOT-IMPLEMENTED` — capability отсутствует.
+- `SKELETON` — API/UI contract существует, но намеренно unavailable/не завершён.
+- `NOT-REQUIRED` — реализация не требуется для принятого решения.
+
+### Live verification status
+
+- `NOT-REQUIRED` — repository evidence достаточно.
+- `LIVE-VERIFY` — требуется external/provider/deployment evidence.
+
+**Правило для ИИ:** если ответ подтверждён current code/config, пункт не должен оставаться `TODO VERIFY`. Если утверждение зависит от Railway/provider/runtime state, repository code не может закрыть `LIVE-VERIFY`.
 
 ---
 
-## 2. Критические решения перед стартом кода
+## 2. Architecture / platform decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-001 | Backend framework | NestJS | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — реализовано и в проде с первого коммита, статус PROPOSED не отражал реальность. |
-| TV-002 | ORM / migration tool | Prisma | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется как единственный ORM, миграции применяются в проде. |
-| TV-003 | Frontend setup | React + Vite + TypeScript | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь `apps/web` на этом стеке. |
-| TV-004 | UI library | Custom UI | ACCEPTED | Реализовано как обычные CSS-классы + CSS custom properties для темизации (`shared/theme.ts`, `tokens.css`), без Tailwind/shadcn-зависимостей. |
-| TV-005 | Auth strategy | JWT access token now; refresh token/httpOnly cookie later | ACCEPTED | **[2026-08-06]** Refresh token больше не «later» — реализован (`Session.refreshTokenHash`/`refreshExpiresAt`, `POST /auth/refresh`, ротация), см. `docs/AUTH_SESSION_STORE_DESIGN.md`, `docs/AUTH_TOKEN_REVOCATION.md`. |
-| TV-006 | Password hashing | Argon2id или bcrypt | DONE | **[2026-08-06]** Реализовано, но не одним из предложенных вариантов: `apps/api/src/modules/auth/passwords.ts` использует `scrypt` из `node:crypto` (без внешней зависимости), а не bcrypt/Argon2id. Решение принято, но никогда не было явно записано как выбор именно scrypt. |
-| TV-007 | Local object storage | MinIO | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — используется локально и на Railway (см. TV-008). |
-| TV-008 | Production object storage | MinIO on Railway | ACCEPTED | Развёрнут как отдельный сервис в том же Railway-проекте (bucket `lms-uploads`), настроен через стандартные S3_* переменные `api`. Личный/пилотный проект, self-hosted вариант выбран сознательно вместо R2/S3/Wasabi — код уже на S3 API, миграция на управляемого провайдера в будущем не потребует правок кода. |
-| TV-009 | Deployment target | Railway-first | ACCEPTED | Production/staging через Railway, Docker portability обязательно. |
-| TV-010 | Package manager | pnpm workspaces | ACCEPTED | **[2026-08-06]** Синхронизировано с §11 — весь монорепо на pnpm workspaces. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-001 | Backend framework: NestJS | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current API — NestJS/TypeScript. |
+| TV-002 | ORM/migrations: Prisma | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Prisma schema/migrations используются current API. |
+| TV-003 | Frontend: React + Vite + TypeScript | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current `apps/web`. |
+| TV-004 | UI library: Custom UI | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Custom CSS/UI primitives; Tailwind/shadcn не базовый стек. |
+| TV-005 | Auth: access + refresh/session lifecycle | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Refresh/session rotation/revocation уже current implementation. |
+| TV-006 | Password hashing: current `scrypt` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Старое bcrypt/Argon2 предложение superseded current code. |
+| TV-007 | Local object storage: MinIO | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Local S3-compatible development option. |
+| TV-008 | Production object storage | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Canonical decision — S3-compatible contract. Конкретный provider (MinIO/R2/AWS S3) требует fresh evidence. |
+| TV-009 | Deployment target: Railway-first + Docker portability | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Repository config подтверждён; live topology — external state. |
+| TV-010 | Package manager: pnpm workspaces | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Root `pnpm@9.15.0`; Turbo orchestration. |
 
 ---
 
 ## 3. Product / MVP scope decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-011 | Делать ли AI в MVP? | Нет | OUT OF MVP | AI Tutor, RAG, AI Course Builder — future scope. |
-| TV-012 | Делать ли native mobile в MVP? | Нет | OUT OF MVP | MVP — responsive web. Mobile app позже. |
-| TV-013 | Делать ли SCORM/xAPI/LTI в MVP? | Нет | OUT OF MVP | Только readiness, без runtime. |
-| TV-014 | Делать ли SSO/SAML в MVP? | Нет | OUT OF MVP | Email/password достаточно для MVP. |
-| TV-015 | Делать ли billing в MVP? | Нет | OUT OF MVP | Commercial readiness позже. |
-| TV-016 | Делать ли advanced BI в MVP? | Нет | OUT OF MVP | Только базовые reports. |
-| TV-017 | Делать ли drag-and-drop course builder? | Нет | OUT OF MVP | Начать с простого course editor. |
-| TV-018 | Делать ли custom roles builder? | Нет | OUT OF MVP | Fixed roles в MVP. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-011 | AI in MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | AI tutor/RAG/course builder — future scope. |
+| TV-012 | Native mobile in MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | MVP — responsive Web. |
+| TV-013 | SCORM/xAPI/LTI runtime | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Readiness/future only. |
+| TV-014 | SSO/SAML | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Email/password sufficient for MVP. |
+| TV-015 | Billing | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Post-MVP commercial scope. |
+| TV-016 | Advanced BI | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Basic reports only. |
+| TV-017 | Drag-and-drop course builder | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Current course editor remains sufficient. |
+| TV-018 | Custom roles builder | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Fixed roles remain canonical. |
 
 ---
 
-## 4. Database decisions
+## 4. Database/domain decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-019 | Использовать `organization_id` или `tenant_id`? | `organization_id` | PROPOSED | Более понятно для LMS/B2B. |
-| TV-020 | Делать ли отдельную таблицу departments? | Нет в MVP | PROPOSED | Использовать groups + type, departments можно P1. |
-| TV-021 | Хранить lesson content в JSONB или blocks table? | JSONB для MVP | PROPOSED | Быстрые старт. Blocks table можно позже. |
-| TV-022 | Soft delete для каких сущностей? | Users, courses, lessons, groups, files | TODO VERIFY | Progress, attempts, certificates лучше immutable/append-only. |
-| TV-023 | Нужен ли RLS в PostgreSQL в MVP? | Не обязательно | PROPOSED | Backend organization scope обязателен. RLS можно позже. |
-| TV-024 | Хранить audit logs append-only? | Да | PROPOSED | Audit log нельзя редактировать обычными CRUD-операциями. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-019 | Tenant key: `organizationId` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Organization scoping — current tenant model. |
+| TV-020 | Separate departments table in MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Current groups/team model используется вместо отдельного departments domain. |
+| TV-021 | Lesson content storage model | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current schema/lesson implementation является authority; не проектировать blocks table без новой задачи. |
+| TV-022 | Soft-delete policy | `ACCEPTED` | `PARTIAL` | `NOT-REQUIRED` | Policy domain-specific, не универсальна. Current soft-deleted slug entities освобождают unique slug через tombstone suffix. |
+| TV-023 | PostgreSQL RLS required for MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Backend organization scope является current boundary; RLS можно рассматривать post-MVP. |
+| TV-024 | General append-only Audit Log | `OWNER-DECISION` | `PARTIAL` | `NOT-REQUIRED` | Есть domain-specific audit/security events, но общего audit module нет. Решить `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`. |
 
 ---
 
 ## 5. API decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-025 | API base path | `/api/v1` | ACCEPTED | REST/JSON. |
-| TV-026 | Pagination | page/pageSize | PROPOSED | default 20, max 200 (bumped from 100: 12 frontend call sites request `pageSize=200` to populate full dropdown/context lists, and the mismatch was causing live 400 errors on multiple admin/learner pages — see `pagination.schema.ts`). |
-| TV-027 | Error format | `{ error: { code, message, details, requestId } }` | PROPOSED | Удобно для frontend и debugging. |
-| TV-028 | DTO validation | Zod | DONE | Runtime validation uses Zod schemas in auth/API areas touched so far. |
-| TV-029 | OpenAPI generation | После стабилизации первых endpoints | DEFERRED | Не блокирует MVP foundation. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-025 | API base path `/api/v1` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current global prefix. |
+| TV-026 | Pagination `page/pageSize` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Defaults 1/20, maximum 200. |
+| TV-027 | Canonical API error envelope | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current envelope существует; proposed `requestId` не является current field. |
+| TV-028 | Runtime validation: Zod | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current schemas/validation. |
+| TV-029 | OpenAPI | `ACCEPTED` | `PARTIAL` | `NOT-REQUIRED` | OpenAPI module/document/tests существуют; manual document не покрывает весь runtime surface и может дрейфовать. |
 
 ---
 
-## 6. Auth / Security decisions
+## 6. Auth / security decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-030 | Нужен ли invite flow в MVP? | P1 или простой admin-created user | PROPOSED | Для MVP можно seed admin + admin creates users. |
-| TV-031 | Нужен ли password reset в MVP? | P1 | PROPOSED | Endpoints есть, но flow сейчас disabled/unavailable skeleton. |
-| TV-032 | Login rate limiting | Да | PROPOSED | Минимальная защита auth endpoint. |
-| TV-033 | Refresh token storage | httpOnly cookie | PROPOSED | Не хранить refresh token в localStorage. |
-| TV-034 | Access token storage | memory или short-lived localStorage fallback | DONE | Current implementation uses stateless JWT access token. JWT verification, negative tests, current-user lookup by `sub`, bearer parsing tests, and logout validation are covered by PR 39–42. |
-| TV-035 | File access | Signed URLs after backend permission check | ACCEPTED | Никаких постоянных публичных URL. |
-| TV-036 | Antivirus scan for uploads | P1/P2 | DEFERRED | Для MVP можно allowlist + size limit. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-030 | Invite flow | `OWNER-DECISION` | `PARTIAL` | `NOT-REQUIRED` | Admin-created user flow существует; полноценный invite lifecycle требует product decision. |
+| TV-031 | Password reset delivery | `DEFERRED` | `SKELETON` | `LIVE-VERIFY` | Request/confirm endpoints есть, но service намеренно возвращает 503; email delivery/provider не настроены canonical образом. |
+| TV-032 | Login/sensitive-route rate limiting | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Redis/local fallback code реализован; live Redis state требует verification. |
+| TV-033 | Refresh token storage | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | HttpOnly refresh cookie + server-side session/hash/rotation. |
+| TV-034 | Access token current contract | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Использовать current auth controller/session docs; не возвращаться к старому localStorage proposal без отдельной redesign задачи. |
+| TV-035 | File access via authorized signed URLs | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Code contract реализован; live provider/bucket/CORS отдельно. |
+| TV-036 | Malware/antivirus scan | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Quarantine, dispatch, callback, fail-closed реализованы; live scanner availability отдельно. |
 
 ---
 
 ## 7. Certificates decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-037 | Формат сертификата в MVP | HTML certificate page | PROPOSED | Быстрее, чем PDF. |
-| TV-038 | PDF download | P1 | DEFERRED | Добавить после работающего learning loop. |
-| TV-039 | Certificate verification public URL | P1/P2 | DEFERRED | Не блокирует MVP. |
-| TV-040 | Manual certificate issuance by admin | P1 | DEFERRED | В MVP выдавать автоматически по правилам. |
-| TV-041 | Certificate revocation | P1/P2 | DEFERRED | Не блокирует MVP. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-037 | HTML certificate page | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Learner certificate UI/API существует. |
+| TV-038 | PDF download | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Не является MVP gate. |
+| TV-039 | Public certificate verification URL | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Post-MVP unless scope changes. |
+| TV-040 | Manual certificate issuance | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | `POST /certificates` существует с guards/scope. |
+| TV-041 | Certificate revocation workflow | `DEFERRED` | `PARTIAL` | `NOT-REQUIRED` | Data model имеет status/revokedAt, но current controller не содержит отдельного revoke endpoint. |
 
 ---
 
 ## 8. Reports decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-042 | MVP reports | course progress, group/user progress, certificates | PROPOSED | Минимально достаточно. |
-| TV-043 | CSV export | P1 | DEFERRED | Добавить после basic reports. |
-| TV-044 | XLSX export | P1/P2 | DEFERRED | Не блокирует MVP. |
-| TV-045 | Advanced filters | P1 | DEFERRED | Сначала простые фильтры. |
-| TV-046 | BI/analytics service | Future | OUT OF MVP | Не добавлять ClickHouse в MVP. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-042 | Basic MVP reports | `ACCEPTED` | `PARTIAL` | `NOT-REQUIRED` | Progress/certificate/assessment reporting surfaces существуют частично; advanced reporting не подразумевается. |
+| TV-043 | CSV export | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Post-MVP unless explicitly requested. |
+| TV-044 | XLSX export | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Не MVP gate. |
+| TV-045 | Advanced report filters | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Сначала basic reporting. |
+| TV-046 | Separate BI/analytics service | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Не добавлять ClickHouse/BI layer в MVP. |
 
 ---
 
 ## 9. Notifications decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-047 | MVP notification channel | In-app | PROPOSED | Email можно P1. |
-| TV-048 | Email provider | TODO VERIFY | TODO VERIFY | Resend/Postmark/SendGrid/etc. выбрать позже. |
-| TV-049 | Push notifications | Future | OUT OF MVP | После mobile/PWA. |
-| TV-050 | Reminder scheduler | P1 | DEFERRED | Для MVP достаточно assignment/certificate events. |
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-047 | MVP Notifications / in-app channel | `OWNER-DECISION` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Current module inventory не содержит Notifications. Выбрать `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`. |
+| TV-048 | Email provider | `OWNER-DECISION` | `NOT-IMPLEMENTED` | `LIVE-VERIFY` | Не выбирать Resend/Postmark/SendGrid/SES/SMTP автономно. |
+| TV-049 | Push notifications | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Future mobile/PWA scope. |
+| TV-050 | Reminder scheduler | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Post-MVP/P1 unless owner changes priority. |
 
 ---
 
-## 10. Deployment decisions
+## 10. Deployment / operations decisions
 
-| ID | Вопрос | Рекомендуемое решение | Статус | Комментарий |
-|---|---|---|---|---|
-| TV-051 | Staging нужен сразу? | Да, если Railway budget позволяет | PROPOSED | Иначе local + production позже. |
-| TV-052 | Web hosting | Railway service или static hosting | TODO VERIFY | Зависит от выбранной схемы. |
-| TV-053 | DB migrations in deploy | Manual controlled command first | PROPOSED | Не запускать risky migrations автоматически без контроля. |
-| TV-054 | Backups | Railway scheduled volume backups (Postgres + MinIO) | DEFERRED | Railway поддерживает scheduled volume backups и опционально Point-in-Time Recovery для Postgres (Backups tab, включается только из дашборда — недоступно через API/MCP). Сознательно не включено сейчас: личный/пилотный проект, потеря данных приемлема на этой стадии. Включить перед тем как появятся реальные пользователи/данные, которые жалко потерять. |
-| TV-055 | Observability | logs + healthcheck in MVP | PROPOSED | Sentry/OpenTelemetry позже. |
-
----
-
-## 11. Decisions accepted for now
-
-После утверждения владельцем проекта перенести сюда принятые решения:
-
-```text
-ACCEPTED:
-- Architecture: modular monolith first
-- Backend: NestJS + TypeScript
-- Frontend: React + Vite + TypeScript
-- DB: PostgreSQL
-- ORM: Prisma
-- Storage local: MinIO
-- Storage production: MinIO on Railway (bucket `lms-uploads`, self-hosted alongside api/web/Postgres)
-- Deployment: Railway-first
-- Portability: Docker
-- MVP AI: out of scope
-- Mobile app: out of MVP
-- Auth current state: stateless JWT access token with hardened verification and current-user lookup bound to JWT subject
-- UI library: Custom UI (plain CSS + CSS custom properties for theming), no Tailwind/shadcn
-```
+| ID | Решение | Decision | Implementation | Live | Комментарий |
+|---|---|---|---|---|---|
+| TV-051 | Separate Railway staging | `ACCEPTED` | `NOT-REQUIRED` | `LIVE-VERIFY` | Current repository policy: отдельного Railway staging нет. Создание staging — отдельная owner/ops задача. |
+| TV-052 | Web hosting target | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Railway Web/Docker config присутствует; live service availability отдельно. |
+| TV-053 | DB migrations on deploy | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | API Railway start выполняет `prisma migrate deploy` автоматически. Live migration outcome требует deployment evidence. |
+| TV-054 | Backups/PITR/restore policy | `OWNER-DECISION` | `PARTIAL` | `LIVE-VERIFY` | Repository policy требует reconciliation; live backup/PITR/restore readiness не доказаны code. |
+| TV-055 | Observability | `ACCEPTED` | `PARTIAL` | `LIVE-VERIFY` | Pino logging и optional Sentry hooks присутствуют; live Sentry/alert routing не подтверждены. |
 
 ---
 
-## 12. Как использовать этот файл
+## 11. Реально открытые owner decisions
 
-Перед началом каждого GitHub Issue AI coding agent должен проверить:
+На момент проверки ИИ-агент должен эскалировать владельцу только вопросы, меняющие бизнес/production outcome:
 
-```text
-1. Есть ли связанный TODO VERIFY?
-2. Принято ли решение?
-3. Не относится ли задача к OUT OF MVP?
-4. Не требуется ли обновить этот файл после решения владельца проекта?
-```
+1. **TV-024 — General Audit Log:** `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
+2. **TV-030 — Invite flow:** нужен ли полноценный invite lifecycle и когда.
+3. **TV-047 — Notifications:** `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
+4. **TV-048 — Email provider:** provider и delivery requirements.
+5. **TV-054 — Backups/PITR:** обязательная policy и acceptance evidence.
 
-Если решение не принято, агент должен остановиться и написать:
+Staging topology или production provider также требуют owner/ops задачи, если требуется изменить current documented architecture; их live state нельзя угадывать.
 
-```text
-TODO VERIFY: требуется решение владельца проекта по [ID].
-```
+---
+
+## 12. Правила для ИИ-агента
+
+1. `MUST` сначала проверять current repository, а не копировать старый статус этого реестра.
+2. `MUST NOT` возвращать `DONE` пункт в `PROPOSED` без подтверждённого regression/change.
+3. `MUST NOT` закрывать `LIVE-VERIFY` чтением env examples или historical smoke report.
+4. `MUST NOT` принимать `OWNER-DECISION` самостоятельно.
+5. При реализации/изменении TV item `MUST` обновить его Decision/Implementation/Live statuses в той же задаче.
+6. Если item больше не требует решения или verification, он может оставаться в registry как исторически стабильный decision, но не должен формулироваться как «нужно проверить».
+7. Product scope сверять с `docs/MVP_SCOPE_LOCK.md`; общие implementation/source rules — с `docs/PROJECT_SOURCE_OF_TRUTH.md`.
+
+---
+
+## Связанные документы
+
+- `docs/PROJECT_SOURCE_OF_TRUTH.md`
+- `docs/MVP_SCOPE_LOCK.md`
+- `docs/DOCUMENTATION_AUDIT.md` — evidence аудита, не current decision authority.

@@ -1,347 +1,257 @@
-# MVP_SCOPE_LOCK.md
+# MVP Scope Lock
 
-**Проект:** корпоративная LMS / Learning Operating System  
-**Статус:** фиксатор границ MVP  
-**Назначение:** защитить MVP от переусложнения, scope creep и преждевременных enterprise/AI/mobile-функций.
+> **Статус:** `CURRENT`
+>
+> **Назначение:** зафиксировать границы MVP так, чтобы человек и ИИ-агент одинаково понимали, что входит в scope, что уже реализовано, что отложено и где требуется решение владельца.
+>
+> **Проверено по `main`:** `83fdf34f5384e2d8e044590256d05149f4c39a6d` (2026-08-09).
 
----
+## 1. Система статусов
 
-## 0. Текущий статус реализации (пересчитано 2026-08-06)
+- `IN-MVP` — нормативно входит в MVP.
+- `OUT-OF-MVP` — нормативно не входит в MVP.
+- `IMPLEMENTED` — подтверждено current repository.
+- `PARTIAL` — реализована только часть требуемого поведения.
+- `OWNER-DECISION` — scope нельзя менять без решения владельца.
+- `LIVE-VERIFY` — зависит от внешней инфраструктуры и не подтверждается только repository code/config.
+- `HISTORICAL` — старое решение/описание; не использовать как current scope.
 
-Сам scope (раздел 2) — зафиксированное решение, не менялся. Ниже — что из него реально построено в коде на текущий `main` (PR #505). Статус сверен с Prisma-схемой и контроллерами `apps/api/src`, не с прошлыми отчётами.
-
-| Раздел | Статус | Комментарий |
-|---|---|---|
-| 2.1 Identity & Access | ✅ Сделано | login/logout/me, password hashing (`scrypt`), JWT access + refresh token в httpOnly cookie, 4 фиксированные роли, backend RBAC (`RolesGuard` + `CourseAccessGuard`), protected routes — всё реализовано и покрыто тестами. |
-| 2.2 Users & Organization | ✅ Сделано | `organizations`, `users` CRUD, `UserStatus` enum совпадает 1:1 (`active/invited/suspended/archived`), роли через `Membership`, `organizationId` во всех бизнес-сущностях. |
-| 2.3 Groups | ✅ Сделано | `groups` CRUD, `group_members` (с soft-delete через `deletedAt`), назначение пользователей в группу, `manager-team-scope` модуль для manager readiness. |
-| 2.4 Courses & Lessons | ⚠️ Частично | courses CRUD/status/lessons/ordering/publish validation/редактор — всё есть. Отдельной таблицы `course_modules` нет — уроки крепятся к курсу напрямую, без промежуточного слоя «модуль». Не заявлено как допустимое упрощение в разделе 4, но работает и не блокирует пилот. |
-| 2.5 Files | ✅ Сделано | file metadata в Postgres, S3-совместимое хранилище (MinIO на Railway), signed URLs, tenant-scoped access checks. |
-| 2.6 Assignments & Enrollments | ⚠️ Частично | `Assignment` (courseId + userId\|groupId + dueAt опционально) есть, learner видит назначенные курсы. Отдельной модели `enrollments` нет — роль enrollment фактически выполняют `Assignment` + `Progress` вместе. Не заявлено как упрощение в разделе 4. |
-| 2.7 Learner Experience | ✅ Сделано | dashboard, мои курсы, страница курса, lesson player, responsive UI — все страницы реализованы. |
-| 2.8 Progress | ✅ Сделано | `lesson_progress`/`course_progress`, complete action, расчёт завершения курса. |
-| 2.9 Assessments | ✅ Сделано | тесты, вопросы, варианты ответов, попытки, backend-скоринг, pass/fail, ответы не раскрываются до сдачи. |
-| 2.10 Certificates | ✅ Сделано | запись сертификата, уникальный номер, статус, HTML-страница, доступна learner. |
-| 2.11 Reports | ⚠️ Частично | Выделенного `reports`-модуля/API нет. Функционально закрыто через `AdminResultsCertificatesPage` (таблица прогресс+результаты) и `ManagerDashboardPage`/`ManagerTeamPage` (прогресс команды) поверх существующих `/progress`, `/certificates`, `/assessments/:id/report`. |
-| 2.12 Notifications | 🚨 Не сделано | Модуля нет вообще — ни таблиц, ни API, ни UI. См. открытый вопрос в `docs/CONCERNS.md` (2026-08-06). |
-| 2.13 Audit Log | 🚨 Не сделано | Модуля нет вообще. См. открытый вопрос в `docs/CONCERNS.md` (2026-08-06) — это прямо противоречит критерию §5.17 ниже. |
-| 2.14 Deployment & DevOps | ✅ Сделано | pnpm workspace, Dockerfile/docker-compose, Postgres+MinIO на Railway, `.env.example`, health endpoint, CI (lint/typecheck/test/build/CodeQL/audit). Продакшн реально развёрнут и используется (не просто «фундамент задеплоя» — жив на Railway). |
-
-**Итог:** 9 из 14 разделов scope полностью реализованы, 3 — частично (архитектура работает, но не 1:1 повторяет исходное описание таблиц), 2 — не начаты (`notifications`, `audit log`) и напрямую противоречат критерию готовности §5.17.
+ИИ-агент `MUST NOT` интерпретировать `IMPLEMENTED` как автоматическое изменение product scope: наличие кода и решение «входит в MVP» — разные вещи.
 
 ---
 
-## 1. Главная цель MVP
+## 2. Что входит в MVP
 
-MVP должен доказать, что базовый корпоративный learning loop работает end-to-end:
+### Core product
 
-```text
-Admin создаёт пользователей
-→ Admin создаёт группу
-→ Instructor/Admin создаёт курс
-→ Admin назначает курс пользователю или группе
-→ Learner проходит уроки
-→ система фиксирует прогресс
-→ Learner проходит тест
-→ система сохраняет результат
-→ система выдаёт сертификат
-→ Manager/Admin видит отчёт
-```
+**Scope:** `IN-MVP`
 
-MVP не должен быть полной enterprise LMS. Его задача — дать рабочий, проверяемый и развиваемый продукт для первого пилота.
+- Organizations / tenant boundary.
+- Users and fixed roles: `admin`, `manager`, `instructor`, `learner`.
+- Groups/team management.
+- Courses and lessons.
+- Course materials/uploads.
+- Learner progress.
+- Assessments and attempts.
+- Assignments/submissions.
+- Certificates.
+- Core admin/manager/instructor/learner Web workflows.
+- Authentication/session lifecycle and RBAC.
+- Basic operational readiness/security necessary to run the MVP.
 
----
+### Current implementation note
 
-## 2. Входит в MVP
+**Статус:** `IMPLEMENTED` / `PARTIAL`
 
-### 2.1 Identity & Access
+Большая часть core surface присутствует в current API/Web. Наличие конкретного module/route не означает, что каждый UX edge case или operational requirement закрыт; такие gaps должны жить в backlog/issue, а не молча менять scope.
 
-```text
-- login
-- logout
-- current user endpoint
-- password hashing
-- JWT access token
-- refresh token in httpOnly cookie
-- fixed roles
-- backend RBAC checks
-- protected routes
-```
+### Self-enrollment
 
-### 2.2 Users & Organization
+**Статус:** `IMPLEMENTED`
 
-```text
-- organizations базово
-- users CRUD
-- user status: active / invited / suspended / archived
-- roles: learner / instructor / manager / admin
-- user_roles
-- organization_id в бизнес-сущностях
-```
+Self-enrollment behavior существует в current implementation. Это больше не следует описывать как запрещённое исключение из MVP только потому, что ранний scope snapshot его не включал.
 
-### 2.3 Groups
-
-```text
-- groups CRUD
-- group_members
-- assign users to group
-- manager scope readiness
-```
-
-Для MVP `departments` можно не делать отдельной таблицей. Если нужна структура подразделений, использовать `groups.type`.
-
-### 2.4 Courses & Lessons
-
-```text
-- courses CRUD
-- course status: draft / published / archived
-- course_modules
-- lessons
-- lesson ordering
-- basic lesson content
-- publish validation
-- simple course editor UI
-```
-
-### 2.5 Files
-
-```text
-- file metadata in PostgreSQL
-- S3-compatible object storage
-- local MinIO
-- signed upload/download URLs
-- file access checks
-```
-
-### 2.6 Assignments & Enrollments
-
-```text
-- assign course to user
-- assign course to group
-- due date optional
-- create learner enrollments
-- learner sees assigned courses
-```
-
-### 2.7 Learner Experience
-
-```text
-- learner dashboard
-- my courses
-- course page
-- lesson player
-- continue learning
-- mobile-responsive web UI
-```
-
-### 2.8 Progress
-
-```text
-- lesson_progress
-- course_progress
-- lesson complete action
-- course completion calculation
-- progress persistence
-```
-
-### 2.9 Assessments
-
-```text
-- tests/assessments
-- questions
-- answer options
-- attempts
-- backend scoring
-- pass/fail
-- no correct answers before submit
-```
-
-### 2.10 Certificates
-
-```text
-- certificate record
-- unique certificate number
-- certificate status
-- certificate HTML page
-- learner can view certificate
-```
-
-PDF generation is P1 unless explicitly required for pilot.
-
-### 2.11 Reports
-
-MVP reports:
-
-```text
-- course progress report
-- group/user progress report
-- certificate issued report
-```
-
-CSV/XLSX export is P1 unless required by pilot customer.
-
-### 2.12 Notifications
-
-```text
-- in-app notifications
-- course assigned notification
-- certificate issued notification
-- notification list
-- mark as read
-```
-
-Email delivery can be P1 if not needed for the first pilot.
-
-### 2.13 Audit Log
-
-Audit log required for:
-
-```text
-- login/security-sensitive events
-- user creation/update/deactivation
-- role assignment
-- course publish/archive
-- course assignment
-- assessment submit
-- certificate issue
-- report export if implemented
-- file access/download if sensitive
-```
-
-### 2.14 Deployment & DevOps
-
-```text
-- private GitHub monorepo
-- pnpm workspace
-- Dockerfile / docker-compose
-- PostgreSQL
-- MinIO local
-- Railway deployment
-- .env.example
-- health endpoint
-- basic CI
-```
+Если владелец хочет запретить self-enrollment как product capability, это отдельное изменение scope/behavior.
 
 ---
 
-## 3. Не входит в MVP
+## 3. Явно вне MVP
 
-Следующее не реализовывать до завершения core learning loop без отдельного решения владельца проекта:
+Следующее остаётся `OUT-OF-MVP`, пока отдельная задача не меняет scope:
 
-```text
-- AI Tutor
-- AI Course Builder
-- AI recommendations
-- RAG over course materials
-- embeddings/vector search
-- Julia analytics service
-- microservices split
-- Kubernetes
-- Temporal
-- ClickHouse
-- OpenSearch
-- full SCORM runtime
-- xAPI LRS
-- LTI provider/consumer
-- SSO/SAML/OIDC enterprise pack
-- SCIM
-- HRIS integrations
-- marketplace
-- billing/payments
-- custom branding / white-label
-- advanced BI
-- predictive analytics
-- native mobile app as MVP blocker
-- offline-first mobile
-- mobile admin panel
-- advanced gamification
-- complex drag-and-drop course builder
-- custom roles builder
-- visual permission builder
-- multi-region deployment
-- tenant sharding
-```
+- AI tutor / RAG / AI course builder;
+- native mobile application;
+- SCORM/xAPI/LTI runtime support;
+- SSO/SAML;
+- billing/payments;
+- advanced BI/analytics platform;
+- drag-and-drop visual course builder;
+- custom role builder;
+- push notifications;
+- XLSX/advanced analytics exports как обязательный MVP gate;
+- отдельный enterprise data warehouse/ClickHouse layer.
+
+ИИ-агент `MUST NOT` добавлять эти capabilities «для полноты» при выполнении обычных MVP задач.
 
 ---
 
-## 4. MVP simplifications
+## 4. Scope decisions, которые ещё не закрыты
 
-Разрешённые упрощения:
+### Notifications
 
-```text
-- one organization in dev seed, but organization_id in schema from day one
-- fixed roles instead of custom role builder
-- groups instead of separate departments model
-- HTML certificate instead of PDF
-- basic reports instead of full analytics
-- in-app notifications before email delivery
-- responsive web before native mobile
-- simple course editor before visual builder
-- PostgreSQL reports before BI/read models
-```
+**Scope status:** `OWNER-DECISION`
+**Implementation status:** `NOT-IMPLEMENTED`
 
----
+Некоторые historical/planning docs относили Notifications к MVP, но current API module inventory не содержит notifications module.
 
-## 5. MVP success criteria
+Владелец должен выбрать ровно один вариант:
 
-MVP считается готовым, если можно пройти сценарий:
+- `REQUIRED_FOR_MVP`;
+- `POST_MVP`;
+- `REMOVED_FROM_MVP`.
 
-```text
-1. Admin входит в систему.
-2. Admin создаёт learner.
-3. Admin создаёт группу.
-4. Admin добавляет learner в группу.
-5. Instructor/Admin создаёт курс.
-6. Instructor/Admin добавляет уроки.
-7. Instructor/Admin публикует курс.
-8. Admin назначает курс группе.
-9. Learner входит в систему.
-10. Learner видит назначенный курс.
-11. Learner проходит уроки.
-12. Система сохраняет прогресс.
-13. Learner проходит тест.
-14. Backend считает результат.
-15. Система выдаёт сертификат.
-16. Manager/Admin видит отчёт.
-17. Audit log содержит важные действия.
-18. Приложение деплоится на Railway.
-```
+До решения:
 
-**[2026-08-06] Статус сценария:** пункты 1–16 и 18 подтверждены в коде и реально работают (в т.ч. 18 — прод на Railway живой, не гипотетический). Пункт 17 — единственный незакрытый: audit log не реализован (см. раздел 0 выше и открытый вопрос в `docs/CONCERNS.md`). Формально сценарий целиком не проходит, пока это не решено — либо реализовать, либо снять пункт из критерия.
+- ИИ-агент `MUST NOT` считать Notifications обязательным завершённым MVP gate;
+- ИИ-агент `MUST NOT` самостоятельно удалять Notifications из scope;
+- ИИ-агент `MUST NOT` начинать реализацию Notifications без отдельной задачи/решения.
+
+### General Audit Log
+
+**Scope status:** `OWNER-DECISION`
+**Implementation status:** `PARTIAL`
+
+В repository есть domain-specific audit/security events, но универсальный append-only Audit Log как отдельная application capability не подтверждён.
+
+Владелец должен выбрать:
+
+- `REQUIRED_FOR_MVP`;
+- `POST_MVP`;
+- `REMOVED_FROM_MVP`.
+
+До решения общий Audit Log не считать ни выполненным, ни автоматически исключённым.
 
 ---
 
-## 6. Правило добавления новой функции
+## 5. Storage scope
 
-Перед добавлением любой функции в MVP нужно ответить:
+### Storage contract
 
-```text
-1. Эта функция нужна для core learning loop?
-2. Без неё невозможен пилот?
-3. Она не нарушает сроки и простоту MVP?
-4. Она не требует нового крупного слоя архитектуры?
-5. Есть ли GitHub Issue и acceptance criteria?
-```
+**Scope status:** `IN-MVP`
+**Implementation status:** `IMPLEMENTED`
 
-Если хотя бы один ответ отрицательный — функция переносится в P1/P2/Future.
+Для file/material workflows используется S3-compatible contract с private objects, authorized downloads, buffered/multipart upload и security/quarantine flow.
+
+### Production provider
+
+**Статус:** `LIVE-VERIFY`
+
+MVP scope фиксирует **S3-compatible storage capability**, а не конкретного vendor/provider.
+
+Repository не является доказательством, что production в данный момент использует MinIO, Cloudflare R2 или AWS S3.
+
+**Agent rule:** `DO NOT ASSUME` provider без fresh deployment evidence.
+
+Historical формулировка «Production storage = MinIO on Railway» больше не является canonical scope statement.
 
 ---
 
-## 7. Запрет для AI coding agents
+## 6. Deployment/environment boundary
 
-AI coding agent не должен самостоятельно:
+### Deployment target
 
-```text
-- расширять MVP scope;
-- добавлять AI-функции;
-- добавлять микросервисы;
-- менять стек;
-- добавлять новые инфраструктурные сервисы;
-- реализовывать future scope;
-- добавлять зависимости без причины;
-- менять API/DB без обновления docs;
-- обходить RBAC или organization scope;
-- оставлять temporary bypass/debug backdoor.
-```
+**Статус:** `IMPLEMENTED` для repository config, `LIVE-VERIFY` для фактического deployment.
 
-Если агент считает, что функция нужна, он должен пометить её как `TODO VERIFY`, а не реализовывать без решения владельца проекта.
+Repository ориентирован на Railway-first + Docker portability.
+
+Это не означает, что каждое live service/environment состояние подтверждено кодом.
+
+### Staging
+
+**Статус:** current documented model — `NO-SEPARATE-RAILWAY-STAGING`; future topology — `OWNER-DECISION`.
+
+`docs/MIGRATION_BACKUP_POLICY.md` фиксирует текущую repository policy без отдельного Railway staging environment.
+
+GitHub Actions environment с названием `staging` сам по себе не доказывает существование отдельного Railway staging environment.
+
+ИИ-агент `MUST NOT` создавать/предполагать отдельный staging environment без отдельной owner/ops задачи.
+
+### Backups / PITR / live provider state
+
+**Статус:** `LIVE-VERIFY`
+
+Backup policy может быть описана в repository, но фактическое наличие backup/PITR/restore readiness требует fresh external evidence.
+
+---
+
+## 7. Repository visibility
+
+**Статус:** `CURRENT-FACT`
+
+GitHub repository на момент проверки публичный.
+
+Visibility не является MVP product feature. Старые scope statements «repo must be private» не являются canonical MVP requirement без отдельного owner decision/repository-setting task.
+
+---
+
+## 8. Auth/security boundary MVP
+
+**Scope:** `IN-MVP`
+**Implementation status:** `IMPLEMENTED` / `PARTIAL` по конкретным controls.
+
+В MVP входят:
+
+- authenticated sessions/access tokens;
+- refresh rotation/session revocation;
+- organization scoping;
+- role-based authorization;
+- sensitive-route rate limiting;
+- basic security/readiness CI/runtime controls.
+
+Не следует объявлять security control «blocking merge gate», если repository settings не делают соответствующий check required. Current `main` на момент проверки не защищён required status checks.
+
+---
+
+## 9. Certificates/reports boundary
+
+### Certificates
+
+**Scope:** `IN-MVP`
+
+Current implementation поддерживает certificate listing/detail/issuance и learner certificate UI. PDF download/public verification URL не являются обязательным MVP gate, пока scope явно не изменён.
+
+### Reports
+
+**Scope:** `IN-MVP` только для basic reports, необходимых core workflows.
+
+CSV/XLSX/advanced BI/analytics не являются обязательным MVP gate.
+
+---
+
+## 10. Что НЕ является доказательством scope completion
+
+Следующие вещи сами по себе не доказывают, что MVP полностью готов:
+
+- наличие route/module;
+- зелёный CI без required branch protection;
+- старый smoke report;
+- historical `DONE` в project log;
+- наличие env example;
+- наличие script без доказательства scheduled/live execution;
+- старый Railway URL;
+- current code без проверки live external dependency.
+
+Для operational completion нужен fresh evidence соответствующего уровня.
+
+---
+
+## 11. Правила изменения scope
+
+1. ИИ-агент `MUST` считать этот файл canonical для MVP boundaries.
+2. ИИ-агент `MUST NOT` менять `IN-MVP`/`OUT-OF-MVP`/`OWNER-DECISION` из соображений удобства реализации.
+3. Если current code реализовал capability, отсутствующую в старом scope snapshot, это `IMPLEMENTATION FACT`, а не автоматический повод удалить код или объявить capability обязательным MVP feature.
+4. `OWNER-DECISION` может быть закрыт только явным решением владельца.
+5. `LIVE-VERIFY` не закрывается чтением repository code.
+6. При принятии owner decision нужно в одной задаче обновить этот файл и соответствующий пункт `TODO_VERIFY.md`.
+7. Historical документы не переопределяют этот scope lock.
+
+---
+
+## 12. MVP completion gate
+
+MVP scope считается согласованным только когда:
+
+- core `IN-MVP` capabilities имеют подтверждённый acceptance status;
+- открытые `OWNER-DECISION`, которые являются release blockers, явно закрыты;
+- live-dependent release checks имеют fresh evidence либо explicit accepted waiver;
+- current canonical docs не противоречат друг другу.
+
+На момент этой проверки Notifications и General Audit Log остаются `OWNER-DECISION`, поэтому ИИ-агент не должен самостоятельно объявлять их ни обязательными реализованными gates, ни удалёнными из MVP.
+
+---
+
+## Связанные canonical документы
+
+- `docs/PROJECT_SOURCE_OF_TRUTH.md`
+- `docs/TODO_VERIFY.md`
+- `docs/DOCUMENTATION_AUDIT.md` — audit evidence, не current scope authority.
