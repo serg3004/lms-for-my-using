@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
-import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
+import { apiRequest } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
 import { sortLessons } from '../../shared/sortLessons.js';
-import type { Assessment, Course, Lesson } from './model.js';
+import { getAssessmentBuilderLoadErrorKey, type Assessment, type Course, type Lesson } from './model.js';
 
 type LoadState = { status: 'loading' } | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; assessments: Assessment[] } | { status: 'error'; message: string };
 
@@ -20,7 +20,7 @@ export function useAssessmentBuilder(t: TFunction) {
       setSelectedCourseId(nextCourseId);
       setLoadState({ status: 'loaded', courses, lessons: sortLessons(lessons), assessments });
     } catch (error) {
-      setLoadState({ status: 'error', message: error instanceof ApiClientError && error.status === 401 ? t('admin.assessmentBuilder.sessionExpired', 'Your session expired. Sign in again.') : t('admin.assessmentBuilder.loadError', 'Unable to load assessment builder.') });
+      setLoadState({ status: 'error', message: t(getAssessmentBuilderLoadErrorKey(error)) });
     }
   }, [selectedCourseId, t]);
 
