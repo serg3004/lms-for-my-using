@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../shared/apiClient.js';
 import {
   buildAssessmentAnswers,
+  computeSecondsLeft,
   countAnsweredQuestions,
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
@@ -61,5 +62,19 @@ describe('assessment taking model', () => {
     expect(getAssessmentOptionLabel({ id: 'id', text: 'Text', imageUrl: '/image.png' })).toBe('Text');
     expect(getAssessmentOptionLabel({ id: 'id', text: null, imageUrl: '/image.png' })).toBe('/image.png');
     expect(getAssessmentOptionLabel({ id: 'id', text: null, imageUrl: null })).toBe('id');
+  });
+
+  it('computes the remaining seconds from a server-trusted startedAt', () => {
+    const startedAt = '2026-01-01T00:00:00.000Z';
+    const now = new Date('2026-01-01T00:05:00.000Z').getTime(); // 5 minutes elapsed
+
+    expect(computeSecondsLeft(startedAt, 10, now)).toBe(5 * 60);
+  });
+
+  it('never goes negative once the time limit has passed', () => {
+    const startedAt = '2026-01-01T00:00:00.000Z';
+    const now = new Date('2026-01-01T00:20:00.000Z').getTime(); // 20 minutes elapsed, 10-minute limit
+
+    expect(computeSecondsLeft(startedAt, 10, now)).toBe(0);
   });
 });
