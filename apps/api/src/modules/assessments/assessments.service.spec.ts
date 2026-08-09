@@ -192,6 +192,7 @@ describe('AssessmentsService.deleteAssessment', () => {
     const update = jest.fn(async () => ({ id: assessmentId }));
     const prisma = {
       assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessmentAttempt: { findFirst: async () => null },
     } as unknown as PrismaService;
     const service = new AssessmentsService(prisma);
 
@@ -207,5 +208,17 @@ describe('AssessmentsService.deleteAssessment', () => {
     const service = new AssessmentsService(prisma);
 
     await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects deleting an assessment with an attempt in progress', async () => {
+    const update = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessmentAttempt: { findFirst: async () => ({ id: 'attempt-1' }) },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
   });
 });

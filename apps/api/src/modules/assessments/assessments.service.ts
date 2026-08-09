@@ -122,6 +122,15 @@ export class AssessmentsService {
       throw new NotFoundException('Assessment not found');
     }
 
+    const activeAttempt = await this.prisma.assessmentAttempt.findFirst({
+      where: { assessmentId, organizationId, status: 'in_progress', deletedAt: null },
+      select: { id: true },
+    });
+
+    if (activeAttempt) {
+      throw new BadRequestException('Cannot delete an assessment with an attempt in progress');
+    }
+
     await this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },
       data: { deletedAt: new Date() },
