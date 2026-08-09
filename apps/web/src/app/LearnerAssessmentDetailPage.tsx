@@ -5,6 +5,7 @@ import { listAssessmentAttempts, listAssessmentQuestions } from '../shared/api/a
 import { ApiClientError, AssessmentSummary, getAssessment } from '../shared/apiClient.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
+import { formatNullableDate } from '../shared/formatDate.js';
 import { getCourseHref } from '../shared/learnerRoutes.js';
 import { PageState } from '../shared/ui.js';
 
@@ -237,6 +238,54 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </a>
         </aside>
       </div>
+
+      {attempts.length > 0 ? (
+        <section
+          style={{
+            marginTop: '22px',
+            background: COLORS.surface,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: '18px',
+            boxShadow: '0 8px 24px rgba(23,32,51,.05)',
+            padding: '24px',
+          }}
+        >
+          <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('assessments.attemptsHistoryTitle')}</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: COLORS.muted, fontSize: '13px' }}>
+                <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryDate')}</th>
+                <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryScore')}</th>
+                <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryResult')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attempts
+                .slice()
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .map((attempt) => (
+                  <tr key={attempt.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
+                    <td style={{ padding: '12px' }}>{formatNullableDate(attempt.completedAt ?? attempt.startedAt, '—')}</td>
+                    <td style={{ padding: '12px' }}>
+                      {attempt.status === 'completed'
+                        ? `${attempt.score} / ${attempt.maxScore} (${attempt.percentage}%)`
+                        : '—'}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      {attempt.status !== 'completed' ? (
+                        <span style={{ color: COLORS.muted }}>{t('assessments.attemptsHistoryInProgress')}</span>
+                      ) : (
+                        <span style={{ color: attempt.passed ? '#0f9f6e' : '#dc2626', fontWeight: 700 }}>
+                          {attempt.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
 
       <nav style={{ marginTop: '18px' }}>
         <a href={getCourseHref(assessment.courseId)}>{courseTitle}</a>
