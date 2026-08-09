@@ -6,7 +6,7 @@ export type AssessmentStatus = 'draft' | 'published' | 'archived';
 export type Assessment = { id: string; title: string; slug: string; description: string | null; passingScore: number; maxAttempts: number | null; availableAfterCourseCompletion: boolean; status: string };
 export type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
 export type Question = { id: string; organizationId: string; type: QuestionType; title: string; text: string | null; points: number; order: number };
-export type AnswerOption = { id: string; text: string | null; isCorrect: boolean; order: number };
+export type AnswerOption = { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number };
 export type SaveState = { status: 'idle' | 'saving' | 'error'; message?: string };
 export type AssessmentForm = { title: string; description: string; passingScore: string; maxAttempts: string; availableAfterCourseCompletion: boolean; status: AssessmentStatus };
 

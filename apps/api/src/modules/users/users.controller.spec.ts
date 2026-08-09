@@ -1,6 +1,7 @@
 const GUARDS_METADATA = '__guards__';
 
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
+import type { AuthenticatedRequest } from '../auth/auth.guard';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard';
 import { rolePolicies, rolesMetadataKey } from '../auth/roles';
 import { RolesGuard } from '../auth/roles.guard';

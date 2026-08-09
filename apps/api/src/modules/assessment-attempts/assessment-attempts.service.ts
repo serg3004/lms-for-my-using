@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { ManagerTeamScope, TeamScopeActor, normalizeActor } from '../manager-team-scope/manager-team-scope.js';
+import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
   CreateAssessmentAttemptAnswerInput,
   CreateAssessmentAttemptInput,
@@ -40,6 +41,7 @@ type QuestionWithOptions = {
   id: string;
   type: 'single_choice' | 'multiple_choice' | 'true_false';
   points: number;
+  scoringMode: 'all_or_nothing' | 'proportional' | 'proportional_with_penalty' | 'per_option';
   options: {
     id: string;
     isCorrect: boolean;
@@ -102,58 +104,51 @@ export class AssessmentAttemptsService {
     return attempt;
   }
 
+  /**
+   * Untimed assessments (timeLimitMinutes null — the common case, unchanged): grade and create the
+   * completed attempt in one call, exactly as before startAttempt existed.
+   *
+   * Timed assessments: requires an existing in_progress attempt from startAttempt. Late submission
+   * (now - startedAt > timeLimitMinutes) still grades and records the answers, but forces
+   * passed: false regardless of score — the attempt is spent, not silently rejected.
+   */
   async createAttempt(assessmentId: string, userId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
-    const assessment = await this.prisma.assessment.findFirst({
-      where: {
-        id: assessmentId,
-        organizationId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        courseId: true,
-        status: true,
-        passingScore: true,
-        maxAttempts: true,
-        availableAfterCourseCompletion: true,
-      },
-    });
-
-    if (!assessment) {
-      throw new NotFoundException('Assessment not found');
-    }
-
-    if (assessment.status !== 'published') {
-      throw new BadRequestException('Assessment must be published before attempting');
-    }
+    const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
     await this.ensureUserExists(userId, organizationId);
     await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
-    await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
+
+    const inProgress = assessment.timeLimitMinutes
+      ? await this.prisma.assessmentAttempt.findFirst({
+          where: { assessmentId, userId, organizationId, status: 'in_progress', deletedAt: null },
+          select: { id: true, startedAt: true },
+        })
+      : null;
+
+    if (assessment.timeLimitMinutes && !inProgress) {
+      throw new BadRequestException('Attempt was not started — call the start endpoint first');
+    }
+
+    if (!inProgress) {
+      await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
+    }
 
     const questions = await this.getQuestions(assessmentId, organizationId);
     const gradedAnswers = this.gradeAnswers(questions, input.answers);
     const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
     const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const passed = percentage >= assessment.passingScore;
+    const expired = Boolean(
+      inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() > assessment.timeLimitMinutes * 60_000,
+    );
+    const passed = expired ? false : percentage >= assessment.passingScore;
     const completedAt = new Date();
 
     const attemptId = await this.prisma.$transaction(async (tx) => {
-      const attempt = await tx.assessmentAttempt.create({
-        data: {
-          organizationId,
-          assessmentId,
-          userId,
-          status: 'completed',
-          score,
-          maxScore,
-          percentage,
-          passed,
-          completedAt,
-        },
-        select: { id: true },
-      });
+      const attemptData = { score, maxScore, percentage, passed, completedAt, status: 'completed' as const };
+      const attempt = inProgress
+        ? await tx.assessmentAttempt.update({ where: { id: inProgress.id, organizationId }, data: attemptData, select: { id: true } })
+        : await tx.assessmentAttempt.create({ data: { organizationId, assessmentId, userId, ...attemptData }, select: { id: true } });
 
       await tx.assessmentAttemptAnswer.createMany({
         data: gradedAnswers.map((answer) => ({
@@ -194,6 +189,86 @@ export class AssessmentAttemptsService {
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
+  }
+
+  /**
+   * Records the server-trusted start time for a timed assessment. Idempotent — resuming just
+   * returns the existing in_progress attempt rather than restarting the clock. Untimed assessments
+   * (the default) don't use this at all; submit directly via createAttempt.
+   */
+  async startAttempt(assessmentId: string, userId: string, organizationId: string) {
+    const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
+
+    if (!assessment.timeLimitMinutes) {
+      throw new BadRequestException('This assessment has no time limit — submit answers directly');
+    }
+
+    await this.ensureUserExists(userId, organizationId);
+    await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
+
+    const existing = await this.prisma.assessmentAttempt.findFirst({
+      where: { assessmentId, userId, organizationId, status: 'in_progress', deletedAt: null },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return this.getAttempt(existing.id, { id: userId, organizationId, roles: ['learner'] });
+    }
+
+    await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
+
+    // SELECT ... FOR UPDATE takes the same lock deleteAssessment() takes before soft-deleting,
+    // so the two are fully serialized: whichever of the two transactions acquires the lock
+    // first, the other only proceeds once it's committed and can see the up-to-date row.
+    const attemptId = await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM assessments
+        WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+
+      if (!rows[0]) {
+        throw new NotFoundException('Assessment not found');
+      }
+
+      const attempt = await tx.assessmentAttempt.create({
+        data: { organizationId, assessmentId, userId, status: 'in_progress', startedAt: new Date() },
+        select: { id: true },
+      });
+
+      return attempt.id;
+    });
+
+    return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
+  }
+
+  private async loadAssessmentForAttempt(assessmentId: string, organizationId: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: {
+        id: assessmentId,
+        organizationId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        courseId: true,
+        status: true,
+        passingScore: true,
+        maxAttempts: true,
+        timeLimitMinutes: true,
+        availableAfterCourseCompletion: true,
+      },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    if (assessment.status !== 'published') {
+      throw new BadRequestException('Assessment must be published before attempting');
+    }
+
+    return assessment;
   }
 
   private async ensureAssessmentExists(assessmentId: string, organizationId: string) {
@@ -292,6 +367,7 @@ export class AssessmentAttemptsService {
         id: true,
         type: true,
         points: true,
+        scoringMode: true,
         options: {
           where: { deletedAt: null },
           select: {
@@ -384,13 +460,56 @@ export class AssessmentAttemptsService {
 
     const selected = selectedOptionIds.sort();
     const correct = [...correctOptionIds].sort();
-    const isCorrect = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
+    const isFullMatch = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
+    const score = this.scoreMultipleChoiceAnswer(question, new Set(selectedOptionIds), new Set(correctOptionIds), isFullMatch);
 
     return {
       questionId: question.id,
       selectedOptionIds,
-      isCorrect,
-      score: isCorrect ? question.points : 0,
+      isCorrect: isFullMatch,
+      score,
     };
+  }
+
+  /**
+   * `isCorrect` always means an exact match with the correct set — score is what varies by
+   * scoringMode. all_or_nothing is the only mode where a non-exact selection scores 0; the other
+   * three award partial credit for a partially-correct multiple_choice selection.
+   */
+  private scoreMultipleChoiceAnswer(
+    question: QuestionWithOptions,
+    selectedSet: Set<string>,
+    correctSet: Set<string>,
+    isFullMatch: boolean,
+  ): number {
+    const correctCount = correctSet.size;
+
+    switch (question.scoringMode) {
+      case 'all_or_nothing':
+        return isFullMatch ? question.points : 0;
+
+      case 'proportional': {
+        if (correctCount === 0) return 0;
+        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
+        return Math.round((correctSelectedCount / correctCount) * question.points);
+      }
+
+      case 'proportional_with_penalty': {
+        if (correctCount === 0) return 0;
+        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
+        const incorrectSelectedCount = selectedSet.size - correctSelectedCount;
+        const ratio = Math.max(0, (correctSelectedCount - incorrectSelectedCount) / correctCount);
+        return Math.round(ratio * question.points);
+      }
+
+      case 'per_option': {
+        const totalOptions = question.options.length;
+        if (totalOptions === 0) return 0;
+        const correctJudgments = question.options.filter(
+          (option) => selectedSet.has(option.id) === option.isCorrect,
+        ).length;
+        return Math.round((correctJudgments / totalOptions) * question.points);
+      }
+    }
   }
 }

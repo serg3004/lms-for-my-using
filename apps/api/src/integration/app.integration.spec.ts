@@ -17,7 +17,7 @@ import type { AddressInfo } from 'node:net';
 import { z } from 'zod';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
-import { PrismaService } from '../database/prisma.service.js';
+import { DatabaseHealthService } from '../modules/health/database-health.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
@@ -185,7 +185,7 @@ describe('API integration scaffold', () => {
       providers: [
         IntegrationAuthGuard,
         IntegrationOrganizationScopeGuard,
-        { provide: PrismaService, useValue: { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) } },
+        { provide: DatabaseHealthService, useValue: { checkReadiness: () => Promise.resolve('ok') } },
         { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
         { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
       ],

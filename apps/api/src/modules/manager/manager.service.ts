@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { ManagerTeamScope, TeamScopeActor, normalizeActor } from '../manager-team-scope/manager-team-scope.js';
+import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RISK_COMPLETION_THRESHOLD = 50;

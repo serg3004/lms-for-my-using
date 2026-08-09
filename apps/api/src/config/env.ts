@@ -28,6 +28,9 @@ const apiEnvSchema = z
     FRONTEND_URL: z.string().url().default(DEFAULT_FRONTEND_URL),
     JWT_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH),
     REDIS_URL: z.string().url().optional(),
+    BACKGROUND_JOBS_QUEUE: z.string().trim().min(1).max(80).default('lms-background-jobs'),
+    BACKGROUND_JOBS_CONCURRENCY: z.coerce.number().int().min(1).max(100).default(5),
+    BACKGROUND_JOBS_RUN_WORKER: z.enum(['true', 'false']).default('false'),
     RATE_LIMIT_NAMESPACE: z
       .string()
       .trim()

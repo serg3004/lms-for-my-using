@@ -1,14 +1,17 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
-import { OrganizationScope } from '../auth/organization-scope.js';
-import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { OrganizationScope } from '../auth/public.js';
+import { OrganizationScopeGuard } from '../auth/public.js';
+import { Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import {
   createAssessmentAnswerOptionSchema,
   createAssessmentQuestionSchema,
+  updateAssessmentAnswerOptionSchema,
+  updateAssessmentQuestionSchema,
   CreateAssessmentAnswerOptionInput,
   CreateAssessmentQuestionInput,
 } from './assessment-questions.schemas.js';
@@ -51,6 +54,22 @@ export class AssessmentQuestionsController {
     return this.assessmentQuestionsService.createQuestion(assessmentId, input);
   }
 
+  @Patch('questions/:id')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  @CourseScope('param', 'id', 'question')
+  updateQuestion(@Param('id') questionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateAssessmentQuestionSchema.parse(body);
+
+    return this.assessmentQuestionsService.updateQuestion(questionId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete('questions/:id')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  @CourseScope('param', 'id', 'question')
+  deleteQuestion(@Param('id') questionId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentQuestionsService.deleteQuestion(questionId, request.currentUser!.organizationId);
+  }
+
   @Get('questions/:questionId/options')
   @Roles(...rolePolicies.assessmentAnswerOptionsRead)
   @CourseScope('param', 'questionId', 'question')
@@ -67,5 +86,21 @@ export class AssessmentQuestionsController {
     const input: CreateAssessmentAnswerOptionInput = createAssessmentAnswerOptionSchema.parse(body);
 
     return this.assessmentQuestionsService.createAnswerOption(questionId, input);
+  }
+
+  @Patch('questions/:questionId/options/:id')
+  @Roles(...rolePolicies.assessmentAnswerOptionsCreate)
+  @CourseScope('param', 'id', 'option')
+  updateAnswerOption(@Param('id') optionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateAssessmentAnswerOptionSchema.parse(body);
+
+    return this.assessmentQuestionsService.updateAnswerOption(optionId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete('questions/:questionId/options/:id')
+  @Roles(...rolePolicies.assessmentAnswerOptionsCreate)
+  @CourseScope('param', 'id', 'option')
+  deleteAnswerOption(@Param('id') optionId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentQuestionsService.deleteAnswerOption(optionId, request.currentUser!.organizationId);
   }
 }

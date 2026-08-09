@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
-import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
+import { getAssessmentOptionLabel } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
@@ -32,6 +33,15 @@ export function AdminAssessmentBuilderPage() {
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const invalidMessage = t('admin.assessmentBuilder.invalidInput', 'Enter title, passing score 0–100, and optional attempts ≥ 1.');
   const [rowStats, setRowStats] = useState<Record<string, { questionsCount: number; attemptsCount: number }>>({});
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Assessment | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const previewDialogRef = useRef<HTMLDialogElement>(null);
+  const previewRequestRef = useRef(0);
+  const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
+  const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
+  const [previewOptions, setPreviewOptions] = useState<Record<string, AnswerOption[]>>({});
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const statusLabels: Record<AssessmentStatus, string> = {
     draft: t('admin.assessmentBuilder.status.draft', 'Draft'),
@@ -88,8 +98,50 @@ export function AdminAssessmentBuilderPage() {
     if (hasValidationErrors(titleErrors)) { setEditTitleErrors(titleErrors); return; }
     setEditTitleErrors({});
     const values = mapAssessmentForm(editForm); if (!values || !editAssessment) { setEditState({ status: 'error', message: invalidMessage }); return; } setEditState({ status: 'saving' }); try { const payload = { title: values.title, description: values.description, passingScore: values.passingScore, maxAttempts: values.maxAttempts, availableAfterCourseCompletion: values.availableAfterCourseCompletion, status: values.status }; const updated = await apiRequest<Assessment>(`/assessments/${encodeURIComponent(editAssessment.id)}`, { method: 'PATCH', body: JSON.stringify(payload) }); editDialogRef.current?.close(); builder.replaceAssessment(updated); } catch { setEditState({ status: 'error', message: t('admin.assessmentBuilder.editError', 'Unable to update assessment.') }); } }
-  async function updateStatus(id: string, status: string) { try { builder.replaceAssessment(await apiRequest<Assessment>(`/assessments/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })); } catch { await builder.load(builder.selectedCourseId); } }
+  async function updateStatus(id: string, status: string) {
+    setStatusError(null);
+    try {
+      builder.replaceAssessment(await apiRequest<Assessment>(`/assessments/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }));
+    } catch (error) {
+      setStatusError(error instanceof ApiClientError ? error.message : t('admin.assessmentBuilder.statusError', 'Unable to update status.'));
+      await builder.load(builder.selectedCourseId);
+    }
+  }
   async function openQuestions(assessment: Assessment) { setQuestionsAssessment(assessment); setQuestions([]); setOptions({}); setQuestionsLoading(true); questionsDialogRef.current?.showModal(); try { const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`); const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`))); setQuestions(loadedQuestions); setOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []]))); } catch { setQuestions([]); } finally { setQuestionsLoading(false); } }
+  async function openPreview(assessment: Assessment) {
+    const requestToken = ++previewRequestRef.current; // unique per invocation, so A -> B -> A can't collide
+    setPreviewAssessment(assessment);
+    setPreviewQuestions([]);
+    setPreviewOptions({});
+    setPreviewLoading(true);
+    previewDialogRef.current?.showModal();
+    try {
+      const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`);
+      const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`)));
+      if (previewRequestRef.current !== requestToken) return; // a newer preview was opened while this one was loading
+      setPreviewQuestions(loadedQuestions);
+      setPreviewOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []])));
+    } catch {
+      if (previewRequestRef.current !== requestToken) return;
+      setPreviewQuestions([]);
+    } finally {
+      if (previewRequestRef.current === requestToken) setPreviewLoading(false);
+    }
+  }
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiRequest(`/assessments/${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
+      builder.removeAssessment(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (error) {
+      setStatusError(error instanceof ApiClientError ? error.message : t('admin.assessmentBuilder.deleteError', 'Unable to delete assessment.'));
+      setDeleteTarget(null);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   if (builder.loadState.status === 'loading') return <main className="admin-state"><PageState message={t('admin.assessmentBuilder.loading', 'Loading assessment builder...')} variant="loading"/></main>;
   if (builder.loadState.status === 'error') return <main className="admin-state"><PageState title={t('admin.assessmentBuilder.title', 'Assessment builder')} message={builder.loadState.message} variant="error"/></main>;
@@ -107,6 +159,13 @@ export function AdminAssessmentBuilderPage() {
         </Button>
       }
     />
+
+    {statusError && (
+      <div className="ui-state ui-state--error admin-inline-banner" role="alert">
+        <p>{statusError}</p>
+        <button type="button" className="admin-inline-banner__close" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => setStatusError(null)}>×</button>
+      </div>
+    )}
 
     <Toolbar
       left={
@@ -142,6 +201,8 @@ export function AdminAssessmentBuilderPage() {
           <div className="td-actions">
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEdit(a)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openQuestions(a)}>{t('admin.assessmentBuilder.questions', 'Questions')}</button>
+            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openPreview(a)}>{t('admin.assessmentBuilder.preview', 'Preview')}</button>
+            <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => setDeleteTarget(a)}>{t('admin.assessmentBuilder.delete', 'Delete')}</button>
           </div>
         )},
       ] satisfies Column<Assessment>[]}
@@ -165,5 +226,61 @@ export function AdminAssessmentBuilderPage() {
     </dialog>
     <dialog ref={editDialogRef} className="admin-dialog"><header className="admin-dialog__header"><h2>{t('admin.assessmentBuilder.editTitle', 'Edit assessment')}</h2><button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => editDialogRef.current?.close()}>×</button></header><AssessmentSettingsForm form={editForm} dispatch={dispatchEdit} state={editState} onSubmit={updateAssessment} t={t} editing statusLabels={statusLabels} onCancel={() => editDialogRef.current?.close()} titleError={editTitleErrors.title} onTitleChange={() => setEditTitleErrors((prev) => clearFieldError(prev, 'title'))}/></dialog>
     <dialog ref={questionsDialogRef} className="admin-dialog" style={{ maxWidth: '720px', width: '100%' }}><header className="admin-dialog__header"><h2>{questionsAssessment?.title} — {t('admin.assessmentBuilder.questionsTitle', 'Questions')}</h2><button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => questionsDialogRef.current?.close()}>×</button></header><QuestionsEditor assessment={questionsAssessment} courses={data.courses} loading={questionsLoading} questions={questions} setQuestions={setQuestions} options={options} setOptions={setOptions} t={t}/></dialog>
+
+    <dialog ref={previewDialogRef} className="admin-dialog" style={{ maxWidth: '720px', width: '100%' }}>
+      <header className="admin-dialog__header">
+        <h2>{previewAssessment?.title} — {t('admin.assessmentBuilder.previewTitle', 'Preview')}</h2>
+        <button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => previewDialogRef.current?.close()}>×</button>
+      </header>
+      {previewLoading ? (
+        <PageState message={t('admin.assessmentBuilder.previewLoading', 'Loading preview...')} variant="loading"/>
+      ) : previewQuestions.length === 0 ? (
+        <EmptyState message={t('admin.assessmentBuilder.previewEmpty', 'This assessment has no questions yet.')}/>
+      ) : (
+        <div className="admin-preview">
+          {previewAssessment?.description && <p className="admin-preview__description">{previewAssessment.description}</p>}
+          <p className="admin-preview__meta">
+            {t('admin.assessmentBuilder.previewPassingScore', 'Passing score: {{score}}%', { score: previewAssessment?.passingScore })}
+          </p>
+          <ol className="admin-preview__questions">
+            {previewQuestions.map((question) => (
+              <li key={question.id} className="admin-preview__question">
+                <p className="admin-preview__question-title">{question.title} <span className="admin-preview__points">{question.points}pt</span></p>
+                {question.text && <p className="admin-preview__question-text">{question.text}</p>}
+                <ul className="admin-preview__options">
+                  {(previewOptions[question.id] ?? []).map((option) => (
+                    <li key={option.id}>
+                      <label>
+                        <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} disabled name={`preview-${question.id}`}/>
+                        {' '}
+                        {option.imageUrl ? (
+                          <span className="admin-preview__option-content">
+                            <img src={option.imageUrl} alt={option.text ?? ''} className="admin-preview__option-image"/>
+                            {option.text && <span>{option.text}</span>}
+                          </span>
+                        ) : (
+                          <span>{getAssessmentOptionLabel(option)}</span>
+                        )}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </dialog>
+
+    <ConfirmDialog
+      open={deleteTarget !== null}
+      title={t('admin.assessmentBuilder.deleteTitle', 'Delete assessment')}
+      message={t('admin.assessmentBuilder.deleteConfirm', 'Delete "{{title}}"? This action cannot be undone.', { title: deleteTarget?.title ?? '' })}
+      confirmLabel={deleting ? t('admin.assessmentBuilder.deleting', 'Deleting...') : t('admin.assessmentBuilder.delete', 'Delete')}
+      cancelLabel={t('admin.assessmentBuilder.cancel', 'Cancel')}
+      variant="danger"
+      onConfirm={() => void confirmDelete()}
+      onCancel={() => setDeleteTarget(null)}
+    />
   </AdminPageLayout>;
 }

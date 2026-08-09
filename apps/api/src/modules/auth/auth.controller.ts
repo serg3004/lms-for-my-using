@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Optional, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 
 import {
-  AuthCookieResponse,
   AuthHeaders,
   assertValidCsrf,
   clearAuthCookies,
@@ -10,6 +9,7 @@ import {
   resolveRefreshToken,
   setAuthCookies,
 } from './auth.cookies.js';
+import type { AuthCookieResponse } from './auth.cookies.js';
 import { AuthSessionStore } from './auth.session-store.js';
 import { AuthService } from './auth.service.js';
 import { AuthenticatedAccess, PublicAccess } from './roles.js';

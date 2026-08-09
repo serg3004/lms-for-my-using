@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "baseUrl": ".",
+    "isolatedModules": true,
     "paths": {
       "@lms/shared": ["../../packages/shared/src/index.ts"]
     }

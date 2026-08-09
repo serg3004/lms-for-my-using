@@ -2,7 +2,7 @@ import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@ne
 import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { AuthenticatedRequest } from './auth.guard.js';
+import type { AuthenticatedRequest } from './auth.guard.js';
 import { type CurrentUser } from './auth.schemas.js';
 import { RolesGuard } from './roles.guard.js';
 import { UserRole } from './roles.js';

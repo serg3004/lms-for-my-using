@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { UploadService } from '../upload/upload.service.js';
-import { validateUploadMetadata } from '../upload/upload.validation.js';
+import { UploadService } from '../upload/public.js';
+import { validateUploadMetadata } from '../upload/public.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import type { CompleteMultipartUploadInput, InitiateMultipartUploadInput } from './multipart-upload.schemas.js';
