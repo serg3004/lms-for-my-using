@@ -57,6 +57,19 @@ export class AssessmentAttemptsController {
     return this.assessmentResultsService.getAttemptResult(attemptId, currentUser);
   }
 
+  @Post('assessments/:assessmentId/attempts/preview')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  previewAttempt(
+    @Param('assessmentId') assessmentId: string,
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    const input: CreateAssessmentAttemptInput = createAssessmentAttemptSchema.parse(body);
+
+    return this.assessmentAttemptsService.previewAttempt(assessmentId, request.currentUser!.organizationId, input);
+  }
+
   @Post('assessments/:assessmentId/attempts/start')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')
