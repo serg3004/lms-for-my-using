@@ -5,6 +5,7 @@ import {
   buildAssessmentAnswers,
   computeSecondsLeft,
   countAnsweredQuestions,
+  getAnswerOutcome,
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
   selectedIds,
@@ -76,5 +77,19 @@ describe('assessment taking model', () => {
     const now = new Date('2026-01-01T00:20:00.000Z').getTime(); // 20 minutes elapsed, 10-minute limit
 
     expect(computeSecondsLeft(startedAt, 10, now)).toBe(0);
+  });
+});
+
+describe('getAnswerOutcome', () => {
+  it('reports an exact match as correct regardless of score', () => {
+    expect(getAnswerOutcome({ isCorrect: true, score: 2 })).toBe('correct');
+  });
+
+  it('reports a non-exact match with partial credit as partial', () => {
+    expect(getAnswerOutcome({ isCorrect: false, score: 0.5 })).toBe('partial');
+  });
+
+  it('reports a zero-score non-exact match as incorrect', () => {
+    expect(getAnswerOutcome({ isCorrect: false, score: 0 })).toBe('incorrect');
   });
 });

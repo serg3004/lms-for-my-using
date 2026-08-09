@@ -1085,6 +1085,7 @@
     "resultPassingScore": "Өту балы: {{score}}%",
     "resultBreakdown": "Қателерді талдау",
     "resultCorrect": "дұрыс",
+    "resultPartial": "ішінара",
     "resultIncorrect": "қате",
     "resultYourAnswer": "Сіздің жауабыңыз",
     "resultCorrectAnswer": "Дұрыс жауап",

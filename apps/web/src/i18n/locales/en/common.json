@@ -1067,6 +1067,7 @@
     "resultPassingScore": "Passing score: {{score}}%",
     "resultBreakdown": "Question breakdown",
     "resultCorrect": "correct",
+    "resultPartial": "partial credit",
     "resultIncorrect": "incorrect",
     "resultYourAnswer": "Your answer",
     "resultCorrectAnswer": "Correct answer",

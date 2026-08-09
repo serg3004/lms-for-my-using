@@ -6,7 +6,7 @@ import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
-import { buildAssessmentAnswers, countAnsweredQuestions, getAssessmentOptionLabel, selectedIds, type SelectedAnswers } from './assessment-taking/model.js';
+import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAssessmentOptionLabel, selectedIds, type SelectedAnswers } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
@@ -299,9 +299,12 @@ export function AdminAssessmentBuilderPage() {
               {previewSubmit.result.answers.map((answer) => {
                 const question = previewQuestions.find((q) => q.id === answer.questionId);
                 const selectedLabel = describePreviewAnswerSelection(answer, previewOptions[answer.questionId] ?? []);
+                const outcome = getAnswerOutcome(answer);
+                const outcomeIcon = { correct: '✓', partial: '½', incorrect: '✗' }[outcome];
+                const outcomeLabel = { correct: t('assessments.resultCorrect'), partial: t('assessments.resultPartial'), incorrect: t('assessments.resultIncorrect') }[outcome];
                 return (
-                  <li key={answer.questionId} className={`learner-quiz__breakdown-item ${answer.isCorrect ? 'learner-quiz__breakdown-item--correct' : 'learner-quiz__breakdown-item--wrong'}`}>
-                    <div className="learner-quiz__breakdown-icon">{answer.isCorrect ? '✓' : '✗'}</div>
+                  <li key={answer.questionId} className={`learner-quiz__breakdown-item learner-quiz__breakdown-item--${outcome}`}>
+                    <div className="learner-quiz__breakdown-icon">{outcomeIcon}</div>
                     <div className="learner-quiz__breakdown-body">
                       <p className="learner-quiz__breakdown-question">{question?.title}</p>
                       <p className="learner-quiz__breakdown-answer">
@@ -309,7 +312,7 @@ export function AdminAssessmentBuilderPage() {
                         {selectedLabel}
                       </p>
                       <p className="learner-quiz__breakdown-points">
-                        {answer.score} / {question?.points ?? 0} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
+                        {answer.score} / {question?.points ?? 0} {outcomeLabel}
                       </p>
                     </div>
                   </li>
