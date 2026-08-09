@@ -21,6 +21,7 @@ const assessmentSelect = {
   maxAttempts: true,
   timeLimitMinutes: true,
   availableAfterCourseCompletion: true,
+  randomizeOrder: true,
   createdAt: true,
   updatedAt: true,
 } as const;

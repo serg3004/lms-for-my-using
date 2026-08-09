@@ -305,6 +305,7 @@
       "passingScore": "及格分数（0–100）",
       "maxAttempts": "最大尝试次数（留空为不限）",
       "availableAfterCompletion": "课程完成后可用",
+      "randomizeOrder": "为每位学员随机排列题目和选项顺序",
       "description": "描述",
       "invalidInput": "请输入标题、0–100 的及格分数，以及可选的尝试次数（≥ 1）。",
       "titleRequired": "测试标题为必填项。",

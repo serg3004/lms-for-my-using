@@ -305,6 +305,7 @@
       "passingScore": "Passing score (0–100)",
       "maxAttempts": "Max attempts (blank = unlimited)",
       "availableAfterCompletion": "Available after course completion",
+      "randomizeOrder": "Randomize question and answer order per learner",
       "description": "Description",
       "invalidInput": "Enter title, passing score 0–100, and optional attempts ≥ 1.",
       "titleRequired": "Assessment title is required.",

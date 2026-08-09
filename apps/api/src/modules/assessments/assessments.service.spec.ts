@@ -25,6 +25,7 @@ describe('Assessments validation', () => {
       status: 'draft',
       passingScore: 70,
       availableAfterCourseCompletion: true,
+      randomizeOrder: false,
     });
   });
 
@@ -56,6 +57,25 @@ describe('Assessments validation', () => {
     });
 
     expect(input.timeLimitMinutes).toBe(30);
+  });
+
+  it('accepts a randomizeOrder flag, defaulting to false', () => {
+    const defaultInput = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Final test',
+      slug: 'final-test',
+    });
+    expect(defaultInput.randomizeOrder).toBe(false);
+
+    const explicitInput = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Final test',
+      slug: 'final-test',
+      randomizeOrder: true,
+    });
+    expect(explicitInput.randomizeOrder).toBe(true);
   });
 
   it('rejects assessment input without title', () => {

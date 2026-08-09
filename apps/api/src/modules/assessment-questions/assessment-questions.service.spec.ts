@@ -162,6 +162,7 @@ describe('AssessmentQuestionsService learner quiz', () => {
     const result = await service.listLearnerQuizQuestions(
       '22222222-2222-2222-2222-222222222222',
       '11111111-1111-1111-1111-111111111111',
+      '55555555-5555-5555-5555-555555555555',
     );
 
     expect(result[0]?.options[0]).not.toHaveProperty('isCorrect');
@@ -176,6 +177,53 @@ describe('AssessmentQuestionsService learner quiz', () => {
         }),
       }),
     );
+  });
+
+  it('returns questions in stored order when randomizeOrder is off', async () => {
+    const questions = [
+      { id: 'q1', options: [{ id: 'q1-a' }, { id: 'q1-b' }] },
+      { id: 'q2', options: [{ id: 'q2-a' }, { id: 'q2-b' }] },
+      { id: 'q3', options: [{ id: 'q3-a' }, { id: 'q3-b' }] },
+    ];
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: 'assessment-1', randomizeOrder: false }) },
+      assessmentQuestion: { findMany: async () => questions },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    const result = await service.listLearnerQuizQuestions('assessment-1', 'org-1', 'user-1');
+
+    expect(result.map((q) => q.id)).toEqual(['q1', 'q2', 'q3']);
+  });
+
+  it('shuffles question and option order deterministically per user when randomizeOrder is on', async () => {
+    const questions = [
+      { id: 'q1', options: [{ id: 'q1-a' }, { id: 'q1-b' }, { id: 'q1-c' }, { id: 'q1-d' }] },
+      { id: 'q2', options: [{ id: 'q2-a' }, { id: 'q2-b' }, { id: 'q2-c' }, { id: 'q2-d' }] },
+      { id: 'q3', options: [{ id: 'q3-a' }, { id: 'q3-b' }, { id: 'q3-c' }, { id: 'q3-d' }] },
+      { id: 'q4', options: [{ id: 'q4-a' }, { id: 'q4-b' }, { id: 'q4-c' }, { id: 'q4-d' }] },
+    ];
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: 'assessment-1', randomizeOrder: true }) },
+      assessmentQuestion: { findMany: async () => questions },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    const forUser1First = await service.listLearnerQuizQuestions('assessment-1', 'org-1', 'user-1');
+    const forUser1Second = await service.listLearnerQuizQuestions('assessment-1', 'org-1', 'user-1');
+    const forUser2 = await service.listLearnerQuizQuestions('assessment-1', 'org-1', 'user-2');
+
+    // Same user, same assessment: stable order across reloads.
+    expect(forUser1First.map((q) => q.id)).toEqual(forUser1Second.map((q) => q.id));
+    // Every question and option still present — a reorder, not a loss of data.
+    expect(forUser1First.map((q) => q.id).sort()).toEqual(['q1', 'q2', 'q3', 'q4']);
+    forUser1First.forEach((question) => {
+      expect(question.options.map((o) => o.id).sort()).toEqual(
+        questions.find((q) => q.id === question.id)!.options.map((o) => o.id).sort(),
+      );
+    });
+    // Different users: different order (statistically — this seed pair happens to differ).
+    expect(forUser1First.map((q) => q.id)).not.toEqual(forUser2.map((q) => q.id));
   });
 });
 
