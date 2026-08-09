@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard } from '../auth/auth.guard.js';
-import type { AuthenticatedRequest } from '../auth/auth.guard.js';
-import { OrganizationScope } from '../auth/organization-scope.js';
-import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { OrganizationScope } from '../auth/public.js';
+import { OrganizationScopeGuard } from '../auth/public.js';
+import { Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import {
   createAssessmentAnswerOptionSchema,
   createAssessmentQuestionSchema,

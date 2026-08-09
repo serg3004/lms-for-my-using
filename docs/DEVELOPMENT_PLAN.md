@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-08-08 (перепроверены PR 205–206: shared contracts и ESM/test configuration)
+**Обновлён:** 2026-08-09 (реализован PR 207: boundaries модульного монолита)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -2765,7 +2765,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза G — Backend-архитектура и производительность
 
-## PR 207 — Boundaries модульного монолита 🔲
+## PR 207 — Boundaries модульного монолита ✅
 
 **Проблема:** Рост модулей создаёт риск прямых imports internal services и Prisma из controllers.
 
@@ -2779,6 +2779,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Internal imports запрещены CI
 - Circular dependencies отсутствуют
 - Поведение не изменено.
+
+> **Факт:** Для `auth`, `course-access`, `manager-team-scope` и `upload` введены
+> явные `public.ts`; production-код других модулей больше не импортирует их
+> внутренние файлы напрямую. `architecture:check` запускается как часть API lint,
+> запрещает новые cross-module internal imports и Prisma/database imports из
+> controllers, а также строит граф зависимостей и отклоняет циклы. Единственный
+> прямой Prisma-вызов из `HealthController` перенесён в инфраструктурный
+> `DatabaseHealthService`. Полные API tests, lint, typecheck и build подтверждают
+> сохранение поведения.
 
 ---
 

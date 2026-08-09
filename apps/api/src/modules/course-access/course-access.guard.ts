@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, SetMetadata } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import type { AuthenticatedRequest } from '../auth/auth.guard.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
 import { CourseAccessPolicy, CourseResource } from './course-access.policy.js';
 
 const courseScopeKey = 'course-scope';

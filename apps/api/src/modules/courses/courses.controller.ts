@@ -1,13 +1,13 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
-import { AuthGuard } from '../auth/auth.guard.js';
-import type { AuthenticatedRequest } from '../auth/auth.guard.js';
-import { OrganizationScope } from '../auth/organization-scope.js';
-import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { isLearnerOnly, Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessPolicy } from '../course-access/course-access.policy.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { OrganizationScope } from '../auth/public.js';
+import { OrganizationScopeGuard } from '../auth/public.js';
+import { isLearnerOnly, Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessPolicy } from '../course-access/public.js';
 import {
   assignCourseInstructorSchema,
   createCourseSchema,

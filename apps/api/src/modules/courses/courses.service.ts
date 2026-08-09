@@ -1,7 +1,8 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CourseAccessPolicy, CourseScopedUser } from '../course-access/course-access.policy.js';
+import { CourseAccessPolicy } from '../course-access/public.js';
+import type { CourseScopedUser } from '../course-access/public.js';
 import { AssignCourseInstructorInput, CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
 
 const instructorSummarySelect = {
