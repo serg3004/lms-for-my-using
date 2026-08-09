@@ -714,7 +714,12 @@
   background: rgb(21 128 61 / 4%);
 }
 
-.learner-quiz__breakdown-item--wrong {
+.learner-quiz__breakdown-item--partial {
+  border-color: rgb(217 119 6 / 40%);
+  background: rgb(217 119 6 / 4%);
+}
+
+.learner-quiz__breakdown-item--incorrect {
   border-color: rgb(220 38 38 / 40%);
   background: rgb(220 38 38 / 3%);
 }
@@ -736,7 +741,12 @@
   color: var(--color-success);
 }
 
-.learner-quiz__breakdown-item--wrong .learner-quiz__breakdown-icon {
+.learner-quiz__breakdown-item--partial .learner-quiz__breakdown-icon {
+  background: rgb(217 119 6 / 12%);
+  color: var(--color-warning);
+}
+
+.learner-quiz__breakdown-item--incorrect .learner-quiz__breakdown-icon {
   background: rgb(220 38 38 / 12%);
   color: var(--color-danger);
 }

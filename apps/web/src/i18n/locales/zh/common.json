@@ -1072,6 +1072,7 @@
     "resultPassingScore": "通过分数：{{score}}%",
     "resultBreakdown": "题目解析",
     "resultCorrect": "正确",
+    "resultPartial": "部分得分",
     "resultIncorrect": "错误",
     "resultYourAnswer": "您的答案",
     "resultCorrectAnswer": "正确答案",

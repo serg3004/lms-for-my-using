@@ -60,6 +60,15 @@ export function getAssessmentOptionLabel(
   return option.text ?? option.imageUrl ?? option.id;
 }
 
+/**
+ * A multiple_choice answer can score partial credit (0 < score < points) without an exact
+ * match, so `isCorrect` alone would misreport it as an outright wrong answer to the learner.
+ */
+export function getAnswerOutcome(answer: { isCorrect: boolean; score: number }): 'correct' | 'partial' | 'incorrect' {
+  if (answer.isCorrect) return 'correct';
+  return answer.score > 0 ? 'partial' : 'incorrect';
+}
+
 /** Seconds remaining in a timed attempt's window, based on the server-trusted startedAt — never negative. */
 export function computeSecondsLeft(startedAtIso: string, timeLimitMinutes: number, now: number = Date.now()): number {
   const elapsedSeconds = Math.floor((now - new Date(startedAtIso).getTime()) / 1000);
