@@ -188,18 +188,24 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
 });
 
 describe('AssessmentsService.deleteAssessment', () => {
-  function buildTxPrisma(options: { rows: { id: string; slug: string }[]; activeAttempt?: { id: string } | null; update?: jest.Mock }) {
+  function buildTxPrisma(options: {
+    rows: { id: string; slug: string; timeLimitMinutes?: number | null }[];
+    activeAttempt?: { id: string } | null;
+    findFirst?: jest.Mock;
+    update?: jest.Mock;
+  }) {
     const update = options.update ?? jest.fn(async () => ({ id: assessmentId }));
+    const findFirst = options.findFirst ?? jest.fn(async () => options.activeAttempt ?? null);
     const tx = {
-      $queryRaw: jest.fn(async () => options.rows),
-      assessmentAttempt: { findFirst: async () => options.activeAttempt ?? null },
+      $queryRaw: jest.fn(async () => options.rows.map((row) => ({ timeLimitMinutes: null, ...row }))),
+      assessmentAttempt: { findFirst },
       assessment: { update },
     };
     const prisma = {
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(tx),
     } as unknown as PrismaService;
 
-    return { prisma, tx, update };
+    return { prisma, tx, update, findFirst };
   }
 
   it('soft-deletes the assessment, guarding against in-progress attempts inside a row-locked transaction', async () => {
@@ -224,14 +230,49 @@ describe('AssessmentsService.deleteAssessment', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it('rejects deleting an assessment with an attempt in progress', async () => {
-    const { prisma, update } = buildTxPrisma({
-      rows: [{ id: assessmentId, slug: 'final-test' }],
+  it('rejects deleting an assessment with an attempt in progress that is still within its time limit', async () => {
+    const { prisma, update, findFirst } = buildTxPrisma({
+      rows: [{ id: assessmentId, slug: 'final-test', timeLimitMinutes: 10 }],
       activeAttempt: { id: 'attempt-id' },
     });
     const service = new AssessmentsService(prisma);
 
     await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
     expect(update).not.toHaveBeenCalled();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ assessmentId, status: 'in_progress', startedAt: { gt: expect.any(Date) } }),
+      }),
+    );
+  });
+
+  it('allows deleting when the only in_progress attempt has already expired past its time limit', async () => {
+    // The DB-level startedAt filter is what actually excludes an expired attempt — simulated
+    // here by returning null, as if the WHERE clause found no in_progress row within the window.
+    const { prisma, update } = buildTxPrisma({
+      rows: [{ id: assessmentId, slug: 'final-test', timeLimitMinutes: 10 }],
+      activeAttempt: null,
+    });
+    const service = new AssessmentsService(prisma);
+
+    await service.deleteAssessment(assessmentId, organizationId);
+
+    expect(update).toHaveBeenCalled();
+  });
+
+  it('blocks deleting on any in_progress attempt when the assessment no longer has a time limit to expire against', async () => {
+    const { prisma, update, findFirst } = buildTxPrisma({
+      rows: [{ id: assessmentId, slug: 'final-test', timeLimitMinutes: null }],
+      activeAttempt: { id: 'attempt-id' },
+    });
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { assessmentId, status: 'in_progress', deletedAt: null },
+      }),
+    );
   });
 });
