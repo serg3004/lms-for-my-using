@@ -333,6 +333,7 @@
       "previewLoading": "Алдын ала қарау жүктелуде...",
       "previewEmpty": "Бұл тестте әлі сұрақтар жоқ.",
       "previewPassingScore": "Өту балы: {{score}}%",
+      "previewSubmitError": "Алдын ала қарауды жіберу мүмкін болмады.",
       "editTitle": "Тестті өңдеу",
       "close": "Жабу",
       "cancel": "Бас тарту",

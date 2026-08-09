@@ -333,6 +333,7 @@
       "previewLoading": "Загрузка предпросмотра...",
       "previewEmpty": "В этом тесте пока нет вопросов.",
       "previewPassingScore": "Проходной балл: {{score}}%",
+      "previewSubmitError": "Не удалось отправить предпросмотр.",
       "editTitle": "Редактировать тест",
       "close": "Закрыть",
       "cancel": "Отмена",

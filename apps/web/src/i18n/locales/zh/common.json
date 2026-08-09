@@ -333,6 +333,7 @@
       "previewLoading": "正在加载预览...",
       "previewEmpty": "该测验尚无题目。",
       "previewPassingScore": "及格分数：{{score}}%",
+      "previewSubmitError": "无法提交预览。",
       "editTitle": "编辑测试",
       "close": "关闭",
       "cancel": "取消",

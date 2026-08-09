@@ -1,4 +1,5 @@
 import { slugify } from '../../shared/slugify.js';
+import { getAssessmentOptionLabel, type QuestionWithOptions } from '../assessment-taking/model.js';
 
 export type Course = { id: string; organizationId: string; title: string; status: string };
 export type Lesson = { id: string; title: string; order: number };
@@ -8,6 +9,40 @@ export type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
 export type Question = { id: string; organizationId: string; type: QuestionType; title: string; text: string | null; points: number; order: number };
 export type AnswerOption = { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number };
 export type SaveState = { status: 'idle' | 'saving' | 'error'; message?: string };
+
+export type AssessmentPreviewAnswer = {
+  questionId: string;
+  selectedOptionId?: string;
+  selectedOptionIds?: string[];
+  isCorrect: boolean;
+  score: number;
+};
+export type AssessmentPreviewResult = { score: number; maxScore: number; percentage: number; passed: boolean; answers: AssessmentPreviewAnswer[] };
+
+export function buildPreviewQuestionsWithOptions(questions: Question[], options: Record<string, AnswerOption[]>): QuestionWithOptions[] {
+  return questions.map((question) => ({
+    ...question,
+    options: (options[question.id] ?? []).map((option) => ({ ...option, questionId: question.id })),
+  }));
+}
+
+/** Renders a graded preview answer's selection back to a human-readable label, for the result breakdown. */
+export function describePreviewAnswerSelection(answer: AssessmentPreviewAnswer, questionOptions: AnswerOption[]): string {
+  if (answer.selectedOptionIds) {
+    const labels = answer.selectedOptionIds
+      .map((id) => questionOptions.find((option) => option.id === id))
+      .filter((option): option is AnswerOption => Boolean(option))
+      .map((option) => getAssessmentOptionLabel(option));
+    return labels.length > 0 ? labels.join(', ') : '—';
+  }
+
+  if (answer.selectedOptionId) {
+    const option = questionOptions.find((o) => o.id === answer.selectedOptionId);
+    return option ? getAssessmentOptionLabel(option) : '—';
+  }
+
+  return '—';
+}
 export type AssessmentForm = { title: string; description: string; passingScore: string; maxAttempts: string; availableAfterCourseCompletion: boolean; status: AssessmentStatus };
 
 export const ASSESSMENT_STATUSES: AssessmentStatus[] = ['draft', 'published', 'archived'];
