@@ -327,6 +327,8 @@
       "questions": "题目",
       "empty": "未找到测试。",
       "statusError": "无法更新状态。",
+      "publish": "发布",
+      "publishNoQuestions": "发布前请至少添加一个带正确答案的问题。",
       "delete": "删除",
       "deleteTitle": "删除测验",
       "deleteConfirm": "删除“{{title}}”？此操作无法撤销。",

@@ -240,6 +240,17 @@ export function AdminAssessmentBuilderPage() {
         { key: 'attempts', label: t('admin.assessmentBuilder.col.attempts', 'Attempts'), render: (a) => rowStats[a.id]?.attemptsCount ?? '—' },
         { key: 'actions', label: '', render: (a) => (
           <div className="td-actions">
+            {a.status !== 'published' ? (
+              <button
+                className="admin-btn admin-btn--sm admin-btn--primary"
+                type="button"
+                disabled={(rowStats[a.id]?.questionsCount ?? 0) === 0}
+                title={(rowStats[a.id]?.questionsCount ?? 0) === 0 ? t('admin.assessmentBuilder.publishNoQuestions', 'Add at least one question with a correct answer before publishing.') : undefined}
+                onClick={() => void updateStatus(a.id, 'published')}
+              >
+                {t('admin.assessmentBuilder.publish', 'Publish')}
+              </button>
+            ) : null}
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEdit(a)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openQuestions(a)}>{t('admin.assessmentBuilder.questions', 'Questions')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openPreview(a)}>{t('admin.assessmentBuilder.preview', 'Preview')}</button>
