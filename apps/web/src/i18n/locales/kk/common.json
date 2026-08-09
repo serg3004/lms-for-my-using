@@ -447,6 +447,8 @@
       "issuing": "Берілуде...",
       "issue": "Сертификат беру",
       "export": "CSV экспорттау",
+      "exportCsv": "CSV экспорттау",
+      "exportXlsx": "Excel экспорттау",
       "assessmentResultsTitle": "Тест нәтижелері",
       "noAssessments": "Тесттер табылмады.",
       "assessment": "Тест",
@@ -456,7 +458,8 @@
         "status": "Күй",
         "course": "Курс",
         "issuedAt": "Берілген күні",
-        "progress": "Прогресс"
+        "progress": "Прогресс",
+        "date": "Күні"
       },
       "passed": "Өтті",
       "failed": "Өтпеді",

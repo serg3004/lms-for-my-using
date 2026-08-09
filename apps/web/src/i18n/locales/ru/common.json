@@ -447,6 +447,8 @@
       "issuing": "Выдача...",
       "issue": "Выдать сертификат",
       "export": "Экспорт CSV",
+      "exportCsv": "Экспорт CSV",
+      "exportXlsx": "Экспорт Excel",
       "assessmentResultsTitle": "Результаты тестов",
       "noAssessments": "Тесты не найдены.",
       "assessment": "Тест",
@@ -456,7 +458,8 @@
         "status": "Статус",
         "course": "Курс",
         "issuedAt": "Выдан",
-        "progress": "Прогресс"
+        "progress": "Прогресс",
+        "date": "Дата"
       },
       "passed": "Пройден",
       "failed": "Не пройден",

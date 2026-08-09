@@ -5,6 +5,7 @@ import type { TFunction } from 'i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { DataTable, EmptyState, PageState, StatCard, StatsGrid, StatusBadge, type Column } from '../shared/ui.js';
+import { formatNullableDate } from '../shared/formatDate.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 
 type Course = { id: string; organizationId: string; title: string };
@@ -12,7 +13,7 @@ type User = { id: string; email: string; name: string | null };
 type Assessment = { id: string; courseId: string; title: string; passingScore: number; status: string };
 type Progress = { id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
 type Certificate = { id: string; courseId: string; userId: string; issuedAt: string; status: string };
-type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean };
+type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean; completedAt: string | null };
 
 type LoadState =
   | { status: 'loading' }
@@ -70,6 +71,47 @@ export function downloadResultsCsv(courses: Course[], users: User[], progressIte
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+export function buildAssessmentResultsExportRows(results: AssessmentResult[], users: User[], t: TFunction): string[][] {
+  const header = [
+    t('admin.results.col.learner', 'Learner'),
+    t('admin.results.col.score', 'Score'),
+    t('admin.results.col.status', 'Status'),
+    t('admin.results.col.date', 'Date'),
+  ];
+  const rows = results.map((result) => [
+    findUserLabel(users, result.userId),
+    `${result.score}/${result.maxScore} (${result.percentage}%)`,
+    result.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed'),
+    formatNullableDate(result.completedAt, '—'),
+  ]);
+  return [header, ...rows];
+}
+
+export function downloadAssessmentResultsCsv(results: AssessmentResult[], users: User[], t: TFunction) {
+  const lines = buildAssessmentResultsExportRows(results, users, t)
+    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `assessment-results-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadAssessmentResultsXlsx(results: AssessmentResult[], users: User[], t: TFunction) {
+  const rows = buildAssessmentResultsExportRows(results, users, t);
+  const XLSX = await import('xlsx');
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
+  XLSX.writeFile(workbook, `assessment-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function AdminResultsCertificatesPage() {
@@ -302,7 +344,27 @@ export function AdminResultsCertificatesPage() {
         </AdminCard>
 
         <AdminCard>
-          <h2>{t('admin.results.assessmentResultsTitle', 'Assessment results')}</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <h2>{t('admin.results.assessmentResultsTitle', 'Assessment results')}</h2>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                className="admin-btn"
+                type="button"
+                disabled={loadState.assessmentResults.length === 0}
+                onClick={() => downloadAssessmentResultsCsv(loadState.assessmentResults, loadState.users, t)}
+              >
+                {t('admin.results.exportCsv', 'Export CSV')}
+              </button>
+              <button
+                className="admin-btn"
+                type="button"
+                disabled={loadState.assessmentResults.length === 0}
+                onClick={() => void downloadAssessmentResultsXlsx(loadState.assessmentResults, loadState.users, t)}
+              >
+                {t('admin.results.exportXlsx', 'Export Excel')}
+              </button>
+            </div>
+          </div>
           {loadState.assessments.length === 0 ? (
             <EmptyState message={t('admin.results.noAssessments', 'No assessments found.')} />
           ) : (
