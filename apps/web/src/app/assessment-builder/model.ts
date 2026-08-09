@@ -1,3 +1,4 @@
+import { ApiClientError } from '../../shared/apiClient.js';
 import { slugify } from '../../shared/slugify.js';
 import { getAssessmentOptionLabel, type QuestionWithOptions } from '../assessment-taking/model.js';
 
@@ -67,6 +68,10 @@ export function mapAssessmentForm(form: AssessmentForm): ValidAssessmentForm | n
 
 export function appendOption(options: Record<string, AnswerOption[]>, questionId: string, option: AnswerOption) {
   return { ...options, [questionId]: [...(options[questionId] ?? []), option] };
+}
+
+export function getAssessmentBuilderLoadErrorKey(error: unknown): string {
+  return error instanceof ApiClientError && error.status === 401 ? 'admin.assessmentBuilder.sessionExpired' : 'admin.assessmentBuilder.loadError';
 }
 
 export function filterAssessments(assessments: Assessment[], search: string, statusFilter: 'all' | AssessmentStatus): Assessment[] {

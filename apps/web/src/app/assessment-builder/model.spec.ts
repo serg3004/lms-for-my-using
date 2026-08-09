@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
+import { ApiClientError } from '../../shared/apiClient.js';
+import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
@@ -19,6 +20,17 @@ describe('assessment builder model', () => {
   it('updates one field and appends an option immutably', () => {
     expect(assessmentFormReducer(emptyAssessmentForm(), { type: 'change', field: 'title', value: 'Quiz' }).title).toBe('Quiz');
     expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toHaveLength(1);
+  });
+});
+
+describe('getAssessmentBuilderLoadErrorKey', () => {
+  it('maps a 401 to the session-expired key', () => {
+    expect(getAssessmentBuilderLoadErrorKey(new ApiClientError('Unauthorized', 401))).toBe('admin.assessmentBuilder.sessionExpired');
+  });
+
+  it('maps any other error to the generic load-error key', () => {
+    expect(getAssessmentBuilderLoadErrorKey(new ApiClientError('Server error', 500))).toBe('admin.assessmentBuilder.loadError');
+    expect(getAssessmentBuilderLoadErrorKey(new Error('network down'))).toBe('admin.assessmentBuilder.loadError');
   });
 });
 
