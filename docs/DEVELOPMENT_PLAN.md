@@ -2791,7 +2791,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 208 — Background jobs foundation 🔲
+## PR 208 — Background jobs foundation ✅
 
 **Проблема:** Email, reports, certificates, scanning и cleanup не должны выполняться в HTTP request.
 
@@ -2808,6 +2808,18 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Retry не дублирует результат
 - Failures наблюдаемы
 - Integration test готов.
+
+> **Факт:** Добавлен глобальный `BackgroundJobsModule` с быстрым enqueue API и
+> отдельным BullMQ worker entrypoint `pnpm --filter @lms/api jobs:worker` поверх
+> существующего Redis. SHA-256 job id из имени и обязательного idempotency key
+> предотвращает повторное применение одной операции; по умолчанию настроены 5
+> попыток и exponential backoff. После исчерпания попыток job сохраняется в
+> отдельной dead-letter queue, а ошибка журналируется. Worker закрывает активную
+> обработку и Redis queues через Nest lifecycle hooks. Integration test проверяет
+> enqueue, выполнение handler, retry/backoff, дедупликацию результата,
+> dead-letter handling и graceful shutdown. Конкретные email/report/certificate/
+> scan/cleanup handlers подключаются отдельными PR без выполнения работы внутри
+> HTTP request.
 
 ---
 
