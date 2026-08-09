@@ -1,125 +1,97 @@
-# Railway Deployment Guide
+# Railway deployment notes
 
-## Architecture on Railway
+> **Статус:** `CURRENT`
+>
+> Краткая operational reference для текущей Railway topology. Подробности и policy — в `docs/RAILWAY_DEPLOY_GUIDE.md`.
+>
+> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
-```
-┌─────────────────────────────────────────┐
-│              Railway Project            │
-│                                         │
-│  ┌──────────┐   ┌──────────┐  ┌──────┐ │
-│  │  web     │   │  api     │  │  DB  │ │
-│  │  nginx   │──▶│  NestJS  │──▶  PG  │ │
-│  │  :80     │   │  :3000   │  │      │ │
-│  └──────────┘   └──────────┘  └──────┘ │
-└─────────────────────────────────────────┘
-```
+## Topology
 
-Three Railway services:
-- **web** — React SPA served by nginx (Dockerfile: `apps/web/Dockerfile`)
-- **api** — NestJS REST API (Dockerfile: `apps/api/Dockerfile`)
-- **PostgreSQL** — Railway managed Postgres plugin
+- Web service — public entrypoint.
+- API service — private Railway service.
+- Nginx проксирует `/api/` на `api.railway.internal:3000`.
+- Не включать Public Networking для API без отдельной owner/ops задачи.
 
----
+## Ports
 
-## First-time setup
+Railway runtime `PORT` используется current API env loader как `API_PORT`, если `API_PORT` не задан явно.
 
-### 1. Create Railway project
+Не нужно вручную фиксировать public API port 3000 для нормальной topology.
 
-1. Go to [railway.app](https://railway.app) → New Project
-2. Choose **Empty project**
+## API startup
 
-### 2. Add PostgreSQL
+Current Railway start command:
 
-In the project dashboard → **New** → **Database** → **PostgreSQL**
-
-Railway will automatically create the `DATABASE_URL` variable.
-
-### 3. Create API service
-
-1. **New** → **GitHub Repo** → select this repository
-2. Set **Root Directory**: `/` (repo root)
-3. Set **Dockerfile Path**: `apps/api/Dockerfile`
-4. Railway will detect `apps/api/railway.json` automatically
-5. **Important:** name this service exactly `api` — nginx resolves it as `api.railway.internal`
-
-**Required environment variables** (set in Railway dashboard):
-
-| Variable | Example | Notes |
-|---|---|---|
-| `DATABASE_URL` | set by Railway Postgres plugin | — |
-| `JWT_SECRET` | random 32+ char string | use `openssl rand -hex 32` |
-| `FRONTEND_URL` | `https://your-web.up.railway.app` | web service URL |
-| `NODE_ENV` | `production` | — |
-| `TRUST_PROXY` | `loopback,linklocal,uniquelocal` | Trust only private/loopback proxy addresses |
-
-Do not enable Public Networking on the API service. All public `/api/` traffic must
-enter through the web nginx service over Railway private networking; otherwise a
-client can bypass nginx's forwarded-header normalization and the intended network
-perimeter.
-
-### 4. Create Web service
-
-1. **New** → **GitHub Repo** → same repository
-2. Set **Root Directory**: `/` (repo root)
-3. Set **Dockerfile Path**: `apps/web/Dockerfile`
-4. Railway will detect `apps/web/railway.json` automatically
-
-No extra environment variables required for web.
-The API proxy target is `api:3000` (Railway internal network).
-
-### 5. Link services on internal network
-
-In Railway dashboard, both services must be in the same project.
-Internal hostname `api` in `infra/nginx/nginx.conf` resolves automatically
-via Railway's private networking.
-
----
-
-## Deployment flow
-
-On every push to `main`:
-
-```
-GitHub push → Railway detects change
-           → docker build (Dockerfile)
-           → prisma migrate deploy   ← runs on API startup
-           → node dist/main.js
+```text
+prisma migrate deploy
+node dist/main.js
 ```
 
-The API container runs `prisma migrate deploy` before starting the server.
-This is safe for multiple replicas because Prisma locks migrations.
+Фактическая команда задаётся `apps/api/railway.json`; этот файл является source of truth для Railway API startup.
 
----
+## Health
 
-## Useful Railway CLI commands
+Canonical API readiness endpoint:
 
-```bash
-# Install
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Link local project
-railway link
-
-# View logs
-railway logs --service api
-railway logs --service web
-
-# Open shell in running container
-railway shell --service api
-
-# Run demo seed (after first deploy)
-railway run --service api node dist/scripts/seed.js
-
-# Or via prisma:seed script locally against Railway DB
-# DATABASE_URL=<railway-db-url> node prisma/seed.mjs
+```text
+/api/v1/health/ready
 ```
 
----
+Liveness:
 
-## Rollback
+```text
+/api/v1/health/live
+```
 
-Railway keeps previous deployments. To roll back:
-Dashboard → service → Deployments tab → click previous deploy → **Redeploy**
+## Production env
+
+Использовать `.env.production.example` и current env validation как canonical inventory.
+
+Особенно учитывать:
+
+- `TRUST_PROXY` required in production;
+- Redis preferred/required unless explicit `ALLOW_IN_MEMORY_RATE_LIMIT=true` emergency fallback;
+- storage provider-neutral S3-compatible;
+- `S3_FILE_ORIGIN` optional.
+
+Не считать комментарии env-файла доказательством фактического live provider state.
+
+## Demo seed
+
+Historical command `node dist/scripts/seed.js` не использовать.
+
+Current guarded demo seed описан в:
+
+```text
+docs/ADMIN_DEMO_SEED.md
+```
+
+Перед apply соблюдать dry-run/environment/database safeguards из этого документа.
+
+## Staging
+
+Current repository policy не определяет отдельный Railway staging environment.
+
+GitHub Actions environment/workflow с названием `staging` не является доказательством отдельного Railway deployment.
+
+## Live verification
+
+Repository config не подтверждает фактические:
+
+- Railway service topology/domains;
+- Redis state;
+- storage provider/bucket/CORS;
+- scanner availability;
+- backup/PITR;
+- fresh production smoke.
+
+Для этих утверждений требуется fresh external evidence (`LIVE-VERIFY`).
+
+## Related docs
+
+- `docs/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/DEPLOY_FOUNDATION.md`
+- `docs/MIGRATION_BACKUP_POLICY.md`
+- `docs/STORAGE_UPLOAD_STATUS.md`
+- `docs/READINESS_AND_SECURITY_GATES.md`

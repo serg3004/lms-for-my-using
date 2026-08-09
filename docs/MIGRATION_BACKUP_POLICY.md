@@ -1,161 +1,199 @@
 # Migration and Backup Policy
 
-Document status: docs-only  
-Scope: MVP production preparation
+> **Статус:** `CURRENT`
+>
+> **Назначение:** описать current migration behavior, требования к compatibility/rollback и отдельно обозначить, что backup/PITR/restore state требует live verification.
+>
+> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
-This policy defines how database migrations and backups should be prepared, reviewed, applied, and rolled back for the LMS MVP.
+## 1. Migration source of truth
 
-This document does not add new migrations, does not change `schema.prisma`, does not run Prisma commands, and does not change deploy automation.
+**Статус:** `IMPLEMENTED`
 
-## Purpose
+Prisma schema/migrations являются current source of truth для database schema evolution.
 
-- Prevent data loss during database migrations.
-- Make production migrations reviewable.
-- Ensure a backup exists before any production migration.
-- Make rollback decisions explicit and predictable.
+Current CI проверяет migration replay на PostgreSQL service, а Railway API startup выполняет:
 
-## Source of truth
-
-Database structure is defined in:
-
-- `apps/api/prisma/schema.prisma`
-
-Migration files live in the current project structure:
-
-- `apps/api/prisma/migrations`
-
-API Prisma scripts are defined in `apps/api/package.json` and include:
-
-- `prisma:generate`: generate Prisma Client;
-- `prisma:migrate`: interactive/local development migration flow (`prisma migrate dev`);
-- `prisma:migrate:deploy`: apply committed migrations without prompting (`prisma migrate deploy`) — this is what runs in CI and in production.
-
-## Environment classes
-
-There is no separate staging environment for this project. The Railway project (`reasonable-reprieve`) has a single `production` environment; there is no staging/dry-run environment to apply migrations against before production. Treat CI's ephemeral Postgres service (see `docs/CI_AUDIT_BASELINE.md`) as the closest thing to a migration dry run.
-
-| Environment | Migration rule | Backup rule |
-|---|---|---|
-| local dev | `prisma migrate dev` may be used against a local or disposable database. | Backup is optional if the database is disposable. |
-| CI | `prisma migrate deploy` runs automatically against an ephemeral, disposable Postgres service on every push/PR. | Not applicable — database is recreated per run. |
-| production | `prisma migrate deploy` runs automatically on every API deploy, before the API process starts (`apps/api/railway.json` start command). Apply only reviewed and committed migrations. No ad-hoc schema changes. | Verified backup required before a migration that is destructive or otherwise risky. |
-
-## Migration review checklist
-
-Before any migration PR is merged, review:
-
-- the applied product requirement and data impact;
-- changes in `apps/api/prisma/schema.prisma`;
-- generated migration files in `apps/api/prisma/migrations`;
-- whether the migration is destructive, for example drops a column, table, index, or enum value;
-- whether existing data needs backfill or transformation;
-- whether the migration can be re-run safely;
-- the rollback plan and whether it is database-restore or forward-fix based;
-- application code that depends on the new schema;
-- any assumptions about seed data or demo data.
-
-## Local development flow
-
-A local development migration may be created only against a local or disposable database.
-
-Before using `prisma migrate dev`:
-
-1. Confirm `DATABASE_URL` points to a local or disposable database.
-2. Review `apps/api/prisma/schema.prisma`.
-3. Review existing migrations.
-4. Generate Prisma Client if needed.
-5. Run the project checks relevant to the change.
-
-Apply local changes with:
-
-```bash
-pnpm --filter @lms/api prisma:migrate
+```text
+prisma migrate deploy
 ```
 
-This command must not be run against the production database.
+перед запуском приложения.
 
-## Production migration flow
+---
 
-There is no staging environment to dry-run a migration against before production (see "Environment classes" above). CI's ephemeral Postgres service is the closest available dry run: `prisma migrate deploy` runs there on every push/PR before the migration ever reaches production.
+## 2. Current deployment migration model
 
-Production migrations run automatically as part of every API deploy — `apps/api/railway.json`'s start command runs `prisma migrate deploy` before starting the API process. There is no manual gate between "PR merged to `main`" and "migration applied to the production database." This makes the pre-merge review below the primary safety check, not a pre-production dry run.
+**Статус:** `IMPLEMENTED`
 
-Before merging a migration PR:
+Production-style Railway deploy использует automatic forward migration application при API startup.
 
-1. Confirm the migration is reviewed per the "Migration review checklist" above.
-2. Confirm a verified backup exists if the migration is destructive or otherwise risky.
-3. Confirm the backup can be restored.
-4. Confirm `prisma migrate deploy` will apply only committed migrations (no drift between `schema.prisma` and the migrations directory).
-5. Confirm the application code being deployed is compatible with the new schema (the API and its migrations deploy together, in the same image).
-6. Have a rollback decision owner available during the merge/deploy window.
+Следовательно старое правило «production migrations выполняются только вручную отдельной командой» больше не является current behavior.
 
-To run `prisma migrate deploy` manually against a target database (for example, to recover from a failed automatic deploy):
+### Important boundary
 
-```bash
-pnpm --filter @lms/api prisma:migrate:deploy
-```
+Automatic `prisma migrate deploy`:
 
-## Backup policy
+- применяет pending forward migrations;
+- не создаёт автоматический reverse migration;
+- не гарантирует rollback данных;
+- не заменяет compatibility/backup planning для risky changes.
 
-Production backups must be verified before any production migration.
+---
 
-A minimum backup record should include:
+## 3. Safe migration requirements
 
-- timestamp;
-- environment;
-- database identifier;
-- backup method;
-- operator or system that created the backup;
-- restore verification status;
-- retention expectation;
-- rollback owner.
+Для non-trivial schema/data changes задача должна определить:
 
-A backup is not ready if it cannot be restored or if the restore process is unknown.
+- backward/forward compatibility;
+- impact на old/new application version overlap;
+- data migration/backfill order;
+- expected locks/downtime risk;
+- rollback или forward-fix strategy;
+- backup/restore requirement;
+- verification query/test plan.
 
-## Rollback policy
+Destructive или production data migration требует отдельного подтверждения согласно project safety policy.
 
-Rollback strategy depends on the migration type.
+---
 
-| Migration type | Rollback strategy |
-|---|---|
-| Non-destructive addition | Forward-fix PR is preferred. |
-| Destructive change not yet exposed to users | Restore from backup or revert the deploy before release. |
-| Destructive change with user data impact | Restore from backup only if approved by the operator. Otherwise, use a forward-fix with a data repair plan. |
-| Forward data transformation | Do not roll back by hand-editing data. Use a reviewed repair/forward migration. |
+## 4. CI migration checks
 
-Rollback plan must be written before the migration is applied. If the rollback plan is restore-based, the backup must be verified first.
+**Статус:** `CONFIGURED` + `EXECUTED`
 
-## Prohibited practices
+CI выполняет migration/integration checks на clean/test PostgreSQL instance.
 
-- Do not run `prisma migrate dev` against the production database.
-- Do not edit production data manually to "fix" a migration.
-- Do not apply a destructive migration without a verified backup.
-- Do not mix migrations with unrelated features, refactors, or docs-only cleanup.
-- Do not commit real secrets or database URLs to docs or example files.
+Это подтверждает, что migrations применимы к CI test database, но **не является** полноценным rehearsal upgrade реальной production dataset/history.
 
-## Minimum release notes for a migration PR
+Если migration зависит от существующих данных, нужен отдельный data-specific validation plan.
 
-A migration PR must include:
+---
 
-- what changed;
-- why it is needed;
-- whether the change is destructive;
-- whether a backup is required;
-- how to apply the migration;
-- how to verify it;
-- how to roll it back;
-- what checks were run.
+## 5. Drift handling
 
-## Checks
+Dedicated external production drift gate в repository не подтверждён.
 
-For docs-only policy updates:
+Поэтому drift нельзя считать автоматически предотвращённым только потому, что CI применяет migrations на clean database.
 
-- lint: not required unless docs linting is enforced;
-- typecheck: not required;
-- tests: not required;
-- build: not required.
+Если требуется production drift verification, это отдельная operational task/check.
 
-For actual migration PRs:
+---
 
-- run Prisma generate;
-- run applicable local or CI checks (there is no staging environment to smoke-check separately — see "Environment classes").
+## 6. Backup policy
+
+### Repository policy
+
+**Статус:** `OWNER-DECISION` / `PARTIAL`
+
+Перед risky production migration должен существовать реалистичный recovery path.
+
+Минимальная intended policy:
+
+1. определить, требуется ли backup/PITR checkpoint;
+2. подтвердить его актуальность до destructive/risky change;
+3. знать restore procedure;
+4. иметь acceptance evidence после restore test/drill, если release risk это требует.
+
+### Live backup state
+
+**Статус:** `LIVE-VERIFY`
+
+Repository не доказывает:
+
+- включены ли сейчас Railway/Postgres backups;
+- включён ли PITR;
+- retention period;
+- last successful backup;
+- last restore drill;
+- фактическое RPO/RTO.
+
+**Правило:** `MUST NOT` писать «backups enabled/verified» без fresh provider evidence.
+
+---
+
+## 7. Staging/dry-run environment
+
+**Current documented state:** `NO-SEPARATE-RAILWAY-STAGING`.
+
+Repository сейчас не определяет отдельный Railway staging environment.
+
+Поэтому требования вида «обязательно прогнать migration на staging Railway перед production» не являются исполнимым current repository rule без отдельной owner/ops задачи по созданию staging.
+
+Допустимые repository-level checks сейчас:
+
+- CI clean DB migration replay;
+- local/test database migration validation;
+- targeted data rehearsal при наличии sanitized/copy dataset и отдельной задачи.
+
+Создание отдельного staging environment — отдельное решение.
+
+---
+
+## 8. Rollback semantics
+
+### Application rollback
+
+Можно откатить application revision/image средствами deployment platform, если platform это поддерживает.
+
+### Database rollback
+
+Database rollback не гарантируется application rollback.
+
+Preferred strategies:
+
+- backward-compatible migration;
+- expand/migrate/contract;
+- forward fix;
+- restore from verified backup, если это заранее предусмотрено.
+
+Direct reverse migration допустим только если его безопасность и data impact явно подтверждены.
+
+---
+
+## 9. Pre-deploy checklist for migration-bearing change
+
+- [ ] Migration reviewed.
+- [ ] Compatibility with current/previous app version checked.
+- [ ] Data/backfill behavior defined.
+- [ ] CI migration replay passed.
+- [ ] Risk level classified.
+- [ ] Backup/PITR requirement decided.
+- [ ] If backup required, fresh backup evidence obtained.
+- [ ] Rollback/forward-fix strategy documented.
+- [ ] Post-deploy verification defined.
+
+Items depending on provider/live DB must be marked `LIVE-VERIFY` until actually checked.
+
+---
+
+## 10. Post-deploy verification
+
+For migration-bearing deployment verify as applicable:
+
+- API readiness;
+- critical queries/routes;
+- schema/data invariants;
+- migration status;
+- error logs;
+- background/backfill completion.
+
+A successful application healthcheck alone does not prove all data migration invariants.
+
+---
+
+## 11. Rules for AI agents
+
+1. `MUST` treat `prisma migrate deploy` on API startup as current deployment behavior.
+2. `MUST NOT` invent a separate Railway staging environment.
+3. `MUST NOT` equate CI clean-DB replay with production-data rehearsal.
+4. `MUST NOT` claim backup/PITR/restore readiness without fresh provider evidence.
+5. `MUST` require explicit confirmation before destructive/irreversible production data operations.
+6. `SHOULD` prefer backward-compatible expand/migrate/contract patterns.
+7. `MUST` document rollback/forward-fix for risky migrations.
+
+## Связанные документы
+
+- `docs/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/DEPLOY_FOUNDATION.md`
+- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/TODO_VERIFY.md`

@@ -1,112 +1,263 @@
-# Tenant-aware object storage
+# Storage Upload Status
 
-## Runtime contract
+> **Статус:** `CURRENT`
+>
+> **Назначение:** разделить подтверждённый storage/upload implementation contract и external production state, которое требует live verification.
+>
+> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
-Material files are private objects. A file material is created first with
-`POST /api/v1/courses/:courseId/materials`; its `fileUrl` may be omitted. The
-binary is then sent as multipart field `file` to:
+## 1. Status model
+
+- `IMPLEMENTED` — подтверждено current repository code/config/tests.
+- `CONFIGURED` — repository содержит configuration surface.
+- `LIVE-VERIFY` — provider/runtime state требует external evidence.
+- `HISTORICAL` — старое состояние или migration note, не current fact.
+
+**Правило для ИИ-агента:** наличие code/config не является доказательством, что live provider/scanner/scheduler реально настроены и работают.
+
+---
+
+## 2. Storage contract
+
+**Статус:** `IMPLEMENTED`
+
+Current storage architecture — S3-compatible и provider-neutral.
+
+Основные свойства:
+
+- private object storage;
+- opaque tenant/material-scoped object keys;
+- authorized download path;
+- short-lived presigned download URLs;
+- buffered upload;
+- multipart upload;
+- quarantine/malware-scan flow;
+- delete/cleanup tooling;
+- storage readiness check.
+
+Конкретный production provider не является частью implementation fact.
+
+---
+
+## 3. Download contract
+
+**Статус:** `IMPLEMENTED`
+
+Material download проходит через authorized application route и только затем выдаёт presigned URL.
+
+Current presign TTL ограничен максимумом 300 секунд.
+
+Download response forced как attachment / binary-safe content handling.
+
+**LIVE-VERIFY:** фактическая browser accessibility URL зависит от live provider/network/CORS/origin configuration.
+
+---
+
+## 4. Buffered upload
+
+**Статус:** `IMPLEMENTED`
+
+Buffered upload endpoint предназначен для файлов до 8 MiB.
+
+Этот path выполняет server-side validation, включая content/magic-byte/archive checks, применимые к buffered file.
+
+Overall material upload validation допускает больший общий размер; для больших файлов используется multipart path.
+
+---
+
+## 5. Multipart upload
+
+**Статус:** `IMPLEMENTED`
+
+Current multipart flow:
+
+1. создаёт quarantine object/key;
+2. выдаёт presigned upload parts;
+3. использует 8 MiB part size;
+4. завершает multipart upload по ETags;
+5. поддерживает abort;
+6. проверяет фактический object size после completion;
+7. не делает object available до malware verdict.
+
+### Web behavior
+
+Current Web upload helper автоматически выбирает:
+
+- `<= 8 MiB` → buffered upload;
+- `> 8 MiB` → direct multipart upload.
+
+Это current end-to-end client behavior, а не backend-only capability.
+
+---
+
+## 6. Malware/quarantine flow
+
+**Статус:** `IMPLEMENTED` для code integration; `LIVE-VERIFY` для scanner service.
+
+Binary upload начинает lifecycle в quarantine state.
+
+Current integration включает:
+
+- scanner dispatch;
+- timeout/deadline;
+- authenticated callback;
+- clean promotion в normal material prefix;
+- infected/error/timeout rejection;
+- quarantine cleanup on failure;
+- fail-closed behavior.
+
+Если scanner URL/callback secret отсутствуют, binary upload не становится available: material остаётся/reaches rejected state и quarantine object удаляется according current flow.
+
+### Live scanner
+
+Repository не доказывает:
+
+- какой scanner provider/service используется;
+- что scanner сейчас reachable;
+- что callback secret deployed correctly;
+- fresh clean/infected end-to-end result.
+
+Это `LIVE-VERIFY`.
+
+---
+
+## 7. Storage configuration
+
+Canonical env inventory — `.env.production.example` + current env validation.
+
+### Required configured-storage fields
+
+S3-compatible configuration использует endpoint/bucket/access key/secret key и связанные options.
+
+### `S3_FILE_ORIGIN`
+
+`S3_FILE_ORIGIN` — optional dedicated signed-download origin, а не обязательный provider parameter.
+
+### Provider
+
+Current production documentation не должна утверждать без evidence:
 
 ```text
-POST /api/v1/materials/:id/file
+production = MinIO
 ```
 
-The API derives both tenant and material identity from the authorized material
-record and stores the object under:
+Compatible options включают provider-neutral S3 implementations, например R2/AWS S3, а self-hosted MinIO остаётся одним из вариантов.
+
+**Agent rule:** `DO NOT ASSUME` provider.
+
+---
+
+## 8. Readiness semantics
+
+**Статус:** `IMPLEMENTED`
+
+Если storage configured, readiness выполняет bucket-level health check.
+
+Если storage не configured, readiness может возвращать:
 
 ```text
-organizations/{organizationId}/materials/{materialId}/{uuid}
+storage: disabled
 ```
 
-Only this opaque `objectKey` is persisted. Original names are metadata and are
-never part of an object key. `S3_PUBLIC_URL` is no longer used.
+и technical readiness может оставаться 200.
 
-Authorized readers obtain a short-lived (at most five-minute) URL from
-`GET /api/v1/materials/:id/download`. The endpoint checks the caller's role,
-course access, and organization before signing the stored key. Consequently a
-key or material UUID from another organization cannot be used to mint a URL.
-Archived or deleted materials fail closed and cannot receive a URL. Configure
-`S3_FILE_ORIGIN` as a dedicated file-serving origin, separate from the web
-application origin. Signed responses always force `Content-Type:
-application/octet-stream` and `Content-Disposition: attachment`, including for
-HTML and SVG, so uploaded active content is not rendered in the application
-security context. `S3_PRESIGNED_TTL_SECONDS` defaults to 300 and is hard-capped
-at 300 seconds.
+**Важно:** `storage: disabled` не доказывает production readiness file-upload capability.
 
-`DELETE /api/v1/materials/:id/file` deletes the private object and clears its
-storage metadata. S3 DeleteObject is idempotent; repeating the API call when no
-key remains safely clears metadata again. Each request writes a durable audit
-row with the tenant, material, actor, affected keys, result, and timestamp.
+---
 
-## Retention and orphan cleanup
+## 9. Cleanup tooling
 
-Build the API, then run `pnpm --filter @lms/api storage:cleanup` to inventory
-unreferenced ordinary and quarantine objects older than
-`S3_ORPHAN_RETENTION_DAYS` (default 30). Dry-run is the default and prints the
-exact candidates without deleting anything. After reviewing the output, pass
-`-- --apply` to delete those candidates. Database references are loaded without
-excluding soft-deleted materials, preventing cleanup from bypassing retention
-for an object that is still referenced. S3 deletion is idempotent, so an
-interrupted applied run can be safely repeated.
+**Статус:** `IMPLEMENTED` scripts / `LIVE-VERIFY` scheduling.
 
-## Legacy transition
+Current API package содержит cleanup commands для:
 
-The migration adds nullable `object_key` and makes `file_url` nullable without
-rewriting existing rows. Existing `kind=link` rows remain readable after normal
-authorization and return their external URL from the download endpoint. Legacy
-file rows containing only an S3/public URL are deliberately **not** exposed by
-the endpoint: an operator must copy each object to its generated tenant prefix,
-set `object_key`, verify access, and then clear `file_url`. This fail-closed plan
-avoids attempting to parse or trust arbitrary historical URLs.
+- orphan storage cleanup;
+- multipart cleanup.
 
-Before deployment, back up the database and bucket, inventory legacy file rows,
-run the copy/backfill in batches, verify object counts and tenant prefixes, and
-retain the source objects until rollback retention expires. Rollback restores
-the database and leaves copied objects for later orphan cleanup.
+Наличие script не доказывает, что production scheduler/cron реально запускает его.
 
-## Configuration and validation
+Live scheduling, last run, orphan counts и cleanup history — `LIVE-VERIFY`.
 
-Storage requires `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and
-`S3_SECRET_ACCESS_KEY`; `S3_REGION` and `S3_FORCE_PATH_STYLE` are optional.
+---
 
-## Multipart uploads
+## 10. Delete semantics
 
-Large material files use a direct-to-storage multipart flow. The authenticated
-API creates a tenant/material-scoped quarantine key, records the S3 `uploadId`,
-and returns presigned URLs for 8 MiB parts. The browser uploads those parts to
-S3 and reports their `ETag` values to the completion endpoint. Consequently,
-file bytes never pass through the API process; the legacy buffered endpoint is
-limited to 8 MiB.
+**Статус:** `IMPLEMENTED`
 
-The storage CORS policy must allow `PUT` from the web origin and expose the
-`ETag` response header. Presigned part URLs expire after 15 minutes. Upload
-sessions expire after 24 hours and can be inspected safely with:
+Material/file deletion удаляет associated normal/quarantine objects и очищает metadata according current service behavior.
 
-```bash
-pnpm --filter @lms/api storage:multipart-cleanup
-```
+S3-compatible object deletion может быть idempotent на object layer, но full DB+object operation не следует описывать как строго атомарную distributed transaction.
 
-The command is dry-run by default. Abort expired S3 uploads and mark their
-database sessions aborted only with:
+Operational failure handling должно оцениваться по current service/tests, а не по одному свойству S3 `DeleteObject`.
 
-```bash
-pnpm --filter @lms/api storage:multipart-cleanup -- --execute
-```
-Both paths retain the 50 MB limit and filename/MIME allow-list checks. Buffered
-uploads additionally perform magic-byte and ZIP-bomb checks before storage;
-direct multipart uploads verify the completed object size and rely on the
-mandatory quarantine scanner before the object can become available.
+---
 
-Every new binary is written below the tenant-scoped `quarantine/` prefix and
-persisted with scan status `pending`. The API submits the opaque quarantine key
-to `MALWARE_SCANNER_URL`, then accepts an authenticated, idempotent verdict at
-`POST /api/v1/internal/material-scans/:id/result`. The scanner authenticates
-with `Authorization: Bearer $MALWARE_SCANNER_CALLBACK_SECRET` and sends one of
-`clean`, `infected`, `error`, or `timeout`.
+## 11. CORS / direct multipart provider requirements
 
-Only a timely `clean` verdict copies the object into the normal private material
-prefix, removes the quarantine object, and changes the status to `available`.
-All other verdicts fail closed as `rejected` and remove the quarantine object.
-Downloads require both an ordinary object key and `available`; therefore
-pending, scanning, rejected, failed, and timed-out files cannot receive a URL.
-Scan dispatch uses a five-second request deadline and verdicts expire after 15
-minutes. Scanner callbacks can safely be retried after a terminal state.
+Direct multipart browser upload требует provider-side CORS, включая разрешённый `PUT` и доступ к ETag response headers according client flow.
+
+Repository documentation/config может описывать требование, но фактический bucket CORS — `LIVE-VERIFY`.
+
+---
+
+## 12. Historical data / backfill
+
+Legacy storage transition/backfill steps являются migration plan/history, а не автоматическим доказательством, что production historical rows/bucket полностью reconciled.
+
+Если backfill завершён, status должен иметь fresh evidence:
+
+- timestamp;
+- run/deployment reference;
+- affected counts;
+- verification result.
+
+Без этого completion = `LIVE-VERIFY`.
+
+---
+
+## 13. Backup/recovery
+
+Storage recovery требует согласования database metadata и object storage.
+
+Repository не доказывает actual production backup/restore state для DB+bucket.
+
+Fresh backup/PITR/object recovery evidence относится к `LIVE-VERIFY` и `docs/MIGRATION_BACKUP_POLICY.md`.
+
+---
+
+## 14. Production readiness checklist
+
+Для утверждения `storage production-ready` нужно отдельно подтвердить:
+
+- [ ] provider/bucket configured;
+- [ ] credentials valid;
+- [ ] bucket CORS supports current browser multipart flow;
+- [ ] presigned download origin reachable;
+- [ ] scanner configured and callback works;
+- [ ] clean/infected flows verified;
+- [ ] cleanup scheduling exists;
+- [ ] upload/download/delete smoke passed;
+- [ ] recovery/backup expectations accepted.
+
+Repository implementation закрывает code contract, но не автоматически эти live items.
+
+---
+
+## 15. Rules for AI agents
+
+1. `MUST` distinguish implementation from live provider state.
+2. `MUST NOT` assume MinIO/R2/AWS S3 without evidence.
+3. `MUST` treat `S3_FILE_ORIGIN` as optional.
+4. `MUST` document current Web buffered/multipart selection.
+5. `MUST NOT` claim scanner availability because integration code exists.
+6. `MUST NOT` claim cleanup scheduled because scripts exist.
+7. `MUST NOT` use `storage: disabled` as proof of upload production readiness.
+8. Live CORS/provider/backfill/backup/smoke assertions require fresh evidence.
+
+## Связанные документы
+
+- `docs/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/DEPLOY_FOUNDATION.md`
+- `docs/MIGRATION_BACKUP_POLICY.md`
+- `docs/READINESS_AND_SECURITY_GATES.md`
+- `.env.production.example`
