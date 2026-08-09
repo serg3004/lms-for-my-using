@@ -59,6 +59,20 @@ describe('Assessments validation', () => {
     expect(input.timeLimitMinutes).toBe(30);
   });
 
+  it('accepts custom pass/fail result messages', () => {
+    const input = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Final test',
+      slug: 'final-test',
+      passMessage: 'Great job, you passed!',
+      failMessage: 'Not quite — review the material and try again.',
+    });
+
+    expect(input.passMessage).toBe('Great job, you passed!');
+    expect(input.failMessage).toBe('Not quite — review the material and try again.');
+  });
+
   it('accepts a randomizeOrder flag, defaulting to false', () => {
     const defaultInput = createAssessmentSchema.parse({
       organizationId: '11111111-1111-1111-1111-111111111111',
@@ -125,6 +139,10 @@ describe('updateAssessmentSchema', () => {
 
   it('accepts timeLimitMinutes null to remove the time limit', () => {
     expect(updateAssessmentSchema.parse({ timeLimitMinutes: null })).toEqual({ timeLimitMinutes: null });
+  });
+
+  it('accepts pass/fail message null to revert to the default text', () => {
+    expect(updateAssessmentSchema.parse({ passMessage: null, failMessage: null })).toEqual({ passMessage: null, failMessage: null });
   });
 
   it('accepts empty object', () => {

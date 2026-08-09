@@ -307,6 +307,8 @@
       "availableAfterCompletion": "课程完成后可用",
       "randomizeOrder": "为每位学员随机排列题目和选项顺序",
       "description": "描述",
+      "passMessage": "通过提示文字（留空为默认）",
+      "failMessage": "未通过提示文字（留空为默认）",
       "invalidInput": "请输入标题、0–100 的及格分数，以及可选的尝试次数（≥ 1）。",
       "titleRequired": "测试标题为必填项。",
       "assessmentExists": "已存在相同 slug 的测试。",

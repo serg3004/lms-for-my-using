@@ -29,6 +29,12 @@ export function createAssessmentAttempt(assessmentId: string, answers: CreateAtt
   });
 }
 
+export function startAssessmentAttempt(assessmentId: string) {
+  return apiRequest<AssessmentAttemptSummary>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start`, {
+    method: 'POST',
+  });
+}
+
 export function listAssessmentAttempts(assessmentId: string) {
   return apiRequest<AssessmentAttemptSummary[]>(`${getAssessmentPath(assessmentId)}/attempts`);
 }

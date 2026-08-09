@@ -87,6 +87,14 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
         <textarea id={`${uid}-description`} value={form.description} onChange={(e) => change('description', e.target.value)} maxLength={2000} />
       </FormField>
 
+      <FormField id={`${uid}-pass-message`} label={t('admin.assessmentBuilder.passMessage', 'Pass message (blank = default)')}>
+        <textarea id={`${uid}-pass-message`} value={form.passMessage} onChange={(e) => change('passMessage', e.target.value)} maxLength={2000} />
+      </FormField>
+
+      <FormField id={`${uid}-fail-message`} label={t('admin.assessmentBuilder.failMessage', 'Fail message (blank = default)')}>
+        <textarea id={`${uid}-fail-message`} value={form.failMessage} onChange={(e) => change('failMessage', e.target.value)} maxLength={2000} />
+      </FormField>
+
       {state.status === 'error' ? <p className="admin-form__error" role="alert">{state.message}</p> : null}
 
       <div className="admin-form__actions">
