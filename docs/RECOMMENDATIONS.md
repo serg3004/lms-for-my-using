@@ -1,137 +1,141 @@
-# Рекомендации
+# Recommendations
 
-## R1 — 2026-07-27 — Снижение падений CI из-за Dependabot и pnpm audit
+> **Статус:** `CURRENT`
+>
+> **Назначение:** хранить только актуальные рекомендации, отделяя уже реализованные части от реально открытой работы и product decisions.
+>
+> **Проверено по `main`:** `35e0a7df530a894585b29ebd985273d36a63f666` (2026-08-09).
 
-### Чтобы падения CI происходили реже
+## Статусы
 
-- Делать Dependabot PR маленькими и частыми.
-- Соблюдать порядок merge:
+- `DONE` — рекомендация реализована в current repository.
+- `PARTIAL` — часть реализована, часть остаётся open.
+- `OPEN` — подтверждённый gap.
+- `OWNER-DECISION` — реализация зависит от product/business decision.
+- `DEFERRED` — не current priority.
 
-  ```text
-  GitHub Actions → dev dependencies → prod dependencies
-  ```
+---
 
-- Мержить зелёные Dependabot PR быстро, не копить их неделями.
-- Не отключать `pnpm audit --audit-level high`.
+## R1 — Dependency/security automation
 
-Важно: если в `main` появилась новая high-уязвимость, audit может уронить CI даже у unrelated PR.
+**Статус:** `PARTIAL`
 
-### Что добавить в PR template
+### Уже сделано
 
-```md
-## Dependency/audit impact
+- `pnpm audit --audit-level high` запускается в CI.
+- Gitleaks запускается в CI.
+- Dependabot настроен.
+- Security waiver validation существует.
 
-- [ ] This PR does not change dependencies
-- [ ] This PR changes dependencies
-- [ ] If CI fails on `pnpm audit`, use separate security/deps PR
-```
+### Остаётся
 
-### Чтобы audit чинился почти автоматически
+- сверить Dependabot directories/grouping со всеми workspace roots, особенно `apps/e2e` и `packages/shared`;
+- не добавлять auto-merge dependency PR;
+- не отключать audit ради unrelated PR.
 
-Добавить отдельный workflow `Security audit fixer`.
+Historical идея отдельного `Security audit fixer` workflow не является current requirement.
 
-Он может запускаться:
+---
 
-- вручную через GitHub Actions;
-- по расписанию, например раз в день;
-- когда Dependabot PR не закрывает audit.
-
-Workflow должен:
-
-1. создать ветку `security/fix-pnpm-audit-high`;
-2. запустить `pnpm install`;
-3. запустить `pnpm audit --audit-level high`;
-4. если audit падает — попробовать `pnpm audit --fix`;
-5. снова запустить `pnpm install`;
-6. снова запустить `pnpm audit --audit-level high`;
-7. если high-уязвимости закрыты — создать PR.
-
-Auto-merge не включать.
-
-### Что можно автоматизировать безопасно
-
-- создание `security` branch;
-- запуск `pnpm audit --audit-level high`;
-- запуск `pnpm audit --fix`;
-- запуск `pnpm install`;
-- создание PR;
-- комментарий в зависимом PR: `audit fixed in #...`.
-
-### Что не автоматизировать
-
-- auto-merge dependency PR;
-- auto-ignore advisories;
-- ручную правку `pnpm-lock.yaml`;
-- отключение audit в CI.
-
-## R2 — 2026-08-01 — Страница «Мои курсы»: отложенные доработки
-
-Три доработки, которые не вошли в текущую реализацию из-за отсутствия данных в API.
-Каждая требует изменений на бэкенде (`apps/api`) и фронтенде (`apps/web`).
+## R2 — «Мои курсы» learner experience
 
 ### R2.1 — Категория курса
 
-**Проблема:** в прототипе карточка курса показывает лейбл категории в обложке (например «Безопасность», «Управление»). Поля `category` в схеме Prisma нет.
+**Статус:** `PARTIAL`
 
-**Что нужно сделать:**
-1. Добавить поле `category String?` в модель `Course` в `prisma/schema.prisma`
-2. Создать и применить миграцию `pnpm prisma migrate dev`
-3. Добавить `category` в `courseSelect` в `courses.service.ts`
-4. Добавить `category` в тип `CourseSummary` в `apps/web/src/shared/api/types.ts`
-5. Показать лейбл в обложке карточки на странице `LearnerCoursesPage.tsx`
+Backend/schema/type contract для category уже существует.
 
-### R2.2 — Точный процент прогресса курса
+Открытая часть — learner-facing presentation/filtering, если это всё ещё требуется продуктом.
 
-**Проблема:** прогресс-бар сейчас показывает 0% для активных и 100% для завершённых. Реальный % (например 72%) требует знания сколько уроков пользователь прошёл.
+**Правило:** не добавлять новую Prisma category field повторно.
 
-**Что нужно сделать:**
-1. В `courses.service.ts` при `listCourses` добавить агрегацию: для каждого курса считать кол-во `LessonProgress` записей со статусом `completed` для текущего `userId`
-2. Вернуть поля `lessonsCompleted: number` и `lessonsTotal: number` в ответе
-3. Добавить эти поля в тип `CourseSummary`
-4. Вычислять `pct = Math.round(lessonsCompleted / lessonsTotal * 100)` на фронте
+### R2.2 — Точный progress курса
+
+**Статус:** `OPEN`
+
+Learner course cards не должны выводить прогресс только как 0/100 по lifecycle state, если product expectation — реальный процент завершённых lessons.
+
+Backend уже имеет course-completion logic, поэтому новое решение должно переиспользовать существующий источник там, где contract это позволяет.
+
+Acceptance direction:
+
+- определить канонические `lessonsCompleted` / `lessonsTotal` либо эквивалентный completion contract;
+- показать реальный percentage;
+- покрыть tests.
 
 ### R2.3 — Следующий урок
 
-**Проблема:** прототип показывает в карточке «Следующий урок: Эвакуация». Это первый незавершённый урок курса для данного пользователя. API этого не возвращает.
+**Статус:** `OPEN`
 
-**Что нужно сделать:**
-1. В `courses.service.ts` при `listCourses` для каждого курса найти первый урок без записи `LessonProgress(completed)` для текущего `userId` — по полю `order`
-2. Вернуть `nextLesson: { title: string } | null`
-3. Добавить поле в тип `CourseSummary`
-4. Показать в мета-сетке карточки на фронте
+Canonical `nextLesson` field/UX не подтверждён.
 
-## R3 — 2026-08-02 — Страница «Команда» менеджера: сообщения команде
+Если feature требуется:
 
-**Проблема:** прототип `manager/lms-manager-team-verified.html` показывает кнопку «Написать команде» (`messageButton`), в моке это просто `alert()`. В реальном приложении нет вообще никакой системы сообщений/чата/уведомлений между пользователями — ни таблиц в Prisma-схеме, ни API, ни UI. Кнопку убрали со страницы `ManagerTeamPage`, а не оставили декоративной, чтобы не показывать нерабочий UI.
+- выбрать первый незавершённый lesson по deterministic order;
+- вернуть минимальный summary;
+- добавить frontend use + tests.
 
-**Что нужно сделать (новая фича, не доделка):**
-1. Спроектировать модель сообщений в `prisma/schema.prisma` — например `Message { id, organizationId, senderId, recipientId | groupId, body, createdAt, readAt }`
-2. Добавить backend-модуль `messages` (controller/service/schemas) с RBAC-скоупом: менеджер может писать только своей команде (`ManagerTeamScope`)
-3. Решить: это email-уведомление (проще, переиспользует существующую почтовую инфраструктуру, если она есть) или полноценный in-app чат/лента сообщений (сложнее, нужен UI списка сообщений, статус прочтения)
-4. Добавить кнопку обратно в `ManagerTeamPage.tsx`, когда бэкенд будет готов
+Если feature не требуется для current MVP, оформить `DEFERRED`, а не оставлять как молчаливую implementation обязанность.
 
-Оценка: отдельная задача, не входит в объём переверстки страниц менеджера под прототип.
+---
 
-## R4 — 2026-08-02 — Изолировать refresh-запросы в responsive visual tests
+## R3 — Сообщение от менеджера
 
-**Проблема:** responsive visual tests запускают только Vite web-сервер и намеренно
-возвращают `401` из mock `/api/v1/auth/me` для гостевых сценариев. API client после
-`401` вызывает `/api/v1/auth/refresh`, но этот endpoint не замокирован. Vite пытается
-проксировать запрос на незапущенный API по адресу `localhost:3000`, поэтому в зелёном
-CI job появляются сообщения `http proxy error` и `ECONNREFUSED`.
+**Статус:** `OWNER-DECISION`
 
-**Критичность:** низкая. Ошибка не влияет на текущие responsive assertions и не
-блокирует merge, пока все visual tests проходят. Тем не менее сетевой шум скрывает
-настоящие ошибки и означает, что browser test не полностью изолирован от внешнего API.
+Historical prototype показывал кнопку сообщения, но current repository не содержит согласованного messaging domain/module.
 
-**Рекомендация:** в `installGuestMock()` файла
-`apps/e2e/visual-tests/responsive-matrix.spec.ts` добавить mock для
-`**/api/v1/auth/refresh`, возвращающий ожидаемый `401` гостевой сессии. Не следует
-запускать API только ради visual tests или подавлять сообщения Vite.
+Нельзя автономно выбирать между:
 
-**Критерии готовности:**
+- email notification;
+- in-app messaging;
+- Notifications feature;
+- удалением/неиспользованием этой prototype capability.
 
-- `pnpm test:visual` по-прежнему выполняет все responsive и zoom-сценарии;
-- в выводе visual job нет `http proxy error` и `ECONNREFUSED`;
-- тесты не обращаются к реальному API;
-- production auth/refresh-поведение не изменяется.
+До product decision ИИ-агент `MUST NOT` добавлять Message model/API/UI только на основании prototype.
+
+---
+
+## R4 — Responsive visual tests: refresh isolation
+
+**Статус:** `OPEN`
+
+Guest visual test mock покрывает auth/me scenarios, но refresh request должен быть явно изолирован, чтобы browser test не зависел от реального API и не создавал proxy/`ECONNREFUSED` noise.
+
+Required outcome:
+
+- mock `/api/v1/auth/refresh` в guest visual fixture;
+- возвращать ожидаемый guest/unauthenticated outcome;
+- сохранить production auth code без изменений;
+- проверить visual suite.
+
+---
+
+## Что больше не является рекомендацией «с нуля»
+
+Следующие capability нельзя описывать как отсутствующие:
+
+- dependency audit;
+- Gitleaks;
+- Dependabot baseline;
+- course category backend/type support;
+- backend course completion logic;
+- refresh/session implementation.
+
+Если новая задача утверждает обратное, сначала нужно показать current evidence regression.
+
+---
+
+## Правила для ИИ-агента
+
+1. `MUST` проверять current code/config перед выполнением recommendation.
+2. `MUST NOT` повторно реализовывать уже существующий schema/API capability.
+3. `OWNER-DECISION` нельзя закрывать без владельца.
+4. Recommendation должна стать `DONE`, `DEFERRED` или быть удалена из active section после реализации/отказа.
+5. Implementation PR должен обновить этот документ, если закрывает R2/R4 или меняет статус R1/R3.
+
+## Связанные документы
+
+- `docs/PRODUCTION_HARDENING_BACKLOG.md`
+- `docs/TODO_VERIFY.md`
+- `docs/MVP_SCOPE_LOCK.md`

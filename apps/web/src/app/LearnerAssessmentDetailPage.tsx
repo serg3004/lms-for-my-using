@@ -257,6 +257,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryDate')}</th>
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryScore')}</th>
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryResult')}</th>
+                <th style={{ padding: '8px 12px', fontWeight: 600 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -279,6 +280,13 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
                           {attempt.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
                         </span>
                       )}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      {attempt.status === 'completed' && !attempt.passed ? (
+                        <a href={`/learn/attempts/${encodeURIComponent(attempt.id)}`} style={{ color: COLORS.primary, fontWeight: 600 }}>
+                          {t('assessments.attemptsHistoryReview')}
+                        </a>
+                      ) : null}
                     </td>
                   </tr>
                 ))}

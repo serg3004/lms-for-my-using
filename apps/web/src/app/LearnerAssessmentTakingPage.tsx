@@ -17,6 +17,7 @@ import {
   buildAssessmentAnswers,
   computeSecondsLeft,
   countAnsweredQuestions,
+  getAnswerOutcome,
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
   selectedIds,
@@ -218,27 +219,32 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
               {result.answers
                 .slice()
                 .sort((a, b) => a.question.order - b.question.order)
-                .map((answer) => (
-                  <li key={answer.id} className={`learner-quiz__breakdown-item ${answer.isCorrect ? 'learner-quiz__breakdown-item--correct' : 'learner-quiz__breakdown-item--wrong'}`}>
-                    <div className="learner-quiz__breakdown-icon">{answer.isCorrect ? '✓' : '✗'}</div>
-                    <div className="learner-quiz__breakdown-body">
-                      <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
-                      <p className="learner-quiz__breakdown-answer">
-                        <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
-                        {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
-                      </p>
-                      {!answer.isCorrect && answer.correctOptions && answer.correctOptions.length > 0 ? (
-                        <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
-                          <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
-                          {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                .map((answer) => {
+                  const outcome = getAnswerOutcome(answer);
+                  const outcomeIcon = { correct: '✓', partial: '½', incorrect: '✗' }[outcome];
+                  const outcomeLabel = { correct: t('assessments.resultCorrect'), partial: t('assessments.resultPartial'), incorrect: t('assessments.resultIncorrect') }[outcome];
+                  return (
+                    <li key={answer.id} className={`learner-quiz__breakdown-item learner-quiz__breakdown-item--${outcome}`}>
+                      <div className="learner-quiz__breakdown-icon">{outcomeIcon}</div>
+                      <div className="learner-quiz__breakdown-body">
+                        <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
+                        <p className="learner-quiz__breakdown-answer">
+                          <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
+                          {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
                         </p>
-                      ) : null}
-                      <p className="learner-quiz__breakdown-points">
-                        {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
-                      </p>
-                    </div>
-                  </li>
-                ))}
+                        {outcome !== 'correct' && answer.correctOptions && answer.correctOptions.length > 0 ? (
+                          <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
+                            <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
+                            {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                          </p>
+                        ) : null}
+                        <p className="learner-quiz__breakdown-points">
+                          {answer.score} / {answer.question.points} {outcomeLabel}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
             </ol>
           </section>
         ) : null}

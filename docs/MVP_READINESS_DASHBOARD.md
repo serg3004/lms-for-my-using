@@ -1,92 +1,128 @@
 # MVP Readiness Dashboard
 
-## Purpose
+> **Статус:** `CURRENT`
+>
+> **Назначение:** краткий status dashboard. Он не заменяет canonical scope, backlog или live smoke evidence.
+>
+> **Проверено по `main`:** `35e0a7df530a894585b29ebd985273d36a63f666` (2026-08-09).
 
-This dashboard summarizes the current MVP readiness state. It is a status document only — it does not replace the detailed source documents:
+## 1. Как читать dashboard
 
-- `docs/MVP_SCOPE_LOCK.md` (§0 has the full per-feature status table this dashboard summarizes)
-- `docs/MVP_DEFINITION_OF_DONE.md`
-- `docs/PILOT_CHECKLIST.md`
-- `docs/MVP_LOCAL_RUNBOOK.md`
-- `docs/API_CONTRACTS.md` (status section merged in 2026-08-06; `API_STATUS.md` retired)
-- `docs/STORAGE_UPLOAD_STATUS.md`
-- `docs/PASSWORD_RESET_STATUS.md`
-- `docs/API_RBAC_MATRIX.md`
-- `docs/TODO_VERIFY.md`
-- `docs/DEPENDABOT_PNPM_WORKSPACE_POLICY.md`
-- `docs/CONCERNS.md`
+- `READY` — repository implementation для области подтверждён.
+- `PARTIAL` — есть конкретный implementation/operational gap.
+- `OWNER-DECISION` — требуется решение владельца.
+- `LIVE-VERIFY` — current external state не доказан repository.
+- `HISTORICAL` — старый snapshot/result, не current readiness evidence.
 
-**[2026-08-06] Full recalculation.** The previous version of this dashboard was frozen at the "PR 70 / PR 71 still pending" era (early MVP). Both are long since done, production has been live on Railway for weeks, and the project has since added refresh tokens, full RBAC object-level scoping, group/manager/instructor management, i18n across the admin surface, and more. Rewritten from scratch against the current `main` (PR #505) instead of patching the old table.
+**Важно:** `READY` в repository не означает автоматически `LIVE-VERIFIED` production.
 
-## Overall status
+---
 
-| Area | Status | Evidence |
-| --- | --- | --- |
-| Backend MVP flow | Ready — in active use | Auth, organizations, users, memberships, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates all implemented and tested. |
-| Web smoke coverage | Ready | 347 web tests passing; admin, learner, instructor, and manager surfaces all covered. |
-| Auth / sessions | Ready | Stateless JWT access token + rotating refresh token in httpOnly cookie, server-side revocation, `logout-all`. See `docs/AUTH_TOKEN_REVOCATION.md`, `docs/AUTH_SESSION_STORE_DESIGN.md`. |
-| RBAC | Ready | Role-policy matrix + object-level `CourseAccessGuard` (instructor course ownership) + manager team scope. See `docs/API_RBAC_MATRIX.md`, `docs/INSTRUCTOR_COURSE_OWNERSHIP.md`. |
-| API documentation | Synced baseline | Manual OpenAPI paths synced with current controllers. |
-| CI quality gates | Ready | Lint, Prisma generate, typecheck, tests, build, CodeQL, `pnpm audit`, Gitleaks all run per PR. |
-| Dependency automation | Ready | Dependabot workspace-level `directories` config. |
-| Storage uploads | Ready for controlled MVP usage | Tenant-scoped private keys, short-lived presigned URLs, MinIO deployed as its own Railway service (bucket `lms-uploads`). |
-| Rate limiting | ⚠️ Partial | Code is Redis-ready (`createRedisRateLimitStore`, conditional wiring), but **no Redis service is provisioned on Railway** — production currently runs on the `ALLOW_IN_MEMORY_RATE_LIMIT` escape hatch. See `docs/CONCERNS.md` (2026-08-06) and `docs/PRODUCTION_HARDENING_BACKLOG.md` PR 123. |
-| Password reset | Documented as skeleton only | Still returns `503 Service Unavailable`; see `docs/PASSWORD_RESET_STATUS.md`. Unchanged, intentional for this pilot stage. |
-| Demo seed data | ✅ Done | `docs/ADMIN_DEMO_SEED.md` — guarded admin-only seed task, opt-in flag for prod, covers all 4 roles. |
-| Full RBAC audit | ✅ Done | Consolidated into `docs/API_RBAC_MATRIX.md` (2026-08-06), including the `CourseAccessGuard` object-level layer that earlier audits missed. |
-| Deployment | ✅ Live in production | Railway: `web`, `api`, `Postgres`, `minio` services running. Not just "foundation" — actively used throughout this session's work. |
-| Notifications | 🚨 Not built | No module, no schema, no UI. Required by `docs/MVP_SCOPE_LOCK.md` §2.12 — open product question, not yet resolved. |
-| Audit log | 🚨 Not built | No module, no schema. Required by `docs/MVP_SCOPE_LOCK.md` §2.13 and §5 success-criterion 17 — open product question, not yet resolved. |
-| Dedicated reports module | ⚠️ Partial | No standalone `reports` API; covered functionally through admin/manager pages composing `/progress` and `/certificates`. |
+## 2. Repository readiness
 
-## Pilot go / no-go summary
+| Область | Статус | Комментарий |
+|---|---|---|
+| Core backend MVP surface | `READY` | Auth, organizations, users, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates и manager flows присутствуют. |
+| Core Web role surfaces | `READY` / `PARTIAL` | Admin/learner/instructor/manager surfaces существуют; отдельные UX gaps остаются в backlog. |
+| Auth/session | `READY` | Access + refresh/session rotation/revocation/logout-all реализованы. |
+| RBAC/tenant scoping | `READY` / `PARTIAL` | Core policies/scoping есть; instructor assignment role validation остаётся отдельным proven gap. |
+| API error contract | `READY` / `PARTIAL` | Canonical envelope есть; readiness 503 dependency-details HTTP boundary остаётся gap. |
+| OpenAPI | `PARTIAL` | OpenAPI infrastructure существует, но manual/static coverage не считать полным runtime contract. |
+| CI | `READY` | Lint/typecheck/tests/build/security/container checks запускаются workflow. |
+| Merge enforcement | `DEFERRED` | Branch protection/Ruleset пока не реализован; см. future-work doc. |
+| Dependency automation | `PARTIAL` | Dependabot есть; workspace coverage/grouping требует reconciliation. |
+| Storage/upload code contract | `READY` | S3-compatible buffered/multipart/private/quarantine/scanner integration реализованы. |
+| Password reset | `PARTIAL` | Skeleton endpoints существуют; delivery/provider намеренно не завершены. |
+| Notifications | `OWNER-DECISION` | Current module отсутствует; MVP disposition не выбрана владельцем. |
+| General Audit Log | `OWNER-DECISION` | Universal domain-wide audit log не подтверждён; product scope не закрыт. |
+| Basic reporting | `PARTIAL` | Reporting capability распределена по существующим surfaces, отдельный reports domain не обязателен current scope. |
 
-Go for a controlled technical pilot only if:
+---
 
-- CI is green for the pilot branch.
-- Local env follows `docs/MVP_LOCAL_RUNBOOK.md`.
-- Pilot data uses disposable credentials and no real secrets.
-- S3-compatible storage variables are configured when upload testing is in scope.
-- Known limitations are accepted: password reset skeleton behavior, no audit log, no notifications, in-memory rate limiting (Redis not yet provisioned), no dedicated reports API (covered functionally by admin/manager UI instead).
+## 3. Live/operations readiness
 
-No-go if:
+Все строки ниже требуют fresh external evidence и **не могут быть автоматически зелёными из repository state**.
 
-- CI is red.
-- Required env setup is unclear.
-- Seed/demo data contains real secrets or personal data.
-- Tenant isolation or auth behavior is not verified for the pilot scenario.
-- Upload testing is required but object storage env variables are not configured.
-- A required limitation is not explicitly accepted by the pilot owner.
+| Область | Статус | Что требуется для закрытия |
+|---|---|---|
+| Railway topology/domains | `LIVE-VERIFY` | Fresh deployment/service evidence. |
+| Redis production availability | `LIVE-VERIFY` | Current configured/live Redis evidence. |
+| S3-compatible provider/bucket/CORS | `LIVE-VERIFY` | Provider/bucket/CORS + smoke evidence. |
+| Malware scanner service | `LIVE-VERIFY` | Reachability + callback + clean/infected flow evidence. |
+| Cleanup scheduling | `LIVE-VERIFY` | Actual scheduler/last-run evidence. |
+| Sentry/alert routing | `LIVE-VERIFY` | Delivery/alerting evidence. |
+| Backups/PITR/restore | `OWNER-DECISION` + `LIVE-VERIFY` | Accepted policy + provider/restore evidence. |
+| Production smoke | `LIVE-VERIFY` | Fresh smoke on relevant deployment/SHA. |
 
-**[2026-08-06]** Given the table above, a controlled technical pilot is realistically go-able today — the only hard product gaps (audit log, notifications) are pilot-scale acceptable risks for known internal users, not blockers, provided the pilot owner explicitly accepts them.
+Historical Railway URLs, provider names and old smoke results must not be copied here as current facts.
 
-## Current MVP baseline
+---
 
-Implemented baseline:
+## 4. Current proven implementation gaps
 
-- Full backend API surface: auth, organizations, users, memberships, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates.
-- Refresh-token auth with server-side session revocation and `logout-all`.
-- Role-policy RBAC + object-level course ownership scoping (`CourseAccessGuard`).
-- Group/manager/course-instructor management (list/add/remove, soft-delete, admin UI).
-- Full admin web surface: courses, course builder, lessons, materials, assessments, assignments, results/certificates, users, roles, org structure, theme settings — all localized (ru/en/kk/zh).
-- Learner, instructor, and manager web surfaces.
-- Centralized API error envelope, runtime env validation, safe startup error handling.
-- CI gates: lint, typecheck, tests, build, Prisma generate, CodeQL, dependency audit, secret scanning.
-- Storage uploads via tenant-scoped MinIO on Railway.
-- Live Railway production deployment (`web`, `api`, `Postgres`, `minio`).
-- Playwright browser E2E suite covering login/role redirects, admin/instructor/manager workspaces.
+### Blocking/important engineering gaps
 
-Known non-goals / open gaps for current MVP:
+1. Health readiness 503 public HTTP contract.
+2. Instructor assignment role validation/candidate filtering.
+3. Learner exact course-progress representation.
+4. Guest visual-test refresh isolation.
+5. Dependabot workspace coverage reconciliation.
 
-- Notifications (in-app) — scope-required, not built. Open product question.
-- Audit log — scope-required, not built. Open product question.
-- Full password reset delivery (skeleton only, intentional for pilot stage).
-- Dedicated reports module (covered functionally by admin/manager UI).
-- Redis-backed rate limiting in production (code ready, Redis not provisioned).
-- Advanced analytics.
+`nextLesson` remains an open UX recommendation, not necessarily a release blocker until scope says so.
 
-## Next planned doc/status work
+See `docs/PRODUCTION_HARDENING_BACKLOG.md` and `docs/RECOMMENDATIONS.md`.
 
-1. Product decision needed: build audit log + notifications, or formally descope them from `docs/MVP_SCOPE_LOCK.md`.
-2. Ops task: provision Redis on Railway and set `REDIS_URL` (`docs/PRODUCTION_HARDENING_BACKLOG.md` PR 123).
-3. Re-update this dashboard once either of the above lands.
+---
+
+## 5. Current owner decisions
+
+The dashboard does not guess these decisions:
+
+- Notifications: `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
+- General Audit Log: `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
+- full invite lifecycle;
+- email provider;
+- backup/PITR acceptance policy;
+- future separate Railway staging topology.
+
+See `docs/TODO_VERIFY.md`.
+
+---
+
+## 6. Pilot interpretation
+
+This dashboard does **not** declare “GO today”.
+
+A controlled pilot decision must be made from fresh evidence using `docs/PILOT_CHECKLIST.md`.
+
+Minimum interpretation:
+
+- relevant CI/CodeQL on pilot SHA green;
+- pilot scope/known risks accepted;
+- no unresolved blocker affecting the pilot scenario;
+- required live dependencies verified for the pilot environment;
+- fresh smoke completed where production/live use is intended.
+
+---
+
+## 7. Source precedence
+
+Use:
+
+1. `docs/PROJECT_SOURCE_OF_TRUTH.md` — implementation/source rules;
+2. `docs/MVP_SCOPE_LOCK.md` — MVP boundaries;
+3. `docs/TODO_VERIFY.md` — decision/implementation/live registry;
+4. `docs/PRODUCTION_HARDENING_BACKLOG.md` — active hardening gaps;
+5. this dashboard — summary only.
+
+Historical smoke/status docs do not override these current sources.
+
+---
+
+## 8. Rules for humans and AI agents
+
+1. `MUST NOT` copy historical production/live claims into this dashboard without fresh evidence.
+2. `MUST NOT` call CI `MERGE-ENFORCED` while branch protection remains deferred.
+3. `MUST` distinguish repository readiness and live readiness.
+4. `MUST` update the affected row when a current gap/owner decision changes status.
+5. `MUST NOT` infer MinIO, Redis, staging, backups or live domains from old reports.

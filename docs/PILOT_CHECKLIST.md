@@ -1,122 +1,218 @@
 # Pilot Checklist
 
-## Purpose
+> **Статус:** `CURRENT PROCEDURE`
+>
+> **Назначение:** процедура принятия решения GO/NO-GO для конкретного controlled pilot. Этот файл не является вечным утверждением, что pilot уже готов.
+>
+> **Проверено по `main`:** `35e0a7df530a894585b29ebd985273d36a63f666` (2026-08-09).
 
-This checklist defines the minimum operational steps before running a controlled LMS MVP pilot.
+## 1. Evidence record для каждого pilot
 
-**[2026-08-06] Status:** most of this checklist describes local/dev verification steps, but the app has since been deployed to Railway production (`web-production-b1f01.up.railway.app`) and is in active use — a pilot can run against that live environment instead of only local. See `docs/MVP_READINESS_DASHBOARD.md` for the current full readiness picture; the sections below are updated to reflect what's actually implemented rather than "once implemented."
+Перед использованием checklist зафиксировать:
 
-## 1. Scope confirmation
+- pilot date/time;
+- target environment;
+- application/repository SHA или deployment reference;
+- pilot owner;
+- проверяемые роли/users;
+- required live dependencies;
+- известные accepted risks/waivers.
 
-- Confirm pilot organization.
-- Confirm pilot users and roles.
-- Confirm pilot course.
-- Confirm expected learner flow.
-- Confirm what is explicitly out of scope for the pilot.
+Если этих данных нет, нельзя переносить старый GO/NO-GO verdict на новый pilot.
 
-## 2. Environment setup
+---
 
-- Create local `.env` from `.env.example`.
-- Set `API_PORT`.
-- Set `JWT_SECRET` with at least 32 characters.
-- Confirm database connection settings are documented in the local runbook.
-- Confirm file storage settings are documented before enabling file workflows.
+## 2. Scope confirmation
 
-## 3. Database preparation
+- [ ] Pilot organization определена.
+- [ ] Pilot users/roles определены.
+- [ ] Pilot course/scenario определён.
+- [ ] Expected learner/admin/instructor/manager flows явно перечислены.
+- [ ] Out-of-scope capabilities зафиксированы.
+- [ ] Notifications/Audit Log и другие `OWNER-DECISION` topics не считаются молча закрытыми.
 
-- Confirm Prisma schema is reviewed.
-- Run `prisma generate` in the API app.
-- Use safe migrate flow only.
-- Do not apply real migrations without explicit operator approval.
-- Confirm seed data is safe and contains no real secrets.
+Source: `docs/MVP_SCOPE_LOCK.md`, `docs/TODO_VERIFY.md`.
 
-## 4. Seed data
+---
 
-Pilot seed should include:
+## 3. Environment/configuration
 
-- 1 organization.
-- 1 admin.
-- 1 instructor.
-- 2 learners.
-- 1 group.
-- 1 course.
-- 2 lessons.
-- 1 assignment.
-- 1 progress record.
+Для local pilot использовать current local runbook/env example.
 
-## 5. API validation
+Для Railway/live pilot:
 
-Before pilot, verify:
+- [ ] Web/API topology соответствует current private-API model.
+- [ ] Production-required env validated.
+- [ ] `TRUST_PROXY` configured where required.
+- [ ] Redis state проверен, если pilot требует production-like distributed limiting.
+- [ ] Storage configured и live-verified, если pilot включает upload/download.
+- [ ] Scanner configured/live, если binary upload входит в scope.
 
-- `GET /api/v1/health` returns OK.
-- Auth login happy path works.
-- Invalid auth login body returns `400 Bad Request`.
-- Protected endpoint without token returns `401 Unauthorized`.
-- Tenant-scope mismatch returns `403 Forbidden`.
-- OpenAPI skeleton is available.
-- Centralized API error format is used.
+Repository env examples не являются доказательством фактических live values.
 
-## 6. Web validation
+---
 
-Before pilot, verify:
+## 4. Database/migrations
 
-- Login page is available.
-- API client shell points to the expected API URL.
-- Auth error is visible on invalid login.
-- Learner course list is reachable.
-- Course detail is reachable.
-- Lesson view is reachable.
-- Complete lesson action works and records progress (implemented and tested, not pending).
+- [ ] Relevant migrations reviewed.
+- [ ] CI migration replay green для pilot SHA.
+- [ ] Если pilot использует live DB, deployment migration outcome проверен.
+- [ ] Для risky/destructive migration определён recovery path.
+- [ ] Backup/PITR requirement принят владельцем/ops там, где это требуется.
 
-## 7. Security validation
+Не выполнять destructive production migration без explicit approval.
 
-- No real secrets in repository.
-- No real passwords in seed data.
-- No personal production data in pilot dataset.
-- Test accounts use disposable credentials.
-- Tenant isolation negative scenarios are tested.
-- RBAC matrix is reviewed.
+---
 
-## 8. Documentation validation
+## 5. Pilot/demo data
 
-Required documents — **[2026-08-06] all now exist**, none still "planned":
+Если используется demo seed:
 
-- `docs/MVP_DEFINITION_OF_DONE.md`
-- `docs/PILOT_CHECKLIST.md`
-- `docs/API_CONTRACTS.md` (status section merged in 2026-08-06; `API_STATUS.md` retired)
-- `docs/DEVELOPMENT_PLAN.md` (project changelog — replaces the retired `docs/PROJECT_LOG.md`)
-- `docs/MVP_LOCAL_RUNBOOK.md`
-- `docs/API_RBAC_MATRIX.md`
-- `docs/API_CONTRACTS.md`
-- `docs/MVP_SCOPE_LOCK.md` §0 and `docs/MVP_READINESS_DASHBOARD.md` — current full status
+- [ ] использовать current guarded procedure из `docs/ADMIN_DEMO_SEED.md`;
+- [ ] dry-run выполнен перед apply, если procedure это требует;
+- [ ] target DB/environment проверен;
+- [ ] нет real secrets/passwords/personal production data;
+- [ ] необходимые роли/scenario действительно присутствуют после seed.
 
-## 9. CI validation
+Historical seed counts из старых pilot docs не являются обязательным current contract.
 
-Before merge or pilot use, confirm:
+---
+
+## 6. API/runtime validation
+
+Проверить только relevant pilot flows, минимум:
+
+- [ ] `/api/v1/health/live` отвечает ожидаемо.
+- [ ] `/api/v1/health/ready` отвечает ожидаемо для configured dependencies.
+- [ ] Login happy path работает.
+- [ ] Protected endpoint без auth возвращает expected unauthorized response.
+- [ ] Tenant/RBAC negative scenario проверен для pilot risk surface.
+- [ ] Relevant learner/course/progress flow работает.
+- [ ] Relevant admin/instructor/manager flow работает, если входит в pilot.
+
+Не использовать historical `/api/v1/health` payload как единственный current readiness contract.
+
+---
+
+## 7. Web validation
+
+- [ ] Login/redirect работают.
+- [ ] Required role workspace доступен.
+- [ ] Learner course/detail/lesson flow работает, если входит в scope.
+- [ ] Assessment/assignment/certificate flow проверен, если входит в scope.
+- [ ] Upload/download flow проверен только если storage/scanner live dependencies подтверждены.
+- [ ] Error/empty/loading state, критичный для pilot, проверен.
+
+---
+
+## 8. Security/readiness validation
+
+- [ ] No real secrets committed/used as demo data.
+- [ ] Tenant isolation negative scenario проверен.
+- [ ] RBAC relevant to pilot scenario проверен.
+- [ ] Required GitHub CI/CodeQL run for pilot SHA green.
+- [ ] Не утверждать, что checks merge-enforced: branch protection сейчас `DEFERRED / NOT-IMPLEMENTED`.
+- [ ] Known implementation gaps оценены относительно pilot scenario.
+
+See `docs/READINESS_AND_SECURITY_GATES.md`.
+
+---
+
+## 9. CI verification
+
+Перед pilot зафиксировать actual GitHub Actions results для relevant SHA:
 
 ```text
-[Check] Lint: OK
-[Check] Types: OK
-[Check] Tests: OK
-[Check] Build: OK
+CI: <run id> — <status>
+CodeQL: <run id> — <status>
 ```
 
-## 10. Pilot go / no-go
+Нельзя оставлять шаблонное `[Check] Tests: OK` без ссылки/идентификатора конкретного run, если этим обосновывается go/no-go.
 
-**[2026-08-06]** MVP Definition of Done is satisfied (see `docs/MVP_DEFINITION_OF_DONE.md`). Known accepted risks for a pilot today: no audit log, no notifications (both required by `docs/MVP_SCOPE_LOCK.md` but not built — open product question, see `docs/CONCERNS.md`), rate limiting runs in-memory in production (Redis not yet provisioned), password reset is a skeleton (503).
+---
 
-Go only if:
+## 10. Live verification
 
-- MVP Definition of Done is satisfied or explicitly waived.
-- Pilot dataset is ready.
-- Smoke tests are green.
-- Known risks are documented.
-- Rollback path is clear.
+Для live/Railway pilot выполнить fresh checks:
 
-No-go if:
+- [ ] Web entrypoint reachable.
+- [ ] API through Web proxy reachable.
+- [ ] readiness healthy for required configured dependencies.
+- [ ] storage/provider/CORS verified if needed.
+- [ ] scanner verified if needed.
+- [ ] Redis verified if required by pilot policy.
+- [ ] fresh smoke result recorded.
 
-- Auth is unstable.
-- Tenant isolation is unverified.
-- Required env setup is unclear.
-- Seed data contains real secrets or sensitive personal data.
-- CI is red.
+Old Railway domains/smoke reports = `HISTORICAL`, не current evidence.
+
+---
+
+## 11. Known risks and owner acceptance
+
+Перед GO перечислить unresolved items, которые реально затрагивают pilot.
+
+Примеры current known topics:
+
+- health readiness 503 HTTP payload gap;
+- instructor role assignment validation gap;
+- password-reset skeleton;
+- Notifications/Audit Log owner decisions;
+- in-memory rate limiting, если Redis intentionally absent;
+- live storage/scanner/backup uncertainty, если relevant.
+
+Каждый release/pilot blocker должен быть либо закрыт, либо явно accepted/waived владельцем.
+
+---
+
+## 12. GO / NO-GO
+
+### GO только если
+
+- [ ] pilot scope подтверждён;
+- [ ] relevant CI/CodeQL green на exact SHA;
+- [ ] relevant runtime/Web smoke green;
+- [ ] required live dependencies verified;
+- [ ] no unresolved unaccepted blocker affects the scenario;
+- [ ] rollback/recovery path понятен для planned risky operations.
+
+### NO-GO если
+
+- CI/CodeQL relevant run red;
+- auth/tenant isolation unstable;
+- required environment/dependency not verified;
+- pilot data unsafe;
+- required flow broken;
+- owner has not accepted a known blocker/risk that affects the pilot.
+
+### Verdict record
+
+```text
+Pilot date:
+Environment:
+SHA/deployment:
+Owner:
+CI run:
+CodeQL run:
+Smoke evidence:
+Accepted risks:
+Verdict: GO | NO-GO
+```
+
+---
+
+## 13. Правила для ИИ-агента
+
+1. `MUST NOT` переносить старый GO verdict на новый SHA/environment.
+2. `MUST` привязывать CI/live statements к fresh evidence.
+3. `MUST NOT` выбирать owner risk acceptance самостоятельно.
+4. `MUST` использовать current guarded seed procedure.
+5. `MUST NOT` предполагать live MinIO/Redis/staging/domain state по historical docs.
+6. Checklist — процедура; результат отдельного pilot должен хранить дату/SHA/evidence.
+
+## Связанные документы
+
+- `docs/MVP_READINESS_DASHBOARD.md`
+- `docs/MVP_SCOPE_LOCK.md`
+- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/ADMIN_DEMO_SEED.md`
