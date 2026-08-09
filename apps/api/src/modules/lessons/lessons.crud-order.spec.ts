@@ -35,7 +35,7 @@ describe('LessonsService CRUD order', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: firstLessonId, organizationId },
-        data: { deletedAt: expect.any(Date), slug: `first-lesson--deleted-${firstLessonId}` },
+        data: { deletedAt: expect.any(Date), slug: expect.stringMatching(new RegExp(`^first-lesson--deleted-${firstLessonId}-`)) },
       }),
     );
   });

@@ -160,7 +160,7 @@ describe('CourseMaterialsService.deleteCourseMaterial', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: materialId, organizationId },
-        data: { deletedAt: expect.any(Date), slug: `safety-pdf--deleted-${materialId}` },
+        data: { deletedAt: expect.any(Date), slug: expect.stringMatching(new RegExp(`^safety-pdf--deleted-${materialId}-`)) },
       }),
     );
   });

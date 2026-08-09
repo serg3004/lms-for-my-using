@@ -355,8 +355,13 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
           // 1st call: no existing in_progress attempt. 2nd call: the final getAttempt read-back.
           return findFirstCalls === 1 ? null : { id: 'attempt-id', status: 'in_progress', startedAt: new Date() };
         },
-        create,
       },
+      // The row-lock SELECT ... FOR UPDATE and the create both run inside the transaction.
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: async () => [{ id: assessmentId }],
+          assessmentAttempt: { create },
+        }),
     } as unknown as PrismaService;
     const service = new AssessmentAttemptsService(prisma);
 
@@ -370,29 +375,25 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     );
   });
 
-  it('rolls back the attempt if the assessment was deleted concurrently while it was being created', async () => {
-    const deleteAttempt = jest.fn(async () => ({ id: 'attempt-id' }));
-    let assessmentFindFirstCalls = 0;
+  it('throws NotFoundException without creating an attempt when the assessment was deleted concurrently, before the row lock could be acquired', async () => {
+    const create = jest.fn();
     const prisma = {
-      assessment: {
-        findFirst: async () => {
-          assessmentFindFirstCalls += 1;
-          // 1st call: loadAssessmentForAttempt (assessment still alive). 2nd call: the
-          // post-create re-check — simulates a concurrent deleteAssessment() winning the race.
-          return assessmentFindFirstCalls === 1 ? buildAssessment() : null;
-        },
-      },
+      assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
-      assessmentAttempt: {
-        findFirst: async () => null,
-        create: async () => ({ id: 'attempt-id' }),
-        delete: deleteAttempt,
-      },
+      assessmentAttempt: { findFirst: async () => null },
+      // Simulates deleteAssessment() winning the race for the row lock and committing its
+      // soft-delete first: by the time this transaction acquires the lock, the row no longer
+      // matches "deleted_at IS NULL", so the FOR UPDATE select returns nothing.
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: async () => [],
+          assessmentAttempt: { create },
+        }),
     } as unknown as PrismaService;
     const service = new AssessmentAttemptsService(prisma);
 
     await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
-    expect(deleteAttempt).toHaveBeenCalledWith({ where: { id: 'attempt-id' } });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {

@@ -114,38 +114,44 @@ export class AssessmentsService {
   }
 
   async deleteAssessment(assessmentId: string, organizationId: string) {
-    const assessment = await this.prisma.assessment.findFirst({
-      where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true, slug: true },
-    });
+    // SELECT ... FOR UPDATE locks the assessment row for the rest of this transaction, so a
+    // concurrent startAttempt() (which takes the same lock before creating its attempt row —
+    // see AssessmentAttemptsService.startAttempt) is fully serialized against this delete:
+    // whichever transaction gets the lock first is the one the other sees committed.
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string; slug: string }[]>`
+        SELECT id, slug FROM assessments
+        WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+      const assessment = rows[0];
 
-    if (!assessment) {
-      throw new NotFoundException('Assessment not found');
-    }
+      if (!assessment) {
+        return 'not-found' as const;
+      }
 
-    // Atomic: the "no in-progress attempt" check and the delete happen in one statement, so a
-    // concurrent startAttempt() that creates an attempt between our read above and this update
-    // can't slip through — whichever request loses the race gets result.count === 0.
-    const result = await this.prisma.assessment.updateMany({
-      where: {
-        id: assessmentId,
-        organizationId,
-        deletedAt: null,
-        attempts: { none: { status: 'in_progress', deletedAt: null } },
-      },
-      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
-    });
-
-    if (result.count === 0) {
-      const stillExists = await this.prisma.assessment.findFirst({
-        where: { id: assessmentId, organizationId, deletedAt: null },
+      const activeAttempt = await tx.assessmentAttempt.findFirst({
+        where: { assessmentId, status: 'in_progress', deletedAt: null },
         select: { id: true },
       });
 
-      if (!stillExists) {
-        throw new NotFoundException('Assessment not found');
+      if (activeAttempt) {
+        return 'conflict' as const;
       }
 
+      await tx.assessment.update({
+        where: { id: assessmentId, organizationId },
+        data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
+      });
+
+      return 'ok' as const;
+    });
+
+    if (outcome === 'not-found') {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    if (outcome === 'conflict') {
       throw new BadRequestException('Cannot delete an assessment with an attempt in progress');
     }
   }

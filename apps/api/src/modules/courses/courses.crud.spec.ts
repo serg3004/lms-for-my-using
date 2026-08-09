@@ -93,7 +93,7 @@ describe('CoursesService CRUD updates', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: courseId, organizationId },
-        data: { deletedAt: expect.any(Date), slug: `existing-course--deleted-${courseId}` },
+        data: { deletedAt: expect.any(Date), slug: expect.stringMatching(new RegExp(`^existing-course--deleted-${courseId}-`)) },
       }),
     );
   });
