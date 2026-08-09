@@ -192,6 +192,33 @@ export class AssessmentAttemptsService {
   }
 
   /**
+   * Dry-run grading for the assessment author (admin/instructor): reuses the exact same grading
+   * logic as createAttempt (getQuestions/gradeAnswers/scoreMultipleChoiceAnswer), so the preview
+   * can never diverge from how a real submission would be scored — but it writes nothing to the
+   * database (no AssessmentAttempt row, no maxAttempts consumed, no certificate). Works for
+   * draft assessments too, since previewing before publishing is the point.
+   */
+  async previewAttempt(assessmentId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId, deletedAt: null },
+      select: { id: true, passingScore: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    const questions = await this.getQuestions(assessmentId, organizationId);
+    const gradedAnswers = this.gradeAnswers(questions, input.answers);
+    const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+    const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
+    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+    const passed = percentage >= assessment.passingScore;
+
+    return { score, maxScore, percentage, passed, answers: gradedAnswers };
+  }
+
+  /**
    * Records the server-trusted start time for a timed assessment. Idempotent — resuming just
    * returns the existing in_progress attempt rather than restarting the clock. Untimed assessments
    * (the default) don't use this at all; submit directly via createAttempt.

@@ -333,6 +333,7 @@
       "previewLoading": "Loading preview...",
       "previewEmpty": "This assessment has no questions yet.",
       "previewPassingScore": "Passing score: {{score}}%",
+      "previewSubmitError": "Unable to submit preview.",
       "editTitle": "Edit assessment",
       "close": "Close",
       "cancel": "Cancel",

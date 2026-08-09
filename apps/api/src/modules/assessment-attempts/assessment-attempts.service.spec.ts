@@ -213,6 +213,53 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   });
 });
 
+describe('AssessmentAttemptsService.previewAttempt', () => {
+  it('computes score using the real grading logic without writing anything to the database', async () => {
+    const createAttempt = jest.fn();
+    const prisma = {
+      assessment: {
+        findFirst: async () => ({ id: assessmentId, passingScore: 70 }),
+      },
+      assessmentQuestion: {
+        findMany: async () => [
+          { id: questionId, type: 'single_choice', points: 1, options: [{ id: optionId, isCorrect: true }] },
+        ],
+      },
+      assessmentAttempt: { create: createAttempt },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.previewAttempt(assessmentId, organizationId, attemptInput);
+
+    expect(result).toMatchObject({ score: 1, maxScore: 1, percentage: 100, passed: true });
+    expect(result.answers).toHaveLength(1);
+    expect(createAttempt).not.toHaveBeenCalled();
+  });
+
+  it('works for a draft assessment — previewing before publishing is the point', async () => {
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId, passingScore: 70 }) },
+      assessmentQuestion: {
+        findMany: async () => [
+          { id: questionId, type: 'single_choice', points: 1, options: [{ id: optionId, isCorrect: false }] },
+        ],
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.previewAttempt(assessmentId, organizationId, attemptInput);
+
+    expect(result).toMatchObject({ score: 0, maxScore: 1, percentage: 0, passed: false });
+  });
+
+  it('throws NotFoundException when the assessment does not exist', async () => {
+    const prisma = { assessment: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.previewAttempt(assessmentId, organizationId, attemptInput)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
 describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
   const optionA = 'aaaaaaaa-0000-4000-8000-000000000001'; // correct
   const optionB = 'bbbbbbbb-0000-4000-8000-000000000002'; // correct
