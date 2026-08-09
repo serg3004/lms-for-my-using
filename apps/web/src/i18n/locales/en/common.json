@@ -327,6 +327,8 @@
       "questions": "Questions",
       "empty": "No assessments found.",
       "statusError": "Unable to update status.",
+      "publish": "Publish",
+      "publishNoQuestions": "Add at least one question with a correct answer before publishing.",
       "delete": "Delete",
       "deleteTitle": "Delete assessment",
       "deleteConfirm": "Delete \"{{title}}\"? This action cannot be undone.",

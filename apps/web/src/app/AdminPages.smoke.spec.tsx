@@ -303,12 +303,24 @@ describe('admin page smoke rendering', () => {
           availableAfterCourseCompletion: false,
           status: 'published',
         },
+        {
+          id: 'assessment-2',
+          title: 'Draft Quiz',
+          slug: 'draft-quiz',
+          description: null,
+          passingScore: 70,
+          maxAttempts: 3,
+          availableAfterCourseCompletion: false,
+          status: 'draft',
+        },
       ],
     });
 
     const html = renderToStaticMarkup(<AdminAssessmentBuilderPage />);
 
     expect(html).toContain('Safety Knowledge Test');
+    expect(html).toContain('Draft Quiz');
+    expect(html).toContain('disabled=""');
   });
 
   it('renders results and certificates loading state without crashing', () => {
