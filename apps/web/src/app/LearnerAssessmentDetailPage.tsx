@@ -265,7 +265,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
                 .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                 .map((attempt) => (
                   <tr key={attempt.id} style={{ borderTop: `1px solid ${COLORS.border}` }}>
-                    <td style={{ padding: '12px' }}>{formatNullableDate(attempt.completedAt, '—')}</td>
+                    <td style={{ padding: '12px' }}>{formatNullableDate(attempt.completedAt ?? attempt.startedAt, '—')}</td>
                     <td style={{ padding: '12px' }}>
                       {attempt.status === 'completed'
                         ? `${attempt.score} / ${attempt.maxScore} (${attempt.percentage}%)`
