@@ -26,6 +26,7 @@ export function useAssessmentBuilder(t: TFunction) {
 
   useEffect(() => { void load(); }, [load]);
   const replaceAssessment = useCallback((updated: Assessment) => setLoadState((previous) => previous.status === 'loaded' ? { ...previous, assessments: previous.assessments.map((item) => item.id === updated.id ? updated : item) } : previous), []);
+  const removeAssessment = useCallback((id: string) => setLoadState((previous) => previous.status === 'loaded' ? { ...previous, assessments: previous.assessments.filter((item) => item.id !== id) } : previous), []);
   const selectCourse = useCallback(async (courseId: string) => { setSelectedCourseId(courseId); setSelectedLessonId(''); await load(courseId); }, [load]);
-  return { loadState, selectedCourseId, selectedLessonId, setSelectedLessonId, selectCourse, load, replaceAssessment };
+  return { loadState, selectedCourseId, selectedLessonId, setSelectedLessonId, selectCourse, load, replaceAssessment, removeAssessment };
 }
