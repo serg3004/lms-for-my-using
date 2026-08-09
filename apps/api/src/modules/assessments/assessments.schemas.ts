@@ -14,6 +14,8 @@ export const createAssessmentSchema = z.object({
   maxAttempts: z.number().int().min(1).optional(),
   timeLimitMinutes: z.number().int().min(1).optional(),
   availableAfterCourseCompletion: z.boolean().default(true),
+  passMessage: z.string().trim().max(2000).optional(),
+  failMessage: z.string().trim().max(2000).optional(),
   showCorrectAnswers: z.boolean().default(false),
 });
 
@@ -33,6 +35,8 @@ export const updateAssessmentSchema = z
     maxAttempts: z.number().int().min(1).nullable(),
     timeLimitMinutes: z.number().int().min(1).nullable(),
     availableAfterCourseCompletion: z.boolean(),
+    passMessage: z.string().trim().max(2000).nullable(),
+    failMessage: z.string().trim().max(2000).nullable(),
     showCorrectAnswers: z.boolean(),
   })
   .partial();

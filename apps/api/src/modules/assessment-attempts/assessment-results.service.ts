@@ -28,6 +28,8 @@ const attemptResultSummarySelect = {
       title: true,
       slug: true,
       passingScore: true,
+      passMessage: true,
+      failMessage: true,
       showCorrectAnswers: true,
     },
   },
@@ -98,6 +100,8 @@ type AttemptResultInput = {
     title: string;
     slug: string;
     passingScore: number;
+    passMessage: string | null;
+    failMessage: string | null;
     showCorrectAnswers: boolean;
   };
   user: {

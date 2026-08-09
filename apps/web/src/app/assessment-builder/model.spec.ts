@@ -3,14 +3,17 @@ import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQues
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
-    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, showCorrectAnswers: false, status: 'draft' });
+    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, passMessage: null, failMessage: null, showCorrectAnswers: false, status: 'draft' });
+  });
+  it('trims and normalizes custom pass/fail messages, falling back to null when blank', () => {
+    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Test', passMessage: '  Great job!  ', failMessage: '   ' })).toMatchObject({ passMessage: 'Great job!', failMessage: null });
   });
   it.each([{ title: '' }, { passingScore: '101' }, { passingScore: '1.5' }, { maxAttempts: '0' }])('rejects invalid values: %o', (patch) => {
     expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Test', ...patch })).toBeNull();
   });
   it('initializes edit values and resets reducer state', () => {
-    const form = assessmentToForm({ id: 'a', slug: 'a', title: 'A', description: null, passingScore: 80, maxAttempts: null, availableAfterCourseCompletion: false, showCorrectAnswers: true, status: 'published' });
-    expect(form).toMatchObject({ title: 'A', description: '', passingScore: '80', maxAttempts: '', showCorrectAnswers: true, status: 'published' });
+    const form = assessmentToForm({ id: 'a', slug: 'a', title: 'A', description: null, passingScore: 80, maxAttempts: null, availableAfterCourseCompletion: false, passMessage: 'Nice work', failMessage: null, showCorrectAnswers: true, status: 'published' });
+    expect(form).toMatchObject({ title: 'A', description: '', passingScore: '80', maxAttempts: '', passMessage: 'Nice work', failMessage: '', showCorrectAnswers: true, status: 'published' });
     expect(assessmentFormReducer(form, { type: 'reset' })).toEqual(emptyAssessmentForm());
   });
   it('updates one field and appends an option immutably', () => {
