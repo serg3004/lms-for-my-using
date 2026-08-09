@@ -1,9 +1,10 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import {
   createAssessmentAttemptSchema,
@@ -54,6 +55,30 @@ export class AssessmentAttemptsController {
     const currentUser = request.currentUser!;
 
     return this.assessmentResultsService.getAttemptResult(attemptId, currentUser);
+  }
+
+  @Post('assessments/:assessmentId/attempts/preview')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  previewAttempt(
+    @Param('assessmentId') assessmentId: string,
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    const input: CreateAssessmentAttemptInput = createAssessmentAttemptSchema.parse(body);
+
+    return this.assessmentAttemptsService.previewAttempt(assessmentId, request.currentUser!.organizationId, input);
+  }
+
+  @Post('assessments/:assessmentId/attempts/start')
+  @Roles(...rolePolicies.assessmentAttemptsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentAttemptsService.startAttempt(
+      assessmentId,
+      request.currentUser!.id,
+      request.currentUser!.organizationId,
+    );
   }
 
   @Post('assessments/:assessmentId/attempts')

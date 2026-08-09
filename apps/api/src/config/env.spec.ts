@@ -21,6 +21,9 @@ describe('API environment validation', () => {
       JWT_SECRET: validJwtSecret,
       TRUST_PROXY: 'loopback,linklocal,uniquelocal',
       REDIS_URL: 'redis://localhost:6379',
+      BACKGROUND_JOBS_QUEUE: 'lms-background-jobs',
+      BACKGROUND_JOBS_CONCURRENCY: '5',
+      BACKGROUND_JOBS_RUN_WORKER: 'false',
     });
 
     expect(apiEnv).toEqual({
@@ -31,6 +34,9 @@ describe('API environment validation', () => {
       JWT_SECRET: validJwtSecret,
       LOG_LEVEL: 'info',
       REDIS_URL: 'redis://localhost:6379',
+      BACKGROUND_JOBS_QUEUE: 'lms-background-jobs',
+      BACKGROUND_JOBS_CONCURRENCY: 5,
+      BACKGROUND_JOBS_RUN_WORKER: 'false',
       RATE_LIMIT_NAMESPACE: 'lms',
       TRUST_PROXY: ['loopback', 'linklocal', 'uniquelocal'],
     });

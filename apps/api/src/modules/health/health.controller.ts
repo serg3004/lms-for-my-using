@@ -1,8 +1,8 @@
 import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
 
-import { PrismaService } from '../../database/prisma.service.js';
-import { PublicAccess } from '../auth/roles.js';
-import { UploadService } from '../upload/upload.service.js';
+import { PublicAccess } from '../auth/public.js';
+import { UploadService } from '../upload/public.js';
+import { DatabaseHealthService } from './database-health.service.js';
 import { RedisHealthService } from './redis-health.service.js';
 
 type HealthOkResponse = {
@@ -24,7 +24,7 @@ export type HealthResponse = HealthOkResponse | HealthErrorResponse;
 @Controller('health')
 export class HealthController {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly database: DatabaseHealthService,
     private readonly redis: RedisHealthService,
     private readonly upload: UploadService,
   ) {}
@@ -48,7 +48,7 @@ export class HealthController {
   @HttpCode(HttpStatus.OK)
   async getReadiness(): Promise<HealthOkResponse> {
     const checks = await Promise.allSettled([
-      this.prisma.$queryRaw`SELECT 1`,
+      this.database.checkReadiness(),
       this.redis.checkReadiness(),
       this.upload.checkReadiness(),
     ]);

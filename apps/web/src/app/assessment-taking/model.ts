@@ -59,3 +59,9 @@ export function getAssessmentOptionLabel(
 ): string {
   return option.text ?? option.imageUrl ?? option.id;
 }
+
+/** Seconds remaining in a timed attempt's window, based on the server-trusted startedAt — never negative. */
+export function computeSecondsLeft(startedAtIso: string, timeLimitMinutes: number, now: number = Date.now()): number {
+  const elapsedSeconds = Math.floor((now - new Date(startedAtIso).getTime()) / 1000);
+  return Math.max(0, timeLimitMinutes * 60 - elapsedSeconds);
+}

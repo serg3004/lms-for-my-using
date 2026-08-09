@@ -7,6 +7,7 @@ import { AssessmentAttemptsModule } from './modules/assessment-attempts/assessme
 import { AssessmentQuestionsModule } from './modules/assessment-questions/assessment-questions.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
+import { BackgroundJobsModule } from './modules/background-jobs/background-jobs.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module.js';
@@ -21,6 +22,7 @@ import { ManagerTeamScopeModule } from './modules/manager-team-scope/manager-tea
 import { OpenApiModule } from './modules/openapi/openapi.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
+import { TransactionalOutboxModule } from './modules/transactional-outbox/transactional-outbox.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -43,6 +45,7 @@ import { UsersModule } from './modules/users/users.module.js';
     AssessmentQuestionsModule,
     AssessmentsModule,
     AssignmentsModule,
+    BackgroundJobsModule,
     AuthModule,
     CertificatesModule,
     CourseMaterialsModule,
@@ -56,6 +59,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OpenApiModule,
     OrganizationsModule,
     ProgressModule,
+    TransactionalOutboxModule,
     UploadModule,
     UsersModule,
   ],

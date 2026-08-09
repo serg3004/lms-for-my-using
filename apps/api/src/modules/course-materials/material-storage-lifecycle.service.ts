@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { UploadService } from '../upload/upload.service.js';
+import { UploadService } from '../upload/public.js';
 
 export type LifecycleCleanupResult = {
   dryRun: boolean;

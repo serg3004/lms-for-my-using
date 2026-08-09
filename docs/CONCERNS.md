@@ -127,6 +127,20 @@ PR #492 (`fix(admin): contain horizontal overflow in admin layout at high browse
 
 ## Закрытые
 
+### [2026-08-09] Soft-delete не освобождает slug — повторное создание с тем же названием падает 409 → **закрыто (2026-08-09)**
+**Файлы:** `apps/api/src/common/soft-delete-slug.ts`, `courses.service.ts`, `lessons.service.ts`, `course-materials.service.ts`, `assessments.service.ts`
+Найдено при автоматическом ревью PR #541 (delete для Assessment): `@@unique([courseId, slug])`/`@@unique([organizationId, slug])` ни у одной модели не фильтруют по `deletedAt` — soft-deleted строка продолжает занимать свой slug навсегда. Удалить курс/урок/материал/тест и тут же пересоздать с тем же названием — гарантированный 409, независимо от того, что старая запись уже скрыта из всех списков. Repo-wide паттерн, не специфика одной модели.
+Исправлено: новый общий хелпер `releaseSlugOnDelete(slug, id)` — при soft-delete slug мутируется в `${slug}--deleted-${id}` (гарантированно уникально за счёт id), освобождая исходный slug для повторного использования. Применено единообразно во всех четырёх местах (`deleteCourse`, `deleteLesson`, `deleteCourseMaterial`, `deleteAssessment`). Group/Organization не затронуты — у них нет delete-эндпоинта вообще (см. §5, §13).
+
+---
+
+### [2026-08-08] `Progress.createProgress` — нет unique-индекса, повторный вызов молча не обновляет статус → **закрыто (2026-08-08)**
+**Файлы:** `apps/api/prisma/schema.prisma`, `apps/api/prisma/migrations/20260808150000_add_progress_unique_target/`, `apps/api/src/modules/progress/progress.service.ts`
+При перепроверке §14 Progress (`ENTITY_TECHSPEC_IMPLEMENTED.md`) нашёл гэп серьёзнее исходной формулировки. На `Progress` не было `@@unique([courseId, lessonId, userId])`: `createProgress` делал `findFirst` → `create` без транзакции — не атомарно (race condition, возможны дубли строк при параллельных запросах), и если запись уже существовала, повторный `POST /progress` с другим `status` молча возвращал старую запись без изменений — `PATCH /progress` не существует, обновить прогресс было в принципе невозможно после первого вызова. На фронтенде `POST /progress` при этом нигде не вызывается (`apps/web/src/shared/api/progress.ts` — только чтение), риск был 100% недостижим через UI сегодня, но инфраструктура для «отметить урок пройденным» была явно неполной для будущего использования.
+Исправлено: добавлен `@@unique([courseId, lessonId, userId])` (миграция с дедупликацией существующих дублей перед созданием индекса), `createProgress` для случая с `lessonId` теперь `upsert` по этому ключу. Для курсового прогресса без `lessonId` unique-индекс не покрывает случай (Postgres считает `NULL` различными значениями) — остался `find-then-write`, но теперь тоже обновляет статус вместо игнорирования.
+
+---
+
 ### [2026-07-31] Login возвращает `accessToken` и в теле и в cookie одновременно → **закрыто, при перепроверке не подтвердилось (2026-08-08)**
 Утверждение было неточным. `accessToken` в JSON-теле — не избыточность, а самостоятельный путь Bearer-авторизации для не-браузерных клиентов (скрипты, интеграции), независимый от cookie. Подтверждено использованием в `apps/api/src/integration/api.database-smoke.spec.ts` — токен из тела ответа login передаётся как `Authorization: Bearer ${login.accessToken}` в последующих запросах. Убрать нельзя без поломки этого сценария. Код не менялся.
 

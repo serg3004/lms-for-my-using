@@ -1,4 +1,4 @@
-import type { CurrentUser } from '../auth/auth.schemas.js';
+import type { CurrentUser } from '../auth/public.js';
 
 export type TeamScopeActor = Pick<CurrentUser, 'id' | 'organizationId' | 'roles'>;
 

@@ -764,6 +764,90 @@
   opacity: 0.85;
 }
 
+/* ── Inline banner ───────────────────────────────────────────────────────── */
+
+.admin-inline-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+}
+
+.admin-inline-banner p {
+  margin: 0;
+}
+
+.admin-inline-banner__close {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1.125rem;
+  line-height: 1;
+  color: inherit;
+}
+
+/* ── Assessment preview ──────────────────────────────────────────────────── */
+
+.admin-preview {
+  padding: 1.5rem;
+}
+
+.admin-preview__description {
+  color: var(--color-text-muted);
+}
+
+.admin-preview__meta {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.admin-preview__questions {
+  display: grid;
+  gap: 20px;
+  margin: 16px 0 0;
+  padding-left: 1.25rem;
+}
+
+.admin-preview__question-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.admin-preview__points {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.admin-preview__question-text {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+}
+
+.admin-preview__options {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-preview__option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-preview__option-image {
+  max-width: 160px;
+  max-height: 90px;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
 /* ── Dialog ──────────────────────────────────────────────────────────────── */
 
 .admin-dialog {

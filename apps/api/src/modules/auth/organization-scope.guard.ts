@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { AuthenticatedRequest } from './auth.guard.js';
+import type { AuthenticatedRequest } from './auth.guard.js';
 import {
   organizationScopeMetadataKey,
   OrganizationScopeSource,

@@ -25,7 +25,7 @@ describe('LessonsService CRUD order', () => {
     const update = jest.fn(async () => ({ id: firstLessonId }));
     const prisma = {
       lesson: {
-        findFirst: async () => ({ id: firstLessonId }),
+        findFirst: async () => ({ id: firstLessonId, slug: 'first-lesson' }),
         update,
       },
     } as unknown as PrismaService;
@@ -35,7 +35,7 @@ describe('LessonsService CRUD order', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: firstLessonId, organizationId },
-        data: { deletedAt: expect.any(Date) },
+        data: { deletedAt: expect.any(Date), slug: expect.stringMatching(new RegExp(`^first-lesson--deleted-${firstLessonId}-`)) },
       }),
     );
   });

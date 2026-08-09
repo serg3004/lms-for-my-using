@@ -1,6 +1,18 @@
-import { createAssessmentAnswerOptionSchema, createAssessmentQuestionSchema } from './assessment-questions.schemas.js';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals';
+
+import {
+  createAssessmentAnswerOptionSchema,
+  createAssessmentQuestionSchema,
+  updateAssessmentAnswerOptionSchema,
+  updateAssessmentQuestionSchema,
+} from './assessment-questions.schemas.js';
 import { AssessmentQuestionsService } from './assessment-questions.service.js';
 import { PrismaService } from '../../database/prisma.service.js';
+
+const organizationId = '11111111-1111-1111-1111-111111111111';
+const questionId = '55555555-5555-5555-5555-555555555555';
+const optionId = '66666666-6666-6666-6666-666666666666';
 
 describe('Assessment questions validation', () => {
   it('accepts valid assessment question input', () => {
@@ -18,6 +30,7 @@ describe('Assessment questions validation', () => {
       type: 'single_choice',
       points: 2,
       order: 1,
+      scoringMode: 'all_or_nothing',
     });
   });
 
@@ -66,6 +79,27 @@ describe('Assessment questions validation', () => {
     expect(() =>
       createAssessmentQuestionSchema.parse({
         organizationId: '11111111-1111-1111-1111-111111111111',
+      }),
+    ).toThrow();
+  });
+
+  it('accepts an explicit scoringMode', () => {
+    const input = createAssessmentQuestionSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      title: 'Pick all correct',
+      type: 'multiple_choice',
+      scoringMode: 'proportional_with_penalty',
+    });
+
+    expect(input.scoringMode).toBe('proportional_with_penalty');
+  });
+
+  it('rejects an unknown scoringMode', () => {
+    expect(() =>
+      createAssessmentQuestionSchema.parse({
+        organizationId: '11111111-1111-1111-1111-111111111111',
+        title: 'Pick all correct',
+        scoringMode: 'weighted',
       }),
     ).toThrow();
   });
@@ -142,5 +176,131 @@ describe('AssessmentQuestionsService learner quiz', () => {
         }),
       }),
     );
+  });
+});
+
+describe('updateAssessmentQuestionSchema / updateAssessmentAnswerOptionSchema', () => {
+  it('accepts a partial question update', () => {
+    expect(updateAssessmentQuestionSchema.parse({ points: 5 })).toEqual({ points: 5 });
+  });
+
+  it('accepts an empty question update', () => {
+    expect(updateAssessmentQuestionSchema.parse({})).toEqual({});
+  });
+
+  it('accepts a partial option update', () => {
+    expect(updateAssessmentAnswerOptionSchema.parse({ isCorrect: true })).toEqual({ isCorrect: true });
+  });
+
+  it('accepts text: null to clear it on an option update', () => {
+    expect(updateAssessmentAnswerOptionSchema.parse({ text: null })).toEqual({ text: null });
+  });
+});
+
+describe('AssessmentQuestionsService.updateQuestion / deleteQuestion', () => {
+  it('updates a question', async () => {
+    const update = jest.fn(async () => ({ id: questionId, points: 5 }));
+    const prisma = {
+      assessmentQuestion: { findFirst: async () => ({ id: questionId }), update },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await service.updateQuestion(questionId, organizationId, { points: 5 });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: questionId, organizationId }, data: { points: 5 } }));
+  });
+
+  it('throws NotFoundException when updating a missing question', async () => {
+    const prisma = { assessmentQuestion: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await expect(service.updateQuestion(questionId, organizationId, { points: 5 })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('soft-deletes a question', async () => {
+    const update = jest.fn(async () => ({ id: questionId }));
+    const prisma = {
+      assessmentQuestion: { findFirst: async () => ({ id: questionId }), update },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await service.deleteQuestion(questionId, organizationId);
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: questionId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+    );
+  });
+});
+
+describe('AssessmentQuestionsService.updateAnswerOption / deleteAnswerOption', () => {
+  it('updates an option', async () => {
+    const update = jest.fn(async () => ({ id: optionId, isCorrect: true }));
+    const prisma = {
+      assessmentAnswerOption: {
+        findFirst: async () => ({ id: optionId, text: 'Option A', imageUrl: null }),
+        update,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await service.updateAnswerOption(optionId, organizationId, { isCorrect: true });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: { isCorrect: true } }));
+  });
+
+  it('rejects clearing both text and imageUrl, leaving the option with neither', async () => {
+    const prisma = {
+      assessmentAnswerOption: { findFirst: async () => ({ id: optionId, text: 'Option A', imageUrl: null }) },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await expect(service.updateAnswerOption(optionId, organizationId, { text: null })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('allows clearing text when imageUrl is already set', async () => {
+    const update = jest.fn(async () => ({ id: optionId, text: null }));
+    const prisma = {
+      assessmentAnswerOption: {
+        findFirst: async () => ({ id: optionId, text: 'Option A', imageUrl: '/files/a.png' }),
+        update,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await service.updateAnswerOption(optionId, organizationId, { text: null });
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: { text: null } }));
+  });
+
+  it('throws NotFoundException when updating a missing option', async () => {
+    const prisma = { assessmentAnswerOption: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await expect(service.updateAnswerOption(optionId, organizationId, { isCorrect: true })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('soft-deletes an option', async () => {
+    const update = jest.fn(async () => ({ id: optionId }));
+    const prisma = {
+      assessmentAnswerOption: { findFirst: async () => ({ id: optionId }), update },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await service.deleteAnswerOption(optionId, organizationId);
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: optionId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+    );
+  });
+
+  it('throws NotFoundException when deleting a missing option', async () => {
+    const prisma = { assessmentAnswerOption: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await expect(service.deleteAnswerOption(optionId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

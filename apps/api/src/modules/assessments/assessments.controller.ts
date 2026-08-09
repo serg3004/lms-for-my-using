@@ -1,12 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
-import { OrganizationScope } from '../auth/organization-scope.js';
-import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
-import { isInstructorCourseScoped } from '../course-access/course-access.policy.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { OrganizationScope } from '../auth/public.js';
+import { OrganizationScopeGuard } from '../auth/public.js';
+import { Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
+import { isInstructorCourseScoped } from '../course-access/public.js';
 import { AssessmentsService } from './assessments.service.js';
 import {
   createAssessmentSchema,
@@ -70,5 +71,12 @@ export class AssessmentsController {
   updateAssessment(@Param('id') assessmentId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateAssessmentSchema.parse(body);
     return this.assessmentsService.updateAssessment(assessmentId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete(':id')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'id', 'assessment')
+  deleteAssessment(@Param('id') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.deleteAssessment(assessmentId, request.currentUser!.organizationId);
   }
 }

@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 
-import { PublicAccess } from '../auth/roles.js';
+import { PublicAccess } from '../auth/public.js';
 import { getOpenApiDocument } from './openapi.document.js';
 
 @Controller('openapi')

@@ -76,8 +76,23 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
         </label>
       </div>
 
+      <div className="admin-form__field">
+        <label>
+          <input type="checkbox" checked={form.showCorrectAnswers} onChange={(e) => change('showCorrectAnswers', e.target.checked)} />
+          {' '}{t('admin.assessmentBuilder.showCorrectAnswers', 'Show correct answers after submission')}
+        </label>
+      </div>
+
       <FormField id={`${uid}-description`} label={t('admin.assessmentBuilder.description', 'Description')}>
         <textarea id={`${uid}-description`} value={form.description} onChange={(e) => change('description', e.target.value)} maxLength={2000} />
+      </FormField>
+
+      <FormField id={`${uid}-pass-message`} label={t('admin.assessmentBuilder.passMessage', 'Pass message (blank = default)')}>
+        <textarea id={`${uid}-pass-message`} value={form.passMessage} onChange={(e) => change('passMessage', e.target.value)} maxLength={2000} />
+      </FormField>
+
+      <FormField id={`${uid}-fail-message`} label={t('admin.assessmentBuilder.failMessage', 'Fail message (blank = default)')}>
+        <textarea id={`${uid}-fail-message`} value={form.failMessage} onChange={(e) => change('failMessage', e.target.value)} maxLength={2000} />
       </FormField>
 
       {state.status === 'error' ? <p className="admin-form__error" role="alert">{state.message}</p> : null}

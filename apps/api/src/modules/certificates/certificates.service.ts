@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import type { UserRole } from '../auth/roles.js';
-import { isManagerTeamScoped, ManagerTeamScope, TeamScopeActor } from '../manager-team-scope/manager-team-scope.js';
+import type { UserRole } from '../auth/public.js';
+import { isManagerTeamScoped, ManagerTeamScope } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import type { IssueCertificateInput } from './certificates.schemas.js';
 
 const privilegedCertificateRoles: UserRole[] = ['admin', 'manager', 'instructor'];

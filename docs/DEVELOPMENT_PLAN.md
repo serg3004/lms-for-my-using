@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-07-30 (добавлена Часть 7 — консолидированный план по итогам аудита)
+**Обновлён:** 2026-08-09 (реализован PR 207: boundaries модульного монолита)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -2728,9 +2728,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Breaking contracts обнаруживаются
 - Циклических зависимостей нет.
 
+> **Факт:** повторная проверка подтвердила, что PR 205 ещё не реализован:
+> `packages/shared` не содержит `*.spec.ts`, а его test script по-прежнему
+> запускает Vitest с `--passWithNoTests`. Не смешивать этот пункт плана с
+> одноимённым историческим GitHub PR: shared contract tests остаются отдельной
+> незавершённой задачей.
+
 ---
 
-## PR 206 — ESM/test configuration cleanup 🔲
+## PR 206 — ESM/test configuration cleanup ✅
 
 **Проблема:** ts-jest и ESLint выводят module warnings, diagnostics частично отключены.
 
@@ -2745,11 +2751,21 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Mapper hacks не растут
 - Build/runtime остаются ESM-compatible.
 
+> **Факт:** API test config переведён на `isolatedModules` с включённой
+> диагностикой ts-jest; устаревший `baseUrl` удалён, а десятки точечных mapper
+> rules заменены единым ESM `.js`→TypeScript mapper и alias для `@lms/shared`.
+> Type-only auth imports сделаны явными, чтобы isolated transpilation не создавала
+> несуществующие runtime imports. Корневой package объявлен ESM, поэтому ESLint
+> config загружается без `MODULE_TYPELESS_PACKAGE_JSON`. Полный API suite, lint,
+> typecheck и build проходят; обязательный Node flag для Jest ESM всё ещё выводит
+> стандартный `ExperimentalWarning`, но предупреждения ts-jest/ESLint, являвшиеся
+> предметом задачи, устранены.
+
 ---
 
 ## Фаза G — Backend-архитектура и производительность
 
-## PR 207 — Boundaries модульного монолита 🔲
+## PR 207 — Boundaries модульного монолита ✅
 
 **Проблема:** Рост модулей создаёт риск прямых imports internal services и Prisma из controllers.
 
@@ -2764,9 +2780,18 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Circular dependencies отсутствуют
 - Поведение не изменено.
 
+> **Факт:** Для `auth`, `course-access`, `manager-team-scope` и `upload` введены
+> явные `public.ts`; production-код других модулей больше не импортирует их
+> внутренние файлы напрямую. `architecture:check` запускается как часть API lint,
+> запрещает новые cross-module internal imports и Prisma/database imports из
+> controllers, а также строит граф зависимостей и отклоняет циклы. Единственный
+> прямой Prisma-вызов из `HealthController` перенесён в инфраструктурный
+> `DatabaseHealthService`. Полные API tests, lint, typecheck и build подтверждают
+> сохранение поведения.
+
 ---
 
-## PR 208 — Background jobs foundation 🔲
+## PR 208 — Background jobs foundation ✅
 
 **Проблема:** Email, reports, certificates, scanning и cleanup не должны выполняться в HTTP request.
 
@@ -2784,9 +2809,21 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Failures наблюдаемы
 - Integration test готов.
 
+> **Факт:** Добавлен глобальный `BackgroundJobsModule` с быстрым enqueue API и
+> отдельным BullMQ worker entrypoint `pnpm --filter @lms/api jobs:worker` поверх
+> существующего Redis. SHA-256 job id из имени и обязательного idempotency key
+> предотвращает повторное применение одной операции; по умолчанию настроены 5
+> попыток и exponential backoff. После исчерпания попыток job сохраняется в
+> отдельной dead-letter queue, а ошибка журналируется. Worker закрывает активную
+> обработку и Redis queues через Nest lifecycle hooks. Integration test проверяет
+> enqueue, выполнение handler, retry/backoff, дедупликацию результата,
+> dead-letter handling и graceful shutdown. Конкретные email/report/certificate/
+> scan/cleanup handlers подключаются отдельными PR без выполнения работы внутри
+> HTTP request.
+
 ---
 
-## PR 209 — Transactional outbox 🔲
+## PR 209 — Transactional outbox ✅
 
 **Проблема:** DB commit и публикация job/event могут рассинхронизироваться.
 
@@ -2801,6 +2838,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Duplicates безопасны
 - Lag измеряется
 - Crash test проходит.
+
+> **Факт:** Добавлена таблица `outbox_events` и глобальный
+> `TransactionalOutboxService`: business mutation и event создаются через один
+> Prisma transaction callback. Отдельный publisher атомарно claim-ит события с
+> `FOR UPDATE SKIP LOCKED`, ставит background job с постоянным idempotency key,
+> повторяет ошибки с backoff и снимает зависшие lock после crash. Успешные записи
+> помечаются `published_at` и очищаются по retention; доступны pending count и
+> возраст старейшего события для измерения lag. Тесты покрывают commit/rollback,
+> duplicate-safe crash между enqueue и отметкой публикации, lag и cleanup.
 
 ---
 

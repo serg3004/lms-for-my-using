@@ -16,12 +16,13 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
-import { AuthGuard, AuthenticatedRequest } from '../auth/auth.guard.js';
-import { OrganizationScope } from '../auth/organization-scope.js';
-import { OrganizationScopeGuard } from '../auth/organization-scope.guard.js';
-import { Roles, rolePolicies } from '../auth/roles.js';
-import { RolesGuard } from '../auth/roles.guard.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/course-access.guard.js';
+import { AuthGuard } from '../auth/public.js';
+import type { AuthenticatedRequest } from '../auth/public.js';
+import { OrganizationScope } from '../auth/public.js';
+import { OrganizationScopeGuard } from '../auth/public.js';
+import { Roles, rolePolicies } from '../auth/public.js';
+import { RolesGuard } from '../auth/public.js';
+import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import {
   createCourseMaterialSchema,
   CreateCourseMaterialInput,
@@ -29,8 +30,8 @@ import {
   updateCourseMaterialSchema,
 } from './course-materials.schemas.js';
 import { CourseMaterialsService } from './course-materials.service.js';
-import { UploadService } from '../upload/upload.service.js';
-import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/upload.validation.js';
+import { UploadService } from '../upload/public.js';
+import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/public.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import { MaterialMultipartUploadService } from './material-multipart-upload.service.js';
 import { completeMultipartUploadSchema, initiateMultipartUploadSchema } from './multipart-upload.schemas.js';
@@ -168,5 +169,16 @@ export class CourseMaterialsController {
   updateCourseMaterial(@Param('id') materialId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateCourseMaterialSchema.parse(body);
     return this.courseMaterialsService.updateCourseMaterial(materialId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete('materials/:id')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  async deleteCourseMaterial(@Param('id') materialId: string, @Req() request: AuthenticatedRequest) {
+    const organizationId = request.currentUser!.organizationId;
+    const material = await this.courseMaterialsService.getMaterialStorageReference(materialId, organizationId);
+    if (material.objectKey) await this.uploadService.deleteObject(material.objectKey);
+    if (material.quarantineKey) await this.uploadService.deleteObject(material.quarantineKey);
+    return this.courseMaterialsService.deleteCourseMaterial(materialId, organizationId);
   }
 }

@@ -9,11 +9,13 @@ import {
   getAssessment,
   getAttemptResult,
   issueCertificate,
+  startAssessmentAttempt,
 } from '../shared/apiClient.js';
 import { apiRequest } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
 import {
   buildAssessmentAnswers,
+  computeSecondsLeft,
   countAnsweredQuestions,
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
@@ -63,10 +65,36 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     void loadAssessment();
   }, [loadAssessment]);
 
+  /**
+   * Untimed assessments (timeLimitMinutes null, the default): no timer shown at all. Timed ones:
+   * calling the start endpoint (idempotent — resumes an existing in_progress attempt rather than
+   * restarting the clock) gets the server-trusted startedAt, so the countdown can't be reset by
+   * refreshing the page or be fooled by the browser's clock.
+   */
   useEffect(() => {
-    if (loadState.status !== 'loaded') return;
-    setSecondsLeft(15 * 60);
-  }, [loadState.status]);
+    if (loadState.status !== 'loaded' || !loadState.assessment.timeLimitMinutes) {
+      setSecondsLeft(null);
+      return;
+    }
+
+    const timeLimitMinutes = loadState.assessment.timeLimitMinutes;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const attempt = await startAssessmentAttempt(assessmentId);
+        if (cancelled) return;
+        setSecondsLeft(computeSecondsLeft(attempt.startedAt, timeLimitMinutes));
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof ApiClientError) {
+          setLoadState({ status: 'error', message: error.message });
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [loadState, assessmentId]);
 
   useEffect(() => {
     if (secondsLeft === null || secondsLeft <= 0) return;
@@ -171,7 +199,9 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
         <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
           <span className="learner-quiz__result-label">
-            {result.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+            {result.passed
+              ? result.assessment.passMessage || t('assessments.resultPassed')
+              : result.assessment.failMessage || t('assessments.resultFailed')}
           </span>
           <span className="learner-quiz__result-score">
             {t('assessments.resultScore', { score: result.score, maxScore: result.maxScore, percentage: result.percentage })}
@@ -197,6 +227,12 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
                         <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                         {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
                       </p>
+                      {!answer.isCorrect && answer.correctOptions && answer.correctOptions.length > 0 ? (
+                        <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
+                          <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
+                          {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                        </p>
+                      ) : null}
                       <p className="learner-quiz__breakdown-points">
                         {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
                       </p>

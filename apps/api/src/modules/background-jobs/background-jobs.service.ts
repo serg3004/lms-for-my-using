@@ -1,0 +1,52 @@
+import { ConflictException, Inject, Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+
+import { BACKGROUND_JOB_BACKEND } from './background-job.backend.js';
+import type { BackgroundJobBackend } from './background-job.backend.js';
+import type {
+  BackgroundJobData,
+  BackgroundJobHandler,
+  EnqueuedBackgroundJob,
+  EnqueueBackgroundJobOptions,
+} from './background-jobs.types.js';
+
+const DEFAULT_ATTEMPTS = 5;
+const DEFAULT_BACKOFF_MS = 1_000;
+
+@Injectable()
+export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDestroy {
+  private readonly logger = new Logger(BackgroundJobsService.name);
+  private readonly handlers = new Map<string, BackgroundJobHandler>();
+
+  constructor(@Inject(BACKGROUND_JOB_BACKEND) private readonly backend: BackgroundJobBackend) {}
+
+  registerHandler(name: string, handler: BackgroundJobHandler): void {
+    if (this.handlers.has(name)) throw new ConflictException(`Background job handler "${name}" is already registered`);
+    this.handlers.set(name, handler);
+  }
+
+  enqueue(
+    name: string,
+    data: BackgroundJobData,
+    options: EnqueueBackgroundJobOptions,
+  ): Promise<EnqueuedBackgroundJob> {
+    return this.backend.enqueue(name, data, {
+      idempotencyKey: options.idempotencyKey,
+      attempts: options.attempts ?? DEFAULT_ATTEMPTS,
+      backoffMs: options.backoffMs ?? DEFAULT_BACKOFF_MS,
+    });
+  }
+
+  async onApplicationBootstrap(): Promise<void> {
+    if (process.env['BACKGROUND_JOBS_RUN_WORKER'] !== 'true') return;
+    await this.backend.start(async (job) => {
+      const handler = this.handlers.get(job.name);
+      if (!handler) throw new Error(`No handler registered for background job "${job.name}"`);
+      await handler(job);
+      this.logger.debug(`Background job ${job.id} completed`);
+    });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.backend.close();
+  }
+}

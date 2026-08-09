@@ -2,8 +2,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { hashPassword } from '../auth/passwords.js';
-import { UploadService } from '../upload/upload.service.js';
+import { hashPassword } from '../auth/public.js';
+import { UploadService } from '../upload/public.js';
 import { CreateOrganizationInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };

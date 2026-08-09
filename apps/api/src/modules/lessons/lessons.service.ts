@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateLessonInput, UpdateLessonInput, UpdateLessonStatusInput } from './lessons.schemas.js';
 
@@ -166,7 +167,7 @@ export class LessonsService {
   async deleteLesson(lessonId: string, organizationId: string) {
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
 
     if (!lesson) {
@@ -175,7 +176,7 @@ export class LessonsService {
 
     await this.prisma.lesson.update({
       where: { id: lessonId, organizationId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(lesson.slug, lesson.id) },
       select: { id: true },
     });
   }

@@ -96,14 +96,13 @@ async function parseJsonResponse(response: Response) {
   return JSON.parse(text) as unknown;
 }
 
-export type UploadResult = {
-  fileUrl: string;
-  fileName: string;
-  mimeType: string;
-  sizeBytes: number;
-};
+export const MAX_BUFFERED_UPLOAD_SIZE_BYTES = 8 * 1024 * 1024;
 
-export function uploadFileWithProgress(file: File, onProgress: (percent: number) => void): Promise<UploadResult> {
+function uploadBufferedMaterialFile(
+  materialId: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -119,7 +118,7 @@ export function uploadFileWithProgress(file: File, onProgress: (percent: number)
     xhr.addEventListener('load', () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          resolve(JSON.parse(xhr.responseText) as UploadResult);
+          resolve(JSON.parse(xhr.responseText) as unknown);
         } catch {
           reject(new ApiClientError('Invalid upload response', xhr.status));
         }
@@ -138,7 +137,7 @@ export function uploadFileWithProgress(file: File, onProgress: (percent: number)
       reject(new ApiClientError('Upload failed', 0));
     });
 
-    xhr.open('POST', `${apiBasePath}/upload`);
+    xhr.open('POST', `${apiBasePath}/materials/${encodeURIComponent(materialId)}/file`);
     xhr.withCredentials = true;
 
     const csrfToken = getCookieValue(csrfTokenCookieName);
@@ -148,6 +147,17 @@ export function uploadFileWithProgress(file: File, onProgress: (percent: number)
 
     xhr.send(formData);
   });
+}
+
+/** Uses the buffered API for small files and direct-to-storage multipart upload for larger files. */
+export function uploadMaterialFileWithProgress(
+  materialId: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<unknown> {
+  return file.size <= MAX_BUFFERED_UPLOAD_SIZE_BYTES
+    ? uploadBufferedMaterialFile(materialId, file, onProgress)
+    : uploadMaterialFileMultipart(materialId, file, onProgress);
 }
 
 type MultipartSession = {
@@ -302,7 +312,7 @@ export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './ap
 export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { createAssignment, getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
-export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments } from './api/assessments.js';
+export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments, startAssessmentAttempt } from './api/assessments.js';
 export { getCertificate, getCertificatePath, issueCertificate, listCertificates } from './api/certificates.js';
 export { getOrganization } from './api/organizations.js';
 export { listMemberships } from './api/memberships.js';

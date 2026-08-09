@@ -97,7 +97,15 @@ enum AssessmentQuestionType {
   true_false
 }
 
+enum AssessmentQuestionScoringMode {
+  all_or_nothing
+  proportional
+  proportional_with_penalty
+  per_option
+}
+
 enum AssessmentAttemptStatus {
+  in_progress
   completed
 }
 
@@ -398,6 +406,7 @@ model Progress {
   lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
   @@index([courseId, status])
   @@index([lessonId])
@@ -417,7 +426,11 @@ model Assessment {
   status                       AssessmentStatus @default(draft)
   passingScore                 Int             @default(70) @map("passing_score")
   maxAttempts                  Int?            @map("max_attempts")
+  timeLimitMinutes              Int?            @map("time_limit_minutes")
   availableAfterCourseCompletion Boolean         @default(true) @map("available_after_course_completion")
+  passMessage                  String?         @map("pass_message")
+  failMessage                  String?         @map("fail_message")
+  showCorrectAnswers           Boolean         @default(false) @map("show_correct_answers")
   createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?        @map("deleted_at") @db.Timestamptz
@@ -445,6 +458,7 @@ model AssessmentQuestion {
   imageUrl       String?               @map("image_url")
   points         Int                   @default(1)
   order          Int                   @default(0)
+  scoringMode    AssessmentQuestionScoringMode @default(all_or_nothing) @map("scoring_mode")
   createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt     DateTime?             @map("deleted_at") @db.Timestamptz
@@ -613,4 +627,20 @@ model MaterialFileDeletionAudit {
 
   @@index([organizationId, materialId, createdAt])
   @@map("material_file_deletion_audits")
+}
+
+model OutboxEvent {
+  id            String    @id @db.Uuid
+  topic         String
+  payload       Json
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz
+  lockedAt      DateTime? @map("locked_at") @db.Timestamptz
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz
+  lastError     String?   @map("last_error")
+
+  @@index([publishedAt, nextAttemptAt, occurredAt])
+  @@index([lockedAt])
+  @@map("outbox_events")
 }

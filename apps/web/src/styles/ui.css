@@ -764,6 +764,10 @@
   color: var(--color-text);
 }
 
+.learner-quiz__breakdown-answer--correct {
+  color: var(--color-success);
+}
+
 .learner-quiz__breakdown-points {
   margin: 0;
   font-size: 0.8125rem;

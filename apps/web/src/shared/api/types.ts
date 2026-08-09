@@ -174,7 +174,11 @@ export type AssessmentSummary = {
   status: string;
   passingScore: number;
   maxAttempts: number;
+  timeLimitMinutes: number | null;
   availableAfterCourseCompletion: boolean;
+  passMessage: string | null;
+  failMessage: string | null;
+  showCorrectAnswers: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -233,6 +237,8 @@ export type AttemptAnswerResult = {
   score: number;
   question: { id: string; title: string; type: string; points: number; order: number };
   selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
+  /** Only present when the assessment author enabled showCorrectAnswers. */
+  correctOptions?: { id: string; text: string | null; imageUrl: string | null }[];
 };
 
 export type AssessmentQuestionSummary = {
@@ -277,7 +283,7 @@ export type AssessmentAttemptResult = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  assessment: { id: string; title: string; slug: string; passingScore: number };
+  assessment: { id: string; title: string; slug: string; passingScore: number; passMessage: string | null; failMessage: string | null };
   user: { id: string; email: string; firstName: string; lastName: string };
   answers: AttemptAnswerResult[];
 };

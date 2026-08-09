@@ -15,7 +15,7 @@ import type { IncomingHttpHeaders } from 'node:http';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { createSecurityHeadersMiddleware } from '../common/middleware/api-hardening.js';
-import { PrismaService } from '../database/prisma.service.js';
+import { DatabaseHealthService } from '../modules/health/database-health.service.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { UploadService } from '../modules/upload/upload.service.js';
@@ -90,7 +90,7 @@ describe('Security audit', () => {
       controllers: [HealthController, ProtectedAuditController],
       providers: [
         AuditAuthGuard,
-        { provide: PrismaService, useValue: { $queryRaw: () => Promise.resolve([{ '?column?': 1 }]) } },
+        { provide: DatabaseHealthService, useValue: { checkReadiness: () => Promise.resolve('ok') } },
         { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
         { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
       ],
