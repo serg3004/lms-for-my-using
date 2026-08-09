@@ -2,11 +2,11 @@ import { jest } from '@jest/globals';
 import { ForbiddenException } from '@nestjs/common';
 
 import {
-  AuthCookieResponse,
   accessTokenCookieName,
   csrfHeaderName,
   csrfTokenCookieName,
 } from './auth.cookies.js';
+import type { AuthCookieResponse } from './auth.cookies.js';
 import { AuthController } from '../auth/auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { AuthSessionStore } from './auth.session-store.js';

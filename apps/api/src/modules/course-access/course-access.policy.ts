@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { CurrentUser } from '../auth/auth.schemas.js';
+import type { CurrentUser } from '../auth/public.js';
 
 export type CourseScopedUser = Pick<CurrentUser, 'id' | 'organizationId' | 'roles'>;
 export type CourseResource = 'lesson' | 'material' | 'assessment' | 'question' | 'assignment' | 'progress' | 'attempt' | 'certificate';

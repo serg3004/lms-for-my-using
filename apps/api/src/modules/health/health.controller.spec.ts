@@ -1,8 +1,8 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
-import { PrismaService } from '../../database/prisma.service';
-import { UploadService } from '../upload/upload.service';
+import { UploadService } from '../upload/public';
+import { DatabaseHealthService } from './database-health.service';
 import { HealthController } from './health.controller';
 import { RedisHealthService } from './redis-health.service';
 
@@ -16,7 +16,7 @@ async function buildController({
   const module = await Test.createTestingModule({
     controllers: [HealthController],
     providers: [
-      { provide: PrismaService, useValue: { $queryRaw: database } },
+      { provide: DatabaseHealthService, useValue: { checkReadiness: database } },
       { provide: RedisHealthService, useValue: { checkReadiness: redis } },
       { provide: UploadService, useValue: { checkReadiness: storage } },
     ],

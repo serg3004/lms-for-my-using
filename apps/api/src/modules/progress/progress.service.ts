@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { isLearnerOnly } from '../auth/roles.js';
-import { ManagerTeamScope, TeamScopeActor, normalizeActor, unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
+import { isLearnerOnly } from '../auth/public.js';
+import { ManagerTeamScope, normalizeActor, unrestrictedActor } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { CreateProgressInput } from './progress.schemas.js';
 
 const progressSelect = {

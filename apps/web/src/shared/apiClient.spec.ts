@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { apiRequest } from './apiClient';
+import { apiRequest, uploadMaterialFileWithProgress } from './apiClient';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -255,5 +255,46 @@ describe('apiRequest', () => {
 
     await expect(staleRequest).resolves.toEqual({ ok: true });
     expect(fetchMock.mock.calls.filter(([url]) => url === '/api/v1/auth/refresh')).toHaveLength(1);
+  });
+});
+
+describe('uploadMaterialFileWithProgress', () => {
+  it('uploads buffered files through the material-scoped endpoint', async () => {
+    const opened: string[] = [];
+    const progress = vi.fn();
+
+    class XMLHttpRequestStub {
+      status = 200;
+      responseText = JSON.stringify({ id: 'material-1', scanStatus: 'pending' });
+      withCredentials = false;
+      readonly upload = {
+        addEventListener: (_event: string, listener: (event: ProgressEvent) => void) => {
+          listener({ lengthComputable: true, loaded: 4, total: 4 } as ProgressEvent);
+        },
+      };
+      private readonly listeners = new Map<string, () => void>();
+
+      addEventListener(event: string, listener: () => void) {
+        this.listeners.set(event, listener);
+      }
+
+      open(_method: string, url: string) {
+        opened.push(url);
+      }
+
+      setRequestHeader() {}
+
+      send() {
+        this.listeners.get('load')?.();
+      }
+    }
+
+    vi.stubGlobal('XMLHttpRequest', XMLHttpRequestStub);
+
+    await expect(
+      uploadMaterialFileWithProgress('material/with spaces', new File(['test'], 'test.pdf', { type: 'application/pdf' }), progress),
+    ).resolves.toMatchObject({ id: 'material-1' });
+    expect(opened).toEqual(['/api/v1/materials/material%2Fwith%20spaces/file']);
+    expect(progress).toHaveBeenCalledWith(100);
   });
 });

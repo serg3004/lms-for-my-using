@@ -2,8 +2,9 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import type { UserRole } from '../auth/roles.js';
-import { ManagerTeamScope, TeamScopeActor, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/manager-team-scope.js';
+import type { UserRole } from '../auth/public.js';
+import { ManagerTeamScope, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 
 const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 

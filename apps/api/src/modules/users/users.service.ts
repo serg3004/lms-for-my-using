@@ -1,8 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { hashPassword } from '../auth/passwords.js';
-import { ManagerTeamScope, TeamScopeActor } from '../manager-team-scope/manager-team-scope.js';
+import { hashPassword } from '../auth/public.js';
+import { ManagerTeamScope } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
   createBulkUserItemSchema,
   CreateBulkUsersInput,
