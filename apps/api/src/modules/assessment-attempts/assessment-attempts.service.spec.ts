@@ -400,8 +400,9 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
         findFirst: async () => {
           findFirstCalls += 1;
           // 1st call: no existing in_progress attempt. 2nd call: the final getAttempt read-back.
-          return findFirstCalls === 1 ? null : { id: 'attempt-id', status: 'in_progress', startedAt: new Date() };
+          return findFirstCalls === 1 ? null : { id: 'attempt-id', assessmentId, status: 'in_progress', startedAt: new Date(), assessment: { timeLimitMinutes } };
         },
+        count: async () => 0,
       },
       // The row-lock SELECT ... FOR UPDATE and the create both run inside the transaction.
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
@@ -449,7 +450,8 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
-        findFirst: async () => ({ id: 'existing-attempt-id', status: 'in_progress', startedAt: new Date() }),
+        findFirst: async () => ({ id: 'existing-attempt-id', assessmentId, status: 'in_progress', startedAt: new Date(), assessment: { timeLimitMinutes } }),
+        count: async () => 0,
         create,
       },
     } as unknown as PrismaService;
@@ -549,5 +551,100 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
 
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ passed: false, percentage: 100 }) }));
+  });
+});
+
+describe('AssessmentAttemptsService auto-finalizing expired in_progress attempts', () => {
+  const timeLimitMinutes = 10;
+  const expiredStartedAt = new Date(Date.now() - (timeLimitMinutes + 5) * 60_000);
+
+  it('listAttempts finalizes an expired in_progress attempt as failed before returning the list', async () => {
+    const updateMany = jest.fn(async () => ({ count: 1 }));
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId, timeLimitMinutes }) },
+      assessmentQuestion: { findMany: async () => [{ id: questionId, type: 'single_choice', points: 5, scoringMode: 'all_or_nothing', options: [] }] },
+      assessmentAttempt: {
+        count: async () => 1,
+        updateMany,
+        findMany: async () => [{ id: 'attempt-id', status: 'completed', passed: false, score: 0, maxScore: 5, percentage: 0 }],
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const attempts = await service.listAttempts(assessmentId, { id: userId, organizationId, roles: ['admin'] });
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ assessmentId, organizationId, status: 'in_progress' }),
+        data: expect.objectContaining({ status: 'completed', passed: false, score: 0, maxScore: 5, percentage: 0 }),
+      }),
+    );
+    expect(attempts).toEqual([{ id: 'attempt-id', status: 'completed', passed: false, score: 0, maxScore: 5, percentage: 0 }]);
+  });
+
+  it('listAttempts does not touch attempts when none are expired', async () => {
+    const updateMany = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId, timeLimitMinutes }) },
+      assessmentAttempt: {
+        count: async () => 0,
+        updateMany,
+        findMany: async () => [],
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await service.listAttempts(assessmentId, { id: userId, organizationId, roles: ['admin'] });
+
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('getAttempt returns an expired in_progress attempt as immediately finalized/failed', async () => {
+    const updateMany = jest.fn(async () => ({ count: 1 }));
+    const prisma = {
+      assessmentQuestion: { findMany: async () => [{ id: questionId, type: 'single_choice', points: 3, scoringMode: 'all_or_nothing', options: [] }] },
+      assessmentAttempt: {
+        count: async () => 1,
+        updateMany,
+        findFirst: async () => ({
+          id: 'attempt-id',
+          assessmentId,
+          status: 'in_progress',
+          startedAt: expiredStartedAt,
+          answers: [],
+          assessment: { timeLimitMinutes },
+        }),
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.getAttempt('attempt-id', { id: userId, organizationId, roles: ['learner'] });
+
+    expect(result).toMatchObject({ status: 'completed', passed: false, score: 0, maxScore: 3, percentage: 0 });
+    expect(updateMany).toHaveBeenCalled();
+  });
+
+  it('getAttempt leaves a still-active in_progress attempt untouched', async () => {
+    const updateMany = jest.fn();
+    const prisma = {
+      assessmentAttempt: {
+        count: async () => 0,
+        updateMany,
+        findFirst: async () => ({
+          id: 'attempt-id',
+          assessmentId,
+          status: 'in_progress',
+          startedAt: new Date(),
+          answers: [],
+          assessment: { timeLimitMinutes },
+        }),
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    const result = await service.getAttempt('attempt-id', { id: userId, organizationId, roles: ['learner'] });
+
+    expect(result).toMatchObject({ status: 'in_progress' });
+    expect(updateMany).not.toHaveBeenCalled();
   });
 });
