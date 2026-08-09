@@ -181,6 +181,7 @@ model User {
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
   @@index([lastLoginAt])
   @@map("users")
 }
@@ -264,6 +265,7 @@ model Course {
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
   @@map("courses")
 }
 
@@ -305,6 +307,7 @@ model Lesson {
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
+  @@index([organizationId, createdAt, id])
   @@map("lessons")
 }
 
@@ -383,6 +386,7 @@ model Assignment {
   group        Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
   @@index([courseId, status])
   @@index([userId])
   @@index([groupId])
@@ -410,6 +414,7 @@ model Progress {
 
   @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
   @@index([courseId, status])
   @@index([lessonId])
   @@index([userId])
@@ -446,6 +451,7 @@ model Assessment {
 
   @@unique([courseId, slug])
   @@index([organizationId, status])
+  @@index([organizationId, createdAt, id])
   @@index([courseId, status])
   @@index([lessonId])
   @@map("assessments")
@@ -571,6 +577,7 @@ model Certificate {
 
   @@unique([organizationId, courseId, userId])
   @@index([organizationId, status])
+  @@index([organizationId, issuedAt, id])
   @@index([courseId])
   @@index([userId])
   @@index([assessmentAttemptId])
@@ -645,7 +652,7 @@ model Notification {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([organizationId, userId, createdAt])
+  @@index([organizationId, userId, createdAt, id])
   @@index([userId, readAt])
   @@map("notifications")
 }

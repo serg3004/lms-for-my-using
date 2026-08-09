@@ -15,11 +15,12 @@ const notificationSelect = {
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listNotifications(userId: string, organizationId: string, limit = 20) {
+  async listNotifications(userId: string, organizationId: string, limit = 20, cursor?: string) {
     return this.prisma.notification.findMany({
       where: { userId, organizationId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       select: notificationSelect,
     });
   }

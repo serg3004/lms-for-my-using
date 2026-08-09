@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import { CreateMembershipInput } from './memberships.schemas.js';
 
 const membershipSelect = {
@@ -20,6 +21,7 @@ export class MembershipsService {
     return this.prisma.membership.findMany({
       where: { organizationId },
       orderBy: { createdAt: 'desc' },
+      take: LEGACY_LIST_LIMIT,
       select: membershipSelect,
     });
   }

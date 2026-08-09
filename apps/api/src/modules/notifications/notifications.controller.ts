@@ -1,5 +1,6 @@
-import { Controller, Get, Param, Patch, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
 
+import { cursorPaginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard, Roles, RolesGuard, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { NotificationsService } from './notifications.service.js';
@@ -11,8 +12,14 @@ export class NotificationsController {
 
   @Get()
   @Roles(...rolePolicies.notificationsRead)
-  listNotifications(@Req() request: AuthenticatedRequest) {
-    return this.notificationsService.listNotifications(request.currentUser!.id, request.currentUser!.organizationId);
+  listNotifications(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { cursor, limit } = cursorPaginationQuerySchema.parse(query);
+    return this.notificationsService.listNotifications(
+      request.currentUser!.id,
+      request.currentUser!.organizationId,
+      limit,
+      cursor,
+    );
   }
 
   @Get('unread-count')

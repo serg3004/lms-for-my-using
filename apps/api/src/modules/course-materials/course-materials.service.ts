@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
+import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   CreateCourseMaterialInput,
   UpdateCourseMaterialInput,
@@ -46,6 +47,7 @@ export class CourseMaterialsService {
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
+      take: LEGACY_LIST_LIMIT,
       select: courseMaterialSelect,
     });
   }

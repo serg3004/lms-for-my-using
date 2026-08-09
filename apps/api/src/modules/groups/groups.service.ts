@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   AssignGroupManagerInput,
   AssignGroupMemberInput,
@@ -48,6 +49,7 @@ export class GroupsService {
     return this.prisma.group.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: LEGACY_LIST_LIMIT,
       select: groupSelect,
     });
   }
@@ -197,6 +199,7 @@ export class GroupsService {
     const members = await this.prisma.groupMember.findMany({
       where: { groupId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'asc' },
+      take: LEGACY_LIST_LIMIT,
       select: { user: { select: userSummarySelect } },
     });
 
@@ -207,6 +210,7 @@ export class GroupsService {
     const managers = await this.prisma.managerGroup.findMany({
       where: { groupId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'asc' },
+      take: LEGACY_LIST_LIMIT,
       select: { manager: { select: userSummarySelect } },
     });
 
