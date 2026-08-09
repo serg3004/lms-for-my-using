@@ -301,6 +301,7 @@ export type {
   LessonSummary,
   LoginInput,
   LoginResponse,
+  NotificationSummary,
   OrganizationSummary,
   ProgressSummary,
   UserRole,
@@ -315,5 +316,6 @@ export { createAssignment, getAssignment, getAssignmentPath, listAssignments } f
 export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments, startAssessmentAttempt } from './api/assessments.js';
 export { getCertificate, getCertificatePath, issueCertificate, listCertificates } from './api/certificates.js';
 export { getOrganization } from './api/organizations.js';
+export { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './api/notifications.js';
 export { listMemberships } from './api/memberships.js';
 export { listUsers } from './api/users.js';

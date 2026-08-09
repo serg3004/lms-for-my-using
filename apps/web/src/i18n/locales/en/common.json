@@ -1306,6 +1306,22 @@
   "accountSwitcher": {
     "button": "Switch account"
   },
+  "notifications": {
+    "bell": "Notifications",
+    "empty": "No notifications yet.",
+    "markAllRead": "Mark all as read",
+    "loadError": "Unable to load notifications.",
+    "types": {
+      "assessment_passed": {
+        "title": "Test passed",
+        "message": "You passed \"{{assessmentTitle}}\" with {{percentage}}%."
+      },
+      "assessment_failed": {
+        "title": "Test failed",
+        "message": "You did not pass \"{{assessmentTitle}}\" ({{percentage}}%)."
+      }
+    }
+  },
   "a11y": {
     "skipToContent": "Skip to main content",
     "breadcrumb": "Breadcrumb",
