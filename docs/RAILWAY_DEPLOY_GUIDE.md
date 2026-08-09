@@ -1,305 +1,228 @@
 # Railway Deploy Guide
 
-Complete step-by-step guide for deploying the LMS MVP to Railway staging.
+> **Статус:** `CURRENT`
+>
+> **Назначение:** описать current repository deployment model для Railway без исторических public-API assumptions.
+>
+> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
+
+## 1. Текущая topology
+
+### Web
+
+**Статус:** `IMPLEMENTED` для repository config, `LIVE-VERIFY` для фактического deployment.
+
+- Web service является публичной точкой входа.
+- Nginx проксирует `/api/` во внутренний Railway API service.
+- Current nginx upstream: `api.railway.internal:3000`.
+
+### API
+
+**Статус:** `IMPLEMENTED`
+
+- API service должен оставаться private внутри Railway private network.
+- Public Networking для API не является current repository recommendation.
+- Historical direct public API URLs и manual public port fixes считаются `HISTORICAL` и не должны использоваться как current runbook.
+
+**Правило для ИИ-агента:** `MUST NOT` включать Public Networking для API без отдельной owner/ops задачи.
 
 ---
 
-## Prerequisites
+## 2. Порты
 
-- Railway account at [railway.app](https://railway.app)
-- Railway CLI: `npm install -g @railway/cli`
-- Access to this GitHub repository
+Railway предоставляет runtime `PORT`. Current API env loader использует его как `API_PORT`, если `API_PORT` явно не задан.
 
----
+### Railway
 
-## Architecture
+Не требуется вручную задавать:
 
 ```text
-Railway Project
-├── web   (nginx + React SPA)   → public URL
-├── api   (NestJS)              → internal :3000
-└── DB    (Railway Postgres)    → internal network
+API_PORT=3000
 ```
 
-`web` proxies `/api/*` to `api:3000` via nginx.
-`api` connects to `DB` via `DATABASE_URL` (Railway internal).
+только ради Railway routing.
+
+### Internal API port
+
+Repository/nginx contract использует API port `3000` внутри private network. Это не означает, что нужно создавать public API port 3000.
 
 ---
 
-## Current demo web URL
+## 3. API startup
+
+Current `apps/api/railway.json` запускает:
 
 ```text
-https://web-production-b1f01.up.railway.app
+prisma migrate deploy
 ```
 
-Routes:
+перед запуском API process.
 
-- Login: `https://web-production-b1f01.up.railway.app/login`
-- Admin: `https://web-production-b1f01.up.railway.app/admin`
-- Learner: `https://web-production-b1f01.up.railway.app/learn`
-- Learner courses: `https://web-production-b1f01.up.railway.app/learn/courses`
-- Learner certificates: `https://web-production-b1f01.up.railway.app/learn/certificates`
+Следовательно deployment flow включает automatic migration application на startup.
 
-Demo credentials:
-
-| Role | Organization | Email | Password |
-|---|---|---|---|
-| Admin | `demo-company` | `admin@demo.com` | `Demo1234!` |
-| Manager | `demo-company` | `manager@demo.com` | `Demo1234!` |
-| Instructor | `demo-company` | `instructor@demo.com` | `Demo1234!` |
-| Learner | `demo-company` | `learner@demo.com` | `Demo1234!` |
-
-If the credentials fail, re-run the demo seed for the `api` service.
+**Важно:** это не означает автоматический rollback database schema при rollback application image. Migration rollback требует отдельного migration/data plan.
 
 ---
 
-## Step 1 — Create Railway project
+## 4. Health checks
 
-1. [railway.app](https://railway.app) → **New Project** → **Empty project**
-2. Note the project name/ID.
-
----
-
-## Step 2 — Add PostgreSQL
-
-Dashboard → **New** → **Database** → **Add PostgreSQL**
-
-Railway automatically sets `DATABASE_URL` for services in the same project.
-
----
-
-## Step 3 — Deploy API service
-
-1. Dashboard → **New** → **GitHub Repo** → select this repo
-2. Settings:
-   - **Root Directory**: `/` (repo root)
-   - **Dockerfile Path**: `apps/api/Dockerfile`
-3. Set environment variables:
-
-| Variable | Value | Notes |
-|---|---|---|
-| `DATABASE_URL` | *(auto from Railway Postgres)* | — |
-| `JWT_SECRET` | 64-char random string | `openssl rand -hex 32` |
-| `FRONTEND_URL` | `https://<web-service>.up.railway.app` | set after web is deployed |
-| `NODE_ENV` | `production` | — |
-
-> S3 variables are optional — uploads show 503 if not set.
-
-4. Deploy → wait for build to finish.
-5. Verify: `GET https://<api-url>/api/v1/health` → `{"status":"ok"}`
-
-**Migrations run automatically** on API startup via `prisma migrate deploy`.
-
----
-
-## Step 4 — Deploy Web service
-
-1. Dashboard → **New** → **GitHub Repo** → same repo
-2. Settings:
-   - **Root Directory**: `/`
-   - **Dockerfile Path**: `apps/web/Dockerfile`
-3. No extra environment variables needed.
-4. Deploy → wait for build.
-5. Update API's `FRONTEND_URL` to the web service public URL → redeploy API.
-
----
-
-## File storage (MinIO on Railway)
-
-Production object storage (TV-008 in `docs/TODO_VERIFY.md`) is a self-hosted **MinIO** service in the same Railway project, not a managed provider (R2/S3/Wasabi) — see the decision record there for why.
+Canonical endpoints:
 
 ```text
-Railway Project
-├── web
-├── api
-├── Postgres
-└── minio   (minio/minio image)  → public URL, bucket "lms-uploads"
+/api/v1/health/live
+/api/v1/health/ready
 ```
 
-- **Service**: `minio`, image `minio/minio`, start command `minio server /data --console-address ":9001"`.
-- **Volume**: persistent volume mounted at `/data` (holds `.minio.sys` + one directory per bucket).
-- **Public domain**: generated for container port `9000` (the S3 API port). This must stay public — uploads use presigned URLs that the browser PUTs to directly, not proxied through `api`.
-- **Credentials**: `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD`, set as Railway variables on the `minio` service (generated once at setup, not stored in this repo).
-- **Bucket**: `lms-uploads`. MinIO does **not** auto-create buckets on boot — see "Recreating the bucket" below if it's ever missing.
-- **`api` wiring**: `api`'s `S3_*` variables (see reference table below) reference the `minio` service's credentials via Railway variable syntax (`${{minio.MINIO_ROOT_USER}}` etc.), so they stay in sync if the root credentials are ever rotated.
-
-### Recreating the bucket
-
-If `GET /api/v1/health/ready` reports storage as not ready, the bucket may be missing. Confirm by checking the `minio` service's volume contents (Railway dashboard → `minio` → volume) for a `lms-uploads` directory.
-
-To recreate it, run a one-off job against MinIO's private network address (`http://minio.railway.internal:9000`) using the `mc` client. Two gotchas hit during initial setup, worth avoiding:
-
-1. The `minio/mc` Docker image has `ENTRYPOINT ["mc"]` baked in — a custom Railway start command gets appended *after* that entrypoint, so `mc mb ...` as a start command actually runs as `mc mb ...` prefixed by another `mc`, which just prints `--help`. Use a shell-based image (e.g. `alpine`) and install/invoke `mc` explicitly instead of relying on the `minio/mc` image's entrypoint.
-2. Deploy status showing `SUCCESS` does **not** mean the command inside actually ran or succeeded — it only means the container started. Verify bucket creation by inspecting the volume directly (or hitting `/api/v1/health/ready`), not by trusting deploy logs/status alone — logs on one-off jobs were unreliable during setup (stale/duplicated output across redeploys).
-
-### Cost / risk tradeoffs (accepted for this project's scale)
-
-This is a single-instance, self-hosted setup with no automated backup/replication beyond Railway's own volume snapshots — acceptable for a personal/pilot-scale project, not for one with real user data at stake. If usage grows, migrate to a managed provider (R2 recommended for egress cost) by changing only the `S3_*` env vars on `api` — the upload code is S3-API-generic (`apps/api/src/modules/upload/upload.service.ts`), no code changes needed.
-
----
-
-## Step 5 — Run demo seed
-
-After both services are running:
-
-```bash
-# Install Railway CLI and link project
-railway login
-railway link
-
-# Run compiled seed
-railway run --service api node dist/scripts/seed.js
-```
-
-Expected output:
+Railway API healthcheck использует:
 
 ```text
-✅ Demo seed complete.
-
-Credentials (password: Demo1234!):
-  Organization UUID: 10000000-0000-4000-8000-000000000001
-  Organization slug: demo-company
-  Admin:   admin@demo.com
-  Learner: learner@demo.com
-
-Demo state:
-  Course: Workplace Safety Fundamentals (3 lessons)
-  Learner has completed 1/3 lessons — progress bar visible
-  Assessment: Safety Knowledge Assessment (5 questions, 60% passing)
+/api/v1/health/ready
 ```
 
-The seed is **idempotent** — safe to run multiple times.
+### Semantics
+
+- `/health/live` — process liveness, без dependency checks.
+- `/health/ready` — readiness DB + configured Redis + configured storage.
+- `/health` — compatibility readiness alias.
+
+**Правило:** `200 ready` не является доказательством полной production compliance, если optional dependency возвращает `disabled`.
 
 ---
 
-## Step 6 — Smoke test
+## 5. Required production configuration
 
-Run the automated smoke test against staging:
+Canonical inventory — `.env.production.example` + current env validation.
 
-```bash
-# From repo root
-BASE_URL=https://<web-url>/api/v1 \
-  node --import tsx/esm apps/api/src/scripts/smoke-test.ts
-```
+### Core
 
-Or after building:
+Требуются current production values для:
 
-```bash
-BASE_URL=https://<api-url>/api/v1 \
-  railway run --service api node dist/scripts/smoke-test.js
-```
+- `DATABASE_URL`;
+- `FRONTEND_URL`;
+- `JWT_SECRET`;
+- `NODE_ENV=production`;
+- `TRUST_PROXY`.
 
-Expected: all checks pass with ✓.
+### Redis
 
----
+Preferred production mode — configured Redis.
 
-## Smoke test checklist (manual)
-
-If you prefer to verify manually, go through this flow in the browser:
-
-### As learner (learner@demo.com / Demo1234!)
-
-- [ ] **Login** — go to `/login`, enter org `demo-company`, email `learner@demo.com`, password `Demo1234!` → redirected to learner home
-- [ ] **Courses** — `/learn/courses` → see "Workplace Safety Fundamentals"
-- [ ] **Course detail** → progress bar shows 1/3 lessons completed
-- [ ] **Lessons list** → 3 lessons, lesson 1 has ✓ badge
-- [ ] **Lesson 2 detail** → shows description + material link + "Завершить урок" button
-- [ ] **Complete lesson 2** → button changes to "Урок завершён", go back → ✓ badge, 2/3 progress
-- [ ] **Complete lesson 3** → 3/3 progress
-- [ ] **Assessments** → see "Safety Knowledge Assessment"
-- [ ] **Assessment detail** → "Start assessment" button visible
-- [ ] **Take assessment** → answer all 5 questions, submit → result shows score and breakdown
-- [ ] **Certificate** → if passed, "View certificate" button → certificate page with Print button
-- [ ] **Print** → certificate renders correctly in print preview
-
-### As admin (admin@demo.com / Demo1234!)
-
-- [ ] **Login** → redirected to admin panel
-- [ ] **Courses** → see "Workplace Safety Fundamentals"
-- [ ] **Lessons** → 3 lessons listed with inline status selects
-- [ ] **Materials** → 3 materials listed
-- [ ] **Assessment builder** → "Safety Knowledge Assessment" with 5 questions
-
----
-
-## Re-deploy
-
-On every push to `main`, Railway auto-deploys both services.
-
-Migrations run automatically on API startup. No manual action needed.
-
----
-
-## Troubleshooting
-
-### API health check fails
-
-```bash
-railway logs --service api --tail 50
-```
-
-Common causes:
-
-- `DATABASE_URL` not set or incorrect
-- `JWT_SECRET` missing
-- Migration failed on startup (check logs for `PrismaClientInitializationError`)
-
-### Login fails with 401
-
-- Verify org slug is `demo-company` (not email domain)
-- Verify seed ran successfully: check Railway logs for "Demo seed complete"
-- Check `FRONTEND_URL` matches the actual web URL (affects CORS)
-
-### Web shows blank page / 502
-
-- Check `railway logs --service web`
-- Verify API service is healthy: `GET /api/v1/health`
-- Check nginx config: `/api/` proxy target is `api:3000`
-
-### Seed fails with "relation does not exist"
-
-Migrations haven't run yet. Wait for API to finish starting, check logs for:
+Если Redis отсутствует, production startup допускается только через explicit emergency flag:
 
 ```text
-All migrations have been successfully applied.
+ALLOW_IN_MEMORY_RATE_LIMIT=true
 ```
 
-Then re-run the seed.
+Это degraded per-process rate limiting, а не эквивалент distributed Redis protection.
 
-### Certificate page shows "Certificate not found"
+### Storage
 
-Verify the learner is logged in and the certificate belongs to the same user. Certificate detail data is returned by `GET /certificates/:id`.
+Storage configuration — S3-compatible и provider-neutral.
 
----
+Не считать обязательным конкретный provider. Current production example допускает/рекомендует S3-compatible providers such as Cloudflare R2 or AWS S3; self-hosted MinIO остаётся compatible option.
 
-## Rollback
-
-Railway keeps all previous deployments.
-
-Dashboard → service → **Deployments** tab → click any previous deploy → **Redeploy**
+`S3_FILE_ORIGIN` optional.
 
 ---
 
-## Environment variables reference
+## 6. Demo seed
 
-### API service
+Не использовать historical command:
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string |
-| `JWT_SECRET` | ✅ | Min 32 chars, used for signing access tokens |
-| `FRONTEND_URL` | ✅ | Web service public URL (for CORS) |
-| `NODE_ENV` | ✅ | Set to `production` |
-| `API_PORT` | ✅ | Must match the Railway service's Public Networking port (`3000` in production — see Troubleshooting) |
-| `TRUST_PROXY` | ☐ | Set when the API sits behind Railway's/nginx's reverse proxy, so client IP resolution (rate limiting) uses `X-Forwarded-For` correctly |
-| `ALLOW_IN_MEMORY_RATE_LIMIT` | ☐ | Set to `true` when no Redis service is provisioned, to allow the in-memory rate-limit fallback instead of failing startup |
-| `S3_ENDPOINT` | ☐ | S3-compatible endpoint URL — the `minio` service's public domain in production, see "File storage" above |
-| `S3_BUCKET` | ☐ | Bucket name — `lms-uploads` in production |
-| `S3_ACCESS_KEY_ID` | ☐ | Access key — references `minio`'s `MINIO_ROOT_USER` in production |
-| `S3_SECRET_ACCESS_KEY` | ☐ | Secret key — references `minio`'s `MINIO_ROOT_PASSWORD` in production |
-| `S3_REGION` | ☐ | Default: `auto` |
-| `S3_FORCE_PATH_STYLE` | ☐ | `true` in production (required for MinIO) |
+```text
+node dist/scripts/seed.js
+```
 
-### Web service
+Current repository предоставляет guarded admin demo-seed workflow через package scripts/documentation.
 
-No required variables. nginx is pre-configured to proxy `/api/` to the internal `api:3000`.
+Перед любым apply использовать `docs/ADMIN_DEMO_SEED.md` как current source и соблюдать его dry-run/apply guards.
+
+**Правило:** production seed никогда не запускать только потому, что старый deploy guide его предлагал.
+
+---
+
+## 7. Storage/network validation after deploy
+
+Repository config может подтвердить intended architecture, но actual deployment имеет статус `LIVE-VERIFY`.
+
+После deployment проверять fresh evidence для:
+
+- Web public availability;
+- `/api/` proxy через Web;
+- API internal readiness;
+- Redis availability;
+- storage provider/bucket/CORS;
+- malware scanner availability;
+- Sentry/alerting;
+- current domains.
+
+Не использовать старые Railway URLs как бессрочное evidence.
+
+---
+
+## 8. Rollback
+
+### Application rollback
+
+Railway/application rollback может вернуть предыдущую application revision/image.
+
+### Database rollback
+
+Database schema/data rollback — отдельная задача.
+
+`prisma migrate deploy` применяет forward migrations; repository не гарантирует автоматический reverse migration.
+
+Перед risky migration нужно иметь:
+
+- compatibility plan;
+- backup/restore plan;
+- explicit rollback/forward-fix strategy.
+
+См. `docs/MIGRATION_BACKUP_POLICY.md`.
+
+---
+
+## 9. Staging
+
+**Current documented state:** `NO-SEPARATE-RAILWAY-STAGING`.
+
+Repository policy сейчас не определяет отдельный Railway staging environment.
+
+GitHub Actions environment/workflow с названием `staging` не является доказательством отдельного Railway staging deployment.
+
+Создание отдельного staging — `OWNER-DECISION` / ops task.
+
+---
+
+## 10. Что считается historical
+
+Следующие инструкции больше не current guidance:
+
+- direct public API URL как normal topology;
+- включение Railway Public Networking для API;
+- ручной Public Networking port `3000` для API;
+- обязательный Railway `API_PORT=3000`;
+- безусловное утверждение `production storage = MinIO`;
+- `node dist/scripts/seed.js`;
+- rollback application image как достаточный DB rollback.
+
+---
+
+## 11. Правила для ИИ-агента
+
+1. `MUST` использовать private API topology как current repository model.
+2. `MUST NOT` включать API Public Networking без отдельной задачи.
+3. `MUST` учитывать Railway `PORT -> API_PORT` mapping.
+4. `MUST` считать `prisma migrate deploy` частью current API startup.
+5. `MUST` использовать `/api/v1/health/ready` как deploy readiness probe.
+6. `MUST NOT` выбирать S3 provider без live evidence/owner decision.
+7. `MUST NOT` запускать historical seed command.
+8. Любое actual Railway/provider state = `LIVE-VERIFY`.
+
+## Связанные документы
+
+- `infra/railway/README.md`
+- `docs/DEPLOY_FOUNDATION.md`
+- `docs/MIGRATION_BACKUP_POLICY.md`
+- `docs/STORAGE_UPLOAD_STATUS.md`
+- `docs/READINESS_AND_SECURITY_GATES.md`
