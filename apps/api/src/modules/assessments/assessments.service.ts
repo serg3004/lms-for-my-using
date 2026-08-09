@@ -112,6 +112,23 @@ export class AssessmentsService {
     });
   }
 
+  async deleteAssessment(assessmentId: string, organizationId: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException('Assessment not found');
+    }
+
+    await this.prisma.assessment.update({
+      where: { id: assessmentId, organizationId },
+      data: { deletedAt: new Date() },
+      select: { id: true },
+    });
+  }
+
   private async ensureCourseExists(courseId: string, organizationId: string) {
     const course = await this.prisma.course.findFirst({
       where: {

@@ -182,7 +182,7 @@
 ## 15. Assessment
 **Модель данных:** `id, organizationId, courseId (FK Cascade), lessonId? (FK SetNull), title, slug, description?, status (draft/published/archived), passingScore (default 70), maxAttempts?, timeLimitMinutes? (2026-08-08, nullable = без лимита), availableAfterCourseCompletion (default true), createdAt/updatedAt, deletedAt`. Уникальность `[courseId, slug]`.
 
-**RBAC:** все роли — read; create/update — admin/instructor (та же логика ownership через `CourseAccessGuard`, что и Course/Lesson).
+**RBAC:** все роли — read; create/update/delete — admin/instructor (та же логика ownership через `CourseAccessGuard`, что и Course/Lesson). **(2026-08-08) Добавлено:** `DELETE /assessments/:id` (soft-delete) — раньше отсутствовал и в API, и в admin UI, только `PATCH`/`Post`.
 
 **Edge cases:** проверены (2026-08-08).
 - ~~`maxAttempts` опционален — нужно явно решить дефолтное поведение~~ — **закрыто, при перепроверке не подтвердилось.** Дефолт уже решён и работает: `maxAttempts Int?` без `@default` в схеме → `NULL`, если не задано, а `AssessmentAttemptsService.ensureAttemptsLimit` уже трактует `null`/falsy как «без лимита». Не открытый вопрос — рабочее, осознанное поведение.

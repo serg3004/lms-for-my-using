@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/auth.guard.js';
 import type { AuthenticatedRequest } from '../auth/auth.guard.js';
@@ -71,5 +71,12 @@ export class AssessmentsController {
   updateAssessment(@Param('id') assessmentId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateAssessmentSchema.parse(body);
     return this.assessmentsService.updateAssessment(assessmentId, request.currentUser!.organizationId, input);
+  }
+
+  @Delete(':id')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'id', 'assessment')
+  deleteAssessment(@Param('id') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.deleteAssessment(assessmentId, request.currentUser!.organizationId);
   }
 }

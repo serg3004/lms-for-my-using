@@ -186,3 +186,26 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
     );
   });
 });
+
+describe('AssessmentsService.deleteAssessment', () => {
+  it('soft-deletes the assessment', async () => {
+    const update = jest.fn(async () => ({ id: assessmentId }));
+    const prisma = {
+      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await service.deleteAssessment(assessmentId, organizationId);
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: assessmentId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+    );
+  });
+
+  it('throws NotFoundException when the assessment does not exist', async () => {
+    const prisma = { assessment: { findFirst: async () => null } } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
