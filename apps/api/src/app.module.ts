@@ -21,6 +21,7 @@ import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { ManagerTeamScopeModule } from './modules/manager-team-scope/manager-team-scope.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { OpenApiModule } from './modules/openapi/openapi.module.js';
+import { OutboxModule } from './modules/outbox/public.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
@@ -58,6 +59,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ManagerTeamScopeModule,
     NotificationsModule,
     OpenApiModule,
+    OutboxModule,
     OrganizationsModule,
     ProgressModule,
     UploadModule,

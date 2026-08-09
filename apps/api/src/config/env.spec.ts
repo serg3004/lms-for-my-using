@@ -24,6 +24,7 @@ describe('API environment validation', () => {
       BACKGROUND_JOBS_QUEUE: 'lms-background-jobs',
       BACKGROUND_JOBS_CONCURRENCY: '5',
       BACKGROUND_JOBS_RUN_WORKER: 'false',
+      OUTBOX_POLL_INTERVAL_MS: '1000',
     });
 
     expect(apiEnv).toEqual({
@@ -37,6 +38,7 @@ describe('API environment validation', () => {
       BACKGROUND_JOBS_QUEUE: 'lms-background-jobs',
       BACKGROUND_JOBS_CONCURRENCY: 5,
       BACKGROUND_JOBS_RUN_WORKER: 'false',
+      OUTBOX_POLL_INTERVAL_MS: 1_000,
       RATE_LIMIT_NAMESPACE: 'lms',
       TRUST_PROXY: ['loopback', 'linklocal', 'uniquelocal'],
     });
