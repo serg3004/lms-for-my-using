@@ -149,7 +149,7 @@ describe('CourseMaterialsService.deleteCourseMaterial', () => {
     const update = jest.fn(async () => ({ id: materialId }));
     const prisma = {
       courseMaterial: {
-        findFirst: async () => ({ id: materialId }),
+        findFirst: async () => ({ id: materialId, slug: 'safety-pdf' }),
         update,
       },
     } as unknown as PrismaService;
@@ -158,7 +158,10 @@ describe('CourseMaterialsService.deleteCourseMaterial', () => {
     await service.deleteCourseMaterial(materialId, organizationId);
 
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: materialId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+      expect.objectContaining({
+        where: { id: materialId, organizationId },
+        data: { deletedAt: expect.any(Date), slug: `safety-pdf--deleted-${materialId}` },
+      }),
     );
   });
 

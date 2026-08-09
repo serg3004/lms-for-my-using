@@ -191,7 +191,7 @@ describe('AssessmentsService.deleteAssessment', () => {
   it('soft-deletes the assessment', async () => {
     const update = jest.fn(async () => ({ id: assessmentId }));
     const prisma = {
-      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      assessment: { findFirst: async () => ({ id: assessmentId, slug: 'final-test' }), update },
       assessmentAttempt: { findFirst: async () => null },
     } as unknown as PrismaService;
     const service = new AssessmentsService(prisma);
@@ -199,7 +199,10 @@ describe('AssessmentsService.deleteAssessment', () => {
     await service.deleteAssessment(assessmentId, organizationId);
 
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: assessmentId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+      expect.objectContaining({
+        where: { id: assessmentId, organizationId },
+        data: { deletedAt: expect.any(Date), slug: `final-test--deleted-${assessmentId}` },
+      }),
     );
   });
 

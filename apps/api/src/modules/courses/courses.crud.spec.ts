@@ -83,7 +83,7 @@ describe('CoursesService CRUD updates', () => {
     const update = jest.fn(async () => ({ id: courseId }));
     const prisma = {
       course: {
-        findFirst: async () => ({ id: courseId }),
+        findFirst: async () => ({ id: courseId, slug: 'existing-course' }),
         update,
       },
     } as unknown as PrismaService;
@@ -93,7 +93,7 @@ describe('CoursesService CRUD updates', () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: courseId, organizationId },
-        data: { deletedAt: expect.any(Date) },
+        data: { deletedAt: expect.any(Date), slug: `existing-course--deleted-${courseId}` },
       }),
     );
   });

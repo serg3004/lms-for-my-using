@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import {
   CreateAssessmentInput,
@@ -115,7 +116,7 @@ export class AssessmentsService {
   async deleteAssessment(assessmentId: string, organizationId: string) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
 
     if (!assessment) {
@@ -133,7 +134,7 @@ export class AssessmentsService {
 
     await this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
       select: { id: true },
     });
   }
