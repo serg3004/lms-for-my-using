@@ -447,6 +447,8 @@
       "issuing": "颁发中...",
       "issue": "颁发证书",
       "export": "导出 CSV",
+      "exportCsv": "导出 CSV",
+      "exportXlsx": "导出 Excel",
       "assessmentResultsTitle": "测试结果",
       "noAssessments": "未找到测试。",
       "assessment": "测试",
@@ -456,7 +458,8 @@
         "status": "状态",
         "course": "课程",
         "issuedAt": "颁发时间",
-        "progress": "进度"
+        "progress": "进度",
+        "date": "日期"
       },
       "passed": "已通过",
       "failed": "未通过",

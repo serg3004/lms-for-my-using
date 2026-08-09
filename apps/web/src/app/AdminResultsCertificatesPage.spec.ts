@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildAssessmentResultsExportRows,
   findCourseTitle,
   findUserEmail,
   findUserLabel,
@@ -9,6 +10,7 @@ import {
 
 const courses = [{ id: 'course-1', organizationId: 'org-1', title: 'Safety training' }];
 const users = [{ id: 'user-1', email: 'ann@example.com', name: 'Ann' }, { id: 'user-2', email: 'bob@example.com', name: null }];
+const t = ((key: string, fallback?: string) => fallback ?? key) as never;
 
 describe('AdminResultsCertificatesPage helpers', () => {
   it('finds a course title by id', () => {
@@ -49,5 +51,24 @@ describe('AdminResultsCertificatesPage helpers', () => {
 
   it('treats a missing score as 0% progress', () => {
     expect(progressPercent({ id: 'p1', courseId: 'course-1', userId: 'user-1', status: 'in_progress', score: null, completedAt: null })).toBe(0);
+  });
+});
+
+describe('buildAssessmentResultsExportRows', () => {
+  it('builds a header row plus one row per result, resolving learner labels and pass/fail text', () => {
+    const results = [
+      { id: 'r1', assessmentId: 'a1', userId: 'user-1', score: 8, maxScore: 10, percentage: 80, passed: true, completedAt: '2026-01-05T12:00:00.000Z' },
+      { id: 'r2', assessmentId: 'a1', userId: 'user-2', score: 4, maxScore: 10, percentage: 40, passed: false, completedAt: null },
+    ];
+
+    expect(buildAssessmentResultsExportRows(results, users, t)).toEqual([
+      ['Learner', 'Score', 'Status', 'Date'],
+      ['Ann', '8/10 (80%)', 'Passed', new Date('2026-01-05T12:00:00.000Z').toLocaleString()],
+      ['bob@example.com', '4/10 (40%)', 'Failed', '—'],
+    ]);
+  });
+
+  it('returns just the header row when there are no results', () => {
+    expect(buildAssessmentResultsExportRows([], users, t)).toEqual([['Learner', 'Score', 'Status', 'Date']]);
   });
 });

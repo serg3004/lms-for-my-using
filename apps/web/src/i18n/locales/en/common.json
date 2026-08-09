@@ -447,6 +447,8 @@
       "issuing": "Issuing...",
       "issue": "Issue certificate",
       "export": "Export CSV",
+      "exportCsv": "Export CSV",
+      "exportXlsx": "Export Excel",
       "assessmentResultsTitle": "Assessment results",
       "noAssessments": "No assessments found.",
       "assessment": "Assessment",
@@ -456,7 +458,8 @@
         "status": "Status",
         "course": "Course",
         "issuedAt": "Issued",
-        "progress": "Progress"
+        "progress": "Progress",
+        "date": "Date"
       },
       "passed": "Passed",
       "failed": "Failed",
