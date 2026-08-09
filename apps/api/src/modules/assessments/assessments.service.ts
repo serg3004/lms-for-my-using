@@ -21,6 +21,8 @@ const assessmentSelect = {
   maxAttempts: true,
   timeLimitMinutes: true,
   availableAfterCourseCompletion: true,
+  passMessage: true,
+  failMessage: true,
   createdAt: true,
   updatedAt: true,
 } as const;

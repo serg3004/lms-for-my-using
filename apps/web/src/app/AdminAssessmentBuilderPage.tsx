@@ -281,7 +281,9 @@ export function AdminAssessmentBuilderPage() {
         <div className="admin-preview">
           <div className={`learner-quiz__result-banner ${previewSubmit.result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
             <span className="learner-quiz__result-label">
-              {previewSubmit.result.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+              {previewSubmit.result.passed
+                ? previewAssessment?.passMessage || t('assessments.resultPassed')
+                : previewAssessment?.failMessage || t('assessments.resultFailed')}
             </span>
             <span className="learner-quiz__result-score">
               {t('assessments.resultScore', { score: previewSubmit.result.score, maxScore: previewSubmit.result.maxScore, percentage: previewSubmit.result.percentage })}
