@@ -11,6 +11,7 @@ import {
   listAssessmentAttempts,
   listAssessmentQuestions,
   listAssessments,
+  startAssessmentAttempt,
 } from './assessments.js';
 
 describe('assessments api paths', () => {
@@ -47,5 +48,10 @@ describe('assessments api requests', () => {
   it('lists questions for an assessment', () => {
     listAssessmentQuestions('assessment-1');
     expect(mocks.apiRequest).toHaveBeenCalledWith('/assessments/assessment-1/questions');
+  });
+
+  it('starts a timed assessment attempt', () => {
+    startAssessmentAttempt('assessment-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/assessments/assessment-1/attempts/start', { method: 'POST' });
   });
 });

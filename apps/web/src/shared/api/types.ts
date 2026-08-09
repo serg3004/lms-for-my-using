@@ -174,6 +174,7 @@ export type AssessmentSummary = {
   status: string;
   passingScore: number;
   maxAttempts: number;
+  timeLimitMinutes: number | null;
   availableAfterCourseCompletion: boolean;
   createdAt: string;
   updatedAt: string;
