@@ -24,6 +24,7 @@ const assessmentSelect = {
   passMessage: true,
   failMessage: true,
   showCorrectAnswers: true,
+  randomizeOrder: true,
   createdAt: true,
   updatedAt: true,
 } as const;

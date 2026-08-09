@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { seededShuffle } from '../../common/seeded-shuffle.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import {
   CreateAssessmentAnswerOptionInput,
@@ -79,10 +80,16 @@ export class AssessmentQuestionsService {
     });
   }
 
-  async listLearnerQuizQuestions(assessmentId: string, organizationId: string) {
-    await this.ensurePublishedAssessmentExists(assessmentId, organizationId);
+  /**
+   * randomizeOrder shuffles both the question order and each question's option order, seeded by
+   * assessmentId+userId(+questionId for options) so a learner sees a stable order across page
+   * reloads within an attempt, while different learners see different orders (discourages sharing
+   * "the answer is C" between people sitting the same test).
+   */
+  async listLearnerQuizQuestions(assessmentId: string, organizationId: string, userId: string) {
+    const assessment = await this.ensurePublishedAssessmentExists(assessmentId, organizationId);
 
-    return this.prisma.assessmentQuestion.findMany({
+    const questions = await this.prisma.assessmentQuestion.findMany({
       where: {
         assessmentId,
         organizationId,
@@ -91,6 +98,15 @@ export class AssessmentQuestionsService {
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
       select: learnerAssessmentQuestionSelect,
     });
+
+    if (!assessment.randomizeOrder) {
+      return questions;
+    }
+
+    return seededShuffle(questions, `${assessmentId}:${userId}`).map((question) => ({
+      ...question,
+      options: seededShuffle(question.options, `${assessmentId}:${userId}:${question.id}`),
+    }));
   }
 
   async getQuestion(questionId: string, organizationId: string) {
@@ -247,11 +263,13 @@ export class AssessmentQuestionsService {
         status: 'published',
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, randomizeOrder: true },
     });
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
     }
+
+    return assessment;
   }
 }

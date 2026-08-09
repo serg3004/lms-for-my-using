@@ -33,7 +33,7 @@ export class AssessmentQuestionsController {
   @Roles(...rolePolicies.assessmentsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
   listLearnerQuizQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentQuestionsService.listLearnerQuizQuestions(assessmentId, request.currentUser!.organizationId);
+    return this.assessmentQuestionsService.listLearnerQuizQuestions(assessmentId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
   @Get('questions/:id')

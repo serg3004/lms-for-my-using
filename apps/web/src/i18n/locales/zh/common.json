@@ -306,6 +306,7 @@
       "maxAttempts": "最大尝试次数（留空为不限）",
       "availableAfterCompletion": "课程完成后可用",
       "showCorrectAnswers": "提交后显示正确答案",
+      "randomizeOrder": "为每位学员随机排列题目和选项顺序",
       "description": "描述",
       "passMessage": "通过提示文字（留空为默认）",
       "failMessage": "未通过提示文字（留空为默认）",

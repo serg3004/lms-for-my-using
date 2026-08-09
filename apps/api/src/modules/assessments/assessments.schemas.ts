@@ -17,6 +17,7 @@ export const createAssessmentSchema = z.object({
   passMessage: z.string().trim().max(2000).optional(),
   failMessage: z.string().trim().max(2000).optional(),
   showCorrectAnswers: z.boolean().default(false),
+  randomizeOrder: z.boolean().default(false),
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
@@ -38,6 +39,7 @@ export const updateAssessmentSchema = z
     passMessage: z.string().trim().max(2000).nullable(),
     failMessage: z.string().trim().max(2000).nullable(),
     showCorrectAnswers: z.boolean(),
+    randomizeOrder: z.boolean(),
   })
   .partial();
 export type UpdateAssessmentInput = z.infer<typeof updateAssessmentSchema>;
