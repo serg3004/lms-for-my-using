@@ -8,6 +8,19 @@ import {
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
 
+/**
+ * Notification content is kept as a translation-ready { type, data } pair rather than
+ * pre-rendered text, so the frontend can render it in the learner's own locale via i18n —
+ * the same convention used for every other user-facing string in this app.
+ */
+export function buildAttemptResultNotification(assessmentTitle: string, assessmentId: string, passed: boolean, percentage: number) {
+  return {
+    type: passed ? 'assessment_passed' : 'assessment_failed',
+    data: { assessmentTitle, percentage },
+    link: `/learn/assessments/${assessmentId}`,
+  };
+}
+
 const attemptSelect = {
   id: true,
   organizationId: true,
@@ -185,6 +198,11 @@ export class AssessmentAttemptsService {
         });
       }
 
+      const notification = buildAttemptResultNotification(assessment.title, assessmentId, passed, percentage);
+      await tx.notification.create({
+        data: { organizationId, userId, ...notification },
+      });
+
       return attempt.id;
     });
 
@@ -278,6 +296,7 @@ export class AssessmentAttemptsService {
       },
       select: {
         id: true,
+        title: true,
         courseId: true,
         status: true,
         passingScore: true,

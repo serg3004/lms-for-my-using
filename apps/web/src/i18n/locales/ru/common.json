@@ -1318,6 +1318,22 @@
   "accountSwitcher": {
     "button": "Сменить аккаунт"
   },
+  "notifications": {
+    "bell": "Уведомления",
+    "empty": "Пока нет уведомлений.",
+    "markAllRead": "Отметить все как прочитанные",
+    "loadError": "Не удалось загрузить уведомления.",
+    "types": {
+      "assessment_passed": {
+        "title": "Тест сдан",
+        "message": "Вы сдали тест «{{assessmentTitle}}» с результатом {{percentage}}%."
+      },
+      "assessment_failed": {
+        "title": "Тест не сдан",
+        "message": "Вы не сдали тест «{{assessmentTitle}}» ({{percentage}}%)."
+      }
+    }
+  },
   "a11y": {
     "skipToContent": "Перейти к основному содержимому",
     "breadcrumb": "Хлебные крошки",

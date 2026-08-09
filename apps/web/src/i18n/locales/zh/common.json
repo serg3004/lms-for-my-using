@@ -1298,6 +1298,22 @@
   "accountSwitcher": {
     "button": "切换账户"
   },
+  "notifications": {
+    "bell": "通知",
+    "empty": "暂无通知。",
+    "markAllRead": "全部标记为已读",
+    "loadError": "无法加载通知。",
+    "types": {
+      "assessment_passed": {
+        "title": "测试已通过",
+        "message": "您已通过测试“{{assessmentTitle}}”，得分 {{percentage}}%。"
+      },
+      "assessment_failed": {
+        "title": "测试未通过",
+        "message": "您未通过测试“{{assessmentTitle}}”（{{percentage}}%）。"
+      }
+    }
+  },
   "a11y": {
     "skipToContent": "跳到主要内容",
     "breadcrumb": "面包屑导航",

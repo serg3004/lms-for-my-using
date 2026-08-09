@@ -7,7 +7,7 @@ import {
   createAssessmentAttemptAnswerSchema,
   createAssessmentAttemptSchema,
 } from './assessment-attempts.schemas.js';
-import { AssessmentAttemptsService } from './assessment-attempts.service.js';
+import { AssessmentAttemptsService, buildAttemptResultNotification } from './assessment-attempts.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const assessmentId = '22222222-2222-2222-2222-222222222222';
@@ -37,6 +37,9 @@ type AssessmentAttemptTransaction = {
   };
   certificate: {
     upsert: () => Promise<{ id: string }>;
+  };
+  notification: {
+    create: () => Promise<{ id: string }>;
   };
 };
 
@@ -90,6 +93,7 @@ function createBasePrismaMock(status: AssessmentStatus) {
     assessment: {
       findFirst: async () => ({
         id: assessmentId,
+        title: 'Safety Basics',
         courseId,
         status,
         passingScore: 70,
@@ -146,6 +150,9 @@ function createBasePrismaMock(status: AssessmentStatus) {
         certificate: {
           upsert: async () => ({ id: 'certificate-id' }),
         },
+        notification: {
+          create: async () => ({ id: 'notification-id' }),
+        },
       }),
   } as unknown as PrismaService;
 }
@@ -160,6 +167,50 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
       id: 'attempt-id',
       status: 'completed',
       passed: true,
+    });
+  });
+
+  it('creates an in-app notification carrying the result as translation-ready type + data', async () => {
+    const notificationCreate = jest.fn(async () => ({ id: 'notification-id' }));
+    const prisma = {
+      assessment: {
+        findFirst: async () => ({
+          id: assessmentId, title: 'Safety Basics', courseId, status: 'published', passingScore: 70, maxAttempts: null, availableAfterCourseCompletion: false,
+        }),
+      },
+      user: { findFirst: async () => ({ id: userId }) },
+      lesson: { count: async () => 0 },
+      progress: { count: async () => 0 },
+      assessmentAttempt: {
+        count: async () => 0,
+        findFirst: async () => ({
+          id: 'attempt-id', organizationId, assessmentId, userId, status: 'completed', score: 1, maxScore: 1, percentage: 100, passed: true,
+          startedAt: new Date('2026-05-28T00:00:00.000Z'), completedAt: new Date('2026-05-28T00:00:00.000Z'), createdAt: new Date('2026-05-28T00:00:00.000Z'), updatedAt: new Date('2026-05-28T00:00:00.000Z'), answers: [],
+        }),
+      },
+      assessmentQuestion: {
+        findMany: async () => [{ id: questionId, type: 'single_choice', points: 1, options: [{ id: optionId, isCorrect: true }] }],
+      },
+      $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
+        callback({
+          assessmentAttempt: { create: async () => ({ id: 'attempt-id' }) },
+          assessmentAttemptAnswer: { createMany: async () => ({ count: 1 }) },
+          certificate: { upsert: async () => ({ id: 'certificate-id' }) },
+          notification: { create: notificationCreate },
+        }),
+    } as unknown as PrismaService;
+
+    const service = new AssessmentAttemptsService(prisma);
+    await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
+
+    expect(notificationCreate).toHaveBeenCalledWith({
+      data: {
+        organizationId,
+        userId,
+        type: 'assessment_passed',
+        data: { assessmentTitle: 'Safety Basics', percentage: 100 },
+        link: `/learn/assessments/${assessmentId}`,
+      },
     });
   });
 
@@ -325,6 +376,7 @@ describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
             },
           },
           certificate: { upsert: async () => ({ id: 'certificate-id' }) },
+          notification: { create: async () => ({ id: 'notification-id' }) },
         }),
     } as unknown as PrismaService;
 
@@ -528,6 +580,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
           assessmentAttempt: { create: async () => ({ id: 'attempt-id' }), update },
           assessmentAttemptAnswer: { createMany: async () => ({ count: 1 }) },
           certificate: { upsert: async () => ({ id: 'certificate-id' }) },
+          notification: { create: async () => ({ id: 'notification-id' }) },
         }),
     } as unknown as PrismaService;
 
@@ -549,5 +602,23 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     await service.createAttempt(assessmentId, userId, organizationId, attemptInput);
 
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ passed: false, percentage: 100 }) }));
+  });
+});
+
+describe('buildAttemptResultNotification', () => {
+  it('builds a passed notification with translation-ready type and data', () => {
+    expect(buildAttemptResultNotification('Safety Basics', assessmentId, true, 85)).toEqual({
+      type: 'assessment_passed',
+      data: { assessmentTitle: 'Safety Basics', percentage: 85 },
+      link: `/learn/assessments/${assessmentId}`,
+    });
+  });
+
+  it('builds a failed notification with translation-ready type and data', () => {
+    expect(buildAttemptResultNotification('Safety Basics', assessmentId, false, 40)).toEqual({
+      type: 'assessment_failed',
+      data: { assessmentTitle: 'Safety Basics', percentage: 40 },
+      link: `/learn/assessments/${assessmentId}`,
+    });
   });
 });

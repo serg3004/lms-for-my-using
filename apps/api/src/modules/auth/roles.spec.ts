@@ -120,6 +120,8 @@ describe('rolePolicies', () => {
     certificatesRead: ['admin', 'manager', 'instructor', 'learner'],
     certificatesCreate: ['admin', 'manager', 'instructor'],
     managerTeamSummaryRead: ['admin', 'manager'],
+    notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
+    notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
   } satisfies Record<PolicyName, readonly UserRole[]>;
 
   it('has an expected-roles entry for every key of rolePolicies (and no extra ones)', () => {

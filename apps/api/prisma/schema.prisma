@@ -142,6 +142,7 @@ model Organization {
   groupMembers                    GroupMember[]
   managerGroups                   ManagerGroup[]
   materialFileDeletionAudits      MaterialFileDeletionAudit[]
+  notifications                   Notification[]
 
   @@map("organizations")
 }
@@ -176,6 +177,7 @@ model User {
   instructedCourses   CourseInstructor[]
   groupMemberships    GroupMember[]
   managedGroups       ManagerGroup[]
+  notifications       Notification[]
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -628,4 +630,22 @@ model MaterialFileDeletionAudit {
 
   @@index([organizationId, materialId, createdAt])
   @@map("material_file_deletion_audits")
+}
+
+model Notification {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  type           String
+  data           Json
+  link           String?
+  readAt         DateTime? @map("read_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
 }

@@ -305,3 +305,12 @@ export type UserSummary = {
   lastName: string | null;
   status: string;
 };
+
+export type NotificationSummary = {
+  id: string;
+  type: string;
+  data: Record<string, unknown>;
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+};

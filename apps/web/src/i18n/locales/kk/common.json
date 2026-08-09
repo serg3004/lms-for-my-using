@@ -1319,6 +1319,22 @@
   "accountSwitcher": {
     "button": "Аккаунтты ауыстыру"
   },
+  "notifications": {
+    "bell": "Хабарландырулар",
+    "empty": "Әзірге хабарландырулар жоқ.",
+    "markAllRead": "Барлығын оқылған деп белгілеу",
+    "loadError": "Хабарландыруларды жүктеу мүмкін болмады.",
+    "types": {
+      "assessment_passed": {
+        "title": "Тест тапсырылды",
+        "message": "Сіз «{{assessmentTitle}}» тестін {{percentage}}% нәтижемен тапсырдыңыз."
+      },
+      "assessment_failed": {
+        "title": "Тест тапсырылмады",
+        "message": "Сіз «{{assessmentTitle}}» тестін тапсыра алмадыңыз ({{percentage}}%)."
+      }
+    }
+  },
   "a11y": {
     "skipToContent": "Негізгі мазмұнға өту",
     "breadcrumb": "Шолу жолы",
