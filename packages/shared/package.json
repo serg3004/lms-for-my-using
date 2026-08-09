@@ -13,18 +13,24 @@
     "./types/api": {
       "types": "./src/types/api.ts",
       "import": "./dist/types/api.js"
+    },
+    "./constants/roles": {
+      "types": "./src/constants/roles.ts",
+      "import": "./dist/constants/roles.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

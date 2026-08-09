@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { UserRole } from '@lms/shared/types/api';
 
 const strongPasswordSchema = z
   .string()
@@ -9,7 +10,7 @@ const strongPasswordSchema = z
   .regex(/[0-9]/, 'Password must contain a number')
   .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
 
-export const userRoleSchema = z.enum(['learner', 'instructor', 'manager', 'admin']);
+export const userRoleSchema: z.ZodType<UserRole> = z.enum(['learner', 'instructor', 'manager', 'admin']);
 
 const organizationLoginSchema = z
   .string()
@@ -67,4 +68,4 @@ export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
-export type UserRole = z.infer<typeof userRoleSchema>;
+export type { UserRole } from '@lms/shared/types/api';

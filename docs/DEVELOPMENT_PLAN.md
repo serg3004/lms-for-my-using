@@ -2714,7 +2714,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 205 — Shared package tests/contracts 🔲
+## PR 205 — Shared package tests/contracts ✅
 
 **Проблема:** Shared test проходит с `--passWithNoTests`, contracts не имеют собственных проверок.
 
@@ -2728,11 +2728,11 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Breaking contracts обнаруживаются
 - Циклических зависимостей нет.
 
-> **Факт:** повторная проверка подтвердила, что PR 205 ещё не реализован:
-> `packages/shared` не содержит `*.spec.ts`, а его test script по-прежнему
-> запускает Vitest с `--passWithNoTests`. Не смешивать этот пункт плана с
-> одноимённым историческим GitHub PR: shared contract tests остаются отдельной
-> незавершённой задачей.
+> **Факт:** shared package запускает реальные Vitest-тесты без
+> `--passWithNoTests` и участвует в coverage job. Тестами зафиксированы контракты
+> pagination, ролей, локалей, нормализованной API-ошибки и paginated DTO;
+> runtime-схемы принадлежат shared package, а web и API переиспользуют его типы
+> API-ответов вместо локальных копий.
 
 ---
 
