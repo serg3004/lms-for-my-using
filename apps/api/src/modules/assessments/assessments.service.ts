@@ -119,8 +119,8 @@ export class AssessmentsService {
     // see AssessmentAttemptsService.startAttempt) is fully serialized against this delete:
     // whichever transaction gets the lock first is the one the other sees committed.
     const outcome = await this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<{ id: string; slug: string }[]>`
-        SELECT id, slug FROM assessments
+      const rows = await tx.$queryRaw<{ id: string; slug: string; timeLimitMinutes: number | null }[]>`
+        SELECT id, slug, time_limit_minutes AS "timeLimitMinutes" FROM assessments
         WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
         FOR UPDATE
       `;
@@ -130,8 +130,20 @@ export class AssessmentsService {
         return 'not-found' as const;
       }
 
+      // An in_progress attempt only blocks deletion while it's still within its time limit — an
+      // abandoned attempt past its deadline is spent (createAttempt would force passed: false on
+      // late submission anyway) and shouldn't hold the assessment hostage forever. If the time
+      // limit itself was since removed, there's no expiry to check against, so any in_progress
+      // attempt still blocks.
       const activeAttempt = await tx.assessmentAttempt.findFirst({
-        where: { assessmentId, status: 'in_progress', deletedAt: null },
+        where: {
+          assessmentId,
+          status: 'in_progress',
+          deletedAt: null,
+          ...(assessment.timeLimitMinutes
+            ? { startedAt: { gt: new Date(Date.now() - assessment.timeLimitMinutes * 60_000) } }
+            : {}),
+        },
         select: { id: true },
       });
 
