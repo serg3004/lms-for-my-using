@@ -123,20 +123,31 @@ export class AssessmentsService {
       throw new NotFoundException('Assessment not found');
     }
 
-    const activeAttempt = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, organizationId, status: 'in_progress', deletedAt: null },
-      select: { id: true },
+    // Atomic: the "no in-progress attempt" check and the delete happen in one statement, so a
+    // concurrent startAttempt() that creates an attempt between our read above and this update
+    // can't slip through — whichever request loses the race gets result.count === 0.
+    const result = await this.prisma.assessment.updateMany({
+      where: {
+        id: assessmentId,
+        organizationId,
+        deletedAt: null,
+        attempts: { none: { status: 'in_progress', deletedAt: null } },
+      },
+      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
     });
 
-    if (activeAttempt) {
+    if (result.count === 0) {
+      const stillExists = await this.prisma.assessment.findFirst({
+        where: { id: assessmentId, organizationId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!stillExists) {
+        throw new NotFoundException('Assessment not found');
+      }
+
       throw new BadRequestException('Cannot delete an assessment with an attempt in progress');
     }
-
-    await this.prisma.assessment.update({
-      where: { id: assessmentId, organizationId },
-      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
-      select: { id: true },
-    });
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {

@@ -221,6 +221,20 @@ export class AssessmentAttemptsService {
       select: { id: true },
     });
 
+    // Guards against a concurrent deleteAssessment() racing this create: its own atomic
+    // updateMany can only see attempts that exist by the time it runs, so if it already
+    // committed the delete before this check, roll the orphaned attempt back instead of
+    // leaving it stuck in_progress forever with a deleted parent assessment.
+    const stillActive = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!stillActive) {
+      await this.prisma.assessmentAttempt.delete({ where: { id: attempt.id } });
+      throw new NotFoundException('Assessment not found');
+    }
+
     return this.getAttempt(attempt.id, { id: userId, organizationId, roles: ['learner'] });
   }
 

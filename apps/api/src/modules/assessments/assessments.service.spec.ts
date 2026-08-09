@@ -188,19 +188,23 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
 });
 
 describe('AssessmentsService.deleteAssessment', () => {
-  it('soft-deletes the assessment', async () => {
-    const update = jest.fn(async () => ({ id: assessmentId }));
+  it('soft-deletes the assessment atomically, guarding against in-progress attempts in the same statement', async () => {
+    const updateMany = jest.fn(async () => ({ count: 1 }));
     const prisma = {
-      assessment: { findFirst: async () => ({ id: assessmentId, slug: 'final-test' }), update },
-      assessmentAttempt: { findFirst: async () => null },
+      assessment: { findFirst: async () => ({ id: assessmentId, slug: 'final-test' }), updateMany },
     } as unknown as PrismaService;
     const service = new AssessmentsService(prisma);
 
     await service.deleteAssessment(assessmentId, organizationId);
 
-    expect(update).toHaveBeenCalledWith(
+    expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: assessmentId, organizationId },
+        where: {
+          id: assessmentId,
+          organizationId,
+          deletedAt: null,
+          attempts: { none: { status: 'in_progress', deletedAt: null } },
+        },
         data: { deletedAt: expect.any(Date), slug: `final-test--deleted-${assessmentId}` },
       }),
     );
@@ -213,15 +217,35 @@ describe('AssessmentsService.deleteAssessment', () => {
     await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects deleting an assessment with an attempt in progress', async () => {
-    const update = jest.fn();
+  it('rejects deleting an assessment with an attempt in progress (updateMany matched zero rows)', async () => {
+    const updateMany = jest.fn(async () => ({ count: 0 }));
     const prisma = {
-      assessment: { findFirst: async () => ({ id: assessmentId }), update },
-      assessmentAttempt: { findFirst: async () => ({ id: 'attempt-1' }) },
+      assessment: {
+        findFirst: async () => ({ id: assessmentId, slug: 'final-test' }),
+        updateMany,
+      },
     } as unknown as PrismaService;
     const service = new AssessmentsService(prisma);
 
     await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
-    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFoundException when a concurrent request already deleted it (updateMany matched zero rows)', async () => {
+    const findFirstCalls: number[] = [];
+    let call = 0;
+    const prisma = {
+      assessment: {
+        findFirst: async () => {
+          call += 1;
+          findFirstCalls.push(call);
+          return call === 1 ? { id: assessmentId, slug: 'final-test' } : null;
+        },
+        updateMany: async () => ({ count: 0 }),
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    expect(findFirstCalls).toEqual([1, 2]);
   });
 });

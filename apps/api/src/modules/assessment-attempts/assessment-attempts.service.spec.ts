@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -368,6 +368,31 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
         data: expect.objectContaining({ status: 'in_progress', startedAt: expect.any(Date) }),
       }),
     );
+  });
+
+  it('rolls back the attempt if the assessment was deleted concurrently while it was being created', async () => {
+    const deleteAttempt = jest.fn(async () => ({ id: 'attempt-id' }));
+    let assessmentFindFirstCalls = 0;
+    const prisma = {
+      assessment: {
+        findFirst: async () => {
+          assessmentFindFirstCalls += 1;
+          // 1st call: loadAssessmentForAttempt (assessment still alive). 2nd call: the
+          // post-create re-check — simulates a concurrent deleteAssessment() winning the race.
+          return assessmentFindFirstCalls === 1 ? buildAssessment() : null;
+        },
+      },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: {
+        findFirst: async () => null,
+        create: async () => ({ id: 'attempt-id' }),
+        delete: deleteAttempt,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    expect(deleteAttempt).toHaveBeenCalledWith({ where: { id: 'attempt-id' } });
   });
 
   it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {

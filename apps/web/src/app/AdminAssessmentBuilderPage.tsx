@@ -37,7 +37,7 @@ export function AdminAssessmentBuilderPage() {
   const [deleteTarget, setDeleteTarget] = useState<Assessment | null>(null);
   const [deleting, setDeleting] = useState(false);
   const previewDialogRef = useRef<HTMLDialogElement>(null);
-  const previewRequestRef = useRef<string | null>(null);
+  const previewRequestRef = useRef(0);
   const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
   const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
   const [previewOptions, setPreviewOptions] = useState<Record<string, AnswerOption[]>>({});
@@ -109,7 +109,7 @@ export function AdminAssessmentBuilderPage() {
   }
   async function openQuestions(assessment: Assessment) { setQuestionsAssessment(assessment); setQuestions([]); setOptions({}); setQuestionsLoading(true); questionsDialogRef.current?.showModal(); try { const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`); const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`))); setQuestions(loadedQuestions); setOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []]))); } catch { setQuestions([]); } finally { setQuestionsLoading(false); } }
   async function openPreview(assessment: Assessment) {
-    previewRequestRef.current = assessment.id;
+    const requestToken = ++previewRequestRef.current; // unique per invocation, so A -> B -> A can't collide
     setPreviewAssessment(assessment);
     setPreviewQuestions([]);
     setPreviewOptions({});
@@ -118,14 +118,14 @@ export function AdminAssessmentBuilderPage() {
     try {
       const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`);
       const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`)));
-      if (previewRequestRef.current !== assessment.id) return; // a newer preview was opened while this one was loading
+      if (previewRequestRef.current !== requestToken) return; // a newer preview was opened while this one was loading
       setPreviewQuestions(loadedQuestions);
       setPreviewOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []])));
     } catch {
-      if (previewRequestRef.current !== assessment.id) return;
+      if (previewRequestRef.current !== requestToken) return;
       setPreviewQuestions([]);
     } finally {
-      if (previewRequestRef.current === assessment.id) setPreviewLoading(false);
+      if (previewRequestRef.current === requestToken) setPreviewLoading(false);
     }
   }
   async function confirmDelete() {
