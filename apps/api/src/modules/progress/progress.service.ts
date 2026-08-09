@@ -80,25 +80,33 @@ export class ProgressService {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
     }
 
+    const update = { status: input.status, score: input.score ?? null, completedAt: input.completedAt ?? null };
+
+    if (input.lessonId) {
+      // Upsert on the (courseId, lessonId, userId) unique constraint: a repeat call for the same
+      // target (e.g. in_progress -> completed) updates the existing row instead of silently
+      // returning the stale one, and the unique index rules out duplicate rows under concurrent calls.
+      return this.prisma.progress.upsert({
+        where: { courseId_lessonId_userId: { courseId: input.courseId, lessonId: input.lessonId, userId: input.userId } },
+        create: input,
+        update,
+        select: progressSelect,
+      });
+    }
+
+    // Course-level progress (no specific lessonId) isn't covered by the compound unique index:
+    // Postgres treats NULL lessonId values as distinct, so a plain unique index can't target
+    // "this course, this user, no lesson" as a single row. Falls back to find-then-write.
     const existing = await this.prisma.progress.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        courseId: input.courseId,
-        lessonId: input.lessonId ?? null,
-        userId: input.userId,
-        deletedAt: null,
-      },
-      select: progressSelect,
+      where: { organizationId: input.organizationId, courseId: input.courseId, lessonId: null, userId: input.userId, deletedAt: null },
+      select: { id: true },
     });
 
     if (existing) {
-      return existing;
+      return this.prisma.progress.update({ where: { id: existing.id }, data: update, select: progressSelect });
     }
 
-    return this.prisma.progress.create({
-      data: input,
-      select: progressSelect,
-    });
+    return this.prisma.progress.create({ data: input, select: progressSelect });
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {

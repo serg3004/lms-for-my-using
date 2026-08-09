@@ -257,3 +257,74 @@ describe('ProgressService createProgress — learner access without an admin/man
     expect(assignmentFindFirst).not.toHaveBeenCalled();
   });
 });
+
+describe('ProgressService createProgress upsert semantics', () => {
+  const instructorActor = { id: 'instructor-1', organizationId, roles: ['instructor'] as const };
+  const lessonId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+  function buildPrisma(upsert: (...args: unknown[]) => Promise<unknown>) {
+    return {
+      course: { findFirst: async () => ({ id: courseAId, selfEnrollmentEnabled: false }) },
+      user: { findFirst: async () => ({ id: userId }) },
+      lesson: { findFirst: async () => ({ id: lessonId }) },
+      progress: { upsert },
+    } as unknown as PrismaService;
+  }
+
+  it('targets the (courseId, lessonId, userId) unique constraint and updates status on a repeat call', async () => {
+    const upsert = jest.fn(async () => ({ id: 'progress-1', status: 'completed' }));
+    const service = new ProgressService(buildPrisma(upsert));
+    const input = {
+      organizationId,
+      courseId: courseAId,
+      lessonId,
+      userId,
+      status: 'completed' as const,
+      score: 100,
+    };
+
+    await service.createProgress(input, instructorActor);
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { courseId_lessonId_userId: { courseId: courseAId, lessonId, userId } },
+        create: input,
+        update: { status: 'completed', score: 100, completedAt: null },
+      }),
+    );
+  });
+
+  it('updates the existing course-level row (no lessonId) instead of returning it unchanged', async () => {
+    const update = jest.fn(async () => ({ id: 'progress-1', status: 'completed' }));
+    const create = jest.fn();
+    const prisma = {
+      course: { findFirst: async () => ({ id: courseAId, selfEnrollmentEnabled: false }) },
+      user: { findFirst: async () => ({ id: userId }) },
+      progress: { findFirst: async () => ({ id: 'progress-1' }), update, create },
+    } as unknown as PrismaService;
+    const service = new ProgressService(prisma);
+    const input = { organizationId, courseId: courseAId, userId, status: 'completed' as const, score: 100 };
+
+    await expect(service.createProgress(input, instructorActor)).resolves.toEqual({ id: 'progress-1', status: 'completed' });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'progress-1' }, data: { status: 'completed', score: 100, completedAt: null } }),
+    );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('creates a new course-level row when none exists yet', async () => {
+    const create = jest.fn(async () => ({ id: 'progress-1', status: 'in_progress' }));
+    const prisma = {
+      course: { findFirst: async () => ({ id: courseAId, selfEnrollmentEnabled: false }) },
+      user: { findFirst: async () => ({ id: userId }) },
+      progress: { findFirst: async () => null, create },
+    } as unknown as PrismaService;
+    const service = new ProgressService(prisma);
+    const input = { organizationId, courseId: courseAId, userId, status: 'in_progress' as const };
+
+    await service.createProgress(input, instructorActor);
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: input }));
+  });
+});

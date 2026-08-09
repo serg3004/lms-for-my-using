@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import {
@@ -18,6 +18,7 @@ const assessmentSelect = {
   status: true,
   passingScore: true,
   maxAttempts: true,
+  timeLimitMinutes: true,
   availableAfterCourseCompletion: true,
   createdAt: true,
   updatedAt: true,
@@ -83,6 +84,10 @@ export class AssessmentsService {
       throw new NotFoundException('Assessment not found');
     }
 
+    if (status === 'published') {
+      await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
+    }
+
     return this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },
       data: { status },
@@ -119,6 +124,32 @@ export class AssessmentsService {
 
     if (!course) {
       throw new NotFoundException('Course not found');
+    }
+  }
+
+  /**
+   * Publishing an empty test or one with a question nobody can answer correctly would otherwise
+   * only surface as a hard failure for the first learner to attempt it (createAttempt).
+   */
+  private async ensureQuestionsHaveCorrectOption(assessmentId: string, organizationId: string) {
+    const questions = await this.prisma.assessmentQuestion.findMany({
+      where: { assessmentId, organizationId, deletedAt: null },
+      select: {
+        title: true,
+        options: { where: { deletedAt: null, isCorrect: true }, select: { id: true }, take: 1 },
+      },
+    });
+
+    if (questions.length === 0) {
+      throw new BadRequestException('Cannot publish assessment: it has no questions');
+    }
+
+    const missing = questions.filter((question) => question.options.length === 0);
+
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Cannot publish assessment: questions without a correct answer option: ${missing.map((question) => question.title).join(', ')}`,
+      );
     }
   }
 

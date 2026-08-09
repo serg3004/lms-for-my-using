@@ -12,6 +12,7 @@ export const createAssessmentSchema = z.object({
   status: assessmentStatusSchema.default('draft'),
   passingScore: z.number().int().min(0).max(100).default(70),
   maxAttempts: z.number().int().min(1).optional(),
+  timeLimitMinutes: z.number().int().min(1).optional(),
   availableAfterCourseCompletion: z.boolean().default(true),
 });
 
@@ -29,6 +30,7 @@ export const updateAssessmentSchema = z
     status: assessmentStatusSchema,
     passingScore: z.number().int().min(0).max(100),
     maxAttempts: z.number().int().min(1).nullable(),
+    timeLimitMinutes: z.number().int().min(1).nullable(),
     availableAfterCourseCompletion: z.boolean(),
   })
   .partial();

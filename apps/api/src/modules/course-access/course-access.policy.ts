@@ -4,7 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import type { CurrentUser } from '../auth/public.js';
 
 export type CourseScopedUser = Pick<CurrentUser, 'id' | 'organizationId' | 'roles'>;
-export type CourseResource = 'lesson' | 'material' | 'assessment' | 'question' | 'assignment' | 'progress' | 'attempt' | 'certificate';
+export type CourseResource = 'lesson' | 'material' | 'assessment' | 'question' | 'option' | 'assignment' | 'progress' | 'attempt' | 'certificate';
 
 /** Central policy for instructor ownership of course-bound resources. */
 @Injectable()
@@ -58,6 +58,12 @@ export class CourseAccessPolicy {
       case 'certificate': record = await this.prisma.certificate.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'question':
         record = await this.prisma.assessmentQuestion.findFirst({ where: { ...where, assessment: { course } }, select: { id: true } });
+        break;
+      case 'option':
+        record = await this.prisma.assessmentAnswerOption.findFirst({
+          where: { ...where, question: { assessment: { course } } },
+          select: { id: true },
+        });
         break;
     }
     if (!record) throw new NotFoundException('Course resource not found');

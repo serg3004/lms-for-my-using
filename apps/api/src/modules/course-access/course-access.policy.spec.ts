@@ -99,6 +99,34 @@ describe('CourseAccessPolicy', () => {
     });
   });
 
+  it('joins three levels deep for option resources (via question.assessment.course)', async () => {
+    const resourceId = '66666666-6666-6666-6666-666666666666';
+    const optionFindFirst = jest.fn(async () => ({ id: resourceId }));
+    const policy = new CourseAccessPolicy({
+      assessmentAnswerOption: { findFirst: optionFindFirst },
+    } as unknown as PrismaService);
+
+    await policy.assertResourceAccess('option', resourceId, user(['instructor']));
+
+    expect(optionFindFirst).toHaveBeenCalledWith({
+      where: {
+        id: resourceId,
+        organizationId,
+        deletedAt: null,
+        question: {
+          assessment: {
+            course: {
+              organizationId,
+              deletedAt: null,
+              instructors: { some: { instructorId, organizationId, deletedAt: null } },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+  });
+
   it('rejects a resource that does not resolve to an owned course', async () => {
     const policy = new CourseAccessPolicy({
       lesson: { findFirst: async () => null },
