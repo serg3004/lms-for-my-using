@@ -252,7 +252,15 @@ export function AdminAssessmentBuilderPage() {
                     <li key={option.id}>
                       <label>
                         <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} disabled name={`preview-${question.id}`}/>
-                        {' '}{getAssessmentOptionLabel(option)}
+                        {' '}
+                        {option.imageUrl ? (
+                          <span className="admin-preview__option-content">
+                            <img src={option.imageUrl} alt={option.text ?? ''} className="admin-preview__option-image"/>
+                            {option.text && <span>{option.text}</span>}
+                          </span>
+                        ) : (
+                          <span>{getAssessmentOptionLabel(option)}</span>
+                        )}
                       </label>
                     </li>
                   ))}
