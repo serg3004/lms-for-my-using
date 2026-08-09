@@ -171,7 +171,9 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
         <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
           <span className="learner-quiz__result-label">
-            {result.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
+            {result.passed
+              ? result.assessment.passMessage || t('assessments.resultPassed')
+              : result.assessment.failMessage || t('assessments.resultFailed')}
           </span>
           <span className="learner-quiz__result-score">
             {t('assessments.resultScore', { score: result.score, maxScore: result.maxScore, percentage: result.percentage })}

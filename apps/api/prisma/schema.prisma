@@ -428,6 +428,8 @@ model Assessment {
   maxAttempts                  Int?            @map("max_attempts")
   timeLimitMinutes              Int?            @map("time_limit_minutes")
   availableAfterCourseCompletion Boolean         @default(true) @map("available_after_course_completion")
+  passMessage                  String?         @map("pass_message")
+  failMessage                  String?         @map("fail_message")
   createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?        @map("deleted_at") @db.Timestamptz

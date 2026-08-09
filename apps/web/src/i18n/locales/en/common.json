@@ -306,6 +306,8 @@
       "maxAttempts": "Max attempts (blank = unlimited)",
       "availableAfterCompletion": "Available after course completion",
       "description": "Description",
+      "passMessage": "Pass message (blank = default)",
+      "failMessage": "Fail message (blank = default)",
       "invalidInput": "Enter title, passing score 0–100, and optional attempts ≥ 1.",
       "titleRequired": "Assessment title is required.",
       "assessmentExists": "An assessment with this slug already exists.",

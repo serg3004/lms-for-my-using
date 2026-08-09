@@ -175,6 +175,8 @@ export type AssessmentSummary = {
   passingScore: number;
   maxAttempts: number;
   availableAfterCourseCompletion: boolean;
+  passMessage: string | null;
+  failMessage: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -277,7 +279,7 @@ export type AssessmentAttemptResult = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  assessment: { id: string; title: string; slug: string; passingScore: number };
+  assessment: { id: string; title: string; slug: string; passingScore: number; passMessage: string | null; failMessage: string | null };
   user: { id: string; email: string; firstName: string; lastName: string };
   answers: AttemptAnswerResult[];
 };
