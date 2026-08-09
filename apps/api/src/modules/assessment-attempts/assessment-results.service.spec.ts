@@ -10,7 +10,7 @@ const userId = '44444444-4444-4444-4444-444444444444';
 const otherUserId = '55555555-5555-5555-5555-555555555555';
 const now = new Date('2026-05-26T00:00:00.000Z');
 
-function createAttempt(userIdOverride = userId) {
+function createAttempt(userIdOverride = userId, showCorrectAnswers = false) {
   return {
     id: attemptId,
     organizationId,
@@ -30,6 +30,7 @@ function createAttempt(userIdOverride = userId) {
       title: 'Final test',
       slug: 'final-test',
       passingScore: 70,
+      showCorrectAnswers,
     },
     user: {
       id: userIdOverride,
@@ -53,6 +54,7 @@ function createAttempt(userIdOverride = userId) {
           type: 'single_choice',
           points: 1,
           order: 1,
+          options: [{ id: '88888888-8888-8888-8888-888888888888', text: 'Answer', imageUrl: null }],
         },
         selectedOption: {
           id: '88888888-8888-8888-8888-888888888888',
@@ -89,6 +91,40 @@ describe('AssessmentResultsService', () => {
         },
       ],
     });
+  });
+
+  it('hides the correct option unless the assessment opted in to showCorrectAnswers', async () => {
+    const prisma = {
+      assessmentAttempt: {
+        findFirst: async () => createAttempt(userId, false),
+      },
+      membership: {
+        findFirst: async () => null,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentResultsService(prisma);
+
+    const result = await service.getAttemptResult(attemptId, userId, organizationId);
+
+    expect(result.answers[0].correctOptions).toBeUndefined();
+  });
+
+  it('exposes the correct option when the assessment has showCorrectAnswers enabled', async () => {
+    const prisma = {
+      assessmentAttempt: {
+        findFirst: async () => createAttempt(userId, true),
+      },
+      membership: {
+        findFirst: async () => null,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentResultsService(prisma);
+
+    const result = await service.getAttemptResult(attemptId, userId, organizationId);
+
+    expect(result.answers[0].correctOptions).toEqual([
+      { id: '88888888-8888-8888-8888-888888888888', text: 'Answer', imageUrl: null },
+    ]);
   });
 
   it('rejects another learner attempt result without privileged membership', async () => {

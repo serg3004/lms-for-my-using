@@ -175,6 +175,7 @@ export type AssessmentSummary = {
   passingScore: number;
   maxAttempts: number;
   availableAfterCourseCompletion: boolean;
+  showCorrectAnswers: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -233,6 +234,8 @@ export type AttemptAnswerResult = {
   score: number;
   question: { id: string; title: string; type: string; points: number; order: number };
   selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
+  /** Only present when the assessment author enabled showCorrectAnswers. */
+  correctOptions?: { id: string; text: string | null; imageUrl: string | null }[];
 };
 
 export type AssessmentQuestionSummary = {

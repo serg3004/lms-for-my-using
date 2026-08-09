@@ -28,6 +28,7 @@ const attemptResultSummarySelect = {
       title: true,
       slug: true,
       passingScore: true,
+      showCorrectAnswers: true,
     },
   },
   user: {
@@ -61,6 +62,10 @@ const attemptResultDetailSelect = {
           type: true,
           points: true,
           order: true,
+          options: {
+            where: { deletedAt: null, isCorrect: true },
+            select: { id: true, text: true, imageUrl: true },
+          },
         },
       },
       selectedOption: {
@@ -93,6 +98,7 @@ type AttemptResultInput = {
     title: string;
     slug: string;
     passingScore: number;
+    showCorrectAnswers: boolean;
   };
   user: {
     id: string;
@@ -115,6 +121,7 @@ type AttemptResultInput = {
       type: string;
       points: number;
       order: number;
+      options: { id: string; text: string | null; imageUrl: string | null }[];
     };
     selectedOption: {
       id: string;
@@ -282,8 +289,17 @@ export class AssessmentResultsService {
           score: answer.score,
           createdAt: answer.createdAt,
           updatedAt: answer.updatedAt,
-          question: answer.question,
+          question: {
+            id: answer.question.id,
+            title: answer.question.title,
+            type: answer.question.type,
+            points: answer.question.points,
+            order: answer.question.order,
+          },
           selectedOption: answer.selectedOption,
+          // Only exposed when the assessment author opted in — otherwise a learner could infer
+          // the correct answer from the API response even with the UI hiding it.
+          correctOptions: attempt.assessment.showCorrectAnswers ? answer.question.options : undefined,
         })) ?? [],
     };
   }

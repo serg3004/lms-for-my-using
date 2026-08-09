@@ -14,6 +14,7 @@ export const createAssessmentSchema = z.object({
   maxAttempts: z.number().int().min(1).optional(),
   timeLimitMinutes: z.number().int().min(1).optional(),
   availableAfterCourseCompletion: z.boolean().default(true),
+  showCorrectAnswers: z.boolean().default(false),
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
@@ -32,6 +33,7 @@ export const updateAssessmentSchema = z
     maxAttempts: z.number().int().min(1).nullable(),
     timeLimitMinutes: z.number().int().min(1).nullable(),
     availableAfterCourseCompletion: z.boolean(),
+    showCorrectAnswers: z.boolean(),
   })
   .partial();
 export type UpdateAssessmentInput = z.infer<typeof updateAssessmentSchema>;
