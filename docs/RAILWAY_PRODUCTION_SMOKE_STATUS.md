@@ -1,71 +1,84 @@
-# Railway production smoke status
+# Railway Production Smoke Status — Historical Snapshot
 
-Last verified: 2026-07-08
+> **Статус:** `HISTORICAL / STALE / LIVE-VERIFY REQUIRED`
+>
+> **Last verified in this historical record:** 2026-07-08.
+>
+> Этот файл больше не является current production status page.
 
-**[2026-08-06] Stale.** ~60 PRs have merged to `main` since this was last verified (including a client-timeout/nginx-proxy fix). A fresh live smoke run against production could not be performed from this environment — outbound network access to `web-production-b1f01.up.railway.app` is blocked by the sandbox's egress policy (`403 Host not in allowlist`). The status below is the last known-good result, not a current one; re-run the smoke command from an environment with production network access before trusting it.
+## 1. Last known-good historical result
 
-Status: **OK (as of 2026-07-08, unverified since)**
-
-## Production endpoints
-
-```text
-web: https://web-production-b1f01.up.railway.app
-api: https://api-production-2938.up.railway.app
-```
-
-## Railway web variables
+Оригинальный документ фиксировал на 2026-07-08:
 
 ```text
-API_UPSTREAM_URL=https://api-production-2938.up.railway.app
+MVP smoke test: Passed 17 / Failed 0
 ```
 
-## Verified checks
+Он также фиксировал успешный Web → API → DB path и health check для тогдашнего production deployment.
 
-```text
-GET /api/v1/health through web  OK
-web -> api -> db                OK
-MVP smoke test                 OK (Passed: 17, Failed: 0)
-```
+Эти результаты являются историческим evidence только для того deployment/time.
 
-## Post-merge production verification checklist
+## 2. Почему статус stale
 
-After a GitHub PR is merged, verify Railway production separately:
+Уже 2026-08-06 документ был помечен stale: после последней проверки в `main` вошло много изменений, а fresh production smoke из доступного environment выполнить не удалось из-за outbound network restrictions.
 
-1. Wait for Railway to finish the production deploy.
-2. Check `GET /api/v1/health` through the web URL.
-3. Check `GET /api/v1/health` through the direct API URL.
-4. Run the MVP smoke test through the web URL.
-5. Record the result in this document only after production is verified.
+С тех пор current deployment model/documentation также был reconciled.
 
-Do not treat green GitHub checks as production verification.
+Следовательно `OK as of 2026-07-08` нельзя сокращать до просто `production OK`.
 
-## Fixes applied
+## 3. Superseded topology details
 
-- PR #341: allow web nginx to proxy `/api/` to a full `API_UPSTREAM_URL` value.
-- PR #342: configure nginx upstream TLS/SNI and explicit timeouts.
+Historical version содержала:
 
-## Smoke command
+- direct public API URL;
+- Web `API_UPSTREAM_URL` на этот public API;
+- direct public API health verification;
+- troubleshooting для public upstream TLS/timeouts.
 
-Run from the repository root:
+Current canonical repository model — public Web + private Railway API through internal networking/nginx.
 
-```bash
-BASE_URL=https://web-production-b1f01.up.railway.app/api/v1 \
-  pnpm dlx tsx apps/api/src/scripts/smoke-test.ts
-```
+Поэтому эти URLs/upstream instructions являются `HISTORICAL` и не должны использоваться как current config.
 
-Expected result:
+See `docs/RAILWAY_DEPLOY_GUIDE.md`.
 
-```text
-Passed: 17   Failed: 0
-```
+## 4. Current production status
 
-## Troubleshooting note
+**Статус:** `LIVE-VERIFY`
 
-If `/api/v1/health` through the web URL times out again:
+Repository не подтверждает текущие:
 
+- production domains;
+- Railway service state;
+- Redis availability;
+- S3-compatible provider/bucket/CORS;
+- scanner availability;
+- backup/PITR;
+- fresh production smoke result.
 
-```bash
-railway logs --service web --tail 120
-```
+Green GitHub Actions также не является production verification.
 
-Nginx `499` for `/api/v1/health` means the client closed the request while the web proxy was calling the upstream.
+## 5. How to create a new current smoke record
+
+Для нового production smoke:
+
+1. использовать current Web/private-API topology;
+2. привязать run к exact deployment/SHA;
+3. проверить `/api/v1/health/live` и `/api/v1/health/ready` через intended path;
+4. выполнить relevant MVP smoke flows;
+5. проверить required live dependencies;
+6. записать passed/failed counts и known accepted risks;
+7. не перезаписывать historical result как будто он был выполнен на новом SHA.
+
+Current procedure: `docs/PILOT_CHECKLIST.md` + `docs/RAILWAY_DEPLOY_GUIDE.md`.
+
+## 6. Historical provenance
+
+Original detailed URLs, commands, PR #341/#342 notes and troubleshooting remain available in Git history before this cleanup revision.
+
+## 7. Правило для ИИ-агента
+
+`MUST NOT` утверждать current production health на основании этого файла.
+
+Допустимая формулировка без fresh evidence:
+
+> Последний сохранённый historical smoke result: 2026-07-08, 17 passed / 0 failed; current production state requires live verification.

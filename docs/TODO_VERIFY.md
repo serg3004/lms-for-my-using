@@ -4,7 +4,7 @@
 >
 > Этот файл хранит только вопросы, для которых полезно различать **решение**, **реализацию** и **live verification**. Он не должен быть свалкой уже известных repository facts.
 >
-> **Проверено по `main`:** `83fdf34f5384e2d8e044590256d05149f4c39a6d` (2026-08-09).
+> **Проверено по `main`:** `018bc9968947a37ba7ea53a1d6cf4bc097fdf385` (2026-08-09).
 
 ## 1. Статусы
 
@@ -120,8 +120,8 @@
 | ID | Решение | Decision | Implementation | Live | Комментарий |
 |---|---|---|---|---|---|
 | TV-042 | Basic MVP reports | `ACCEPTED` | `PARTIAL` | `NOT-REQUIRED` | Progress/certificate/assessment reporting surfaces существуют частично; advanced reporting не подразумевается. |
-| TV-043 | CSV export | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Post-MVP unless explicitly requested. |
-| TV-044 | XLSX export | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Не MVP gate. |
+| TV-043 | CSV export | `DEFERRED` | `PARTIAL` | `NOT-REQUIRED` | Assessment-results CSV export реализован в current Admin results UI; универсальный reports CSV export не является MVP gate. |
+| TV-044 | XLSX export | `DEFERRED` | `PARTIAL` | `NOT-REQUIRED` | Assessment-results Excel/XLSX export реализован в current Admin results UI; универсальный XLSX reports export не является MVP gate. |
 | TV-045 | Advanced report filters | `DEFERRED` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Сначала basic reporting. |
 | TV-046 | Separate BI/analytics service | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Не добавлять ClickHouse/BI layer в MVP. |
 
