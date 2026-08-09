@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
+import { ApiClientError } from '../../shared/apiClient.js';
+import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
-    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, passMessage: null, failMessage: null, status: 'draft' });
+    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, passMessage: null, failMessage: null, showCorrectAnswers: false, status: 'draft' });
   });
   it('trims and normalizes custom pass/fail messages, falling back to null when blank', () => {
     expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Test', passMessage: '  Great job!  ', failMessage: '   ' })).toMatchObject({ passMessage: 'Great job!', failMessage: null });
@@ -12,13 +13,24 @@ describe('assessment builder model', () => {
     expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Test', ...patch })).toBeNull();
   });
   it('initializes edit values and resets reducer state', () => {
-    const form = assessmentToForm({ id: 'a', slug: 'a', title: 'A', description: null, passingScore: 80, maxAttempts: null, availableAfterCourseCompletion: false, passMessage: 'Nice work', failMessage: null, status: 'published' });
-    expect(form).toMatchObject({ title: 'A', description: '', passingScore: '80', maxAttempts: '', passMessage: 'Nice work', failMessage: '', status: 'published' });
+    const form = assessmentToForm({ id: 'a', slug: 'a', title: 'A', description: null, passingScore: 80, maxAttempts: null, availableAfterCourseCompletion: false, passMessage: 'Nice work', failMessage: null, showCorrectAnswers: true, status: 'published' });
+    expect(form).toMatchObject({ title: 'A', description: '', passingScore: '80', maxAttempts: '', passMessage: 'Nice work', failMessage: '', showCorrectAnswers: true, status: 'published' });
     expect(assessmentFormReducer(form, { type: 'reset' })).toEqual(emptyAssessmentForm());
   });
   it('updates one field and appends an option immutably', () => {
     expect(assessmentFormReducer(emptyAssessmentForm(), { type: 'change', field: 'title', value: 'Quiz' }).title).toBe('Quiz');
     expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toHaveLength(1);
+  });
+});
+
+describe('getAssessmentBuilderLoadErrorKey', () => {
+  it('maps a 401 to the session-expired key', () => {
+    expect(getAssessmentBuilderLoadErrorKey(new ApiClientError('Unauthorized', 401))).toBe('admin.assessmentBuilder.sessionExpired');
+  });
+
+  it('maps any other error to the generic load-error key', () => {
+    expect(getAssessmentBuilderLoadErrorKey(new ApiClientError('Server error', 500))).toBe('admin.assessmentBuilder.loadError');
+    expect(getAssessmentBuilderLoadErrorKey(new Error('network down'))).toBe('admin.assessmentBuilder.loadError');
   });
 });
 

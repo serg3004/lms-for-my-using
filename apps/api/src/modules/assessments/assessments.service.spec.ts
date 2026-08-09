@@ -25,6 +25,7 @@ describe('Assessments validation', () => {
       status: 'draft',
       passingScore: 70,
       availableAfterCourseCompletion: true,
+      showCorrectAnswers: false,
     });
   });
 
@@ -70,6 +71,25 @@ describe('Assessments validation', () => {
 
     expect(input.passMessage).toBe('Great job, you passed!');
     expect(input.failMessage).toBe('Not quite — review the material and try again.');
+  });
+
+  it('accepts a showCorrectAnswers flag, defaulting to false', () => {
+    const defaultInput = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Final test',
+      slug: 'final-test',
+    });
+    expect(defaultInput.showCorrectAnswers).toBe(false);
+
+    const explicitInput = createAssessmentSchema.parse({
+      organizationId: '11111111-1111-1111-1111-111111111111',
+      courseId: '22222222-2222-2222-2222-222222222222',
+      title: 'Final test',
+      slug: 'final-test',
+      showCorrectAnswers: true,
+    });
+    expect(explicitInput.showCorrectAnswers).toBe(true);
   });
 
   it('rejects assessment input without title', () => {
