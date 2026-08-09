@@ -63,7 +63,8 @@ export class AssessmentAttemptsService {
   async listAttempts(assessmentId: string, actorInput: TeamScopeActor | string) {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
-    await this.ensureAssessmentExists(assessmentId, organizationId);
+    const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
+    await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes);
 
     return this.prisma.assessmentAttempt.findMany({
       where: {
@@ -94,6 +95,7 @@ export class AssessmentAttemptsService {
           orderBy: { createdAt: 'asc' },
           select: attemptAnswerSelect,
         },
+        assessment: { select: { timeLimitMinutes: true } },
       },
     });
 
@@ -101,7 +103,49 @@ export class AssessmentAttemptsService {
       throw new NotFoundException('Assessment attempt not found');
     }
 
-    return attempt;
+    const { assessment, ...attemptFields } = attempt;
+
+    if (attemptFields.status === 'in_progress') {
+      const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes);
+      if (finalized) {
+        return { ...attemptFields, status: 'completed' as const, passed: false, score: 0, maxScore: finalized.maxScore, percentage: 0, completedAt: finalized.completedAt };
+      }
+    }
+
+    return attemptFields;
+  }
+
+  /**
+   * A timed attempt nobody ever submitted stays "in_progress" forever unless something notices it
+   * expired — there's no separate scheduler in this app (background-jobs requires Redis, which
+   * isn't guaranteed to be configured), so expiry is checked lazily on every read that surfaces
+   * attempts for an assessment: listAttempts, getAttempt (and transitively startAttempt's resume
+   * path, which calls getAttempt). Score is 0 since an abandoned attempt never recorded answers —
+   * matches the late-submission behavior in createAttempt, which also forces passed: false.
+   */
+  private async finalizeExpiredAttempts(assessmentId: string, organizationId: string, timeLimitMinutes: number | null): Promise<{ maxScore: number; completedAt: Date } | null> {
+    if (!timeLimitMinutes) {
+      return null;
+    }
+
+    const cutoff = new Date(Date.now() - timeLimitMinutes * 60_000);
+    const where = { assessmentId, organizationId, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
+    const expiredCount = await this.prisma.assessmentAttempt.count({ where });
+
+    if (expiredCount === 0) {
+      return null;
+    }
+
+    const questions = await this.getQuestions(assessmentId, organizationId);
+    const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+    const completedAt = new Date();
+
+    await this.prisma.assessmentAttempt.updateMany({
+      where,
+      data: { status: 'completed', passed: false, score: 0, maxScore, percentage: 0, completedAt },
+    });
+
+    return { maxScore, completedAt };
   }
 
   /**
@@ -305,12 +349,14 @@ export class AssessmentAttemptsService {
         organizationId,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, timeLimitMinutes: true },
     });
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
     }
+
+    return assessment;
   }
 
   private async ensureUserExists(userId: string, organizationId: string) {
