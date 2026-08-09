@@ -217,12 +217,29 @@ export class AssessmentAttemptsService {
 
     await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
 
-    const attempt = await this.prisma.assessmentAttempt.create({
-      data: { organizationId, assessmentId, userId, status: 'in_progress', startedAt: new Date() },
-      select: { id: true },
+    // SELECT ... FOR UPDATE takes the same lock deleteAssessment() takes before soft-deleting,
+    // so the two are fully serialized: whichever of the two transactions acquires the lock
+    // first, the other only proceeds once it's committed and can see the up-to-date row.
+    const attemptId = await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM assessments
+        WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+
+      if (!rows[0]) {
+        throw new NotFoundException('Assessment not found');
+      }
+
+      const attempt = await tx.assessmentAttempt.create({
+        data: { organizationId, assessmentId, userId, status: 'in_progress', startedAt: new Date() },
+        select: { id: true },
+      });
+
+      return attempt.id;
     });
 
-    return this.getAttempt(attempt.id, { id: userId, organizationId, roles: ['learner'] });
+    return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
   }
 
   private async loadAssessmentForAttempt(assessmentId: string, organizationId: string) {

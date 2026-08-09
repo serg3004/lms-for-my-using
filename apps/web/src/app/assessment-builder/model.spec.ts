@@ -15,6 +15,6 @@ describe('assessment builder model', () => {
   });
   it('updates one field and appends an option immutably', () => {
     expect(assessmentFormReducer(emptyAssessmentForm(), { type: 'change', field: 'title', value: 'Quiz' }).title).toBe('Quiz');
-    expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', isCorrect: true, order: 0 }).q1).toHaveLength(1);
+    expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toHaveLength(1);
   });
 });

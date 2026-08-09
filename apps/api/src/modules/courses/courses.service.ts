@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CourseAccessPolicy } from '../course-access/public.js';
 import type { CourseScopedUser } from '../course-access/public.js';
@@ -212,7 +213,7 @@ export class CoursesService {
   async deleteCourse(courseId: string, organizationId: string) {
     const course = await this.prisma.course.findFirst({
       where: { id: courseId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, slug: true },
     });
 
     if (!course) {
@@ -221,7 +222,7 @@ export class CoursesService {
 
     await this.prisma.course.update({
       where: { id: courseId, organizationId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(course.slug, course.id) },
       select: { id: true },
     });
   }

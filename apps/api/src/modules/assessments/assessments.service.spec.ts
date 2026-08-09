@@ -188,24 +188,50 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
 });
 
 describe('AssessmentsService.deleteAssessment', () => {
-  it('soft-deletes the assessment', async () => {
-    const update = jest.fn(async () => ({ id: assessmentId }));
+  function buildTxPrisma(options: { rows: { id: string; slug: string }[]; activeAttempt?: { id: string } | null; update?: jest.Mock }) {
+    const update = options.update ?? jest.fn(async () => ({ id: assessmentId }));
+    const tx = {
+      $queryRaw: jest.fn(async () => options.rows),
+      assessmentAttempt: { findFirst: async () => options.activeAttempt ?? null },
+      assessment: { update },
+    };
     const prisma = {
-      assessment: { findFirst: async () => ({ id: assessmentId }), update },
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(tx),
     } as unknown as PrismaService;
+
+    return { prisma, tx, update };
+  }
+
+  it('soft-deletes the assessment, guarding against in-progress attempts inside a row-locked transaction', async () => {
+    const { prisma, update } = buildTxPrisma({ rows: [{ id: assessmentId, slug: 'final-test' }], activeAttempt: null });
     const service = new AssessmentsService(prisma);
 
     await service.deleteAssessment(assessmentId, organizationId);
 
     expect(update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: assessmentId, organizationId }, data: { deletedAt: expect.any(Date) } }),
+      expect.objectContaining({
+        where: { id: assessmentId, organizationId },
+        data: { deletedAt: expect.any(Date), slug: expect.stringMatching(new RegExp(`^final-test--deleted-${assessmentId}-`)) },
+      }),
     );
   });
 
   it('throws NotFoundException when the assessment does not exist', async () => {
-    const prisma = { assessment: { findFirst: async () => null } } as unknown as PrismaService;
+    const { prisma, update } = buildTxPrisma({ rows: [] });
     const service = new AssessmentsService(prisma);
 
     await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('rejects deleting an assessment with an attempt in progress', async () => {
+    const { prisma, update } = buildTxPrisma({
+      rows: [{ id: assessmentId, slug: 'final-test' }],
+      activeAttempt: { id: 'attempt-id' },
+    });
+    const service = new AssessmentsService(prisma);
+
+    await expect(service.deleteAssessment(assessmentId, organizationId)).rejects.toBeInstanceOf(BadRequestException);
+    expect(update).not.toHaveBeenCalled();
   });
 });

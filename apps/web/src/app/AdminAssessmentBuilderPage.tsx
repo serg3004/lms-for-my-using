@@ -6,6 +6,7 @@ import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
+import { getAssessmentOptionLabel } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
@@ -36,6 +37,7 @@ export function AdminAssessmentBuilderPage() {
   const [deleteTarget, setDeleteTarget] = useState<Assessment | null>(null);
   const [deleting, setDeleting] = useState(false);
   const previewDialogRef = useRef<HTMLDialogElement>(null);
+  const previewRequestRef = useRef(0);
   const [previewAssessment, setPreviewAssessment] = useState<Assessment | null>(null);
   const [previewQuestions, setPreviewQuestions] = useState<Question[]>([]);
   const [previewOptions, setPreviewOptions] = useState<Record<string, AnswerOption[]>>({});
@@ -107,6 +109,7 @@ export function AdminAssessmentBuilderPage() {
   }
   async function openQuestions(assessment: Assessment) { setQuestionsAssessment(assessment); setQuestions([]); setOptions({}); setQuestionsLoading(true); questionsDialogRef.current?.showModal(); try { const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`); const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`))); setQuestions(loadedQuestions); setOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []]))); } catch { setQuestions([]); } finally { setQuestionsLoading(false); } }
   async function openPreview(assessment: Assessment) {
+    const requestToken = ++previewRequestRef.current; // unique per invocation, so A -> B -> A can't collide
     setPreviewAssessment(assessment);
     setPreviewQuestions([]);
     setPreviewOptions({});
@@ -115,12 +118,14 @@ export function AdminAssessmentBuilderPage() {
     try {
       const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`);
       const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`)));
+      if (previewRequestRef.current !== requestToken) return; // a newer preview was opened while this one was loading
       setPreviewQuestions(loadedQuestions);
       setPreviewOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []])));
     } catch {
+      if (previewRequestRef.current !== requestToken) return;
       setPreviewQuestions([]);
     } finally {
-      setPreviewLoading(false);
+      if (previewRequestRef.current === requestToken) setPreviewLoading(false);
     }
   }
   async function confirmDelete() {
@@ -247,7 +252,15 @@ export function AdminAssessmentBuilderPage() {
                     <li key={option.id}>
                       <label>
                         <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} disabled name={`preview-${question.id}`}/>
-                        {' '}{option.text}
+                        {' '}
+                        {option.imageUrl ? (
+                          <span className="admin-preview__option-content">
+                            <img src={option.imageUrl} alt={option.text ?? ''} className="admin-preview__option-image"/>
+                            {option.text && <span>{option.text}</span>}
+                          </span>
+                        ) : (
+                          <span>{getAssessmentOptionLabel(option)}</span>
+                        )}
                       </label>
                     </li>
                   ))}

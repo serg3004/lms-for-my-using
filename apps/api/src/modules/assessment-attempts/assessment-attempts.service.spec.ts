@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -355,8 +355,13 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
           // 1st call: no existing in_progress attempt. 2nd call: the final getAttempt read-back.
           return findFirstCalls === 1 ? null : { id: 'attempt-id', status: 'in_progress', startedAt: new Date() };
         },
-        create,
       },
+      // The row-lock SELECT ... FOR UPDATE and the create both run inside the transaction.
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: async () => [{ id: assessmentId }],
+          assessmentAttempt: { create },
+        }),
     } as unknown as PrismaService;
     const service = new AssessmentAttemptsService(prisma);
 
@@ -368,6 +373,27 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
         data: expect.objectContaining({ status: 'in_progress', startedAt: expect.any(Date) }),
       }),
     );
+  });
+
+  it('throws NotFoundException without creating an attempt when the assessment was deleted concurrently, before the row lock could be acquired', async () => {
+    const create = jest.fn();
+    const prisma = {
+      assessment: { findFirst: async () => buildAssessment() },
+      user: { findFirst: async () => ({ id: userId }) },
+      assessmentAttempt: { findFirst: async () => null },
+      // Simulates deleteAssessment() winning the race for the row lock and committing its
+      // soft-delete first: by the time this transaction acquires the lock, the row no longer
+      // matches "deleted_at IS NULL", so the FOR UPDATE select returns nothing.
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          $queryRaw: async () => [],
+          assessmentAttempt: { create },
+        }),
+    } as unknown as PrismaService;
+    const service = new AssessmentAttemptsService(prisma);
+
+    await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {

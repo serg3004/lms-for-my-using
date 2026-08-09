@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import {
   CreateAssessmentInput,
@@ -113,20 +114,46 @@ export class AssessmentsService {
   }
 
   async deleteAssessment(assessmentId: string, organizationId: string) {
-    const assessment = await this.prisma.assessment.findFirst({
-      where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true },
+    // SELECT ... FOR UPDATE locks the assessment row for the rest of this transaction, so a
+    // concurrent startAttempt() (which takes the same lock before creating its attempt row —
+    // see AssessmentAttemptsService.startAttempt) is fully serialized against this delete:
+    // whichever transaction gets the lock first is the one the other sees committed.
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string; slug: string }[]>`
+        SELECT id, slug FROM assessments
+        WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
+        FOR UPDATE
+      `;
+      const assessment = rows[0];
+
+      if (!assessment) {
+        return 'not-found' as const;
+      }
+
+      const activeAttempt = await tx.assessmentAttempt.findFirst({
+        where: { assessmentId, status: 'in_progress', deletedAt: null },
+        select: { id: true },
+      });
+
+      if (activeAttempt) {
+        return 'conflict' as const;
+      }
+
+      await tx.assessment.update({
+        where: { id: assessmentId, organizationId },
+        data: { deletedAt: new Date(), slug: releaseSlugOnDelete(assessment.slug, assessment.id) },
+      });
+
+      return 'ok' as const;
     });
 
-    if (!assessment) {
+    if (outcome === 'not-found') {
       throw new NotFoundException('Assessment not found');
     }
 
-    await this.prisma.assessment.update({
-      where: { id: assessmentId, organizationId },
-      data: { deletedAt: new Date() },
-      select: { id: true },
-    });
+    if (outcome === 'conflict') {
+      throw new BadRequestException('Cannot delete an assessment with an attempt in progress');
+    }
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {
