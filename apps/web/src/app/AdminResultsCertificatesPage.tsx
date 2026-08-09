@@ -107,11 +107,21 @@ export function downloadAssessmentResultsCsv(results: AssessmentResult[], users:
 
 export async function downloadAssessmentResultsXlsx(results: AssessmentResult[], users: User[], t: TFunction) {
   const rows = buildAssessmentResultsExportRows(results, users, t);
-  const XLSX = await import('xlsx');
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Results');
-  XLSX.writeFile(workbook, `assessment-results-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const { Workbook } = await import('exceljs');
+  const workbook = new Workbook();
+  const worksheet = workbook.addWorksheet('Results');
+  worksheet.addRows(rows);
+  const buffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `assessment-results-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function AdminResultsCertificatesPage() {
