@@ -430,6 +430,7 @@ model Assessment {
   availableAfterCourseCompletion Boolean         @default(true) @map("available_after_course_completion")
   passMessage                  String?         @map("pass_message")
   failMessage                  String?         @map("fail_message")
+  showCorrectAnswers           Boolean         @default(false) @map("show_correct_answers")
   randomizeOrder                Boolean         @default(false) @map("randomize_order")
   createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime         @updatedAt @map("updated_at") @db.Timestamptz

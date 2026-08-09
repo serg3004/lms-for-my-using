@@ -78,6 +78,13 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
 
       <div className="admin-form__field">
         <label>
+          <input type="checkbox" checked={form.showCorrectAnswers} onChange={(e) => change('showCorrectAnswers', e.target.checked)} />
+          {' '}{t('admin.assessmentBuilder.showCorrectAnswers', 'Show correct answers after submission')}
+        </label>
+      </div>
+
+      <div className="admin-form__field">
+        <label>
           <input type="checkbox" checked={form.randomizeOrder} onChange={(e) => change('randomizeOrder', e.target.checked)} />
           {' '}{t('admin.assessmentBuilder.randomizeOrder', 'Randomize question and answer order per learner')}
         </label>

@@ -23,6 +23,7 @@ const assessmentSelect = {
   availableAfterCourseCompletion: true,
   passMessage: true,
   failMessage: true,
+  showCorrectAnswers: true,
   randomizeOrder: true,
   createdAt: true,
   updatedAt: true,

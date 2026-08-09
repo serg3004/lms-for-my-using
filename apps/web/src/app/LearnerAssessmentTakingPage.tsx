@@ -227,6 +227,12 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
                         <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                         {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
                       </p>
+                      {!answer.isCorrect && answer.correctOptions && answer.correctOptions.length > 0 ? (
+                        <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
+                          <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
+                          {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                        </p>
+                      ) : null}
                       <p className="learner-quiz__breakdown-points">
                         {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
                       </p>
