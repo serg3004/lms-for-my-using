@@ -1,126 +1,53 @@
-# Project Log
+# Project Log — Historical Archive
 
-## [2026-08-06] Retired — superseded by `docs/DEVELOPMENT_PLAN.md`
+> **Статус:** `HISTORICAL / SUPERSEDED`
+>
+> **Последняя active запись:** 2026-05-30.
+>
+> Этот файл больше не является changelog, backlog или source of truth для current implementation.
 
-This log stopped at PR 42 (2026-05-30). The project is now at PR #505+; `docs/DEVELOPMENT_PLAN.md`'s "Факт:" entries have been the de facto changelog since — every PR's actual implementation is recorded there per plan item, cross-checked against code rather than just reported.
+## Почему документ сохранён
 
-Kept below as historical record of PR 20–42 (auth/session hardening, admin layout, workspace registration). Not updated further — new entries go in `docs/DEVELOPMENT_PLAN.md`.
+Файл содержит исторический контекст ранней серии внутренних planning/PR items примерно 20–42: auth/session hardening, admin layout, workspace registration/login/logout и связанные решения того периода.
 
----
+Эта информация полезна только как provenance/rationale.
 
-## 2026-05-30
+## Важное ограничение нумерации
 
-### Auth/session hardening series
+Обозначения вида `PR 20`, `PR 39–42` в историческом тексте относятся к внутренним planning identifiers той фазы проекта. Их нельзя автоматически трактовать как номера GitHub Pull Requests.
 
-Implemented PR 39–42 scope across `fix/auth-session-jwt-hardening`, `test/auth-session-token-negative-cleanup`, `fix/current-user-lookup-hardening`, and `test/auth-guard-logout-behavior`.
+## Что с тех пор изменилось
 
-Changes:
-- Hardened custom JWT verification:
-  - strict 3-segment token structure validation;
-  - protected JWT header validation for `alg: HS256` and `typ: JWT`;
-  - safe JSON object parsing for JWT header and claims;
-  - integer validation for `iat` and `exp`;
-  - rejection of future `iat`;
-  - rejection of invalid token lifetime where `exp <= iat`.
-- Cleaned up JWT negative token tests and added signed malformed-claims coverage.
-- Bound current user lookup to JWT `sub` in addition to `organizationId`, `email`, `active` status, and `deletedAt: null`.
-- Added AuthGuard bearer parsing coverage for missing, empty, malformed, lowercase, padded, and multiple authorization header values.
-- Added logout bearer behavior tests for missing/empty/invalid bearer headers and token validation before logout acceptance.
-- Kept PR 42 test-only with no runtime auth changes.
+Многие разделы исторического лога давно superseded current repository behavior. В частности, old deferred statements про refresh/session/revocation больше не отражают current auth implementation.
 
-Current auth/session status:
-- Access tokens are stateless JWT access tokens signed with `HS256`.
-- Current user lookup is bound to the token subject/user id.
-- Logout is stateless and validates the bearer token before returning `{ accepted: true }`.
-- Password reset endpoints remain implemented as unavailable skeleton endpoints.
+Не использовать этот файл для ответа на вопросы:
 
-Current PR check status:
-```text
-[Check] Lint: CI OK for merged PRs where reported
-[Check] Types: CI OK for merged PRs where reported
-[Check] Tests: CI OK for merged PRs where reported
-[Check] Build: CI OK for merged PRs where reported
-```
+- как сейчас работает auth/session;
+- какие feature ещё open;
+- какой текущий MVP scope;
+- какие проверки CI обязательны;
+- как сейчас устроен deployment.
 
-Deferred:
-- Refresh token/httpOnly cookie implementation.
-- Login rate limiting.
-- Password reset real flow.
-- Token revocation/session store.
-- Auth/session docs beyond current README/project status sync.
+## Current sources
 
-## 2026-05-29
+Для актуального состояния использовать:
 
-### Add admin layout and dashboard
+- `docs/PROJECT_SOURCE_OF_TRUTH.md`;
+- `docs/MVP_SCOPE_LOCK.md`;
+- `docs/TODO_VERIFY.md`;
+- `docs/DEVELOPMENT_PLAN.md` — active development ledger;
+- `docs/PRODUCTION_HARDENING_BACKLOG.md` — current hardening gaps.
 
-Implemented PR 23 scope on `feat/admin-layout-dashboard`.
+## Historical record
 
-Changes:
-- Added `/admin` web route.
-- Added `AdminDashboardPage` shell.
-- Reused existing auth token and `GET /api/v1/auth/me` flow.
-- Added loading, missing token, `401 Unauthorized`, and generic error states.
-- Added basic admin sidebar/dashboard links for users, roles, org structure, courses, assessments, and reports.
-- Added `/admin` link to root navigation.
-- Updated README, API status, project log, and audit log.
+Оригинальный подробный вариант этого журнала сохранён в Git history до этой cleanup-ревизии. При расследовании старого решения нужно читать соответствующую revision/commit, а не переносить старый status в current docs.
 
-Deferred:
-- Admin role-specific frontend guard.
-- User management UI.
-- Role assignment UI.
-- Org structure UI.
-- Course builder.
-- Assessment builder.
-- Reports dashboard.
-- Prisma schema/migration changes.
-- CI/CD changes.
-- Dependency changes.
+## Правило для ИИ-агента
 
-Current PR check status:
+`MUST NOT` использовать этот файл как current implementation/status authority.
 
-```text
-[Check] Lint: not run
-[Check] Types: not run
-[Check] Tests: not run
-[Check] Build: not run
-```
+Допустимое использование:
 
-## 2026-05-29
-
-### Add workspace registration/login/logout hardening
-
-Implemented PR 22 scope on `fix/workspace-registration-login-logout-hardening`.
-
-Changes:
-- Added authenticated `POST /api/v1/auth/logout`.
-- Logout validates bearer token and active user status before returning a stateless acknowledgement.
-- Added `AuthService.logout()` result.
-- Added web logout helper that clears the stored access token in `finally`.
-- Added controller tests for missing bearer token and valid logout flow.
-- Updated README, API status, project log, and audit log.
-
-## 2026-05-29
-
-### Fix assessment attempt eligibility and API error contract
-
-Implemented PR 21 scope on `fix/assessment-attempt-eligibility-api-error-contract`.
-
-Changes:
-- Added assessment status selection in assessment attempt creation.
-- Rejected attempts for `draft` and `archived` assessments.
-- Kept attempts allowed for `published` assessments when existing gates pass.
-- Aligned shared `ApiErrorResponse` with the backend error envelope.
-- Added service tests for published, draft, and archived assessment attempt eligibility.
-
-## 2026-05-28
-
-### Secure public user and organization creation
-
-Implemented PR 20 scope on `fix/secure-public-user-organization-creation`.
-
-Changes:
-- Added auth, RBAC, and organization scope guard to direct `POST /api/v1/users`.
-- Added auth and admin RBAC guard to direct `POST /api/v1/organizations`.
-- Kept `POST /api/v1/organizations/register` public as the explicit workspace registration flow.
-- Added `rolePolicies.organizationsCreate`.
-- Added controller tests for protected direct creation endpoints and public registration metadata.
+- история решения;
+- поиск старого rationale;
+- provenance для последующей проверки по Git history/current code.
