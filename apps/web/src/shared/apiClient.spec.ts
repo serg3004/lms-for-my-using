@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { apiRequest, uploadMaterialFileWithProgress } from './apiClient';
+import { apiRequest, uploadChecklistItemPhotoWithProgress, uploadMaterialFileWithProgress } from './apiClient';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -300,5 +300,78 @@ describe('uploadMaterialFileWithProgress', () => {
     ).resolves.toMatchObject({ id: 'material-1' });
     expect(opened).toEqual(['/api/v1/materials/material%2Fwith%20spaces/file']);
     expect(progress).toHaveBeenCalledWith(100);
+  });
+});
+
+describe('uploadChecklistItemPhotoWithProgress', () => {
+  it('uploads the file to the checklist item photo endpoint', async () => {
+    const opened: string[] = [];
+    const progress = vi.fn();
+
+    class XMLHttpRequestStub {
+      status = 200;
+      responseText = JSON.stringify({ id: 'instance-1' });
+      withCredentials = false;
+      readonly upload = {
+        addEventListener: (_event: string, listener: (event: ProgressEvent) => void) => {
+          listener({ lengthComputable: true, loaded: 4, total: 4 } as ProgressEvent);
+        },
+      };
+      private readonly listeners = new Map<string, () => void>();
+
+      addEventListener(event: string, listener: () => void) {
+        this.listeners.set(event, listener);
+      }
+
+      open(_method: string, url: string) {
+        opened.push(url);
+      }
+
+      setRequestHeader() {}
+
+      send() {
+        this.listeners.get('load')?.();
+      }
+    }
+
+    vi.stubGlobal('XMLHttpRequest', XMLHttpRequestStub);
+
+    await expect(
+      uploadChecklistItemPhotoWithProgress('instance 1', 'item 1', new File(['test'], 'photo.jpg', { type: 'image/jpeg' }), progress),
+    ).resolves.toMatchObject({ id: 'instance-1' });
+    expect(opened).toEqual(['/api/v1/checklist-instances/instance%201/items/item%201/photo']);
+    expect(progress).toHaveBeenCalledWith(100);
+  });
+
+  it('rejects when the server returns an error', async () => {
+    class XMLHttpRequestStub {
+      status = 400;
+      responseText = JSON.stringify({ statusCode: 400, error: { code: 'BAD_REQUEST', message: 'Only images allowed' }, path: '/x', timestamp: 'now' });
+      withCredentials = false;
+      readonly upload = { addEventListener: () => undefined };
+      private readonly listeners = new Map<string, () => void>();
+
+      addEventListener(event: string, listener: () => void) {
+        this.listeners.set(event, listener);
+      }
+
+      getResponseHeader() {
+        return null;
+      }
+
+      open() {}
+
+      setRequestHeader() {}
+
+      send() {
+        this.listeners.get('load')?.();
+      }
+    }
+
+    vi.stubGlobal('XMLHttpRequest', XMLHttpRequestStub);
+
+    await expect(
+      uploadChecklistItemPhotoWithProgress('instance-1', 'item-1', new File(['test'], 'photo.jpg', { type: 'image/jpeg' }), vi.fn()),
+    ).rejects.toMatchObject({ message: 'Only images allowed' });
   });
 });
