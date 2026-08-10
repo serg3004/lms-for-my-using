@@ -30,6 +30,7 @@ function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
         { label: t('admin.nav.lessons', 'Lessons'), href: '/admin/lessons' },
         { label: t('admin.nav.materials', 'Materials'), href: '/admin/materials' },
         { label: t('admin.nav.assessments', 'Assessments'), href: '/admin/assessments' },
+        { label: t('admin.nav.checklists', 'Checklists'), href: '/admin/checklists' },
         { label: t('admin.nav.users', 'Users'), href: '/admin/users' },
         { label: t('admin.nav.assignments', 'Assignments'), href: '/admin/assignments' },
         { label: t('admin.nav.results', 'Results'), href: '/admin/results' },

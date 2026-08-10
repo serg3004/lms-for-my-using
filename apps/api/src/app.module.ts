@@ -10,6 +10,7 @@ import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { BackgroundJobsModule } from './modules/background-jobs/background-jobs.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
+import { ChecklistsModule } from './modules/checklists/checklists.module.js';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module.js';
 import { CourseAccessModule } from './modules/course-access/course-access.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
@@ -49,6 +50,7 @@ import { UsersModule } from './modules/users/users.module.js';
     BackgroundJobsModule,
     AuthModule,
     CertificatesModule,
+    ChecklistsModule,
     CourseMaterialsModule,
     CoursesModule,
     GroupsModule,

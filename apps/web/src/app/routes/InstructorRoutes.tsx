@@ -7,6 +7,7 @@ const InstructorDashboardPage = lazy(() => import('../InstructorDashboardPage.js
 const InstructorCoursesPage = lazy(() => import('../InstructorCoursesPage.js').then((m) => ({ default: m.InstructorCoursesPage })));
 const InstructorCourseFormPage = lazy(() => import('../InstructorCourseFormPage.js').then((m) => ({ default: m.InstructorCourseFormPage })));
 const InstructorCourseStudentsPage = lazy(() => import('../InstructorCourseStudentsPage.js').then((m) => ({ default: m.InstructorCourseStudentsPage })));
+const InstructorChecklistReviewsPage = lazy(() => import('../InstructorChecklistReviewsPage.js').then((m) => ({ default: m.InstructorChecklistReviewsPage })));
 
 function CourseEditRoute() { const { courseId } = useParams(); return courseId ? <InstructorCourseFormPage mode="edit" courseId={courseId} /> : <NotFoundPage />; }
 function CourseStudentsRoute() { const { courseId } = useParams(); return courseId ? <InstructorCourseStudentsPage courseId={courseId} /> : <NotFoundPage />; }
@@ -20,6 +21,7 @@ export function InstructorRoutes() {
       <Route path="courses/new" element={<InstructorCourseFormPage mode="create" />} />
       <Route path="courses/:courseId/edit" element={<CourseEditRoute />} />
       <Route path="courses/:courseId/students" element={<CourseStudentsRoute />} />
+      <Route path="checklists" element={<InstructorChecklistReviewsPage />} />
     </Route>
   );
 }

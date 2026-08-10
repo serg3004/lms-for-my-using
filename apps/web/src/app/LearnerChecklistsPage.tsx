@@ -1,0 +1,272 @@
+import { useCallback, useEffect, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
+
+import { ApiClientError } from '../shared/apiClient.js';
+import { listMyChecklistInstances, submitChecklistItemResult } from '../shared/api/checklists.js';
+import type { ChecklistInstanceSummary, ChecklistItemSummary } from '../shared/api/types.js';
+import { PageState } from '../shared/ui.js';
+
+const COLORS = {
+  surface: '#ffffff',
+  soft: '#f8fafc',
+  text: '#172033',
+  muted: '#6b7280',
+  border: '#e3e8ef',
+  primary: '#4f46e5',
+  success: '#0f9f6e',
+  successSoft: '#e9f8f2',
+  warning: '#d97706',
+  warningSoft: '#fff7e8',
+  primarySoft: '#eef2ff',
+};
+
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'loaded'; instances: ChecklistInstanceSummary[] }
+  | { status: 'unauthenticated'; message: string }
+  | { status: 'error'; message: string };
+
+export function LearnerChecklistsPage() {
+  const { t } = useTranslation();
+  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoadState({ status: 'loading' });
+    try {
+      const instances = await listMyChecklistInstances();
+      setLoadState({ status: 'loaded', instances });
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) {
+        setLoadState({ status: 'unauthenticated', message: t('checklists.sessionExpired', 'Your session has expired. Please sign in again.') });
+        return;
+      }
+      setLoadState({ status: 'error', message: t('checklists.loadError', 'Unable to load your checklists.') });
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (loadState.status === 'loading') {
+    return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
+  }
+  if (loadState.status === 'unauthenticated' || loadState.status === 'error') {
+    return <main style={{ padding: 32 }}><PageState title={t('checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
+  }
+
+  const open = openInstanceId ? loadState.instances.find((i) => i.id === openInstanceId) : null;
+
+  if (open) {
+    return (
+      <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
+        <ChecklistTaking
+          instance={open}
+          onBack={() => setOpenInstanceId(null)}
+          onUpdated={async () => {
+            const instances = await listMyChecklistInstances();
+            setLoadState({ status: 'loaded', instances });
+          }}
+          t={t}
+        />
+      </main>
+    );
+  }
+
+  return (
+    <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
+      <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
+      <p style={{ color: COLORS.muted }}>{t('checklists.subtitle', 'Checklists assigned to you — complete them and attach photos where required.')}</p>
+
+      {loadState.instances.length === 0 ? (
+        <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
+      ) : (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
+          {loadState.instances.map((instance) => (
+            <li
+              key={instance.id}
+              style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, cursor: 'pointer' }}
+              onClick={() => setOpenInstanceId(instance.id)}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <strong>{instance.checklist?.title}</strong>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    borderRadius: 999,
+                    padding: '3px 10px',
+                    color: instance.status === 'completed' ? COLORS.success : COLORS.warning,
+                    background: instance.status === 'completed' ? COLORS.successSoft : COLORS.warningSoft,
+                  }}
+                >
+                  {t(`checklists.status.${instance.status}`, instance.status)}
+                </span>
+              </div>
+              {instance.status === 'completed' && (
+                <p style={{ color: COLORS.muted, marginBottom: 0 }}>
+                  {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
+                    score: instance.totalScore,
+                    max: instance.maxScore,
+                    percentage: instance.percentage,
+                  })}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
+
+function ChecklistTaking({
+  instance,
+  onBack,
+  onUpdated,
+  t,
+}: {
+  instance: ChecklistInstanceSummary;
+  onBack: () => void;
+  onUpdated: () => Promise<void>;
+  t: TFunction;
+}) {
+  const checklist = instance.checklist;
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!checklist) return null;
+
+  const resultFor = (itemId: string) => instance.results.find((r) => r.itemId === itemId);
+  const answeredCount = instance.results.length;
+  const totalCount = checklist.items.length;
+  const editable = instance.status === 'assigned' || instance.status === 'in_progress';
+
+  async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string }) {
+    setSubmitting(item.id);
+    setError(null);
+    try {
+      await submitChecklistItemResult(instance.id, item.id, input);
+      await onUpdated();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('checklists.submitError', 'Unable to save this item.'));
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
+  return (
+    <div>
+      <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
+        ← {t('checklists.backToList', 'All checklists')}
+      </button>
+
+      <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
+      {checklist.description && <p style={{ color: COLORS.muted }}>{checklist.description}</p>}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
+        <div style={{ flex: 1, height: 8, borderRadius: 999, background: COLORS.soft, overflow: 'hidden' }}>
+          <div style={{ height: '100%', background: COLORS.primary, width: `${totalCount ? (answeredCount / totalCount) * 100 : 0}%` }} />
+        </div>
+        <span style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>
+          {answeredCount} / {totalCount}
+        </span>
+      </div>
+
+      {error && <p style={{ color: '#dc2626' }} role="alert">{error}</p>}
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        {checklist.items.map((item) => {
+          const result = resultFor(item.id);
+          const isDone = Boolean(result);
+          return (
+            <div
+              key={item.id}
+              style={{
+                border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
+                background: isDone ? COLORS.successSoft : COLORS.surface,
+                borderRadius: 14,
+                padding: 16,
+              }}
+            >
+              <p style={{ fontWeight: 600, marginTop: 0 }}>{item.text}</p>
+
+              {checklist.scoringMode === 'scale' ? (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {(checklist.scaleLevels ?? []).map((level) => (
+                    <button
+                      key={level.level}
+                      type="button"
+                      disabled={!editable || submitting === item.id}
+                      onClick={() => void submit(item, { scaleLevel: level.level })}
+                      style={{
+                        border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
+                        background: result?.scaleLevel === level.level ? COLORS.primarySoft : COLORS.surface,
+                        borderRadius: 10,
+                        padding: '8px 12px',
+                        fontSize: 12.5,
+                        textAlign: 'left',
+                        cursor: editable ? 'pointer' : 'default',
+                        minWidth: 90,
+                      }}
+                    >
+                      <strong style={{ display: 'block', fontSize: 14 }}>{level.points}</strong>
+                      <span style={{ color: COLORS.muted }}>{level.label}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+                  <input
+                    type="checkbox"
+                    checked={result?.checked ?? false}
+                    disabled={!editable || submitting === item.id}
+                    onChange={(e) => void submit(item, { checked: e.target.checked })}
+                  />
+                  {t('checklists.markDone', 'Done')}
+                  {checklist.scoringMode === 'sum_points' ? ` (${item.points} ${t('checklists.points', 'pts')})` : ''}
+                </label>
+              )}
+
+              {item.photoRequired && (
+                <div style={{ marginTop: 10 }}>
+                  <input
+                    type="url"
+                    placeholder={t('checklists.photoUrlPlaceholder', 'Photo URL')}
+                    defaultValue={result?.photoUrl ?? ''}
+                    disabled={!editable}
+                    onBlur={(e) => e.target.value && void submit(item, { checked: result?.checked, scaleLevel: result?.scaleLevel ?? undefined, photoUrl: e.target.value })}
+                    style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {instance.status === 'completed' && (
+        <div
+          style={{
+            marginTop: 20,
+            borderRadius: 14,
+            padding: '16px 18px',
+            background: instance.passed ? COLORS.successSoft : COLORS.warningSoft,
+            color: instance.passed ? '#166534' : COLORS.warning,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{instance.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
+          <strong>{instance.totalScore} / {instance.maxScore} ({instance.percentage}%)</strong>
+        </div>
+      )}
+      {instance.status === 'submitted' && (
+        <p style={{ color: COLORS.warning, marginTop: 16 }}>{t('checklists.awaitingReview', 'Submitted — waiting for your instructor to confirm the result.')}</p>
+      )}
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import { Route } from 'react-router-dom';
 
 const AdminAssessmentBuilderPage = lazy(() => import('../AdminAssessmentBuilderPage.js').then((m) => ({ default: m.AdminAssessmentBuilderPage })));
 const AdminAssignmentCompletionPage = lazy(() => import('../AdminAssignmentCompletionPage.js').then((m) => ({ default: m.AdminAssignmentCompletionPage })));
+const AdminChecklistsPage = lazy(() => import('../AdminChecklistsPage.js').then((m) => ({ default: m.AdminChecklistsPage })));
 const AdminCourseBuilderPage = lazy(() => import('../AdminCourseBuilderPage.js').then((m) => ({ default: m.AdminCourseBuilderPage })));
 const AdminCoursesPage = lazy(() => import('../AdminCoursesPage.js').then((m) => ({ default: m.AdminCoursesPage })));
 const AdminDashboardPage = lazy(() => import('../AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })));
@@ -26,6 +27,7 @@ export function AdminRoutes() {
     <Route path="/admin/lessons" element={<AdminLessonsPage />} />
     <Route path="/admin/materials" element={<AdminMaterialsPage />} />
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />
+    <Route path="/admin/checklists" element={<AdminChecklistsPage />} />
     <Route path="/admin/assignments" element={<AdminAssignmentCompletionPage />} />
     <Route path="/admin/results" element={<AdminResultsCertificatesPage />} />
   </>;

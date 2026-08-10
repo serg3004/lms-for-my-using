@@ -18,6 +18,7 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
   const instructorNav = [
     { label: t('instructor.navDashboard'), href: '/instructor/dashboard' },
     { label: t('instructor.navCourses'), href: '/instructor/courses' },
+    { label: t('instructor.navChecklists'), href: '/instructor/checklists' },
   ] as const;
 
   const navItems: LearnerNavItem[] = instructorNav.map((item) => ({

@@ -230,6 +230,7 @@ const LEARNER_NAV_DEFS = [
   { key: 'courses.title', href: '/learn/courses' },
   { key: 'assignments.navLink', href: '/learn/assignments' },
   { key: 'assessments.navLink', href: '/learn/assessments' },
+  { key: 'checklists.navLink', href: '/learn/checklists' },
   { key: 'progress.navLink', href: '/learn/progress' },
   { key: 'certificates.navLink', href: '/learn/certificates' },
 ] as const;
