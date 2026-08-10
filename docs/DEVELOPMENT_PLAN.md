@@ -2876,7 +2876,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 211 — Load testing baseline 🔲
+## PR 211 — Load testing baseline ✅
 
 **Проблема:** Нет измеренных пределов login, refresh, lists, assessment submit и upload.
 
@@ -2888,6 +2888,15 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Нет leaks
 - Safe concurrency известна
 - Production защищён от случайного запуска.
+
+> **Факт:** Добавлен versioned k6 baseline с `smoke`, `load` и `stress`
+> профилями для login, refresh и bounded lists; assessment submit и upload
+> включаются только отдельными write opt-ins. Пороговые значения фиксируют
+> p50/p95/p99 и error rate, а exact-host и production confirmation guards
+> блокируют случайный запуск. Dataset contract, сбор throughput/telemetry,
+> проверка leaks и определение safe concurrency описаны в
+> `docs/LOAD_TESTING_BASELINE.md`; числовой предел фиксируется только по
+> результатам production-shaped staging run, а не выдумывается в репозитории.
 
 ---
 
