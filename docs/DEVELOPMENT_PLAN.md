@@ -2849,7 +2849,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 210 — Pagination/query performance audit 🔲
+## PR 210 — Pagination/query performance audit ✅
 
 **Проблема:** Неограниченные list queries, offset и неверные индексы ухудшат latency.
 
@@ -2865,6 +2865,14 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - P95 укладывается в бюджет
 - Индексы подтверждены plan
 - Migration проверена на realistic dataset.
+
+> **Факт:** Проведён аудит collection queries и зафиксирован DB p95 budget.
+> Legacy array endpoints ограничены safety cap, notification feed получил
+> cursor pagination, а отдельная migration добавляет composite indexes
+> под tenant scope, soft delete и стабильную сортировку. Методика проверки
+> `EXPLAIN (ANALYZE, BUFFERS)` на production-shaped dataset описана в
+> `docs/PAGINATION_QUERY_PERFORMANCE_AUDIT.md`; результаты планов сохраняются как
+> deployment evidence, поскольку зависят от данных и окружения.
 
 ---
 

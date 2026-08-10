@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
@@ -87,6 +88,7 @@ export class AssessmentAttemptsService {
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
+      take: LEGACY_LIST_LIMIT,
       select: attemptSelect,
     });
   }

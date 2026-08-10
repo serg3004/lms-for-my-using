@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 
 import { seededShuffle } from '../../common/seeded-shuffle.js';
 import { PrismaService } from '../../database/prisma.service.js';
+import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   CreateAssessmentAnswerOptionInput,
   CreateAssessmentQuestionInput,
@@ -76,6 +77,7 @@ export class AssessmentQuestionsService {
         deletedAt: null,
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      take: LEGACY_LIST_LIMIT,
       select: assessmentQuestionSelect,
     });
   }
@@ -96,6 +98,7 @@ export class AssessmentQuestionsService {
         deletedAt: null,
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      take: LEGACY_LIST_LIMIT,
       select: learnerAssessmentQuestionSelect,
     });
 
@@ -168,6 +171,7 @@ export class AssessmentQuestionsService {
         deletedAt: null,
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      take: LEGACY_LIST_LIMIT,
       select: assessmentAnswerOptionSelect,
     });
   }
