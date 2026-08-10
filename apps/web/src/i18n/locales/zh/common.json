@@ -688,7 +688,8 @@
         "photoRequired": "需要照片",
         "passThreshold": "通过阈值（%）",
         "requiresReview": "结果生效前需要讲师确认",
-        "assignUserId": "用户 ID"
+        "assignUserId": "用户 ID",
+        "assignUser": "员工"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -717,7 +718,16 @@
         "submitted": "待审核",
         "completed": "已完成",
         "expired": "已过期"
-      }
+      },
+      "preview": "预览",
+      "previewTitle": "预览",
+      "previewHint": "这是本地模拟——不会保存或发送给任何人。",
+      "markDone": "已完成",
+      "previewPassed": "通过",
+      "previewFailed": "未通过",
+      "previewIncomplete": "尚未回答所有项目",
+      "previewReset": "重置",
+      "selectUser": "选择员工…"
     }
   },
   "notFound": {

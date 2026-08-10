@@ -691,7 +691,8 @@
         "photoRequired": "Требуется фото",
         "passThreshold": "Порог зачёта, %",
         "requiresReview": "Требовать подтверждение инструктора перед итоговым зачётом",
-        "assignUserId": "ID пользователя"
+        "assignUserId": "ID пользователя",
+        "assignUser": "Сотрудник"
       },
       "itemsTitle": "Пункты чек-листа",
       "noItems": "Пока нет пунктов.",
@@ -720,7 +721,16 @@
         "submitted": "На проверке",
         "completed": "Завершён",
         "expired": "Просрочен"
-      }
+      },
+      "preview": "Предпросмотр",
+      "previewTitle": "Предпросмотр",
+      "previewHint": "Это локальная симуляция — ничего не сохраняется и никуда не отправляется.",
+      "markDone": "Выполнено",
+      "previewPassed": "Зачёт",
+      "previewFailed": "Не зачтено",
+      "previewIncomplete": "Отмечены не все пункты",
+      "previewReset": "Сбросить",
+      "selectUser": "Выберите сотрудника…"
     }
   },
   "notFound": {
