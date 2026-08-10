@@ -1,0 +1,12 @@
+{
+  "users": [
+    {
+      "organizationId": "demo-company",
+      "email": "learner@demo.com",
+      "passwordEnv": "LOAD_TEST_PASSWORD"
+    }
+  ],
+  "assessmentIds": [],
+  "assessmentPayloads": [],
+  "uploadMaterialIds": []
+}
