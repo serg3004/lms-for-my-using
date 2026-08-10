@@ -9,6 +9,7 @@ import type {
   EnqueuedBackgroundJob,
   EnqueueBackgroundJobOptions,
 } from './background-jobs.types.js';
+import { getTelemetryContext, runWithTelemetryContext } from '../../common/telemetry/telemetry-context.js';
 
 type PendingJob = {
   id: string;
@@ -57,7 +58,7 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
     for (let attempt = 0; attempt < job.options.attempts; attempt++) {
       this.executions.set(job.id, attempt + 1);
       try {
-        await this.processor(toBackgroundJob(job.id, job.name, job.data, attempt));
+        await this.processor(toBackgroundJob(job.id, job.name, job.data, attempt, job.options.telemetryContext));
         return;
       } catch (error) {
         if (attempt + 1 === job.options.attempts) {
@@ -134,5 +135,23 @@ describe('background jobs integration', () => {
     await service.onModuleDestroy();
 
     expect(backend.closed).toBe(true);
+  });
+
+  it('propagates the enqueue telemetry context into the job handler', async () => {
+    const backend = new InMemoryBackgroundJobBackend();
+    const service = new BackgroundJobsService(backend);
+    let observedRequestId: string | undefined;
+    service.registerHandler('telemetry.verify', async () => {
+      await Promise.resolve();
+      observedRequestId = getTelemetryContext()?.requestId;
+    });
+    await service.onApplicationBootstrap();
+
+    await runWithTelemetryContext({ requestId: 'a8098c1a-f86e-11da-bd1a-00112444be1e' }, () =>
+      service.enqueue('telemetry.verify', {}, { idempotencyKey: 'telemetry-1' }),
+    );
+    await backend.drain();
+
+    expect(observedRequestId).toBe('a8098c1a-f86e-11da-bd1a-00112444be1e');
   });
 });

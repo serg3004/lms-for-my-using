@@ -7,6 +7,8 @@ describe('PINO_REDACT_PATHS', () => {
 
   it('covers cookie header', () => {
     expect(PINO_REDACT_PATHS).toContain('req.headers.cookie');
+    expect(PINO_REDACT_PATHS).toContain('req.headers["set-cookie"]');
+    expect(PINO_REDACT_PATHS).toContain('res.headers["set-cookie"]');
   });
 
   it('covers password body field', () => {
@@ -17,5 +19,7 @@ describe('PINO_REDACT_PATHS', () => {
     expect(PINO_REDACT_PATHS).toContain('req.body.token');
     expect(PINO_REDACT_PATHS).toContain('req.body.accessToken');
     expect(PINO_REDACT_PATHS).toContain('req.body.refreshToken');
+    expect(PINO_REDACT_PATHS).toContain('req.body.resetToken');
+    expect(PINO_REDACT_PATHS).toContain('req.body.csrfToken');
   });
 });

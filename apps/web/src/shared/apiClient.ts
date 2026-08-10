@@ -10,7 +10,12 @@ export class ApiClientError extends Error {
   readonly details: ApiErrorDetail[];
   readonly response: ApiErrorResponse | null;
 
-  constructor(message: string, readonly status: number, response: ApiErrorResponse | null = null) {
+  constructor(
+    message: string,
+    readonly status: number,
+    response: ApiErrorResponse | null = null,
+    readonly requestId: string | null = null,
+  ) {
     super(message);
     this.name = 'ApiClientError';
     this.response = response;
@@ -127,7 +132,12 @@ function uploadBufferedMaterialFile(
       try {
         const body = JSON.parse(xhr.responseText) as unknown;
         const errorResponse = isApiErrorResponse(body) ? body : null;
-        reject(new ApiClientError(errorResponse?.error.message ?? 'Upload failed', xhr.status, errorResponse));
+        reject(new ApiClientError(
+          errorResponse?.error.message ?? 'Upload failed',
+          xhr.status,
+          errorResponse,
+          xhr.getResponseHeader('x-request-id'),
+        ));
       } catch {
         reject(new ApiClientError('Upload failed', xhr.status));
       }
@@ -272,7 +282,12 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 
     if (!response.ok) {
       const errorResponse = isApiErrorResponse(body) ? body : null;
-      throw new ApiClientError(errorResponse?.error.message ?? getLegacyErrorMessage(body), response.status, errorResponse);
+      throw new ApiClientError(
+        errorResponse?.error.message ?? getLegacyErrorMessage(body),
+        response.status,
+        errorResponse,
+        response.headers.get('x-request-id'),
+      );
     }
 
     return body as TResponse;

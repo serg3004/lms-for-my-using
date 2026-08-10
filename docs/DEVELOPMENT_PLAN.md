@@ -2902,7 +2902,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза H — Наблюдаемость и надёжность
 
-## PR 212 — Correlation ID и telemetry context 🔲
+## PR 212 — Correlation ID и telemetry context ✅
 
 **Проблема:** Нельзя связать frontend error, API request, DB и job.
 
@@ -2918,6 +2918,12 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Цепочка находится по ID
 - Password/cookies/auth/tokens redacted
 - Redaction tests проходят.
+
+> **Факт:** API принимает только валидный UUID request ID (иначе генерирует
+> новый), возвращает его в `X-Request-ID` и добавляет в structured logs через
+> async telemetry context. Web API errors сохраняют response request ID для
+> диагностики, а background jobs переносят context от enqueue до handler.
+> Redaction покрывает authorization, cookies, passwords, API keys и token поля.
 
 ---
 

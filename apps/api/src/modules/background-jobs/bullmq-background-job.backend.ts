@@ -11,7 +11,7 @@ import type {
   EnqueueBackgroundJobOptions,
 } from './background-jobs.types.js';
 
-type StoredJob = { data: BackgroundJobData; idempotencyKey: string };
+type StoredJob = { data: BackgroundJobData; idempotencyKey: string; telemetryContext?: { requestId: string } };
 
 export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
   private readonly logger = new Logger(BullMqBackgroundJobBackend.name);
@@ -33,7 +33,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     if (this.worker) return;
     this.worker = new Worker<StoredJob>(
       this.queueName,
-      async (job) => processor(toBackgroundJob(job.id, job.name, job.data.data, job.attemptsMade)),
+      async (job) => processor(toBackgroundJob(job.id, job.name, job.data.data, job.attemptsMade, job.data.telemetryContext)),
       { connection: { url: this.redisUrl }, concurrency: this.concurrency },
     );
     this.worker.on('failed', (job, error) => {
@@ -55,7 +55,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     const id = createHash('sha256').update(`${name}:${options.idempotencyKey}`).digest('hex');
     const existing = await this.queue.getJob(id);
     if (existing) return { id, deduplicated: true };
-    await this.queue.add(name, { data, idempotencyKey: options.idempotencyKey }, {
+    await this.queue.add(name, { data, idempotencyKey: options.idempotencyKey, telemetryContext: options.telemetryContext }, {
       jobId: id,
       attempts: options.attempts,
       backoff: { type: 'exponential', delay: options.backoffMs },

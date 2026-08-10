@@ -8,6 +8,7 @@ import type {
   EnqueuedBackgroundJob,
   EnqueueBackgroundJobOptions,
 } from './background-jobs.types.js';
+import { getTelemetryContext, resolveRequestId, runWithTelemetryContext } from '../../common/telemetry/telemetry-context.js';
 
 const DEFAULT_ATTEMPTS = 5;
 const DEFAULT_BACKOFF_MS = 1_000;
@@ -33,6 +34,7 @@ export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDe
       idempotencyKey: options.idempotencyKey,
       attempts: options.attempts ?? DEFAULT_ATTEMPTS,
       backoffMs: options.backoffMs ?? DEFAULT_BACKOFF_MS,
+      telemetryContext: options.telemetryContext ?? getTelemetryContext() ?? { requestId: resolveRequestId(undefined) },
     });
   }
 
@@ -41,8 +43,12 @@ export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDe
     await this.backend.start(async (job) => {
       const handler = this.handlers.get(job.name);
       if (!handler) throw new Error(`No handler registered for background job "${job.name}"`);
-      await handler(job);
-      this.logger.debug(`Background job ${job.id} completed`);
+      const execute = async () => {
+        await handler(job);
+        this.logger.debug({ jobId: job.id }, 'Background job completed');
+      };
+      if (job.telemetryContext) await runWithTelemetryContext(job.telemetryContext, execute);
+      else await execute();
     });
   }
 

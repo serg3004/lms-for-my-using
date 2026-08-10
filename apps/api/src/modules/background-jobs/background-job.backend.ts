@@ -23,6 +23,7 @@ export function toBackgroundJob(
   name: string,
   data: BackgroundJobData,
   attemptsMade: number,
+  telemetryContext?: { requestId: string },
 ): BackgroundJob {
-  return { id: id ?? 'unknown', name, data, attemptsMade };
+  return { id: id ?? 'unknown', name, data, attemptsMade, ...(telemetryContext ? { telemetryContext } : {}) };
 }

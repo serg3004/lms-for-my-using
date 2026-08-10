@@ -5,12 +5,14 @@ export type BackgroundJob = {
   name: string;
   data: BackgroundJobData;
   attemptsMade: number;
+  telemetryContext?: { requestId: string };
 };
 
 export type EnqueueBackgroundJobOptions = {
   idempotencyKey: string;
   attempts?: number;
   backoffMs?: number;
+  telemetryContext?: { requestId: string };
 };
 
 export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void>;
