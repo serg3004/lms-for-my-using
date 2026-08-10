@@ -30,6 +30,14 @@ import type {
 const CHECKLIST_STATUSES: ChecklistStatus[] = ['draft', 'published', 'archived'];
 const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale'];
 
+export function filterChecklists(checklists: ChecklistSummary[], search: string, statusFilter: 'all' | ChecklistStatus) {
+  return checklists.filter((checklist) => {
+    if (statusFilter !== 'all' && checklist.status !== statusFilter) return false;
+    if (search.trim() && !checklist.title.toLowerCase().includes(search.trim().toLowerCase())) return false;
+    return true;
+  });
+}
+
 const DEFAULT_SCALE: ChecklistScaleLevel[] = [
   { level: 1, label: 'Очень плохо', points: 0 },
   { level: 2, label: 'Плохо', points: 25 },
@@ -142,11 +150,7 @@ export function AdminChecklistsPage() {
     );
   }
 
-  const filtered = loadState.checklists.filter((checklist) => {
-    if (statusFilter !== 'all' && checklist.status !== statusFilter) return false;
-    if (search.trim() && !checklist.title.toLowerCase().includes(search.trim().toLowerCase())) return false;
-    return true;
-  });
+  const filtered = filterChecklists(loadState.checklists, search, statusFilter);
 
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.currentUser}>

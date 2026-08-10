@@ -4,8 +4,12 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
 import { listMyChecklistInstances, submitChecklistItemResult } from '../shared/api/checklists.js';
-import type { ChecklistInstanceSummary, ChecklistItemSummary } from '../shared/api/types.js';
+import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
+
+export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
+  return results.find((result) => result.itemId === itemId);
+}
 
 const COLORS = {
   surface: '#ffffff',
@@ -139,7 +143,7 @@ function ChecklistTaking({
 
   if (!checklist) return null;
 
-  const resultFor = (itemId: string) => instance.results.find((r) => r.itemId === itemId);
+  const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
   const answeredCount = instance.results.length;
   const totalCount = checklist.items.length;
   const editable = instance.status === 'assigned' || instance.status === 'in_progress';

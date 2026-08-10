@@ -4,9 +4,14 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import { listPendingChecklistReviews, reviewChecklistItemResult } from '../shared/api/checklists.js';
+import type { ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { PageState } from '../shared/ui.js';
+
+export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
+  return item.photoRequired && !result.photoUrl;
+}
 
 const COLORS = {
   surface: '#ffffff',
@@ -142,7 +147,7 @@ function ReviewDetail({
         {checklist.items.map((item) => {
           const result = instance.results.find((r) => r.itemId === item.id);
           if (!result) return null;
-          const flagged = item.photoRequired && !result.photoUrl;
+          const flagged = isReviewFlagged(item, result);
           return (
             <div
               key={item.id}

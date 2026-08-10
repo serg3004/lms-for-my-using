@@ -20,6 +20,7 @@ vi.mock('react', async () => {
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage';
 import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage';
+import { AdminChecklistsPage, filterChecklists } from './AdminChecklistsPage';
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
 import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
@@ -44,6 +45,15 @@ function useFirstCallReadyState(value: unknown) {
     callCount++;
     const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
     return [callCount === 1 ? value : resolvedInitial, vi.fn()];
+  });
+}
+
+function useStateAtCalls(overrides: Record<number, unknown>) {
+  let callCount = 0;
+  reactMocks.useState.mockImplementation((initialState: unknown) => {
+    callCount++;
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [callCount in overrides ? overrides[callCount] : resolvedInitial, vi.fn()];
   });
 }
 
@@ -323,6 +333,81 @@ describe('admin page smoke rendering', () => {
     expect(html).toContain('disabled=""');
   });
 
+  it('renders checklists loading state without crashing', () => {
+    useLoadingState();
+
+    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders checklists happy path without crashing', () => {
+    useFirstCallReadyState({
+      status: 'loaded',
+      currentUser,
+      checklists: [
+        {
+          id: 'checklist-1',
+          organizationId: 'org-1',
+          title: 'Приёмка нового стажёра',
+          description: null,
+          status: 'published',
+          scoringMode: 'sum_points',
+          passThreshold: 80,
+          scaleLevels: null,
+          requiresReview: false,
+          createdBy: 'user-1',
+          createdAt: ts,
+          updatedAt: ts,
+          items: [
+            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+          ],
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+
+    expect(html).toContain('Приёмка нового стажёра');
+  });
+
+  it('renders the checklist builder view (scale scoring, items, assignments) without crashing', () => {
+    const loaded = {
+      status: 'loaded' as const,
+      currentUser,
+      checklists: [
+        {
+          id: 'checklist-1',
+          organizationId: 'org-1',
+          title: 'Аттестация кассира',
+          description: 'Проверка стандарта обслуживания',
+          status: 'draft',
+          scoringMode: 'scale',
+          passThreshold: 60,
+          scaleLevels: [
+            { level: 1, label: 'Очень плохо', points: 0 },
+            { level: 2, label: 'Отлично', points: 100 },
+          ],
+          requiresReview: true,
+          createdBy: 'user-1',
+          createdAt: ts,
+          updatedAt: ts,
+          items: [
+            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
+          ],
+        },
+      ],
+    };
+    // Call order in AdminChecklistsPage: 1 loadState, 2 search, 3 statusFilter, 4 selectedId, 5 deleteTarget, 6 statusError.
+    useStateAtCalls({ 1: loaded, 4: 'checklist-1' });
+
+    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+
+    expect(html).toContain('Аттестация кассира');
+    expect(html).toContain('Работа с кассой');
+    expect(html).toContain('Очень плохо');
+  });
+
   it('renders results and certificates loading state without crashing', () => {
     useLoadingState();
 
@@ -403,5 +488,24 @@ describe('admin page smoke rendering', () => {
     const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);
 
     expect(html).toContain('Workplace Safety');
+  });
+});
+
+describe('filterChecklists', () => {
+  const checklists = [
+    { id: '1', title: 'Приёмка стажёра', status: 'published' } as never,
+    { id: '2', title: 'Аттестация кассира', status: 'draft' } as never,
+  ];
+
+  it('filters by status', () => {
+    expect(filterChecklists(checklists, '', 'draft')).toEqual([checklists[1]]);
+  });
+
+  it('filters by case-insensitive title search', () => {
+    expect(filterChecklists(checklists, 'кассира', 'all')).toEqual([checklists[1]]);
+  });
+
+  it('returns everything when there is no filter', () => {
+    expect(filterChecklists(checklists, '', 'all')).toEqual(checklists);
   });
 });
