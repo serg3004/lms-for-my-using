@@ -238,15 +238,15 @@ describe('OrganizationsService theme settings', () => {
         },
       },
     } as unknown as PrismaService;
-    const getLogoUrl = jest.fn().mockResolvedValue('https://files.example.com/signed-logo');
-    const service = new OrganizationsService(prisma, { getLogoUrl } as unknown as UploadService);
+    const getInlinePresignedUrl = jest.fn().mockResolvedValue('https://files.example.com/signed-logo');
+    const service = new OrganizationsService(prisma, { getInlinePresignedUrl } as unknown as UploadService);
 
     const result = await service.updateThemeSettings(organizationId, themeSettings);
 
     expect(updateCalls).toEqual([
       { themeSettings: { ...themeSettings, logoObjectKey: 'organizations/org/branding/1', logoMimeType: 'image/png' } },
     ]);
-    expect(getLogoUrl).toHaveBeenCalledWith('organizations/org/branding/1', 'image/png');
+    expect(getInlinePresignedUrl).toHaveBeenCalledWith('organizations/org/branding/1', 'image/png');
     expect(result.themeSettings).toMatchObject({ logoUrl: 'https://files.example.com/signed-logo' });
   });
 
@@ -265,10 +265,10 @@ describe('OrganizationsService theme settings', () => {
     } as unknown as PrismaService;
     const uploadOrganizationLogo = jest.fn().mockResolvedValue('organizations/org/branding/new');
     const deleteObject = jest.fn().mockResolvedValue(undefined);
-    const getLogoUrl = jest.fn().mockResolvedValue('https://files.example.com/new-logo');
+    const getInlinePresignedUrl = jest.fn().mockResolvedValue('https://files.example.com/new-logo');
     const service = new OrganizationsService(
       prisma,
-      { uploadOrganizationLogo, deleteObject, getLogoUrl } as unknown as UploadService,
+      { uploadOrganizationLogo, deleteObject, getInlinePresignedUrl } as unknown as UploadService,
     );
     const file = { mimetype: 'image/png' } as Express.Multer.File;
 

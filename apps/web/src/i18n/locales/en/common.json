@@ -1437,7 +1437,12 @@
     "submitError": "Unable to save this item.",
     "markDone": "Done",
     "points": "pts",
-    "photoUrlPlaceholder": "Photo URL",
+    "photoAttach": "Attach photo",
+    "photoAttached": "Photo attached",
+    "photoReplace": "Replace",
+    "photoHint": "Photo required — tap to attach",
+    "photoHintUnanswered": "Mark this item first, then attach a photo",
+    "photoUploadError": "Unable to attach this photo.",
     "passed": "Passed",
     "notPassed": "Not passed",
     "awaitingReview": "Submitted — waiting for your instructor to confirm the result."

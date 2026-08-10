@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
-import { listMyChecklistInstances, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 
@@ -161,6 +162,19 @@ function ChecklistTaking({
     }
   }
 
+  async function uploadPhoto(item: ChecklistItemSummary, file: File) {
+    setSubmitting(item.id);
+    setError(null);
+    try {
+      await uploadChecklistItemPhoto(instance.id, item.id, file);
+      await onUpdated();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('checklists.photoUploadError', 'Unable to attach this photo.'));
+    } finally {
+      setSubmitting(null);
+    }
+  }
+
   return (
     <div>
       <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
@@ -235,16 +249,15 @@ function ChecklistTaking({
               )}
 
               {item.photoRequired && (
-                <div style={{ marginTop: 10 }}>
-                  <input
-                    type="url"
-                    placeholder={t('checklists.photoUrlPlaceholder', 'Photo URL')}
-                    defaultValue={result?.photoUrl ?? ''}
-                    disabled={!editable}
-                    onBlur={(e) => e.target.value && void submit(item, { checked: result?.checked, scaleLevel: result?.scaleLevel ?? undefined, photoUrl: e.target.value })}
-                    style={{ width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }}
-                  />
-                </div>
+                <PhotoAttachment
+                  instanceId={instance.id}
+                  item={item}
+                  result={result}
+                  editable={editable}
+                  busy={submitting === item.id}
+                  onSelectFile={(file) => void uploadPhoto(item, file)}
+                  t={t}
+                />
               )}
             </div>
           );
@@ -270,6 +283,121 @@ function ChecklistTaking({
       )}
       {instance.status === 'submitted' && (
         <p style={{ color: COLORS.warning, marginTop: 16 }}>{t('checklists.awaitingReview', 'Submitted — waiting for your instructor to confirm the result.')}</p>
+      )}
+    </div>
+  );
+}
+
+function PhotoAttachment({
+  instanceId,
+  item,
+  result,
+  editable,
+  busy,
+  onSelectFile,
+  t,
+}: {
+  instanceId: string;
+  item: ChecklistItemSummary;
+  result: ChecklistItemResultSummary | undefined;
+  editable: boolean;
+  busy: boolean;
+  onSelectFile: (file: File) => void;
+  t: TFunction;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const attached = Boolean(result?.photoFileName);
+
+  useEffect(() => {
+    if (!attached) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getChecklistItemPhotoUrl(instanceId, item.id)
+      .then((response) => {
+        if (!cancelled) setPreviewUrl(response.url);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [attached, instanceId, item.id, result?.photoFileName]);
+
+  function handleChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) onSelectFile(file);
+  }
+
+  const canAct = editable && !busy && !!result;
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleChange}
+        disabled={!canAct}
+        style={{ display: 'none' }}
+      />
+      {attached ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt={result?.photoFileName ?? ''}
+              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: `1px solid ${COLORS.border}`, flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: COLORS.successSoft, color: COLORS.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✓</div>
+          )}
+          <div style={{ fontSize: 11.5, color: COLORS.muted }}>
+            <strong style={{ display: 'block', color: COLORS.success, fontSize: 12 }}>{t('checklists.photoAttached', 'Photo attached')}</strong>
+            {result?.photoFileName}
+          </div>
+          <button
+            type="button"
+            disabled={!canAct}
+            onClick={() => inputRef.current?.click()}
+            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: COLORS.primary, fontSize: 11.5, cursor: canAct ? 'pointer' : 'default', padding: 0 }}
+          >
+            {t('checklists.photoReplace', 'Replace')}
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            type="button"
+            disabled={!canAct}
+            onClick={() => inputRef.current?.click()}
+            aria-label={t('checklists.photoAttach', 'Attach photo')}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: `1.5px dashed ${COLORS.border}`,
+              background: COLORS.primarySoft,
+              color: COLORS.primary,
+              fontSize: 19,
+              lineHeight: 1,
+              cursor: canAct ? 'pointer' : 'default',
+              flexShrink: 0,
+            }}
+          >
+            +
+          </button>
+          <span style={{ fontSize: 12, color: COLORS.muted }}>
+            {result
+              ? t('checklists.photoHint', 'Photo required — tap to attach')
+              : t('checklists.photoHintUnanswered', 'Mark this item first, then attach a photo')}
+          </span>
+        </div>
       )}
     </div>
   );

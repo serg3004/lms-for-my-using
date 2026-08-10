@@ -1457,7 +1457,12 @@
     "submitError": "Тармақты сақтау мүмкін болмады.",
     "markDone": "Орындалды",
     "points": "балл",
-    "photoUrlPlaceholder": "Фото сілтемесі",
+    "photoAttach": "Фото тіркеу",
+    "photoAttached": "Фото тіркелді",
+    "photoReplace": "Ауыстыру",
+    "photoHint": "Фото міндетті — тіркеу үшін басыңыз",
+    "photoHintUnanswered": "Алдымен тармақты белгілеңіз, содан кейін фото тіркеңіз",
+    "photoUploadError": "Фотоны тіркеу мүмкін болмады.",
     "passed": "Есептелді",
     "notPassed": "Есептелмеді",
     "awaitingReview": "Жіберілді — нұсқаушының растауын күтуде."

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { UploadService } from '../upload/public.js';
 import {
   AssignChecklistInput,
   CreateChecklistInput,
@@ -74,6 +75,7 @@ const instanceWithResultsSelect = {
       scaleLevel: true,
       points: true,
       photoUrl: true,
+      photoFileName: true,
       comment: true,
       reviewStatus: true,
       reviewComment: true,
@@ -87,7 +89,7 @@ type ScoringItem = { id: string; points: number; isRequired: boolean };
 
 @Injectable()
 export class ChecklistsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly uploadService: UploadService) {}
 
   // ---- Templates ----
 
@@ -434,6 +436,97 @@ export class ChecklistsService {
     });
 
     return this.recomputeInstance(instanceId, organizationId);
+  }
+
+  async attachItemPhoto(
+    instanceId: string,
+    itemId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+    photo: { objectKey: string; fileName: string; mimeType: string; sizeBytes: number },
+  ) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: { id: true, userId: true, status: true },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+
+    if (instance.userId !== requesterId && !isPrivileged) {
+      throw new ForbiddenException('You can only fill out your own checklist assignment');
+    }
+
+    if (instance.status === 'submitted' || instance.status === 'completed') {
+      throw new BadRequestException('This checklist assignment is no longer editable');
+    }
+
+    const existing = await this.prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      select: { photoObjectKey: true },
+    });
+
+    if (!existing) {
+      throw new BadRequestException('Mark this item before attaching a photo');
+    }
+
+    const previousObjectKey = existing.photoObjectKey;
+
+    await this.prisma.checklistItemResult.update({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      data: {
+        photoObjectKey: photo.objectKey,
+        photoFileName: photo.fileName,
+        photoMimeType: photo.mimeType,
+        photoSizeBytes: photo.sizeBytes,
+      },
+    });
+
+    if (previousObjectKey) {
+      await this.uploadService.deleteObject(previousObjectKey).catch(() => undefined);
+    }
+
+    return this.recomputeInstance(instanceId, organizationId);
+  }
+
+  async getItemPhotoDownload(
+    instanceId: string,
+    itemId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+  ) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: { userId: true },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+
+    if (instance.userId !== requesterId && !isPrivileged) {
+      throw new ForbiddenException('You can only view your own checklist assignment');
+    }
+
+    const result = await this.prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      select: { photoObjectKey: true, photoMimeType: true },
+    });
+
+    if (!result?.photoObjectKey) {
+      throw new NotFoundException('No photo attached to this item');
+    }
+
+    const expiresIn = 300;
+    const url = await this.uploadService.getInlinePresignedUrl(
+      result.photoObjectKey,
+      result.photoMimeType ?? 'image/jpeg',
+      expiresIn,
+    );
+    return { url, expiresIn };
   }
 
   private computeItemPoints(
