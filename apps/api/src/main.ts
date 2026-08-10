@@ -12,6 +12,7 @@ import {
   createSensitiveRouteRateLimitMiddleware,
 } from './common/middleware/api-hardening.js';
 import { handleStartupError } from './common/startup.js';
+import { createTelemetryContextMiddleware } from './common/telemetry/telemetry-context.js';
 import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
@@ -48,9 +49,14 @@ async function bootstrap(): Promise<void> {
   }
   server.set?.('trust proxy', apiEnv.TRUST_PROXY);
 
+  // Must run before request logging and application middleware so every downstream
+  // operation observes the same validated correlation ID.
+  app.use(createTelemetryContextMiddleware());
+
   app.enableCors({
     origin: apiEnv.FRONTEND_URL,
     credentials: true,
+    exposedHeaders: ['X-Request-ID'],
   });
   const redis = apiEnv.REDIS_URL ? new Redis(apiEnv.REDIS_URL) : undefined;
   const rateLimitStore = redis ? createRedisRateLimitStore(redis, apiEnv.RATE_LIMIT_NAMESPACE) : undefined;

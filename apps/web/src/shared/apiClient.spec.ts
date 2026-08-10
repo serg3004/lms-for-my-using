@@ -125,7 +125,10 @@ describe('apiRequest', () => {
   });
 
   it('keeps status when response body is empty', async () => {
-    mockFetch(new Response(null, { status: 503 }));
+    mockFetch(new Response(null, {
+      status: 503,
+      headers: { 'x-request-id': 'a8098c1a-f86e-11da-bd1a-00112444be1e' },
+    }));
 
     await expect(apiRequest('/empty')).rejects.toMatchObject({
       name: 'ApiClientError',
@@ -133,6 +136,7 @@ describe('apiRequest', () => {
       status: 503,
       code: 'HTTP_ERROR',
       response: null,
+      requestId: 'a8098c1a-f86e-11da-bd1a-00112444be1e',
     });
   });
 
