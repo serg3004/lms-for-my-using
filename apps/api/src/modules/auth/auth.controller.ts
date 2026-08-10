@@ -12,6 +12,7 @@ import {
 import type { AuthCookieResponse } from './auth.cookies.js';
 import { AuthSessionStore } from './auth.session-store.js';
 import { AuthService } from './auth.service.js';
+import { refreshReuse } from '../../common/observability/metrics.js';
 import { AuthenticatedAccess, PublicAccess } from './roles.js';
 import {
   LoginInput,
@@ -61,6 +62,7 @@ export class AuthController {
     const session = await this.sessionStore.consumeRefreshSession(refreshToken);
 
     if (!session) {
+      refreshReuse.inc();
       clearAuthCookies(response);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }

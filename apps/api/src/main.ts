@@ -1,3 +1,5 @@
+// Must be the first dependency: instrumentation patches libraries before Nest loads them.
+import './common/observability/tracing.js';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -13,6 +15,8 @@ import {
 } from './common/middleware/api-hardening.js';
 import { handleStartupError } from './common/startup.js';
 import { createTelemetryContextMiddleware } from './common/telemetry/telemetry-context.js';
+import { createHttpMetricsMiddleware, rateLimitRejects, redisErrors } from './common/observability/metrics.js';
+import { stopTracing } from './common/observability/tracing.js';
 import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
 
 type ExpressLikeServer = {
@@ -52,6 +56,7 @@ async function bootstrap(): Promise<void> {
   // Must run before request logging and application middleware so every downstream
   // operation observes the same validated correlation ID.
   app.use(createTelemetryContextMiddleware());
+  app.use(createHttpMetricsMiddleware());
 
   app.enableCors({
     origin: apiEnv.FRONTEND_URL,
@@ -79,8 +84,12 @@ async function bootstrap(): Promise<void> {
             recordRequest(mode, route) {
               logger.log({ event: 'rate_limit_request_total', mode, route, value: 1 });
             },
+            rejected(mode, route) {
+              rateLimitRejects.inc({ mode, route });
+            },
             modeChanged(mode, error) {
               if (mode === 'local-degraded') {
+                redisErrors.inc({ component: 'rate_limiter' });
                 logger.error(
                   {
                     event: 'rate_limit_degraded',
@@ -107,6 +116,7 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
   app.getHttpServer().once('close', () => {
     void closeRedis(redis);
+    void stopTracing();
   });
 
   await app.listen(apiEnv.API_PORT);
