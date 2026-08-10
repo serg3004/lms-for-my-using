@@ -42,6 +42,9 @@ const apiEnvSchema = z
     ALLOW_IN_MEMORY_RATE_LIMIT: z.enum(['true']).optional(),
     SENTRY_DSN: z.string().url().optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    METRICS_BEARER_TOKEN: z.string().min(32).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+    OTEL_SERVICE_NAME: z.string().trim().min(1).max(80).optional(),
     TRUST_PROXY: z.string().trim().min(1).optional(),
   })
   .superRefine((env, context) => {
@@ -57,6 +60,13 @@ const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['REDIS_URL'],
         message: 'is required in production unless ALLOW_IN_MEMORY_RATE_LIMIT=true',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.METRICS_BEARER_TOKEN === undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['METRICS_BEARER_TOKEN'],
+        message: 'is required in production',
       });
     }
   });

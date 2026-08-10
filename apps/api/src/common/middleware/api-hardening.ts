@@ -81,6 +81,7 @@ export type RateLimitMode = 'redis' | 'local-degraded';
 
 export type RateLimitObservability = {
   recordRequest(mode: RateLimitMode, route: string): void;
+  rejected?(mode: RateLimitMode, route: string): void;
   modeChanged(mode: RateLimitMode, error?: unknown): void;
 };
 
@@ -230,6 +231,7 @@ export function createSensitiveRouteRateLimitMiddleware(
     }
 
     if (counts.some((count, index) => count > (rules[index]?.rule.maxRequests ?? 0))) {
+      options.observability?.rejected?.(degraded ? 'local-degraded' : 'redis', requestPath);
       response.statusCode = TOO_MANY_REQUESTS_STATUS;
       response.setHeader('Content-Type', 'application/json');
       response.end(

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 
 import { PINO_REDACT_PATHS } from './common/logger/redact-paths.js';
+import { ObservabilityModule } from './common/observability/observability.module.js';
 import { getTelemetryContext, resolveRequestId } from './common/telemetry/telemetry-context.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AssessmentAttemptsModule } from './modules/assessment-attempts/assessment-attempts.module.js';
@@ -54,6 +55,7 @@ import { UsersModule } from './modules/users/users.module.js';
       },
     }),
     DatabaseModule,
+    ObservabilityModule,
     CourseAccessModule,
     AssessmentAttemptsModule,
     AssessmentQuestionsModule,

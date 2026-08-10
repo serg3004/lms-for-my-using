@@ -6,6 +6,7 @@ import { getJwtSecret, loadApiEnv, loadLocalEnvFiles, parseTrustProxy } from './
 
 const validJwtSecret = '0123456789abcdef0123456789abcdef';
 const validDatabaseUrl = 'postgresql://postgres:postgres@localhost:5432/lms';
+const validMetricsToken = '0123456789abcdef0123456789abcdef';
 
 function createTempEnvDirectory(): string {
   return mkdtempSync(join(tmpdir(), 'lms-api-env-'));
@@ -25,6 +26,7 @@ describe('API environment validation', () => {
       BACKGROUND_JOBS_CONCURRENCY: '5',
       BACKGROUND_JOBS_RUN_WORKER: 'false',
       OUTBOX_POLL_INTERVAL_MS: '1000',
+      METRICS_BEARER_TOKEN: validMetricsToken,
     });
 
     expect(apiEnv).toEqual({
@@ -40,6 +42,7 @@ describe('API environment validation', () => {
       BACKGROUND_JOBS_RUN_WORKER: 'false',
       OUTBOX_POLL_INTERVAL_MS: 1_000,
       RATE_LIMIT_NAMESPACE: 'lms',
+      METRICS_BEARER_TOKEN: validMetricsToken,
       TRUST_PROXY: ['loopback', 'linklocal', 'uniquelocal'],
     });
   });
@@ -68,7 +71,9 @@ describe('API environment validation', () => {
         NODE_ENV: nodeEnv,
         DATABASE_URL: validDatabaseUrl,
         JWT_SECRET: validJwtSecret,
-        ...(nodeEnv === 'production' ? { TRUST_PROXY: '1', REDIS_URL: 'redis://localhost:6379' } : {}),
+        ...(nodeEnv === 'production'
+          ? { TRUST_PROXY: '1', REDIS_URL: 'redis://localhost:6379', METRICS_BEARER_TOKEN: validMetricsToken }
+          : {}),
       });
       expect(apiEnv.NODE_ENV).toBe(nodeEnv);
     }
@@ -114,11 +119,22 @@ describe('API environment validation', () => {
       TRUST_PROXY: '1',
       ALLOW_IN_MEMORY_RATE_LIMIT: 'true',
       RATE_LIMIT_NAMESPACE: 'emergency-prod',
+      METRICS_BEARER_TOKEN: validMetricsToken,
     });
 
     expect(apiEnv.REDIS_URL).toBeUndefined();
     expect(apiEnv.ALLOW_IN_MEMORY_RATE_LIMIT).toBe('true');
     expect(apiEnv.RATE_LIMIT_NAMESPACE).toBe('emergency-prod');
+  });
+
+  it('requires protected metrics in production', () => {
+    expect(() => loadApiEnv({
+      NODE_ENV: 'production',
+      DATABASE_URL: validDatabaseUrl,
+      JWT_SECRET: validJwtSecret,
+      TRUST_PROXY: '1',
+      REDIS_URL: 'redis://localhost:6379',
+    })).toThrow(/METRICS_BEARER_TOKEN.*required in production/);
   });
 
   it('parses disabled, hop-count, IPv4, IPv6, and named proxy policies', () => {

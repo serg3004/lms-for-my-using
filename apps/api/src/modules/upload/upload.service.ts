@@ -2,6 +2,7 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CopyObjectCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListMultipartUploadsCommand, ListObjectsV2Command, PutObjectCommand, S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
+import { s3Duration } from '../../common/observability/metrics.js';
 
 export type UploadResult = {
   objectKey: string;
@@ -39,11 +40,31 @@ export class UploadService {
         // Preserve the dedicated origin hostname instead of rewriting it to bucket.origin.
         forcePathStyle: process.env['S3_FILE_ORIGIN'] ? true : forcePathStyle,
       });
+      this.addMetricsMiddleware(this.s3);
+      this.addMetricsMiddleware(this.downloadS3);
       this.bucket = bucket;
     } else {
       this.s3 = null;
       this.downloadS3 = null;
     }
+  }
+
+  private addMetricsMiddleware(client: S3Client): void {
+    client.middlewareStack.add(
+      (next, context) => async (args) => {
+        const operation = context.commandName?.replace(/Command$/, '') || 'Unknown';
+        const end = s3Duration.startTimer({ operation });
+        try {
+          const result = await next(args);
+          end({ outcome: 'success' });
+          return result;
+        } catch (error) {
+          end({ outcome: 'error' });
+          throw error;
+        }
+      },
+      { step: 'initialize', name: 'lmsMetrics', priority: 'high' },
+    );
   }
 
   isConfigured(): boolean {

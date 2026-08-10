@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Job, Queue, Worker } from 'bullmq';
 import { createHash } from 'node:crypto';
+import { jobs, queueDepth, redisErrors } from '../../common/observability/metrics.js';
 
 import type { BackgroundJobBackend } from './background-job.backend.js';
 import { toBackgroundJob } from './background-job.backend.js';
@@ -37,13 +38,21 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
       { connection: { url: this.redisUrl }, concurrency: this.concurrency },
     );
     this.worker.on('failed', (job, error) => {
+      if (job) jobs.inc({ name: job.name, outcome: 'failed' });
       if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
       this.logger.error(`Background job ${job.id ?? 'unknown'} exhausted retries`, error.stack);
       void this.moveToDeadLetter(job, error).catch((deadLetterError: unknown) => {
         this.logger.error('Failed to persist dead-letter job', deadLetterError);
       });
     });
-    this.worker.on('error', (error) => this.logger.error('Background worker error', error.stack));
+    this.worker.on('completed', (job) => {
+      jobs.inc({ name: job.name, outcome: 'completed' });
+      void this.updateDepth();
+    });
+    this.worker.on('error', (error) => {
+      redisErrors.inc({ component: 'background_jobs' });
+      this.logger.error('Background worker error', error.stack);
+    });
     await this.worker.waitUntilReady();
   }
 
@@ -62,6 +71,8 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
       removeOnComplete: { age: 24 * 60 * 60, count: 10_000 },
       removeOnFail: false,
     });
+    jobs.inc({ name, outcome: 'enqueued' });
+    await this.updateDepth();
     return { id, deduplicated: false };
   }
 
@@ -76,5 +87,15 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
       sourceJobId: job.id ?? 'unknown',
       failedReason: error.message,
     }, { jobId: `dead-${job.id ?? 'unknown'}`, removeOnComplete: false, removeOnFail: false });
+  }
+
+  private async updateDepth(): Promise<void> {
+    try {
+      const counts = await this.queue.getJobCounts('waiting', 'delayed');
+      queueDepth.set({ queue: 'background', state: 'waiting' }, counts.waiting ?? 0);
+      queueDepth.set({ queue: 'background', state: 'delayed' }, counts.delayed ?? 0);
+    } catch {
+      redisErrors.inc({ component: 'background_jobs' });
+    }
   }
 }

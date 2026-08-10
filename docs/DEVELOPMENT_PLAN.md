@@ -2927,7 +2927,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 213 — Метрики и tracing 🔲
+## PR 213 — Метрики и tracing ✅
 
 **Проблема:** Нет единой картины latency, errors, DB/Redis/S3 и queue.
 
@@ -2937,6 +2937,14 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 **Критерии готовности:**
 - Доступны rate/p95/5xx, pool, Redis errors, limiter rejects, refresh reuse, S3 latency, queue depth
 - Нет PII/high-cardinality labels.
+
+> **Факт:** `/api/v1/metrics` экспортирует Prometheus HTTP histograms/counters,
+> native Prisma query/pool metrics и bounded operational metrics для Redis,
+> rate limiter, refresh reuse, S3 и BullMQ. Production scrape требует bearer
+> token. При настройке OTLP endpoint OpenTelemetry auto-instrumentation отправляет
+> traces HTTP, Prisma/PostgreSQL, Redis, AWS SDK и BullMQ; metrics endpoint и
+> filesystem исключены. Tenant, user, object key, raw URL/query и request ID не
+> используются как labels. Настройка и запросы описаны в `docs/OBSERVABILITY.md`.
 
 ---
 
