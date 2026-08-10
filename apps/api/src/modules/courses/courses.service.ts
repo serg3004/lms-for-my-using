@@ -237,7 +237,17 @@ export class CoursesService {
     await this.ensureCourseExists(courseId, organizationId);
 
     const instructor = await this.prisma.user.findFirst({
-      where: { id: input.instructorId, organizationId, deletedAt: null },
+      where: {
+        id: input.instructorId,
+        organizationId,
+        deletedAt: null,
+        memberships: {
+          some: {
+            organizationId,
+            role: 'instructor',
+          },
+        },
+      },
       select: { id: true },
     });
 

@@ -12,18 +12,33 @@ const instructorId = '33333333-3333-3333-3333-333333333333';
 const courseAccess = {} as unknown as CourseAccessPolicy;
 
 describe('CoursesService instructors', () => {
-  it('adds an instructor by upserting so re-assigning a removed instructor clears deletedAt', async () => {
+  it('adds an instructor only when the user has an instructor membership in the organization', async () => {
+    const findInstructor = jest.fn(async () => ({ id: instructorId }));
     const upsert = jest.fn(async () => ({}));
     const findMany = jest.fn(async () => []);
     const prisma = {
       course: { findFirst: async () => ({ id: courseId }) },
-      user: { findFirst: async () => ({ id: instructorId }) },
+      user: { findFirst: findInstructor },
       courseInstructor: { upsert, findMany },
     } as unknown as PrismaService;
     const service = new CoursesService(prisma, courseAccess);
 
     await service.addInstructor(courseId, organizationId, { instructorId });
 
+    expect(findInstructor).toHaveBeenCalledWith({
+      where: {
+        id: instructorId,
+        organizationId,
+        deletedAt: null,
+        memberships: {
+          some: {
+            organizationId,
+            role: 'instructor',
+          },
+        },
+      },
+      select: { id: true },
+    });
     expect(upsert).toHaveBeenCalledWith({
       where: { courseId_instructorId: { courseId, instructorId } },
       create: { courseId, instructorId, organizationId },
@@ -39,6 +54,30 @@ describe('CoursesService instructors', () => {
     const service = new CoursesService(prisma, courseAccess);
 
     await expect(service.addInstructor(courseId, organizationId, { instructorId })).rejects.toThrow(NotFoundException);
+  });
+
+  it('rejects adding a user without an instructor membership', async () => {
+    const findInstructor = jest.fn(async () => null);
+    const upsert = jest.fn(async () => ({}));
+    const prisma = {
+      course: { findFirst: async () => ({ id: courseId }) },
+      user: { findFirst: findInstructor },
+      courseInstructor: { upsert },
+    } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.addInstructor(courseId, organizationId, { instructorId })).rejects.toThrow(NotFoundException);
+    expect(findInstructor).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        memberships: {
+          some: {
+            organizationId,
+            role: 'instructor',
+          },
+        },
+      }),
+    }));
+    expect(upsert).not.toHaveBeenCalled();
   });
 
   it('removes an instructor by soft-deleting the row rather than deleting it', async () => {

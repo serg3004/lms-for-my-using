@@ -9,13 +9,38 @@ describe('admin courses model', () => {
     expect(formatUserName({ id: 'u1', firstName: '', lastName: null, email: 'alex@example.com' })).toBe('alex@example.com');
   });
 
-  it('filters out users already present in the excluded id list', () => {
-    const users = [
-      { id: 'u1', firstName: 'Alex', lastName: 'Ivanov', email: 'alex@example.com' },
-      { id: 'u2', firstName: 'Maria', lastName: 'Petrova', email: 'maria@example.com' },
-    ];
-    expect(usersAvailableToAdd(users, ['u1'])).toEqual([users[1]]);
-    expect(usersAvailableToAdd(users, [])).toEqual(users);
-    expect(usersAvailableToAdd(users, ['u1', 'u2'])).toEqual([]);
+  it('returns only instructor-role users who are not already assigned', () => {
+    const instructor = {
+      id: 'u1',
+      firstName: 'Alex',
+      lastName: 'Ivanov',
+      email: 'alex@example.com',
+      memberships: [{ role: 'instructor' }],
+    };
+    const learner = {
+      id: 'u2',
+      firstName: 'Maria',
+      lastName: 'Petrova',
+      email: 'maria@example.com',
+      memberships: [{ role: 'learner' }],
+    };
+    const multiRoleInstructor = {
+      id: 'u3',
+      firstName: 'Sam',
+      lastName: 'Lee',
+      email: 'sam@example.com',
+      memberships: [{ role: 'admin' }, { role: 'instructor' }],
+    };
+    const userWithoutMemberships = {
+      id: 'u4',
+      firstName: 'No',
+      lastName: 'Role',
+      email: 'norole@example.com',
+    };
+    const users = [instructor, learner, multiRoleInstructor, userWithoutMemberships];
+
+    expect(usersAvailableToAdd(users, [])).toEqual([instructor, multiRoleInstructor]);
+    expect(usersAvailableToAdd(users, ['u1'])).toEqual([multiRoleInstructor]);
+    expect(usersAvailableToAdd(users, ['u1', 'u3'])).toEqual([]);
   });
 });

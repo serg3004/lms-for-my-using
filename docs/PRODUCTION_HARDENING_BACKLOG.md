@@ -4,7 +4,7 @@
 >
 > **Назначение:** хранить только актуальные hardening/operations gaps. Закрытые исторические пункты остаются как provenance, но не должны выглядеть как open work.
 >
-> **Проверено по `main`:** `4f4ae9fc941ec52b51aaeffef994162d256dd8fa` (2026-08-10).
+> **Проверено по `main`:** `3c199d166c0e24e4a3c69d2b4c5e79146244aa78` (2026-08-10).
 
 ## 1. Статусы
 
@@ -64,15 +64,16 @@ See `docs/READINESS_AND_SECURITY_GATES.md`.
 
 ### H-002 — Instructor assignment role validation
 
-**Статус:** `OPEN`
+**Статус:** `DONE`
 
-Course instructor assignment currently validates user existence/organization/not-deleted, but role enforcement must be confirmed/fixed so only valid instructors can be assigned.
+Course instructor assignment разрешает target-user только если пользователь существует, не удалён, принадлежит той же организации и имеет membership `instructor` в этой организации.
 
-Required outcome:
+Current evidence:
 
-- enforce expected instructor role according to canonical RBAC/product decision;
-- add negative tests;
-- ensure candidate UI does not offer invalid users.
+- `CoursesService.addInstructor()` включает organization-scoped `instructor` membership в eligibility query;
+- несуществующий или неeligible target fail-closed возвращает `404 User not found`, не раскрывая причину различия;
+- service и HTTP-level tests покрывают negative non-instructor path и отсутствие `CourseInstructor` upsert;
+- admin course candidate helper показывает только пользователей с `instructor` membership и исключает уже назначенных преподавателей.
 
 ---
 
