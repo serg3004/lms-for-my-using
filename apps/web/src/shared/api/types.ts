@@ -342,6 +342,7 @@ export type ChecklistItemResultSummary = {
   scaleLevel: number | null;
   points: number;
   photoUrl: string | null;
+  photoFileName: string | null;
   comment: string | null;
   reviewStatus: ChecklistReviewStatus;
   reviewComment: string | null;

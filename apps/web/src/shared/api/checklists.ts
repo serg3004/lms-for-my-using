@@ -1,4 +1,4 @@
-import { apiRequest } from '../apiClient.js';
+import { apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
   ChecklistInstanceSummary,
@@ -95,6 +95,16 @@ export function submitChecklistItemResult(
   return apiRequest<ChecklistInstanceSummary>(
     `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}`,
     { method: 'PATCH', body: JSON.stringify(input) },
+  );
+}
+
+export function uploadChecklistItemPhoto(instanceId: string, itemId: string, file: File) {
+  return uploadChecklistItemPhotoWithProgress(instanceId, itemId, file, () => undefined) as Promise<ChecklistInstanceSummary>;
+}
+
+export function getChecklistItemPhotoUrl(instanceId: string, itemId: string) {
+  return apiRequest<{ url: string; expiresIn: number }>(
+    `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/photo`,
   );
 }
 

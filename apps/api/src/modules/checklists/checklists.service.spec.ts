@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { ChecklistsService } from './checklists.service.js';
@@ -451,5 +452,135 @@ describe('ChecklistsService — ownership and validation guards', () => {
     const service = new ChecklistsService(prisma);
 
     await expect(service.getChecklist('missing', organizationId)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('ChecklistsService — item photo attachment', () => {
+  function createFakeUploadService() {
+    return {
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+      getInlinePresignedUrl: jest.fn().mockResolvedValue('https://files.example.com/signed-photo'),
+    };
+  }
+
+  async function setUpCheckedInstance(prisma: ReturnType<typeof createFakePrisma>, uploadService: ReturnType<typeof createFakeUploadService>) {
+    const service = new ChecklistsService(prisma, uploadService as never);
+    const checklist = await service.createChecklist(
+      { organizationId, title: 'С фото', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
+      instructorId,
+    );
+    await service.createItem(checklist.id, organizationId, { text: 'Пункт с фото', points: 10, isRequired: true, photoRequired: true });
+    await service.createItem(checklist.id, organizationId, { text: 'Пункт без фото', points: 10, isRequired: true, photoRequired: false });
+    await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
+    const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
+    const items = await service.listItems(checklist.id, organizationId);
+    // Leave the second item unanswered so the instance stays editable while the photo is attached
+    // (photoRequired isn't enforced when computing "answered", so checking the last item would
+    // otherwise complete — and lock — the instance before a photo can be attached).
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
+    return { service, instance, item: items[0] };
+  }
+
+  it('rejects attaching a photo before the item has been marked', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const service = new ChecklistsService(prisma, uploadService as never);
+    const checklist = await service.createChecklist(
+      { organizationId, title: 'С фото', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
+      instructorId,
+    );
+    await service.createItem(checklist.id, organizationId, { text: 'Пункт', points: 10, isRequired: true, photoRequired: true });
+    await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
+    const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
+    const items = await service.listItems(checklist.id, organizationId);
+
+    await expect(
+      service.attachItemPhoto(instance.id, items[0].id, organizationId, learnerId, false, {
+        objectKey: 'key-1',
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 1000,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('attaches a photo to an already-marked item', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+
+    const result = await prisma.checklistItemResult.findUnique({ where: { instanceId_itemId: { instanceId: instance.id, itemId: item.id } } });
+    expect(result?.photoFileName).toBe('photo.jpg');
+    expect(uploadService.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it('deletes the previous photo object when replacing an attached photo', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'first.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-2',
+      fileName: 'second.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1200,
+    });
+
+    expect(uploadService.deleteObject).toHaveBeenCalledWith('key-1');
+  });
+
+  it('prevents a learner from attaching a photo to another learner\'s assignment', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+
+    await expect(
+      service.attachItemPhoto(instance.id, item.id, organizationId, 'someone-else', false, {
+        objectKey: 'key-1',
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 1000,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('returns a presigned URL for an attached photo', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+
+    const download = await service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false);
+
+    expect(download.url).toBe('https://files.example.com/signed-photo');
+    expect(uploadService.getInlinePresignedUrl).toHaveBeenCalledWith('key-1', 'image/jpeg', 300);
+  });
+
+  it('throws NotFoundException when no photo has been attached', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+
+    await expect(
+      service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

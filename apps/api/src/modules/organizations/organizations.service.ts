@@ -200,7 +200,7 @@ export class OrganizationsService {
       return themeSettings;
     }
 
-    const logoUrl = await this.uploadService.getLogoUrl(settings.logoObjectKey, settings.logoMimeType ?? 'image/png');
+    const logoUrl = await this.uploadService.getInlinePresignedUrl(settings.logoObjectKey, settings.logoMimeType ?? 'image/png');
 
     return { ...settings, logoUrl } as unknown as Prisma.JsonValue;
   }

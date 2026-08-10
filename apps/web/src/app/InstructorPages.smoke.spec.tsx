@@ -180,7 +180,7 @@ describe('Instructor pages smoke tests', () => {
             ],
           },
           results: [
-            { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+            { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
           ],
         },
       ],
@@ -196,7 +196,7 @@ describe('Instructor pages smoke tests', () => {
 
 describe('isReviewFlagged', () => {
   const item = { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Item', points: 10, isRequired: true, photoRequired: true };
-  const baseResult = { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null };
+  const baseResult = { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoFileName: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null };
 
   it('flags an item that requires a photo but has none attached', () => {
     expect(isReviewFlagged(item, { ...baseResult, photoUrl: null })).toBe(true);

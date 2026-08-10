@@ -89,6 +89,36 @@ export class UploadService {
     return `organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
   }
 
+  async uploadChecklistItemPhoto(
+    file: Express.Multer.File,
+    organizationId: string,
+    instanceId: string,
+    itemId: string,
+  ): Promise<UploadResult> {
+    if (!this.s3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const key = `organizations/${organizationId}/checklist-photos/${instanceId}/${itemId}/${randomUUID()}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return {
+      objectKey: key,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+    };
+  }
+
   async uploadOrganizationLogo(file: Express.Multer.File, organizationId: string): Promise<string> {
     if (!this.s3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');
@@ -109,7 +139,8 @@ export class UploadService {
     return key;
   }
 
-  async getLogoUrl(key: string, mimeType: string, expiresIn = 300): Promise<string> {
+  /** Presigned GET URL for inline display (e.g. <img src>) — sets the real content type, no attachment disposition. */
+  async getInlinePresignedUrl(key: string, mimeType: string, expiresIn = 300): Promise<string> {
     if (!this.downloadS3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');
     }

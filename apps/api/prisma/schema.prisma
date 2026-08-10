@@ -704,6 +704,10 @@ model ChecklistItemResult {
   scaleLevel     Int?                  @map("scale_level")
   points         Int                   @default(0)
   photoUrl       String?               @map("photo_url")
+  photoObjectKey String?               @map("photo_object_key")
+  photoFileName  String?               @map("photo_file_name")
+  photoMimeType  String?               @map("photo_mime_type")
+  photoSizeBytes Int?                  @map("photo_size_bytes")
   comment        String?
   reviewStatus   ChecklistReviewStatus @default(pending) @map("review_status")
   reviewComment  String?               @map("review_comment")

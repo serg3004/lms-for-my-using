@@ -1436,7 +1436,12 @@
     "submitError": "无法保存该项目。",
     "markDone": "已完成",
     "points": "分",
-    "photoUrlPlaceholder": "照片链接",
+    "photoAttach": "添加照片",
+    "photoAttached": "已添加照片",
+    "photoReplace": "替换",
+    "photoHint": "需要照片 — 点击添加",
+    "photoHintUnanswered": "请先勾选该项目，再添加照片",
+    "photoUploadError": "无法添加照片。",
     "passed": "通过",
     "notPassed": "未通过",
     "awaitingReview": "已提交——正在等待讲师确认结果。"

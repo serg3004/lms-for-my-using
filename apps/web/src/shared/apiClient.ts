@@ -159,6 +159,63 @@ function uploadBufferedMaterialFile(
   });
 }
 
+export function uploadChecklistItemPhotoWithProgress(
+  instanceId: string,
+  itemId: string,
+  file: File,
+  onProgress: (percent: number) => void,
+): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText) as unknown);
+        } catch {
+          reject(new ApiClientError('Invalid upload response', xhr.status));
+        }
+        return;
+      }
+      try {
+        const body = JSON.parse(xhr.responseText) as unknown;
+        const errorResponse = isApiErrorResponse(body) ? body : null;
+        reject(new ApiClientError(
+          errorResponse?.error.message ?? 'Upload failed',
+          xhr.status,
+          errorResponse,
+          xhr.getResponseHeader('x-request-id'),
+        ));
+      } catch {
+        reject(new ApiClientError('Upload failed', xhr.status));
+      }
+    });
+
+    xhr.addEventListener('error', () => {
+      reject(new ApiClientError('Upload failed', 0));
+    });
+
+    xhr.open('POST', `${apiBasePath}/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/photo`);
+    xhr.withCredentials = true;
+
+    const csrfToken = getCookieValue(csrfTokenCookieName);
+    if (csrfToken) {
+      xhr.setRequestHeader(csrfHeaderName, csrfToken);
+    }
+
+    xhr.send(formData);
+  });
+}
+
 /** Uses the buffered API for small files and direct-to-storage multipart upload for larger files. */
 export function uploadMaterialFileWithProgress(
   materialId: string,

@@ -297,7 +297,7 @@ describe('learner page smoke rendering', () => {
             ],
           },
           results: [
-            { id: 'result-1', itemId: 'item-1', checked: false, scaleLevel: 5, points: 100, photoUrl: 'https://example.com/photo.jpg', comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+            { id: 'result-1', itemId: 'item-1', checked: false, scaleLevel: 5, points: 100, photoUrl: 'https://example.com/photo.jpg', photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
           ],
         },
       ],
@@ -309,6 +309,58 @@ describe('learner page smoke rendering', () => {
 
     expect(html).toContain('Аттестация кассира');
     expect(html).toContain('Отлично');
+  });
+
+  it('shows the photo attach prompt for a marked item and the mark-first hint for an unanswered one', () => {
+    const loaded = {
+      status: 'loaded' as const,
+      instances: [
+        {
+          id: 'instance-1',
+          organizationId: 'org-1',
+          checklistId: 'checklist-1',
+          userId: 'user-1',
+          assignedBy: null,
+          status: 'in_progress',
+          totalScore: 10,
+          maxScore: 20,
+          percentage: 50,
+          passed: false,
+          dueAt: null,
+          submittedAt: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          checklist: {
+            id: 'checklist-1',
+            organizationId: 'org-1',
+            title: 'Приёмка смены',
+            description: null,
+            status: 'published',
+            scoringMode: 'sum_points',
+            passThreshold: 60,
+            scaleLevels: null,
+            requiresReview: false,
+            createdBy: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            items: [
+              { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+              { id: 'item-2', checklistId: 'checklist-1', order: 1, text: 'Прошёл инструктаж', points: 10, isRequired: true, photoRequired: true },
+            ],
+          },
+          results: [
+            { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null },
+          ],
+        },
+      ],
+    };
+    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+
+    const html = renderToStaticMarkup(<LearnerChecklistsPage />);
+
+    expect(html).toContain('Фото обязательно');
+    expect(html).toContain('Сначала отметьте пункт');
   });
 
   it('renders certificates loading state without crashing', () => {
@@ -749,7 +801,7 @@ describe('learner page smoke rendering', () => {
 
 describe('findResultForItem', () => {
   const results = [
-    { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null },
+    { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null },
   ];
 
   it('finds the result matching the given item id', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ apiRequest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ apiRequest: vi.fn(), uploadChecklistItemPhotoWithProgress: vi.fn() }));
 
 vi.mock('../apiClient.js', () => mocks);
 
@@ -12,6 +12,7 @@ import {
   deleteChecklistItem,
   getChecklist,
   getChecklistInstance,
+  getChecklistItemPhotoUrl,
   listChecklists,
   listInstancesForChecklist,
   listMyChecklistInstances,
@@ -20,6 +21,7 @@ import {
   submitChecklistItemResult,
   updateChecklist,
   updateChecklistItem,
+  uploadChecklistItemPhoto,
 } from './checklists.js';
 
 describe('checklists api requests', () => {
@@ -116,5 +118,16 @@ describe('checklists api requests', () => {
   it('encodes ids before adding them to the path', () => {
     getChecklist('checklist 1/2');
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/checklist%201%2F2');
+  });
+
+  it('fetches a presigned download URL for an attached item photo', () => {
+    getChecklistItemPhotoUrl('instance-1', 'item-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/items/item-1/photo');
+  });
+
+  it('uploads a checklist item photo', () => {
+    const file = new File(['data'], 'photo.jpg', { type: 'image/jpeg' });
+    uploadChecklistItemPhoto('instance-1', 'item-1', file);
+    expect(mocks.uploadChecklistItemPhotoWithProgress).toHaveBeenCalledWith('instance-1', 'item-1', file, expect.any(Function));
   });
 });

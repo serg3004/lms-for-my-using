@@ -1456,7 +1456,12 @@
     "submitError": "Не удалось сохранить пункт.",
     "markDone": "Выполнено",
     "points": "баллов",
-    "photoUrlPlaceholder": "Ссылка на фото",
+    "photoAttach": "Прикрепить фото",
+    "photoAttached": "Фото прикреплено",
+    "photoReplace": "Заменить",
+    "photoHint": "Фото обязательно — нажмите, чтобы прикрепить",
+    "photoHintUnanswered": "Сначала отметьте пункт, затем прикрепите фото",
+    "photoUploadError": "Не удалось прикрепить фото.",
     "passed": "Зачёт",
     "notPassed": "Не зачтено",
     "awaitingReview": "Отправлено — ожидает подтверждения инструктора."
