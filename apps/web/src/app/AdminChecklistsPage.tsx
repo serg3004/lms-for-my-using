@@ -7,12 +7,14 @@ import type { CurrentUser } from '../shared/apiClient.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { Badge, Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
+import { listUsers } from '../shared/api/users.js';
 import {
   assignChecklist,
   createChecklist,
   createChecklistItem,
   deleteChecklist,
   deleteChecklistItem,
+  getChecklist,
   listChecklists,
   listInstancesForChecklist,
   updateChecklist,
@@ -26,6 +28,7 @@ import type {
   ChecklistStatus,
   ChecklistSummary,
 } from '../shared/api/types.js';
+import type { UserSummary } from '../shared/api/types.js';
 
 const CHECKLIST_STATUSES: ChecklistStatus[] = ['draft', 'published', 'archived'];
 const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale'];
@@ -36,6 +39,95 @@ export function filterChecklists(checklists: ChecklistSummary[], search: string,
     if (search.trim() && !checklist.title.toLowerCase().includes(search.trim().toLowerCase())) return false;
     return true;
   });
+}
+
+export function formatUserName(user: { firstName: string; lastName?: string | null; email: string }) {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+}
+
+export function resolveUserName(users: UserSummary[], userId: string) {
+  const user = users.find((u) => u.id === userId);
+  return user ? formatUserName(user) : userId;
+}
+
+export function filterAssignableUsers(users: UserSummary[], instances: ChecklistInstanceSummary[]) {
+  return users.filter((user) => !instances.some((instance) => instance.userId === user.id && instance.status !== 'expired'));
+}
+
+export function buildChecklistSettingsPayload(form: {
+  title: string;
+  description: string;
+  scoringMode: ChecklistScoringMode;
+  passThreshold: number;
+  requiresReview: boolean;
+  scaleLevels: ChecklistScaleLevel[];
+}) {
+  return {
+    title: form.title,
+    description: form.description || null,
+    scoringMode: form.scoringMode,
+    passThreshold: form.passThreshold,
+    requiresReview: form.requiresReview,
+    scaleLevels: form.scoringMode === 'scale' ? form.scaleLevels : null,
+  };
+}
+
+export function canAssignChecklist(checklistStatus: ChecklistStatus, assignUserId: string) {
+  return checklistStatus === 'published' && assignUserId.trim().length > 0;
+}
+
+export function applyItemPatch(items: ChecklistItemSummary[], itemId: string, patch: Partial<ChecklistItemSummary>) {
+  return items.map((item) => (item.id === itemId ? { ...item, ...patch } : item));
+}
+
+export function removeItemById(items: ChecklistItemSummary[], itemId: string) {
+  return items.filter((item) => item.id !== itemId);
+}
+
+export function applyScaleLevelPatch(levels: ChecklistScaleLevel[], index: number, patch: Partial<ChecklistScaleLevel>) {
+  return levels.map((level, i) => (i === index ? { ...level, ...patch } : level));
+}
+
+export function appendScaleLevel(levels: ChecklistScaleLevel[]) {
+  return [...levels, { level: levels.length + 1, label: '', points: 0 }];
+}
+
+export function removeScaleLevelAt(levels: ChecklistScaleLevel[], index: number) {
+  return levels.filter((_, i) => i !== index);
+}
+
+type PreviewAnswer = { checked?: boolean; scaleLevel?: number };
+
+export function computePreviewResult(
+  items: ChecklistItemSummary[],
+  scoringMode: ChecklistScoringMode,
+  scaleLevels: ChecklistScaleLevel[],
+  passThreshold: number,
+  answers: Record<string, PreviewAnswer>,
+) {
+  let totalScore = 0;
+  let maxScore = 0;
+
+  for (const item of items) {
+    if (scoringMode === 'scale') {
+      const topPoints = scaleLevels.reduce((max, level) => Math.max(max, level.points), 0);
+      maxScore += topPoints;
+      const level = scaleLevels.find((candidate) => candidate.level === answers[item.id]?.scaleLevel);
+      totalScore += level?.points ?? 0;
+    } else if (scoringMode === 'all_required') {
+      maxScore += 1;
+      totalScore += answers[item.id]?.checked ? 1 : 0;
+    } else {
+      maxScore += item.points;
+      totalScore += answers[item.id]?.checked ? item.points : 0;
+    }
+  }
+
+  const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+  const allAnswered = items.length > 0 && items.every((item) => answers[item.id] !== undefined);
+  const passed = allAnswered && percentage >= passThreshold;
+
+  return { totalScore, maxScore, percentage, passed, allAnswered };
 }
 
 const DEFAULT_SCALE: ChecklistScaleLevel[] = [
@@ -95,6 +187,13 @@ export function AdminChecklistsPage() {
     void load();
   }, [load]);
 
+  // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
+  // an edit made from inside the builder, where a full reload would remount it mid-edit.
+  const refreshChecklist = useCallback(async (id: string) => {
+    const updated = await getChecklist(id);
+    setLoadState((prev) => (prev.status === 'loaded' ? { ...prev, checklists: prev.checklists.map((c) => (c.id === id ? updated : c)) } : prev));
+  }, []);
+
   async function updateStatus(checklist: ChecklistSummary, status: ChecklistStatus) {
     setStatusError(null);
     try {
@@ -143,7 +242,7 @@ export function AdminChecklistsPage() {
           statusLabels={statusLabels}
           scoringModeLabels={scoringModeLabels}
           onBack={() => setSelectedId(null)}
-          onReload={load}
+          onReload={() => refreshChecklist(checklist.id)}
           t={t}
         />
       </AdminPageLayout>
@@ -231,7 +330,7 @@ export function AdminChecklistsPage() {
   );
 }
 
-function ChecklistBuilder({
+export function ChecklistBuilder({
   checklist,
   statusLabels,
   scoringModeLabels,
@@ -253,26 +352,26 @@ function ChecklistBuilder({
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(checklist.scaleLevels ?? DEFAULT_SCALE);
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+  // Items live in local state so a single keystroke or checkbox click never has to wait on (and
+  // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
+  const [items, setItems] = useState<ChecklistItemSummary[]>(checklist.items);
   const [newItemText, setNewItemText] = useState('');
   const [instances, setInstances] = useState<ChecklistInstanceSummary[]>([]);
+  const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
   const [assignUserId, setAssignUserId] = useState('');
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewAnswers, setPreviewAnswers] = useState<Record<string, PreviewAnswer>>({});
 
   useEffect(() => {
     listInstancesForChecklist(checklist.id).then(setInstances).catch(() => setInstances([]));
+    listUsers({ page: 1, pageSize: 200 }).then((result) => setOrgUsers(result.items)).catch(() => setOrgUsers([]));
   }, [checklist.id]);
 
   async function saveSettings() {
     setSaveState({ status: 'saving' });
     try {
-      await updateChecklist(checklist.id, {
-        title,
-        description: description || null,
-        scoringMode,
-        passThreshold,
-        requiresReview,
-        scaleLevels: scoringMode === 'scale' ? scaleLevels : null,
-      });
+      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels }));
       setSaveState({ status: 'idle' });
       await onReload();
     } catch (error) {
@@ -291,38 +390,42 @@ function ChecklistBuilder({
 
   async function addItem() {
     if (!newItemText.trim()) return;
-    await createChecklistItem(checklist.id, { text: newItemText.trim(), points: 10, isRequired: true, photoRequired: false });
+    const created = await createChecklistItem(checklist.id, { text: newItemText.trim(), points: 10, isRequired: true, photoRequired: false });
+    setItems((prev) => [...prev, created]);
     setNewItemText('');
-    await onReload();
   }
 
-  async function saveItem(item: ChecklistItemSummary, patch: Partial<ChecklistItemSummary>) {
-    await updateChecklistItem(item.id, patch);
-    await onReload();
+  function updateItemLocally(itemId: string, patch: Partial<ChecklistItemSummary>) {
+    setItems((prev) => applyItemPatch(prev, itemId, patch));
+  }
+
+  async function persistItem(itemId: string, patch: Partial<ChecklistItemSummary>) {
+    const updated = await updateChecklistItem(itemId, patch);
+    setItems((prev) => applyItemPatch(prev, itemId, updated));
   }
 
   async function removeItem(item: ChecklistItemSummary) {
     await deleteChecklistItem(item.id);
-    await onReload();
+    setItems((prev) => removeItemById(prev, item.id));
   }
 
   function updateScaleLevel(index: number, patch: Partial<ChecklistScaleLevel>) {
-    setScaleLevels((prev) => prev.map((level, i) => (i === index ? { ...level, ...patch } : level)));
+    setScaleLevels((prev) => applyScaleLevelPatch(prev, index, patch));
   }
 
   function addScaleLevel() {
-    setScaleLevels((prev) => [...prev, { level: prev.length + 1, label: '', points: 0 }]);
+    setScaleLevels((prev) => appendScaleLevel(prev));
   }
 
   function removeScaleLevel(index: number) {
-    setScaleLevels((prev) => prev.filter((_, i) => i !== index));
+    setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
 
   async function assign() {
     setAssignError(null);
-    if (!assignUserId.trim()) return;
+    if (!assignUserId) return;
     try {
-      await assignChecklist(checklist.id, assignUserId.trim());
+      await assignChecklist(checklist.id, assignUserId);
       setAssignUserId('');
       const updated = await listInstancesForChecklist(checklist.id);
       setInstances(updated);
@@ -330,6 +433,9 @@ function ChecklistBuilder({
       setAssignError(error instanceof ApiClientError ? error.message : t('admin.checklists.assignError', 'Unable to assign this checklist.'));
     }
   }
+
+  const assignableUsers = filterAssignableUsers(orgUsers, instances);
+  const previewResult = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, previewAnswers);
 
   return (
     <div className="admin-builder">
@@ -342,17 +448,30 @@ function ChecklistBuilder({
         title={checklist.title}
         subtitle={statusLabels[checklist.status]}
         action={
-          checklist.status !== 'published' ? (
+          <div className="admin-builder__header-actions">
             <Button
-              variant="primary"
               type="button"
-              disabled={checklist.items.length === 0}
-              title={checklist.items.length === 0 ? t('admin.checklists.publishNoItems', 'Add at least one item before publishing.') : undefined}
-              onClick={() => void publish()}
+              variant="secondary"
+              disabled={items.length === 0}
+              onClick={() => {
+                setPreviewAnswers({});
+                setPreviewOpen(true);
+              }}
             >
-              {t('admin.checklists.publish', 'Publish')}
+              {t('admin.checklists.preview', 'Preview')}
             </Button>
-          ) : undefined
+            {checklist.status !== 'published' && (
+              <Button
+                variant="primary"
+                type="button"
+                disabled={items.length === 0}
+                title={items.length === 0 ? t('admin.checklists.publishNoItems', 'Add at least one item before publishing.') : undefined}
+                onClick={() => void publish()}
+              >
+                {t('admin.checklists.publish', 'Publish')}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -368,27 +487,35 @@ function ChecklistBuilder({
           </section>
 
           <section className="admin-card">
-            <h3>{t('admin.checklists.itemsTitle', 'Checklist items')} <Badge variant="neutral">{checklist.items.length}</Badge></h3>
+            <h3>{t('admin.checklists.itemsTitle', 'Checklist items')} <Badge variant="neutral">{items.length}</Badge></h3>
             <ul className="admin-checklist-items">
-              {checklist.items.map((item, index) => (
+              {items.map((item, index) => (
                 <li key={item.id} className="admin-checklist-item">
                   <span className="admin-checklist-item__index">{index + 1}</span>
                   <input
                     value={item.text}
-                    onChange={(e) => void saveItem(item, { text: e.target.value })}
-                    onBlur={(e) => void saveItem(item, { text: e.target.value })}
+                    onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
+                    onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
                   />
                   {scoringMode === 'sum_points' && (
                     <input
                       type="number"
                       className="admin-checklist-item__points"
                       value={item.points}
-                      onChange={(e) => void saveItem(item, { points: Number(e.target.value) })}
+                      onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
+                      onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
                       aria-label={t('admin.checklists.field.points', 'Points')}
                     />
                   )}
                   <label className="admin-checklist-item__photo">
-                    <input type="checkbox" checked={item.photoRequired} onChange={(e) => void saveItem(item, { photoRequired: e.target.checked })} />
+                    <input
+                      type="checkbox"
+                      checked={item.photoRequired}
+                      onChange={(e) => {
+                        updateItemLocally(item.id, { photoRequired: e.target.checked });
+                        void persistItem(item.id, { photoRequired: e.target.checked });
+                      }}
+                    />
                     {t('admin.checklists.field.photoRequired', 'Photo required')}
                   </label>
                   <button type="button" className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeItem(item)}>
@@ -397,7 +524,7 @@ function ChecklistBuilder({
                 </li>
               ))}
             </ul>
-            {checklist.items.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
+            {items.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
             <div className="admin-checklist-add-item">
               <input
                 value={newItemText}
@@ -486,11 +613,16 @@ function ChecklistBuilder({
 
           <section className="admin-card">
             <h3>{t('admin.checklists.assignmentTitle', 'Assignment')}</h3>
-            <FormField id="checklist-assign-user" label={t('admin.checklists.field.assignUserId', 'User ID')} hint={t('admin.checklists.assignUserHint', 'Manual assignment for now — automatic and scheduled triggers are planned next.')}>
-              <input id="checklist-assign-user" value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)} placeholder="00000000-0000-0000-0000-000000000000" />
+            <FormField id="checklist-assign-user" label={t('admin.checklists.field.assignUser', 'Employee')} hint={t('admin.checklists.assignUserHint', 'Manual assignment for now — automatic and scheduled triggers are planned next.')}>
+              <select id="checklist-assign-user" value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)}>
+                <option value="">{t('admin.checklists.selectUser', 'Select an employee…')}</option>
+                {assignableUsers.map((u) => (
+                  <option value={u.id} key={u.id}>{formatUserName(u)}</option>
+                ))}
+              </select>
             </FormField>
             {assignError && <p className="learner-quiz__submit-error" role="alert">{assignError}</p>}
-            <Button type="button" variant="secondary" disabled={checklist.status !== 'published'} onClick={() => void assign()}>
+            <Button type="button" variant="secondary" disabled={!canAssignChecklist(checklist.status, assignUserId)} onClick={() => void assign()}>
               {t('admin.checklists.assign', 'Assign')}
             </Button>
 
@@ -501,7 +633,7 @@ function ChecklistBuilder({
               <ul className="admin-checklist-instances">
                 {instances.map((instance) => (
                   <li key={instance.id}>
-                    <span>{instance.userId}</span>
+                    <span>{resolveUserName(orgUsers, instance.userId)}</span>
                     <Badge variant="neutral">{t(`admin.checklists.instanceStatus.${instance.status}`, instance.status)}</Badge>
                     <span>{instance.totalScore}/{instance.maxScore} ({instance.percentage}%)</span>
                   </li>
@@ -511,6 +643,60 @@ function ChecklistBuilder({
           </section>
         </div>
       </div>
+
+      {previewOpen && (
+        <div className="admin-preview-overlay" role="dialog" aria-modal="true" aria-label={t('admin.checklists.previewTitle', 'Preview')}>
+          <div className="admin-preview-panel">
+            <div className="admin-preview-panel__header">
+              <h2>{title || checklist.title}</h2>
+              <button type="button" className="admin-dialog__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setPreviewOpen(false)}>×</button>
+            </div>
+            <p className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
+
+            <ul className="admin-checklist-items">
+              {items.map((item) => (
+                <li key={item.id} className="admin-checklist-item admin-checklist-item--preview">
+                  <span className="admin-checklist-item__index">✓</span>
+                  <span className="admin-preview-item__text">{item.text}</span>
+                  {scoringMode === 'scale' ? (
+                    <div className="admin-seg">
+                      {scaleLevels.map((level) => (
+                        <button
+                          key={level.level}
+                          type="button"
+                          className={previewAnswers[item.id]?.scaleLevel === level.level ? 'admin-seg__btn admin-seg__btn--active' : 'admin-seg__btn'}
+                          onClick={() => setPreviewAnswers((prev) => ({ ...prev, [item.id]: { scaleLevel: level.level } }))}
+                        >
+                          {level.points} · {level.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <label className="admin-checklist-item__photo">
+                      <input
+                        type="checkbox"
+                        checked={previewAnswers[item.id]?.checked ?? false}
+                        onChange={(e) => setPreviewAnswers((prev) => ({ ...prev, [item.id]: { checked: e.target.checked } }))}
+                      />
+                      {t('admin.checklists.markDone', 'Done')}
+                    </label>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            <div className={previewResult.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
+              <span>{previewResult.allAnswered ? (previewResult.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('admin.checklists.previewIncomplete', 'Not all items answered yet')}</span>
+              <strong>{previewResult.totalScore} / {previewResult.maxScore} ({previewResult.percentage}%)</strong>
+            </div>
+
+            <div className="admin-form__actions">
+              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setPreviewAnswers({})}>{t('admin.checklists.previewReset', 'Reset')}</button>
+              <button type="button" className="admin-btn admin-btn--primary" onClick={() => setPreviewOpen(false)}>{t('admin.checklists.close', 'Close')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

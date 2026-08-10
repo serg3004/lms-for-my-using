@@ -20,7 +20,21 @@ vi.mock('react', async () => {
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage';
 import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage';
-import { AdminChecklistsPage, filterChecklists } from './AdminChecklistsPage';
+import {
+  AdminChecklistsPage,
+  applyItemPatch,
+  applyScaleLevelPatch,
+  appendScaleLevel,
+  buildChecklistSettingsPayload,
+  canAssignChecklist,
+  computePreviewResult,
+  filterAssignableUsers,
+  filterChecklists,
+  formatUserName,
+  removeItemById,
+  removeScaleLevelAt,
+  resolveUserName,
+} from './AdminChecklistsPage';
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
 import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
@@ -507,5 +521,139 @@ describe('filterChecklists', () => {
 
   it('returns everything when there is no filter', () => {
     expect(filterChecklists(checklists, '', 'all')).toEqual(checklists);
+  });
+});
+
+describe('formatUserName', () => {
+  it('joins first and last name', () => {
+    expect(formatUserName({ firstName: 'Aigerim', lastName: 'Kassirova', email: 'a@demo.com' })).toBe('Aigerim Kassirova');
+  });
+
+  it('falls back to email when there is no name', () => {
+    expect(formatUserName({ firstName: '', lastName: null, email: 'a@demo.com' })).toBe('a@demo.com');
+  });
+});
+
+describe('resolveUserName', () => {
+  const users = [{ id: 'user-1', organizationId: 'org-1', email: 'a@demo.com', firstName: 'Aigerim', lastName: 'Kassirova', status: 'active' }];
+
+  it('resolves a known user to their display name', () => {
+    expect(resolveUserName(users, 'user-1')).toBe('Aigerim Kassirova');
+  });
+
+  it('falls back to the raw id for an unknown user', () => {
+    expect(resolveUserName(users, 'user-missing')).toBe('user-missing');
+  });
+});
+
+describe('filterAssignableUsers', () => {
+  const users = [
+    { id: 'user-1', organizationId: 'org-1', email: 'a@demo.com', firstName: 'Aigerim', lastName: 'Kassirova', status: 'active' },
+    { id: 'user-2', organizationId: 'org-1', email: 'b@demo.com', firstName: 'Bekzat', lastName: 'Nurov', status: 'active' },
+  ];
+  const activeInstance = { id: 'i-1', organizationId: 'org-1', checklistId: 'c-1', userId: 'user-1', assignedBy: null, status: 'assigned' as const, totalScore: 0, maxScore: 0, percentage: 0, passed: false, dueAt: null, submittedAt: null, completedAt: null, createdAt: ts, updatedAt: ts, results: [] };
+
+  it('excludes a user who already has an active assignment', () => {
+    expect(filterAssignableUsers(users, [activeInstance])).toEqual([users[1]]);
+  });
+
+  it('re-includes a user whose previous assignment expired', () => {
+    expect(filterAssignableUsers(users, [{ ...activeInstance, status: 'expired' }])).toEqual(users);
+  });
+
+  it('returns everyone when there are no assignments yet', () => {
+    expect(filterAssignableUsers(users, [])).toEqual(users);
+  });
+});
+
+describe('buildChecklistSettingsPayload', () => {
+  it('nulls out an empty description', () => {
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: '', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [] });
+    expect(payload.description).toBeNull();
+  });
+
+  it('drops scale levels when the scoring mode is not scale', () => {
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'all_required', passThreshold: 80, requiresReview: false, scaleLevels: [{ level: 1, label: 'x', points: 1 }] });
+    expect(payload.scaleLevels).toBeNull();
+  });
+
+  it('keeps scale levels when the scoring mode is scale', () => {
+    const levels = [{ level: 1, label: 'x', points: 1 }];
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'scale', passThreshold: 80, requiresReview: false, scaleLevels: levels });
+    expect(payload.scaleLevels).toEqual(levels);
+  });
+});
+
+describe('canAssignChecklist', () => {
+  it('requires the checklist to be published', () => {
+    expect(canAssignChecklist('draft', 'user-1')).toBe(false);
+  });
+
+  it('requires a selected user', () => {
+    expect(canAssignChecklist('published', '')).toBe(false);
+  });
+
+  it('allows assignment once both conditions hold', () => {
+    expect(canAssignChecklist('published', 'user-1')).toBe(true);
+  });
+});
+
+describe('item and scale-level local-state helpers', () => {
+  const items = [
+    { id: 'item-1', checklistId: 'c-1', order: 0, text: 'A', points: 10, isRequired: true, photoRequired: false },
+    { id: 'item-2', checklistId: 'c-1', order: 1, text: 'B', points: 20, isRequired: true, photoRequired: false },
+  ];
+  const levels = [
+    { level: 1, label: 'Bad', points: 0 },
+    { level: 2, label: 'Good', points: 100 },
+  ];
+
+  it('applyItemPatch merges a patch into the matching item only', () => {
+    expect(applyItemPatch(items, 'item-1', { text: 'A updated' })).toEqual([{ ...items[0], text: 'A updated' }, items[1]]);
+  });
+
+  it('removeItemById drops only the matching item', () => {
+    expect(removeItemById(items, 'item-1')).toEqual([items[1]]);
+  });
+
+  it('applyScaleLevelPatch merges a patch by index only', () => {
+    expect(applyScaleLevelPatch(levels, 1, { label: 'Great' })).toEqual([levels[0], { ...levels[1], label: 'Great' }]);
+  });
+
+  it('appendScaleLevel adds a new blank level numbered after the last one', () => {
+    expect(appendScaleLevel(levels)).toEqual([...levels, { level: 3, label: '', points: 0 }]);
+  });
+
+  it('removeScaleLevelAt drops only the level at that index', () => {
+    expect(removeScaleLevelAt(levels, 0)).toEqual([levels[1]]);
+  });
+});
+
+describe('computePreviewResult', () => {
+  const items = [
+    { id: 'item-1', checklistId: 'c-1', order: 0, text: 'Item 1', points: 10, isRequired: true, photoRequired: false },
+    { id: 'item-2', checklistId: 'c-1', order: 1, text: 'Item 2', points: 20, isRequired: true, photoRequired: false },
+  ];
+
+  it('scores sum_points mode from checked items', () => {
+    const result = computePreviewResult(items, 'sum_points', [], 80, { 'item-1': { checked: true }, 'item-2': { checked: false } });
+    expect(result).toEqual({ totalScore: 10, maxScore: 30, percentage: 33, passed: false, allAnswered: true });
+  });
+
+  it('scores all_required mode as 1 point per checked item regardless of configured points', () => {
+    const result = computePreviewResult(items, 'all_required', [], 100, { 'item-1': { checked: true }, 'item-2': { checked: true } });
+    expect(result).toEqual({ totalScore: 2, maxScore: 2, percentage: 100, passed: true, allAnswered: true });
+  });
+
+  it('scores scale mode from the configured level points', () => {
+    const scale = [{ level: 1, label: 'Bad', points: 0 }, { level: 5, label: 'Great', points: 100 }];
+    const result = computePreviewResult(items, 'scale', scale, 50, { 'item-1': { scaleLevel: 5 }, 'item-2': { scaleLevel: 5 } });
+    expect(result).toEqual({ totalScore: 200, maxScore: 200, percentage: 100, passed: true, allAnswered: true });
+  });
+
+  it('is not marked passed until every item has an answer', () => {
+    const result = computePreviewResult(items, 'sum_points', [], 0, { 'item-1': { checked: true } });
+    expect(result.allAnswered).toBe(false);
+    expect(result.passed).toBe(false);
   });
 });

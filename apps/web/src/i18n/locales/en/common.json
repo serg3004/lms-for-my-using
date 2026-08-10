@@ -689,7 +689,8 @@
         "photoRequired": "Photo required",
         "passThreshold": "Pass threshold, %",
         "requiresReview": "Require an instructor to confirm the result before it counts",
-        "assignUserId": "User ID"
+        "assignUserId": "User ID",
+        "assignUser": "Employee"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -718,7 +719,16 @@
         "submitted": "Awaiting review",
         "completed": "Completed",
         "expired": "Expired"
-      }
+      },
+      "preview": "Preview",
+      "previewTitle": "Preview",
+      "previewHint": "This is a local simulation — nothing here is saved or sent to anyone.",
+      "markDone": "Done",
+      "previewPassed": "Pass",
+      "previewFailed": "Fail",
+      "previewIncomplete": "Not all items answered yet",
+      "previewReset": "Reset",
+      "selectUser": "Select an employee…"
     }
   },
   "notFound": {

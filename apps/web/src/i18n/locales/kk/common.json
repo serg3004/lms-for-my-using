@@ -691,7 +691,8 @@
         "photoRequired": "Фото қажет",
         "passThreshold": "Өту шегі, %",
         "requiresReview": "Есептелмес бұрын нұсқаушының растауын талап ету",
-        "assignUserId": "Пайдаланушы ID"
+        "assignUserId": "Пайдаланушы ID",
+        "assignUser": "Қызметкер"
       },
       "itemsTitle": "Чеклист тармақтары",
       "noItems": "Әзірге тармақтар жоқ.",
@@ -720,7 +721,16 @@
         "submitted": "Тексерілуде",
         "completed": "Аяқталды",
         "expired": "Мерзімі өтті"
-      }
+      },
+      "preview": "Алдын ала қарау",
+      "previewTitle": "Алдын ала қарау",
+      "previewHint": "Бұл жергілікті модельдеу — ештеңе сақталмайды және жіберілмейді.",
+      "markDone": "Орындалды",
+      "previewPassed": "Есептелді",
+      "previewFailed": "Есептелмеді",
+      "previewIncomplete": "Барлық тармақ белгіленбеген",
+      "previewReset": "Тастау",
+      "selectUser": "Қызметкерді таңдаңыз…"
     }
   },
   "notFound": {
