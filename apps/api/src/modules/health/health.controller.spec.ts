@@ -54,15 +54,24 @@ describe('HealthController', () => {
     ['database', { database: () => Promise.reject(new Error('database secret')) }],
     ['redis', { redis: () => Promise.reject(new Error('redis secret')) }],
     ['storage', { storage: () => Promise.reject(new Error('storage secret')) }],
-  ])('returns 503 without leaking %s errors', async (_name, dependencies) => {
+  ])('returns canonical 503 payload without leaking %s errors', async (_name, dependencies) => {
     const controller = await buildController(dependencies);
 
     let thrown: unknown;
     try { await controller.getReadiness(); } catch (error) { thrown = error; }
 
     expect(thrown).toBeInstanceOf(ServiceUnavailableException);
-    const body = JSON.stringify((thrown as ServiceUnavailableException).getResponse());
-    expect(body).toContain('unavailable');
-    expect(body).not.toContain('secret');
+    expect((thrown as ServiceUnavailableException).getResponse()).toMatchObject({
+      error: {
+        code: 'HEALTH_CHECK_FAILED',
+        message: 'Readiness check failed',
+        details: expect.arrayContaining([
+          { field: 'db', code: 'DEPENDENCY_STATUS' },
+          { field: 'redis', code: 'DEPENDENCY_STATUS' },
+          { field: 'storage', code: 'DEPENDENCY_STATUS' },
+        ]),
+      },
+    });
+    expect(JSON.stringify((thrown as ServiceUnavailableException).getResponse())).not.toContain('secret');
   });
 });

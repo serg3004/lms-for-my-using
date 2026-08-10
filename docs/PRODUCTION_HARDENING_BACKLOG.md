@@ -4,7 +4,7 @@
 >
 > **Назначение:** хранить только актуальные hardening/operations gaps. Закрытые исторические пункты остаются как provenance, но не должны выглядеть как open work.
 >
-> **Проверено по `main`:** `35e0a7df530a894585b29ebd985273d36a63f666` (2026-08-09).
+> **Проверено по `main`:** `4f4ae9fc941ec52b51aaeffef994162d256dd8fa` (2026-08-10).
 
 ## 1. Статусы
 
@@ -47,15 +47,18 @@ Historical internal planning IDs for these items are retained only for traceabil
 
 ### H-001 — Health readiness 503 HTTP contract
 
-**Статус:** `OPEN`
+**Статус:** `DONE`
 
-`HealthController` builds dependency details for a failed readiness check, but the global exception filter does not currently guarantee those details at the public HTTP boundary.
+`HealthController` формирует failed readiness response сразу в canonical API error shape, а global `ApiExceptionFilter` сохраняет dependency statuses на public HTTP boundary.
 
-Required outcome:
+Current contract:
 
-- choose canonical public 503 shape;
-- implement it consistently;
-- add HTTP-level test through the exception filter.
+- HTTP `503`;
+- `error.code = HEALTH_CHECK_FAILED`;
+- `error.message = Readiness check failed`;
+- `error.details` содержит статусы `db`, `redis`, `storage` как `DEPENDENCY_STATUS`;
+- HTTP-level integration test проверяет `/api/v1/health/ready` и compatibility `/api/v1/health` через global exception filter;
+- internal dependency error messages не попадают в public response.
 
 See `docs/READINESS_AND_SECURITY_GATES.md`.
 
