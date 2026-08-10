@@ -19,6 +19,8 @@ type HealthErrorResponse = {
   storage: 'ok' | 'disabled' | 'unavailable';
 };
 
+type HealthDependencyStatus = HealthErrorResponse['redis'];
+
 export type HealthResponse = HealthOkResponse | HealthErrorResponse;
 
 @Controller('health')
@@ -52,15 +54,24 @@ export class HealthController {
       this.redis.checkReadiness(),
       this.upload.checkReadiness(),
     ]);
-    const response: HealthErrorResponse = {
-      status: 'error',
+    const dependencyStatus: Record<'db' | 'redis' | 'storage', HealthDependencyStatus> = {
       db: checks[0].status === 'fulfilled' ? 'ok' : 'unavailable',
       redis: checks[1].status === 'fulfilled' ? checks[1].value : 'unavailable',
       storage: checks[2].status === 'fulfilled' ? checks[2].value : 'unavailable',
     };
 
     if (checks.some((check) => check.status === 'rejected')) {
-      throw new ServiceUnavailableException(response);
+      throw new ServiceUnavailableException({
+        error: {
+          code: 'HEALTH_CHECK_FAILED',
+          message: 'Readiness check failed',
+          details: Object.entries(dependencyStatus).map(([field, message]) => ({
+            field,
+            code: 'DEPENDENCY_STATUS',
+            message,
+          })),
+        },
+      });
     }
 
     return {

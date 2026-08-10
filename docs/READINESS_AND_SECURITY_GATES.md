@@ -4,7 +4,7 @@
 >
 > **Назначение:** описать фактические runtime readiness checks и security checks репозитория без смешивания четырёх разных уровней: `CONFIGURED`, `EXECUTED`, `MERGE-ENFORCED`, `LIVE-VERIFIED`.
 >
-> **Проверено по `main`:** `4585e8b641b65484a6a29d2383d46f259a3e1e15` (2026-08-09).
+> **Проверено по `main`:** `4f4ae9fc941ec52b51aaeffef994162d256dd8fa` (2026-08-10).
 
 ## 1. Термины
 
@@ -53,22 +53,23 @@ Redis/storage могут иметь status `disabled`, если соответс
 
 ---
 
-## 3. Известный health HTTP-boundary gap
+## 3. Health readiness 503 HTTP contract
 
-**Статус:** `KNOWN-IMPLEMENTATION-GAP`
+**Статус:** `IMPLEMENTED`
 
-`HealthController` при failed dependency формирует `ServiceUnavailableException` с payload, содержащим dependency statuses (`db`, `redis`, `storage`).
+При failed dependency `HealthController` формирует `ServiceUnavailableException` сразу в canonical API error shape. Глобальный `ApiExceptionFilter` сохраняет этот payload на public HTTP boundary.
 
-Глобальный `ApiExceptionFilter` сохраняет custom exception payload как canonical error только когда payload содержит ожидаемый `error.code`/`error.message`. Health dependency payload имеет другую форму, поэтому HTTP response через global filter нормализуется в generic canonical 503 envelope и не гарантирует клиенту dependency fields.
+Гарантированный HTTP contract для `/api/v1/health/ready` и compatibility `/api/v1/health`:
 
-Current `health.controller.spec.ts` проверяет `exception.getResponse()` напрямую, а не полный HTTP boundary через global exception filter.
+- HTTP status `503`;
+- `error.code = HEALTH_CHECK_FAILED`;
+- `error.message = Readiness check failed`;
+- `error.details` содержит безопасные dependency statuses для `db`, `redis`, `storage` с `code = DEPENDENCY_STATUS`;
+- внутренние сообщения ошибок dependency не включаются в public response.
 
-**Правило для ИИ:** до отдельного code fix `MUST NOT` документировать dependency-status 503 payload как гарантированный public HTTP contract.
+HTTP-level integration test проходит через global exception filter и проверяет оба readiness endpoint. `/api/v1/health/live` остаётся независимым от состояния dependencies.
 
-**Follow-up:** отдельный implementation PR должен либо:
-
-1. безопасно сохранить dependency details через canonical error envelope и добавить HTTP-level test; либо
-2. официально принять generic 503 envelope и синхронизировать docs/tests.
+**Правило для ИИ:** dependency statuses в readiness `503` можно документировать как public HTTP contract только в canonical `error.details`; сырые internal exception messages `MUST NOT` считаться частью контракта.
 
 ---
 
@@ -171,7 +172,7 @@ Generated waiver IDs используются для Trivy ignorefile. Этот 
 
 **Правило для ИИ:** green CI можно называть `EXECUTED/PASSED`, но не `MERGE-ENFORCED`, пока branch protection/ruleset явно не изменён.
 
-Изменение branch protection — repository-setting action и не входит в этот documentation PR.
+Изменение branch protection — repository-setting action и не входит в этот implementation PR.
 
 ---
 
@@ -209,7 +210,7 @@ Repository code/config доказывает intended/implemented behavior, но 
 
 1. `MUST` указывать, о каком уровне gate идёт речь.
 2. `MUST NOT` называть `main` protected/required-check-enforced без fresh repository-setting evidence.
-3. `MUST NOT` обещать dependency details в health 503 до исправления HTTP boundary.
+3. `MUST` описывать readiness dependency statuses только в canonical 503 `error.details` contract.
 4. `MUST` учитывать `--ignore-unfixed` в Trivy semantics.
 5. `MUST NOT` распространять Trivy waiver на audit/Gitleaks/CodeQL.
 6. `MUST NOT` считать `storage: disabled` или emergency Redis fallback доказательством production compliance.
