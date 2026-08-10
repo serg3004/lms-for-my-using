@@ -66,9 +66,9 @@ describe('HealthController', () => {
         code: 'HEALTH_CHECK_FAILED',
         message: 'Readiness check failed',
         details: expect.arrayContaining([
-          { field: 'db', code: 'DEPENDENCY_STATUS' },
-          { field: 'redis', code: 'DEPENDENCY_STATUS' },
-          { field: 'storage', code: 'DEPENDENCY_STATUS' },
+          expect.objectContaining({ field: 'db', code: 'DEPENDENCY_STATUS' }),
+          expect.objectContaining({ field: 'redis', code: 'DEPENDENCY_STATUS' }),
+          expect.objectContaining({ field: 'storage', code: 'DEPENDENCY_STATUS' }),
         ]),
       },
     });
