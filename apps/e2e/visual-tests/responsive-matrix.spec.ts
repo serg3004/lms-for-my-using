@@ -97,7 +97,7 @@ for (const width of widths) {
       const getRefreshRequests = await installGuestMock(page);
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      expect(getRefreshRequests()).toBeGreaterThan(0);
+      await expect.poll(getRefreshRequests).toBeGreaterThan(0);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await captureVisualBaseline(page, testInfo, `public-home-${width}`);
@@ -137,5 +137,5 @@ test('remains usable at 200% browser zoom', async ({ page }) => {
   await client.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
   await expectNoPageOverflow(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  expect(getRefreshRequests()).toBeGreaterThan(0);
+  await expect.poll(getRefreshRequests).toBeGreaterThan(0);
 });
