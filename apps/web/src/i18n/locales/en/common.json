@@ -26,7 +26,8 @@
       "settingsSection": "Settings",
       "orgStructure": "Org structure",
       "roles": "Roles",
-      "themeSettings": "Theme settings"
+      "themeSettings": "Theme settings",
+      "checklists": "Checklists"
     },
     "title": "Dashboard",
     "subtitle": "Welcome back, {{name}}.",
@@ -641,6 +642,83 @@
       "cancel": "Cancel",
       "add": "Add",
       "delete": "Delete"
+    },
+    "checklists": {
+      "eyebrow": "Knowledge control",
+      "title": "Checklists",
+      "subtitle": "Configurable checklists with points or a custom scale, photo confirmation, and automatic or manual grading.",
+      "sessionExpired": "Your session has expired. Please sign in again.",
+      "loadError": "Unable to load checklists.",
+      "loading": "Loading checklists...",
+      "statusError": "Unable to update status.",
+      "deleteError": "Unable to delete checklist.",
+      "create": "Create checklist",
+      "newChecklistTitle": "New checklist",
+      "close": "Close",
+      "searchPlaceholder": "Find checklist",
+      "allStatuses": "All statuses",
+      "col": {
+        "title": "Title",
+        "items": "Items",
+        "scoring": "Scoring",
+        "status": "Status"
+      },
+      "edit": "Edit",
+      "delete": "Delete",
+      "empty": "No checklists found.",
+      "deleteTitle": "Delete checklist",
+      "deleteConfirm": "Delete \"{{title}}\"? This action cannot be undone.",
+      "cancel": "Cancel",
+      "status": {
+        "draft": "Draft",
+        "published": "Published",
+        "archived": "Archived"
+      },
+      "scoring": {
+        "sumPoints": "Sum of points",
+        "allRequired": "All items required",
+        "scale": "Custom scale"
+      },
+      "backToList": "All checklists",
+      "publish": "Publish",
+      "publishNoItems": "Add at least one item before publishing.",
+      "field": {
+        "title": "Title",
+        "description": "Description",
+        "points": "Points",
+        "photoRequired": "Photo required",
+        "passThreshold": "Pass threshold, %",
+        "requiresReview": "Require an instructor to confirm the result before it counts",
+        "assignUserId": "User ID"
+      },
+      "itemsTitle": "Checklist items",
+      "noItems": "No items yet.",
+      "addItemPlaceholder": "New item text",
+      "addItem": "Add item",
+      "scoringTitle": "Scoring",
+      "scaleLevelsTitle": "Scale levels",
+      "scaleLevelLabel": "Label",
+      "scaleLevelDescription": "Description (optional)",
+      "addScaleLevel": "Add level",
+      "scaleLevelsHint": "Label, description and points are freely editable per level — the count is not limited to five.",
+      "requiresReviewHint": "When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.",
+      "saveError": "Unable to save checklist.",
+      "saving": "Saving...",
+      "save": "Save",
+      "publishError": "Unable to publish checklist.",
+      "assignmentTitle": "Assignment",
+      "assignUserHint": "Manual assignment only for now — automatic and scheduled triggers are planned next.",
+      "assignError": "Unable to assign this checklist.",
+      "assign": "Assign",
+      "instancesTitle": "Assignments",
+      "noInstances": "Not assigned to anyone yet.",
+      "instanceStatus": {
+        "assigned": "Assigned",
+        "in_progress": "In progress",
+        "submitted": "Awaiting review",
+        "completed": "Completed",
+        "expired": "Expired"
+      }
     }
   },
   "notFound": {
@@ -1301,7 +1379,8 @@
       "colInProgress": "In progress",
       "colScore": "Score",
       "empty": "No students with progress in this course"
-    }
+    },
+    "navChecklists": "Checklists"
   },
   "accountSwitcher": {
     "button": "Switch account"
@@ -1327,5 +1406,49 @@
     "breadcrumb": "Breadcrumb",
     "openNav": "Open navigation",
     "closeNav": "Close navigation"
+  },
+  "checklists": {
+    "navLink": "Checklists",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "loadError": "Unable to load your checklists.",
+    "loading": "Loading checklists...",
+    "title": "Checklists",
+    "subtitle": "Checklists assigned to you — complete them and attach photos where required.",
+    "empty": "You have no checklists assigned yet.",
+    "status": {
+      "assigned": "Assigned",
+      "in_progress": "In progress",
+      "submitted": "Awaiting review",
+      "completed": "Completed",
+      "expired": "Expired"
+    },
+    "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
+    "backToList": "All checklists",
+    "submitError": "Unable to save this item.",
+    "markDone": "Done",
+    "points": "pts",
+    "photoUrlPlaceholder": "Photo URL",
+    "passed": "Passed",
+    "notPassed": "Not passed",
+    "awaitingReview": "Submitted — waiting for your instructor to confirm the result."
+  },
+  "checklistReview": {
+    "loadError": "Unable to load pending reviews.",
+    "loading": "Loading...",
+    "title": "Checklist review",
+    "subtitle": "Checklists submitted by learners that are waiting for your confirmation.",
+    "empty": "Nothing is waiting for review.",
+    "submittedBy": "Submitted by user {{userId}}",
+    "backToList": "All pending reviews",
+    "saveError": "Unable to save this decision.",
+    "checked": "Marked done",
+    "unchecked": "Not marked",
+    "photoAttached": "photo attached",
+    "photoMissing": "photo missing — needs your confirmation",
+    "photoNotRequired": "no photo required",
+    "approve": "Approve",
+    "reject": "Reject",
+    "commentPlaceholder": "Comment (optional)",
+    "currentResult": "Current result"
   }
 }

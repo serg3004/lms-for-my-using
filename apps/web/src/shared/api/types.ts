@@ -296,3 +296,75 @@ export type NotificationSummary = {
   readAt: string | null;
   createdAt: string;
 };
+
+export type ChecklistScaleLevel = {
+  level: number;
+  label: string;
+  description?: string;
+  points: number;
+};
+
+export type ChecklistScoringMode = 'sum_points' | 'all_required' | 'scale';
+export type ChecklistStatus = 'draft' | 'published' | 'archived';
+export type ChecklistInstanceStatus = 'assigned' | 'in_progress' | 'submitted' | 'completed' | 'expired';
+export type ChecklistReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export type ChecklistItemSummary = {
+  id: string;
+  checklistId: string;
+  order: number;
+  text: string;
+  points: number;
+  isRequired: boolean;
+  photoRequired: boolean;
+};
+
+export type ChecklistSummary = {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  status: ChecklistStatus;
+  scoringMode: ChecklistScoringMode;
+  passThreshold: number;
+  scaleLevels: ChecklistScaleLevel[] | null;
+  requiresReview: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: ChecklistItemSummary[];
+};
+
+export type ChecklistItemResultSummary = {
+  id: string;
+  itemId: string;
+  checked: boolean;
+  scaleLevel: number | null;
+  points: number;
+  photoUrl: string | null;
+  comment: string | null;
+  reviewStatus: ChecklistReviewStatus;
+  reviewComment: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+};
+
+export type ChecklistInstanceSummary = {
+  id: string;
+  organizationId: string;
+  checklistId: string;
+  userId: string;
+  assignedBy: string | null;
+  status: ChecklistInstanceStatus;
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  passed: boolean;
+  dueAt: string | null;
+  submittedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  checklist?: ChecklistSummary;
+  results: ChecklistItemResultSummary[];
+};

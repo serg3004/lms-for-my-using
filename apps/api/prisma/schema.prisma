@@ -114,6 +114,32 @@ enum CertificateStatus {
   revoked
 }
 
+enum ChecklistStatus {
+  draft
+  published
+  archived
+}
+
+enum ChecklistScoringMode {
+  sum_points
+  all_required
+  scale
+}
+
+enum ChecklistInstanceStatus {
+  assigned
+  in_progress
+  submitted
+  completed
+  expired
+}
+
+enum ChecklistReviewStatus {
+  pending
+  approved
+  rejected
+}
+
 model Organization {
   id                              String                         @id @default(uuid()) @db.Uuid
   name                            String
@@ -143,6 +169,10 @@ model Organization {
   managerGroups                   ManagerGroup[]
   materialFileDeletionAudits      MaterialFileDeletionAudit[]
   notifications                   Notification[]
+  checklists                      Checklist[]
+  checklistItems                  ChecklistItem[]
+  checklistInstances              ChecklistInstance[]
+  checklistItemResults            ChecklistItemResult[]
 
   @@map("organizations")
 }
@@ -178,6 +208,10 @@ model User {
   groupMemberships    GroupMember[]
   managedGroups       ManagerGroup[]
   notifications       Notification[]
+  checklistsCreated          Checklist[]           @relation("ChecklistCreatedBy")
+  checklistInstances         ChecklistInstance[]   @relation("ChecklistInstanceUser")
+  checklistInstancesAssigned ChecklistInstance[]   @relation("ChecklistInstanceAssignedBy")
+  checklistItemReviews       ChecklistItemResult[] @relation("ChecklistItemResultReviewedBy")
 
   @@unique([organizationId, email])
   @@index([organizationId, status])
@@ -583,6 +617,111 @@ model Certificate {
   @@index([assessmentAttemptId])
   @@index([issuedAt])
   @@map("certificates")
+}
+
+model Checklist {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  title          String
+  description    String?
+  status         ChecklistStatus      @default(draft)
+  scoringMode    ChecklistScoringMode @default(sum_points) @map("scoring_mode")
+  passThreshold  Int                  @default(80) @map("pass_threshold")
+  scaleLevels    Json?                @map("scale_levels")
+  requiresReview Boolean              @default(false) @map("requires_review")
+  createdBy      String?              @map("created_by") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator      User?               @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  items        ChecklistItem[]
+  instances    ChecklistInstance[]
+
+  @@index([organizationId, status])
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  checklistId    String   @map("checklist_id") @db.Uuid
+  order          Int      @default(0)
+  text           String
+  points         Int      @default(0)
+  isRequired     Boolean  @default(true) @map("is_required")
+  photoRequired  Boolean  @default(false) @map("photo_required")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist    Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  results      ChecklistItemResult[]
+
+  @@index([organizationId])
+  @@index([checklistId, order])
+  @@map("checklist_items")
+}
+
+model ChecklistInstance {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  checklistId    String                  @map("checklist_id") @db.Uuid
+  userId         String                  @map("user_id") @db.Uuid
+  assignedBy     String?                 @map("assigned_by") @db.Uuid
+  status         ChecklistInstanceStatus @default(assigned)
+  totalScore     Int                     @default(0) @map("total_score")
+  maxScore       Int                     @default(0) @map("max_score")
+  percentage     Int                     @default(0)
+  passed         Boolean                 @default(false)
+  dueAt          DateTime?               @map("due_at") @db.Timestamptz
+  submittedAt    DateTime?               @map("submitted_at") @db.Timestamptz
+  completedAt    DateTime?               @map("completed_at") @db.Timestamptz
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?               @map("deleted_at") @db.Timestamptz
+
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist      Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user           User                  @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedByUser User?                 @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+  results        ChecklistItemResult[]
+
+  @@index([organizationId, status])
+  @@index([checklistId, status])
+  @@index([userId])
+  @@map("checklist_instances")
+}
+
+model ChecklistItemResult {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  instanceId     String                @map("instance_id") @db.Uuid
+  itemId         String                @map("item_id") @db.Uuid
+  checked        Boolean               @default(false)
+  scaleLevel     Int?                  @map("scale_level")
+  points         Int                   @default(0)
+  photoUrl       String?               @map("photo_url")
+  comment        String?
+  reviewStatus   ChecklistReviewStatus @default(pending) @map("review_status")
+  reviewComment  String?               @map("review_comment")
+  reviewedBy     String?               @map("reviewed_by") @db.Uuid
+  reviewedAt     DateTime?             @map("reviewed_at") @db.Timestamptz
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance     ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  item         ChecklistItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  reviewer     User?             @relation("ChecklistItemResultReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@unique([instanceId, itemId])
+  @@index([organizationId])
+  @@index([instanceId])
+  @@index([itemId])
+  @@map("checklist_item_results")
 }
 
 model Membership {

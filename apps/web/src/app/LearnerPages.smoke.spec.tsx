@@ -26,6 +26,7 @@ import { LearnerAssignmentsPage } from './LearnerAssignmentsPage';
 import { LearnerCertificateDetailPage } from './LearnerCertificateDetailPage';
 import { LearnerCertificatesPage } from './LearnerCertificatesPage';
 import { LearnerCourseDetailPage } from './LearnerCourseDetailPage';
+import { findResultForItem, LearnerChecklistsPage } from './LearnerChecklistsPage';
 import { LearnerCoursesPage } from './LearnerCoursesPage';
 import { LearnerLessonDetailPage } from './LearnerLessonDetailPage';
 import { LearnerLessonMaterialsPage } from './LearnerLessonMaterialsPage';
@@ -47,6 +48,24 @@ function useReadyState(value: unknown) {
   reactMocks.useState.mockImplementation((initialState: unknown) => {
     const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
     return [isIdleLoadState(resolvedInitial) ? value : resolvedInitial, vi.fn()];
+  });
+}
+
+function useFirstCallReadyState(value: unknown) {
+  let callCount = 0;
+  reactMocks.useState.mockImplementation((initialState: unknown) => {
+    callCount++;
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [callCount === 1 ? value : resolvedInitial, vi.fn()];
+  });
+}
+
+function useStateAtCalls(overrides: Record<number, unknown>) {
+  let callCount = 0;
+  reactMocks.useState.mockImplementation((initialState: unknown) => {
+    callCount++;
+    const resolvedInitial = typeof initialState === 'function' ? (initialState as () => unknown)() : initialState;
+    return [callCount in overrides ? overrides[callCount] : resolvedInitial, vi.fn()];
   });
 }
 
@@ -181,6 +200,115 @@ describe('learner page smoke rendering', () => {
     expect(html).toContain('MVP Quiz');
     expect(html).toContain('href="/learn/assessments/assessment-1"');
     expect(html).toContain('70');
+  });
+
+  it('renders checklists loading state without crashing', () => {
+    useLoadingState();
+
+    const html = renderToStaticMarkup(<LearnerChecklistsPage />);
+
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders checklists happy path without crashing', () => {
+    useFirstCallReadyState({
+      status: 'loaded',
+      instances: [
+        {
+          id: 'instance-1',
+          organizationId: 'org-1',
+          checklistId: 'checklist-1',
+          userId: 'user-1',
+          assignedBy: null,
+          status: 'completed',
+          totalScore: 25,
+          maxScore: 30,
+          percentage: 83,
+          passed: true,
+          dueAt: null,
+          submittedAt: null,
+          completedAt: '2026-01-01T00:00:00.000Z',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          checklist: {
+            id: 'checklist-1',
+            organizationId: 'org-1',
+            title: 'Приёмка нового стажёра',
+            description: null,
+            status: 'published',
+            scoringMode: 'sum_points',
+            passThreshold: 80,
+            scaleLevels: null,
+            requiresReview: false,
+            createdBy: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            items: [],
+          },
+          results: [],
+        },
+      ],
+    });
+
+    const html = renderToStaticMarkup(<LearnerChecklistsPage />);
+
+    expect(html).toContain('Приёмка нового стажёра');
+  });
+
+  it('renders the checklist taking view (scale scoring, photo slot) without crashing', () => {
+    const loaded = {
+      status: 'loaded' as const,
+      instances: [
+        {
+          id: 'instance-1',
+          organizationId: 'org-1',
+          checklistId: 'checklist-1',
+          userId: 'user-1',
+          assignedBy: null,
+          status: 'in_progress',
+          totalScore: 0,
+          maxScore: 100,
+          percentage: 0,
+          passed: false,
+          dueAt: null,
+          submittedAt: null,
+          completedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          checklist: {
+            id: 'checklist-1',
+            organizationId: 'org-1',
+            title: 'Аттестация кассира',
+            description: 'Проверка стандарта обслуживания',
+            status: 'published',
+            scoringMode: 'scale',
+            passThreshold: 60,
+            scaleLevels: [
+              { level: 1, label: 'Очень плохо', points: 0 },
+              { level: 5, label: 'Отлично', points: 100 },
+            ],
+            requiresReview: false,
+            createdBy: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            items: [
+              { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
+              { id: 'item-2', checklistId: 'checklist-1', order: 1, text: 'Соблюдение стандартов', points: 0, isRequired: true, photoRequired: false },
+            ],
+          },
+          results: [
+            { id: 'result-1', itemId: 'item-1', checked: false, scaleLevel: 5, points: 100, photoUrl: 'https://example.com/photo.jpg', comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+          ],
+        },
+      ],
+    };
+    // Call order in LearnerChecklistsPage: 1 loadState, 2 openInstanceId.
+    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+
+    const html = renderToStaticMarkup(<LearnerChecklistsPage />);
+
+    expect(html).toContain('Аттестация кассира');
+    expect(html).toContain('Отлично');
   });
 
   it('renders certificates loading state without crashing', () => {
@@ -616,5 +744,19 @@ describe('learner page smoke rendering', () => {
     const html = renderToStaticMarkup(<LearnerProgressPage />);
 
     expect(html).toContain('Workplace Safety');
+  });
+});
+
+describe('findResultForItem', () => {
+  const results = [
+    { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null },
+  ];
+
+  it('finds the result matching the given item id', () => {
+    expect(findResultForItem(results, 'item-1')).toEqual(results[0]);
+  });
+
+  it('returns undefined when no result matches', () => {
+    expect(findResultForItem(results, 'item-missing')).toBeUndefined();
   });
 });

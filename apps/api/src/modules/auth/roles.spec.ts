@@ -122,6 +122,12 @@ describe('rolePolicies', () => {
     managerTeamSummaryRead: ['admin', 'manager'],
     notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
     notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
+    checklistsRead: ['admin', 'manager', 'instructor'],
+    checklistsCreate: ['admin', 'instructor'],
+    checklistInstancesRead: ['admin', 'manager', 'instructor', 'learner'],
+    checklistInstancesCreate: ['admin', 'manager', 'instructor'],
+    checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],
+    checklistReviewWrite: ['admin', 'manager', 'instructor'],
   } satisfies Record<PolicyName, readonly UserRole[]>;
 
   it('has an expected-roles entry for every key of rolePolicies (and no extra ones)', () => {

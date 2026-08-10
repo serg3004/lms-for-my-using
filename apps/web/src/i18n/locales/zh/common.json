@@ -26,7 +26,8 @@
       "settingsSection": "设置",
       "orgStructure": "组织结构",
       "roles": "角色",
-      "themeSettings": "外观设置"
+      "themeSettings": "外观设置",
+      "checklists": "检查清单"
     },
     "title": "管理面板",
     "subtitle": "欢迎回来，{{name}}。",
@@ -640,6 +641,83 @@
       "cancel": "取消",
       "add": "添加",
       "delete": "删除"
+    },
+    "checklists": {
+      "title": "检查清单",
+      "eyebrow": "知识管控",
+      "create": "创建检查清单",
+      "subtitle": "可配置的检查清单：按分数或自定义评分标准评分，支持照片确认，可自动或人工评分。",
+      "sessionExpired": "会话已过期，请重新登录。",
+      "loadError": "无法加载检查清单。",
+      "loading": "正在加载检查清单...",
+      "statusError": "无法更新状态。",
+      "deleteError": "无法删除检查清单。",
+      "newChecklistTitle": "新检查清单",
+      "close": "关闭",
+      "searchPlaceholder": "搜索检查清单",
+      "allStatuses": "所有状态",
+      "col": {
+        "title": "标题",
+        "items": "项目",
+        "scoring": "评分方式",
+        "status": "状态"
+      },
+      "edit": "编辑",
+      "delete": "删除",
+      "empty": "未找到检查清单。",
+      "deleteTitle": "删除检查清单",
+      "deleteConfirm": "删除“{{title}}”？此操作无法撤销。",
+      "cancel": "取消",
+      "status": {
+        "draft": "草稿",
+        "published": "已发布",
+        "archived": "已归档"
+      },
+      "scoring": {
+        "sumPoints": "分数累加",
+        "allRequired": "全部项目必填",
+        "scale": "自定义评分标准"
+      },
+      "backToList": "所有检查清单",
+      "publish": "发布",
+      "publishNoItems": "发布前请至少添加一个项目。",
+      "field": {
+        "title": "标题",
+        "description": "描述",
+        "points": "分数",
+        "photoRequired": "需要照片",
+        "passThreshold": "通过阈值（%）",
+        "requiresReview": "结果生效前需要讲师确认",
+        "assignUserId": "用户 ID"
+      },
+      "itemsTitle": "检查清单项目",
+      "noItems": "暂无项目。",
+      "addItemPlaceholder": "新项目内容",
+      "addItem": "添加项目",
+      "scoringTitle": "评分方式",
+      "scaleLevelsTitle": "评分标准等级",
+      "scaleLevelLabel": "名称",
+      "scaleLevelDescription": "描述（可选）",
+      "addScaleLevel": "添加等级",
+      "scaleLevelsHint": "每个等级的名称、描述和分数均可自由编辑——数量不限于 5 个。",
+      "requiresReviewHint": "启用后，学员的填写会自动计分，但结果需等待讲师或经理逐项确认后才生效。",
+      "saveError": "无法保存检查清单。",
+      "saving": "保存中...",
+      "save": "保存",
+      "publishError": "无法发布检查清单。",
+      "assignmentTitle": "分配",
+      "assignUserHint": "目前仅支持手动分配——自动和定时触发计划后续支持。",
+      "assignError": "无法分配此检查清单。",
+      "assign": "分配",
+      "instancesTitle": "分配记录",
+      "noInstances": "尚未分配给任何人。",
+      "instanceStatus": {
+        "assigned": "已分配",
+        "in_progress": "进行中",
+        "submitted": "待审核",
+        "completed": "已完成",
+        "expired": "已过期"
+      }
     }
   },
   "notFound": {
@@ -1300,7 +1378,8 @@
       "colInProgress": "进行中",
       "colScore": "成绩",
       "empty": "该课程暂无学员进度"
-    }
+    },
+    "navChecklists": "检查清单"
   },
   "accountSwitcher": {
     "button": "切换账户"
@@ -1326,5 +1405,49 @@
     "breadcrumb": "面包屑导航",
     "openNav": "打开导航",
     "closeNav": "关闭导航"
+  },
+  "checklists": {
+    "navLink": "检查清单",
+    "title": "检查清单",
+    "sessionExpired": "会话已过期，请重新登录。",
+    "loadError": "无法加载您的检查清单。",
+    "loading": "正在加载检查清单...",
+    "subtitle": "分配给您的检查清单——请完成并在需要的地方附上照片。",
+    "empty": "您目前没有分配到的检查清单。",
+    "status": {
+      "assigned": "已分配",
+      "in_progress": "进行中",
+      "submitted": "待审核",
+      "completed": "已完成",
+      "expired": "已过期"
+    },
+    "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
+    "backToList": "所有检查清单",
+    "submitError": "无法保存该项目。",
+    "markDone": "已完成",
+    "points": "分",
+    "photoUrlPlaceholder": "照片链接",
+    "passed": "通过",
+    "notPassed": "未通过",
+    "awaitingReview": "已提交——正在等待讲师确认结果。"
+  },
+  "checklistReview": {
+    "title": "检查清单审核",
+    "loadError": "无法加载待审核列表。",
+    "loading": "加载中...",
+    "subtitle": "学员已提交、等待您确认的检查清单。",
+    "empty": "目前没有待审核的内容。",
+    "submittedBy": "提交人：用户 {{userId}}",
+    "backToList": "所有待审核项",
+    "saveError": "无法保存该决定。",
+    "checked": "已标记完成",
+    "unchecked": "未标记",
+    "photoAttached": "已附照片",
+    "photoMissing": "缺少照片——需要您确认",
+    "photoNotRequired": "无需照片",
+    "approve": "通过",
+    "reject": "驳回",
+    "commentPlaceholder": "备注（可选）",
+    "currentResult": "当前结果"
   }
 }
