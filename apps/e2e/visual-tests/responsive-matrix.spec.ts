@@ -69,15 +69,24 @@ async function installAdminMocks(page: Page) {
 }
 
 async function installGuestMock(page: Page) {
-  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+  let refreshRequests = 0;
+  const unauthorized = (path: string) => ({
     status: 401,
     json: {
       statusCode: 401,
       error: { code: 'UNAUTHORIZED', message: 'Synthetic guest session' },
-      path: '/api/v1/auth/me',
+      path,
       timestamp: '2026-01-15T12:00:00.000Z',
     },
-  }));
+  });
+
+  await page.route('**/api/v1/auth/refresh', (route) => {
+    refreshRequests += 1;
+    return route.fulfill(unauthorized('/api/v1/auth/refresh'));
+  });
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill(unauthorized('/api/v1/auth/me')));
+
+  return () => refreshRequests;
 }
 
 for (const width of widths) {
@@ -85,9 +94,10 @@ for (const width of widths) {
     test.use({ viewport: { width, height } });
 
     test('matches the public navigation baseline without page overflow', async ({ page }, testInfo) => {
-      await installGuestMock(page);
+      const getRefreshRequests = await installGuestMock(page);
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      expect(getRefreshRequests()).toBeGreaterThan(0);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await captureVisualBaseline(page, testInfo, `public-home-${width}`);
@@ -121,10 +131,11 @@ for (const width of widths) {
 
 test('remains usable at 200% browser zoom', async ({ page }) => {
   await page.setViewportSize({ width: 320, height });
-  await installGuestMock(page);
+  const getRefreshRequests = await installGuestMock(page);
   await page.goto('/');
   const client = await page.context().newCDPSession(page);
   await client.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
   await expectNoPageOverflow(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  expect(getRefreshRequests()).toBeGreaterThan(0);
 });

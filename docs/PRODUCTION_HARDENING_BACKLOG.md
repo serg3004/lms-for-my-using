@@ -4,7 +4,7 @@
 >
 > **Назначение:** хранить только актуальные hardening/operations gaps. Закрытые исторические пункты остаются как provenance, но не должны выглядеть как open work.
 >
-> **Проверено по `main`:** `3c199d166c0e24e4a3c69d2b4c5e79146244aa78` (2026-08-10).
+> **Проверено по `main`:** `a73dc746111575a900d6668f4b79ccbd9597bc8c` (2026-08-10).
 
 ## 1. Статусы
 
@@ -104,14 +104,16 @@ Required outcome:
 
 ### H-005 — Responsive visual guest refresh mock
 
-**Статус:** `OPEN`
+**Статус:** `DONE`
 
-Visual guest mocking must cover `/api/v1/auth/refresh` so visual tests are isolated from a real API and do not produce proxy/refused-connection noise.
+Responsive guest visual tests полностью изолируют guest auth flow от real API:
 
-Required outcome:
+- fixture перехватывает `/api/v1/auth/me` и `/api/v1/auth/refresh`;
+- оба endpoint возвращают synthetic `401` guest response;
+- guest scenarios проверяют, что refresh route фактически вызывается и перехватывается;
+- production auth/client behavior не изменялось.
 
-- add refresh mock to the guest visual-test fixture;
-- keep production auth behavior unchanged.
+Current evidence: `apps/e2e/visual-tests/responsive-matrix.spec.ts`.
 
 ---
 
