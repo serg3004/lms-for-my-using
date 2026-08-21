@@ -46,3 +46,17 @@ scrape endpoint and filesystem calls are excluded to avoid noise and secrets.
 Do not configure request bodies, HTTP headers, SQL parameters, job payloads or
 S3 object keys as custom span attributes. Correlate application logs and traces
 using the existing validated `X-Request-ID` telemetry context.
+
+## Известные инциденты деплоя
+
+**2026-08-10 — crash-loop API на Railway после мержа PR #577 (observability).**
+Причина: `METRICS_BEARER_TOKEN` стал обязательным в production (`apps/api/src/config/env.ts`),
+но не был добавлен в переменные окружения сервиса `api` на Railway.
+`loadApiEnv()` кидал ошибку при каждом старте — контейнер уходил в CRASHED.
+
+Исправлено добавлением `METRICS_BEARER_TOKEN` (32+ символов) в Railway dashboard
+сервиса `api` (без изменений кода).
+
+**Вывод на будущее:** при добавлении новой обязательной production-переменной в
+`env.ts` — сразу проверять/добавлять её в Railway для всех окружений, иначе
+следующий деплой уйдёт в crash-loop.
