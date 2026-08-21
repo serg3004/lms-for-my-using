@@ -761,7 +761,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ⚠️
+## PR 96 — feat: admin assessment builder UI ✅
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -770,9 +770,9 @@ Assessments, certificates и upload являются критичными для
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
 
-> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main.
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами (`QuestionsEditor.tsx`): загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`), редактирование и удаление вопроса (`PATCH`/`DELETE /questions/:id`, с подтверждением через `ConfirmDialog`), редактирование и удаление варианта ответа (`PATCH`/`DELETE /questions/:questionId/options/:id`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main; edit/delete добавлены отдельным PR.
 >
-> **Долг:** Нет редактирования и удаления вопросов/вариантов — только добавление. Если вопрос создан с ошибкой, исправить через UI нельзя. Добавить `PATCH /questions/:id` и `DELETE /questions/:id` + аналогично для options, когда понадобится.
+> **Долг закрыт:** Backend-эндпоинты `PATCH`/`DELETE` для вопросов и вариантов уже существовали в `assessment-questions.controller.ts` — не хватало только UI. Добавлены inline-формы редактирования и `ConfirmDialog` для удаления вопроса/варианта, тесты для новых `replaceOption`/`removeOption` helpers в `model.spec.ts`.
 
 ---
 

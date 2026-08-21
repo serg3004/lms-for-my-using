@@ -70,6 +70,14 @@ export function appendOption(options: Record<string, AnswerOption[]>, questionId
   return { ...options, [questionId]: [...(options[questionId] ?? []), option] };
 }
 
+export function replaceOption(options: Record<string, AnswerOption[]>, questionId: string, updated: AnswerOption) {
+  return { ...options, [questionId]: (options[questionId] ?? []).map((option) => (option.id === updated.id ? updated : option)) };
+}
+
+export function removeOption(options: Record<string, AnswerOption[]>, questionId: string, optionId: string) {
+  return { ...options, [questionId]: (options[questionId] ?? []).filter((option) => option.id !== optionId) };
+}
+
 export function getAssessmentBuilderLoadErrorKey(error: unknown): string {
   return error instanceof ApiClientError && error.status === 401 ? 'admin.assessmentBuilder.sessionExpired' : 'admin.assessmentBuilder.loadError';
 }

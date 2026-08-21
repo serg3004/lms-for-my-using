@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../shared/apiClient.js';
-import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
+import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, removeOption, replaceOption, type AnswerOption, type Question } from './model.js';
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
@@ -20,6 +20,31 @@ describe('assessment builder model', () => {
   it('updates one field and appends an option immutably', () => {
     expect(assessmentFormReducer(emptyAssessmentForm(), { type: 'change', field: 'title', value: 'Quiz' }).title).toBe('Quiz');
     expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toHaveLength(1);
+  });
+});
+
+describe('replaceOption', () => {
+  it('replaces the matching option for a question immutably, leaving others untouched', () => {
+    const options = { q1: [{ id: 'o1', text: 'Yes', imageUrl: null, isCorrect: false, order: 0 }, { id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 1 }] };
+    const updated = replaceOption(options, 'q1', { id: 'o1', text: 'Yes (edited)', imageUrl: null, isCorrect: true, order: 0 });
+
+    expect(updated).not.toBe(options);
+    expect(updated.q1).toEqual([{ id: 'o1', text: 'Yes (edited)', imageUrl: null, isCorrect: true, order: 0 }, { id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 1 }]);
+  });
+
+  it('is a no-op when the question has no options yet', () => {
+    expect(replaceOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toEqual([]);
+  });
+});
+
+describe('removeOption', () => {
+  it('removes the matching option for a question immutably, leaving other questions untouched', () => {
+    const options = { q1: [{ id: 'o1', text: 'Yes', imageUrl: null, isCorrect: false, order: 0 }], q2: [{ id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 0 }] };
+    const updated = removeOption(options, 'q1', 'o1');
+
+    expect(updated).not.toBe(options);
+    expect(updated.q1).toEqual([]);
+    expect(updated.q2).toEqual(options.q2);
   });
 });
 
