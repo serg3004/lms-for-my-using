@@ -385,7 +385,7 @@ Learning content зоны должны иметь согласованные lis
 
 > **Факт:** `learning-content-error-contract.spec.ts` — специфичные тесты: 404 для courses/lessons/materials/assignments/progress (5 кейсов), 409 CONFLICT, 400 VALIDATION_ERROR от Zod.
 
-## PR 64d — assessments/certificates/upload API response consistency ✅
+## PR 64d — assessments/certificates/upload API response consistency ⚠️
 ### Проблема – краткое понимание
 Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
 
@@ -399,11 +399,11 @@ Assessments, certificates и upload являются критичными для
 - [x] assessment/certificate/upload endpoints проверены;
 - [x] response contract согласован;
 - [x] OpenAPI/docs обновлены при необходимости;
-- [x] backend tests добавлены;
+- [ ] backend tests добавлены (специфичного spec-файла нет, в отличие от 64c);
 - [x] frontend clients не сломаны;
 - [x] CI зелёный.
 
-> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Regression-тесты добавлены в `apps/api/src/common/filters/assessment-cert-upload-error-contract.spec.ts` (14 тестов: not found, forbidden, bad request, upload errors) — все проходят.
+> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Специфичного файла `assessment-error-contract.spec.ts` нет — в отличие от `learning-content-error-contract.spec.ts` для 64c. Функционально работает, тестовое покрытие частичное.
 
 ---
 
@@ -761,7 +761,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ✅
+## PR 96 — feat: admin assessment builder UI ⚠️
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -770,9 +770,9 @@ Assessments, certificates и upload являются критичными для
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
 
-> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами (`QuestionsEditor.tsx`): загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`), редактирование и удаление вопроса (`PATCH`/`DELETE /questions/:id`, с подтверждением через `ConfirmDialog`), редактирование и удаление варианта ответа (`PATCH`/`DELETE /questions/:questionId/options/:id`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main; edit/delete добавлены отдельным PR.
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main.
 >
-> **Долг закрыт:** Backend-эндпоинты `PATCH`/`DELETE` для вопросов и вариантов уже существовали в `assessment-questions.controller.ts` — не хватало только UI. Добавлены inline-формы редактирования и `ConfirmDialog` для удаления вопроса/варианта, тесты для новых `replaceOption`/`removeOption` helpers в `model.spec.ts`.
+> **Долг:** Нет редактирования и удаления вопросов/вариантов — только добавление. Если вопрос создан с ошибкой, исправить через UI нельзя. Добавить `PATCH /questions/:id` и `DELETE /questions/:id` + аналогично для options, когда понадобится.
 
 ---
 

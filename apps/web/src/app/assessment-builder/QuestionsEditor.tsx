@@ -1,8 +1,8 @@
 import { type FormEvent, useState } from 'react';
 import type { TFunction } from 'i18next';
-import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
+import { apiRequest } from '../../shared/apiClient.js';
 import { ConfirmDialog } from '../../shared/adminPage.js';
-import { appendOption, removeOption, replaceOption, type AnswerOption, type Assessment, type Course, type Question, type QuestionType } from './model.js';
+import { appendOption, buildEditOptionInitialState, buildEditQuestionInitialState, buildOptionCreatePayload, buildOptionUpdatePayload, buildQuestionCreatePayload, buildQuestionUpdatePayload, removeOption, replaceOption, resolveApiErrorMessage, toggleOptionFormTarget, type AnswerOption, type Assessment, type Course, type Question, type QuestionType } from './model.js';
 
 type Props = { assessment: Assessment | null; courses: Course[]; loading: boolean; questions: Question[]; setQuestions: React.Dispatch<React.SetStateAction<Question[]>>; options: Record<string, AnswerOption[]>; setOptions: React.Dispatch<React.SetStateAction<Record<string, AnswerOption[]>>>; t: TFunction };
 export function QuestionsEditor({ assessment, courses, loading, questions, setQuestions, options, setOptions, t }: Props) {
@@ -20,21 +20,22 @@ export function QuestionsEditor({ assessment, courses, loading, questions, setQu
   const [optionEditSaving, setOptionEditSaving] = useState(false); const [optionEditError, setOptionEditError] = useState<string | null>(null);
   const [deleteOptionTarget, setDeleteOptionTarget] = useState<{ questionId: string; option: AnswerOption } | null>(null); const [deletingOption, setDeletingOption] = useState(false);
 
-  async function addQuestion(event: FormEvent) { event.preventDefault(); if (!assessment || !title.trim()) return; setSaving(true); setError(null); try { const created = await apiRequest<Question>(`/assessments/${encodeURIComponent(assessment.id)}/questions`, { method: 'POST', body: JSON.stringify({ organizationId: courses[0]?.organizationId ?? '', type, title: title.trim(), points: Number(points) || 1, order: questions.length }) }); setQuestions((items) => [...items, created]); setOptions((items) => ({ ...items, [created.id]: [] })); setTitle(''); setPoints('1'); } catch (reason) { setError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.questionSaveError', 'Failed to add question.')); } finally { setSaving(false); } }
-  async function addOption(questionId: string, event: FormEvent) { event.preventDefault(); if (!optionText.trim()) return; setOptionSaving(true); setOptionError(null); try { const created = await apiRequest<AnswerOption>(`/questions/${encodeURIComponent(questionId)}/options`, { method: 'POST', body: JSON.stringify({ organizationId: courses[0]?.organizationId ?? '', text: optionText.trim(), isCorrect: correct, order: options[questionId]?.length ?? 0 }) }); setOptions((items) => appendOption(items, questionId, created)); setOptionText(''); setCorrect(false); setOptionFor(null); } catch (reason) { setOptionError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.optionSaveError', 'Failed to add option.')); } finally { setOptionSaving(false); } }
+  async function addQuestion(event: FormEvent) { event.preventDefault(); const payload = assessment ? buildQuestionCreatePayload(courses[0]?.organizationId ?? '', type, title, points, questions.length) : null; if (!payload) return; setSaving(true); setError(null); try { const created = await apiRequest<Question>(`/assessments/${encodeURIComponent(assessment!.id)}/questions`, { method: 'POST', body: JSON.stringify(payload) }); setQuestions((items) => [...items, created]); setOptions((items) => ({ ...items, [created.id]: [] })); setTitle(''); setPoints('1'); } catch (reason) { setError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.questionSaveError', 'Failed to add question.'))); } finally { setSaving(false); } }
+  async function addOption(questionId: string, event: FormEvent) { event.preventDefault(); const payload = buildOptionCreatePayload(courses[0]?.organizationId ?? '', optionText, correct, options[questionId]?.length ?? 0); if (!payload) return; setOptionSaving(true); setOptionError(null); try { const created = await apiRequest<AnswerOption>(`/questions/${encodeURIComponent(questionId)}/options`, { method: 'POST', body: JSON.stringify(payload) }); setOptions((items) => appendOption(items, questionId, created)); setOptionText(''); setCorrect(false); setOptionFor(null); } catch (reason) { setOptionError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.optionSaveError', 'Failed to add option.'))); } finally { setOptionSaving(false); } }
 
-  function startEditQuestion(question: Question) { setEditingQuestionId(question.id); setEditQuestionTitle(question.title); setEditQuestionType(question.type); setEditQuestionPoints(String(question.points)); setQuestionEditError(null); }
+  function startEditQuestion(question: Question) { const initial = buildEditQuestionInitialState(question); setEditingQuestionId(question.id); setEditQuestionTitle(initial.title); setEditQuestionType(initial.type); setEditQuestionPoints(initial.points); setQuestionEditError(null); }
   function cancelEditQuestion() { setEditingQuestionId(null); setQuestionEditError(null); }
   async function saveEditQuestion(questionId: string, event: FormEvent) {
     event.preventDefault();
-    if (!editQuestionTitle.trim()) return;
+    const payload = buildQuestionUpdatePayload(editQuestionTitle, editQuestionType, editQuestionPoints);
+    if (!payload) return;
     setQuestionEditSaving(true); setQuestionEditError(null);
     try {
-      const updated = await apiRequest<Question>(`/questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: JSON.stringify({ title: editQuestionTitle.trim(), type: editQuestionType, points: Number(editQuestionPoints) || 1 }) });
+      const updated = await apiRequest<Question>(`/questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: JSON.stringify(payload) });
       setQuestions((items) => items.map((item) => (item.id === questionId ? updated : item)));
       setEditingQuestionId(null);
     } catch (reason) {
-      setQuestionEditError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.questionUpdateError', 'Failed to update question.'));
+      setQuestionEditError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.questionUpdateError', 'Failed to update question.')));
     } finally {
       setQuestionEditSaving(false);
     }
@@ -48,25 +49,26 @@ export function QuestionsEditor({ assessment, courses, loading, questions, setQu
       setOptions((items) => { const next = { ...items }; delete next[deleteQuestionTarget.id]; return next; });
       setDeleteQuestionTarget(null);
     } catch (reason) {
-      setError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.questionDeleteError', 'Failed to delete question.'));
+      setError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.questionDeleteError', 'Failed to delete question.')));
       setDeleteQuestionTarget(null);
     } finally {
       setDeletingQuestion(false);
     }
   }
 
-  function startEditOption(questionId: string, option: AnswerOption) { setEditingOption({ questionId, optionId: option.id }); setEditOptionText(option.text ?? ''); setEditOptionCorrect(option.isCorrect); setOptionEditError(null); }
+  function startEditOption(questionId: string, option: AnswerOption) { const initial = buildEditOptionInitialState(option); setEditingOption({ questionId, optionId: option.id }); setEditOptionText(initial.text); setEditOptionCorrect(initial.correct); setOptionEditError(null); }
   function cancelEditOption() { setEditingOption(null); setOptionEditError(null); }
   async function saveEditOption(questionId: string, optionId: string, event: FormEvent) {
     event.preventDefault();
-    if (!editOptionText.trim()) return;
+    const payload = buildOptionUpdatePayload(editOptionText, editOptionCorrect);
+    if (!payload) return;
     setOptionEditSaving(true); setOptionEditError(null);
     try {
-      const updated = await apiRequest<AnswerOption>(`/questions/${encodeURIComponent(questionId)}/options/${encodeURIComponent(optionId)}`, { method: 'PATCH', body: JSON.stringify({ text: editOptionText.trim(), isCorrect: editOptionCorrect }) });
+      const updated = await apiRequest<AnswerOption>(`/questions/${encodeURIComponent(questionId)}/options/${encodeURIComponent(optionId)}`, { method: 'PATCH', body: JSON.stringify(payload) });
       setOptions((items) => replaceOption(items, questionId, updated));
       setEditingOption(null);
     } catch (reason) {
-      setOptionEditError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.optionUpdateError', 'Failed to update option.'));
+      setOptionEditError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.optionUpdateError', 'Failed to update option.')));
     } finally {
       setOptionEditSaving(false);
     }
@@ -79,7 +81,7 @@ export function QuestionsEditor({ assessment, courses, loading, questions, setQu
       setOptions((items) => removeOption(items, deleteOptionTarget.questionId, deleteOptionTarget.option.id));
       setDeleteOptionTarget(null);
     } catch (reason) {
-      setOptionError(reason instanceof ApiClientError ? reason.message : t('admin.assessmentBuilder.optionDeleteError', 'Failed to delete option.'));
+      setOptionError(resolveApiErrorMessage(reason, t('admin.assessmentBuilder.optionDeleteError', 'Failed to delete option.')));
       setDeleteOptionTarget(null);
     } finally {
       setDeletingOption(false);
@@ -104,7 +106,7 @@ export function QuestionsEditor({ assessment, courses, loading, questions, setQu
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <div><span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginRight: '8px' }}>{index + 1}. [{question.type}] {question.points}pt</span><strong style={{ fontSize: '14px' }}>{question.title}</strong></div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => { setOptionFor(optionFor === question.id ? null : question.id); setOptionText(''); setCorrect(false); setOptionError(null); }}>+ {t('admin.assessmentBuilder.addOption', 'Add option')}</button>
+            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => { setOptionFor(toggleOptionFormTarget(optionFor, question.id)); setOptionText(''); setCorrect(false); setOptionError(null); }}>+ {t('admin.assessmentBuilder.addOption', 'Add option')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => startEditQuestion(question)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => setDeleteQuestionTarget(question)}>{t('admin.assessmentBuilder.delete', 'Delete')}</button>
           </div>
