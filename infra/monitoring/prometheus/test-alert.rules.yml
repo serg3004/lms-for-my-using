@@ -1,0 +1,14 @@
+# Load this file only during an alert-routing drill; it fires immediately.
+groups:
+  - name: lms-alert-routing-test
+    rules:
+      - alert: LmsAlertPipelineTest
+        expr: vector(1)
+        labels:
+          severity: warning
+          owner: platform
+          drill: "true"
+        annotations:
+          summary: "LMS alert-routing test (not an incident)"
+          description: "Synthetic alert used to verify Prometheus -> Alertmanager -> on-call delivery."
+          runbook_url: "https://github.com/serg3004/lms-for-my-using/blob/main/docs/runbooks/SLO_ALERTS.md#alert-routing-drill"

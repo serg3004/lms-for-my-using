@@ -47,6 +47,15 @@ Do not configure request bodies, HTTP headers, SQL parameters, job payloads or
 S3 object keys as custom span attributes. Correlate application logs and traces
 using the existing validated `X-Request-ID` telemetry context.
 
+## SLOs, alerts and dashboard
+
+Prometheus recording/alerting rules live in
+`infra/monitoring/prometheus/slo.rules.yml`. Load that file in Prometheus and
+route its `critical` and `warning` severities through Alertmanager. Import
+`infra/monitoring/grafana/lms-slo-dashboard.json` into Grafana. The objectives,
+ownership, escalation policy, triage steps and opt-in alert-routing drill are in
+`docs/runbooks/SLO_ALERTS.md`.
+
 ## Известные инциденты деплоя
 
 **2026-08-10 — crash-loop API на Railway после мержа PR #577 (observability).**

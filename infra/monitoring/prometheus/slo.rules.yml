@@ -1,0 +1,71 @@
+groups:
+  - name: lms-slo-recording
+    interval: 30s
+    rules:
+      - record: lms:slo_requests:rate5m
+        expr: |
+          sum by (slo) (
+            label_replace(rate(lms_http_requests_total{method="POST",route="/api/v1/auth/login"}[5m]), "slo", "login", "", "")
+          or label_replace(rate(lms_http_requests_total{method="GET",route=~"/api/v1/(courses|lessons|assignments|progress|assessments)(/.*)?"}[5m]), "slo", "learner_read", "", "")
+          or label_replace(rate(lms_http_requests_total{method="POST",route="/api/v1/assessments/:id/attempts"}[5m]), "slo", "assessment_submit", "", "")
+          )
+      - record: lms:slo_errors:rate5m
+        expr: |
+          sum by (slo) (
+            label_replace(rate(lms_http_requests_total{method="POST",route="/api/v1/auth/login",status_code=~"5.."}[5m]), "slo", "login", "", "")
+          or label_replace(rate(lms_http_requests_total{method="GET",route=~"/api/v1/(courses|lessons|assignments|progress|assessments)(/.*)?",status_code=~"5.."}[5m]), "slo", "learner_read", "", "")
+          or label_replace(rate(lms_http_requests_total{method="POST",route="/api/v1/assessments/:id/attempts",status_code=~"5.."}[5m]), "slo", "assessment_submit", "", "")
+          )
+      - record: lms:slo_error_ratio:rate5m
+        expr: lms:slo_errors:rate5m / lms:slo_requests:rate5m
+      - record: lms:slo_latency:p95_5m
+        expr: |
+          histogram_quantile(0.95, sum by (le, slo) (
+            label_replace(rate(lms_http_request_duration_seconds_bucket{method="POST",route="/api/v1/auth/login"}[5m]), "slo", "login", "", "")
+          or label_replace(rate(lms_http_request_duration_seconds_bucket{method="GET",route=~"/api/v1/(courses|lessons|assignments|progress|assessments)(/.*)?"}[5m]), "slo", "learner_read", "", "")
+          or label_replace(rate(lms_http_request_duration_seconds_bucket{method="POST",route="/api/v1/assessments/:id/attempts"}[5m]), "slo", "assessment_submit", "", "")
+          ))
+
+  - name: lms-slo-alerts
+    rules:
+      - alert: LmsSloFastBurn
+        expr: |
+          (
+            (lms:slo_error_ratio:rate5m{slo=~"login|learner_read"} > 14.4 * 0.001)
+          or (lms:slo_error_ratio:rate5m{slo="assessment_submit"} > 14.4 * 0.005)
+          )
+          and on (slo)
+          (
+            (sum by (slo) (lms:slo_errors:rate5m) / sum by (slo) (lms:slo_requests:rate5m)) > 0
+          )
+        for: 5m
+        labels:
+          severity: critical
+          owner: platform
+        annotations:
+          summary: "{{ $labels.slo }} SLO is consuming its error budget rapidly"
+          description: "The 5-minute error ratio has exceeded the 14.4x burn-rate threshold."
+          runbook_url: "https://github.com/serg3004/lms-for-my-using/blob/main/docs/runbooks/SLO_ALERTS.md"
+      - alert: LmsSloLatencyHigh
+        expr: |
+          lms:slo_latency:p95_5m{slo="login"} > 0.75
+          or lms:slo_latency:p95_5m{slo="learner_read"} > 1
+          or lms:slo_latency:p95_5m{slo="assessment_submit"} > 2
+        for: 15m
+        labels:
+          severity: warning
+          owner: platform
+        annotations:
+          summary: "{{ $labels.slo }} latency SLO is missed"
+          description: "The journey p95 latency has remained above its objective for 15 minutes."
+          runbook_url: "https://github.com/serg3004/lms-for-my-using/blob/main/docs/runbooks/SLO_ALERTS.md"
+      - alert: LmsSloNoTraffic
+        expr: absent(lms_http_requests_total)
+        for: 10m
+        labels:
+          severity: warning
+          owner: platform
+        annotations:
+          summary: "LMS SLO metrics are missing"
+          description: "Prometheus has no LMS HTTP request series; verify API health and scraping."
+          runbook_url: "https://github.com/serg3004/lms-for-my-using/blob/main/docs/runbooks/SLO_ALERTS.md"

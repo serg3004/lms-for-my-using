@@ -2948,7 +2948,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 214 — SLO и alerting 🔲
+## PR 214 — SLO и alerting ✅
 
 **Проблема:** Нет измеримых целей и критериев инцидента.
 
@@ -2961,6 +2961,12 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Alert содержит runbook
 - Test alert проверен
 - Owner/escalation/error budget определены.
+
+> **Факт:** Prometheus recording rules измеряют availability и p95 для login,
+> learner reads и assessment submit; burn-rate, latency и missing-metrics alerts
+> содержат owner и runbook URL. Grafana dashboard показывает цели и текущие
+> показатели. Runbook фиксирует 30-дневный budget, escalation и безопасный
+> opt-in drill для проверки полного alert routing.
 
 ---
 
