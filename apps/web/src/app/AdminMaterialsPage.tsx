@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadMaterialFileWithProgress } from '../shared/apiClient.js';
@@ -13,6 +13,7 @@ import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
+import { ACCEPTED_MATERIAL_FILE_TYPES, validateMaterialFile } from './materials/fileValidation.js';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
 type Lesson = { id: string; title: string; order: number };
@@ -36,17 +37,7 @@ type LoadState =
 
 const MATERIAL_STATUSES: MaterialStatus[] = ['active', 'archived'];
 
-const ACCEPTED_FILE_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'video/mp4',
-  'video/webm',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-].join(',');
+const ACCEPTED_FILE_TYPES = ACCEPTED_MATERIAL_FILE_TYPES.join(',');
 
 
 export function AdminMaterialsPage() {
@@ -133,9 +124,23 @@ export function AdminMaterialsPage() {
     await loadMaterials(courseId);
   }
 
-  function handleFileSelect(event: ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function selectFile(file: File, target: 'create' | 'edit') {
+    const validationError = validateMaterialFile(file);
+    if (validationError) {
+      const message = validationError === 'unsupported-type'
+        ? t('admin.materials.unsupportedFile', 'Unsupported file type. Choose PDF, MP4, MP3, DOCX, or XLSX.')
+        : validationError === 'empty'
+          ? t('admin.materials.emptyFile', 'The selected file is empty.')
+          : t('admin.materials.fileTooLarge', 'The selected file exceeds the 50 MB limit.');
+      if (target === 'create') {
+        setCreateErrors((previous) => ({ ...previous, fileUrl: message }));
+        setSubmitState({ status: 'error', message });
+      } else {
+        setEditErrors((previous) => ({ ...previous, fileUrl: message }));
+        setEditState({ status: 'error', message });
+      }
+      return;
+    }
 
     if (target === 'create') {
       setTitle((prev) => prev || file.name.replace(/\.[^.]+$/, ''));
@@ -146,6 +151,7 @@ export function AdminMaterialsPage() {
       setSizeBytes(file.size);
       setFileUrl('');
       setPendingMaterialId(null);
+      setCreateErrors((previous) => clearFieldError(previous, 'fileUrl'));
       dispatchUpload({ type: 'reset' });
       setSubmitState({ status: 'idle' });
     } else {
@@ -153,10 +159,22 @@ export function AdminMaterialsPage() {
       setEditSelectedFile(file);
       setEditFileName(file.name);
       setEditFileUrl('');
+      setEditErrors((previous) => clearFieldError(previous, 'fileUrl'));
       dispatchEditUpload({ type: 'reset' });
       setEditState({ status: 'idle' });
     }
+  }
+
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>, target: 'create' | 'edit') {
+    const file = event.target.files?.[0];
+    if (file) selectFile(file, target);
     event.target.value = '';
+  }
+
+  function handleFileDrop(event: DragEvent<HTMLDivElement>, target: 'create' | 'edit') {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) selectFile(file, target);
   }
 
   async function handleCreateMaterial(event: FormEvent<HTMLFormElement>) {
@@ -396,7 +414,11 @@ export function AdminMaterialsPage() {
                   required
                   error={createErrors.fileUrl}
                 >
-                  <div className="admin-upload">
+                  <div
+                    className={`admin-upload${kind === 'file' ? ' admin-upload--dropzone' : ''}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => handleFileDrop(event, 'create')}
+                    >
                     <div className="admin-upload__row">
                       {kind === 'link' ? (
                         <input
@@ -424,9 +446,15 @@ export function AdminMaterialsPage() {
                         type="file"
                         accept={ACCEPTED_FILE_TYPES}
                         hidden
+                        aria-label={t('admin.materials.filePicker', 'Choose a material file')}
                         onChange={(event) => void handleFileSelect(event, 'create')}
                       />
                     </div>
+                    {kind === 'file' ? (
+                      <span className="admin-upload__hint">
+                        {t('admin.materials.dropHint', 'Drag and drop a PDF, MP4, MP3, DOCX, or XLSX file here (max 50 MB).')}
+                      </span>
+                    ) : null}
                     {uploadState.status === 'uploading' ? (
                       <div className="admin-upload__progress">
                         <div className="admin-upload__bar">
@@ -531,7 +559,11 @@ export function AdminMaterialsPage() {
             required={editKind === 'link'}
             error={editErrors.fileUrl}
           >
-            <div className="admin-upload">
+            <div
+              className={`admin-upload${editKind === 'file' ? ' admin-upload--dropzone' : ''}`}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleFileDrop(event, 'edit')}
+            >
               <div className="admin-upload__row">
                 {editKind === 'link' ? (
                   <input
@@ -558,9 +590,15 @@ export function AdminMaterialsPage() {
                   type="file"
                   accept={ACCEPTED_FILE_TYPES}
                   hidden
+                  aria-label={t('admin.materials.replaceFilePicker', 'Choose a replacement material file')}
                   onChange={(event) => void handleFileSelect(event, 'edit')}
                 />
               </div>
+              {editKind === 'file' ? (
+                <span className="admin-upload__hint">
+                  {t('admin.materials.dropHint', 'Drag and drop a PDF, MP4, MP3, DOCX, or XLSX file here (max 50 MB).')}
+                </span>
+              ) : null}
               {editUploadState.status === 'uploading' ? (
                 <div className="admin-upload__progress">
                   <div className="admin-upload__bar">

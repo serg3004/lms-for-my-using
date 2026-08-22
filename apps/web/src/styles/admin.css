@@ -1041,6 +1041,17 @@
   gap: 6px;
 }
 
+.admin-upload--dropzone {
+  padding: 12px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+.admin-upload__hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
 .admin-upload__row {
   display: flex;
   gap: 8px;

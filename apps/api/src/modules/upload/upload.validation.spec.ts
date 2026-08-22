@@ -89,6 +89,21 @@ describe('validateUploadFile', () => {
 
     expect(() => validateUploadFile(file)).not.toThrow();
   });
+
+  it('accepts MP3 files with ID3 or MPEG frame signatures', () => {
+    expect(() => validateUploadFile(createFile({
+      originalname: 'lesson.mp3',
+      mimetype: 'audio/mpeg',
+      buffer: Buffer.from('ID3\u0004\u0000\u0000'),
+      size: 6,
+    }))).not.toThrow();
+    expect(() => validateUploadFile(createFile({
+      originalname: 'lesson.mp3',
+      mimetype: 'audio/mpeg',
+      buffer: Buffer.from([0xff, 0xfb, 0x90, 0x64]),
+      size: 4,
+    }))).not.toThrow();
+  });
 });
 
 describe('validateFileName', () => {

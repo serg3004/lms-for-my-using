@@ -15,6 +15,7 @@ const GIF_MIME_TYPE = 'image/gif';
 const WEBP_MIME_TYPE = 'image/webp';
 const MP4_MIME_TYPE = 'video/mp4';
 const WEBM_MIME_TYPE = 'video/webm';
+const MP3_MIME_TYPE = 'audio/mpeg';
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -28,6 +29,7 @@ const ALLOWED_MIME_TYPES = new Set([
   WEBP_MIME_TYPE,
   MP4_MIME_TYPE,
   WEBM_MIME_TYPE,
+  MP3_MIME_TYPE,
   DOCX_MIME_TYPE,
   XLSX_MIME_TYPE,
 ]);
@@ -146,6 +148,12 @@ function matchesDeclaredMimeType(buffer: Buffer, mimeType: string): boolean {
 
   if (mimeType === WEBM_MIME_TYPE) {
     return startsWithBytes(buffer, [0x1a, 0x45, 0xdf, 0xa3]);
+  }
+
+  if (mimeType === MP3_MIME_TYPE) {
+    // MP3 files either start with an ID3 metadata header or an MPEG audio frame.
+    return buffer.subarray(0, 3).toString('ascii') === 'ID3'
+      || (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1]! & 0xe0) === 0xe0);
   }
 
   if (ZIP_BASED_MIME_TYPES.has(mimeType)) {
