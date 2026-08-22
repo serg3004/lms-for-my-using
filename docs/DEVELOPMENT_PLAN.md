@@ -385,7 +385,7 @@ Learning content зоны должны иметь согласованные lis
 
 > **Факт:** `learning-content-error-contract.spec.ts` — специфичные тесты: 404 для courses/lessons/materials/assignments/progress (5 кейсов), 409 CONFLICT, 400 VALIDATION_ERROR от Zod.
 
-## PR 64d — assessments/certificates/upload API response consistency ⚠️
+## PR 64d — assessments/certificates/upload API response consistency ✅
 ### Проблема – краткое понимание
 Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
 
@@ -399,11 +399,11 @@ Assessments, certificates и upload являются критичными для
 - [x] assessment/certificate/upload endpoints проверены;
 - [x] response contract согласован;
 - [x] OpenAPI/docs обновлены при необходимости;
-- [ ] backend tests добавлены (специфичного spec-файла нет, в отличие от 64c);
+- [x] backend tests добавлены;
 - [x] frontend clients не сломаны;
 - [x] CI зелёный.
 
-> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Специфичного файла `assessment-error-contract.spec.ts` нет — в отличие от `learning-content-error-contract.spec.ts` для 64c. Функционально работает, тестовое покрытие частичное.
+> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Regression-тесты добавлены в `apps/api/src/common/filters/assessment-cert-upload-error-contract.spec.ts` (14 тестов: not found, forbidden, bad request, upload errors) — все проходят.
 
 ---
 
@@ -761,7 +761,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 96 — feat: admin assessment builder UI ⚠️
+## PR 96 — feat: admin assessment builder UI ✅
 
 Что входит:
 - Создание теста (название, passing score, max attempts)
@@ -770,9 +770,9 @@ Assessments, certificates и upload являются критичными для
 - Публикация/архивирование теста
 - Подключить к `GET/POST /api/v1/assessments`
 
-> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами: загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main.
+> **Факт:** `AdminAssessmentBuilderPage.tsx` — создание теста (title, passingScore, maxAttempts, привязка к курсу/уроку) ✅. Редактирование теста через диалог ✅. Смена статуса inline (draft/published/archived) ✅. Диалог управления вопросами (`QuestionsEditor.tsx`): загрузка через `GET /assessments/:id/questions`, загрузка вариантов через `GET /questions/:id/options`, добавление вопроса (`POST /assessments/:id/questions`, тип single/multiple/true_false, title, points), добавление варианта ответа с отметкой правильного (`POST /questions/:id/options`), редактирование и удаление вопроса (`PATCH`/`DELETE /questions/:id`, с подтверждением через `ConfirmDialog`), редактирование и удаление варианта ответа (`PATCH`/`DELETE /questions/:questionId/options/:id`). GH PR #362 (ветка `claude/pr-96-assessment-questions`), смержено в main; edit/delete добавлены отдельным PR.
 >
-> **Долг:** Нет редактирования и удаления вопросов/вариантов — только добавление. Если вопрос создан с ошибкой, исправить через UI нельзя. Добавить `PATCH /questions/:id` и `DELETE /questions/:id` + аналогично для options, когда понадобится.
+> **Долг закрыт:** Backend-эндпоинты `PATCH`/`DELETE` для вопросов и вариантов уже существовали в `assessment-questions.controller.ts` — не хватало только UI. Добавлены inline-формы редактирования и `ConfirmDialog` для удаления вопроса/варианта, тесты для `replaceOption`/`removeOption` helpers в `model.spec.ts`.
 
 ---
 
@@ -1092,17 +1092,15 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 125 — malware scan integration ⚠️
+## PR 125 — malware scan integration ✅
 
 - Выбрать scanner/service; интеграция с upload flow
 - Error/timeout behavior; tests/mocks
 - Malicious/suspicious file rejected или quarantined; upload happy path сохраняется
 
-> **Факт:** Интеграция с upload flow (quarantine, статусы pending/scanning/available/rejected, идемпотентные callbacks, deadline/timeout) уже была реализована и покрыта тестами в PR 186/187/188 — `MaterialMalwareScanService`. Не хватало: (1) выбора и деплоя реального scanner-сервиса — production Railway не имел `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET`, из-за чего `POST /materials/:id/file` реально падал с `503` (найдено в ходе PR 114 smoke); (2) unit-тестов на `dispatch()` (not-configured / dispatch-failed / timeout ветки — раньше не покрыты).
+> **Факт:** Интеграция с upload flow (quarantine, статусы pending/scanning/available/rejected, идемпотентные callbacks, deadline/timeout) уже была реализована и покрыта тестами в PR 186/187/188 — `MaterialMalwareScanService`. Добавлено: self-hosted ClamAV-сканер `services/malware-scanner/` (Node HTTP-обёртка + `clamscan`, реализует webhook-контракт `POST /scan` → async `clamscan` → callback на `/internal/material-scans/:id/result`), покрыт тестами (`server.test.mjs`, включая интеграционные тесты HTTP-эндпоинта из GH PR #598 — авторизация, ack, лимит размера тела). Добавлены недостающие тесты `dispatch()` в `material-malware-scan.service.spec.ts`.
 >
-> Добавлено: self-hosted ClamAV-сканер `services/malware-scanner/` (Node HTTP-обёртка + `clamscan`, свой `Dockerfile`/`railway.json` по образцу `apps/api`/`apps/web`), реализующий существующий webhook-контракт (`POST /scan` → async `clamscan` → callback на `/internal/material-scans/:id/result`). Покрыт unit-тестами чистой логики (`server.test.mjs`, `node --test`, 10/10 passed) — сам ClamAV-бинарник не тестируется в CI (нет Docker/clamav в dev-окружении), только на реальной сборке образа. Добавлены недостающие тесты `dispatch()` в `material-malware-scan.service.spec.ts` (not-configured / успешный dispatch / dispatch-failed / throw-timeout) — 11/11 passed.
->
-> **Осталось (ручной шаг, вне кода):** создать Railway-сервис из `services/malware-scanner/`, задать переменные (инструкция в `services/malware-scanner/README.md`), задать `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` на `api`. Без этого шага upload остаётся недоступен в production.
+> **Деплой на Railway выполнен:** сервис `malware-scanner` создан (Dockerfile builder, `services/malware-scanner/Dockerfile`), переменные заданы (`MALWARE_SCANNER_CALLBACK_SECRET`, `API_BASE_URL`, S3_* через reference на `api`), `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` заданы на `api`. Первые деплои падали: (1) Railway использовал builder RAILPACK вместо DOCKERFILE — исправлено явной установкой builder; (2) `COPY` в Dockerfile был относительно самого файла, а не корня build-контекста (репозиторий) — исправлено в PR #594 по образцу `apps/api/Dockerfile`. После фикса деплой прошёл успешно, логи подтверждают `malware-scanner listening on port 8080`. Загрузка файлов материалов в production больше не должна падать с `503`.
 
 ---
 
