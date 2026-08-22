@@ -7,7 +7,7 @@ export function useAsyncData<T>(
   deps: DependencyList,
   messages: AsyncDataMessages,
 ): { state: AsyncDataState<T>; reload: () => Promise<void> } {
-  const [state, setState] = useState<AsyncDataState<T>>(toLoadingState);
+  const [state, setState] = useState<AsyncDataState<T>>(toLoadingState());
   const cancelPrevious = useRef<() => void>(() => {});
 
   const run = useCallback(async () => {

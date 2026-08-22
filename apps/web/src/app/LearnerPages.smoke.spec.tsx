@@ -417,8 +417,9 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders course detail happy path without crashing', () => {
-    useReadyState({
+    useFirstCallReadyState({
       status: 'loaded',
+      data: {
       course: {
         id: 'course-1',
         organizationId: 'org-1',
@@ -469,6 +470,7 @@ describe('learner page smoke rendering', () => {
       ],
       completedLessonIds: new Set(['lesson-1']),
       dueAt: null,
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerCourseDetailPage courseId="course-1" />);
@@ -486,23 +488,25 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders lessons happy path without crashing', () => {
-    useReadyState({
+    useFirstCallReadyState({
       status: 'loaded',
-      lessons: [
-        {
-          id: 'lesson-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          title: 'Introduction to Safety',
-          slug: 'intro-safety',
-          description: null,
-          order: 1,
-          status: 'published',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
-      completedIds: new Set<string>(['lesson-1']),
+      data: {
+        lessons: [
+          {
+            id: 'lesson-1',
+            organizationId: 'org-1',
+            courseId: 'course-1',
+            title: 'Introduction to Safety',
+            slug: 'intro-safety',
+            description: null,
+            order: 1,
+            status: 'published',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        completedIds: new Set<string>(['lesson-1']),
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerLessonsPage courseId="course-1" />);
@@ -519,8 +523,10 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders lesson detail happy path without crashing', () => {
-    useReadyState({
+    // useState call order in LearnerLessonDetailPage: 1 completionState, 2 useAsyncData's internal state.
+    useStateAtCalls({ 2: {
       status: 'loaded',
+      data: {
       lesson: {
         id: 'lesson-1',
         organizationId: 'org-1',
@@ -560,7 +566,8 @@ describe('learner page smoke rendering', () => {
       ],
       materials: [],
       completedIds: new Set(),
-    });
+      },
+    } });
 
     const html = renderToStaticMarkup(<LearnerLessonDetailPage lessonId="lesson-1" />);
 
@@ -738,20 +745,23 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders certificate detail happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      certificate: {
-        id: 'cert-1',
-        organizationId: 'org-1',
-        courseId: 'course-1',
-        userId: 'user-1',
-        assessmentAttemptId: null,
-        status: 'issued',
-        issuedAt: '2026-01-01T00:00:00.000Z',
-        revokedAt: null,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        course: { id: 'course-1', title: 'Workplace Safety' },
+    // useState call order in LearnerCertificateDetailPage: 1 owner, 2 useAsyncData's internal state.
+    useStateAtCalls({
+      2: {
+        status: 'loaded',
+        data: {
+          id: 'cert-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          userId: 'user-1',
+          assessmentAttemptId: null,
+          status: 'issued',
+          issuedAt: '2026-01-01T00:00:00.000Z',
+          revokedAt: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          course: { id: 'course-1', title: 'Workplace Safety' },
+        },
       },
     });
 

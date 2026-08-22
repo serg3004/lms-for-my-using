@@ -1,7 +1,8 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, getCurrentUser } from '../shared/apiClient.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   buildCreateGroupPayload,
   buildUpdateGroupPayload,
@@ -34,14 +35,10 @@ type Group = {
   managers: Array<{ manager: { id: string; firstName: string; lastName: string } }>;
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; organizationId: string; groups: Group[]; employeeCount: number }
-  | { status: 'error'; message: string };
+type AdminOrgStructureData = { organizationId: string; groups: Group[]; employeeCount: number };
 
 export function AdminOrgStructurePage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
 
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -75,26 +72,21 @@ export function AdminOrgStructurePage() {
   const [addMemberUserId, setAddMemberUserId] = useState('');
   const [addManagerUserId, setAddManagerUserId] = useState('');
 
-  const load = useCallback(async () => {
-    try {
+  const { state: loadState, reload: load } = useAsyncData<AdminOrgStructureData>(
+    async () => {
       const [user, groups, { total }] = await Promise.all([
         getCurrentUser(),
         apiRequest<Group[]>('/groups'),
         apiRequest<PaginatedResponse<unknown>>('/users?pageSize=1'),
       ]);
-      setLoadState({ status: 'loaded', organizationId: user.organizationId, groups, employeeCount: total });
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.orgStructure.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.orgStructure.loadError', 'Unable to load organization structure.');
-      setLoadState({ status: 'error', message });
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+      return { organizationId: user.organizationId, groups, employeeCount: total };
+    },
+    [],
+    {
+      unauthenticated: t('admin.orgStructure.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.orgStructure.loadError', 'Unable to load organization structure.'),
+    },
+  );
 
   useEffect(() => {
     if (showCreate) createDialogRef.current?.showModal();
@@ -125,7 +117,7 @@ export function AdminOrgStructurePage() {
     try {
       await apiRequest<Group>('/groups', {
         method: 'POST',
-        body: JSON.stringify(buildCreateGroupPayload(loadState.organizationId, slugify(groupName), { name, location, description })),
+        body: JSON.stringify(buildCreateGroupPayload(loadState.data.organizationId, slugify(groupName), { name, location, description })),
       });
       setShowCreate(false);
       await load();
@@ -272,6 +264,19 @@ export function AdminOrgStructurePage() {
     );
   }
 
+  if (loadState.status === 'unauthenticated') {
+    return (
+      <main className="admin-state">
+        <PageState
+          title={t('admin.orgStructure.title', 'Organization')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
+      </main>
+    );
+  }
+
   if (loadState.status === 'error') {
     return (
       <main className="admin-state">
@@ -280,7 +285,7 @@ export function AdminOrgStructurePage() {
     );
   }
 
-  const { groups, employeeCount } = loadState;
+  const { groups, employeeCount } = loadState.data;
   const stats = computeOrgStats(groups, employeeCount);
 
   const navItems: AdminNavItem[] = [

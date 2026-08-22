@@ -1,7 +1,8 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
@@ -27,12 +28,7 @@ type MembershipSummary = {
 
 type AdminRole = 'learner' | 'instructor' | 'manager' | 'admin';
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; users: AdminUserSummary[]; memberships: MembershipSummary[] }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type AdminRolesData = { users: AdminUserSummary[]; memberships: MembershipSummary[] };
 
 const adminRoles: AdminRole[] = ['learner', 'instructor', 'manager', 'admin'];
 
@@ -65,7 +61,6 @@ function formatDate(value: string) {
 
 export function AdminRolesPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedRole, setSelectedRole] = useState<AdminRole>('learner');
   const [submitState, setSubmitState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({
@@ -76,36 +71,26 @@ export function AdminRolesPage() {
     { label: t('admin.roles.title', 'Roles'), href: '/admin/roles', isCurrent: true },
   ];
 
-  const loadRoleData = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-
-    try {
+  const { state: loadState, reload: loadRoleData } = useAsyncData<AdminRolesData>(
+    async () => {
       const [{ items: users }, memberships] = await Promise.all([
         apiRequest<PaginatedResponse<AdminUserSummary>>('/users?pageSize=200'),
         apiRequest<MembershipSummary[]>('/memberships'),
       ]);
-
-      setLoadState({ status: 'loaded', users, memberships });
-      setSelectedUserId((currentUserId) => currentUserId || users[0]?.id || '');
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({
-          status: 'unauthenticated',
-          message: t('admin.roles.sessionExpired', 'Your session expired. Sign in again.'),
-        });
-        return;
-      }
-
-      setLoadState({
-        status: 'error',
-        message: t('admin.roles.loadError', 'Unable to load role assignments. Try again later.'),
-      });
-    }
-  }, [t]);
+      return { users, memberships };
+    },
+    [],
+    {
+      unauthenticated: t('admin.roles.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.roles.loadError', 'Unable to load role assignments. Try again later.'),
+    },
+  );
 
   useEffect(() => {
-    void loadRoleData();
-  }, [loadRoleData]);
+    if (loadState.status === 'loaded') {
+      setSelectedUserId((currentUserId) => currentUserId || loadState.data.users[0]?.id || '');
+    }
+  }, [loadState]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,7 +99,7 @@ export function AdminRolesPage() {
       return;
     }
 
-    const selectedUser = loadState.users.find((user) => user.id === selectedUserId);
+    const selectedUser = loadState.data.users.find((user) => user.id === selectedUserId);
 
     if (!selectedUser) {
       setSubmitState({
@@ -147,7 +132,7 @@ export function AdminRolesPage() {
     }
   }
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
         <PageState message={t('admin.roles.loading', 'Loading role assignments...')} variant="loading" />
@@ -190,7 +175,7 @@ export function AdminRolesPage() {
 
       <section className="admin-dashboard-widgets" style={{ marginBottom: '20px' }}>
         {adminRoles.map((role) => {
-          const count = loadState.memberships.filter((m) => m.role === role).length;
+          const count = loadState.data.memberships.filter((m) => m.role === role).length;
           return (
             <AdminCard key={role}>
               <span className="ds-badge ds-badge--neutral">{count}</span>
@@ -206,14 +191,14 @@ export function AdminRolesPage() {
       <section className="admin-content-grid">
         <AdminCard>
           <h2>{t('admin.roles.assignTitle', 'Assign role')}</h2>
-          {loadState.users.length === 0 ? (
+          {loadState.data.users.length === 0 ? (
             <EmptyState message={t('admin.roles.noUsers', 'No users are available for role assignment.')} />
           ) : (
             <form onSubmit={handleSubmit}>
               <label>
                 {t('admin.roles.user', 'User')}
                 <select value={selectedUserId} onChange={(event) => setSelectedUserId(event.target.value)}>
-                  {loadState.users.map((user) => (
+                  {loadState.data.users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {getUserLabel(user)}
                     </option>
@@ -245,7 +230,7 @@ export function AdminRolesPage() {
 
         <AdminCard>
           <h2>{t('admin.roles.currentTitle', 'Current assignments')}</h2>
-          {loadState.memberships.length === 0 ? (
+          {loadState.data.memberships.length === 0 ? (
             <EmptyState message={t('admin.roles.empty', 'No role assignments found.')} />
           ) : (
             <table>
@@ -257,9 +242,9 @@ export function AdminRolesPage() {
                 </tr>
               </thead>
               <tbody>
-                {loadState.memberships.map((membership) => (
+                {loadState.data.memberships.map((membership) => (
                   <tr key={membership.id}>
-                    <td>{getMembershipUserLabel(loadState.users, membership.userId)}</td>
+                    <td>{getMembershipUserLabel(loadState.data.users, membership.userId)}</td>
                     <td>
                       <StatusBadge>{t(`admin.roles.options.${membership.role}`, membership.role)}</StatusBadge>
                     </td>

@@ -50,14 +50,27 @@ export function useAsyncData<T>(
 
 ## Applied to
 
-- `apps/web/src/app/LearnerCoursesPage.tsx`
-- `apps/web/src/app/LearnerAssignmentsPage.tsx`
-- `apps/web/src/features/admin-users/useAdminUsers.ts` (consumed by `AdminUsersPage.tsx`, unchanged aside from dropping the now-dead `idle` check)
+Initial 3 (first PR): `LearnerCoursesPage.tsx`, `LearnerAssignmentsPage.tsx`, `features/admin-users/useAdminUsers.ts`.
 
-These three were chosen because none had a pre-existing `.spec.tsx`/`.spec.ts` tied to a specific `useState`/`useEffect` call order beyond the project's own smoke-test suite (`LearnerPages.smoke.spec.tsx`, `AdminPages.smoke.spec.tsx`), which were updated alongside the migration (see `docs/DEVELOPMENT_PLAN.md`, PR 141, for the specific call-order adjustments). Pages that already have a bespoke `.spec.tsx` relying on hook-call order (e.g. `ManagerDashboardPage.tsx`, `ManagerTeamPage.tsx`, `LearnerHomePage.tsx`, `LearnerProgressPage.tsx`, `LearnerCertificateDetailPage.tsx`) are deliberately left for a follow-up PR to avoid mixing a broad rename with the risk of an unrelated test regression.
+Follow-up pass, migrating the remaining pages with the pattern:
+- `AdminCoursesPage.tsx`, `AdminLessonsPage.tsx`, `AdminOrgStructurePage.tsx`, `AdminResultsCertificatesPage.tsx`, `AdminRolesPage.tsx`, `AdminCourseBuilderPage.tsx`
+- `InstructorChecklistReviewsPage.tsx`
+- `LearnerCertificateDetailPage.tsx`, `LearnerCourseDetailPage.tsx`, `LearnerLessonDetailPage.tsx`, `LearnerLessonsPage.tsx`
+
+That's 14 call sites total. Every migrated `.spec.tsx`/`*.smoke.spec.tsx` fixture was updated for the new `useState` call order and the `{status:'loaded', data: T}` shape (via `useStateAtCalls({N: ...})`, computed by counting each page's `useState` calls before its `useAsyncData` call). Verified beyond the automated suite: a live manual pass through every migrated admin/instructor/learner page against a running API + web dev server and seeded Postgres, logged in as each relevant role — zero console/page errors, correct content rendered (including a real pending checklist review and a real draft course from the PR 133 seed data).
+
+**Found and fixed along the way:** `useAsyncData`'s `useState` was initialized with a bare lazy-initializer function reference (`useState(toLoadingState)` instead of `useState(toLoadingState())`). This works fine at runtime, but broke `LearnerCertificateDetailPage.spec.tsx`'s mock, which (unlike the smoke-test mocks) doesn't unwrap function initializers — it received the function reference itself as "state" and crashed on `.data`. Since `toLoadingState()` has no meaningful cost, lazy initialization bought nothing; switched to a plain object literal, which is also what every hand-rolled page in this codebase already did.
+
+**Deliberately excluded** (two categories):
+1. **Pages that mutate loaded state in place without a full reload** — `AdminMaterialsPage.tsx` (optimistic per-material status patch, bidirectional `selectedCourseId` ↔ load coupling with a bootstrapping default) and `AdminChecklistsPage.tsx` (`setLoadState((prev) => ...)` patching one checklist in the loaded array). Forcing these through `useAsyncData`'s `{state, reload}` contract — which only supports "replace the whole loaded value" — would mean losing the optimistic in-place update or meaningfully growing the hook's API for two consumers. Left as-is; a good candidate for a dedicated follow-up once there's a clear answer for how `useAsyncData` should (or shouldn't) support partial state patches.
+2. **Pages with a pre-existing `.spec.tsx` asserting on rendered content tied to hook-call order that this migration didn't already need to touch** — `ManagerDashboardPage.tsx`, `ManagerTeamPage.tsx`, `LearnerHomePage.tsx`, `LearnerProgressPage.tsx`. (Note: `LearnerCertificateDetailPage.tsx` was originally in this excluded set too, but ended up migrated and its spec fixed — see above.) Still good follow-up candidates; same mechanical `useStateAtCalls({N: ...})` treatment applies.
+
+Two minor, deliberate behavior simplifications made during the follow-up pass, both flagged here rather than silently applied:
+- `LearnerLessonsPage.tsx` and `LearnerCertificateDetailPage.tsx` previously had a distinct `notFound` (404) status with its own message, separate from generic `error`. `AsyncDataState` only distinguishes `unauthenticated` vs. `error`, not a third "not found" case; both now render under the shared `error` message. The on-screen action link is unchanged (still points back to the courses/certificates list).
+- Where a page had no `unauthenticated`-vs-`error` distinction at all before (`AdminLessonsPage.tsx`, `AdminOrgStructurePage.tsx`, `AdminResultsCertificatesPage.tsx` previously used a single generic error message, or in `InstructorChecklistReviewsPage.tsx`'s case the raw upstream `ApiClientError.message`), migrating to `useAsyncData` added the standard `unauthenticated` branch with a translated "session expired, sign in again" message and a login link — consistent with the rest of the app. This is a strict improvement (a 401 now correctly prompts re-authentication instead of a generic error), but is a behavior change worth naming. One new translation key (`checklistReview.sessionExpired`) was added to `ru`/`kk` locale files for this.
 
 ## Consequences
 
 - New pages that fetch data should use `useAsyncData` rather than hand-rolling the `idle|loading|loaded|unauthenticated|error` pattern again.
 - `docs/RATE_LIMIT_FAILURE_POLICY.md`-style "source of truth" documents aren't needed here; this ADR plus `useAsyncData.ts`/`asyncData.ts` themselves are the reference.
-- Roughly 17 more pages still hand-roll the old pattern and are good candidates for the same migration in follow-up PRs — several of them will additionally need their existing `.spec.tsx` files' mocked `useState` call-order updated, since inserting `useAsyncData` shifts which call index is the load state (see the LearnerAssignmentsPage/useAdminUsers cases in this PR for the pattern: use `useStateAtCalls({N: ...})` targeting the new index rather than assuming call #1).
+- Remaining candidates for the same migration: the 4 pages with pre-existing order-dependent specs (above), and a dedicated design decision for `AdminMaterialsPage.tsx`/`AdminChecklistsPage.tsx`'s in-place-mutation needs before migrating them.
