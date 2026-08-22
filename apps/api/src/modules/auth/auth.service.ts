@@ -1,10 +1,11 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { type CurrentUser, type LoginInput, type UserRole } from './auth.schemas.js';
+import { type CurrentUser, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
-import { verifyPassword } from './passwords.js';
+import { hashPassword, verifyPassword } from './passwords.js';
+import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
 const currentUserSelect = {
   id: true,
@@ -26,8 +27,6 @@ const loginUserSelect = {
   passwordHash: true,
 } as const;
 
-const passwordResetUnavailableMessage = 'Password reset is not unavailable';
-
 const logoutAccepted = {
   accepted: true,
 } as const;
@@ -40,7 +39,10 @@ type CurrentUserRecord = Omit<CurrentUser, 'roles'>;
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly passwordResetDelivery?: PasswordResetDelivery,
+  ) {}
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
     const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
@@ -120,12 +122,60 @@ export class AuthService {
     });
   }
 
-  requestPasswordReset() {
-    throw new ServiceUnavailableException(passwordResetUnavailableMessage);
+  async requestPasswordReset(input: PasswordResetRequestInput) {
+    const user = await this.prisma.user.findFirst({
+      where: { organizationId: input.organizationId, email: input.email, status: 'active', deletedAt: null },
+      select: { id: true, organizationId: true, email: true },
+    });
+
+    if (user) {
+      const reset = createPasswordResetToken();
+      const expiresAt = new Date(Date.now() + passwordResetLifetimeMs);
+      await this.prisma.$transaction([
+        this.prisma.passwordResetToken.updateMany({
+          where: { userId: user.id, usedAt: null },
+          data: { usedAt: new Date() },
+        }),
+        this.prisma.passwordResetToken.create({
+          data: { userId: user.id, organizationId: user.organizationId, tokenHash: reset.hash, expiresAt },
+        }),
+      ]);
+
+      // Delivery failures are deliberately hidden so account existence cannot be inferred.
+      await this.passwordResetDelivery?.send({ ...user, token: reset.token, expiresAt }).catch(() => undefined);
+    }
+
+    return logoutAccepted;
   }
 
-  confirmPasswordReset() {
-    throw new ServiceUnavailableException(passwordResetUnavailableMessage);
+  async confirmPasswordReset(input: PasswordResetConfirmInput) {
+    const now = new Date();
+    const tokenHash = hashPasswordResetToken(input.token);
+    const passwordHash = await hashPassword(input.password);
+
+    const token = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      select: { id: true, userId: true, organizationId: true, expiresAt: true, usedAt: true },
+    });
+    if (!token || token.usedAt || token.expiresAt <= now) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    await this.prisma.$transaction(async (transaction) => {
+      const consumed = await transaction.passwordResetToken.updateMany({
+        where: { id: token.id, usedAt: null, expiresAt: { gt: now } },
+        data: { usedAt: now },
+      });
+      if (consumed.count !== 1) throw new BadRequestException('Invalid or expired password reset token');
+
+      await transaction.user.update({ where: { id: token.userId }, data: { passwordHash } });
+      await transaction.session.updateMany({
+        where: { userId: token.userId, organizationId: token.organizationId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+    });
+
+    return logoutAccepted;
   }
 
   async logout(accessToken: string) {

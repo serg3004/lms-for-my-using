@@ -9,7 +9,7 @@ Current stage: early MVP foundation.
 Implemented backend foundation:
 - Health API
 - Organizations / users / memberships / groups APIs
-- Auth login/current user/logout and password reset skeleton
+- Auth login/current user/logout and one-time password reset flow
 - Hardened stateless JWT access token verification
 - Current user lookup bound to JWT subject/user id
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
@@ -35,8 +35,8 @@ Current auth/session implementation:
 - JWT verification validates token structure, protected header, claims shape, `iat`, and `exp`.
 - Current user lookup validates token `sub` against `User.id` plus `organizationId`, `email`, `active` status, and `deletedAt: null`.
 - Logout is stateless: `POST /api/v1/auth/logout` validates the bearer token before returning `{ accepted: true }`.
-- Password reset endpoints currently return unavailable skeleton behavior: they validate input but do not generate reset tokens, send email, mutate passwords, or invalidate sessions.
-- Refresh token/httpOnly cookie, rate limiting, token revocation/session store, and full password reset flow are deferred.
+- Password reset stores only SHA-256 token digests with a one-hour TTL, consumes tokens once, revokes sessions, and delegates delivery to `PASSWORD_RESET_DELIVERY_URL`.
+- Configure the delivery webhook before enabling self-service reset; request responses remain identical for known and unknown accounts.
 
 ## Storage/upload status
 

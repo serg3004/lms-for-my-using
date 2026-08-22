@@ -1253,7 +1253,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 136 — Password reset flow 🔲
+## PR 136 — Password reset flow ✅
 
 - Реализовать request password reset flow
 - Реализовать confirm password reset flow
@@ -1268,6 +1268,8 @@ Assessments, certificates и upload являются критичными для
 - Повторное использование токена возвращает 400/410
 - Истёкший токен отклоняется
 - Старый пароль после reset возвращает 401
+
+> **Факт:** Реализованы совместимые маршруты `/auth/password-reset/request` (`/auth/reset-password-request`) и `/auth/password-reset/confirm` (`/auth/reset-password`). Токен генерируется из 32 случайных байтов, в PostgreSQL сохраняется только SHA-256 hash с TTL 1 час и `used_at`; confirm атомарно потребляет токен, обновляет scrypt password hash и отзывает активные sessions. Provider-neutral HTTPS delivery настраивается через `PASSWORD_RESET_DELIVERY_URL`, а отсутствие пользователя и ошибки delivery не меняют generic `{ accepted: true }` response.
 
 ---
 

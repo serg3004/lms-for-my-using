@@ -7,10 +7,11 @@ import { AuthSessionStore } from './auth.session-store.js';
 import { OrganizationScopeGuard } from './organization-scope.guard.js';
 import { RolesGuard } from './roles.guard.js';
 import { AuthService } from './auth.service.js';
+import { PasswordResetDelivery } from './password-reset.js';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, Reflector, RolesGuard],
+  providers: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, PasswordResetDelivery, Reflector, RolesGuard],
   exports: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, RolesGuard],
 })
 export class AuthModule {}

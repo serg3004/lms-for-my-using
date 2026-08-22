@@ -205,6 +205,7 @@ model User {
   assessmentAttempts  AssessmentAttempt[]
   certificates        Certificate[]
   sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
   instructedCourses   CourseInstructor[]
   groupMemberships    GroupMember[]
   managedGroups       ManagerGroup[]
@@ -219,6 +220,22 @@ model User {
   @@index([organizationId, createdAt, id])
   @@index([lastLoginAt])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  usedAt         DateTime? @map("used_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }
 
 model Group {
