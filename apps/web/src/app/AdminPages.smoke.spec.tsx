@@ -188,29 +188,36 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders users happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      currentUser,
-      users: [
-        {
-          id: 'user-1',
-          organizationId: 'org-1',
-          email: 'admin@demo.com',
-          firstName: 'Admin',
-          lastName: 'User',
-          middleName: null,
-          position: null,
-          shift: null,
-          phone: null,
-          status: 'active',
-          locale: 'en',
-          timezone: 'UTC',
-          lastLoginAt: null,
-          createdAt: ts,
-          updatedAt: ts,
-          memberships: [{ role: 'admin' as const }],
+    // useState call order in useAdminUsers: 1) page, 2) filters, 3) useAsyncData's internal state.
+    useStateAtCalls({
+      3: {
+        status: 'loaded',
+        data: {
+          currentUser,
+          total: 1,
+          pageSize: 20,
+          users: [
+            {
+              id: 'user-1',
+              organizationId: 'org-1',
+              email: 'admin@demo.com',
+              firstName: 'Admin',
+              lastName: 'User',
+              middleName: null,
+              position: null,
+              shift: null,
+              phone: null,
+              status: 'active',
+              locale: 'en',
+              timezone: 'UTC',
+              lastLoginAt: null,
+              createdAt: ts,
+              updatedAt: ts,
+              memberships: [{ role: 'admin' as const }],
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminUsersPage />);

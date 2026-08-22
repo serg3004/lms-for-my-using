@@ -1341,7 +1341,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 141 — Frontend data loading architecture 🔲
+## PR 141 — Frontend data loading architecture ✅
 
 - Выбрать подход: `@tanstack/react-query` или внутренний data-loading hook
 - Зафиксировать выбор в `docs/ADR_DATA_LOADING.md`
@@ -1353,6 +1353,8 @@ Assessments, certificates и upload являются критичными для
 - `docs/ADR_DATA_LOADING.md` содержит выбор и обоснование
 - Минимум 3 страницы используют новый паттерн
 - Grep подтверждает отсутствие дублирующего `useEffect + try/catch` в этих файлах
+
+**Факт:** это была реальная, не выполненная ранее задача (в отличие от PR 138/139) — `@tanstack/react-query` не был установлен, общего hook'а не было, паттерн `{idle|loading|loaded|unauthenticated|error}` + `useEffect`+`isMounted`+`try/catch` был вручную скопирован минимум в ~20 страницах, плюс отдельно переизобретён (без cancellation guard — реальная гонка) в `features/admin-users/useAdminUsers.ts`. Выбор в пользу внутреннего hook'а (не react-query) зафиксирован в `docs/ADR_DATA_LOADING.md` — обоснование: нет jsdom/RTL в `apps/web/vitest.config.ts` (`environment: 'node'`), react-query потребовал бы новую зависимость + `QueryClientProvider`, тогда как внутренний hook продолжает паттерн PR 96 (чистые функции состояния + тонкая обёртка). Вынесен общий `shared/asyncData.ts` (чистые функции) + `shared/useAsyncData.ts` (hook, с `reload(): Promise<void>`, с cancellation guard). Применено к 3 местам: `app/LearnerCoursesPage.tsx`, `app/LearnerAssignmentsPage.tsx`, `features/admin-users/useAdminUsers.ts` (попутно починена гонка в последнем). Мёртвый статус `idle` убран из всех мигрированных файлов (grep подтверждает отсутствие). Добавлены `asyncData.spec.ts`/`useAsyncData.spec.ts`, покрывающие loading/loaded/unauthenticated/error и cancellation — техника мока `useState`/`useEffect`/`useCallback`/`useRef`, расширяющая уже принятую в проекте (`ManagerDashboardPage.spec.tsx`). Обновлены существующие smoke-тесты (`LearnerPages.smoke.spec.tsx`, `AdminPages.smoke.spec.tsx`), т.к. позиция useState с load-state сдвинулась при миграции — исправлено через `useStateAtCalls({N: ...})` с точным номером вызова. Полный прогон `apps/web`: typecheck чист, lint чист (включая `react-hooks/exhaustive-deps`, нашёл и исправил реальный memo-баг в `useAdminUsers.ts`), 477/477 тестов зелёные, coverage выше порога 40%. Осталось (вне скоупа этого PR): ~17 страниц ещё не мигрированы (кандидаты для follow-up), задокументировано в ADR.
 
 ---
 

@@ -99,20 +99,24 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders courses happy path without crashing', () => {
-    useReadyState({
+    useFirstCallReadyState({
       status: 'loaded',
-      courses: [
-        {
-          id: 'course-1',
-          organizationId: 'org-1',
-          title: 'MVP Onboarding Course',
-          slug: 'mvp-onboarding-course',
-          description: 'Pilot course description',
-          status: 'published',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ],
+      data: {
+        courses: [
+          {
+            id: 'course-1',
+            organizationId: 'org-1',
+            title: 'MVP Onboarding Course',
+            slug: 'mvp-onboarding-course',
+            description: 'Pilot course description',
+            status: 'published',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        total: 1,
+        pageSize: 100,
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerCoursesPage />);
@@ -131,24 +135,31 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders assignments happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      assignments: [
-        {
-          id: 'assignment-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          userId: 'learner-1',
-          groupId: null,
-          status: 'assigned',
-          dueAt: '2026-01-02T00:00:00.000Z',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          courseTitle: 'MVP Onboarding Course',
-          userName: 'Learner One',
-          groupName: null,
+    // useState call order in LearnerAssignmentsPage: 1) page, 2) useAsyncData's internal state.
+    useStateAtCalls({
+      2: {
+        status: 'loaded',
+        data: {
+          assignments: [
+            {
+              id: 'assignment-1',
+              organizationId: 'org-1',
+              courseId: 'course-1',
+              userId: 'learner-1',
+              groupId: null,
+              status: 'assigned',
+              dueAt: '2026-01-02T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              courseTitle: 'MVP Onboarding Course',
+              userName: 'Learner One',
+              groupName: null,
+            },
+          ],
+          total: 1,
+          pageSize: 20,
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerAssignmentsPage />);

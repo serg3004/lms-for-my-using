@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listCourses } from '../shared/api/courses.js';
-import { ApiClientError } from '../shared/apiClient.js';
 import type { CourseSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 const COVER_GRADIENTS = [
   'linear-gradient(135deg, #4338ca 0%, #0ea5e9 100%)',
@@ -22,12 +22,7 @@ function coverGradient(index: number) {
 type StatusFilter = 'all' | 'active' | 'completed';
 type SortMode = 'recent' | 'progress' | 'title';
 
-type CoursesLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; courses: CourseSummary[]; total: number; pageSize: number }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type CoursesData = { courses: CourseSummary[]; total: number; pageSize: number };
 
 const SEL_STYLE: React.CSSProperties = {
   border: '1px solid #e3e8ef',
@@ -41,36 +36,18 @@ const SEL_STYLE: React.CSSProperties = {
 
 export function LearnerCoursesPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<CoursesLoadState>({ status: 'idle' });
+  const { state: loadState } = useAsyncData<CoursesData>(
+    async () => {
+      const result = await listCourses({ page: 1, pageSize: 100 });
+      return { courses: result.items, total: result.total, pageSize: result.pageSize };
+    },
+    [],
+    { unauthenticated: t('courses.sessionExpired'), error: t('courses.loadError') },
+  );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      setLoadState({ status: 'loading' });
-      try {
-        const result = await listCourses({ page: 1, pageSize: 100 });
-        if (isMounted)
-          setLoadState({ status: 'loaded', courses: result.items, total: result.total, pageSize: result.pageSize });
-      } catch (error) {
-        if (!isMounted) return;
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('courses.sessionExpired') });
-          return;
-        }
-        setLoadState({ status: 'error', message: t('courses.loadError') });
-      }
-    }
-
-    void load();
-    return () => {
-      isMounted = false;
-    };
-  }, [t]);
-
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('courses.loading')} variant="loading" />;
   }
 
@@ -89,7 +66,7 @@ export function LearnerCoursesPage() {
     return <PageState title={t('courses.title')} message={loadState.message} variant="error" />;
   }
 
-  const { courses } = loadState;
+  const { courses } = loadState.data;
   const activeCount = courses.filter((c) => c.status === 'published').length;
   const completedCount = courses.filter((c) => c.status === 'archived').length;
   const avgProgress = courses.length > 0 ? Math.round((completedCount / courses.length) * 100) : 0;
