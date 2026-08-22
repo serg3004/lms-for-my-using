@@ -102,9 +102,16 @@ describe('admin page smoke rendering', () => {
     useLoadingState();
     expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('role="status"');
 
-    useFirstCallReadyState({
-      status: 'loaded', currentUser, total: 1, pageSize: 20,
-      courses: [{ ...course, createdAt: ts, updatedAt: ts, _count: { lessons: 2 } }],
+    // useState call order in AdminCoursesPage: 14 form/dialog states, then
+    // useAsyncData's internal state as call #15.
+    useStateAtCalls({
+      15: {
+        status: 'loaded',
+        data: {
+          currentUser, total: 1, pageSize: 20,
+          courses: [{ ...course, createdAt: ts, updatedAt: ts, _count: { lessons: 2 } }],
+        },
+      },
     });
     expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('Workplace Safety');
   });
@@ -113,21 +120,27 @@ describe('admin page smoke rendering', () => {
     useLoadingState();
     expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('role="status"');
 
-    useFirstCallReadyState({
-      status: 'loaded',
-      organizationId: 'org-1',
-      employeeCount: 1,
-      groups: [{
-        id: 'group-1',
-        organizationId: 'org-1',
-        name: 'Safety',
-        slug: 'safety',
-        description: null,
-        location: 'Almaty',
-        status: 'active',
-        _count: { members: 3 },
-        managers: [{ manager: { id: 'user-1', firstName: 'Admin', lastName: 'User' } }],
-      }],
+    // useState call order in AdminOrgStructurePage: 20 form/dialog states, then
+    // useAsyncData's internal state as call #21.
+    useStateAtCalls({
+      21: {
+        status: 'loaded',
+        data: {
+          organizationId: 'org-1',
+          employeeCount: 1,
+          groups: [{
+            id: 'group-1',
+            organizationId: 'org-1',
+            name: 'Safety',
+            slug: 'safety',
+            description: null,
+            location: 'Almaty',
+            status: 'active',
+            _count: { members: 3 },
+            managers: [{ manager: { id: 'user-1', firstName: 'Admin', lastName: 'User' } }],
+          }],
+        },
+      },
     });
     expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('Safety');
   });
@@ -136,10 +149,16 @@ describe('admin page smoke rendering', () => {
     useLoadingState();
     expect(renderToStaticMarkup(<AdminRolesPage />)).toContain('role="status"');
 
-    useFirstCallReadyState({
-      status: 'loaded',
-      users: [{ id: 'user-1', organizationId: 'org-1', email: 'admin@demo.com', firstName: 'Admin', lastName: 'User', middleName: null, status: 'active' }],
-      memberships: [{ id: 'membership-1', organizationId: 'org-1', userId: 'user-1', role: 'admin', assignedBy: null, createdAt: ts }],
+    // useState call order in AdminRolesPage: 1) selectedUserId, 2) selectedRole, 3) submitState,
+    // 4) useAsyncData's internal state.
+    useStateAtCalls({
+      4: {
+        status: 'loaded',
+        data: {
+          users: [{ id: 'user-1', organizationId: 'org-1', email: 'admin@demo.com', firstName: 'Admin', lastName: 'User', middleName: null, status: 'active' }],
+          memberships: [{ id: 'membership-1', organizationId: 'org-1', userId: 'user-1', role: 'admin', assignedBy: null, createdAt: ts }],
+        },
+      },
     });
     expect(renderToStaticMarkup(<AdminRolesPage />)).toContain('admin@demo.com');
   });
@@ -234,21 +253,27 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders course builder happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      currentUser,
-      course: {
-        id: 'course-1',
-        organizationId: 'org-1',
-        title: 'Workplace Safety',
-        slug: 'workplace-safety',
-        description: null,
-        status: 'published',
-        createdAt: ts,
-        updatedAt: ts,
-        _count: { lessons: 3 },
+    // useState call order in AdminCourseBuilderPage: 10 form/dialog states, then
+    // useAsyncData's internal state as call #11.
+    useStateAtCalls({
+      11: {
+        status: 'loaded',
+        data: {
+          currentUser,
+          course: {
+            id: 'course-1',
+            organizationId: 'org-1',
+            title: 'Workplace Safety',
+            slug: 'workplace-safety',
+            description: null,
+            status: 'published',
+            createdAt: ts,
+            updatedAt: ts,
+            _count: { lessons: 3 },
+          },
+          lessons: [],
+        },
       },
-      lessons: [],
     });
 
     const html = renderToStaticMarkup(<AdminCourseBuilderPage />);
@@ -265,10 +290,16 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders lessons page happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [course],
-      lessons: [{ ...lesson, course: { title: course.title } }],
+    // useState call order in AdminLessonsPage: 18 form/dialog states, then
+    // useAsyncData's internal state as call #19.
+    useStateAtCalls({
+      19: {
+        status: 'loaded',
+        data: {
+          courses: [course],
+          lessons: [{ ...lesson, course: { title: course.title } }],
+        },
+      },
     });
 
     const html = renderToStaticMarkup(<AdminLessonsPage />);
@@ -438,32 +469,39 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders results and certificates happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety' }],
-      users: [{ id: 'user-1', email: 'learner@demo.com', name: 'Learner User' }],
-      assessments: [{ id: 'assessment-1', courseId: 'course-1', title: 'Safety Test', passingScore: 70, status: 'published' }],
-      progressItems: [],
-      certificates: [
-        {
-          id: 'cert-1',
-          courseId: 'course-1',
-          userId: 'user-1',
-          issuedAt: ts,
-          status: 'issued',
+    // useState call order in AdminResultsCertificatesPage: courseId, userId, assessmentId,
+    // assessmentAttemptId, submitState, then useAsyncData's internal state as call #6.
+    useStateAtCalls({
+      6: {
+        status: 'loaded',
+        data: {
+          courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety' }],
+          users: [{ id: 'user-1', email: 'learner@demo.com', name: 'Learner User' }],
+          assessments: [{ id: 'assessment-1', courseId: 'course-1', title: 'Safety Test', passingScore: 70, status: 'published' }],
+          progressItems: [],
+          certificates: [
+            {
+              id: 'cert-1',
+              courseId: 'course-1',
+              userId: 'user-1',
+              issuedAt: ts,
+              status: 'issued',
+            },
+          ],
+          assessmentResults: [
+            {
+              id: 'result-1',
+              assessmentId: 'assessment-1',
+              userId: 'user-1',
+              score: 4,
+              maxScore: 5,
+              percentage: 80,
+              passed: true,
+            },
+          ],
+          selectedAssessmentId: 'assessment-1',
         },
-      ],
-      assessmentResults: [
-        {
-          id: 'result-1',
-          assessmentId: 'assessment-1',
-          userId: 'user-1',
-          score: 4,
-          maxScore: 5,
-          percentage: 80,
-          passed: true,
-        },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminResultsCertificatesPage />);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
@@ -8,6 +8,7 @@ import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminN
 import { Badge, Button, DataTable, Pagination, PageState, SearchInput, SectionHeader, StatCard, StatsGrid, Toolbar, type Column } from '../shared/ui.js';
 import type { PaginatedResponse, UserSummary } from '../shared/api/types.js';
 import { apiRequest } from '../shared/apiClient.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   addCourseInstructor,
   createCourse,
@@ -33,12 +34,7 @@ type AdminCourseSummary = {
   _count: { lessons: number };
 };
 
-type PageLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; courses: AdminCourseSummary[]; currentUser: CurrentUser; total: number; pageSize: number }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type AdminCoursesData = { courses: AdminCourseSummary[]; currentUser: CurrentUser; total: number; pageSize: number };
 
 type CreateFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
 
@@ -70,7 +66,6 @@ function formatRelativeDate(value: string): string {
 
 export function AdminCoursesPage() {
   const { t } = useTranslation();
-  const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -96,32 +91,20 @@ export function AdminCoursesPage() {
     { label: t('admin.courses.title', 'Courses'), href: '/admin/courses', isCurrent: true },
   ];
 
-  const loadData = useCallback(async () => {
-    setPageState({ status: 'loading' });
-    try {
+  const { state: pageState, reload: loadData } = useAsyncData<AdminCoursesData>(
+    async () => {
       const [result, currentUser] = await Promise.all([
         listCourses({ page, pageSize: 20 }) as Promise<PaginatedResponse<AdminCourseSummary>>,
         getCurrentUser(),
       ]);
-      setPageState({ status: 'loaded', courses: result.items, currentUser, total: result.total, pageSize: result.pageSize });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setPageState({
-          status: 'unauthenticated',
-          message: t('admin.courses.sessionExpired', 'Your session expired. Sign in again.'),
-        });
-        return;
-      }
-      setPageState({
-        status: 'error',
-        message: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),
-      });
-    }
-  }, [t, page]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+      return { courses: result.items, currentUser, total: result.total, pageSize: result.pageSize };
+    },
+    [page],
+    {
+      unauthenticated: t('admin.courses.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),
+    },
+  );
 
   useEffect(() => {
     if (showCreate) dialogRef.current?.showModal();
@@ -156,7 +139,7 @@ export function AdminCoursesPage() {
     setFormState({ status: 'submitting' });
     try {
       await createCourse({
-        organizationId: pageState.currentUser.organizationId,
+        organizationId: pageState.data.currentUser.organizationId,
         title,
         slug,
         description: formDescription.trim() || undefined,
@@ -234,7 +217,7 @@ export function AdminCoursesPage() {
     }
   }
 
-  if (pageState.status === 'idle' || pageState.status === 'loading') {
+  if (pageState.status === 'loading') {
     return (
       <main className="admin-state">
         <PageState message={t('admin.courses.loading', 'Loading courses...')} variant="loading" />
@@ -263,7 +246,7 @@ export function AdminCoursesPage() {
     );
   }
 
-  const { courses } = pageState;
+  const { courses } = pageState.data;
   const published = courses.filter((c) => c.status === 'published').length;
   const draft = courses.filter((c) => c.status === 'draft').length;
   const archived = courses.filter((c) => c.status === 'archived').length;
@@ -393,8 +376,8 @@ export function AdminCoursesPage() {
 
       <Pagination
         page={page}
-        pageSize={pageState.pageSize}
-        total={pageState.total}
+        pageSize={pageState.data.pageSize}
+        total={pageState.data.total}
         onPage={setPage}
       />
 
