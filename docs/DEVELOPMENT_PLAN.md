@@ -1146,11 +1146,15 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 131 — backup restore drill 🔲
+## PR 131 — backup restore drill ✅
 
 - Backup и restore procedure
 - Test restore drill на non-production DB
 - Зафиксировать RPO/RTO assumptions
+
+> **Факт:** Backup/restore процедура, RPO/RTO (24h/4h) и runbook уже реализованы в PR 215 (`scripts/backup/create-backup.sh`, `scripts/backup/restore-backup.sh`, `docs/runbooks/BACKUP_RESTORE_DISASTER_RECOVERY.md`) — до этой сессии проверялись только через мокнутый `tests/scripts/backup-restore.test.sh` (fake `pg_dump`/`pg_restore`/`gpg`).
+>
+> **Реальный drill выполнен (2026-08-22)** на локальном non-production Postgres 16 (`lms_test` → `lms_restore_drill`), настоящими `pg_dump`/`pg_restore`/`gpg` (не моки): создан зашифрованный бэкап (БД + объекты материалов) за 2с, восстановлен в отдельную БД за 1с с прохождением SHA-256 checksum и DB↔object consistency проверок скрипта. Данные после восстановления сверены с источником и полностью совпали: users (4/4), courses, выданный сертификат (1/1), объект материала — побайтово идентичен (`cmp`). Дополнительно поднято реальное NestJS-приложение на восстановленной БД — health check и логин отработали (критерий "приложение стартует" подтверждён живым тестом, не только скриптом).
 
 ---
 
