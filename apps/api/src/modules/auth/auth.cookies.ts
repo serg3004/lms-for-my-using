@@ -1,6 +1,8 @@
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { accessTokenLifetimeMs, refreshTokenLifetimeMs } from './auth.lifecycle.js';
+
 export const accessTokenCookieName = 'lms_access_token';
 export const csrfTokenCookieName = 'lms_csrf_token';
 export const refreshTokenCookieName = 'lms_refresh_token';
@@ -9,8 +11,6 @@ export const csrfHeaderName = 'x-csrf-token';
 const apiCookiePath = '/api/v1';
 const csrfCookiePath = '/';
 const refreshTokenCookiePath = '/api/v1/auth/refresh';
-const accessTokenCookieMaxAgeMs = 60 * 60 * 1000;
-const refreshTokenCookieMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const csrfTokenByteLength = 32;
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -144,14 +144,14 @@ export function setAuthCookies(
     sameSite: 'lax',
     secure,
     path: apiCookiePath,
-    maxAge: accessTokenCookieMaxAgeMs,
+    maxAge: accessTokenLifetimeMs,
   });
   response.cookie(csrfTokenCookieName, csrfToken, {
     httpOnly: false,
     sameSite: 'lax',
     secure,
     path: csrfCookiePath,
-    maxAge: accessTokenCookieMaxAgeMs,
+    maxAge: accessTokenLifetimeMs,
   });
 
   if (refreshToken) {
@@ -160,7 +160,7 @@ export function setAuthCookies(
       sameSite: 'lax',
       secure,
       path: refreshTokenCookiePath,
-      maxAge: refreshTokenCookieMaxAgeMs,
+      maxAge: refreshTokenLifetimeMs,
     });
   }
 }
