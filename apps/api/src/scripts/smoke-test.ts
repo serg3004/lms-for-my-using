@@ -86,6 +86,23 @@ function getField(body: unknown, ...keys: string[]): unknown {
   return obj;
 }
 
+function getCollection(body: unknown): AnyRecord[] | null {
+  if (Array.isArray(body)) return body as AnyRecord[];
+  const items = getField(body, 'items');
+  return Array.isArray(items) ? items as AnyRecord[] : null;
+}
+
+function verifyCollection(label: string, status: number, body: unknown, minimum = 1): AnyRecord[] {
+  const items = getCollection(body);
+  if (status === 200 && items && items.length >= minimum) {
+    ok(`${label} → ${items.length} item(s)`);
+    return items;
+  }
+
+  fail(label, { status, count: items?.length ?? 0, expectedMinimum: minimum });
+  return [];
+}
+
 async function section(title: string, fn: () => Promise<void>) {
   console.log(`\n── ${title}`);
   await fn();
@@ -115,17 +132,45 @@ async function run() {
     } else fail('POST /auth/login as admin', { status, body });
   });
 
-  await section('Admin — course & lesson check', async () => {
-    const { status, body } = await request('/courses', { cookies: adminCookies });
-    const courses = (body as AnyRecord[]) ?? [];
-    if (status === 200 && Array.isArray(courses) && courses.length > 0) {
-      ok(`GET /courses → ${courses.length} course(s)`);
-    } else fail('GET /courses', { status, count: Array.isArray(courses) ? courses.length : 0 });
-  });
-
   let courseId = '';
   let lessonIds: string[] = [];
   let assessmentId = '';
+
+  await section('Admin — full MVP inventory', async () => {
+    const users = await request('/users?pageSize=200', { cookies: adminCookies });
+    verifyCollection('GET /users', users.status, users.body, 4);
+
+    const coursesResponse = await request('/courses?pageSize=200', { cookies: adminCookies });
+    const courses = verifyCollection('GET /courses', coursesResponse.status, coursesResponse.body);
+    courseId = (courses[0]?.['id'] as string | undefined) ?? '';
+
+    const lessons = await request('/lessons?pageSize=200', { cookies: adminCookies });
+    verifyCollection('GET /lessons', lessons.status, lessons.body, 3);
+
+    if (!courseId) {
+      fail('GET /courses/:id/materials skipped — no courseId');
+    } else {
+      const materials = await request(`/courses/${courseId}/materials`, { cookies: adminCookies });
+      verifyCollection('GET /courses/:id/materials', materials.status, materials.body, 3);
+    }
+
+    const assignments = await request('/assignments?pageSize=200', { cookies: adminCookies });
+    verifyCollection('GET /assignments', assignments.status, assignments.body);
+
+    const assessments = await request('/assessments', { cookies: adminCookies });
+    const assessmentItems = verifyCollection('GET /assessments', assessments.status, assessments.body);
+    assessmentId = (assessmentItems[0]?.['id'] as string | undefined) ?? '';
+
+    if (!assessmentId) {
+      fail('GET /assessments/:id/questions skipped — no assessmentId');
+    } else {
+      const questions = await request(`/assessments/${assessmentId}/questions`, { cookies: adminCookies });
+      verifyCollection('GET /assessments/:id/questions', questions.status, questions.body, 5);
+    }
+
+    const certificates = await request('/certificates?pageSize=200', { cookies: adminCookies });
+    verifyCollection('GET /certificates', certificates.status, certificates.body, 0);
+  });
 
   await section('Learner login', async () => {
     const { status, body, setCookies } = await request('/auth/login', {
@@ -140,8 +185,8 @@ async function run() {
 
   await section('Course discovery', async () => {
     const { status, body } = await request('/courses', { cookies: learnerCookies });
-    const courses = body as AnyRecord[];
-    if (status === 200 && Array.isArray(courses) && courses.length > 0) {
+    const courses = getCollection(body);
+    if (status === 200 && courses && courses.length > 0) {
       courseId = (courses[0] as AnyRecord)['id'] as string;
       ok(`GET /courses → found "${(courses[0] as AnyRecord)['title']}" id=${courseId.slice(0, 8)}…`);
     } else fail('GET /courses as learner', { status });
@@ -185,8 +230,8 @@ async function run() {
 
   await section('Assessment discovery', async () => {
     const { status, body } = await request('/assessments', { cookies: learnerCookies });
-    const assessments = body as AnyRecord[];
-    if (status === 200 && Array.isArray(assessments) && assessments.length > 0) {
+    const assessments = getCollection(body);
+    if (status === 200 && assessments && assessments.length > 0) {
       assessmentId = (assessments[0] as AnyRecord)['id'] as string;
       ok(`GET /assessments → found "${(assessments[0] as AnyRecord)['title']}" id=${assessmentId.slice(0, 8)}…`);
     } else fail('GET /assessments', { status });
@@ -279,10 +324,21 @@ async function run() {
 
   await section('Certificate issued', async () => {
     const { status, body } = await request('/certificates', { cookies: learnerCookies });
-    const certs = body as AnyRecord[];
-    if (status === 200 && Array.isArray(certs) && certs.length > 0) {
+    const certs = getCollection(body);
+    if (status === 200 && certs && certs.length > 0) {
       ok(`GET /certificates → ${certs.length} certificate(s) for learner`);
-    } else fail('GET /certificates', { status, count: Array.isArray(certs) ? certs.length : 0 });
+    } else fail('GET /certificates', { status, count: certs?.length ?? 0 });
+
+    if (!assessmentId) {
+      fail('GET /assessments/:id/results skipped — no assessmentId');
+      return;
+    }
+
+    const results = await request(`/assessments/${assessmentId}/results`, { cookies: adminCookies });
+    verifyCollection('GET /assessments/:id/results as admin', results.status, results.body);
+
+    const adminCertificates = await request('/certificates?pageSize=200', { cookies: adminCookies });
+    verifyCollection('GET /certificates as admin', adminCertificates.status, adminCertificates.body);
   });
 
   // ── Summary ────────────────────────────────────────────────────────────────

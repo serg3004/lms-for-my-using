@@ -1,5 +1,19 @@
 # Staging smoke check
 
+The seeded MVP flow can also be verified against any running API. It exercises
+the complete admin read path (users, courses, lessons, materials, assignments,
+assessment questions, results, and certificates), then completes the seeded
+learner assessment and confirms that its result and certificate are visible to
+the administrator:
+
+```bash
+pnpm --filter @lms/api build
+BASE_URL="http://localhost:3000/api/v1" pnpm --filter @lms/api smoke:mvp
+```
+
+Run `admin:demo-seed` first when the target does not already contain the
+`demo-company` fixtures. Never run that seed against production.
+
 Use `scripts/smoke-staging.sh` to verify the deployed API, Web application,
 security headers, cookie authentication, role workspaces, RBAC, and object scope.
 
