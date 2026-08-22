@@ -385,7 +385,7 @@ Learning content зоны должны иметь согласованные lis
 
 > **Факт:** `learning-content-error-contract.spec.ts` — специфичные тесты: 404 для courses/lessons/materials/assignments/progress (5 кейсов), 409 CONFLICT, 400 VALIDATION_ERROR от Zod.
 
-## PR 64d — assessments/certificates/upload API response consistency ✅
+## PR 64d — assessments/certificates/upload API response consistency ⚠️
 ### Проблема – краткое понимание
 Assessments, certificates и upload являются критичными для MVP flow, поэтому их response contract должен быть предсказуемым и согласованным с frontend.
 
@@ -399,11 +399,11 @@ Assessments, certificates и upload являются критичными для
 - [x] assessment/certificate/upload endpoints проверены;
 - [x] response contract согласован;
 - [x] OpenAPI/docs обновлены при необходимости;
-- [x] backend tests добавлены;
+- [ ] backend tests добавлены (специфичного spec-файла нет, в отличие от 64c);
 - [x] frontend clients не сломаны;
 - [x] CI зелёный.
 
-> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Regression-тесты добавлены в `apps/api/src/common/filters/assessment-cert-upload-error-contract.spec.ts` (14 тестов: not found, forbidden, bad request, upload errors) — все проходят.
+> **Факт:** Глобальный `ApiExceptionFilter` покрывает assessments/certificates/upload автоматически. Специфичного файла `assessment-error-contract.spec.ts` нет — в отличие от `learning-content-error-contract.spec.ts` для 64c. Функционально работает, тестовое покрытие частичное.
 
 ---
 

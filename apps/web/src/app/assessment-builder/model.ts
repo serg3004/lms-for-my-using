@@ -70,6 +70,61 @@ export function appendOption(options: Record<string, AnswerOption[]>, questionId
   return { ...options, [questionId]: [...(options[questionId] ?? []), option] };
 }
 
+export function replaceOption(options: Record<string, AnswerOption[]>, questionId: string, updated: AnswerOption) {
+  return { ...options, [questionId]: (options[questionId] ?? []).map((option) => (option.id === updated.id ? updated : option)) };
+}
+
+export function removeOption(options: Record<string, AnswerOption[]>, questionId: string, optionId: string) {
+  return { ...options, [questionId]: (options[questionId] ?? []).filter((option) => option.id !== optionId) };
+}
+
+export type QuestionUpdatePayload = { title: string; type: QuestionType; points: number };
+export function buildQuestionUpdatePayload(title: string, type: QuestionType, points: string): QuestionUpdatePayload | null {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) return null;
+  return { title: trimmedTitle, type, points: Number(points) || 1 };
+}
+
+export type OptionUpdatePayload = { text: string; isCorrect: boolean };
+export function buildOptionUpdatePayload(text: string, isCorrect: boolean): OptionUpdatePayload | null {
+  const trimmedText = text.trim();
+  if (!trimmedText) return null;
+  return { text: trimmedText, isCorrect };
+}
+
+export type QuestionCreatePayload = { organizationId: string; type: QuestionType; title: string; points: number; order: number };
+export function buildQuestionCreatePayload(organizationId: string, type: QuestionType, title: string, points: string, order: number): QuestionCreatePayload | null {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) return null;
+  return { organizationId, type, title: trimmedTitle, points: Number(points) || 1, order };
+}
+
+export type OptionCreatePayload = { organizationId: string; text: string; isCorrect: boolean; order: number };
+export function buildOptionCreatePayload(organizationId: string, text: string, isCorrect: boolean, order: number): OptionCreatePayload | null {
+  const trimmedText = text.trim();
+  if (!trimmedText) return null;
+  return { organizationId, text: trimmedText, isCorrect, order };
+}
+
+/** Extracts the user-facing message from an ApiClientError, falling back to a generic message for any other error. */
+export function resolveApiErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiClientError ? error.message : fallback;
+}
+
+export function toggleOptionFormTarget(current: string | null, questionId: string): string | null {
+  return current === questionId ? null : questionId;
+}
+
+export type EditQuestionInitialState = { title: string; type: QuestionType; points: string };
+export function buildEditQuestionInitialState(question: Question): EditQuestionInitialState {
+  return { title: question.title, type: question.type, points: String(question.points) };
+}
+
+export type EditOptionInitialState = { text: string; correct: boolean };
+export function buildEditOptionInitialState(option: AnswerOption): EditOptionInitialState {
+  return { text: option.text ?? '', correct: option.isCorrect };
+}
+
 export function getAssessmentBuilderLoadErrorKey(error: unknown): string {
   return error instanceof ApiClientError && error.status === 401 ? 'admin.assessmentBuilder.sessionExpired' : 'admin.assessmentBuilder.loadError';
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../shared/apiClient.js';
-import { appendOption, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, type AnswerOption, type Question } from './model.js';
+import { appendOption, assessmentFormReducer, assessmentToForm, buildEditOptionInitialState, buildEditQuestionInitialState, buildOptionCreatePayload, buildOptionUpdatePayload, buildPreviewQuestionsWithOptions, buildQuestionCreatePayload, buildQuestionUpdatePayload, describePreviewAnswerSelection, emptyAssessmentForm, getAssessmentBuilderLoadErrorKey, mapAssessmentForm, removeOption, replaceOption, resolveApiErrorMessage, toggleOptionFormTarget, type AnswerOption, type Question } from './model.js';
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
@@ -20,6 +20,119 @@ describe('assessment builder model', () => {
   it('updates one field and appends an option immutably', () => {
     expect(assessmentFormReducer(emptyAssessmentForm(), { type: 'change', field: 'title', value: 'Quiz' }).title).toBe('Quiz');
     expect(appendOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toHaveLength(1);
+  });
+});
+
+describe('replaceOption', () => {
+  it('replaces the matching option for a question immutably, leaving others untouched', () => {
+    const options = { q1: [{ id: 'o1', text: 'Yes', imageUrl: null, isCorrect: false, order: 0 }, { id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 1 }] };
+    const updated = replaceOption(options, 'q1', { id: 'o1', text: 'Yes (edited)', imageUrl: null, isCorrect: true, order: 0 });
+
+    expect(updated).not.toBe(options);
+    expect(updated.q1).toEqual([{ id: 'o1', text: 'Yes (edited)', imageUrl: null, isCorrect: true, order: 0 }, { id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 1 }]);
+  });
+
+  it('is a no-op when the question has no options yet', () => {
+    expect(replaceOption({}, 'q1', { id: 'o1', text: 'Yes', imageUrl: null, isCorrect: true, order: 0 }).q1).toEqual([]);
+  });
+});
+
+describe('removeOption', () => {
+  it('removes the matching option for a question immutably, leaving other questions untouched', () => {
+    const options = { q1: [{ id: 'o1', text: 'Yes', imageUrl: null, isCorrect: false, order: 0 }], q2: [{ id: 'o2', text: 'No', imageUrl: null, isCorrect: false, order: 0 }] };
+    const updated = removeOption(options, 'q1', 'o1');
+
+    expect(updated).not.toBe(options);
+    expect(updated.q1).toEqual([]);
+    expect(updated.q2).toEqual(options.q2);
+  });
+});
+
+describe('buildQuestionUpdatePayload', () => {
+  it('trims the title and coerces points to a positive integer', () => {
+    expect(buildQuestionUpdatePayload('  What is 2+2?  ', 'single_choice', '3')).toEqual({ title: 'What is 2+2?', type: 'single_choice', points: 3 });
+  });
+
+  it('defaults points to 1 when blank or not a number', () => {
+    expect(buildQuestionUpdatePayload('Q', 'true_false', '')).toEqual({ title: 'Q', type: 'true_false', points: 1 });
+    expect(buildQuestionUpdatePayload('Q', 'true_false', 'abc')).toEqual({ title: 'Q', type: 'true_false', points: 1 });
+  });
+
+  it('rejects a blank title', () => {
+    expect(buildQuestionUpdatePayload('   ', 'single_choice', '1')).toBeNull();
+  });
+});
+
+describe('buildOptionUpdatePayload', () => {
+  it('trims the text and keeps the correctness flag', () => {
+    expect(buildOptionUpdatePayload('  Paris  ', true)).toEqual({ text: 'Paris', isCorrect: true });
+  });
+
+  it('rejects a blank text', () => {
+    expect(buildOptionUpdatePayload('   ', false)).toBeNull();
+  });
+});
+
+describe('buildQuestionCreatePayload', () => {
+  it('trims the title, coerces points and carries organizationId/order through', () => {
+    expect(buildQuestionCreatePayload('org-1', 'multiple_choice', '  Pick two  ', '2', 3)).toEqual({ organizationId: 'org-1', type: 'multiple_choice', title: 'Pick two', points: 2, order: 3 });
+  });
+
+  it('defaults points to 1 when blank or not a number', () => {
+    expect(buildQuestionCreatePayload('org-1', 'true_false', 'Q', '', 0)).toEqual({ organizationId: 'org-1', type: 'true_false', title: 'Q', points: 1, order: 0 });
+  });
+
+  it('rejects a blank title', () => {
+    expect(buildQuestionCreatePayload('org-1', 'single_choice', '   ', '1', 0)).toBeNull();
+  });
+});
+
+describe('buildOptionCreatePayload', () => {
+  it('trims the text and carries organizationId/order through', () => {
+    expect(buildOptionCreatePayload('org-1', '  Yes  ', true, 1)).toEqual({ organizationId: 'org-1', text: 'Yes', isCorrect: true, order: 1 });
+  });
+
+  it('rejects a blank text', () => {
+    expect(buildOptionCreatePayload('org-1', '   ', false, 0)).toBeNull();
+  });
+});
+
+describe('resolveApiErrorMessage', () => {
+  it('extracts the message from an ApiClientError', () => {
+    expect(resolveApiErrorMessage(new ApiClientError('Not found', 404), 'fallback')).toBe('Not found');
+  });
+
+  it('falls back to the generic message for any other error', () => {
+    expect(resolveApiErrorMessage(new Error('network down'), 'fallback')).toBe('fallback');
+    expect(resolveApiErrorMessage('not an error', 'fallback')).toBe('fallback');
+  });
+});
+
+describe('toggleOptionFormTarget', () => {
+  it('opens the add-option form for a question that is not currently open', () => {
+    expect(toggleOptionFormTarget(null, 'q1')).toBe('q1');
+    expect(toggleOptionFormTarget('q2', 'q1')).toBe('q1');
+  });
+
+  it('closes the add-option form when toggling the currently open question', () => {
+    expect(toggleOptionFormTarget('q1', 'q1')).toBeNull();
+  });
+});
+
+describe('buildEditQuestionInitialState', () => {
+  it('seeds the edit form from the question, stringifying points', () => {
+    const question: Question = { id: 'q1', organizationId: 'org-1', type: 'multiple_choice', title: 'Pick two', text: null, points: 5, order: 0 };
+    expect(buildEditQuestionInitialState(question)).toEqual({ title: 'Pick two', type: 'multiple_choice', points: '5' });
+  });
+});
+
+describe('buildEditOptionInitialState', () => {
+  it('seeds the edit form from the option', () => {
+    expect(buildEditOptionInitialState({ id: 'o1', text: 'Paris', imageUrl: null, isCorrect: true, order: 0 })).toEqual({ text: 'Paris', correct: true });
+  });
+
+  it('falls back to an empty string when the option has no text', () => {
+    expect(buildEditOptionInitialState({ id: 'o1', text: null, imageUrl: 'https://example.com/a.png', isCorrect: false, order: 0 })).toEqual({ text: '', correct: false });
   });
 });
 
