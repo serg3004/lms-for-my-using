@@ -923,14 +923,14 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 110 — MVP smoke test foundation ⚠️
+## PR 110 — MVP smoke test foundation ✅
 
 - Backend/API smoke tests: `/api/v1/health`, auth happy path, unauthorized/protected routes
 - Frontend render smoke tests для всех MVP-critical страниц (Vitest/Jest)
 - Использовать существующий стек без новых зависимостей
 - Full Playwright E2E — отдельный PR 127
 
-> **Факт:** Frontend smoke тесты для всех admin и learner страниц есть (`AdminPages.smoke.spec.tsx`, `LearnerPages.smoke.spec.tsx`). Backend smoke (`mvp-flow.smoke.spec.ts`) есть, но использует mock Prisma, не реальную БД. `docs/CI_AUDIT_BASELINE.md` зафиксирован. Частично выполнено.
+> **Факт:** Frontend smoke тесты для всех admin и learner страниц есть (`AdminPages.smoke.spec.tsx`, `LearnerPages.smoke.spec.tsx`). Backend smoke на mock Prisma (`mvp-flow.smoke.spec.ts`) дополнен реальным DB-smoke `apps/api/src/integration/api.database-smoke.spec.ts` — поднимает полное Nest-приложение против настоящего Postgres (`pnpm --filter @lms/api test:integration:db`, свой `jest.database.config.cjs`) и покрывает `GET /api/v1/health`, login/`auth/me` happy path и 401 на защищённый роут без токена, плюс instructor/manager scope и atomic refresh rotation. В CI (`.github/workflows/ci.yml`) job `Checks` поднимает сервис-контейнер `postgres:16-alpine`, гоняет `prisma:migrate:deploy` и затем `test:integration:db` — проверено локально (Postgres 16, `prisma:migrate:deploy` + `test:integration:db`): 5/5 тестов проходят. `docs/CI_AUDIT_BASELINE.md` зафиксирован. Долг "mock, не реальная БД" закрыт.
 
 ---
 
