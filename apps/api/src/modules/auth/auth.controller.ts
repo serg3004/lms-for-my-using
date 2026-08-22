@@ -110,20 +110,18 @@ export class AuthController {
     return { accepted: true } as const;
   }
 
-  @Post('password-reset/request')
+  @Post(['password-reset/request', 'reset-password-request'])
   @PublicAccess()
   requestPasswordReset(@Body() body: unknown) {
-    passwordResetRequestSchema.parse(body);
-
-    return this.authService.requestPasswordReset();
+    const input = passwordResetRequestSchema.parse(body);
+    return this.authService.requestPasswordReset(input);
   }
 
-  @Post('password-reset/confirm')
+  @Post(['password-reset/confirm', 'reset-password'])
   @PublicAccess()
   confirmPasswordReset(@Body() body: unknown) {
-    passwordResetConfirmSchema.parse(body);
-
-    return this.authService.confirmPasswordReset();
+    const input = passwordResetConfirmSchema.parse(body);
+    return this.authService.confirmPasswordReset(input);
   }
 
   @Get('me')
