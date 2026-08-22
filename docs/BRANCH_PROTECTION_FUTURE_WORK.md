@@ -6,7 +6,7 @@
 >
 > **Назначение:** зафиксировать рекомендуемую будущую конфигурацию GitHub Ruleset для `main`, не создавая ложного впечатления, что защита ветки уже включена.
 >
-> **Проверено по `main`:** `9488961e1c5c654af9b6095cacff1f6a88827d9c` (2026-08-09).
+> **Проверено по `main`:** `50e27a1491828cd0776a5cab2592ed5e784899ed` (2026-08-22).
 
 ## 1. Текущее состояние
 
@@ -18,6 +18,8 @@
   - `Checks` — основной `CI / Checks` job;
   - `Analyze (javascript-typescript)` — CodeQL analysis job;
 - PR-based workflow уже используется как рабочий процесс проекта, но GitHub settings пока не запрещают обход через прямое изменение `main`.
+
+Fresh read-only GitHub API audit также вернул пустой список repository rulesets. Поэтому защита действительно требует включения, а не только обновления документации.
 
 **Правило для ИИ-агента:** этот документ описывает **будущую** настройку. `MUST NOT` утверждать, что branch protection активна, пока repository settings не перепроверены и не подтверждают это.
 
@@ -174,6 +176,26 @@ Bypass list: empty
 ---
 
 ## 7. Будущая процедура включения
+
+### Автоматизированная процедура
+
+Репозиторий содержит `scripts/configure-branch-protection.mjs`, который формирует ровно конфигурацию из разделов 3–6 и после записи перечитывает ruleset и состояние default branch. Скрипт по умолчанию выполняет только read-only audit:
+
+```bash
+GITHUB_REPOSITORY=serg3004/lms-for-my-using pnpm security:branch-protection:audit
+```
+
+Для применения нужен fine-grained token владельца репозитория с permission **Administration: Read and write**:
+
+```bash
+GITHUB_REPOSITORY=serg3004/lms-for-my-using \
+GITHUB_TOKEN='<fine-grained token>' \
+node scripts/configure-branch-protection.mjs --apply
+```
+
+Токен нельзя сохранять в repository files, shell history или CI artifacts. Успешный вывод должен содержать `"verified": true`. Без `--apply` скрипт никогда не выполняет write request; если default branch не защищена, audit завершается с кодом `2`.
+
+Наличие скрипта не означает, что Ruleset уже активирован. До успешного authenticated apply и read-back сохраняется статус `DEFERRED / NOT-IMPLEMENTED`.
 
 ### До изменения
 

@@ -1135,6 +1135,7 @@ Assessments, certificates и upload являются критичными для
 
 - Проверить и настроить: required CI, required CodeQL, no direct push, PR required
 - Зафиксировать статус — подтверждается пользователем
+- Добавлен воспроизводимый audit/apply script с безопасным read-only режимом и обязательной read-back verification; фактическая активация ожидает repository Administration credential владельца
 
 ---
 
