@@ -133,6 +133,29 @@ describe('API hardening middleware', () => {
     expect(nextAfterReset.calls).toBe(1);
   });
 
+  it('sweeps expired in-memory entries so a sustained attack cannot grow the store forever', async () => {
+    let currentTime = 1_000;
+    const store = createInMemoryRateLimitStore(() => currentTime);
+    const windowMs = 60_000;
+
+    // Every key here expires immediately after being written (advance time past the window
+    // before the next distinct key), simulating an attacker rotating IPs/accounts.
+    for (let i = 0; i < 5_000; i += 1) {
+      await store.increment(`key-${i}`, windowMs);
+    }
+    expect(store.size()).toBe(5_000);
+
+    currentTime += windowMs + 1;
+
+    // Without sweeping, writing 5,000 more distinct keys would leave 10,000 entries held
+    // forever. The sweep triggered partway through this batch should reclaim the first
+    // 5,000, which are now expired — so the store should end up well under 10,000.
+    for (let i = 5_000; i < 10_000; i += 1) {
+      await store.increment(`key-${i}`, windowMs);
+    }
+    expect(store.size()).toBeLessThan(10_000);
+  });
+
   it('keeps the request query in the normalized rate limit error path', async () => {
     const store = createInMemoryRateLimitStore(() => 1_000);
     const middleware = createSensitiveRouteRateLimitMiddleware(store, {

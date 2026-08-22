@@ -77,6 +77,11 @@ export type RateLimitStore = {
   increment(key: string, windowMs: number): Promise<number>;
 };
 
+export type InMemoryRateLimitStore = RateLimitStore & {
+  /** Exposed for tests: the number of tracked keys, expired or not, currently held in memory. */
+  size(): number;
+};
+
 export type RateLimitMode = 'redis' | 'local-degraded';
 
 export type RateLimitObservability = {
@@ -134,8 +139,21 @@ function ruleKey(scope: string, route: string, rule: RateLimitRule): string {
   return `${scope}:${route}:${rule.windowMs}`;
 }
 
-export function createInMemoryRateLimitStore(now = () => Date.now()): RateLimitStore {
+// Rechecked every this-many writes so a sustained attack (rotating IPs/emails against
+// login or register) can't grow this Map without bound for the life of the process —
+// it's the primary store in STARTUP-IN-MEMORY mode and the fallback during a Redis outage,
+// both of which can last as long as the process runs.
+const IN_MEMORY_STORE_SWEEP_INTERVAL = 5_000;
+
+export function createInMemoryRateLimitStore(now = () => Date.now()): InMemoryRateLimitStore {
   const attempts = new Map<string, RateLimitEntry>();
+  let writesSinceSweep = 0;
+
+  function sweepExpired(currentTime: number): void {
+    for (const [key, entry] of attempts) {
+      if (entry.resetAt <= currentTime) attempts.delete(key);
+    }
+  }
 
   return {
     async increment(key: string, windowMs: number): Promise<number> {
@@ -144,11 +162,19 @@ export function createInMemoryRateLimitStore(now = () => Date.now()): RateLimitS
 
       if (!entry || entry.resetAt <= currentTime) {
         attempts.set(key, { count: 1, resetAt: currentTime + windowMs });
+        writesSinceSweep += 1;
+        if (writesSinceSweep >= IN_MEMORY_STORE_SWEEP_INTERVAL) {
+          writesSinceSweep = 0;
+          sweepExpired(currentTime);
+        }
         return 1;
       }
 
       entry.count += 1;
       return entry.count;
+    },
+    size(): number {
+      return attempts.size;
     },
   };
 }
