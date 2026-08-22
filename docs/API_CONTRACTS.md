@@ -16,7 +16,7 @@ Implemented backend/API baseline:
 - Users, groups (with member/manager sub-resource management), memberships endpoints.
 - Courses (with instructor sub-resource management), lessons (with ordering), materials (including multipart upload and malware-scan callback), assignments, progress, assessments, assessment questions/options, attempts/results/report, and certificates endpoints.
 - Centralized API error response envelope.
-- Manual OpenAPI document synced with current controllers.
+- OpenAPI document generated from current NestJS controllers at `/api/v1/api-json`; interactive Swagger UI at `/api/v1/docs`.
 - Runtime API environment validation.
 - Refresh token / httpOnly cookie session store, CSRF double-submit protection, Redis-backed rate limiting with in-memory fallback.
 - RBAC: role-policy layer (`RolesGuard`) plus object-level course/group scoping (`CourseAccessGuard`, `manager-team-scope`) — see `docs/API_RBAC_MATRIX.md`.
@@ -122,7 +122,9 @@ Suggested rollout order:
 GET  /api/v1/health
 GET  /api/v1/health/live
 GET  /api/v1/health/ready
-GET  /api/v1/openapi
+GET  /api/v1/api-json
+GET  /api/v1/docs
+GET  /api/v1/openapi  # deprecated manual document
 
 POST /api/v1/auth/login
 POST /api/v1/auth/refresh

@@ -19,7 +19,7 @@ Implemented backend foundation:
 - Assessment attempts are allowed only for published assessments
 - Centralized API error format
 - Shared API error response type aligned with backend error envelope
-- OpenAPI document skeleton
+- Runtime-generated OpenAPI contract and Swagger UI
 - Runtime API environment validation for `API_PORT` and `JWT_SECRET`
 - MVP API smoke coverage
 - MVP Definition of Done, Pilot Checklist, Local Runbook, Seed Data
@@ -50,7 +50,9 @@ Current storage/upload implementation:
 
 ```text
 GET  /api/v1/health
-GET  /api/v1/openapi
+GET  /api/v1/api-json
+GET  /api/v1/docs
+GET  /api/v1/openapi  # deprecated manual document
 
 POST /api/v1/auth/login
 POST /api/v1/auth/logout
