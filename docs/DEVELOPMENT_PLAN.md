@@ -1534,7 +1534,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 153 — Security audit: публичные endpoints, CORS и формат ошибок ⚠️
+## PR 153 — Security audit: публичные endpoints, CORS и формат ошибок ✅
 
 **Проблема:** Публичные API endpoints не инвентаризированы, формат ошибок может раскрывать stack trace и SQL-текст, CORS не проверен на ограничение по origin. PR 53/118/139 покрывают части, но не проводили сквозной аудит.
 
@@ -1553,7 +1553,7 @@ Assessments, certificates и upload являются критичными для
 - CORS разрешает только явно указанный frontend origin — проверено
 - lint, typecheck, tests, build — зелёные
 
-> **Факт:** Security headers (Helmet-like) и rate limiting добавлены в `main.ts`. Сквозной публичный endpoint аудит не зафиксирован отдельным документом — частично выполнено.
+> **Факт:** Security headers и rate limiting добавлены в `main.ts`. Сквозной аудит публичных endpoints, CORS, CSRF и формата ошибок зафиксирован в `docs/SECURITY_AUDIT_PR_153.md` и покрыт integration-тестом.
 
 ---
 
@@ -1793,7 +1793,7 @@ Assessments, certificates и upload являются критичными для
 Качество, безопасность, production  PR 151–162  12 PR
   ✅ СДЕЛАНО:    151 (env validation), 152 (health+DB), 154 (KK locale), 155 (login UX),
                  156 (hamburger), 157 (lazy loading)
-  ⚠️ ЧАСТИЧНО:  153 (security audit — headers/rate limit done, endpoint audit нет)
+  ✅ СДЕЛАНО:    153 (security audit — inventory, validation, CORS, CSRF, sanitized errors)
   🔲 НЕ НАЧАТО: 158 (SEO/meta), 159 (a11y baseline), 160 (LICENSE), 161 (observability), 162 (release gate)
 ```
 
