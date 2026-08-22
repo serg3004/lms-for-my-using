@@ -1,3 +1,4 @@
+/** @deprecated Use the runtime document exposed at /api/v1/api-json. */
 type OpenApiDocument = {
   openapi: '3.0.3';
   info: {

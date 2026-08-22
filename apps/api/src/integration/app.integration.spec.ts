@@ -22,6 +22,7 @@ import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
 import { UploadService } from '../modules/upload/upload.service.js';
+import { setupOpenApi } from '../openapi/swagger.js';
 
 type HttpTestResponse = {
   statusCode?: number;
@@ -193,6 +194,7 @@ describe('API integration scaffold', () => {
 
     app = moduleReference.createNestApplication();
     app.setGlobalPrefix('api/v1');
+    setupOpenApi(app);
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.init();
     await app.listen(0);
@@ -221,6 +223,28 @@ describe('API integration scaffold', () => {
         title: 'LMS API',
       },
     });
+  });
+
+  it('GET /api/v1/api-json returns the generated OpenAPI contract', async () => {
+    const response = await requestJson(`${getAppUrl(app)}/api/v1/api-json`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toMatchObject({
+      openapi: '3.0.0',
+      info: { title: 'LMS API', version: '1.0.0' },
+      components: {
+        securitySchemes: {
+          bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        },
+      },
+    });
+
+    const document = response.body as {
+      paths: Record<string, { get?: { deprecated?: boolean; security?: unknown[] } }>;
+    };
+    expect(document.paths['/api/v1/health']?.get?.security).toEqual([]);
+    expect(document.paths['/api/v1/smoke/protected']?.get?.security).toEqual([{ bearerAuth: [] }]);
+    expect(document.paths['/api/v1/openapi']?.get?.deprecated).toBe(true);
   });
 
   it('normalizes validation errors through the global filter', async () => {

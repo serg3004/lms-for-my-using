@@ -18,6 +18,7 @@ import { createTelemetryContextMiddleware } from './common/telemetry/telemetry-c
 import { createHttpMetricsMiddleware, rateLimitRejects, redisErrors } from './common/observability/metrics.js';
 import { stopTracing } from './common/observability/tracing.js';
 import { loadApiEnv, loadLocalEnvFiles } from './config/env.js';
+import { setupOpenApi } from './openapi/swagger.js';
 
 type ExpressLikeServer = {
   disable?: (setting: string) => void;
@@ -112,6 +113,7 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.setGlobalPrefix('api/v1');
+  setupOpenApi(app);
   app.useGlobalFilters(new ApiExceptionFilter());
   app.enableShutdownHooks();
   app.getHttpServer().once('close', () => {

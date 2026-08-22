@@ -1326,7 +1326,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 140 — OpenAPI generation через Nest Swagger 🔲
+## PR 140 — OpenAPI generation через Nest Swagger ✅
 
 - Добавить `@nestjs/swagger`
 - Подключить Swagger/OpenAPI generation в backend
