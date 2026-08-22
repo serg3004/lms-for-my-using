@@ -1,10 +1,9 @@
 import { SignJWT, errors as joseErrors, jwtVerify } from 'jose';
 
 import { getJwtSecret } from '../../config/env.js';
+import { accessTokenLifetimeJwt, accessTokenLifetimeMs } from './auth.lifecycle.js';
 
 const jwtAlg = 'HS256';
-const defaultExpiresIn = '1h';
-const defaultExpiresInMs = 60 * 60 * 1000;
 
 export type JwtSignPayload = {
   sub: string;
@@ -46,14 +45,14 @@ function toJwtVerificationError(message: string, cause: unknown) {
 export async function signJwt(payload: JwtSignPayload, secret?: string): Promise<SignJwtResult> {
   const resolvedSecret = secret ?? getJwtSecret();
   const jti = crypto.randomUUID();
-  const expiresAt = new Date(Date.now() + defaultExpiresInMs);
+  const expiresAt = new Date(Date.now() + accessTokenLifetimeMs);
 
   const token = await new SignJWT({ organizationId: payload.organizationId, email: payload.email })
     .setProtectedHeader({ alg: jwtAlg })
     .setSubject(payload.sub)
     .setJti(jti)
     .setIssuedAt()
-    .setExpirationTime(defaultExpiresIn)
+    .setExpirationTime(accessTokenLifetimeJwt)
     .sign(toKey(resolvedSecret));
 
   return { token, jti, expiresAt };

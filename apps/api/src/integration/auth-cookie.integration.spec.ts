@@ -108,12 +108,12 @@ function expectIssuedCookies(cookies: string[], secure: boolean) {
 
   const accessCookie = findCookie(cookies, accessTokenCookieName);
   expectCookieAttributes(accessCookie, { httpOnly: true, path: '/api/v1', secure });
-  expect(accessCookie).toContain('Max-Age=3600');
+  expect(accessCookie).toContain('Max-Age=900');
   expect(accessCookie).toMatch(/Expires=[^;]+/);
 
   const csrfCookie = findCookie(cookies, csrfTokenCookieName);
   expectCookieAttributes(csrfCookie, { httpOnly: false, path: '/', secure });
-  expect(csrfCookie).toContain('Max-Age=3600');
+  expect(csrfCookie).toContain('Max-Age=900');
   expect(csrfCookie).toMatch(/Expires=[^;]+/);
 
   const refreshCookie = findCookie(cookies, refreshTokenCookieName);

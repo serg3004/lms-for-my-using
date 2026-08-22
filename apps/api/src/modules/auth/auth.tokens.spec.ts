@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 
 import { signJwt, verifyJwt } from './auth.tokens';
+import { accessTokenLifetimeSeconds } from './auth.lifecycle';
 
 const jwtSecret = '0123456789abcdef0123456789abcdef';
 
@@ -63,6 +64,14 @@ describe('Auth tokens', () => {
     expect(claims.sub).toBe(userJwtPayload.sub);
     expect(claims.organizationId).toBe(userJwtPayload.organizationId);
     expect(claims.email).toBe(userJwtPayload.email);
+  });
+
+  it('keeps access tokens short-lived', async () => {
+    const { token, expiresAt } = await signJwt(userJwtPayload, jwtSecret);
+    const claims = await verifyJwt(token, jwtSecret);
+
+    expect(claims.exp - claims.iat).toBe(accessTokenLifetimeSeconds);
+    expect(expiresAt.getTime() - Date.now()).toBeCloseTo(accessTokenLifetimeSeconds * 1000, -2);
   });
 
   it('signs and verifies a JWT with the configured JWT secret', async () => {

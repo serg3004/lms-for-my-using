@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { type CurrentUser, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
+import { refreshTokenLifetimeMs } from './auth.lifecycle.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
@@ -30,8 +31,6 @@ const loginUserSelect = {
 const logoutAccepted = {
   accepted: true,
 } as const;
-
-const refreshTokenLifetimeMs = 30 * 24 * 60 * 60 * 1000;
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

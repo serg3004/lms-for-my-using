@@ -1273,7 +1273,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 137 — Refresh token flow и session lifecycle 🔲
+## PR 137 — Refresh token flow и session lifecycle ✅
 
 *Требует завершённого PR 120.*
 
@@ -1289,6 +1289,8 @@ Assessments, certificates и upload являются критичными для
 - POST /auth/refresh с истёкшим/revoked токеном возвращает 401
 - Refresh token недоступен из JavaScript (`document.cookie` не содержит refresh token)
 - Существующие POST /auth/login и GET /auth/me не сломаны
+
+> **Факт:** Login создаёт серверную session с SHA-256 hash refresh token и 30-дневным TTL; сам refresh token выдаётся только в `httpOnly`, `SameSite=Lax` cookie с узким path `/api/v1/auth/refresh`. `POST /auth/refresh` атомарно потребляет token, отклоняет invalid/expired/revoked sessions и выполняет rotation access/refresh token. Access token и auth/CSRF cookies имеют общий короткий TTL 15 минут. Web-клиент автоматически выполняет один дедуплицированный refresh и повторяет исходный запрос; unit, HTTP integration и database concurrency тесты покрывают lifecycle и защиту от повторного использования.
 
 ---
 
@@ -1501,9 +1503,9 @@ Assessments, certificates и upload являются критичными для
 
 ```
 Новые фичи и архитектура         PR 132–150  19 PR
-  ✅ СДЕЛАНО:    132 (i18n RU), 143 (layout)
+  ✅ СДЕЛАНО:    132 (i18n RU), 137 (refresh token flow), 143 (layout)
   ✅ ЗАКРЫТО:   135 (storage audit и rollout plan)
-  🔲 НЕ НАЧАТО: 133, 134, 136, 137, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
+  🔲 НЕ НАЧАТО: 133, 134, 136, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
 ```
 
 ---
