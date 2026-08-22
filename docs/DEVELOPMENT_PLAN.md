@@ -1072,11 +1072,13 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 123 — Redis-backed rate limit 🔲
+## PR 123 — Redis-backed rate limit ✅
 
 - Redis-backed limiter вместо in-memory
 - Env config задокументирован; safe fallback/error behavior
 - Tests для limit behavior; работает со staging Redis
+
+> **Факт:** реализация уже была доставлена коммитом `f046bd7` и с тех пор усилена. `createRedisRateLimitStore()` атомарно увеличивает namespaced Redis-счётчики и назначает TTL через Lua; `main.ts` подключает `ioredis` по `REDIS_URL`. Production-конфигурация требует Redis, кроме явно включённого emergency fallback `ALLOW_IN_MEMORY_RATE_LIMIT=true`; при runtime-сбое Redis middleware продолжает ограничивать запросы локально и автоматически возвращается к Redis после восстановления. Unit tests покрывают shared counters, восстановление после сбоя и лимиты всех sensitive routes. Фактическая доступность staging/production Redis остаётся live infrastructure check и не следует из состояния репозитория.
 
 ---
 
