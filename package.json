@@ -15,7 +15,8 @@
     "security:waivers": "node scripts/validate-security-waivers.mjs",
     "test:integration:db:local": "bash scripts/test-api-database.sh",
     "test:a11y": "playwright test --config apps/e2e/playwright.accessibility.config.ts",
-    "test:load-baseline": "bash load-tests/baseline.test.sh"
+    "test:load-baseline": "bash load-tests/baseline.test.sh",
+    "test:backup-restore": "bash tests/scripts/backup-restore.test.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

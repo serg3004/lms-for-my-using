@@ -2970,7 +2970,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 215 — Backup/restore и disaster recovery 🔲
+## PR 215 — Backup/restore и disaster recovery ✅
 
 **Проблема:** Backup не гарантирует восстановление PostgreSQL и S3.
 
@@ -2986,6 +2986,13 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Ключевые записи/объекты доступны
 - RPO/RTO измерены
 - Runbook готов.
+
+> **Факт:** versioned scripts создают единый PostgreSQL/object-storage snapshot,
+> проверяют SHA-256 manifest, шифруют artifact через GPG AES-256 и при restore
+> сверяют активные DB object references с inventory. Runbook определяет RPO 24h,
+> RTO 4h, retention, owners, безопасный isolated restore/cutover и обязательный
+> evidence record. Автоматизированный drill измеряет RTO и запускает переданный
+> application health check; production/provider readiness остаётся `LIVE-VERIFY`.
 
 ---
 
