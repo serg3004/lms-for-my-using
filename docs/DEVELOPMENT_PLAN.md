@@ -1139,11 +1139,17 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 130 — production observability 🔲
+## PR 130 — production observability ✅
 
 - Health/logging/error tracking plan или интеграция
 - Runtime error visibility, deployment status visibility
 - Basic alerts если инфра доступна
+
+> **Проверено 2026-08-22:** требования уже реализованы в `main`: liveness/readiness
+> health checks, production JSON logging с request correlation и redaction,
+> env-gated Sentry/OpenTelemetry, защищённые Prometheus metrics, SLO dashboard и
+> alert rules. Повторная реализация не требуется; evidence и границы live-проверки
+> зафиксированы в `docs/PR_130_PRODUCTION_OBSERVABILITY_VERIFICATION.md`.
 
 ---
 
@@ -1160,7 +1166,7 @@ Assessments, certificates и upload являются критичными для
 ```
 БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
 БЛОК 7: Staging                  PR 110–117   8 PR  ✅ 111–113✅ 115–117✅ 110⚠️ 114⚠️ 116✅
-БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ 118✅ 119✅ 120✅ 121✅ 122✅ 124✅ 126✅ 128✅ 127❌ 123⚠️ 125🔲 129🔲 130🔲 131🔲
+БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ 118✅ 119✅ 120✅ 121✅ 122✅ 124✅ 126✅ 128✅ 130✅ 127❌ 123⚠️ 125🔲 129🔲 131🔲
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 3:                               28 PR
 ```
