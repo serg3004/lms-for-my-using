@@ -972,7 +972,16 @@ Assessments, certificates и upload являются критичными для
 - Upload smoke: valid file, invalid file rejected, too large rejected
 - Зафиксировать pass/fail по каждому шагу
 
-> **Факт:** Admin smoke частично выполнен (зафиксирован в staging report). Upload smoke неполный: S3/R2 не подключён к Railway staging, поэтому file upload не проверялся в реальной среде.
+> **Факт (2026-08-22):** У агента нет сетевого доступа к живому Railway-домену из этой среды (исходящий трафик к `*.up.railway.app` блокируется прокси-политикой — `403 policy denial`, инструментов exec на Railway-сервисе тоже нет). По решению пользователя вместо теста против реального Railway-деплоя выполнен **полный локальный smoke** тем же кодом API: реальный Postgres 16, `prisma:migrate:deploy`, `admin-demo-seed --apply`, реальный S3-совместимый сервер (`s3rver`) вместо MinIO/R2.
+>
+> Пройдено через реальные HTTP-запросы к работающему API (не моки):
+> - `GET /health` → `status: ok, db: ok, storage: ok` ✅
+> - login admin@demo.com → users (4 записи) → courses (1) → lessons (3) → materials (3, link-based) → assignments (1) — все списки корректны ✅
+> - assessment builder: список тестов, 5 вопросов с вариантами — ✅
+> - **Полный learner flow**: login learner@demo.com → `POST /progress` x3 (все уроки completed) → `POST /assessment-attempts` (5/5, 100%, passed) → сертификат **автоматически выдан** (`GET /certificates` → status `issued`) ✅
+> - **Upload smoke**: valid PDF → 201, `scanStatus: pending` → после вердикта сканера `available`, presigned download URL отдаёт байт-в-байт тот же файл ✅; invalid MIME (`.exe`) → 400 `File type ... is not allowed` ✅; oversized file (9MB > 8MB buffered limit) → 413 `File too large` ✅
+>
+> **Важная находка:** На production Railway (`api` service) переменные `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` **не заданы**. Код `MaterialMalwareScanService.dispatch()` при их отсутствии удаляет объект из карантина и возвращает `503 Malware scanner is not configured` — то есть **загрузка файлов материалов в проде сейчас не работает** (эндпоинт `POST /materials/:id/file`). Это блокируется отсутствующей интеграцией сканера — предмет PR 125 ("malware scan integration", всё ещё 🔲). PR 114 подтверждает код корректен end-to-end при наличии сканера; сама интеграция сканера — отдельная работа.
 
 ---
 
