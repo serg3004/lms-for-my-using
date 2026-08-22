@@ -89,8 +89,8 @@ test.describe('instructor workspace', () => {
     await expect(statsGrid.getByText('Учеников', { exact: true }).locator('..').getByText(String(students), { exact: true })).toBeVisible();
 
     await page.goto('/instructor/courses');
-    await expect(page.getByRole('heading', { name: 'Workplace Safety Fundamentals' })).toBeVisible();
-    await page.getByRole('link', { name: 'Студенты' }).click();
+    await expect(page.getByRole('heading', { name: 'Основы охраны труда' })).toBeVisible();
+    await page.locator('article', { hasText: 'Основы охраны труда' }).getByRole('link', { name: 'Студенты' }).click();
     await expect(page).toHaveURL(new RegExp(`/instructor/courses/${seededCourseId}/students$`));
     const learnerRow = page.getByRole('row').filter({ hasText: 'learner@demo.com' });
     await expect(learnerRow).toContainText('Alex Learner');
