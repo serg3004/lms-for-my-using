@@ -1292,7 +1292,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 138 — Roles in JWT: архитектурное решение 🔲
+## PR 138 — Roles in JWT: архитектурное решение ✅
 
 - Проанализировать текущую модель ролей и membership
 - Выбрать один подход: DB-backed roles или roles в JWT
@@ -1303,6 +1303,8 @@ Assessments, certificates и upload являются критичными для
 **Критерии готовности:**
 - Файл `docs/ADR_ROLES_IN_JWT.md` существует с явным выбором и обоснованием
 - Role guard behavior покрыт тестами в обоих случаях
+
+**Факт:** код уже реализует DB-backed roles (JWT содержит только `sub`/`organizationId`/`email`, роли всегда резолвятся из `membership` — в `AuthService.withRoles()` и в `RolesGuard`, с кэшем только на время одного запроса) — новый код не требовался. Добавлен `docs/ADR_ROLES_IN_JWT.md` с явным выбором и обоснованием (мгновенный revoke прав vs. окно устаревания при roles-в-JWT). Role guard behavior уже покрыт тестами (`roles.guard.spec.ts`, `api-policy.audit.spec.ts`).
 
 ---
 
