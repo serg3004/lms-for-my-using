@@ -1204,7 +1204,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 134 — Repeatable staging smoke script 🔲
+## PR 134 — Repeatable staging smoke script ✅
 
 - Написать скрипт (`scripts/smoke.sh` или `scripts/smoke.ts`): API health, Web health, Web→API proxy
 - URL и токены — через env-переменные, без хардкода
@@ -1215,6 +1215,14 @@ Assessments, certificates и upload являются критичными для
 - Скрипт запускается одной командой и завершается с exit code 0 на staging
 - Все три проверки (API, Web, proxy) явно присутствуют в скрипте
 - `scripts/SMOKE.md` содержит инструкцию с примером команды запуска
+
+> **Факт:** `scripts/smoke-staging.sh` одной командой проверяет API health,
+> Web и Web→API proxy, получает URL и учётные данные только из env и возвращает
+> non-zero при ошибке. `scripts/SMOKE.md` документирует подготовку fixtures,
+> переменные и запуск; `scripts/smoke-staging.test.sh` воспроизводимо проверяет
+> успешный сценарий и отрицательные исходы и запускается в CI. Ручной workflow
+> `.github/workflows/staging-smoke.yml` выполняет тот же скрипт для окружения
+> `staging` с GitHub Environment variables и encrypted secrets.
 
 ---
 
