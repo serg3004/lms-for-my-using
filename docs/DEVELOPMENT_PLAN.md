@@ -1217,7 +1217,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 135 — Storage/upload: аудит и план внедрения ⚠️
+## PR 135 — Storage/upload: аудит и план внедрения ✅
 
 - Прочитать текущий upload module и зафиксировать фактическое состояние
 - Сверить `STORAGE_UPLOAD_STATUS.md` с реальным кодом
@@ -1228,7 +1228,7 @@ Assessments, certificates и upload являются критичными для
 - `STORAGE_UPLOAD_STATUS.md` содержит статус каждого метода upload: `implemented` / `stub` / `missing`
 - `STORAGE_PLAN.md` содержит пошаговый план с конкретными env-переменными (без значений) и оценкой в часах
 
-> **Факт:** `docs/STORAGE_UPLOAD_STATUS.md` существует. Реальный AWS S3Client в коде (не заглушка) — `upload.service.ts` с `isConfigured()` проверкой. Env переменные в `.env.example`. `STORAGE_PLAN.md` не найден отдельным файлом.
+> **Факт:** `docs/STORAGE_UPLOAD_STATUS.md` содержит полный method-level audit: 17 public `UploadService` methods implemented, stubs отсутствуют; deployment scheduling и live verification явно отделены как missing/external. `docs/STORAGE_PLAN.md` фиксирует полный env inventory, пошаговый provider-neutral rollout, acceptance/rollback и оценку 24–45 часов. Реальный AWS S3Client в коде не является заглушкой; конкретный live provider по repository не предполагается.
 
 ---
 
@@ -1479,7 +1479,7 @@ Assessments, certificates и upload являются критичными для
 ```
 Новые фичи и архитектура         PR 132–150  19 PR
   ✅ СДЕЛАНО:    132 (i18n RU), 143 (layout)
-  ⚠️ ЧАСТИЧНО:  135 (storage audit)
+  ✅ ЗАКРЫТО:   135 (storage audit и rollout plan)
   🔲 НЕ НАЧАТО: 133, 134, 136, 137, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
 ```
 

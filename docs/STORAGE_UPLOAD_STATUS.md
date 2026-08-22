@@ -4,7 +4,7 @@
 >
 > **Назначение:** разделить подтверждённый storage/upload implementation contract и external production state, которое требует live verification.
 >
-> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
+> **Проверено по `main`:** `7c2710335b6a1f840c9d412ab5ac270cb76e4fae` (2026-08-22).
 
 ## 1. Status model
 
@@ -36,6 +36,46 @@ Current storage architecture — S3-compatible и provider-neutral.
 - storage readiness check.
 
 Конкретный production provider не является частью implementation fact.
+
+### Аудит методов `UploadService`
+
+В таблице `implemented` означает, что метод выполняет реальную операцию через AWS SDK либо формирует реальный storage key. `stub` означает placeholder без рабочей операции, `missing` — требуемой операции в сервисе нет.
+
+| Метод | Статус | Фактическое поведение |
+| --- | --- | --- |
+| `isConfigured` | `implemented` | Сообщает, создан ли S3 client из полного набора обязательных настроек. |
+| `checkReadiness` | `implemented` | Выполняет `HeadBucket`; возвращает `disabled`, только когда storage не настроен. |
+| `uploadMaterialFile` | `implemented` | Загружает buffered material в tenant-scoped quarantine key через `PutObject`. |
+| `createMaterialObjectKey` | `implemented` | Создаёт opaque tenant/material-scoped normal key. |
+| `uploadChecklistItemPhoto` | `implemented` | Загружает validated photo в tenant/instance/item-scoped key через `PutObject`. |
+| `uploadOrganizationLogo` | `implemented` | Загружает validated logo в tenant-scoped branding key через `PutObject`. |
+| `getInlinePresignedUrl` | `implemented` | Выдаёт presigned `GetObject` для inline display с TTL не более 300 секунд. |
+| `createQuarantineObjectKey` | `implemented` | Создаёт opaque tenant/material-scoped quarantine key. |
+| `createMultipartUpload` | `implemented` | Создаёт S3 multipart upload и требует `UploadId` в ответе. |
+| `getMultipartPartUrl` | `implemented` | Выдаёт presigned `UploadPart` URL с TTL не более 900 секунд. |
+| `completeMultipartUpload` | `implemented` | Завершает multipart upload, поддерживает безопасный retry через `HeadObject` и возвращает фактический размер. |
+| `abortMultipartUpload` | `implemented` | Отменяет multipart upload через S3. |
+| `listMultipartUploads` | `implemented` | Постранично перечисляет незавершённые uploads под ограниченным prefix. |
+| `promoteQuarantinedObject` | `implemented` | Копирует clean object из quarantine в normal prefix и удаляет quarantine copy. |
+| `getPresignedUrl` | `implemented` | Выдаёт binary-safe attachment URL с безопасным именем и TTL не более 300 секунд. |
+| `listObjects` | `implemented` | Постранично перечисляет objects под заданным prefix для lifecycle cleanup. |
+| `deleteObject` | `implemented` | Удаляет object через `DeleteObject`. |
+
+**Итог:** `implemented: 17`, `stub: 0`, `missing: 0` для публичных методов current `UploadService`. Отдельного upload controller нет намеренно: storage используется из domain controllers (materials, checklists, organization branding), где применяются auth/scope/role guards и validation.
+
+### Аудит upload orchestration
+
+| Операция | Статус | Фактическое поведение |
+| --- | --- | --- |
+| Buffered material upload | `implemented` | 8 MiB server-buffer limit, metadata/content/archive validation, quarantine и scan dispatch. |
+| Multipart initiate/complete/abort | `implemented` | DB-backed tenant/material-owned session, 8 MiB parts, 24-hour expiry, ordered ETags и actual-size check. |
+| Expired multipart cleanup | `implemented` | Dry-run по умолчанию; execute aborts S3 upload and marks DB session aborted. |
+| Malware scan dispatch/callback | `implemented` | Authenticated callback, bounded dispatch timeout, fail-closed rejection and clean promotion. |
+| Orphan object cleanup | `implemented` | Сверяет normal/quarantine objects с DB references; dry-run по умолчанию. |
+| Automatic cleanup scheduling | `missing` | Команды существуют, но repository не создаёт cron/scheduler. Это deployment task. |
+| Live provider/CORS/scanner verification | `missing` | Не может быть реализовано repository code: требуется deployment evidence. |
+
+Детальный план закрытия deployment-зависимых пунктов, inventory env и оценка приведены в [`STORAGE_PLAN.md`](./STORAGE_PLAN.md).
 
 ---
 
