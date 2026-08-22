@@ -91,7 +91,7 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Design system components (PR 163) — ds-* prefix
+   Design system components (PR 142) — ds-* prefix
    ───────────────────────────────────────────────────────────────────────── */
 
 // ── Button ──────────────────────────────────────────────────────────────────

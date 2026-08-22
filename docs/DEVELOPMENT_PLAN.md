@@ -1356,7 +1356,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 142 — UI foundation: design system decision 🔲
+## PR 142 — UI foundation: design system decision ✅
 
 - Проанализировать текущие `global.css`, `ui.css`, `admin.css`
 - Выбрать направление: Tailwind/shadcn или CSS design system
@@ -1368,6 +1368,8 @@ Assessments, certificates и upload являются критичными для
 - `docs/ADR_DESIGN_SYSTEM.md` содержит явный выбор с обоснованием
 - Button, input, badge имеют единообразный внешний вид во всех местах использования
 - Каждый базовый primitive покрыт минимум одним render тестом
+
+> **Факт:** выбран существующий CSS design system без Tailwind/shadcn. Семантические токены находятся в `styles/tokens.css`, общие `ds-*` primitives — в `shared/ui.tsx` и `styles/ui.css`; Button, Input и Badge покрыты render tests в `shared/ui.spec.tsx`. Политика постепенной миграции legacy-классов зафиксирована в `docs/ADR_DESIGN_SYSTEM.md`.
 
 ---
 
