@@ -3005,7 +3005,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 216 — Incident response 🔲
+## PR 216 — Incident response ✅
 
 **Проблема:** Нет формальной процедуры при утечке JWT, refresh, DB или S3 credentials.
 
@@ -3019,6 +3019,13 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Owners и сроки известны
 - Tabletop проведён
 - Secrets в docs отсутствуют.
+
+> **Факт:** Формальный runbook определяет severity/response clocks, роли,
+> evidence chain of custody, containment, безопасную ротацию JWT/PostgreSQL/S3,
+> глобальный и пользовательский отзыв sessions, recovery gates, notification и
+> postmortem. Документированный tabletop 2026-08-22 прошёл все сценарные точки;
+> follow-up для staging drill и закрытых operational contacts имеет owners/сроки.
+> В репозитории используются только placeholders, реальные secrets запрещены.
 
 ---
 
