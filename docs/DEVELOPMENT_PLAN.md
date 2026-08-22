@@ -1090,11 +1090,17 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 125 — malware scan integration 🔲
+## PR 125 — malware scan integration ⚠️
 
 - Выбрать scanner/service; интеграция с upload flow
 - Error/timeout behavior; tests/mocks
 - Malicious/suspicious file rejected или quarantined; upload happy path сохраняется
+
+> **Факт:** Интеграция с upload flow (quarantine, статусы pending/scanning/available/rejected, идемпотентные callbacks, deadline/timeout) уже была реализована и покрыта тестами в PR 186/187/188 — `MaterialMalwareScanService`. Не хватало: (1) выбора и деплоя реального scanner-сервиса — production Railway не имел `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET`, из-за чего `POST /materials/:id/file` реально падал с `503` (найдено в ходе PR 114 smoke); (2) unit-тестов на `dispatch()` (not-configured / dispatch-failed / timeout ветки — раньше не покрыты).
+>
+> Добавлено: self-hosted ClamAV-сканер `services/malware-scanner/` (Node HTTP-обёртка + `clamscan`, свой `Dockerfile`/`railway.json` по образцу `apps/api`/`apps/web`), реализующий существующий webhook-контракт (`POST /scan` → async `clamscan` → callback на `/internal/material-scans/:id/result`). Покрыт unit-тестами чистой логики (`server.test.mjs`, `node --test`, 10/10 passed) — сам ClamAV-бинарник не тестируется в CI (нет Docker/clamav в dev-окружении), только на реальной сборке образа. Добавлены недостающие тесты `dispatch()` в `material-malware-scan.service.spec.ts` (not-configured / успешный dispatch / dispatch-failed / throw-timeout) — 11/11 passed.
+>
+> **Осталось (ручной шаг, вне кода):** создать Railway-сервис из `services/malware-scanner/`, задать переменные (инструкция в `services/malware-scanner/README.md`), задать `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` на `api`. Без этого шага upload остаётся недоступен в production.
 
 ---
 
