@@ -1306,7 +1306,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 139 — Rate limiting: кастомный middleware или Nest Throttler 🔲
+## PR 139 — Rate limiting: кастомный middleware или Nest Throttler ✅
 
 - Сравнить текущий custom rate limiter с `@nestjs/throttler`
 - Выбрать: оставить custom middleware или мигрировать на ThrottlerModule
@@ -1317,6 +1317,8 @@ Assessments, certificates и upload являются критичными для
 **Критерии готовности:**
 - `docs/ADR_RATE_LIMITING.md` содержит явный выбор с обоснованием
 - Auth/register/reset endpoints возвращают 429 после превышения лимита
+
+**Факт:** `@nestjs/throttler` не установлен — лимитер уже кастомный (`apps/api/src/common/middleware/api-hardening.ts`, реально подключён в `main.ts`), Redis-backed с atomic Lua INCR+PEXPIRE, multi-tier (IP/account/global), graceful degradation на in-memory fallback, метрики и структурные логи. Тесты на 429 уже покрывали ровно нужные роуты (login/password-reset request+confirm/organizations register). Fallback-поведение уже задокументировано в `docs/RATE_LIMIT_FAILURE_POLICY.md`. Добавлен `docs/ADR_RATE_LIMITING.md` с явным выбором (остаться на custom middleware) и обоснованием (throttler потребовал бы написать тот же Redis-backed storage с нуля). Дополнительно найден и исправлен реальный баг: in-memory rate-limit store (`createInMemoryRateLimitStore`) не чистил истёкшие записи — неограниченный рост `Map` на весь процесс в STARTUP-IN-MEMORY и во время длительного RUNTIME-DEGRADED. Добавлена периодическая чистка (sweep каждые 5000 записей) + тест на это поведение. Полный прогон `src/common`+`src/modules/auth`+`src/modules/organizations` — 729/729 зелёных, typecheck и lint чистые.
 
 ---
 
