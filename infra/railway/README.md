@@ -12,6 +12,7 @@
 - API service — private Railway service.
 - Nginx проксирует `/api/` на `api.railway.internal:3000`.
 - Не включать Public Networking для API без отдельной owner/ops задачи.
+- Malware scanner (`services/malware-scanner/`) — опциональный private-сервис для malware scanning материалов (`MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET`). Без него `POST /materials/:id/file` возвращает `503`. Инструкция по деплою: `services/malware-scanner/README.md`.
 
 ## Ports
 
