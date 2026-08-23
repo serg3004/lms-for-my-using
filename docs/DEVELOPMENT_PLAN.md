@@ -2304,7 +2304,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ## Фаза A — Доказательство безопасности текущей реализации
 
-## PR 173 — Real PostgreSQL integration environment 🔲
+## PR 173 — Real PostgreSQL integration environment ✅
 
 **Проблема:** Database smoke существует, но нет гарантированно изолированного воспроизводимого окружения.
 
@@ -2322,9 +2322,13 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Prisma закрывает соединения
 - Exit code 0.
 
+**Факт (аудит 2026-08-23, перепроверено независимым агентом):** маркер 🔲 был устаревшим — реализовано полностью. `infra/docker/docker-compose.test.yml` (`postgres:16-alpine`, данные на `tmpfs` — гарантированно чистая БД при каждом запуске); `scripts/test-api-database.sh` поднимает контейнер (`trap cleanup EXIT` регистрируется до запуска `docker compose up` и уничтожает окружение при любом исходе, включая если сам `up` упадёт — `down ... || true` безопасно не падает повторно), применяет `prisma:migrate:deploy`, затем гоняет `apps/api/src/integration/api.database-smoke.spec.ts`. `database-test-safety.ts#assertSafeTestDatabase` по умолчанию требует локальный хост (основная защита) и отдельно бросает на `prod/production/railway/staging` в имени хоста/БД; **важная оговорка:** эта проверка по стоп-словам не исчерпывающая — при явном `ALLOW_EXTERNAL_TEST_DATABASE=true` реальный прод-хост с доменом без этих слов (например кастомный домен) теоретически пройдёт, если в имени БД есть "test". По умолчанию (без этой переменной) риска нет — используется только allowlist локальных хостов. `afterAll` вызывает `app.close()` в `try/finally`-цепочке (сработает даже если что-то бросит исключение раньше) — триггерит `PrismaService.onModuleDestroy() → $disconnect()`.
+
+**Уточнение по CI:** `.github/workflows/ci.yml` job `Checks` реально поднимает `postgres:16-alpine` и гоняет `test:integration:db` (тот же `api.database-smoke.spec.ts`) — но использует **свой независимый** нативный GitHub Actions `services:`-контейнер (порт 5432, без tmpfs), а не `docker-compose.test.yml`/`test-api-database.sh` — это два параллельных, не переиспользующих друг друга пути к одному и тому же тестовому сьюту (CI и локальный запуск), не единый механизм, как могло показаться из более ранней формулировки. Живой прогон `scripts/test-api-database.sh` в рабочей среде агента не выполнялся — там нет запущенного Docker-демона; проверено по коду и по логам CI.
+
 ---
 
-## PR 174 — Atomic refresh rotation: real DB concurrency 🔲
+## PR 174 — Atomic refresh rotation: real DB concurrency ✅
 
 **Проблема:** Unit-тест не доказывает атомарность refresh rotation при реальных конкурентных транзакциях.
 
@@ -2338,6 +2342,8 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Остаётся одна новая сессия
 - Нет необработанной Prisma-ошибки
 - Серия из 20 повторений стабильна.
+
+**Факт (аудит 2026-08-23):** маркер 🔲 был устаревшим — реализовано и покрыто тестом против реальной БД в том же `api.database-smoke.spec.ts`: `it('atomically rotates a refresh token under concurrent requests')`, `CONCURRENCY_ATTEMPTS = 20` циклов, в каждом — два параллельных `refresh`-запроса с одного `originalRefreshToken` (`Promise.all`). Проверено: ровно один ответ `ok`, ровно один `401`; количество сессий пользователя не меняется; повторное использование старого токена после ротации отдаёт `401`. Атомарность на уровне БД — `AuthSessionStore.consumeRefreshSession()` делает одиночный `prisma.session.update({ where: { refreshTokenHash: hash }, data: { refreshTokenHash: null } })`; для конкурентного второго запроса строка по этому `where` уже не находится (Prisma `P2025`), перехватывается `catch { return null }` → `401`, необработанных ошибок нет. Expired/revoked-сессии и `revokeAllUserSessions` (logout-all) покрыты юнит-тестами `auth.session-store.spec.ts`.
 
 ---
 
