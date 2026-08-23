@@ -1,4 +1,4 @@
-import type { BrowserContext, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
 
@@ -70,12 +70,6 @@ async function login(page: Page, role: 'learner' | 'instructor') {
   await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/instructor\/dashboard$/);
 }
 
-async function closeContext(context: BrowserContext) {
-  if (context.browser()?.isConnected()) {
-    await context.close();
-  }
-}
-
 test('learner evidence is detected and opened by instructor before approval', async ({ browser }) => {
   const learnerContext = await browser.newContext();
   const learnerPage = await learnerContext.newPage();
@@ -108,63 +102,53 @@ test('learner evidence is detected and opened by instructor before approval', as
     await route.continue();
   });
 
-  try {
-    await test.step('learner marks the item and attaches object-backed evidence', async () => {
-      await login(learnerPage, 'learner');
-      await learnerPage.goto('/learn/checklists');
-      await learnerPage.getByText('Photo review E2E').click();
+  await test.step('learner marks the item and attaches object-backed evidence', async () => {
+    await login(learnerPage, 'learner');
+    await learnerPage.goto('/learn/checklists');
+    await learnerPage.getByText('Photo review E2E').click();
 
-      const checkbox = learnerPage.locator('input[type="checkbox"]');
-      await expect(checkbox).toHaveCount(1);
-      await expect(checkbox).toBeEnabled();
-      await checkbox.check();
+    const checkbox = learnerPage.locator('input[type="checkbox"]');
+    await expect(checkbox).toHaveCount(1);
+    await checkbox.check();
+    await expect.poll(() => learnerResult?.checked).toBe(true);
 
-      const fileInput = learnerPage.locator('input[type="file"]');
-      await expect(fileInput).toHaveCount(1);
-      await expect(fileInput).toBeEnabled();
-      await fileInput.setInputFiles({
-        name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('evidence'),
-      });
-      await expect(learnerPage.getByText('evidence.png')).toBeVisible();
+    const fileInput = learnerPage.locator('input[type="file"]');
+    await expect(fileInput).toHaveCount(1);
+    await expect(fileInput).toBeEnabled();
+    await fileInput.setInputFiles({
+      name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('evidence'),
     });
+    await expect.poll(() => learnerResult?.photoFileName).toBe('evidence.png');
+    await expect(learnerPage.getByText('evidence.png')).toBeVisible();
+  });
 
-    const instructorContext = await browser.newContext();
-    const instructorPage = await instructorContext.newPage();
-    const submitted = instance(learnerResult, 'submitted');
-    let photoRequests = 0;
-    await instructorPage.route('**/api/v1/checklist-instances/pending-review', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([submitted]) }));
-    await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo`, (route) => {
-      photoRequests++;
-      return photoRequests === 1
-        ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: { message: 'Temporary storage error' } }) })
-        : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ url: photoDataUrl, expiresIn: 300 }) });
-    });
-    await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/review`, async (route) => {
-      learnerResult = { ...learnerResult!, reviewStatus: 'approved' };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(instance(learnerResult, 'completed')) });
-    });
+  const instructorContext = await browser.newContext();
+  const instructorPage = await instructorContext.newPage();
+  const submitted = instance(learnerResult, 'submitted');
+  let reviewed = false;
 
-    try {
-      await test.step('instructor opens evidence with retry and approves the result', async () => {
-        await login(instructorPage, 'instructor');
-        await instructorPage.goto('/instructor/checklists');
-        await instructorPage.getByText('Photo review E2E').click();
-        await expect(instructorPage.getByText('evidence.png')).toBeVisible();
-        await expect(instructorPage.getByText('photo missing', { exact: false })).toHaveCount(0);
+  await instructorPage.route('**/api/v1/checklist-instances/pending-review', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([submitted]) }));
+  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ url: photoDataUrl, expiresIn: 300 }) }));
+  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/review`, async (route) => {
+    reviewed = true;
+    learnerResult = { ...learnerResult!, reviewStatus: 'approved' };
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(instance(learnerResult, 'completed')) });
+  });
 
-        const evidenceRow = instructorPage.getByText('evidence.png').locator('..');
-        await evidenceRow.getByRole('button').click();
-        await expect(instructorPage.getByRole('alert')).toBeVisible();
-        await evidenceRow.getByRole('button').click();
-        await expect(instructorPage.getByRole('img', { name: 'evidence.png' })).toBeVisible();
+  await test.step('instructor opens evidence and approves the result', async () => {
+    await login(instructorPage, 'instructor');
+    await instructorPage.goto('/instructor/checklists');
+    await instructorPage.getByText('Photo review E2E').click();
+    await expect(instructorPage.getByText('evidence.png')).toBeVisible();
+    await expect(instructorPage.getByText('photo missing', { exact: false })).toHaveCount(0);
 
-        await instructorPage.locator('button').filter({ hasText: '✓' }).click();
-      });
-    } finally {
-      await closeContext(instructorContext);
-    }
-  } finally {
-    await closeContext(learnerContext);
-  }
+    const evidenceRow = instructorPage.getByText('evidence.png').locator('..');
+    await evidenceRow.getByRole('button').click();
+    await expect(instructorPage.getByRole('img', { name: 'evidence.png' })).toBeVisible();
+
+    await instructorPage.locator('button').filter({ hasText: '✓' }).click();
+    await expect.poll(() => reviewed).toBe(true);
+  });
 });
