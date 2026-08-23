@@ -155,3 +155,18 @@ No database migration has been applied to any real database yet.
 1. Move selected API response types to shared.
 2. Verify/expand local demo seed data.
 3. Full learner/admin RBAC audit.
+
+## License
+
+Proprietary — all rights reserved. This is **not** an open-source project;
+see [`LICENSE`](./LICENSE). Third-party dependency licenses are summarized in
+[`NOTICE`](./NOTICE) (no GPL/AGPL-only dependencies in the tree).
+
+## Project naming
+
+The repository name `lms-for-my-using` is a working name and is not intended
+to ship as the public/production product name. Renaming has been deliberately
+deferred rather than done now, since a GitHub repo rename breaks every existing
+clone/CI/deploy reference for anyone who already has the repo checked out. It
+must be decided and executed as its own explicit action before any public
+production launch.
