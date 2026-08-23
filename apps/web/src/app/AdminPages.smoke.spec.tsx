@@ -400,28 +400,34 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders checklists happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      currentUser,
-      checklists: [
-        {
-          id: 'checklist-1',
-          organizationId: 'org-1',
-          title: 'Приёмка нового стажёра',
-          description: null,
-          status: 'published',
-          scoringMode: 'sum_points',
-          passThreshold: 80,
-          scaleLevels: null,
-          requiresReview: false,
-          createdBy: 'user-1',
-          createdAt: ts,
-          updatedAt: ts,
-          items: [
-            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+    // useState call order in AdminChecklistsPage: 1 search, 2 statusFilter, 3 selectedId,
+    // 4 deleteTarget, 5 statusError, then useAsyncData's internal loadState is call 6.
+    useStateAtCalls({
+      6: {
+        status: 'loaded',
+        data: {
+          currentUser,
+          checklists: [
+            {
+              id: 'checklist-1',
+              organizationId: 'org-1',
+              title: 'Приёмка нового стажёра',
+              description: null,
+              status: 'published',
+              scoringMode: 'sum_points',
+              passThreshold: 80,
+              scaleLevels: null,
+              requiresReview: false,
+              createdBy: 'user-1',
+              createdAt: ts,
+              updatedAt: ts,
+              items: [
+                { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+              ],
+            },
           ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminChecklistsPage />);
@@ -432,32 +438,35 @@ describe('admin page smoke rendering', () => {
   it('renders the checklist builder view (scale scoring, items, assignments) without crashing', () => {
     const loaded = {
       status: 'loaded' as const,
-      currentUser,
-      checklists: [
-        {
-          id: 'checklist-1',
-          organizationId: 'org-1',
-          title: 'Аттестация кассира',
-          description: 'Проверка стандарта обслуживания',
-          status: 'draft',
-          scoringMode: 'scale',
-          passThreshold: 60,
-          scaleLevels: [
-            { level: 1, label: 'Очень плохо', points: 0 },
-            { level: 2, label: 'Отлично', points: 100 },
-          ],
-          requiresReview: true,
-          createdBy: 'user-1',
-          createdAt: ts,
-          updatedAt: ts,
-          items: [
-            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
-          ],
-        },
-      ],
+      data: {
+        currentUser,
+        checklists: [
+          {
+            id: 'checklist-1',
+            organizationId: 'org-1',
+            title: 'Аттестация кассира',
+            description: 'Проверка стандарта обслуживания',
+            status: 'draft',
+            scoringMode: 'scale',
+            passThreshold: 60,
+            scaleLevels: [
+              { level: 1, label: 'Очень плохо', points: 0 },
+              { level: 2, label: 'Отлично', points: 100 },
+            ],
+            requiresReview: true,
+            createdBy: 'user-1',
+            createdAt: ts,
+            updatedAt: ts,
+            items: [
+              { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
+            ],
+          },
+        ],
+      },
     };
-    // Call order in AdminChecklistsPage: 1 loadState, 2 search, 3 statusFilter, 4 selectedId, 5 deleteTarget, 6 statusError.
-    useStateAtCalls({ 1: loaded, 4: 'checklist-1' });
+    // Call order in AdminChecklistsPage: 1 search, 2 statusFilter, 3 selectedId, 4 deleteTarget,
+    // 5 statusError, 6 useAsyncData's internal loadState.
+    useStateAtCalls({ 3: 'checklist-1', 6: loaded });
 
     const html = renderToStaticMarkup(<AdminChecklistsPage />);
 
