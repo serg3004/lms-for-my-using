@@ -84,7 +84,7 @@ export function AdminLessonsPage() {
       ]);
       return { courses, lessons };
     },
-    [],
+    [t],
     {
       unauthenticated: t('admin.lessons.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.lessons.loadError', 'Unable to load lesson editor.'),

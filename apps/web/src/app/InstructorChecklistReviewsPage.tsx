@@ -38,7 +38,7 @@ export function InstructorChecklistReviewsPage() {
       const [instances, currentUser] = await Promise.all([listPendingChecklistReviews(), getCurrentUser()]);
       return { instances, firstName: currentUser?.firstName, lastName: currentUser?.lastName };
     },
-    [],
+    [t],
     {
       unauthenticated: t('checklistReview.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('checklistReview.loadError', 'Unable to load pending reviews.'),

@@ -99,7 +99,7 @@ export function AdminCoursesPage() {
       ]);
       return { courses: result.items, currentUser, total: result.total, pageSize: result.pageSize };
     },
-    [page],
+    [page, t],
     {
       unauthenticated: t('admin.courses.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),

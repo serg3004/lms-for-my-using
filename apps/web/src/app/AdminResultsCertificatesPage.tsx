@@ -150,7 +150,7 @@ export function AdminResultsCertificatesPage() {
 
       return { courses, users, assessments, progressItems, certificates, assessmentResults, selectedAssessmentId };
     },
-    [assessmentId],
+    [assessmentId, t],
     {
       unauthenticated: t('admin.results.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.results.loadError', 'Unable to load results dashboard.'),

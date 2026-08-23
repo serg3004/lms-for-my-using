@@ -66,7 +66,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
         deadline: courseAssignment?.dueAt ?? null,
       };
     },
-    [courseId],
+    [courseId, t],
     { unauthenticated: t('lessons.sessionExpired'), error: t('lessons.loadError') },
   );
 

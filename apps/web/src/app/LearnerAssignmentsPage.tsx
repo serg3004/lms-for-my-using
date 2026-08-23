@@ -104,7 +104,7 @@ export function LearnerAssignmentsPage() {
       const result = await listAssignments({ page, pageSize: 20 });
       return { assignments: result.items as ExtendedAssignment[], total: result.total, pageSize: result.pageSize };
     },
-    [page],
+    [page, t],
     { unauthenticated: t('assignments.sessionExpired'), error: t('assignments.loadError') },
   );
   const [search, setSearch] = useState('');

@@ -63,7 +63,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
 
       return { course, lessons, completedLessonIds, dueAt };
     },
-    [courseId],
+    [courseId, t],
     { unauthenticated: t('courseDetail.sessionExpired'), error: t('courseDetail.loadError') },
   );
 

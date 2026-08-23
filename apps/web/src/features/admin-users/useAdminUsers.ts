@@ -33,7 +33,7 @@ export function useAdminUsers() {
       ]);
       return { users: result.items, currentUser, total: result.total, pageSize: result.pageSize };
     },
-    [page],
+    [page, t],
     {
       unauthenticated: t('admin.users.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.users.loadError', 'Unable to load users. Try again later.'),
