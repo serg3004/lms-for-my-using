@@ -3,6 +3,7 @@ import type {
   ChecklistItemSummary,
   ChecklistScoringMode,
 } from '../shared/api/types.js';
+import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 
 export type ChecklistAnswerState = {
   checked?: boolean;
@@ -38,7 +39,7 @@ export function checklistResultToAnswer(result: ChecklistItemResultSummary | und
   return {
     checked: result.checked,
     scaleLevel: result.scaleLevel,
-    hasPhoto: Boolean(result.photoFileName),
+    hasPhoto: hasChecklistPhotoEvidence(result),
   };
 }
 

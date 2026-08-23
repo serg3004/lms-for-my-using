@@ -7,6 +7,7 @@ import type { AddressInfo } from 'node:net';
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { AuthGuard, RolesGuard } from '../modules/auth/public.js';
+import { ChecklistReviewAccessService } from '../modules/checklists/checklist-review-access.service.js';
 import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import { UploadService } from '../modules/upload/public.js';
@@ -165,6 +166,10 @@ describe('Checklist completion HTTP contract', () => {
         ChecklistsService,
         { provide: PrismaService, useValue: prisma },
         { provide: UploadService, useValue: {} },
+        {
+          provide: ChecklistReviewAccessService,
+          useValue: { filterPending: jest.fn(), assertReviewerCanAccess: jest.fn() },
+        },
       ],
     })
       .overrideGuard(AuthGuard)
