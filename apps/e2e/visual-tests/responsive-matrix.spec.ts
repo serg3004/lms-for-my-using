@@ -236,6 +236,93 @@ async function installInstructorMocks(page: Page) {
   await page.route('**/api/v1/progress?*', (route) => route.fulfill({ json: paginated([]) }));
 }
 
+function lesson(overrides: { id: string; courseId: string; title: string; order: number; status: string }) {
+  return {
+    id: overrides.id,
+    organizationId: 'visual-org',
+    courseId: overrides.courseId,
+    title: overrides.title,
+    slug: overrides.id,
+    description: null,
+    type: 'text',
+    order: overrides.order,
+    status: overrides.status,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+function checklistItem(overrides: { id: string; checklistId: string; order: number; text: string }) {
+  return {
+    id: overrides.id,
+    checklistId: overrides.checklistId,
+    order: overrides.order,
+    text: overrides.text,
+    points: 10,
+    isRequired: true,
+    photoRequired: false,
+  };
+}
+
+async function installAdminAuthMock(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-admin',
+      organizationId: 'visual-org',
+      email: 'admin@example.invalid',
+      firstName: 'Visual',
+      lastName: 'Admin',
+      middleName: null,
+      position: null,
+      shift: null,
+      phone: null,
+      status: 'active',
+      locale: 'en',
+      timezone: 'UTC',
+      roles: ['admin'],
+    },
+  }));
+}
+
+async function installCourseBuilderMocks(page: Page) {
+  await installAdminAuthMock(page);
+  await page.route('**/api/v1/courses/course-1', (route) => route.fulfill({
+    json: course({ id: 'course-1', title: 'Onboarding basics', status: 'published' }),
+  }));
+  await page.route('**/api/v1/courses/course-1/lessons', (route) => route.fulfill({
+    json: [
+      lesson({ id: 'lesson-1', courseId: 'course-1', title: 'Welcome to the team', order: 1, status: 'published' }),
+      lesson({ id: 'lesson-2', courseId: 'course-1', title: 'Workplace safety basics', order: 2, status: 'published' }),
+      lesson({ id: 'lesson-3', courseId: 'course-1', title: 'Emergency procedures', order: 3, status: 'draft' }),
+    ],
+  }));
+}
+
+async function installChecklistBuilderMocks(page: Page) {
+  await installAdminAuthMock(page);
+  await page.route('**/api/v1/checklists', (route) => route.fulfill({
+    json: [{
+      id: 'checklist-1',
+      organizationId: 'visual-org',
+      title: 'Opening shift checklist',
+      description: 'Complete before serving the first customer.',
+      status: 'draft',
+      scoringMode: 'sum_points',
+      passThreshold: 80,
+      scaleLevels: null,
+      requiresReview: true,
+      createdBy: 'visual-admin',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      items: [
+        checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' }),
+        checklistItem({ id: 'item-2', checklistId: 'checklist-1', order: 2, text: 'Check the temperature log' }),
+        checklistItem({ id: 'item-3', checklistId: 'checklist-1', order: 3, text: 'Restock the front counter' }),
+      ],
+    }],
+  }));
+}
+
 async function installGuestMock(page: Page) {
   let refreshRequests = 0;
   const unauthorized = (path: string) => ({
@@ -315,6 +402,49 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await captureVisualBaseline(page, testInfo, `instructor-dashboard-${width}`);
+    });
+
+    test('keeps the admin course builder and its add-lesson dialog responsive', async ({ page }, testInfo) => {
+      await installCourseBuilderMocks(page);
+      await page.goto('/admin/courses/course-1');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+
+      await page.getByRole('button', { name: /Добавить урок/ }).click();
+      await expect(page.getByRole('heading', { name: 'Добавить урок' })).toBeVisible();
+      await expectNoPageOverflow(page);
+
+      const dialogFits = await page.evaluate(() => {
+        const dialog = document.querySelector('dialog.admin-dialog');
+        if (!dialog) return false;
+        const rect = dialog.getBoundingClientRect();
+        return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+      });
+      expect(dialogFits).toBe(true);
+      await captureVisualBaseline(page, testInfo, `admin-course-builder-${width}`);
+    });
+
+    test('keeps the admin checklist builder responsive', async ({ page }, testInfo) => {
+      await installChecklistBuilderMocks(page);
+      await page.goto('/admin/checklists');
+      await expect(page.getByRole('heading', { name: 'Чек-листы' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+
+      await page.getByRole('button', { name: 'Редактировать' }).click();
+      await expect(page.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
+      // Assert the actual builder surface rendered -- not just the header -- so this test
+      // can't silently degrade into only checking the outer page shell.
+      const itemRows = page.locator('.admin-checklist-item');
+      await expect(itemRows).toHaveCount(3);
+      await expect(itemRows.nth(0).locator('input').first()).toHaveValue('Turn on the lights and equipment');
+      await expect(itemRows.nth(1).locator('input').first()).toHaveValue('Check the temperature log');
+      await expect(itemRows.nth(2).locator('input').first()).toHaveValue('Restock the front counter');
+      await expect(page.getByRole('button', { name: 'Добавить пункт' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await captureVisualBaseline(page, testInfo, `admin-checklist-builder-${width}`);
     });
   });
 }
