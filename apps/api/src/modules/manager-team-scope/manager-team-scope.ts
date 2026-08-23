@@ -1,6 +1,10 @@
+import type { Prisma } from '@prisma/client';
+
 import type { CurrentUser } from '../auth/public.js';
 
 export type TeamScopeActor = Pick<CurrentUser, 'id' | 'organizationId' | 'roles'>;
+
+type UserOwnedWhere = { user?: Prisma.UserWhereInput };
 
 export function unrestrictedActor(organizationId: string): TeamScopeActor {
   return { id: '', organizationId, roles: ['admin'] };
@@ -15,7 +19,7 @@ export function isManagerTeamScoped(actor: TeamScopeActor) {
 }
 
 export class ManagerTeamScope {
-  user(actor: TeamScopeActor) {
+  user(actor: TeamScopeActor): Prisma.UserWhereInput {
     if (!isManagerTeamScoped(actor)) return {};
     return {
       groupMemberships: {
@@ -39,7 +43,7 @@ export class ManagerTeamScope {
     };
   }
 
-  group(actor: TeamScopeActor) {
+  group(actor: TeamScopeActor): Prisma.GroupWhereInput {
     if (!isManagerTeamScoped(actor)) return {};
     return {
       organizationId: actor.organizationId,
@@ -55,12 +59,12 @@ export class ManagerTeamScope {
     };
   }
 
-  assignment(actor: TeamScopeActor) {
+  assignment(actor: TeamScopeActor): Prisma.AssignmentWhereInput {
     if (!isManagerTeamScoped(actor)) return {};
     return { OR: [{ user: this.user(actor) }, { group: this.group(actor) }] };
   }
 
-  userOwnedResource(actor: TeamScopeActor) {
+  userOwnedResource(actor: TeamScopeActor): UserOwnedWhere {
     if (!isManagerTeamScoped(actor)) return {};
     return { user: this.user(actor) };
   }
