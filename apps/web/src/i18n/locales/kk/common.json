@@ -966,6 +966,8 @@
     "downloadable": "Жүктеуге болады",
     "online": "Онлайн",
     "actionDownload": "Жүктеу",
+    "downloading": "Жүктелуде...",
+    "downloadError": "Жүктеу сілтемесін алу мүмкін болмады. Кейінірек қайталап көріңіз.",
     "actionOpen": "Ашу",
     "actionBack": "Сабаққа оралу",
     "summaryTitle": "Жиынтық",

@@ -964,6 +964,8 @@
     "downloadable": "Downloadable",
     "online": "Online",
     "actionDownload": "Download",
+    "downloading": "Downloading...",
+    "downloadError": "Couldn't get a download link. Please try again later.",
     "actionOpen": "Open",
     "actionBack": "Back to lesson",
     "summaryTitle": "Summary",

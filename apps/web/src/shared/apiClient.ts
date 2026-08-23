@@ -382,7 +382,7 @@ export type {
 export { getCurrentUser, login } from './api/auth.js';
 export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, updateCourse } from './api/courses.js';
 export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
-export { listCourseMaterials } from './api/materials.js';
+export { listCourseMaterials, getMaterialDownloadUrl } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { createAssignment, getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
 export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments, startAssessmentAttempt } from './api/assessments.js';

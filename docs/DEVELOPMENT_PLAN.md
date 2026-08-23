@@ -1113,12 +1113,11 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 127 — full Playwright E2E ❌ УДАЛЕНО
+## PR 127 — full Playwright E2E ✅
 
 - Playwright написан, 2 smoke теста, CI job добавлен
-- **Удалён** (`apps/e2e/`, `.github/workflows/e2e.yml`) по решению владельца
-- Причина: Railway cold start race condition — CI стартует раньше чем деплой завершается; flaky тесты добавляли 5–6 минут ожидания без реальной пользы
-- Вместо E2E — unit tests + ручная проверка после деплоя
+- Изначально был **удалён** (`apps/e2e/`, `.github/workflows/e2e.yml`) из-за Railway cold start race condition в CI
+- **Факт (аудит 2026-08-23):** статус «❌ УДАЛЕНО» устарел и не соответствует коду. `apps/e2e/` восстановлен и активно используется — 5 spec-файлов (`foundation.spec.ts`, `login-role-redirect.spec.ts`, `manager-workspace.spec.ts`, `instructor-workspace.spec.ts`, `admin-users.spec.ts`), `playwright.config.ts`/`playwright.visual.config.ts`/`playwright.accessibility.config.ts`; `.github/workflows/ci.yml` содержит шаг Browser E2E (`pnpm test:e2e`) с установкой Chromium. Восстановление зафиксировано отдельными PR 193–196 (Browser E2E foundation, Login/role redirect E2E, Manager/Instructor workspace E2E) — эта секция просто не была обновлена после них.
 
 ---
 
@@ -1504,7 +1503,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 147 — DB-backed organization theme 🔲
+## PR 147 — DB-backed organization theme ✅
 
 - Спроектировать `OrganizationTheme` модель
 - Добавить Prisma migration
@@ -1518,6 +1517,8 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - PATCH /theme от learner возвращает 403
 - Frontend применяет тему из API (нет hardcoded цветов/токенов в компонентах)
 - При отсутствии записи в БД отображается default theme
+
+**Факт (аудит 2026-08-23):** маркер 🔲 был устаревшим — реализовано полностью и уже смержено (PR #623 "Persist organization themes in a dedicated DB model"). `OrganizationTheme` есть в `apps/api/prisma/schema.prisma` с миграциями; `GET/PATCH/DELETE /organizations/:id/theme` реализованы в `organizations.controller.ts` (шире плана — есть ещё DELETE как reset); RBAC подтверждён тестами (`themeSettingsWrite: ['admin']`, learner получает 403); `AdminThemeSettingsPage.tsx` подключён к реальному API; `apps/web/src/shared/theme.ts` содержит `defaultThemeSettings` fallback; покрыто тестами и на api, и на web.
 
 ---
 
@@ -1537,7 +1538,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 149 — Certificate PDF generation/download 🔲
+## PR 149 — Certificate PDF generation/download ✅
 
 - Выбрать способ PDF generation (puppeteer, pdfkit, браузерный print-to-pdf)
 - Реализовать backend или frontend PDF generation — без fake download
@@ -1551,9 +1552,11 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - GET /certificates/:id/pdf несуществующего сертификата возвращает 404
 - PDF содержит имя пользователя, название курса и дату выдачи
 
+**Факт (аудит 2026-08-23, дополнено этой сессией):** маркер 🔲 был устаревшим. `GET /certificates/:id/pdf` реализован в `certificates.controller.ts` (`pdfkit`, `Content-Type: application/pdf`, `Content-Disposition: attachment`), PDF реально рендерит layout с именем/курсом/организацией/датой/verification-кодом и водяным знаком "REVOKED". Access control проверен: свой сертификат — 200; чужой сертификат другого learner'а в той же организации — 403 (`ForbiddenException`, через `ensureCertificateAccess`, learner без привилегированной роли не проходит membership-проверку); несуществующий/не в организации — 404 (`NotFoundException`). Добавлены прямые тесты на `getCertificatePdf` (`certificates.service.spec.ts`: генерация PDF-буфера для владельца, 403 для чужого сертификата, 404 для несуществующего) — раньше было только косвенное покрытие через `getCertificate`.
+
 ---
 
-## PR 150 — Reports and analytics MVP 🔲
+## PR 150 — Reports and analytics MVP ✅
 
 **Реализованный MVP:** admin/manager summary API и admin dashboard показывают прогресс пользователей, выданные сертификаты и просроченные назначения из БД. Progress CSV включает только имя, курс, прогресс и score. Advanced BI, произвольные конструкторы отчётов и универсальный XLSX export не входят в этот PR.
 
@@ -1576,6 +1579,8 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - Learner не имеет доступа к admin-отчётам
 - Документация явно перечисляет, какие отчёты готовы, а какие нет
 
+**Факт (аудит 2026-08-23):** маркер 🔲 был устаревшим — `reports.service.ts`/`reports.controller.ts` отдают реальные данные из БД (прогресс, сертификаты, просроченные назначения) с team-scope фильтрацией для менеджеров, без mock-данных. CSV export (`AdminResultsCertificatesPage.tsx`, `serializeCsv`) корректно экранирует кавычки/запятые/переносы строк, есть тест на спецсимволы и на empty state (явный заголовок вместо пустого файла). Print-стили (`@media print`) есть в `admin.css`/`ui.css`. `reportsRead: ['admin', 'manager']` в RBAC-карте — learner исключён. Отдельно смержен PR #628 ("feat: add reports and analytics MVP"), расширяющий этот функционал.
+
 ---
 
 ## Итоговая карта ЧАСТЬ 4
@@ -1584,7 +1589,9 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 Новые фичи и архитектура         PR 132–150  19 PR
   ✅ СДЕЛАНО:    132 (i18n RU), 137 (refresh token flow), 143 (layout)
   ✅ ЗАКРЫТО:   135 (storage audit и rollout plan)
-  🔲 НЕ НАЧАТО: 133, 134, 136, 138, 139, 140, 141, 142, 144, 145, 146, 147, 148, 149, 150
+  🔲 НЕ НАЧАТО: 134, 136, 138, 139, 140, 141, 142, 144, 145, 146, 148
+  ✅ СДЕЛАНО (обновлено аудитом 2026-08-23): 147 (DB-backed org theme), 149 (certificate PDF), 150 (reports MVP)
+  Примечание: эта сводная таблица не обновлялась по мере закрытия секций выше — статусы 133/134/136/138–142/144–146/148 не перепроверены в рамках этого аудита, доверять нужно отдельным секциям PR, не этой таблице.
 ```
 
 ---

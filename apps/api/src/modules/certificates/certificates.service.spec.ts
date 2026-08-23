@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { issueCertificateSchema } from './certificates.schemas.js';
@@ -153,6 +153,54 @@ describe('CertificatesService', () => {
     const service = new CertificatesService(prisma);
 
     await expect(service.getCertificate(certificate.id, userId, organizationId)).resolves.toEqual(certificate);
+  });
+
+  it('generates a PDF buffer for the certificate owner', async () => {
+    const certificate = createCertificate();
+    const prisma = {
+      membership: { findFirst: async () => null },
+      certificate: {
+        findFirst: async () => certificate,
+      },
+    } as unknown as PrismaService;
+
+    const service = new CertificatesService(prisma);
+
+    const pdf = await service.getCertificatePdf(certificate.id, { id: userId, organizationId, roles: ['learner'] });
+
+    expect(Buffer.isBuffer(pdf)).toBe(true);
+    expect(pdf.subarray(0, 4).toString('latin1')).toBe('%PDF');
+  });
+
+  it('rejects a learner requesting the PDF for another user certificate', async () => {
+    const certificate = createCertificate({ userId: otherUserId });
+    const prisma = {
+      membership: { findFirst: async () => null },
+      certificate: {
+        findFirst: async () => certificate,
+      },
+    } as unknown as PrismaService;
+
+    const service = new CertificatesService(prisma);
+
+    await expect(
+      service.getCertificatePdf(certificate.id, { id: userId, organizationId, roles: ['learner'] }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects the PDF request when the certificate does not exist in the organization', async () => {
+    const prisma = {
+      membership: { findFirst: async () => null },
+      certificate: {
+        findFirst: async () => null,
+      },
+    } as unknown as PrismaService;
+
+    const service = new CertificatesService(prisma);
+
+    await expect(
+      service.getCertificatePdf('missing-certificate', { id: userId, organizationId, roles: ['learner'] }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('issues certificate when course is completed', async () => {

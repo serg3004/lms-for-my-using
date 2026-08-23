@@ -6,6 +6,7 @@ import {
   CourseMaterialSummary,
   LessonSummary,
   getLesson,
+  getMaterialDownloadUrl,
   listCourseMaterials,
 } from '../shared/apiClient.js';
 import { getLessonHref } from '../shared/learnerRoutes.js';
@@ -57,6 +58,8 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
   const [loadState, setLoadState] = useState<LessonMaterialsLoadState>({ status: 'idle' });
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | MaterialType>('all');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -127,6 +130,19 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
     );
   }
 
+  async function handleDownload(materialId: string) {
+    setDownloadError(null);
+    setDownloadingId(materialId);
+    try {
+      const { url } = await getMaterialDownloadUrl(materialId);
+      window.open(url, '_blank', 'noopener');
+    } catch {
+      setDownloadError(t('materials.downloadError'));
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   const { lesson, materials } = loadState;
   const downloadableCount = materials.filter((m) => m.kind === 'file').length;
   const onlineCount = materials.filter((m) => m.kind === 'link' || materialType(m) === 'video').length;
@@ -165,6 +181,22 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
           }}
         >
           <h2 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('materials.availableTitle')}</h2>
+
+          {downloadError ? (
+            <div
+              role="alert"
+              style={{
+                marginBottom: '14px',
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: COLORS.warningSoft,
+                color: COLORS.warningText,
+                fontSize: '13px',
+              }}
+            >
+              {downloadError}
+            </div>
+          ) : null}
 
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>
             <input
@@ -253,22 +285,29 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
                         </span>
                       </div>
                     </div>
-                    <a
-                      href={material.fileUrl ?? '#'}
-                      style={{
-                        border: `1px solid ${COLORS.primary}`,
-                        background: COLORS.primary,
-                        color: '#fff',
-                        borderRadius: '12px',
-                        padding: '11px 14px',
-                        fontWeight: 800,
-                        fontSize: '14px',
-                        textDecoration: 'none',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {material.kind === 'link' ? t('materials.actionOpen') : t('materials.actionDownload')}
-                    </a>
+                    {material.kind === 'link' ? (
+                      <a
+                        href={material.fileUrl ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={actionButtonStyle}
+                      >
+                        {t('materials.actionOpen')}
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleDownload(material.id)}
+                        disabled={downloadingId === material.id}
+                        style={{
+                          ...actionButtonStyle,
+                          cursor: downloadingId === material.id ? 'progress' : 'pointer',
+                          opacity: downloadingId === material.id ? 0.7 : 1,
+                        }}
+                      >
+                        {downloadingId === material.id ? t('materials.downloading') : t('materials.actionDownload')}
+                      </button>
+                    )}
                   </article>
                 );
               })}
@@ -349,6 +388,19 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
     </>
   );
 }
+
+const actionButtonStyle: React.CSSProperties = {
+  border: `1px solid ${COLORS.primary}`,
+  background: COLORS.primary,
+  color: '#fff',
+  borderRadius: '12px',
+  padding: '11px 14px',
+  fontWeight: 800,
+  fontSize: '14px',
+  fontFamily: 'inherit',
+  textDecoration: 'none',
+  whiteSpace: 'nowrap',
+};
 
 const badgeStyle: React.CSSProperties = {
   display: 'inline-flex',
