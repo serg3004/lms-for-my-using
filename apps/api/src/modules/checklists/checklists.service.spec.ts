@@ -7,7 +7,6 @@ import { ChecklistsService } from './checklists.service.js';
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const learnerId = '22222222-2222-2222-2222-222222222222';
 const instructorId = '33333333-3333-3333-3333-333333333333';
-
 type FakeChecklist = {
   id: string;
   organizationId: string;
@@ -21,7 +20,6 @@ type FakeChecklist = {
   createdBy: string | null;
   deletedAt: Date | null;
 };
-
 /**
  * A minimal in-memory stand-in for PrismaService covering only the checklist tables, so the
  * scoring/status-transition logic in ChecklistsService can be exercised end to end (assign ->
@@ -38,7 +36,6 @@ function createFakePrisma() {
   ];
   let seq = 0;
   const nextId = (prefix: string) => `${prefix}-${++seq}`;
-
   const prisma = {
     checklist: {
       findFirst: async ({ where }: { where: Record<string, unknown> }) =>
@@ -208,7 +205,6 @@ function createFakePrisma() {
         users.find((u) => u.id === where['id'] && u.organizationId === where['organizationId']) ?? null,
     },
   };
-
   return prisma as unknown as PrismaService;
 }
 
@@ -216,7 +212,6 @@ describe('ChecklistsService — scoring modes', () => {
   it('computes sum_points scoring: only checked items count their points, unchecked score 0', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'Приёмка стажёра', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false },
       instructorId,
@@ -224,7 +219,6 @@ describe('ChecklistsService — scoring modes', () => {
     await service.createItem(checklist.id, organizationId, { text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: false });
     await service.createItem(checklist.id, organizationId, { text: 'Прошёл инструктаж', points: 20, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
-
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(30);
 
@@ -232,19 +226,23 @@ describe('ChecklistsService — scoring modes', () => {
     const updated1 = await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
     expect(updated1.totalScore).toBe(10);
     expect(updated1.status).toBe('in_progress');
+    const unchecked = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: false });
+    expect(unchecked.totalScore).toBe(10);
+    expect(unchecked.maxScore).toBe(30);
+    expect(unchecked.percentage).toBe(33);
+    expect(unchecked.status).toBe('in_progress');
+    expect(unchecked.passed).toBe(false);
 
-    const final = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: false });
-    expect(final.totalScore).toBe(10);
+    const final = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+    expect(final.totalScore).toBe(30);
     expect(final.maxScore).toBe(30);
-    expect(final.percentage).toBe(33);
+    expect(final.percentage).toBe(100);
     expect(final.status).toBe('completed');
-    expect(final.passed).toBe(false);
+    expect(final.passed).toBe(true);
   });
-
   it('computes all_required scoring: every item contributes exactly 1 point regardless of its configured points', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'Обязательный обход', scoringMode: 'all_required', passThreshold: 100, requiresReview: false },
       instructorId,
@@ -252,14 +250,12 @@ describe('ChecklistsService — scoring modes', () => {
     await service.createItem(checklist.id, organizationId, { text: 'Пункт 1', points: 50, isRequired: true, photoRequired: false });
     await service.createItem(checklist.id, organizationId, { text: 'Пункт 2', points: 50, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
-
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(2);
 
     const items = await service.listItems(checklist.id, organizationId);
     await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
     const final = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
-
     expect(final.totalScore).toBe(2);
     expect(final.percentage).toBe(100);
     expect(final.passed).toBe(true);
@@ -268,7 +264,6 @@ describe('ChecklistsService — scoring modes', () => {
   it('computes scale scoring from the checklist-level configurable levels (e.g. 1..5 with custom labels)', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       {
         organizationId,
@@ -288,7 +283,6 @@ describe('ChecklistsService — scoring modes', () => {
     );
     await service.createItem(checklist.id, organizationId, { text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
-
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(100);
 
@@ -299,11 +293,9 @@ describe('ChecklistsService — scoring modes', () => {
     expect(final.percentage).toBe(75);
     expect(final.passed).toBe(true);
   });
-
   it('rejects a scale level that is not part of the checklist configuration', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       {
         organizationId,
@@ -322,7 +314,6 @@ describe('ChecklistsService — scoring modes', () => {
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
-
     await expect(
       service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { scaleLevel: 99 }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -333,7 +324,6 @@ describe('ChecklistsService — manual review flow', () => {
   it('holds the instance at submitted until an instructor reviews every item, then finalizes the result', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'С проверкой наставника', scoringMode: 'sum_points', passThreshold: 50, requiresReview: true },
       instructorId,
@@ -342,11 +332,9 @@ describe('ChecklistsService — manual review flow', () => {
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
-
     const submitted = await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
     expect(submitted.status).toBe('submitted');
     expect(submitted.passed).toBe(false); // not finalized yet — still awaiting review
-
     const reviewed = await service.reviewItemResult(instance.id, items[0].id, organizationId, instructorId, { status: 'approved' });
     expect(reviewed.status).toBe('completed');
     expect(reviewed.totalScore).toBe(10);
@@ -356,7 +344,6 @@ describe('ChecklistsService — manual review flow', () => {
   it('zeroes out a rejected item so it does not count toward the total score', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'С проверкой', scoringMode: 'sum_points', passThreshold: 50, requiresReview: true },
       instructorId,
@@ -379,7 +366,6 @@ describe('ChecklistsService — manual review flow', () => {
   it('refuses to review an instance that is not awaiting review', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'Без проверки', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
@@ -398,7 +384,6 @@ describe('ChecklistsService — ownership and validation guards', () => {
   it('prevents a learner from filling out another learner\'s assignment', async () => {
     const prisma = createFakePrisma();
     const service = new ChecklistsService(prisma);
-
     const checklist = await service.createChecklist(
       { organizationId, title: 'Тест', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
@@ -474,9 +459,8 @@ describe('ChecklistsService — item photo attachment', () => {
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
-    // Leave the second item unanswered so the instance stays editable while the photo is attached
-    // (photoRequired isn't enforced when computing "answered", so checking the last item would
-    // otherwise complete — and lock — the instance before a photo can be attached).
+    // Leave the second item unanswered so this helper isolates photo attachment behavior.
+    // The first required item remains in progress until its required evidence is attached.
     await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
     return { service, instance, item: items[0] };
   }
@@ -561,13 +545,13 @@ describe('ChecklistsService — item photo attachment', () => {
     const prisma = createFakePrisma();
     const uploadService = createFakeUploadService();
     const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+
     await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
       objectKey: 'key-1',
       fileName: 'photo.jpg',
       mimeType: 'image/jpeg',
       sizeBytes: 1000,
     });
-
     const download = await service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false);
 
     expect(download.url).toBe('https://files.example.com/signed-photo');
