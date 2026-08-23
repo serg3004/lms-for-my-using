@@ -320,6 +320,7 @@ export function AdminOrgStructurePage() {
         <EmptyState message={t('admin.orgStructure.empty', 'No departments found.')} />
       ) : (
         <DataTable<Group>
+          label={t('admin.orgStructure.title', 'Organization structure')}
           columns={[
             { key: 'name', label: t('admin.orgStructure.colUnit', 'Department'), render: (g) => g.name },
             { key: 'manager', label: t('admin.orgStructure.colHead', 'Manager'), render: (g) => formatManagerCell(g) },

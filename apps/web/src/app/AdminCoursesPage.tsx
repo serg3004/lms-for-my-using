@@ -368,6 +368,7 @@ export function AdminCoursesPage() {
       />
 
       <DataTable
+        label={t('admin.courses.title', 'Courses')}
         columns={courseColumns}
         rows={filteredCourses}
         keyExtractor={(c) => c.id}

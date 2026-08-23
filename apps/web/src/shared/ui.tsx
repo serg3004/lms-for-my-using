@@ -334,20 +334,21 @@ export type Column<T> = {
 };
 
 type DataTableProps<T> = {
+  label: string;
   columns: Column<T>[];
   rows: T[];
   keyExtractor: (row: T) => string;
   emptyMessage?: string;
 };
 
-export function DataTable<T>({ columns, rows, keyExtractor, emptyMessage = 'No items.' }: DataTableProps<T>) {
+export function DataTable<T>({ label, columns, rows, keyExtractor, emptyMessage = 'No items.' }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <EmptyState message={emptyMessage} />;
   }
 
   return (
     <TableWrap>
-      <table>
+      <table aria-label={label}>
         <thead>
           <tr>
             {columns.map((col) => (

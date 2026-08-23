@@ -2,7 +2,7 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from 'rea
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, DataTable, Input, Pagination, ProgressBar, SearchInput, Spinner, Toolbar } from './ui';
+import { Avatar, Badge, Button, Card, DataTable, Input, Pagination, ProgressBar, SearchInput, SkipLink, Spinner, Toolbar } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
 
@@ -23,6 +23,13 @@ function findButtons(tree: ReactNode) {
 }
 
 describe('shared UI state components', () => {
+  it('renders a skip link targeting the main landmark', () => {
+    const html = renderToStaticMarkup(<SkipLink label="Skip to content" />);
+
+    expect(html).toContain('href="#main-content"');
+    expect(html).toContain('Skip to content');
+  });
+
   it('renders StatusBadge with neutral tone by default', () => {
     const html = renderToStaticMarkup(<StatusBadge>draft</StatusBadge>);
 
@@ -185,10 +192,11 @@ describe('design system — DataTable', () => {
     ];
 
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
+      <DataTable label="Assessment results" columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
     );
 
     expect(html).toContain('<th>Name</th>');
+    expect(html).toContain('aria-label="Assessment results"');
     expect(html).toContain('<th>Score</th>');
     expect(html).toContain('Alice');
     expect(html).toContain('90');
@@ -197,7 +205,7 @@ describe('design system — DataTable', () => {
 
   it('renders empty state when rows array is empty', () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={[]} keyExtractor={(r) => r.id} emptyMessage="Nothing here." />,
+      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} emptyMessage="Nothing here." />,
     );
 
     expect(html).toContain('Nothing here.');
@@ -206,7 +214,7 @@ describe('design system — DataTable', () => {
 
   it('uses default empty message when none provided', () => {
     const html = renderToStaticMarkup(
-      <DataTable columns={columns} rows={[]} keyExtractor={(r) => r.id} />,
+      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} />,
     );
 
     expect(html).toContain('No items.');

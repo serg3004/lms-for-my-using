@@ -28,7 +28,7 @@ export function ManagerOverduePage() {
         <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 800 }}>{t('manager.overdue.title')}</h1>
         <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('manager.overdue.subtitle')}</p>
       </div>
-      <div className="admin-table-wrap"><table>
+      <div className="admin-table-wrap"><table aria-label={t('manager.overdue.title')}>
         <thead><tr><th>{t('manager.overdue.columnEmployee')}</th><th>{t('manager.overdue.columnCourse')}</th><th>{t('manager.overdue.columnDueDate')}</th><th>{t('manager.overdue.columnStatus')}</th></tr></thead>
         <tbody>
           {summary.overdueAssignments.map((assignment) => {
