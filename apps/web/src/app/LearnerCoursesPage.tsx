@@ -41,7 +41,7 @@ export function LearnerCoursesPage() {
       const result = await listCourses({ page: 1, pageSize: 100 });
       return { courses: result.items, total: result.total, pageSize: result.pageSize };
     },
-    [],
+    [t],
     { unauthenticated: t('courses.sessionExpired'), error: t('courses.loadError') },
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');

@@ -81,7 +81,7 @@ export function AdminOrgStructurePage() {
       ]);
       return { organizationId: user.organizationId, groups, employeeCount: total };
     },
-    [],
+    [t],
     {
       unauthenticated: t('admin.orgStructure.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.orgStructure.loadError', 'Unable to load organization structure.'),

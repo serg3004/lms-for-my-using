@@ -22,7 +22,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
 
   const { state: loadState } = useAsyncData(
     () => getCertificate(certificateId),
-    [certificateId],
+    [certificateId, t],
     { unauthenticated: t('certificates.sessionExpired'), error: t('certificates.loadError') },
   );
 

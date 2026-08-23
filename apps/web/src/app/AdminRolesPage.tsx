@@ -79,7 +79,7 @@ export function AdminRolesPage() {
       ]);
       return { users, memberships };
     },
-    [],
+    [t],
     {
       unauthenticated: t('admin.roles.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.roles.loadError', 'Unable to load role assignments. Try again later.'),
