@@ -8,6 +8,7 @@ import type {
 } from './background-jobs.types.js';
 
 export const BACKGROUND_JOB_BACKEND = Symbol('BACKGROUND_JOB_BACKEND');
+
 export interface BackgroundJobBackend {
   start(processor: BackgroundJobHandler): Promise<void>;
   enqueue(
@@ -22,6 +23,7 @@ export interface BackgroundJobBackend {
   ): Promise<void>;
   close(): Promise<void>;
 }
+
 export function toBackgroundJob(
   id: string | undefined,
   name: string,

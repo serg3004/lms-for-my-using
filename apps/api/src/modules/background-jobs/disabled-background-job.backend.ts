@@ -13,6 +13,7 @@ export class DisabledBackgroundJobBackend implements BackgroundJobBackend {
   async start(processor: BackgroundJobHandler): Promise<void> {
     void processor;
   }
+
   async enqueue(
     name: string,
     data: BackgroundJobData,
@@ -23,6 +24,7 @@ export class DisabledBackgroundJobBackend implements BackgroundJobBackend {
     void options;
     throw new ServiceUnavailableException('Background jobs are not configured');
   }
+
   async upsertRecurring(
     name: string,
     data: BackgroundJobData,

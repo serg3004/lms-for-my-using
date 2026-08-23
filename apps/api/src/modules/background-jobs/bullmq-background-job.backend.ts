@@ -12,6 +12,7 @@ import type {
   EnqueueBackgroundJobOptions,
   RecurringBackgroundJobOptions,
 } from './background-jobs.types.js';
+
 type StoredJob = { data: BackgroundJobData; idempotencyKey: string; telemetryContext?: { requestId: string } };
 
 export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
@@ -19,6 +20,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
   private readonly queue: Queue<StoredJob>;
   private readonly deadLetterQueue: Queue<StoredJob & { sourceJobId: string; failedReason: string }>;
   private worker: Worker<StoredJob> | null = null;
+
   constructor(
     private readonly redisUrl: string,
     private readonly queueName = process.env['BACKGROUND_JOBS_QUEUE'] ?? 'lms-background-jobs',
@@ -28,6 +30,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     this.queue = new Queue<StoredJob>(queueName, { connection });
     this.deadLetterQueue = new Queue(`${queueName}-dead-letter`, { connection });
   }
+
   async start(processor: BackgroundJobHandler): Promise<void> {
     if (this.worker) return;
     this.worker = new Worker<StoredJob>(
@@ -53,6 +56,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     });
     await this.worker.waitUntilReady();
   }
+
   async enqueue(
     name: string,
     data: BackgroundJobData,
@@ -72,6 +76,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     await this.updateDepth();
     return { id, deduplicated: false };
   }
+
   async upsertRecurring(
     name: string,
     data: BackgroundJobData,
@@ -92,6 +97,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
       },
     );
   }
+
   async close(): Promise<void> {
     await this.worker?.close();
     await Promise.all([this.queue.close(), this.deadLetterQueue.close()]);
@@ -104,6 +110,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
       failedReason: error.message,
     }, { jobId: `dead-${job.id ?? 'unknown'}`, removeOnComplete: false, removeOnFail: false });
   }
+
   private async updateDepth(): Promise<void> {
     try {
       const counts = await this.queue.getJobCounts('waiting', 'delayed');

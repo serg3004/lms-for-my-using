@@ -23,6 +23,7 @@ export type RecurringBackgroundJobOptions = {
 };
 
 export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void>;
+
 export type EnqueuedBackgroundJob = {
   id: string;
   deduplicated: boolean;
