@@ -1822,7 +1822,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 160 — LICENSE, legal/IP и project naming 🔲
+## PR 160 — LICENSE, legal/IP и project naming ✅
 
 **Проблема:** В репозитории нет `LICENSE` файла. Неясны права на код и обязательства по third-party dependencies. Название `lms-for-my-using` не подходит для production/публичного контура.
 
@@ -1842,7 +1842,11 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - Нет ложного open-source статуса, если проект private/internal
 - lint, typecheck, build — зелёные (если затронуты package/config файлы)
 
----
+**Факт:** Юридическая модель — приватная (all rights reserved), подтверждено владельцем явно. Добавлены `LICENSE` (proprietary, all rights reserved) и `NOTICE` (сводка сторонних лицензий) в корне репозитория. `README.md` получил раздел «License» со ссылками на оба файла и явным указанием, что проект не open-source. `package.json` во всех пакетах (`root`, `@lms/api`, `@lms/web`, `@lms/shared`, `@lms/e2e`, `lms-malware-scanner`) получили `"license": "UNLICENSED"` рядом с уже существовавшим `"private": true`.
+
+Скан зависимостей: `pnpm install && pnpm licenses list` по всем 5 workspace-пакетам (после `pnpm install` для корректного индекса пакетов — без него license-checker/pnpm видят только фрагмент дерева). GPL/AGPL-only зависимостей не найдено. Отмечены два пограничных случая (подробности в `NOTICE`): `jszip` — dual-license `(MIT OR GPL-3.0-or-later)`, используется по MIT-варианту; `buffers` — `Unknown` (нет license-поля в metadata), мелкая транзитивная зависимость, не блокирует private-модель.
+
+**Переименование `lms-for-my-using`:** решение зафиксировано явно (владельцем) — **отложить** rename репозитория, а не переименовывать сейчас. Причина: переименование GitHub-репозитория ломает существующие clone/CI/deploy-ссылки у всех, кто уже склонировал репозиторий — это отдельная операция с рисками, которую нужно выполнять осознанно перед реальным публичным запуском, а не походя в рамках этого PR. Решение и обоснование задокументированы в `README.md` (раздел «Project naming»).
 
 ---
 

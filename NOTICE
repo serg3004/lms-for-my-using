@@ -1,0 +1,31 @@
+This project is proprietary software; see LICENSE. It depends on third-party
+open-source packages, each of which remains under its own license.
+
+## License scan summary
+
+Generated with `pnpm licenses list` against the full workspace (api, web,
+shared, e2e, malware-scanner) on 2026-08-23. Full output kept for reference
+in the PR that introduced this file.
+
+License families observed across all direct and transitive dependencies:
+MIT, MIT-0, MIT/X11, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, ISC,
+MPL-2.0, BlueOak-1.0.0, CC0-1.0, CC-BY-4.0, OFL-1.1, Python-2.0, Unlicense.
+
+No dependency is GPL-only or AGPL-only — nothing in the dependency tree
+requires this project's own source to be disclosed or relicensed.
+
+Two entries worth noting explicitly:
+
+- **jszip** — dual-licensed `(MIT OR GPL-3.0-or-later)`. This project uses it
+  under the MIT option, which the dual license permits.
+- **buffers** — reported as `Unknown` (no machine-readable license field in
+  its package metadata). It is a small transitive dependency; if it ever
+  becomes a direct dependency, re-verify its actual license before relying
+  on it in a distributed build.
+
+## Regenerating this scan
+
+```
+pnpm install
+pnpm licenses list
+```

@@ -1,6 +1,7 @@
 {
   "name": "@lms/shared",
   "private": true,
+  "license": "UNLICENSED",
   "version": "0.0.0",
   "type": "module",
   "main": "dist/index.js",
