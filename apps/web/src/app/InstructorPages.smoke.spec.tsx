@@ -29,14 +29,6 @@ function useLoadingState() {
   reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
 }
 
-function useFirstCallReadyState(value: unknown) {
-  let callCount = 0;
-  reactMocks.useState.mockImplementation((initialState: unknown) => {
-    callCount++;
-    return [callCount === 1 ? value : initialState, vi.fn()];
-  });
-}
-
 function useStateAtCalls(overrides: Record<number, unknown>) {
   let callCount = 0;
   reactMocks.useState.mockImplementation((initialState: unknown) => {
@@ -94,45 +86,50 @@ describe('Instructor pages smoke tests', () => {
   });
 
   it('InstructorChecklistReviewsPage renders the pending-review queue without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      firstName: 'Instructor',
-      lastName: 'User',
-      instances: [
-        {
-          id: 'instance-1',
-          organizationId: 'org-1',
-          checklistId: 'checklist-1',
-          userId: 'user-1',
-          assignedBy: null,
-          status: 'submitted',
-          totalScore: 10,
-          maxScore: 30,
-          percentage: 33,
-          passed: false,
-          dueAt: null,
-          submittedAt: '2026-01-01T00:00:00.000Z',
-          completedAt: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          checklist: {
-            id: 'checklist-1',
-            organizationId: 'org-1',
-            title: 'Приёмка нового стажёра',
-            description: null,
-            status: 'published',
-            scoringMode: 'sum_points',
-            passThreshold: 80,
-            scaleLevels: null,
-            requiresReview: true,
-            createdBy: null,
-            createdAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-            items: [],
-          },
-          results: [],
+    // Call order in InstructorChecklistReviewsPage: 1 openId, 2 useAsyncData's internal state.
+    useStateAtCalls({
+      2: {
+        status: 'loaded',
+        data: {
+          firstName: 'Instructor',
+          lastName: 'User',
+          instances: [
+            {
+              id: 'instance-1',
+              organizationId: 'org-1',
+              checklistId: 'checklist-1',
+              userId: 'user-1',
+              assignedBy: null,
+              status: 'submitted',
+              totalScore: 10,
+              maxScore: 30,
+              percentage: 33,
+              passed: false,
+              dueAt: null,
+              submittedAt: '2026-01-01T00:00:00.000Z',
+              completedAt: null,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              checklist: {
+                id: 'checklist-1',
+                organizationId: 'org-1',
+                title: 'Приёмка нового стажёра',
+                description: null,
+                status: 'published',
+                scoringMode: 'sum_points',
+                passThreshold: 80,
+                scaleLevels: null,
+                requiresReview: true,
+                createdBy: null,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+                items: [],
+              },
+              results: [],
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
@@ -143,50 +140,52 @@ describe('Instructor pages smoke tests', () => {
   it('renders a checklist review detail view (photo-missing flag) without crashing', () => {
     const loaded = {
       status: 'loaded' as const,
-      firstName: 'Instructor',
-      lastName: 'User',
-      instances: [
-        {
-          id: 'instance-1',
-          organizationId: 'org-1',
-          checklistId: 'checklist-1',
-          userId: 'user-1',
-          assignedBy: null,
-          status: 'submitted',
-          totalScore: 10,
-          maxScore: 30,
-          percentage: 33,
-          passed: false,
-          dueAt: null,
-          submittedAt: '2026-01-01T00:00:00.000Z',
-          completedAt: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          checklist: {
-            id: 'checklist-1',
+      data: {
+        firstName: 'Instructor',
+        lastName: 'User',
+        instances: [
+          {
+            id: 'instance-1',
             organizationId: 'org-1',
-            title: 'Приёмка нового стажёра',
-            description: null,
-            status: 'published',
-            scoringMode: 'sum_points',
-            passThreshold: 80,
-            scaleLevels: null,
-            requiresReview: true,
-            createdBy: null,
+            checklistId: 'checklist-1',
+            userId: 'user-1',
+            assignedBy: null,
+            status: 'submitted',
+            totalScore: 10,
+            maxScore: 30,
+            percentage: 33,
+            passed: false,
+            dueAt: null,
+            submittedAt: '2026-01-01T00:00:00.000Z',
+            completedAt: null,
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
-            items: [
-              { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Прошёл вводный инструктаж', points: 10, isRequired: true, photoRequired: true },
+            checklist: {
+              id: 'checklist-1',
+              organizationId: 'org-1',
+              title: 'Приёмка нового стажёра',
+              description: null,
+              status: 'published',
+              scoringMode: 'sum_points',
+              passThreshold: 80,
+              scaleLevels: null,
+              requiresReview: true,
+              createdBy: null,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              items: [
+                { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Прошёл вводный инструктаж', points: 10, isRequired: true, photoRequired: true },
+              ],
+            },
+            results: [
+              { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
             ],
           },
-          results: [
-            { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
-          ],
-        },
-      ],
+        ],
+      },
     };
-    // Call order in InstructorChecklistReviewsPage: 1 loadState, 2 openId.
-    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+    // Call order in InstructorChecklistReviewsPage: 1 openId, 2 useAsyncData's internal state.
+    useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
 

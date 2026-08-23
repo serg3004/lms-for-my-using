@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -12,17 +12,13 @@ import { Badge, Button, Card, PageState } from '../shared/ui.js';
 import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import { useCourseBuilderMutations } from './course-builder/useCourseBuilderMutations.js';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 type LessonStatus = 'draft' | 'published' | 'archived';
 
-type PageLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; course: CourseSummary; lessons: LessonSummary[]; currentUser: CurrentUser }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type CourseBuilderData = { course: CourseSummary; lessons: LessonSummary[]; currentUser: CurrentUser };
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string };
 type LessonFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
@@ -57,7 +53,6 @@ export function AdminCourseBuilderPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const mutations = useCourseBuilderMutations();
 
-  const [pageState, setPageState] = useState<PageLoadState>({ status: 'idle' });
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
@@ -79,31 +74,29 @@ export function AdminCourseBuilderPage() {
     { label: t('admin.courses.builder', 'Builder'), href: `/admin/courses/${courseId}`, isCurrent: true },
   ];
 
-  const loadData = useCallback(async () => {
-    if (!courseId) return;
-    setPageState({ status: 'loading' });
-    try {
+  const { state: pageState, reload: loadData } = useAsyncData<CourseBuilderData>(
+    async () => {
+      if (!courseId) throw new Error('Missing course id');
       const [course, lessons, currentUser] = await Promise.all([
         getCourse(courseId) as Promise<CourseSummary>,
         listLessons(courseId),
         getCurrentUser(),
       ]);
-      setFormTitle(course.title);
-      setFormDescription(course.description ?? '');
-      setPageState({ status: 'loaded', course, lessons, currentUser });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setPageState({
-          status: 'unauthenticated',
-          message: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
-        });
-        return;
-      }
-      setPageState({ status: 'error', message: t('admin.courseBuilder.loadError', 'Unable to load the course.') });
-    }
-  }, [courseId, t]);
+      return { course, lessons, currentUser };
+    },
+    [courseId],
+    {
+      unauthenticated: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.courseBuilder.loadError', 'Unable to load the course.'),
+    },
+  );
 
-  useEffect(() => { void loadData(); }, [loadData]);
+  useEffect(() => {
+    if (pageState.status === 'loaded') {
+      setFormTitle(pageState.data.course.title);
+      setFormDescription(pageState.data.course.description ?? '');
+    }
+  }, [pageState]);
 
   useEffect(() => {
     if (showAddLesson) addLessonDialogRef.current?.showModal();
@@ -162,11 +155,11 @@ export function AdminCourseBuilderPage() {
     setLessonFormState({ status: 'submitting' });
     try {
       await mutations.createLesson(courseId, {
-        organizationId: pageState.currentUser.organizationId,
+        organizationId: pageState.data.currentUser.organizationId,
         title,
         slug,
         description: lessonDesc.trim() || undefined,
-        order: pageState.lessons.length,
+        order: pageState.data.lessons.length,
         status: 'draft',
       });
       setShowAddLesson(false);
@@ -192,7 +185,7 @@ export function AdminCourseBuilderPage() {
     }
   }
 
-  if (pageState.status === 'idle' || pageState.status === 'loading') {
+  if (pageState.status === 'loading') {
     return (
       <main className="admin-state">
         <PageState message={t('admin.courseBuilder.loading', 'Loading course...')} variant="loading" />
@@ -220,7 +213,7 @@ export function AdminCourseBuilderPage() {
     );
   }
 
-  const { course, lessons } = pageState;
+  const { course, lessons } = pageState.data;
   const { variant: statusVariant, label: statusLabel } = courseStatusBadge(course.status, t);
 
   return (

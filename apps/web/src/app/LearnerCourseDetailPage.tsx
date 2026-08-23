@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAssignments } from '../shared/api/assignments.js';
@@ -6,22 +5,16 @@ import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
-import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type CourseDetailLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      course: CourseSummary;
-      lessons: LessonSummary[];
-      completedLessonIds: Set<string>;
-      dueAt: string | null;
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type LearnerCourseDetailData = {
+  course: CourseSummary;
+  lessons: LessonSummary[];
+  completedLessonIds: Set<string>;
+  dueAt: string | null;
+};
 
 function formatDueAt(dueAt: string): string {
   return new Date(dueAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
@@ -38,12 +31,9 @@ function formatDuration(minutes: number | null, h: string, m: string, none: stri
 
 export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<CourseDetailLoadState>({ status: 'idle' });
 
-  const loadCourseWithProgress = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-
-    try {
+  const { state: loadState } = useAsyncData<LearnerCourseDetailData>(
+    async () => {
       const [course, lessonsAll, { items: progressList }, assignmentsRes, currentUser] = await Promise.all([
         getCourse(courseId),
         listLessons(courseId),
@@ -71,28 +61,16 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
 
       const dueAt = assignments.find((a) => a.courseId === courseId)?.dueAt ?? null;
 
-      setLoadState({ status: 'loaded', course, lessons, completedLessonIds, dueAt });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('courseDetail.sessionExpired') });
-        return;
-      }
-      if (error instanceof ApiClientError && error.status === 404) {
-        setLoadState({ status: 'notFound', message: t('courseDetail.notFound') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('courseDetail.loadError') });
-    }
-  }, [courseId, t]);
-
-  useEffect(() => {
-    void loadCourseWithProgress();
-  }, [loadCourseWithProgress]);
+      return { course, lessons, completedLessonIds, dueAt };
+    },
+    [courseId],
+    { unauthenticated: t('courseDetail.sessionExpired'), error: t('courseDetail.loadError') },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const coursesAction = <a href="/learn/courses">{t('courses.navLink')}</a>;
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('courseDetail.loading')} variant="loading" />;
   }
 
@@ -107,7 +85,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     );
   }
 
-  if (loadState.status === 'notFound' || loadState.status === 'error') {
+  if (loadState.status === 'error') {
     return (
       <PageState
         title={t('courseDetail.title')}
@@ -118,7 +96,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     );
   }
 
-  const { course, lessons, completedLessonIds, dueAt } = loadState;
+  const { course, lessons, completedLessonIds, dueAt } = loadState.data;
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter((l) => completedLessonIds.has(l.id)).length;
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;

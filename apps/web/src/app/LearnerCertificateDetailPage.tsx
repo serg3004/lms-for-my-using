@@ -1,26 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import {
-  ApiClientError,
-  CertificateSummary,
-  getCertificate,
-} from '../shared/apiClient.js';
+import { getCertificate } from '../shared/apiClient.js';
 import { getCurrentUser } from '../shared/api/auth.js';
 import type { CurrentUser } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { PageState } from '../shared/ui.js';
-
-type CertificateDetailLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      certificate: CertificateSummary;
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 function formatIssuedAt(value: string): string {
   return new Date(value).toLocaleDateString(undefined, {
@@ -32,44 +18,26 @@ function formatIssuedAt(value: string): string {
 
 export function LearnerCertificateDetailPage({ certificateId }: { certificateId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<CertificateDetailLoadState>({ status: 'idle' });
   const [owner, setOwner] = useState<CurrentUser | null>(null);
 
-  const loadCertificate = useCallback(async () => {
-    setLoadState({ status: 'loading' });
+  const { state: loadState } = useAsyncData(
+    () => getCertificate(certificateId),
+    [certificateId],
+    { unauthenticated: t('certificates.sessionExpired'), error: t('certificates.loadError') },
+  );
 
-    try {
-      const certificate = await getCertificate(certificateId);
-
-      setLoadState({
-        status: 'loaded',
-        certificate,
-      });
-
+  useEffect(() => {
+    if (loadState.status === 'loaded') {
       getCurrentUser()
         .then(setOwner)
         .catch(() => setOwner(null));
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('certificates.sessionExpired') });
-        return;
-      }
-      if (error instanceof ApiClientError && error.status === 404) {
-        setLoadState({ status: 'notFound', message: t('certificates.notFound') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('certificates.loadError') });
     }
-  }, [certificateId, t]);
-
-  useEffect(() => {
-    void loadCertificate();
-  }, [loadCertificate]);
+  }, [loadState]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const certificatesAction = <a href="/learn/certificates">{t('certificates.navLink')}</a>;
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return (
       <>
         <PageState message={t('certificates.loadingDetail')} variant="loading" />
@@ -85,7 +53,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     );
   }
 
-  if (loadState.status === 'notFound' || loadState.status === 'error') {
+  if (loadState.status === 'error') {
     return (
       <>
         <PageState title={t('certificates.detailTitle')} message={loadState.message} variant="error" action={certificatesAction} />
@@ -93,7 +61,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     );
   }
 
-  const { certificate } = loadState;
+  const certificate = loadState.data;
   const organizationName = getReadableTitle(certificate.organization?.name, t('certificates.organizationFallback', 'Organization'));
   const courseTitle = getReadableTitle(certificate.course?.title, t('certificates.courseFallback', 'Course'));
   const ownerName = getReadableTitle(

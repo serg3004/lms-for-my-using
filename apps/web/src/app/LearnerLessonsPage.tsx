@@ -1,33 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCourse } from '../shared/api/courses.js';
 import { listAssignments } from '../shared/api/assignments.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
-import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser } from '../shared/apiClient.js';
 import type { LessonSummary } from '../shared/api/types.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { getCourseHref, getLessonHref } from '../shared/learnerRoutes.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 function getLessonMaterialsHref(lessonId: string) {
   return `/learn/lessons/${encodeURIComponent(lessonId)}/materials`;
 }
 import { EmptyState, PageState } from '../shared/ui.js';
 
-type LessonsLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      lessons: LessonSummary[];
-      completedIds: Set<string>;
-      courseTitle?: string;
-      deadline?: string | null;
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type LearnerLessonsData = {
+  lessons: LessonSummary[];
+  completedIds: Set<string>;
+  courseTitle?: string;
+  deadline?: string | null;
+};
 
 const COLORS = {
   surface: '#ffffff',
@@ -41,12 +34,9 @@ const COLORS = {
 
 export function LearnerLessonsPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LessonsLoadState>({ status: 'idle' });
 
-  const loadLessonsWithProgress = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-
-    try {
+  const { state: loadState } = useAsyncData<LearnerLessonsData>(
+    async () => {
       const [lessons, { items: progressList }, currentUser, course, { items: assignments }] = await Promise.all([
         listLessons(courseId),
         listProgress({ pageSize: 200 }),
@@ -69,34 +59,21 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
 
       const courseAssignment = assignments.find((a) => a.courseId === courseId && a.dueAt);
 
-      setLoadState({
-        status: 'loaded',
+      return {
         lessons,
         completedIds,
         courseTitle: course.title,
         deadline: courseAssignment?.dueAt ?? null,
-      });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('lessons.sessionExpired') });
-        return;
-      }
-      if (error instanceof ApiClientError && error.status === 404) {
-        setLoadState({ status: 'notFound', message: t('lessons.notFound') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('lessons.loadError') });
-    }
-  }, [courseId, t]);
-
-  useEffect(() => {
-    void loadLessonsWithProgress();
-  }, [loadLessonsWithProgress]);
+      };
+    },
+    [courseId],
+    { unauthenticated: t('lessons.sessionExpired'), error: t('lessons.loadError') },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const courseAction = <a href={getCourseHref(courseId)}>{t('courseDetail.title')}</a>;
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return (
       <>
         <PageState message={t('lessons.loading')} variant="loading" />
@@ -112,7 +89,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     );
   }
 
-  if (loadState.status === 'notFound' || loadState.status === 'error') {
+  if (loadState.status === 'error') {
     return (
       <>
         <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={courseAction} />
@@ -120,7 +97,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     );
   }
 
-  const { lessons, completedIds } = loadState;
+  const { lessons, completedIds } = loadState.data;
   const publishedLessons = [...lessons.filter((l) => l.status === 'published')].sort((a, b) => a.order - b.order);
   const completedCount = publishedLessons.filter((l) => completedIds.has(l.id)).length;
   const currentLesson = publishedLessons.find((l) => !completedIds.has(l.id));
@@ -145,7 +122,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
       >
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr .6fr', gap: '24px', alignItems: 'center' }}>
           <div>
-            <h2 style={{ margin: '0 0 12px', fontSize: '28px' }}>{loadState.courseTitle ?? t('lessons.title')}</h2>
+            <h2 style={{ margin: '0 0 12px', fontSize: '28px' }}>{loadState.data.courseTitle ?? t('lessons.title')}</h2>
             <p style={{ margin: 0, color: '#e0e7ff', lineHeight: 1.65 }}>
               {currentLesson
                 ? t('lessons.heroText', { completed: completedCount, total: publishedLessons.length, next: currentLesson.title })
@@ -227,10 +204,10 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
                   <strong>{currentLesson.title}</strong>
                 </div>
               ) : null}
-              {loadState.deadline ? (
+              {loadState.data.deadline ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
                   <span style={{ color: COLORS.muted }}>{t('lessons.deadlineLabel')}</span>
-                  <strong>{formatNullableDate(loadState.deadline, '')}</strong>
+                  <strong>{formatNullableDate(loadState.data.deadline, '')}</strong>
                 </div>
               ) : null}
             </div>
