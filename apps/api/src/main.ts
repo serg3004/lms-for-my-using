@@ -34,11 +34,13 @@ async function bootstrap(): Promise<void> {
   loadLocalEnvFiles();
   const apiEnv = loadApiEnv();
   let captureRateLimitFailure: ((error: unknown) => void) | undefined;
+  let captureApiFailure: ((error: Error) => void) | undefined;
 
   if (apiEnv.SENTRY_DSN) {
     const Sentry = await import('@sentry/node');
     Sentry.init({ dsn: apiEnv.SENTRY_DSN, environment: apiEnv.NODE_ENV });
     captureRateLimitFailure = (error) => Sentry.captureException(error, { tags: { component: 'rate-limit' } });
+    captureApiFailure = (error) => Sentry.captureException(error, { tags: { component: 'api' } });
   }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true, bodyParser: false });
@@ -114,7 +116,7 @@ async function bootstrap(): Promise<void> {
   );
   app.setGlobalPrefix('api/v1');
   setupOpenApi(app);
-  app.useGlobalFilters(new ApiExceptionFilter());
+  app.useGlobalFilters(new ApiExceptionFilter(captureApiFailure));
   app.enableShutdownHooks();
   app.getHttpServer().once('close', () => {
     void closeRedis(redis);

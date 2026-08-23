@@ -1850,7 +1850,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 161 — Observability: structured logs, Sentry и error tracking 🔲
+## PR 161 — Observability: structured logs, Sentry и error tracking ✅
 
 **Проблема:** PR 130 обозначен как "production observability" но содержит только 3 строки без конкретных требований. Нет structured logs, secrets не исключаются из логов, нет Sentry/error tracking конфигурации.
 
@@ -1873,6 +1873,16 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - Sentry (или аналог) включается только через env — без `SENTRY_DSN` приложение стартует без ошибок
 - Тест или documented checklist на sanitization логов присутствует
 - lint, typecheck, tests, build — зелёные
+
+**Факт:** переиспользован уже существующий единый observability stack на
+`nestjs-pino`: production output — JSON, локальный output — `pino-pretty`, а
+централизованный список redact paths закрывает credentials в HTTP metadata.
+Валидированный `X-Request-ID` проходит через logger и async telemetry context.
+Optional Sentry теперь получает sanitised server-side (5xx) errors и включается
+только при валидном `SENTRY_DSN`; ожидаемые 4xx не отправляются. Startup и
+runtime error details проходят через общий sanitizer до logger/error tracker.
+Repository evidence, границы live-проверки и команды проверки зафиксированы в
+`docs/PR_161_OBSERVABILITY_VERIFICATION.md`.
 
 ---
 

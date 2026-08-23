@@ -152,7 +152,8 @@ describe('ApiExceptionFilter', () => {
   });
 
   it('formats unknown errors without leaking details', () => {
-    const filter = new ApiExceptionFilter();
+    const captured: Error[] = [];
+    const filter = new ApiExceptionFilter((error) => captured.push(error));
     const host = createHost();
 
     filter.catch(new Error('secret database detail'), host.host);
@@ -163,6 +164,18 @@ describe('ApiExceptionFilter', () => {
       error: { code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' },
     });
     expect(JSON.stringify(host.getJsonBody())).not.toContain('secret database detail');
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.message).toBe('[redacted]');
+  });
+
+  it('does not send handled client failures to error tracking', () => {
+    const captured: Error[] = [];
+    const filter = new ApiExceptionFilter((error) => captured.push(error));
+    const host = createHost();
+
+    filter.catch(new BadRequestException('password is invalid'), host.host);
+
+    expect(captured).toHaveLength(0);
   });
 
   it('normalizes Prisma P2002 unique constraint errors to 409 without leaking DB message', () => {
