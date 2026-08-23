@@ -2727,7 +2727,7 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 197 — Responsive visual matrix 🔲
+## PR 197 — Responsive visual matrix ✅
 
 **Проблема:** Media queries не доказывают корректный вид на устройствах.
 
@@ -2741,6 +2741,8 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 - Dialogs помещаются
 - Zoom 200% работает
 - Baselines проверяются CI.
+
+**Факт (аудит 2026-08-23, прогнано живьём):** маркер 🔲 был устаревшим — реализовано полностью. `apps/e2e/visual-tests/responsive-matrix.spec.ts` покрывает ровно те же 6 ширин из критерия (`[320, 375, 768, 1024, 1280, 1440]`): проверка отсутствия page overflow (`scrollWidth <= clientWidth`) на публичной главной и на `/admin/users` (таблица + форма + диалог создания пользователя) на каждой ширине; touch target ≥44px — на мобильных ширинах (≤375); диалог явно проверяется на попадание в viewport (`dialog.getBoundingClientRect()` внутри границ окна); отдельный тест на zoom 200% через CDP `Emulation.setPageScaleFactor`. Встроено в CI (`.github/workflows/ci.yml`, шаг "Responsive visual matrix" → `pnpm test:visual`). Не просто проверено по коду — реально прогнано в этой сессии (`pnpm test:visual`, реальный Chromium + dev-сервер): **13/13 тестов прошли**.
 
 ---
 
