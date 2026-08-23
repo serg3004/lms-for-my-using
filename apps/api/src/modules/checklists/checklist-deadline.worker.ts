@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { BackgroundJobsService } from '../background-jobs/background-jobs.service.js';
+import { BackgroundJobsService } from '../background-jobs/public.js';
 import { expireDueChecklistBatch } from './checklist-deadlines.js';
 
 export const CHECKLIST_DEADLINE_JOB = 'checklists.expire-overdue';
