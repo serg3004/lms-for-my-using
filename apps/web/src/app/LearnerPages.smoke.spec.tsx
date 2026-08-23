@@ -178,32 +178,38 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders assessments happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      rows: [
-        {
-          assessment: {
-            id: 'assessment-1',
-            organizationId: 'org-1',
-            courseId: 'course-1',
-            lessonId: 'lesson-1',
-            title: 'MVP Quiz',
-            slug: 'mvp-quiz',
-            description: 'Check MVP understanding',
-            status: 'published',
-            passingScore: 70,
-            maxAttempts: 3,
-            availableAfterCourseCompletion: false,
-            createdAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-          },
-          courseTitle: 'MVP Onboarding Course',
-          questionCount: 5,
-          attemptsUsed: 0,
-          bestPercentage: null,
-          completed: false,
+    // useState call order in LearnerAssessmentsPage: 1 query, 2 statusFilter, 3 courseFilter,
+    // then useAsyncData's internal loadState is call 4.
+    useStateAtCalls({
+      4: {
+        status: 'loaded',
+        data: {
+          rows: [
+            {
+              assessment: {
+                id: 'assessment-1',
+                organizationId: 'org-1',
+                courseId: 'course-1',
+                lessonId: 'lesson-1',
+                title: 'MVP Quiz',
+                slug: 'mvp-quiz',
+                description: 'Check MVP understanding',
+                status: 'published',
+                passingScore: 70,
+                maxAttempts: 3,
+                availableAfterCourseCompletion: false,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+              courseTitle: 'MVP Onboarding Course',
+              questionCount: 5,
+              attemptsUsed: 0,
+              bestPercentage: null,
+              completed: false,
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentsPage />);
@@ -222,8 +228,12 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders checklists happy path without crashing', () => {
-    useFirstCallReadyState({
+    // useState call order in LearnerChecklistsPage: 1 openInstanceId, then useAsyncData's
+    // internal loadState is call 2.
+    useStateAtCalls({
+      2: {
       status: 'loaded',
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -259,6 +269,8 @@ describe('learner page smoke rendering', () => {
           results: [],
         },
       ],
+      },
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
@@ -269,6 +281,7 @@ describe('learner page smoke rendering', () => {
   it('renders the checklist taking view (scale scoring, photo slot) without crashing', () => {
     const loaded = {
       status: 'loaded' as const,
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -312,9 +325,10 @@ describe('learner page smoke rendering', () => {
           ],
         },
       ],
+      },
     };
-    // Call order in LearnerChecklistsPage: 1 loadState, 2 openInstanceId.
-    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+    // useState call order in LearnerChecklistsPage: 1 openInstanceId, 2 useAsyncData's internal loadState.
+    useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
 
@@ -325,6 +339,7 @@ describe('learner page smoke rendering', () => {
   it('shows the photo attach prompt for a marked item and the mark-first hint for an unanswered one', () => {
     const loaded = {
       status: 'loaded' as const,
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -365,8 +380,9 @@ describe('learner page smoke rendering', () => {
           ],
         },
       ],
+      },
     };
-    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+    useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
 
@@ -383,23 +399,29 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders certificates happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      certificates: [
-        {
-          id: 'cert-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          userId: 'user-1',
-          assessmentAttemptId: null,
-          status: 'issued',
-          issuedAt: '2026-01-01T00:00:00.000Z',
-          revokedAt: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          course: { id: 'course-1', title: 'Safety Course' },
+    // useState call order in LearnerCertificatesPage: 1 statusFilter, 2 yearFilter, then
+    // useAsyncData's internal loadState is call 3.
+    useStateAtCalls({
+      3: {
+        status: 'loaded',
+        data: {
+          certificates: [
+            {
+              id: 'cert-1',
+              organizationId: 'org-1',
+              courseId: 'course-1',
+              userId: 'user-1',
+              assessmentAttemptId: null,
+              status: 'issued',
+              issuedAt: '2026-01-01T00:00:00.000Z',
+              revokedAt: null,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              course: { id: 'course-1', title: 'Safety Course' },
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerCertificatesPage />);

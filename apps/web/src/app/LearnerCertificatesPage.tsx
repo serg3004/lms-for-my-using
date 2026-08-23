@@ -1,22 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, CertificateSummary, listCertificates } from '../shared/apiClient.js';
+import { CertificateSummary, listCertificates } from '../shared/apiClient.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type ReadableCertificateSummary = CertificateSummary & {
   courseTitle?: string | null;
   course?: { title?: string | null } | null;
 };
 
-type CertificatesLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; certificates: ReadableCertificateSummary[]; total: number; pageSize: number }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type LearnerCertificatesData = { certificates: ReadableCertificateSummary[]; total: number; pageSize: number };
 
 const COLORS = {
   surface: '#ffffff',
@@ -47,55 +43,30 @@ type StatusFilter = 'all' | 'issued' | 'revoked';
 
 export function LearnerCertificatesPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<CertificatesLoadState>({ status: 'idle' });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [yearFilter, setYearFilter] = useState<'all' | string>('all');
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadCertificates() {
-      setLoadState({ status: 'loading' });
-
-      try {
-        const result = await listCertificates({ page: 1, pageSize: 100 });
-
-        if (isMounted) {
-          setLoadState({ status: 'loaded', certificates: result.items, total: result.total, pageSize: result.pageSize });
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('certificates.sessionExpired') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('certificates.loadError') });
-      }
-    }
-
-    void loadCertificates();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [t]);
+  const { state: loadState } = useAsyncData<LearnerCertificatesData>(
+    async () => {
+      const result = await listCertificates({ page: 1, pageSize: 100 });
+      return { certificates: result.items, total: result.total, pageSize: result.pageSize };
+    },
+    [t],
+    { unauthenticated: t('certificates.sessionExpired'), error: t('certificates.loadError') },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
 
   const years = useMemo(() => {
     if (loadState.status !== 'loaded') return [];
-    const set = new Set(loadState.certificates.map((c) => new Date(c.issuedAt).getFullYear().toString()));
+    const set = new Set(loadState.data.certificates.map((c) => new Date(c.issuedAt).getFullYear().toString()));
     return [...set].sort((a, b) => Number(b) - Number(a));
   }, [loadState]);
 
   const filtered = useMemo(() => {
     if (loadState.status !== 'loaded') return [];
-    return loadState.certificates.filter((certificate) => {
+    return loadState.data.certificates.filter((certificate) => {
       const matchesStatus = statusFilter === 'all' || certificate.status === statusFilter;
       const matchesYear =
         yearFilter === 'all' || new Date(certificate.issuedAt).getFullYear().toString() === yearFilter;
@@ -103,7 +74,7 @@ export function LearnerCertificatesPage() {
     });
   }, [loadState, statusFilter, yearFilter]);
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('certificates.loading')} variant="loading" />;
   }
 
@@ -113,13 +84,13 @@ export function LearnerCertificatesPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <PageState title={t('certificates.title')} message={loadState.message} variant="error" action={learnerAction} />
     );
   }
 
-  const { certificates } = loadState;
+  const { certificates } = loadState.data;
   const issuedCount = certificates.filter((c) => c.status === 'issued').length;
   const revokedCount = certificates.filter((c) => c.status === 'revoked').length;
 
