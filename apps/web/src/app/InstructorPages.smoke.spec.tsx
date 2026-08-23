@@ -137,7 +137,7 @@ describe('Instructor pages smoke tests', () => {
     expect(html).toContain('Приёмка нового стажёра');
   });
 
-  it('renders a checklist review detail view (photo-missing flag) without crashing', () => {
+  it('renders a checklist review detail view with object-backed photo evidence', () => {
     const loaded = {
       status: 'loaded' as const,
       data: {
@@ -178,18 +178,22 @@ describe('Instructor pages smoke tests', () => {
               ],
             },
             results: [
-              { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+              { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: 'evidence.jpg', comment: 'Done safely', reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
             ],
           },
         ],
       },
     };
-    // Call order in InstructorChecklistReviewsPage: 1 openId, 2 useAsyncData's internal state.
+    // ReviewDetail + ChecklistReviewPhotoEvidence add state hooks after page/load state.
     useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
 
     expect(html).toContain('Прошёл вводный инструктаж');
+    expect(html).toContain('evidence.jpg');
+    expect(html).toContain('Open photo');
+    expect(html).toContain('Done safely');
+    expect(html).not.toContain('photo missing');
   });
 });
 
@@ -197,12 +201,16 @@ describe('isReviewFlagged', () => {
   const item = { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Item', points: 10, isRequired: true, photoRequired: true };
   const baseResult = { id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoFileName: null, comment: null, reviewStatus: 'pending' as const, reviewComment: null, reviewedBy: null, reviewedAt: null };
 
-  it('flags an item that requires a photo but has none attached', () => {
+  it('flags an item that requires a photo but has no object-backed evidence', () => {
     expect(isReviewFlagged(item, { ...baseResult, photoUrl: null })).toBe(true);
   });
 
-  it('does not flag an item once a photo is attached', () => {
-    expect(isReviewFlagged(item, { ...baseResult, photoUrl: 'https://example.com/photo.jpg' })).toBe(false);
+  it('does not flag object-backed evidence when legacy photoUrl is null', () => {
+    expect(isReviewFlagged(item, { ...baseResult, photoUrl: null, photoFileName: 'evidence.jpg' })).toBe(false);
+  });
+
+  it('does not accept legacy photoUrl alone as evidence', () => {
+    expect(isReviewFlagged(item, { ...baseResult, photoUrl: 'https://example.com/photo.jpg' })).toBe(true);
   });
 
   it('does not flag an item that never required a photo', () => {

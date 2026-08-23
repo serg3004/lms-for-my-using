@@ -9,11 +9,13 @@ import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
+import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 
 type ChecklistReviewsLayout = ComponentType<{ children: ReactNode; firstName?: string; lastName?: string }>;
 
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
-  return item.photoRequired && !result.photoUrl;
+  return item.photoRequired && !hasChecklistPhotoEvidence(result);
 }
 
 const COLORS = {
@@ -156,6 +158,7 @@ function ReviewDetail({
         {checklist.items.map((item) => {
           const result = instance.results.find((r) => r.itemId === item.id);
           if (!result) return null;
+          const hasEvidence = hasChecklistPhotoEvidence(result);
           const flagged = isReviewFlagged(item, result);
           return (
             <div
@@ -171,6 +174,10 @@ function ReviewDetail({
                 <div>
                   <p style={{ fontWeight: 600, margin: '0 0 4px' }}>{item.text}</p>
                   <p style={{ color: flagged ? COLORS.warning : COLORS.muted, fontSize: 12.5, margin: 0 }}>
+                    {item.isRequired ? t('checklistReview.required', 'Required') : t('checklistReview.optional', 'Optional')}
+                    {' · '}
+                    {item.photoRequired ? t('checklistReview.photoRequired', 'photo required') : t('checklistReview.photoOptional', 'photo optional')}
+                    {' · '}
                     {checklist.scoringMode === 'scale'
                       ? (checklist.scaleLevels ?? []).find((l) => l.level === result.scaleLevel)?.label ?? '—'
                       : result.checked
@@ -179,7 +186,11 @@ function ReviewDetail({
                     {' · '}
                     {result.points} {t('checklists.points', 'pts')}
                     {' · '}
-                    {result.photoUrl ? t('checklistReview.photoAttached', 'photo attached') : flagged ? t('checklistReview.photoMissing', 'photo missing — needs your confirmation') : t('checklistReview.photoNotRequired', 'no photo required')}
+                    {hasEvidence
+                      ? t('checklistReview.photoAttached', 'photo attached')
+                      : flagged
+                        ? t('checklistReview.photoMissing', 'photo missing — needs your confirmation')
+                        : t('checklistReview.photoNotAttached', 'no photo attached')}
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -213,6 +224,9 @@ function ReviewDetail({
                   </button>
                 </div>
               </div>
+              {result.comment && <p style={{ color: COLORS.text, fontSize: 12.5 }}>{t('checklistReview.learnerComment', 'Learner comment')}: {result.comment}</p>}
+              {result.reviewComment && <p style={{ color: COLORS.muted, fontSize: 12.5 }}>{t('checklistReview.previousReviewComment', 'Review comment')}: {result.reviewComment}</p>}
+              {hasEvidence && <ChecklistReviewPhotoEvidence instanceId={instance.id} itemId={item.id} result={result} t={t} />}
               {result.reviewStatus === 'pending' && (
                 <input
                   placeholder={t('checklistReview.commentPlaceholder', 'Comment (optional)')}

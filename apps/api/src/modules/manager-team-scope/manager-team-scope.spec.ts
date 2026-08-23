@@ -6,12 +6,27 @@ const manager = { id: '22222222-2222-4222-8222-222222222222', organizationId, ro
 describe('ManagerTeamScope', () => {
   const scope = new ManagerTeamScope();
 
-  it('scopes users through every group managed by the manager and the current tenant', () => {
+  it('scopes users through active memberships in active groups currently managed by the manager', () => {
     expect(scope.user(manager)).toEqual({
       groupMemberships: { some: {
         organizationId,
-        group: { managers: { some: { managerId: manager.id, organizationId } } },
+        deletedAt: null,
+        group: {
+          organizationId,
+          status: 'active',
+          deletedAt: null,
+          managers: { some: { managerId: manager.id, organizationId, deletedAt: null } },
+        },
       } },
+    });
+  });
+
+  it('scopes groups to active groups with an active manager assignment', () => {
+    expect(scope.group(manager)).toEqual({
+      organizationId,
+      status: 'active',
+      deletedAt: null,
+      managers: { some: { managerId: manager.id, organizationId, deletedAt: null } },
     });
   });
 

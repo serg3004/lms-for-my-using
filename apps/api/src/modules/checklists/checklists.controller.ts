@@ -7,6 +7,7 @@ import type { AuthenticatedRequest } from '../auth/public.js';
 import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
+import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
@@ -26,6 +27,7 @@ export class ChecklistsController {
   constructor(
     private readonly checklistsService: ChecklistsService,
     private readonly uploadService: UploadService,
+    private readonly reviewAccess: ChecklistReviewAccessService,
   ) {}
 
   // ---- Templates ----
@@ -115,8 +117,10 @@ export class ChecklistsController {
 
   @Get('checklist-instances/pending-review')
   @Roles(...rolePolicies.checklistReviewWrite)
-  listPendingReview(@Req() request: AuthenticatedRequest) {
-    return this.checklistsService.listPendingReview(request.currentUser!.organizationId);
+  async listPendingReview(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const instances = await this.checklistsService.listPendingReview(user.organizationId);
+    return this.reviewAccess.filterPending(user, instances);
   }
 
   @Get('checklist-instances/:id')
@@ -128,13 +132,16 @@ export class ChecklistsController {
     if (instance.userId !== user.id && isLearnerOnly(user.roles)) {
       throw new ForbiddenException('You can only view your own checklist assignment');
     }
+    if (!isLearnerOnly(user.roles)) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
 
     return instance;
   }
 
   @Patch('checklist-instances/:instanceId/items/:itemId')
   @Roles(...rolePolicies.checklistItemResultsWrite)
-  submitItemResult(
+  async submitItemResult(
     @Param('instanceId') instanceId: string,
     @Param('itemId') itemId: string,
     @Body() body: unknown,
@@ -142,6 +149,9 @@ export class ChecklistsController {
   ) {
     const input = submitChecklistItemResultSchema.parse(body);
     const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
     return this.checklistsService.submitItemResult(
       instanceId,
       itemId,
@@ -170,6 +180,9 @@ export class ChecklistsController {
     validateUploadFile(file);
 
     const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
     const uploaded = await this.uploadService.uploadChecklistItemPhoto(file, user.organizationId, instanceId, itemId);
     return this.checklistsService.attachItemPhoto(
       instanceId,
@@ -183,12 +196,15 @@ export class ChecklistsController {
 
   @Get('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistInstancesRead)
-  getItemPhoto(
+  async getItemPhoto(
     @Param('instanceId') instanceId: string,
     @Param('itemId') itemId: string,
     @Req() request: AuthenticatedRequest,
   ) {
     const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
     return this.checklistsService.getItemPhotoDownload(
       instanceId,
       itemId,
@@ -200,7 +216,7 @@ export class ChecklistsController {
 
   @Post('checklist-instances/:instanceId/items/:itemId/review')
   @Roles(...rolePolicies.checklistReviewWrite)
-  reviewItemResult(
+  async reviewItemResult(
     @Param('instanceId') instanceId: string,
     @Param('itemId') itemId: string,
     @Body() body: unknown,
@@ -208,6 +224,7 @@ export class ChecklistsController {
   ) {
     const input = reviewChecklistItemResultSchema.parse(body);
     const user = request.currentUser!;
+    await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     return this.checklistsService.reviewItemResult(instanceId, itemId, user.organizationId, user.id, input);
   }
 }
