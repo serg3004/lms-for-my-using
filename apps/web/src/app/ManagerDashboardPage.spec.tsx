@@ -5,26 +5,28 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const loadedState = {
   status: 'loaded',
-  user: {
-    id: 'manager-1',
-    organizationId: 'org-1',
-    email: 'manager@demo.com',
-    firstName: 'Нур',
-    lastName: 'Ахметов',
-    roles: ['manager'],
-  },
-  summary: {
-    membersCount: 2,
-    completionRate: 72,
-    dueThisWeekCount: 5,
-    overdueCount: 2,
-    avgTeamScore: 84,
-    upcomingDeadlines: [
-      { courseTitle: 'Техника безопасности', userId: 'user-1', dueAt: '2026-08-05T00:00:00.000Z' },
-    ],
-    members: [
-      { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
-    ],
+  data: {
+    user: {
+      id: 'manager-1',
+      organizationId: 'org-1',
+      email: 'manager@demo.com',
+      firstName: 'Нур',
+      lastName: 'Ахметов',
+      roles: ['manager'],
+    },
+    summary: {
+      membersCount: 2,
+      completionRate: 72,
+      dueThisWeekCount: 5,
+      overdueCount: 2,
+      avgTeamScore: 84,
+      upcomingDeadlines: [
+        { courseTitle: 'Техника безопасности', userId: 'user-1', dueAt: '2026-08-05T00:00:00.000Z' },
+      ],
+      members: [
+        { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
+      ],
+    },
   },
 };
 

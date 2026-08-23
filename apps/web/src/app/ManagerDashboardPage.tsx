@@ -5,11 +5,9 @@ import { createAssignment, getCurrentUser, listCourses, type CourseSummary, type
 import { getManagerTeamSummary, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
 import { Card, PageState, ProgressBar, StatCard, StatsGrid } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; user: CurrentUser; summary: ManagerTeamSummary }
-  | { status: 'error' };
+type ManagerDashboardData = { user: CurrentUser; summary: ManagerTeamSummary };
 
 function AssignTrainingModal({
   organizationId,
@@ -110,33 +108,20 @@ function AssignTrainingModal({
 
 export function ManagerDashboardPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const { state, mutate } = useAsyncData<ManagerDashboardData>(
+    async () => {
+      const [user, summary] = await Promise.all([getCurrentUser(), getManagerTeamSummary()]);
+      return { user, summary };
+    },
+    [t],
+    { unauthenticated: t('manager.dashboard.loadError'), error: t('manager.dashboard.loadError') },
+  );
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [assignedMessage, setAssignedMessage] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const [user, summary] = await Promise.all([getCurrentUser(), getManagerTeamSummary()]);
-        if (isMounted) {
-          setState({ status: 'loaded', user, summary });
-        }
-      } catch {
-        if (isMounted) setState({ status: 'error' });
-      }
-    }
-
-    void load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   async function refreshSummary() {
     const summary = await getManagerTeamSummary();
-    setState((current) => (current.status === 'loaded' ? { ...current, summary } : current));
+    mutate((data) => ({ ...data, summary }));
     setIsAssignOpen(false);
     setAssignedMessage(true);
   }
@@ -149,7 +134,7 @@ export function ManagerDashboardPage() {
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
     return (
       <ManagerPageLayout>
         <PageState message={t('manager.dashboard.loadError')} variant="error" />
@@ -157,7 +142,7 @@ export function ManagerDashboardPage() {
     );
   }
 
-  const { user, summary } = state;
+  const { user, summary } = state.data;
 
   return (
     <ManagerPageLayout>
