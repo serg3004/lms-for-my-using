@@ -1,8 +1,9 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { DataTable, EmptyState, PageState, StatCard, StatsGrid, StatusBadge, type Column } from '../shared/ui.js';
 import { formatNullableDate } from '../shared/formatDate.js';
@@ -15,18 +16,15 @@ type Progress = { id: string; courseId: string; userId: string; status: string; 
 type Certificate = { id: string; courseId: string; userId: string; issuedAt: string; status: string };
 type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean; completedAt: string | null };
 
-type LoadState =
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      courses: Course[];
-      users: User[];
-      assessments: Assessment[];
-      progressItems: Progress[];
-      certificates: Certificate[];
-      assessmentResults: AssessmentResult[];
-    }
-  | { status: 'error'; message: string };
+type AdminResultsData = {
+  courses: Course[];
+  users: User[];
+  assessments: Assessment[];
+  progressItems: Progress[];
+  certificates: Certificate[];
+  assessmentResults: AssessmentResult[];
+  selectedAssessmentId: string;
+};
 
 export function findCourseTitle(courses: Course[], courseId: string) {
   return courses.find((course) => course.id === courseId)?.title ?? courseId;
@@ -126,7 +124,6 @@ export async function downloadAssessmentResultsXlsx(results: AssessmentResult[],
 
 export function AdminResultsCertificatesPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentId, setAssessmentId] = useState('');
@@ -137,8 +134,8 @@ export function AdminResultsCertificatesPage() {
     { label: t('admin.results.title', 'Results'), href: '/admin/results', isCurrent: true },
   ];
 
-  const loadData = useCallback(async (nextAssessmentId?: string) => {
-    try {
+  const { state: loadState, reload: loadData } = useAsyncData<AdminResultsData>(
+    async () => {
       const [{ items: courses }, { items: users }, assessments, { items: progressItems }, { items: certificates }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
@@ -146,36 +143,35 @@ export function AdminResultsCertificatesPage() {
         apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
         apiRequest<PaginatedResponse<Certificate>>('/certificates?pageSize=200'),
       ]);
-      const selectedAssessmentId = nextAssessmentId || assessmentId || assessments[0]?.id || '';
+      const selectedAssessmentId = assessmentId || assessments[0]?.id || '';
       const assessmentResults = selectedAssessmentId
         ? await apiRequest<AssessmentResult[]>(`/assessments/${encodeURIComponent(selectedAssessmentId)}/results`)
         : [];
 
-      setCourseId((current) => current || courses[0]?.id || '');
-      setUserId((current) => current || users[0]?.id || '');
-      setAssessmentId(selectedAssessmentId);
-      setLoadState({ status: 'loaded', courses, users, assessments, progressItems, certificates, assessmentResults });
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.results.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.results.loadError', 'Unable to load results dashboard.');
-      setLoadState({ status: 'error', message });
-    }
-  }, [assessmentId, t]);
+      return { courses, users, assessments, progressItems, certificates, assessmentResults, selectedAssessmentId };
+    },
+    [assessmentId],
+    {
+      unauthenticated: t('admin.results.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.results.loadError', 'Unable to load results dashboard.'),
+    },
+  );
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (loadState.status === 'loaded') {
+      setCourseId((current) => current || loadState.data.courses[0]?.id || '');
+      setUserId((current) => current || loadState.data.users[0]?.id || '');
+      setAssessmentId(loadState.data.selectedAssessmentId);
+    }
+  }, [loadState]);
 
   const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((course) => course.id === courseId) : undefined;
+    return loadState.status === 'loaded' ? loadState.data.courses.find((course) => course.id === courseId) : undefined;
   }, [courseId, loadState]);
 
-  async function handleAssessmentChange(nextAssessmentId: string) {
+  function handleAssessmentChange(nextAssessmentId: string) {
     setAssessmentId(nextAssessmentId);
     setSubmitState({ status: 'idle' });
-    await loadData(nextAssessmentId);
   }
 
   async function issueCertificate(event: FormEvent<HTMLFormElement>) {
@@ -199,7 +195,7 @@ export function AdminResultsCertificatesPage() {
       });
       setAssessmentAttemptId('');
       setSubmitState({ status: 'idle' });
-      await loadData(assessmentId);
+      await loadData();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
@@ -213,6 +209,19 @@ export function AdminResultsCertificatesPage() {
     return (
       <main className="admin-state">
         <PageState message={t('admin.results.loading', 'Loading results dashboard...')} variant="loading" />
+      </main>
+    );
+  }
+
+  if (loadState.status === 'unauthenticated') {
+    return (
+      <main className="admin-state">
+        <PageState
+          title={t('admin.results.title', 'Results')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </main>
     );
   }
@@ -238,8 +247,8 @@ export function AdminResultsCertificatesPage() {
         action={
           <button
             className="admin-btn admin-btn--primary"
-            disabled={loadState.progressItems.length === 0}
-            onClick={() => downloadResultsCsv(loadState.courses, loadState.users, loadState.progressItems, t)}
+            disabled={loadState.data.progressItems.length === 0}
+            onClick={() => downloadResultsCsv(loadState.data.courses, loadState.data.users, loadState.data.progressItems, t)}
             type="button"
           >
             {t('admin.results.export', 'Export CSV')}
@@ -248,18 +257,18 @@ export function AdminResultsCertificatesPage() {
       />
 
       {(() => {
-        const completedProgress = loadState.progressItems.filter((p) => p.status === 'completed');
+        const completedProgress = loadState.data.progressItems.filter((p) => p.status === 'completed');
         const avgCompletion =
-          loadState.progressItems.length > 0
-            ? Math.round((completedProgress.length / loadState.progressItems.length) * 100)
+          loadState.data.progressItems.length > 0
+            ? Math.round((completedProgress.length / loadState.data.progressItems.length) * 100)
             : 0;
-        const scored = loadState.progressItems.filter((p) => p.score != null);
+        const scored = loadState.data.progressItems.filter((p) => p.score != null);
         const avgScore =
           scored.length > 0
             ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0), 0) / scored.length)
             : null;
-        const issuedCertificates = loadState.certificates.filter((c) => c.status === 'issued').length;
-        const overdueCount = loadState.progressItems.filter((p) => p.status !== 'completed').length;
+        const issuedCertificates = loadState.data.certificates.filter((c) => c.status === 'issued').length;
+        const overdueCount = loadState.data.progressItems.filter((p) => p.status !== 'completed').length;
 
         return (
           <StatsGrid>
@@ -278,12 +287,12 @@ export function AdminResultsCertificatesPage() {
             label: t('admin.results.col.learner', 'Learner'),
             render: (p) => (
               <>
-                <div className="td-title">{findUserLabel(loadState.users, p.userId)}</div>
-                <div className="td-meta">{findUserEmail(loadState.users, p.userId)}</div>
+                <div className="td-title">{findUserLabel(loadState.data.users, p.userId)}</div>
+                <div className="td-meta">{findUserEmail(loadState.data.users, p.userId)}</div>
               </>
             ),
           },
-          { key: 'course', label: t('admin.results.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
+          { key: 'course', label: t('admin.results.col.course', 'Course'), render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
           {
             key: 'progress',
             label: t('admin.results.col.progress', 'Progress'),
@@ -307,7 +316,7 @@ export function AdminResultsCertificatesPage() {
               ),
           },
         ] satisfies Column<Progress>[]}
-        rows={loadState.progressItems}
+        rows={loadState.data.progressItems}
         keyExtractor={(p) => p.id}
         emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
       />
@@ -315,14 +324,14 @@ export function AdminResultsCertificatesPage() {
       <section className="admin-results-secondary">
         <AdminCard>
           <h2>{t('admin.results.issueCertTitle', 'Issue certificate')}</h2>
-          {loadState.courses.length === 0 || loadState.users.length === 0 ? (
+          {loadState.data.courses.length === 0 || loadState.data.users.length === 0 ? (
             <EmptyState message={t('admin.results.noData', 'Create at least one course and user before issuing certificates.')} />
           ) : (
             <form onSubmit={issueCertificate}>
               <label>
                 {t('admin.results.course', 'Course')}
                 <select value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-                  {loadState.courses.map((course) => (
+                  {loadState.data.courses.map((course) => (
                     <option key={course.id} value={course.id}>
                       {course.title}
                     </option>
@@ -332,7 +341,7 @@ export function AdminResultsCertificatesPage() {
               <label>
                 {t('admin.results.learner', 'Learner')}
                 <select value={userId} onChange={(event) => setUserId(event.target.value)}>
-                  {loadState.users.map((user) => (
+                  {loadState.data.users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.name || user.email}
                     </option>
@@ -360,29 +369,29 @@ export function AdminResultsCertificatesPage() {
               <button
                 className="admin-btn"
                 type="button"
-                disabled={loadState.assessmentResults.length === 0}
-                onClick={() => downloadAssessmentResultsCsv(loadState.assessmentResults, loadState.users, t)}
+                disabled={loadState.data.assessmentResults.length === 0}
+                onClick={() => downloadAssessmentResultsCsv(loadState.data.assessmentResults, loadState.data.users, t)}
               >
                 {t('admin.results.exportCsv', 'Export CSV')}
               </button>
               <button
                 className="admin-btn"
                 type="button"
-                disabled={loadState.assessmentResults.length === 0}
-                onClick={() => void downloadAssessmentResultsXlsx(loadState.assessmentResults, loadState.users, t)}
+                disabled={loadState.data.assessmentResults.length === 0}
+                onClick={() => void downloadAssessmentResultsXlsx(loadState.data.assessmentResults, loadState.data.users, t)}
               >
                 {t('admin.results.exportXlsx', 'Export Excel')}
               </button>
             </div>
           </div>
-          {loadState.assessments.length === 0 ? (
+          {loadState.data.assessments.length === 0 ? (
             <EmptyState message={t('admin.results.noAssessments', 'No assessments found.')} />
           ) : (
             <>
               <label>
                 {t('admin.results.assessment', 'Assessment')}
-                <select value={assessmentId} onChange={(event) => void handleAssessmentChange(event.target.value)}>
-                  {loadState.assessments.map((assessment) => (
+                <select value={assessmentId} onChange={(event) => handleAssessmentChange(event.target.value)}>
+                  {loadState.data.assessments.map((assessment) => (
                     <option key={assessment.id} value={assessment.id}>
                       {assessment.title}
                     </option>
@@ -391,11 +400,11 @@ export function AdminResultsCertificatesPage() {
               </label>
               <DataTable<AssessmentResult>
                 columns={[
-                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.users, r.userId) },
+                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.data.users, r.userId) },
                   { key: 'score', label: t('admin.results.col.score', 'Score'), render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },
                   { key: 'status', label: t('admin.results.col.status', 'Status'), render: (r) => <StatusBadge tone={r.passed ? 'success' : 'danger'}>{r.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed')}</StatusBadge> },
                 ] satisfies Column<AssessmentResult>[]}
-                rows={loadState.assessmentResults}
+                rows={loadState.data.assessmentResults}
                 keyExtractor={(r) => r.id}
                 emptyMessage={t('admin.results.noResults', 'No assessment results found.')}
               />

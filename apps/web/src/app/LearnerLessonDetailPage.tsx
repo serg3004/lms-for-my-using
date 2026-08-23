@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -15,21 +15,15 @@ import { listProgress } from '../shared/api/progress.js';
 import type { CourseSummary } from '../shared/api/types.js';
 import { getLessonHref, getCourseHref } from '../shared/learnerRoutes.js';
 import { ProgressBar, PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type LessonDetailLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      lesson: LessonSummary;
-      course: CourseSummary;
-      allLessons: LessonSummary[];
-      materials: CourseMaterialSummary[];
-      completedIds: Set<string>;
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type LearnerLessonDetailData = {
+  lesson: LessonSummary;
+  course: CourseSummary;
+  allLessons: LessonSummary[];
+  materials: CourseMaterialSummary[];
+  completedIds: Set<string>;
+};
 
 type CompletionState =
   | { status: 'idle' }
@@ -39,12 +33,10 @@ type CompletionState =
 
 export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LessonDetailLoadState>({ status: 'idle' });
   const [completionState, setCompletionState] = useState<CompletionState>({ status: 'idle' });
 
-  const load = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-    try {
+  const { state: loadState, reload: load } = useAsyncData<LearnerLessonDetailData>(
+    async () => {
       const lesson = await getLesson(lessonId);
       const [course, allLessons, allMaterials, { items: progressRecords }] = await Promise.all([
         getCourse(lesson.courseId) as Promise<CourseSummary>,
@@ -58,21 +50,11 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           .filter((p) => p.courseId === lesson.courseId && p.lessonId && p.status === 'completed')
           .map((p) => p.lessonId as string),
       );
-      setLoadState({ status: 'loaded', lesson, course, allLessons, materials, completedIds });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('lessonDetail.sessionExpired') });
-        return;
-      }
-      if (error instanceof ApiClientError && error.status === 404) {
-        setLoadState({ status: 'notFound', message: t('lessonDetail.notFound') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('lessonDetail.loadError') });
-    }
-  }, [lessonId, t]);
-
-  useEffect(() => { void load(); }, [load]);
+      return { lesson, course, allLessons, materials, completedIds };
+    },
+    [lessonId],
+    { unauthenticated: t('lessonDetail.sessionExpired'), error: t('lessonDetail.loadError') },
+  );
 
   async function handleCompleteLesson(lesson: LessonSummary) {
     setCompletionState({ status: 'submitting' });
@@ -96,7 +78,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     }
   }
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('lessonDetail.loading')} variant="loading" />;
   }
 
@@ -111,7 +93,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     );
   }
 
-  if (loadState.status === 'notFound' || loadState.status === 'error') {
+  if (loadState.status === 'error') {
     return (
       <PageState
         title={t('lessonDetail.title')}
@@ -122,7 +104,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     );
   }
 
-  const { lesson, course, allLessons, completedIds } = loadState;
+  const { lesson, course, allLessons, completedIds } = loadState.data;
   const sortedLessons = [...allLessons].sort((a, b) => a.order - b.order);
   const currentIndex = sortedLessons.findIndex((l) => l.id === lesson.id);
   const lessonNumber = currentIndex + 1;

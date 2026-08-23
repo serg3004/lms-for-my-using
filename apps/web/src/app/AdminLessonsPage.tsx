@@ -1,14 +1,15 @@
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { apiRequest, ApiClientError } from '../shared/apiClient.js';
 import { filterLessons, parseLessonOrder } from './admin-lessons/model.js';
 import { slugify } from '../shared/slugify.js';
 import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { Badge, Button, EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Course = { id: string; organizationId: string; title: string; slug: string; status: string };
 type Lesson = {
@@ -23,10 +24,7 @@ type Lesson = {
   course: { title: string };
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; courses: Course[]; lessons: Lesson[] }
-  | { status: 'error'; message: string };
+type AdminLessonsData = { courses: Course[]; lessons: Lesson[] };
 
 type LessonStatus = 'draft' | 'published' | 'archived';
 type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical';
@@ -51,7 +49,6 @@ function lessonTypeLabel(t: TFunction, type: string) {
 
 export function AdminLessonsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | LessonType>('all');
 
@@ -79,27 +76,26 @@ export function AdminLessonsPage() {
   });
   const [editErrors, setEditErrors] = useState<FormValidationErrors<'title'>>({});
 
-  const load = useCallback(async () => {
-    try {
+  const { state: loadState, reload: load } = useAsyncData<AdminLessonsData>(
+    async () => {
       const [{ items: courses }, { items: lessons }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<Lesson>>('/lessons?pageSize=200'),
       ]);
-
-      setLoadState({ status: 'loaded', courses, lessons });
-      setCreateCourseId((prev) => prev || courses[0]?.id || '');
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.lessons.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.lessons.loadError', 'Unable to load lesson editor.');
-      setLoadState({ status: 'error', message });
-    }
-  }, [t]);
+      return { courses, lessons };
+    },
+    [],
+    {
+      unauthenticated: t('admin.lessons.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.lessons.loadError', 'Unable to load lesson editor.'),
+    },
+  );
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (loadState.status === 'loaded') {
+      setCreateCourseId((prev) => prev || loadState.data.courses[0]?.id || '');
+    }
+  }, [loadState]);
 
   useEffect(() => {
     if (showCreate) createDialogRef.current?.showModal();
@@ -120,7 +116,7 @@ export function AdminLessonsPage() {
     event.preventDefault();
 
     if (loadState.status !== 'loaded') return;
-    const course = loadState.courses.find((c) => c.id === createCourseId);
+    const course = loadState.data.courses.find((c) => c.id === createCourseId);
     if (!course) return;
 
     const lessonTitle = title.trim();
@@ -219,6 +215,19 @@ export function AdminLessonsPage() {
     );
   }
 
+  if (loadState.status === 'unauthenticated') {
+    return (
+      <main className="admin-state">
+        <PageState
+          title={t('admin.lessons.title', 'Lessons')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
+      </main>
+    );
+  }
+
   if (loadState.status === 'error') {
     return (
       <main className="admin-state">
@@ -227,7 +236,7 @@ export function AdminLessonsPage() {
     );
   }
 
-  const filteredLessons = filterLessons(loadState.lessons, search, typeFilter);
+  const filteredLessons = filterLessons(loadState.data.lessons, search, typeFilter);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
@@ -245,7 +254,7 @@ export function AdminLessonsPage() {
         title={t('admin.lessons.title', 'Lessons')}
         subtitle={t('admin.lessons.subtitle', 'Manage lessons and publishing.')}
         action={
-          <Button variant="primary" type="button" onClick={openCreateDialog} disabled={loadState.courses.length === 0}>
+          <Button variant="primary" type="button" onClick={openCreateDialog} disabled={loadState.data.courses.length === 0}>
             + {t('admin.lessons.createTitle', 'Create lesson')}
           </Button>
         }
@@ -296,13 +305,13 @@ export function AdminLessonsPage() {
             ×
           </button>
         </header>
-        {loadState.courses.length === 0 ? (
+        {loadState.data.courses.length === 0 ? (
           <EmptyState message={t('admin.lessons.noCourses', 'Create a course before adding lessons.')} />
         ) : (
           <form className="admin-form" onSubmit={handleCreateLesson}>
             <FormField id="lesson-create-course" label={t('admin.lessons.course', 'Course')}>
               <select id="lesson-create-course" value={createCourseId} onChange={(event) => setCreateCourseId(event.target.value)}>
-                {loadState.courses.map((course) => (
+                {loadState.data.courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.title}
                   </option>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -8,6 +8,7 @@ import type { ChecklistItemResultSummary, ChecklistItemSummary } from '../shared
 import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
   return item.photoRequired && !result.photoUrl;
@@ -26,34 +27,40 @@ const COLORS = {
   warningSoft: '#fff7e8',
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; instances: ChecklistInstanceSummary[]; firstName?: string; lastName?: string }
-  | { status: 'error'; message: string };
+type InstructorChecklistReviewsData = { instances: ChecklistInstanceSummary[]; firstName?: string; lastName?: string };
 
 export function InstructorChecklistReviewsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [openId, setOpenId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-    try {
+  const { state: loadState, reload: load } = useAsyncData<InstructorChecklistReviewsData>(
+    async () => {
       const [instances, currentUser] = await Promise.all([listPendingChecklistReviews(), getCurrentUser()]);
-      setLoadState({ status: 'loaded', instances, firstName: currentUser?.firstName, lastName: currentUser?.lastName });
-    } catch (error) {
-      setLoadState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('checklistReview.loadError', 'Unable to load pending reviews.') });
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+      return { instances, firstName: currentUser?.firstName, lastName: currentUser?.lastName };
+    },
+    [],
+    {
+      unauthenticated: t('checklistReview.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('checklistReview.loadError', 'Unable to load pending reviews.'),
+    },
+  );
 
   if (loadState.status === 'loading') {
     return (
       <InstructorPageLayout>
         <PageState message={t('checklistReview.loading', 'Loading pending reviews...')} variant="loading" />
+      </InstructorPageLayout>
+    );
+  }
+  if (loadState.status === 'unauthenticated') {
+    return (
+      <InstructorPageLayout>
+        <PageState
+          title={t('checklistReview.title', 'Checklist review')}
+          message={loadState.message}
+          variant="error"
+          action={<a href="/login">{t('login.navLink')}</a>}
+        />
       </InstructorPageLayout>
     );
   }
@@ -65,10 +72,10 @@ export function InstructorChecklistReviewsPage() {
     );
   }
 
-  const open = openId ? loadState.instances.find((i) => i.id === openId) : null;
+  const open = openId ? loadState.data.instances.find((i) => i.id === openId) : null;
 
   return (
-    <InstructorPageLayout firstName={loadState.firstName} lastName={loadState.lastName}>
+    <InstructorPageLayout firstName={loadState.data.firstName} lastName={loadState.data.lastName}>
       <div style={{ padding: '24px 0', maxWidth: 860 }}>
         <h1 style={{ color: COLORS.text }}>{t('checklistReview.title', 'Checklist review')}</h1>
         <p style={{ color: COLORS.muted }}>{t('checklistReview.subtitle', 'Checklists submitted by learners that are waiting for your confirmation.')}</p>
@@ -80,11 +87,11 @@ export function InstructorChecklistReviewsPage() {
             onUpdated={load}
             t={t}
           />
-        ) : loadState.instances.length === 0 ? (
+        ) : loadState.data.instances.length === 0 ? (
           <PageState message={t('checklistReview.empty', 'Nothing is waiting for review.')} />
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-            {loadState.instances.map((instance) => (
+            {loadState.data.instances.map((instance) => (
               <li
                 key={instance.id}
                 style={{ border: `1px solid ${COLORS.warning}`, background: COLORS.warningSoft, borderRadius: 14, padding: 16, cursor: 'pointer' }}
