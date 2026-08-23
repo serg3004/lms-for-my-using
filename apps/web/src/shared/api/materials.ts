@@ -9,3 +9,9 @@ export function getCourseMaterialsPath(courseId: string) {
 export function listCourseMaterials(courseId: string) {
   return apiRequest<CourseMaterialSummary[]>(getCourseMaterialsPath(courseId));
 }
+
+export function getMaterialDownloadUrl(materialId: string) {
+  return apiRequest<{ url: string; expiresIn: number | null }>(
+    `/materials/${encodeURIComponent(materialId)}/download`,
+  );
+}

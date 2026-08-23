@@ -966,6 +966,8 @@
     "downloadable": "Можно скачать",
     "online": "Онлайн",
     "actionDownload": "Скачать",
+    "downloading": "Загрузка...",
+    "downloadError": "Не удалось получить ссылку на скачивание. Попробуйте позже.",
     "actionOpen": "Открыть",
     "actionBack": "Вернуться к уроку",
     "summaryTitle": "Сводка",

@@ -963,6 +963,8 @@
     "downloadable": "可下载",
     "online": "在线",
     "actionDownload": "下载",
+    "downloading": "下载中...",
+    "downloadError": "无法获取下载链接，请稍后重试。",
     "actionOpen": "打开",
     "actionBack": "返回课时",
     "summaryTitle": "摘要",
