@@ -109,7 +109,7 @@ test('learner evidence is detected and opened by instructor before approval', as
 
     const checkbox = learnerPage.locator('input[type="checkbox"]');
     await expect(checkbox).toHaveCount(1);
-    await checkbox.check();
+    await checkbox.click();
     await expect.poll(() => learnerResult?.checked).toBe(true);
 
     const fileInput = learnerPage.locator('input[type="file"]');
