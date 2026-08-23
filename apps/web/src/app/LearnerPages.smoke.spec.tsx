@@ -583,33 +583,36 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders assessment detail happy path without crashing', () => {
-    useReadyState({
+    // useAsyncData's internal loadState useState is the only (and first) useState call here.
+    useFirstCallReadyState({
       status: 'loaded',
-      assessment: {
-        id: 'assessment-1',
-        organizationId: 'org-1',
-        courseId: 'course-1',
-        lessonId: null,
-        title: 'Safety Knowledge Test',
-        slug: 'safety-knowledge-test',
-        description: null,
-        status: 'published',
-        passingScore: 70,
-        maxAttempts: 3,
-        availableAfterCourseCompletion: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        course: { id: 'course-1', title: 'Workplace Safety' },
+      data: {
+        assessment: {
+          id: 'assessment-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          lessonId: null,
+          title: 'Safety Knowledge Test',
+          slug: 'safety-knowledge-test',
+          description: null,
+          status: 'published',
+          passingScore: 70,
+          maxAttempts: 3,
+          availableAfterCourseCompletion: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          course: { id: 'course-1', title: 'Workplace Safety' },
+        },
+        questionCount: 5,
+        attempts: [
+          {
+            id: 'attempt-1', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 8, maxScore: 10, percentage: 80, passed: true, startedAt: '2026-01-02T00:00:00.000Z', completedAt: '2026-01-02T00:10:00.000Z', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:10:00.000Z',
+          },
+          {
+            id: 'attempt-2', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 5, maxScore: 10, percentage: 50, passed: false, startedAt: '2026-01-01T00:00:00.000Z', completedAt: '2026-01-01T00:10:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:10:00.000Z',
+          },
+        ],
       },
-      questionCount: 5,
-      attempts: [
-        {
-          id: 'attempt-1', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 8, maxScore: 10, percentage: 80, passed: true, startedAt: '2026-01-02T00:00:00.000Z', completedAt: '2026-01-02T00:10:00.000Z', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:10:00.000Z',
-        },
-        {
-          id: 'attempt-2', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 5, maxScore: 10, percentage: 50, passed: false, startedAt: '2026-01-01T00:00:00.000Z', completedAt: '2026-01-01T00:10:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:10:00.000Z',
-        },
-      ],
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentDetailPage assessmentId="assessment-1" />);
