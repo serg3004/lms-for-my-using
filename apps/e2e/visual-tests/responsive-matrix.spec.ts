@@ -68,6 +68,112 @@ async function installAdminMocks(page: Page) {
   }));
 }
 
+function paginated<T>(items: T[]) {
+  return { items, page: 1, pageSize: 100, total: items.length };
+}
+
+async function installLearnerMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-learner',
+      organizationId: 'visual-org',
+      email: 'learner@example.invalid',
+      firstName: 'Visual',
+      lastName: 'Learner',
+      middleName: null,
+      position: null,
+      shift: null,
+      phone: null,
+      status: 'active',
+      locale: 'en',
+      timezone: 'UTC',
+      roles: ['learner'],
+    },
+  }));
+  await page.route('**/api/v1/courses?*', (route) => route.fulfill({
+    json: paginated([
+      { id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'course-2', organizationId: 'visual-org', title: 'Safety at work', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+    ]),
+  }));
+  await page.route('**/api/v1/assignments?*', (route) => route.fulfill({
+    json: paginated([
+      { id: 'assignment-1', organizationId: 'visual-org', courseId: 'course-1', userId: 'visual-learner', status: 'in_progress', dueAt: '2099-01-01T00:00:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', course: { title: 'Onboarding basics' } },
+    ]),
+  }));
+  await page.route('**/api/v1/assessments', (route) => route.fulfill({
+    json: [{ id: 'assessment-1', organizationId: 'visual-org', courseId: 'course-1', title: 'Onboarding quiz', status: 'published', passThreshold: 80, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }],
+  }));
+  await page.route('**/api/v1/certificates?*', (route) => route.fulfill({ json: paginated([]) }));
+  await page.route('**/api/v1/progress?*', (route) => route.fulfill({ json: paginated([]) }));
+  await page.route('**/api/v1/courses/*/lessons', (route) => route.fulfill({ json: [] }));
+}
+
+async function installManagerMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-manager',
+      organizationId: 'visual-org',
+      email: 'manager@example.invalid',
+      firstName: 'Visual',
+      lastName: 'Manager',
+      middleName: null,
+      position: null,
+      shift: null,
+      phone: null,
+      status: 'active',
+      locale: 'en',
+      timezone: 'UTC',
+      roles: ['manager'],
+    },
+  }));
+  await page.route('**/api/v1/manager/team-summary', (route) => route.fulfill({
+    json: {
+      membersCount: 2,
+      completionRate: 62,
+      dueThisWeekCount: 1,
+      overdueCount: 1,
+      avgTeamScore: 78,
+      upcomingDeadlines: [{ courseTitle: 'Safety at work', userId: 'visual-user-1', dueAt: '2099-01-01T00:00:00.000Z' }],
+      overdueAssignments: [{ assignmentId: 'assignment-1', courseTitle: 'Onboarding basics', userId: 'visual-user-1', groupId: null, groupName: null, dueAt: '2025-01-01T00:00:00.000Z' }],
+      members: [
+        { userId: 'visual-user-1', firstName: 'Responsive', lastName: 'One', email: 'one@example.invalid', activeCoursesCount: 2, completionPercent: 40, status: 'risk' },
+        { userId: 'visual-user-2', firstName: 'Responsive', lastName: 'Two', email: 'two@example.invalid', activeCoursesCount: 1, completionPercent: 90, status: 'good' },
+      ],
+    },
+  }));
+  await page.route('**/api/v1/courses?*', (route) => route.fulfill({
+    json: paginated([{ id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]),
+  }));
+}
+
+async function installInstructorMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-instructor',
+      organizationId: 'visual-org',
+      email: 'instructor@example.invalid',
+      firstName: 'Visual',
+      lastName: 'Instructor',
+      middleName: null,
+      position: null,
+      shift: null,
+      phone: null,
+      status: 'active',
+      locale: 'en',
+      timezone: 'UTC',
+      roles: ['instructor'],
+    },
+  }));
+  await page.route('**/api/v1/courses?*', (route) => route.fulfill({
+    json: paginated([
+      { id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'course-2', organizationId: 'visual-org', title: 'Draft course', description: null, status: 'draft', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+    ]),
+  }));
+  await page.route('**/api/v1/progress?*', (route) => route.fulfill({ json: paginated([]) }));
+}
+
 async function installGuestMock(page: Page) {
   let refreshRequests = 0;
   const unauthorized = (path: string) => ({
@@ -120,6 +226,33 @@ for (const width of widths) {
       });
       expect(dialogFits).toBe(true);
       await captureVisualBaseline(page, testInfo, `admin-users-${width}`);
+    });
+
+    test('keeps the learner dashboard responsive', async ({ page }, testInfo) => {
+      await installLearnerMocks(page);
+      await page.goto('/learn');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await captureVisualBaseline(page, testInfo, `learner-home-${width}`);
+    });
+
+    test('keeps the manager team dashboard responsive', async ({ page }, testInfo) => {
+      await installManagerMocks(page);
+      await page.goto('/manager/dashboard');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await captureVisualBaseline(page, testInfo, `manager-dashboard-${width}`);
+    });
+
+    test('keeps the instructor dashboard responsive', async ({ page }, testInfo) => {
+      await installInstructorMocks(page);
+      await page.goto('/instructor/dashboard');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await captureVisualBaseline(page, testInfo, `instructor-dashboard-${width}`);
     });
   });
 }
