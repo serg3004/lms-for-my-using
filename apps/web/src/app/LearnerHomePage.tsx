@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser } from '../shared/api/auth.js';
@@ -8,11 +7,11 @@ import { listAssessments } from '../shared/api/assessments.js';
 import { listCertificates } from '../shared/api/certificates.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
-import { ApiClientError } from '../shared/apiClient.js';
 import type { AssignmentSummary, CertificateSummary, CourseSummary, ProgressSummary } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { Card, PageState, ProgressBar, SectionHeader, StatCard, StatsGrid } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type AssignmentEntry = AssignmentSummary & {
   course?: { title?: string | null } | null;
@@ -51,13 +50,6 @@ type DashboardData = {
   upcomingDeadlines: DeadlineItem[];
   recentActivity: ActivityItem[];
 };
-
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; data: DashboardData }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
 
 async function buildContinueLearning(
   progress: ProgressSummary[],
@@ -147,68 +139,42 @@ function buildRecentActivity(
 
 export function LearnerHomePage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<DashboardData>(
+    async () => {
+      const [user, coursesResult, assignmentsResult, assessments, certificatesResult, progressResult] =
+        await Promise.all([
+          getCurrentUser(),
+          listCourses({ pageSize: 100 }),
+          listAssignments({ pageSize: 100 }),
+          listAssessments(),
+          listCertificates({ pageSize: 100 }),
+          listProgress({ pageSize: 100 }),
+        ]);
 
-    async function load() {
-      setLoadState({ status: 'loading' });
+      const courses = coursesResult.items;
+      const progress = progressResult.items;
+      const assignments = assignmentsResult.items as AssignmentEntry[];
+      const certificates = certificatesResult.items as CertificateEntry[];
 
-      try {
-        const [user, coursesResult, assignmentsResult, assessments, certificatesResult, progressResult] =
-          await Promise.all([
-            getCurrentUser(),
-            listCourses({ pageSize: 100 }),
-            listAssignments({ pageSize: 100 }),
-            listAssessments(),
-            listCertificates({ pageSize: 100 }),
-            listProgress({ pageSize: 100 }),
-          ]);
+      const continueLearning = await buildContinueLearning(progress, courses);
 
-        if (!isMounted) return;
+      return {
+        firstName: user.firstName,
+        coursesCount: courses.filter((c) => c.status === 'published').length,
+        pendingAssignmentsCount: assignments.filter((a) => a.status !== 'completed').length,
+        availableAssessmentsCount: assessments.filter((a) => a.status === 'published').length,
+        certificatesCount: certificates.length,
+        continueLearning,
+        upcomingDeadlines: buildUpcomingDeadlines(assignments),
+        recentActivity: buildRecentActivity(progress, certificates, courses, t),
+      };
+    },
+    [t],
+    { unauthenticated: t('learner.sessionExpired'), error: t('learner.loadError') },
+  );
 
-        const courses = coursesResult.items;
-        const progress = progressResult.items;
-        const assignments = assignmentsResult.items as AssignmentEntry[];
-        const certificates = certificatesResult.items as CertificateEntry[];
-
-        const continueLearning = await buildContinueLearning(progress, courses);
-        if (!isMounted) return;
-
-        setLoadState({
-          status: 'loaded',
-          data: {
-            firstName: user.firstName,
-            coursesCount: courses.filter((c) => c.status === 'published').length,
-            pendingAssignmentsCount: assignments.filter((a) => a.status !== 'completed').length,
-            availableAssessmentsCount: assessments.filter((a) => a.status === 'published').length,
-            certificatesCount: certificates.length,
-            continueLearning,
-            upcomingDeadlines: buildUpcomingDeadlines(assignments),
-            recentActivity: buildRecentActivity(progress, certificates, courses, t),
-          },
-        });
-      } catch (error) {
-        if (!isMounted) return;
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('learner.sessionExpired') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('learner.loadError') });
-      }
-    }
-
-    void load();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [t]);
-
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('learner.loading')} variant="loading" />;
   }
 
@@ -222,7 +188,7 @@ export function LearnerHomePage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return <PageState message={loadState.message} variant="error" />;
   }
 

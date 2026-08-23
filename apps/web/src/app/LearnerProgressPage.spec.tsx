@@ -94,8 +94,9 @@ afterEach(() => {
 });
 
 describe('LearnerProgressPage', () => {
+  // useState call order in LearnerProgressPage: 1 period, then useAsyncData's internal loadState.
   it('renders stats, courses, weekly goal, streak, and activity', () => {
-    reactMocks.useState.mockReturnValueOnce([loadedState, vi.fn()]).mockReturnValueOnce([30, vi.fn()]);
+    reactMocks.useState.mockReturnValueOnce([30, vi.fn()]).mockReturnValueOnce([loadedState, vi.fn()]);
 
     const html = renderToStaticMarkup(<LearnerProgressPage />);
 
@@ -107,7 +108,7 @@ describe('LearnerProgressPage', () => {
   });
 
   it('renders empty states when there is no course or activity data', () => {
-    reactMocks.useState.mockReturnValueOnce([emptyState, vi.fn()]).mockReturnValueOnce([30, vi.fn()]);
+    reactMocks.useState.mockReturnValueOnce([30, vi.fn()]).mockReturnValueOnce([emptyState, vi.fn()]);
 
     const html = renderToStaticMarkup(<LearnerProgressPage />);
 

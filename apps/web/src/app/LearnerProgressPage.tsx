@@ -1,21 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { getProgressSummary } from '../shared/api/progress.js';
-import { ApiClientError } from '../shared/apiClient.js';
 import type { ProgressSummaryReport } from '../shared/api/types.js';
 import { getCourseHref } from '../shared/learnerRoutes.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Period = 30 | 90 | 365;
-
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; data: ProgressSummaryReport }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
 
 const COLORS = {
   bg: '#f4f7fb',
@@ -108,41 +101,15 @@ function downloadProgressReport(data: ProgressSummaryReport, t: TFunction) {
 
 export function LearnerProgressPage() {
   const { t, i18n } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
   const [period, setPeriod] = useState<Period>(30);
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<ProgressSummaryReport>(
+    () => getProgressSummary(period),
+    [t, period],
+    { unauthenticated: t('progress.sessionExpired'), error: t('progress.loadError') },
+  );
 
-    async function load() {
-      setLoadState({ status: 'loading' });
-
-      try {
-        const data = await getProgressSummary(period);
-
-        if (isMounted) {
-          setLoadState({ status: 'loaded', data });
-        }
-      } catch (error) {
-        if (!isMounted) return;
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('progress.sessionExpired') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('progress.loadError') });
-      }
-    }
-
-    void load();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [t, period]);
-
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('progress.loading')} variant="loading" />;
   }
 
@@ -157,7 +124,7 @@ export function LearnerProgressPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <PageState
         title={t('progress.title')}

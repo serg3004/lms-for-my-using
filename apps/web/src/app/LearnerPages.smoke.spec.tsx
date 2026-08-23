@@ -784,7 +784,9 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders progress happy path without crashing', () => {
-    useReadyState({
+    // useState call order in LearnerProgressPage: 1 period, then useAsyncData's internal loadState.
+    useStateAtCalls({
+      2: {
       status: 'loaded',
       data: {
         period: 30,
@@ -816,6 +818,7 @@ describe('learner page smoke rendering', () => {
         recentActivity: [
           { type: 'lesson_completed', courseId: 'course-1', courseTitle: 'Workplace Safety', date: '2026-01-02T00:00:00.000Z' },
         ],
+      },
       },
     });
 
