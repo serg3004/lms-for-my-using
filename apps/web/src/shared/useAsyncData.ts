@@ -6,7 +6,7 @@ export function useAsyncData<T>(
   load: () => Promise<T>,
   deps: DependencyList,
   messages: AsyncDataMessages,
-): { state: AsyncDataState<T>; reload: () => Promise<void> } {
+): { state: AsyncDataState<T>; reload: () => Promise<void>; mutate: (updater: (data: T) => T) => void } {
   const [state, setState] = useState<AsyncDataState<T>>(toLoadingState());
   const cancelPrevious = useRef<() => void>(() => {});
 
@@ -33,5 +33,9 @@ export function useAsyncData<T>(
     return () => cancelPrevious.current();
   }, [run]);
 
-  return { state, reload: run };
+  const mutate = useCallback((updater: (data: T) => T) => {
+    setState((current) => (current.status === 'loaded' ? toLoadedState(updater(current.data)) : current));
+  }, []);
+
+  return { state, reload: run, mutate };
 }
