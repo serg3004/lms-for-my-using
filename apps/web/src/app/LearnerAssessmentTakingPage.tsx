@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '../shared/apiClient.js';
 import { apiRequest } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   buildAssessmentAnswers,
   computeSecondsLeft,
@@ -25,11 +26,7 @@ import {
   type SelectedAnswers,
 } from './assessment-taking/model.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; assessment: AssessmentSummary; questions: QuestionWithOptions[] }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[] };
 
 type SubmitState =
   | { status: 'idle' }
@@ -39,47 +36,43 @@ type SubmitState =
 
 export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [timerError, setTimerError] = useState<string | null>(null);
 
-  const loadAssessment = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-    try {
+  const { state: loadState } = useAsyncData<LearnerAssessmentTakingData>(
+    async () => {
       const assessment = await getAssessment(assessmentId);
       const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
         `/assessments/${encodeURIComponent(assessmentId)}/quiz`,
       );
-      setLoadState({ status: 'loaded', assessment, questions: questionsWithOptions });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('assessments.sessionExpired') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('assessments.loadError') });
-    }
-  }, [assessmentId, t]);
-
-  useEffect(() => {
-    void loadAssessment();
-  }, [loadAssessment]);
+      return { assessment, questions: questionsWithOptions };
+    },
+    [assessmentId, t],
+    { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
+  );
 
   /**
    * Untimed assessments (timeLimitMinutes null, the default): no timer shown at all. Timed ones:
    * calling the start endpoint (idempotent — resumes an existing in_progress attempt rather than
    * restarting the clock) gets the server-trusted startedAt, so the countdown can't be reset by
    * refreshing the page or be fooled by the browser's clock.
+   *
+   * Deliberately keeps a local timerError instead of writing into loadState: this effect runs
+   * outside the normal load cycle (it doesn't (re)fetch the assessment), so it isn't a case
+   * useAsyncData's reload()/mutate() cover — it's a side channel that needs its own state.
    */
   useEffect(() => {
-    if (loadState.status !== 'loaded' || !loadState.assessment.timeLimitMinutes) {
+    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes) {
       setSecondsLeft(null);
       return;
     }
 
-    const timeLimitMinutes = loadState.assessment.timeLimitMinutes;
+    const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
     let cancelled = false;
+    setTimerError(null);
 
     void (async () => {
       try {
@@ -89,7 +82,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
       } catch (error) {
         if (cancelled) return;
         if (error instanceof ApiClientError) {
-          setLoadState({ status: 'error', message: error.message });
+          setTimerError(error.message);
         }
       }
     })();
@@ -126,8 +119,8 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
     if (loadState.status !== 'loaded') return;
 
-    const answeredCount = countAnsweredQuestions(loadState.questions, selected);
-    if (answeredCount < loadState.questions.length) {
+    const answeredCount = countAnsweredQuestions(loadState.data.questions, selected);
+    if (answeredCount < loadState.data.questions.length) {
       setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
     }
@@ -135,7 +128,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     setSubmitState({ status: 'submitting' });
 
     try {
-      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.questions, selected));
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected));
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;
@@ -143,7 +136,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
         try {
           const cert = await issueCertificate({
             organizationId: result.organizationId,
-            courseId: loadState.assessment.courseId,
+            courseId: loadState.data.assessment.courseId,
             userId: result.userId,
             assessmentAttemptId: result.id,
           });
@@ -178,7 +171,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <>
         <PageState title={t('assessments.takeTitle')} message={loadState.message} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />
@@ -186,7 +179,15 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     );
   }
 
-  const { assessment, questions } = loadState;
+  if (timerError) {
+    return (
+      <>
+        <PageState title={t('assessments.takeTitle')} message={timerError} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />
+      </>
+    );
+  }
+
+  const { assessment, questions } = loadState.data;
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
