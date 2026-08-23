@@ -8,6 +8,11 @@ import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItem
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import {
+  checklistResultToAnswer,
+  getRequiredChecklistProgress,
+  isChecklistAnswerComplete,
+} from './checklistCompletion.js';
 
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
@@ -45,6 +50,7 @@ export function LearnerChecklistsPage() {
   if (loadState.status === 'loading') {
     return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
+
   if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return <main style={{ padding: 32 }}><PageState title={t('checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
@@ -68,7 +74,6 @@ export function LearnerChecklistsPage() {
     <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
       <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
       <p style={{ color: COLORS.muted }}>{t('checklists.subtitle', 'Checklists assigned to you — complete them and attach photos where required.')}</p>
-
       {loadState.data.instances.length === 0 ? (
         <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
       ) : (
@@ -129,8 +134,11 @@ function ChecklistTaking({
   if (!checklist) return null;
 
   const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
-  const answeredCount = instance.results.length;
-  const totalCount = checklist.items.length;
+  const { completedRequired, requiredCount } = getRequiredChecklistProgress(
+    checklist.items,
+    instance.results,
+    checklist.scoringMode,
+  );
   const editable = instance.status === 'assigned' || instance.status === 'in_progress';
 
   async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string }) {
@@ -167,22 +175,22 @@ function ChecklistTaking({
 
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
       {checklist.description && <p style={{ color: COLORS.muted }}>{checklist.description}</p>}
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
         <div style={{ flex: 1, height: 8, borderRadius: 999, background: COLORS.soft, overflow: 'hidden' }}>
-          <div style={{ height: '100%', background: COLORS.primary, width: `${totalCount ? (answeredCount / totalCount) * 100 : 0}%` }} />
+          <div style={{ height: '100%', background: COLORS.primary, width: `${requiredCount ? (completedRequired / requiredCount) * 100 : 0}%` }} />
         </div>
         <span style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, whiteSpace: 'nowrap' }}>
-          {answeredCount} / {totalCount}
+          {t('checklists.requiredProgress', '{{completed}} / {{total}} required', {
+            completed: completedRequired,
+            total: requiredCount,
+          })}
         </span>
       </div>
-
       {error && <p style={{ color: '#dc2626' }} role="alert">{error}</p>}
-
       <div style={{ display: 'grid', gap: 12 }}>
         {checklist.items.map((item) => {
           const result = resultFor(item.id);
-          const isDone = Boolean(result);
+          const isDone = isChecklistAnswerComplete(item, checklist.scoringMode, checklistResultToAnswer(result));
           return (
             <div
               key={item.id}
@@ -193,8 +201,14 @@ function ChecklistTaking({
                 padding: 16,
               }}
             >
-              <p style={{ fontWeight: 600, marginTop: 0 }}>{item.text}</p>
-
+              <p style={{ fontWeight: 600, marginTop: 0 }}>
+                {item.text}{' '}
+                <span style={{ color: COLORS.muted, fontSize: 12, fontWeight: 500 }}>
+                  {item.isRequired
+                    ? t('checklists.requiredItem', 'Required')
+                    : t('checklists.optionalItem', 'Optional')}
+                </span>
+              </p>
               {checklist.scoringMode === 'scale' ? (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {(checklist.scaleLevels ?? []).map((level) => (
@@ -231,7 +245,6 @@ function ChecklistTaking({
                   {checklist.scoringMode === 'sum_points' ? ` (${item.points} ${t('checklists.points', 'pts')})` : ''}
                 </label>
               )}
-
               {item.photoRequired && (
                 <PhotoAttachment
                   instanceId={instance.id}
@@ -247,7 +260,6 @@ function ChecklistTaking({
           );
         })}
       </div>
-
       {instance.status === 'completed' && (
         <div
           style={{
@@ -319,7 +331,6 @@ function PhotoAttachment({
   }
 
   const canAct = editable && !busy && !!result;
-
   return (
     <div style={{ marginTop: 10 }}>
       <input

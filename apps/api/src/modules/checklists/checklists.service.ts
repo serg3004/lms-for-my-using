@@ -86,6 +86,14 @@ const instanceWithResultsSelect = {
 } as const;
 
 type ScoringItem = { id: string; points: number; isRequired: boolean };
+type CompletionItem = { id: string; isRequired: boolean; photoRequired: boolean };
+type CompletionResult = {
+  itemId: string;
+  checked: boolean;
+  scaleLevel: number | null;
+  photoObjectKey: string | null;
+  reviewStatus: string;
+};
 
 @Injectable()
 export class ChecklistsService {
@@ -132,7 +140,12 @@ export class ChecklistsService {
     }
 
     if (input.status === 'published') {
-      await this.ensurePublishable(checklistId, organizationId, input.scoringMode ?? checklist.scoringMode, input.scaleLevels ?? (checklist.scaleLevels as ScaleLevel[] | null));
+      await this.ensurePublishable(
+        checklistId,
+        organizationId,
+        input.scoringMode ?? checklist.scoringMode,
+        input.scaleLevels ?? (checklist.scaleLevels as ScaleLevel[] | null),
+      );
     }
 
     const { scaleLevels, ...rest } = input;
@@ -198,6 +211,7 @@ export class ChecklistsService {
 
   async listItems(checklistId: string, organizationId: string) {
     await this.getChecklist(checklistId, organizationId);
+
     return this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null },
       orderBy: { order: 'asc' },
@@ -367,7 +381,12 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist item not found');
     }
 
-    const points = this.computeItemPoints(checklist.scoringMode, item.points, checklist.scaleLevels as ScaleLevel[] | null, input);
+    const points = this.computeItemPoints(
+      checklist.scoringMode,
+      item.points,
+      checklist.scaleLevels as ScaleLevel[] | null,
+      input,
+    );
 
     await this.prisma.checklistItemResult.upsert({
       where: { instanceId_itemId: { instanceId, itemId } },
@@ -526,6 +545,7 @@ export class ChecklistsService {
       result.photoMimeType ?? 'image/jpeg',
       expiresIn,
     );
+
     return { url, expiresIn };
   }
 
@@ -537,9 +557,11 @@ export class ChecklistsService {
   ) {
     if (scoringMode === 'scale') {
       const level = (scaleLevels ?? []).find((candidate) => candidate.level === input.scaleLevel);
+
       if (!level) {
         throw new BadRequestException('Invalid scale level for this checklist');
       }
+
       return level.points;
     }
 
@@ -572,6 +594,21 @@ export class ChecklistsService {
     return items.reduce((sum, item) => sum + item.points, 0);
   }
 
+  private hasValidAnswer(scoringMode: string, result: CompletionResult | undefined) {
+    if (!result) return false;
+    return scoringMode === 'scale' ? result.scaleLevel !== null : result.checked;
+  }
+
+  private isItemSatisfied(scoringMode: string, item: CompletionItem, result: CompletionResult | undefined) {
+    const hasAnswer = this.hasValidAnswer(scoringMode, result);
+
+    if (!hasAnswer) {
+      return !item.isRequired;
+    }
+
+    return !item.photoRequired || Boolean(result?.photoObjectKey);
+  }
+
   private async recomputeInstance(instanceId: string, organizationId: string) {
     const instance = await this.prisma.checklistInstance.findFirstOrThrow({
       where: { id: instanceId, organizationId },
@@ -581,30 +618,63 @@ export class ChecklistsService {
     const [checklist, items, results] = await Promise.all([
       this.prisma.checklist.findFirstOrThrow({
         where: { id: instance.checklistId },
-        select: { passThreshold: true, requiresReview: true },
+        select: { passThreshold: true, requiresReview: true, scoringMode: true },
       }),
-      this.prisma.checklistItem.findMany({ where: { checklistId: instance.checklistId, deletedAt: null }, select: { id: true } }),
-      this.prisma.checklistItemResult.findMany({ where: { instanceId }, select: { itemId: true, points: true, reviewStatus: true } }),
+      this.prisma.checklistItem.findMany({
+        where: { checklistId: instance.checklistId, deletedAt: null },
+        select: { id: true, isRequired: true, photoRequired: true },
+      }),
+      this.prisma.checklistItemResult.findMany({
+        where: { instanceId },
+        select: {
+          itemId: true,
+          checked: true,
+          scaleLevel: true,
+          points: true,
+          photoObjectKey: true,
+          reviewStatus: true,
+        },
+      }),
     ]);
 
-    const totalScore = results.reduce((sum, result) => sum + (result.reviewStatus === 'rejected' ? 0 : result.points), 0);
-    const allAnswered = items.length > 0 && items.every((item) => results.some((result) => result.itemId === item.id));
-    const allReviewed = results.length > 0 && results.every((result) => result.reviewStatus !== 'pending');
+    const resultByItemId = new Map(results.map((result) => [result.itemId, result]));
+    const allRequirementsSatisfied =
+      items.length > 0 &&
+      items.every((item) => this.isItemSatisfied(checklist.scoringMode, item, resultByItemId.get(item.id)));
+    const reviewableResults = results.filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
+    const allReviewed = reviewableResults.every((result) => result.reviewStatus !== 'pending');
+    const totalScore = results.reduce(
+      (sum, result) => sum + (result.reviewStatus === 'rejected' ? 0 : result.points),
+      0,
+    );
 
     let status = instance.status;
     let submittedAt: Date | undefined;
     let completedAt: Date | undefined;
 
-    if (allAnswered && checklist.requiresReview && status !== 'submitted' && status !== 'completed') {
+    if (allRequirementsSatisfied && checklist.requiresReview && reviewableResults.length === 0) {
+      status = 'completed';
+      completedAt = new Date();
+    } else if (
+      allRequirementsSatisfied &&
+      checklist.requiresReview &&
+      status !== 'submitted' &&
+      status !== 'completed'
+    ) {
       status = 'submitted';
       submittedAt = new Date();
-    } else if (allAnswered && checklist.requiresReview && status === 'submitted' && allReviewed) {
+    } else if (
+      allRequirementsSatisfied &&
+      checklist.requiresReview &&
+      status === 'submitted' &&
+      allReviewed
+    ) {
       status = 'completed';
       completedAt = new Date();
-    } else if (allAnswered && !checklist.requiresReview) {
+    } else if (allRequirementsSatisfied && !checklist.requiresReview) {
       status = 'completed';
       completedAt = new Date();
-    } else if (!allAnswered && status === 'assigned') {
+    } else if (!allRequirementsSatisfied && status === 'assigned') {
       status = 'in_progress';
     }
 
