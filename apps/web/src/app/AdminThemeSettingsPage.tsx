@@ -1,13 +1,15 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { getCurrentUser } from '../shared/api/auth.js';
 import {
   ThemeSettings,
+  fetchOrganizationThemeSettings,
   getStoredThemeSettings,
   resetOrganizationThemeSettings,
   saveOrganizationThemeSettings,
+  saveThemeSettings,
   themePresets,
   uploadOrganizationThemeLogo,
 } from '../shared/theme.js';
@@ -80,9 +82,10 @@ export function AdminThemeSettingsPage() {
   const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const navItems: AdminNavItem[] = [
-    { label: t('admin.themeSettings.title', 'Theme settings'), href: '/admin/theme-settings', isCurrent: true },
+    { label: t('admin.themeSettings.title', 'Theme settings'), href: '/admin/appearance', isCurrent: true },
   ];
 
   const selectedPresetId = getMatchingPresetId(themeSettings);
@@ -107,6 +110,32 @@ export function AdminThemeSettingsPage() {
       syncThemeSettings({ ...preset.settings, platformName: themeSettings.platformName });
     }
   }
+
+  useEffect(() => {
+    let isActive = true;
+
+    void getCurrentUser()
+      .then(({ organizationId }) => fetchOrganizationThemeSettings(organizationId))
+      .then((settings) => {
+        if (!isActive) return;
+        saveThemeSettings(settings);
+        setThemeSettings(settings);
+        setSettingsJson(getSettingsJson(settings));
+        setStatusMessage('');
+      })
+      .catch(() => {
+        if (isActive) {
+          setStatusMessage(t('admin.themeSettings.loadError', 'Unable to load saved theme settings. Showing cached settings.'));
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [t]);
 
   async function saveTheme() {
     setIsSaving(true);
@@ -192,7 +221,7 @@ export function AdminThemeSettingsPage() {
           <div className="admin-header-actions">
             <button
               className="admin-btn admin-btn--secondary"
-              disabled={isSaving}
+              disabled={isLoading || isSaving}
               onClick={() => void resetTheme()}
               type="button"
             >
@@ -200,7 +229,7 @@ export function AdminThemeSettingsPage() {
             </button>
             <button
               className="admin-btn admin-btn--primary"
-              disabled={isSaving}
+              disabled={isLoading || isSaving}
               onClick={() => void saveTheme()}
               type="button"
             >
@@ -262,7 +291,7 @@ export function AdminThemeSettingsPage() {
                   </span>
                   <input
                     accept="image/png,image/jpeg,image/webp,image/gif"
-                    disabled={isUploadingLogo}
+                    disabled={isLoading || isUploadingLogo}
                     onChange={(event) => void handleLogoChange(event)}
                     type="file"
                   />
@@ -408,7 +437,7 @@ export function AdminThemeSettingsPage() {
             {t('admin.themeSettings.jsonLabel', 'Theme JSON')}
             <textarea value={settingsJson} rows={10} onChange={(event) => setSettingsJson(event.target.value)} />
           </label>
-          <button className="admin-btn admin-btn--secondary" type="button" disabled={isSaving} onClick={() => void importSettings()}>
+          <button className="admin-btn admin-btn--secondary" type="button" disabled={isLoading || isSaving} onClick={() => void importSettings()}>
             {t('admin.themeSettings.import', 'Import JSON')}
           </button>
         </section>

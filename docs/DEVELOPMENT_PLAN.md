@@ -1489,14 +1489,14 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 148 — Admin appearance page alignment 🔲
+## PR 148 — Admin appearance page alignment ✅
 
 *Требует завершённого PR 147.*
 
-- Выбрать canonical route: `/admin/theme-settings` или `/admin/appearance`
-- Привести navigation и docs к выбранному route
-- Подключить страницу к DB-backed theme из PR 147
-- Убрать fake save — если backend не готов, кнопка Save явно неактивна или отсутствует
+- Canonical route: `/admin/appearance`
+- Navigation и docs используют выбранный route
+- Страница загружает DB-backed theme из PR 147 и сохраняет изменения через API
+- Save выполняет реальный PATCH и не показывает фиктивный success
 
 **Критерии готовности:**
 - В codebase существует ровно один canonical route для appearance
