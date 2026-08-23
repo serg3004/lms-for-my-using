@@ -17,7 +17,37 @@ const instanceId = '33333333-3333-3333-3333-333333333333';
 const itemId = '44444444-4444-4444-4444-444444444444';
 const userId = '55555555-5555-5555-5555-555555555555';
 
-type HttpTestResponse = { statusCode?: number; body: any };
+type HttpTestResponse = { statusCode?: number; body: unknown };
+type InstancePatch = {
+  status?: string;
+  totalScore?: number;
+  maxScore?: number;
+  percentage?: number;
+  passed?: boolean;
+  submittedAt?: Date;
+  completedAt?: Date;
+};
+type ResultCreate = {
+  itemId: string;
+  checked?: boolean;
+  points: number;
+};
+
+type TestResult = {
+  id: string;
+  itemId: string;
+  checked: boolean;
+  scaleLevel: number | null;
+  points: number;
+  photoUrl: null;
+  photoObjectKey: null;
+  photoFileName: null;
+  comment: null;
+  reviewStatus: 'pending';
+  reviewComment: null;
+  reviewedBy: null;
+  reviewedAt: null;
+};
 
 function patchJson(url: string, body: unknown): Promise<HttpTestResponse> {
   return new Promise((resolve, reject) => {
@@ -50,8 +80,8 @@ function patchJson(url: string, body: unknown): Promise<HttpTestResponse> {
 
 describe('Checklist completion HTTP contract', () => {
   let app: INestApplication;
-  const instance = { status: 'assigned' };
-  const results: any[] = [];
+  const instance: { status: string } = { status: 'assigned' };
+  const results: TestResult[] = [];
 
   beforeEach(async () => {
     instance.status = 'assigned';
@@ -61,7 +91,7 @@ describe('Checklist completion HTTP contract', () => {
       checklistInstance: {
         findFirst: jest.fn(async () => ({ id: instanceId, userId, status: instance.status, checklistId })),
         findFirstOrThrow: jest.fn(async () => ({ checklistId, status: instance.status })),
-        update: jest.fn(async ({ data }: any) => {
+        update: jest.fn(async ({ data }: { data: InstancePatch }) => {
           Object.assign(instance, data);
           return {
             id: instanceId,
@@ -106,11 +136,11 @@ describe('Checklist completion HTTP contract', () => {
         findMany: jest.fn(async () => [{ id: itemId, points: 10, isRequired: true, photoRequired: true }]),
       },
       checklistItemResult: {
-        upsert: jest.fn(async ({ create }: any) => {
-          results[0] = {
+        upsert: jest.fn(async ({ create }: { create: ResultCreate }) => {
+          const created: TestResult = {
             id: 'result-1',
             itemId,
-            checked: create.checked,
+            checked: create.checked ?? false,
             scaleLevel: null,
             points: create.points,
             photoUrl: null,
@@ -122,7 +152,8 @@ describe('Checklist completion HTTP contract', () => {
             reviewedBy: null,
             reviewedAt: null,
           };
-          return results[0];
+          results[0] = created;
+          return created;
         }),
         findMany: jest.fn(async () => results),
       },
@@ -139,7 +170,8 @@ describe('Checklist completion HTTP contract', () => {
       .overrideGuard(AuthGuard)
       .useValue({
         canActivate(context: ExecutionContext) {
-          context.switchToHttp().getRequest().currentUser = {
+          const httpRequest = context.switchToHttp().getRequest<{ currentUser?: unknown }>();
+          httpRequest.currentUser = {
             id: userId,
             organizationId,
             roles: ['learner'],

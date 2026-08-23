@@ -37,6 +37,26 @@ type TestResult = {
   reviewedAt: Date | null;
 };
 
+type ResultKey = { instanceId_itemId: { instanceId: string; itemId: string } };
+type ResultWrite = {
+  itemId: string;
+  checked?: boolean;
+  scaleLevel?: number | null;
+  points: number;
+  photoUrl?: string | null;
+  comment?: string | null;
+};
+type ResultPatch = Partial<Omit<TestResult, 'reviewStatus'>> & { reviewStatus?: TestResult['reviewStatus'] };
+type InstancePatch = {
+  status?: string;
+  totalScore?: number;
+  maxScore?: number;
+  percentage?: number;
+  passed?: boolean;
+  submittedAt?: Date;
+  completedAt?: Date;
+};
+
 function createHarness({
   items,
   scoringMode = 'sum_points',
@@ -65,8 +85,8 @@ function createHarness({
     percentage: 0,
     passed: false,
     dueAt: null,
-    submittedAt: null,
-    completedAt: null,
+    submittedAt: null as Date | null,
+    completedAt: null as Date | null,
     createdAt: new Date('2026-08-23T00:00:00.000Z'),
     updatedAt: new Date('2026-08-23T00:00:00.000Z'),
   };
@@ -77,7 +97,7 @@ function createHarness({
   }
 
   const checklistItemResult = {
-    upsert: jest.fn(async ({ where, create, update }: any) => {
+    upsert: jest.fn(async ({ where, create, update }: { where: ResultKey; create: ResultWrite; update: ResultPatch }) => {
       const current = resultFor(where.instanceId_itemId.itemId);
       if (current) {
         Object.assign(current, update);
@@ -106,8 +126,8 @@ function createHarness({
       return created;
     }),
     findMany: jest.fn(async () => results),
-    findUnique: jest.fn(async ({ where }: any) => resultFor(where.instanceId_itemId.itemId) ?? null),
-    update: jest.fn(async ({ where, data }: any) => {
+    findUnique: jest.fn(async ({ where }: { where: ResultKey }) => resultFor(where.instanceId_itemId.itemId) ?? null),
+    update: jest.fn(async ({ where, data }: { where: ResultKey; data: ResultPatch }) => {
       const current = resultFor(where.instanceId_itemId.itemId);
       if (!current) throw new Error('Missing test result');
       Object.assign(current, data);
@@ -119,7 +139,7 @@ function createHarness({
     checklistInstance: {
       findFirst: jest.fn(async () => ({ ...instance })),
       findFirstOrThrow: jest.fn(async () => ({ checklistId, status: instance.status })),
-      update: jest.fn(async ({ data }: any) => {
+      update: jest.fn(async ({ data }: { data: InstancePatch }) => {
         Object.assign(instance, data, { updatedAt: new Date() });
         return { ...instance, checklist: { ...checklist, items }, results: results.map((entry) => ({ ...entry })) };
       }),
@@ -128,7 +148,7 @@ function createHarness({
       findFirstOrThrow: jest.fn(async () => ({ ...checklist })),
     },
     checklistItem: {
-      findFirst: jest.fn(async ({ where }: any) => items.find((candidate) => candidate.id === where.id) ?? null),
+      findFirst: jest.fn(async ({ where }: { where: { id: string } }) => items.find((candidate) => candidate.id === where.id) ?? null),
       findMany: jest.fn(async () => items),
     },
     checklistItemResult,
