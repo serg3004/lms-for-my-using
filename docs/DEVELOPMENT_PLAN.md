@@ -1759,7 +1759,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 158 — SEO/meta, favicon, manifest и шрифт 🔲
+## PR 158 — SEO/meta, favicon, manifest и шрифт ✅
 
 **Проблема:** `index.html` минимален: нет `noindex` для приватной LMS, нет favicon, placeholder title и нет корректного подключения шрифта Inter без внешних CDN.
 
@@ -1781,6 +1781,14 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - CSS font-family содержит системный fallback
 - `vite build` завершается без ошибок
 - lint, typecheck, build — зелёные
+
+**Факт:** `index.html` дополнен `<meta name="robots" content="noindex,nofollow">`, description без placeholder-текста, `<meta name="theme-color" content="#4f46e5">` и favicon (`apps/web/public/favicon.svg`, инлайн-SVG на основе `--color-primary`, без внешних запросов). Title уже был не-placeholder (`LMS`) до этого PR.
+
+**Отклонения от исходной формулировки:**
+- **Шрифт:** дизайн-система (`PR 163`) уже выбрала `Manrope`, а не `Inter` из исходного текста задачи — следуем актуальному решению дизайн-системы, а не устаревшей формулировке. Self-hosted webfont-файл не добавлен: `global.css` уже объявляет `"Manrope Variable", "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` без единого запроса к `fonts.googleapis.com`/`fonts.gstatic.com` — критерий "без внешних CDN" уже выполнен, а полноценный systemic-fallback уже есть. Добавление бинарного шрифта — отдельное решение об увеличении веса бандла, не требовалось критериями этой задачи.
+- **Manifest:** сознательно не добавлен. LMS — приватное авторизуемое приложение (уже помечено `noindex,nofollow`), необходимости в PWA-инсталляции/иконках на домашнем экране сейчас нет; добавление пустого manifest ради формальности не даёт пользы без реального PWA-сценария.
+
+Проверено: `pnpm --filter web typecheck/lint/build` — зелёные, favicon и все meta-теги подтверждены в `dist/index.html` после сборки.
 
 ---
 
