@@ -133,10 +133,22 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
   async function handleDownload(materialId: string) {
     setDownloadError(null);
     setDownloadingId(materialId);
+    // Open the tab synchronously, inside the click handler, so browsers still treat it as
+    // user-initiated -- opening it only after the await below (once the presigned URL comes
+    // back) risks the popup blocker treating it as an unrequested new tab.
+    const newTab = window.open('', '_blank');
+    if (newTab) {
+      newTab.opener = null;
+    }
     try {
       const { url } = await getMaterialDownloadUrl(materialId);
-      window.open(url, '_blank', 'noopener');
+      if (newTab) {
+        newTab.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener');
+      }
     } catch {
+      newTab?.close();
       setDownloadError(t('materials.downloadError'));
     } finally {
       setDownloadingId(null);
