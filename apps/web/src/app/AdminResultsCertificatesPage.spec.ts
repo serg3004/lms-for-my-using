@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildAssessmentResultsExportRows,
+  buildProgressExportRows,
   findCourseTitle,
   findUserEmail,
   findUserLabel,
   progressPercent,
+  serializeCsv,
 } from './AdminResultsCertificatesPage.js';
 
 const courses = [{ id: 'course-1', organizationId: 'org-1', title: 'Safety training' }];
@@ -51,6 +53,29 @@ describe('AdminResultsCertificatesPage helpers', () => {
 
   it('treats a missing score as 0% progress', () => {
     expect(progressPercent({ id: 'p1', courseId: 'course-1', userId: 'user-1', status: 'in_progress', score: null, completedAt: null })).toBe(0);
+  });
+});
+
+describe('progress CSV export', () => {
+  it('quotes commas, quotes, line breaks and empty values without adding sensitive fields', () => {
+    const specialCourses = [{ id: 'course-1', organizationId: 'org-1', title: 'Safety, "first"\nline' }];
+    const specialUsers = [{ id: 'user-1', email: 'ann@example.com', name: 'Ann, "A"' }];
+    const progress = [{ id: 'p1', courseId: 'course-1', userId: 'user-1', status: 'in_progress', score: null, completedAt: null }];
+
+    const rows = buildProgressExportRows(specialCourses, specialUsers, progress, t);
+    const csv = serializeCsv(rows);
+
+    expect(csv).toContain('"Ann, ""A"""');
+    expect(csv).toContain('"Safety, ""first""\nline"');
+    expect(csv).toContain('""');
+    expect(rows[0]).toEqual(['Learner', 'Course', 'Progress', 'Score']);
+    expect(csv).not.toContain('ann@example.com');
+  });
+
+  it('keeps an explicit header for an empty report instead of producing an empty file', () => {
+    expect(serializeCsv(buildProgressExportRows(courses, users, [], t))).toBe(
+      '"Learner","Course","Progress","Score"',
+    );
   });
 });
 

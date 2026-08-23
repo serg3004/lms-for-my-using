@@ -396,6 +396,12 @@
   margin-top: 24px;
 }
 
+.admin-results-reports {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
 .admin-results-bar {
   display: flex;
   align-items: center;
@@ -430,6 +436,29 @@
 @media (max-width: 900px) {
   .admin-results-secondary {
     grid-template-columns: 1fr;
+  }
+
+  .admin-results-reports {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .admin-sidebar,
+  .admin-page-header button,
+  .admin-results-secondary form,
+  .no-print {
+    display: none !important;
+  }
+
+  .admin-shell,
+  .admin-results-reports {
+    display: block;
+  }
+
+  .admin-card {
+    break-inside: avoid;
+    box-shadow: none;
   }
 }
 
