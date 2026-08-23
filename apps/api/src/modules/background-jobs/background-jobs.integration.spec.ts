@@ -8,20 +8,20 @@ import type {
   BackgroundJobHandler,
   EnqueuedBackgroundJob,
   EnqueueBackgroundJobOptions,
+  RecurringBackgroundJobOptions,
 } from './background-jobs.types.js';
 import { getTelemetryContext, runWithTelemetryContext } from '../../common/telemetry/telemetry-context.js';
-
 type PendingJob = {
   id: string;
   name: string;
   data: BackgroundJobData;
   options: Required<EnqueueBackgroundJobOptions>;
 };
-
 class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
   readonly deadLetters: Array<{ id: string; error: string }> = [];
   readonly executions = new Map<string, number>();
   readonly backoffs: number[] = [];
+  readonly recurring: Array<{ name: string; data: BackgroundJobData; options: Required<RecurringBackgroundJobOptions> }> = [];
   closed = false;
   private processor: BackgroundJobHandler | null = null;
   private readonly jobs = new Map<string, PendingJob>();
@@ -30,7 +30,6 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
   async start(processor: BackgroundJobHandler): Promise<void> {
     this.processor = processor;
   }
-
   async enqueue(
     name: string,
     data: BackgroundJobData,
@@ -43,7 +42,13 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
     this.draining = this.draining.then(() => this.execute(job));
     return { id, deduplicated: false };
   }
-
+  async upsertRecurring(
+    name: string,
+    data: BackgroundJobData,
+    options: Required<RecurringBackgroundJobOptions>,
+  ): Promise<void> {
+    this.recurring.push({ name, data, options });
+  }
   async close(): Promise<void> {
     await this.draining;
     this.closed = true;
@@ -52,7 +57,6 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
   drain(): Promise<void> {
     return this.draining;
   }
-
   private async execute(job: PendingJob): Promise<void> {
     if (!this.processor) throw new Error('Worker is not started');
     for (let attempt = 0; attempt < job.options.attempts; attempt++) {
@@ -70,7 +74,6 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
     }
   }
 }
-
 describe('background jobs integration', () => {
   const previousWorkerFlag = process.env['BACKGROUND_JOBS_RUN_WORKER'];
 
@@ -82,7 +85,6 @@ describe('background jobs integration', () => {
     if (previousWorkerFlag === undefined) delete process.env['BACKGROUND_JOBS_RUN_WORKER'];
     else process.env['BACKGROUND_JOBS_RUN_WORKER'] = previousWorkerFlag;
   });
-
   it('enqueues quickly, retries with backoff and applies an idempotency key once', async () => {
     const backend = new InMemoryBackgroundJobBackend();
     const service = new BackgroundJobsService(backend);
@@ -94,14 +96,12 @@ describe('background jobs integration', () => {
       appliedResults++;
     });
     await service.onApplicationBootstrap();
-
     const first = await service.enqueue('report.generate', { reportId: 'report-1' }, {
       idempotencyKey: 'report-1:v1', attempts: 3, backoffMs: 10,
     });
     const duplicate = await service.enqueue('report.generate', { reportId: 'report-1' }, {
       idempotencyKey: 'report-1:v1', attempts: 3, backoffMs: 10,
     });
-
     expect(first.deduplicated).toBe(false);
     expect(duplicate).toEqual({ id: first.id, deduplicated: true });
     await backend.drain();
@@ -109,13 +109,34 @@ describe('background jobs integration', () => {
     expect(appliedResults).toBe(1);
     expect(backend.backoffs).toEqual([10, 20]);
   });
+  it('upserts registered recurring jobs when the worker starts', async () => {
+    const backend = new InMemoryBackgroundJobBackend();
+    const service = new BackgroundJobsService(backend);
+    service.registerRecurring('checklists.expire-overdue', {}, {
+      schedulerId: 'checklists-expire-overdue-v1',
+      everyMs: 60_000,
+      attempts: 3,
+      backoffMs: 1_000,
+    });
 
+    await service.onApplicationBootstrap();
+
+    expect(backend.recurring).toEqual([{
+      name: 'checklists.expire-overdue',
+      data: {},
+      options: {
+        schedulerId: 'checklists-expire-overdue-v1',
+        everyMs: 60_000,
+        attempts: 3,
+        backoffMs: 1_000,
+      },
+    }]);
+  });
   it('moves exhausted failures to an observable dead-letter collection', async () => {
     const backend = new InMemoryBackgroundJobBackend();
     const service = new BackgroundJobsService(backend);
     service.registerHandler('email.send', async () => { throw new Error('mail provider unavailable'); });
     await service.onApplicationBootstrap();
-
     const job = await service.enqueue('email.send', { messageId: 'message-1' }, {
       idempotencyKey: 'message-1', attempts: 2, backoffMs: 5,
     });
@@ -124,7 +145,6 @@ describe('background jobs integration', () => {
     expect(backend.executions.get(job.id)).toBe(2);
     expect(backend.deadLetters).toEqual([{ id: job.id, error: 'mail provider unavailable' }]);
   });
-
   it('waits for pending work during graceful shutdown', async () => {
     const backend = new InMemoryBackgroundJobBackend();
     const service = new BackgroundJobsService(backend);
@@ -136,7 +156,6 @@ describe('background jobs integration', () => {
 
     expect(backend.closed).toBe(true);
   });
-
   it('propagates the enqueue telemetry context into the job handler', async () => {
     const backend = new InMemoryBackgroundJobBackend();
     const service = new BackgroundJobsService(backend);
@@ -146,7 +165,6 @@ describe('background jobs integration', () => {
       observedRequestId = getTelemetryContext()?.requestId;
     });
     await service.onApplicationBootstrap();
-
     await runWithTelemetryContext({ requestId: 'a8098c1a-f86e-11da-bd1a-00112444be1e' }, () =>
       service.enqueue('telemetry.verify', {}, { idempotencyKey: 'telemetry-1' }),
     );

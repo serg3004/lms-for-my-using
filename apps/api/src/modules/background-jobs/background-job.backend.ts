@@ -4,10 +4,10 @@ import type {
   BackgroundJobHandler,
   EnqueueBackgroundJobOptions,
   EnqueuedBackgroundJob,
+  RecurringBackgroundJobOptions,
 } from './background-jobs.types.js';
 
 export const BACKGROUND_JOB_BACKEND = Symbol('BACKGROUND_JOB_BACKEND');
-
 export interface BackgroundJobBackend {
   start(processor: BackgroundJobHandler): Promise<void>;
   enqueue(
@@ -15,9 +15,13 @@ export interface BackgroundJobBackend {
     data: BackgroundJobData,
     options: Required<EnqueueBackgroundJobOptions>,
   ): Promise<EnqueuedBackgroundJob>;
+  upsertRecurring(
+    name: string,
+    data: BackgroundJobData,
+    options: Required<RecurringBackgroundJobOptions>,
+  ): Promise<void>;
   close(): Promise<void>;
 }
-
 export function toBackgroundJob(
   id: string | undefined,
   name: string,

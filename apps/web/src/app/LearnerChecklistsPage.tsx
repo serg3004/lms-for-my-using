@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-
 import { ApiClientError } from '../shared/apiClient.js';
 import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
@@ -13,7 +12,7 @@ import {
   getRequiredChecklistProgress,
   isChecklistAnswerComplete,
 } from './checklistCompletion.js';
-
+import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
 }
@@ -33,7 +32,6 @@ const COLORS = {
 };
 
 type LearnerChecklistsData = { instances: ChecklistInstanceSummary[] };
-
 export function LearnerChecklistsPage() {
   const { t } = useTranslation();
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
@@ -46,7 +44,6 @@ export function LearnerChecklistsPage() {
       error: t('checklists.loadError', 'Unable to load your checklists.'),
     },
   );
-
   if (loadState.status === 'loading') {
     return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
@@ -54,7 +51,6 @@ export function LearnerChecklistsPage() {
   if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return <main style={{ padding: 32 }}><PageState title={t('checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
-
   const open = openInstanceId ? loadState.data.instances.find((i) => i.id === openInstanceId) : null;
 
   if (open) {
@@ -69,7 +65,6 @@ export function LearnerChecklistsPage() {
       </main>
     );
   }
-
   return (
     <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
       <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
@@ -99,6 +94,7 @@ export function LearnerChecklistsPage() {
                   {t(`checklists.status.${instance.status}`, instance.status)}
                 </span>
               </div>
+              <ChecklistDeadlineMeta instance={instance} />
               {instance.status === 'completed' && (
                 <p style={{ color: COLORS.muted, marginBottom: 0 }}>
                   {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
@@ -115,7 +111,6 @@ export function LearnerChecklistsPage() {
     </main>
   );
 }
-
 function ChecklistTaking({
   instance,
   onBack,
@@ -132,7 +127,6 @@ function ChecklistTaking({
   const [error, setError] = useState<string | null>(null);
 
   if (!checklist) return null;
-
   const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(
     checklist.items,
@@ -140,7 +134,6 @@ function ChecklistTaking({
     checklist.scoringMode,
   );
   const editable = instance.status === 'assigned' || instance.status === 'in_progress';
-
   async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string }) {
     setSubmitting(item.id);
     setError(null);
@@ -153,7 +146,6 @@ function ChecklistTaking({
       setSubmitting(null);
     }
   }
-
   async function uploadPhoto(item: ChecklistItemSummary, file: File) {
     setSubmitting(item.id);
     setError(null);
@@ -166,15 +158,19 @@ function ChecklistTaking({
       setSubmitting(null);
     }
   }
-
   return (
     <div>
       <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
         ← {t('checklists.backToList', 'All checklists')}
       </button>
-
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
       {checklist.description && <p style={{ color: COLORS.muted }}>{checklist.description}</p>}
+      <ChecklistDeadlineMeta instance={instance} />
+      {instance.status === 'expired' && (
+        <p style={{ color: '#b91c1c', background: '#fef2f2', borderRadius: 10, padding: '10px 12px' }} role="status">
+          {t('checklists.expiredReason', 'This checklist expired at its deadline and can no longer be changed.')}
+        </p>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '16px 0' }}>
         <div style={{ flex: 1, height: 8, borderRadius: 999, background: COLORS.soft, overflow: 'hidden' }}>
           <div style={{ height: '100%', background: COLORS.primary, width: `${requiredCount ? (completedRequired / requiredCount) * 100 : 0}%` }} />
@@ -283,7 +279,6 @@ function ChecklistTaking({
     </div>
   );
 }
-
 function PhotoAttachment({
   instanceId,
   item,
@@ -305,7 +300,6 @@ function PhotoAttachment({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const attached = Boolean(result?.photoFileName);
-
   useEffect(() => {
     if (!attached) {
       setPreviewUrl(null);
@@ -323,13 +317,11 @@ function PhotoAttachment({
       cancelled = true;
     };
   }, [attached, instanceId, item.id, result?.photoFileName]);
-
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (file) onSelectFile(file);
   }
-
   const canAct = editable && !busy && !!result;
   return (
     <div style={{ marginTop: 10 }}>

@@ -13,6 +13,11 @@ import {
   UpdateChecklistInput,
   UpdateChecklistItemInput,
 } from './checklists.schemas.js';
+import {
+  CHECKLIST_EXPIRED_MESSAGE,
+  expireDueChecklistInstances,
+  isChecklistDeadlineReached,
+} from './checklist-deadlines.js';
 
 const CHECKLIST_SNAPSHOT_VERSION = 1;
 
@@ -132,6 +137,12 @@ type SnapshotRuntimeRef = {
   checklistId: string;
   templateSnapshot?: Prisma.JsonValue | null;
   snapshotVersion?: number | null;
+};
+type WritableInstance = {
+  id: string;
+  userId: string;
+  status: string;
+  dueAt: Date | null;
 };
 
 @Injectable()
@@ -358,23 +369,11 @@ export class ChecklistsService {
   }
 
   async listMyInstances(userId: string, organizationId: string) {
-    const instances = await this.prisma.checklistInstance.findMany({
-      where: { userId, organizationId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      select: instanceWithSnapshotSelect,
-    });
-
-    return instances.map((instance) => this.presentInstance(instance));
+    return this.listInstancesWithDeadlineRefresh({ userId, organizationId });
   }
 
   async listInstancesForChecklist(checklistId: string, organizationId: string) {
-    const instances = await this.prisma.checklistInstance.findMany({
-      where: { checklistId, organizationId, deletedAt: null },
-      orderBy: { createdAt: 'desc' },
-      select: instanceWithSnapshotSelect,
-    });
-
-    return instances.map((instance) => this.presentInstance(instance));
+    return this.listInstancesWithDeadlineRefresh({ checklistId, organizationId });
   }
 
   async listPendingReview(organizationId: string) {
@@ -388,7 +387,7 @@ export class ChecklistsService {
   }
 
   async getInstance(instanceId: string, organizationId: string) {
-    const instance = await this.prisma.checklistInstance.findFirst({
+    let instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
       select: instanceWithSnapshotSelect,
     });
@@ -397,7 +396,35 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist assignment not found');
     }
 
+    if (this.shouldExpire(instance.status, instance.dueAt, new Date())) {
+      await expireDueChecklistInstances(this.prisma, { id: instanceId, organizationId }, new Date());
+      instance = await this.prisma.checklistInstance.findFirst({
+        where: { id: instanceId, organizationId, deletedAt: null },
+        select: instanceWithSnapshotSelect,
+      });
+      if (!instance) throw new NotFoundException('Checklist assignment not found');
+    }
+
     return this.presentInstance(instance);
+  }
+
+  async assertInstanceWritable(
+    instanceId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+    now = new Date(),
+  ) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: { id: true, userId: true, status: true, dueAt: true },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, now);
   }
 
   async submitItemResult(
@@ -414,6 +441,7 @@ export class ChecklistsService {
         id: true,
         userId: true,
         status: true,
+        dueAt: true,
         checklistId: true,
         templateSnapshot: true,
         snapshotVersion: true,
@@ -424,13 +452,7 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist assignment not found');
     }
 
-    if (instance.userId !== requesterId && !isPrivileged) {
-      throw new ForbiddenException('You can only fill out your own checklist assignment');
-    }
-
-    if (instance.status === 'submitted' || instance.status === 'completed') {
-      throw new BadRequestException('This checklist assignment is no longer editable');
-    }
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, new Date());
 
     const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
     const item = checklist.items.find((candidate) => candidate.id === itemId);
@@ -525,20 +547,14 @@ export class ChecklistsService {
   ) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: { id: true, userId: true, status: true },
+      select: { id: true, userId: true, status: true, dueAt: true },
     });
 
     if (!instance) {
       throw new NotFoundException('Checklist assignment not found');
     }
 
-    if (instance.userId !== requesterId && !isPrivileged) {
-      throw new ForbiddenException('You can only fill out your own checklist assignment');
-    }
-
-    if (instance.status === 'submitted' || instance.status === 'completed') {
-      throw new BadRequestException('This checklist assignment is no longer editable');
-    }
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, new Date());
 
     const existing = await this.prisma.checklistItemResult.findUnique({
       where: { instanceId_itemId: { instanceId, itemId } },
@@ -605,6 +621,55 @@ export class ChecklistsService {
     );
 
     return { url, expiresIn };
+  }
+
+  private async listInstancesWithDeadlineRefresh(scope: { organizationId: string; userId?: string; checklistId?: string }) {
+    let instances = await this.prisma.checklistInstance.findMany({
+      where: { ...scope, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      select: instanceWithSnapshotSelect,
+    });
+    const now = new Date();
+
+    if (instances.some((instance) => this.shouldExpire(instance.status, instance.dueAt, now))) {
+      await expireDueChecklistInstances(this.prisma, scope, now);
+      instances = await this.prisma.checklistInstance.findMany({
+        where: { ...scope, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: instanceWithSnapshotSelect,
+      });
+    }
+
+    return instances.map((instance) => this.presentInstance(instance));
+  }
+
+  private shouldExpire(status: string, dueAt: Date | null, now: Date) {
+    return (status === 'assigned' || status === 'in_progress') && isChecklistDeadlineReached(dueAt, now);
+  }
+
+  private async assertWritableInstance(
+    instance: WritableInstance,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+    now: Date,
+  ) {
+    if (instance.userId !== requesterId && !isPrivileged) {
+      throw new ForbiddenException('You can only fill out your own checklist assignment');
+    }
+
+    if (instance.status === 'expired') {
+      throw new BadRequestException(CHECKLIST_EXPIRED_MESSAGE);
+    }
+
+    if (instance.status === 'submitted' || instance.status === 'completed') {
+      throw new BadRequestException('This checklist assignment is no longer editable');
+    }
+
+    if (isChecklistDeadlineReached(instance.dueAt, now)) {
+      await expireDueChecklistInstances(this.prisma, { id: instance.id, organizationId }, now);
+      throw new BadRequestException(CHECKLIST_EXPIRED_MESSAGE);
+    }
   }
 
   private toRuntimeChecklist(
@@ -829,10 +894,22 @@ export class ChecklistsService {
       select: {
         checklistId: true,
         status: true,
+        dueAt: true,
         templateSnapshot: true,
         snapshotVersion: true,
       },
     });
+
+    if (instance.status === 'expired') {
+      return this.getInstance(instanceId, organizationId);
+    }
+
+    const now = new Date();
+    if (this.shouldExpire(instance.status, instance.dueAt, now)) {
+      await expireDueChecklistInstances(this.prisma, { id: instanceId, organizationId }, now);
+      return this.getInstance(instanceId, organizationId);
+    }
+
     const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
     const results = await this.prisma.checklistItemResult.findMany({
       where: { instanceId },
@@ -864,7 +941,7 @@ export class ChecklistsService {
 
     if (allRequirementsSatisfied && checklist.requiresReview && reviewableResults.length === 0) {
       status = 'completed';
-      completedAt = new Date();
+      completedAt = now;
     } else if (
       allRequirementsSatisfied &&
       checklist.requiresReview &&
@@ -872,7 +949,7 @@ export class ChecklistsService {
       status !== 'completed'
     ) {
       status = 'submitted';
-      submittedAt = new Date();
+      submittedAt = now;
     } else if (
       allRequirementsSatisfied &&
       checklist.requiresReview &&
@@ -880,10 +957,10 @@ export class ChecklistsService {
       allReviewed
     ) {
       status = 'completed';
-      completedAt = new Date();
+      completedAt = now;
     } else if (allRequirementsSatisfied && !checklist.requiresReview) {
       status = 'completed';
-      completedAt = new Date();
+      completedAt = now;
     } else if (!allRequirementsSatisfied && status === 'assigned') {
       status = 'in_progress';
     }
@@ -892,20 +969,28 @@ export class ChecklistsService {
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
     const passed = status === 'completed' && percentage >= checklist.passThreshold;
 
-    const updated = await this.prisma.checklistInstance.update({
-      where: { id: instanceId },
-      data: {
-        status,
-        totalScore,
-        maxScore,
-        percentage,
-        passed,
-        ...(submittedAt ? { submittedAt } : {}),
-        ...(completedAt ? { completedAt } : {}),
-      },
-      select: instanceWithSnapshotSelect,
-    });
+    try {
+      const updated = await this.prisma.checklistInstance.update({
+        where: { id: instanceId, organizationId, status: { not: 'expired' } },
+        data: {
+          status,
+          totalScore,
+          maxScore,
+          percentage,
+          passed,
+          ...(submittedAt ? { submittedAt } : {}),
+          ...(completedAt ? { completedAt } : {}),
+        },
+        select: instanceWithSnapshotSelect,
+      });
+      return this.presentInstance(updated);
+    } catch (error) {
+      if (this.isRecordNotFound(error)) return this.getInstance(instanceId, organizationId);
+      throw error;
+    }
+  }
 
-    return this.presentInstance(updated);
+  private isRecordNotFound(error: unknown) {
+    return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2025');
   }
 }

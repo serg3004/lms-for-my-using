@@ -15,8 +15,14 @@ export type EnqueueBackgroundJobOptions = {
   telemetryContext?: { requestId: string };
 };
 
-export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void>;
+export type RecurringBackgroundJobOptions = {
+  schedulerId: string;
+  everyMs: number;
+  attempts?: number;
+  backoffMs?: number;
+};
 
+export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void>;
 export type EnqueuedBackgroundJob = {
   id: string;
   deduplicated: boolean;

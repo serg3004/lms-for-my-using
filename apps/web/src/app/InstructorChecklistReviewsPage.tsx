@@ -1,7 +1,6 @@
 import { useState, type ComponentType, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import { listPendingChecklistReviews, reviewChecklistItemResult } from '../shared/api/checklists.js';
 import type { ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
@@ -9,15 +8,14 @@ import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
-
 type ChecklistReviewsLayout = ComponentType<{ children: ReactNode; firstName?: string; lastName?: string }>;
 
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
   return item.photoRequired && !hasChecklistPhotoEvidence(result);
 }
-
 const COLORS = {
   surface: '#ffffff',
   soft: '#f8fafc',
@@ -32,11 +30,9 @@ const COLORS = {
 };
 
 type InstructorChecklistReviewsData = { instances: ChecklistInstanceSummary[]; firstName?: string; lastName?: string };
-
 export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }: { Layout?: ChecklistReviewsLayout } = {}) {
   const { t } = useTranslation();
   const [openId, setOpenId] = useState<string | null>(null);
-
   const { state: loadState, reload: load } = useAsyncData<InstructorChecklistReviewsData>(
     async () => {
       const [instances, currentUser] = await Promise.all([listPendingChecklistReviews(), getCurrentUser()]);
@@ -48,7 +44,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
       error: t('checklistReview.loadError', 'Unable to load pending reviews.'),
     },
   );
-
   if (loadState.status === 'loading') {
     return (
       <Layout>
@@ -75,7 +70,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
       </Layout>
     );
   }
-
   const open = openId ? loadState.data.instances.find((i) => i.id === openId) : null;
 
   return (
@@ -83,7 +77,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
       <div style={{ padding: '24px 0', maxWidth: 860 }}>
         <h1 style={{ color: COLORS.text }}>{t('checklistReview.title', 'Checklist review')}</h1>
         <p style={{ color: COLORS.muted }}>{t('checklistReview.subtitle', 'Checklists submitted by learners that are waiting for your confirmation.')}</p>
-
         {open ? (
           <ReviewDetail
             instance={open}
@@ -103,6 +96,7 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
               >
                 <strong>{instance.checklist?.title}</strong>
                 <p style={{ color: COLORS.muted, marginBottom: 0 }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
+                <ChecklistDeadlineMeta instance={instance} />
               </li>
             ))}
           </ul>
@@ -111,7 +105,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
     </Layout>
   );
 }
-
 function ReviewDetail({
   instance,
   onBack,
@@ -129,7 +122,6 @@ function ReviewDetail({
   const checklist = instance.checklist;
 
   if (!checklist) return null;
-
   async function decide(itemId: string, status: 'approved' | 'rejected') {
     setPending(itemId);
     setError(null);
@@ -142,7 +134,6 @@ function ReviewDetail({
       setPending(null);
     }
   }
-
   return (
     <div>
       <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
@@ -151,9 +142,8 @@ function ReviewDetail({
 
       <h2 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h2>
       <p style={{ color: COLORS.muted }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
-
+      <ChecklistDeadlineMeta instance={instance} />
       {error && <p style={{ color: '#dc2626' }} role="alert">{error}</p>}
-
       <div style={{ display: 'grid', gap: 12 }}>
         {checklist.items.map((item) => {
           const result = instance.results.find((r) => r.itemId === item.id);
@@ -239,7 +229,6 @@ function ReviewDetail({
           );
         })}
       </div>
-
       <div
         style={{
           marginTop: 20,
