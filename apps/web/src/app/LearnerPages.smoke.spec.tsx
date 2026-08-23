@@ -655,50 +655,44 @@ describe('learner page smoke rendering', () => {
   it('renders assessment taking happy path without crashing', () => {
     const loadedAssessment = {
       status: 'loaded',
-      assessment: {
-        id: 'assessment-1',
-        organizationId: 'org-1',
-        courseId: 'course-1',
-        lessonId: null,
-        title: 'Safety Knowledge Test',
-        slug: 'safety-knowledge-test',
-        description: null,
-        status: 'published',
-        passingScore: 70,
-        maxAttempts: 3,
-        availableAfterCourseCompletion: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      },
-      questions: [
-        {
-          id: 'q-1',
-          type: 'single_choice',
-          title: 'What is the primary safety rule?',
-          text: null,
-          points: 1,
-          order: 1,
-          options: [
-            { id: 'opt-1', questionId: 'q-1', text: 'Always wear PPE', imageUrl: null, order: 1 },
-            { id: 'opt-2', questionId: 'q-1', text: 'Run when in doubt', imageUrl: null, order: 2 },
-          ],
+      data: {
+        assessment: {
+          id: 'assessment-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          lessonId: null,
+          title: 'Safety Knowledge Test',
+          slug: 'safety-knowledge-test',
+          description: null,
+          status: 'published',
+          passingScore: 70,
+          maxAttempts: 3,
+          availableAfterCourseCompletion: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
         },
-      ],
+        questions: [
+          {
+            id: 'q-1',
+            type: 'single_choice',
+            title: 'What is the primary safety rule?',
+            text: null,
+            points: 1,
+            order: 1,
+            options: [
+              { id: 'opt-1', questionId: 'q-1', text: 'Always wear PPE', imageUrl: null, order: 1 },
+              { id: 'opt-2', questionId: 'q-1', text: 'Run when in doubt', imageUrl: null, order: 2 },
+            ],
+          },
+        ],
+      },
     };
 
-    reactMocks.useState.mockImplementation((initialState: unknown) => {
-      if (
-        typeof initialState === 'object' &&
-        initialState !== null &&
-        'status' in initialState &&
-        (initialState as { status: string }).status === 'loading'
-      ) {
-        return [loadedAssessment, vi.fn()];
-      }
-      if (initialState === null) {
-        return [900, vi.fn()]; // secondsLeft — renders timer and covers formatTime
-      }
-      return [typeof initialState === 'function' ? (initialState as () => unknown)() : initialState, vi.fn()];
+    // useState call order in LearnerAssessmentTakingPage: 1 selected, 2 submitState, 3 currentIndex,
+    // 4 secondsLeft, 5 timerError, then useAsyncData's internal loadState is call 6.
+    useStateAtCalls({
+      4: 900, // secondsLeft — renders timer and covers formatTime
+      6: loadedAssessment,
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentTakingPage assessmentId="assessment-1" />);
