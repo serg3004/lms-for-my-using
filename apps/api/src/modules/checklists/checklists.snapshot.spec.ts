@@ -93,6 +93,7 @@ describe('ChecklistsService immutable assignment snapshots', () => {
     }));
     const prisma = {
       checklist: { findFirst: jest.fn(async () => liveChecklistWithItems) },
+      checklistItem: { findMany: jest.fn(async () => [assignedItem]) },
       user: { findFirst: jest.fn(async () => ({ id: userId })) },
       checklistInstance: {
         findFirst: jest.fn(async () => null),

@@ -297,7 +297,7 @@ export class ChecklistsService {
   async assignChecklist(checklistId: string, organizationId: string, input: AssignChecklistInput, assignedBy: string) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: checklistWithItemsSelect,
+      select: checklistSelect,
     });
 
     if (!checklist) {
@@ -326,7 +326,20 @@ export class ChecklistsService {
       throw new BadRequestException('This user already has an active assignment for this checklist');
     }
 
-    const runtimeChecklist = this.toRuntimeChecklist(checklist, checklist.items);
+    const items = await this.prisma.checklistItem.findMany({
+      where: { checklistId, organizationId, deletedAt: null },
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        checklistId: true,
+        order: true,
+        text: true,
+        points: true,
+        isRequired: true,
+        photoRequired: true,
+      },
+    });
+    const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
     return this.prisma.checklistInstance.create({
