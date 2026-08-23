@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard } from '../auth/public.js';
@@ -11,6 +11,11 @@ import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { CertificatesService } from './certificates.service.js';
 import { IssueCertificateInput, issueCertificateSchema } from './certificates.schemas.js';
 
+type CertificateDownloadResponse = {
+  set(headers: Record<string, string>): CertificateDownloadResponse;
+  send(body: Buffer): CertificateDownloadResponse;
+};
+
 @Controller('certificates')
 export class CertificatesController {
   constructor(private readonly certificatesService: CertificatesService) {}
@@ -21,6 +26,25 @@ export class CertificatesController {
   listCertificates(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
     return this.certificatesService.listCertificates(request.currentUser!, page, pageSize);
+  }
+
+  @Get(':id/pdf')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.certificatesRead)
+  @CourseScope('param', 'id', 'certificate')
+  async downloadCertificate(
+    @Param('id') certificateId: string,
+    @Req() request: AuthenticatedRequest,
+    @Res() response: CertificateDownloadResponse,
+  ) {
+    const pdf = await this.certificatesService.getCertificatePdf(certificateId, request.currentUser!);
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="certificate-${certificateId}.pdf"`,
+      'Content-Length': String(pdf.length),
+      'Cache-Control': 'private, no-store',
+    });
+    response.send(pdf);
   }
 
   @Get(':id')

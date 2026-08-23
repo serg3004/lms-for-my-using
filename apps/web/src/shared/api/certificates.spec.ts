@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../apiClient.js', () => mocks);
 
-import { getCertificate, getCertificatePath, issueCertificate } from './certificates.js';
+import { getCertificate, getCertificatePath, getCertificatePdfPath, issueCertificate } from './certificates.js';
 
 describe('certificates api paths', () => {
   beforeEach(() => {
@@ -25,6 +25,10 @@ describe('certificates api paths', () => {
 
   it('encodes certificate ids before adding them to the path', () => {
     expect(getCertificatePath('certificate 1/2')).toBe('/certificates/certificate%201%2F2');
+  });
+
+  it('builds an authenticated API path for PDF downloads', () => {
+    expect(getCertificatePdfPath('certificate 1/2')).toBe('/api/v1/certificates/certificate%201%2F2/pdf');
   });
 
   it('fetches a single certificate by id', async () => {
