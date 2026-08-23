@@ -1436,7 +1436,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 145 — Instructor workspace 🔲
+## PR 145 — Instructor workspace ✅
 
 - Определить границы instructor MVP
 - Добавить instructor routes
@@ -1448,6 +1448,14 @@ Assessments, certificates и upload являются критичными для
 - Instructor видит только свои курсы, не чужие
 - Instructor не имеет доступа к admin-only routes
 - Role/navigation docs обновлены и соответствуют реальным routes
+
+> **Факт:** задача реализована последующим PR 172 и проверена повторно. Отдельная
+> instructor-зона содержит dashboard, список/создание/редактирование курсов,
+> просмотр студентов курса и проверку чек-листов. Frontend закрывает
+> `/instructor/*` ролью `instructor` и не разрешает instructor-only пользователю
+> переходить в `/admin/*`; backend автоматически ограничивает список и связанные
+> ресурсы связями `CourseInstructor`. Актуальная карта маршрутов и границ доступа:
+> `docs/INSTRUCTOR_WORKSPACE.md`.
 
 ---
 
