@@ -1778,6 +1778,11 @@
   .edit-layout {
     grid-template-columns: 1fr;
   }
+
+  .lesson-row__actions .ds-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* ── Lesson list (course editor) ─────────────────────────────────────────── */
