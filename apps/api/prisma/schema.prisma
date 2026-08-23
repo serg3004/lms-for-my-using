@@ -147,7 +147,6 @@ model Organization {
   slug                            String                         @unique
   status                          OrganizationStatus             @default(active)
   plan                            OrganizationPlan               @default(trial)
-  themeSettings                   Json?                          @map("theme_settings")
   createdAt                       DateTime                       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                       DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                       DateTime?                      @map("deleted_at") @db.Timestamptz
@@ -174,8 +173,23 @@ model Organization {
   checklistItems                  ChecklistItem[]
   checklistInstances              ChecklistInstance[]
   checklistItemResults            ChecklistItemResult[]
+  theme                           OrganizationTheme?
 
   @@map("organizations")
+}
+
+model OrganizationTheme {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @unique @map("organization_id") @db.Uuid
+  settings       Json     @default("{}")
+  logoObjectKey  String?  @map("logo_object_key")
+  logoMimeType   String?  @map("logo_mime_type")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_themes")
 }
 
 model User {

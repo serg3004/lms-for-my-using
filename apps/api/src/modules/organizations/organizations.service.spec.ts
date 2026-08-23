@@ -1,5 +1,4 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -163,7 +162,7 @@ describe('OrganizationsService theme settings', () => {
   it('returns null theme settings when none have been saved', async () => {
     const prisma = {
       organization: {
-        findFirst: async () => ({ themeSettings: null }),
+        findFirst: async () => ({ theme: null }),
       },
     } as unknown as PrismaService;
 
@@ -189,11 +188,12 @@ describe('OrganizationsService theme settings', () => {
     const updateCalls: unknown[] = [];
     const prisma = {
       organization: {
-        findFirst: async () => ({ themeSettings: null }),
-        update: async ({ data }: { data: { themeSettings: unknown } }) => {
-          updateCalls.push(data);
-
-          return { themeSettings: data.themeSettings };
+        findFirst: async () => ({ theme: null }),
+      },
+      organizationTheme: {
+        upsert: async (args: { create: { settings: unknown } }) => {
+          updateCalls.push(args);
+          return { settings: args.create.settings, logoObjectKey: null, logoMimeType: null };
         },
       },
     } as unknown as PrismaService;
@@ -201,26 +201,32 @@ describe('OrganizationsService theme settings', () => {
     const service = new OrganizationsService(prisma, uploadService);
 
     await expect(service.updateThemeSettings(organizationId, themeSettings)).resolves.toEqual({ themeSettings });
-    expect(updateCalls).toEqual([{ themeSettings }]);
+    expect(updateCalls).toEqual([
+      {
+        where: { organizationId },
+        create: { organizationId, settings: themeSettings, logoObjectKey: undefined, logoMimeType: undefined },
+        update: { settings: themeSettings },
+      },
+    ]);
   });
 
   it('resets theme settings back to null', async () => {
     const updateCalls: unknown[] = [];
     const prisma = {
       organization: {
-        findFirst: async () => ({ themeSettings: createThemeSettingsInput() }),
-        update: async ({ data }: { data: { themeSettings: unknown } }) => {
-          updateCalls.push(data);
-
-          return { id: organizationId };
-        },
+        findFirst: async () => ({
+          theme: { settings: createThemeSettingsInput(), logoObjectKey: null, logoMimeType: null },
+        }),
+      },
+      organizationTheme: {
+        deleteMany: async (args: unknown) => updateCalls.push(args),
       },
     } as unknown as PrismaService;
 
     const service = new OrganizationsService(prisma, uploadService);
 
     await expect(service.resetThemeSettings(organizationId)).resolves.toEqual({ themeSettings: null });
-    expect(updateCalls).toEqual([{ themeSettings: Prisma.JsonNull }]);
+    expect(updateCalls).toEqual([{ where: { organizationId } }]);
   });
 
   it('preserves the existing logo when saving other theme settings', async () => {
@@ -229,12 +235,21 @@ describe('OrganizationsService theme settings', () => {
     const prisma = {
       organization: {
         findFirst: async () => ({
-          themeSettings: { ...themeSettings, logoObjectKey: 'organizations/org/branding/1', logoMimeType: 'image/png' },
+          theme: {
+            settings: themeSettings,
+            logoObjectKey: 'organizations/org/branding/1',
+            logoMimeType: 'image/png',
+          },
         }),
-        update: async ({ data }: { data: { themeSettings: unknown } }) => {
-          updateCalls.push(data);
-
-          return { themeSettings: data.themeSettings };
+      },
+      organizationTheme: {
+        upsert: async (args: { create: { settings: unknown; logoObjectKey?: string; logoMimeType?: string } }) => {
+          updateCalls.push(args);
+          return {
+            settings: args.create.settings,
+            logoObjectKey: args.create.logoObjectKey ?? null,
+            logoMimeType: args.create.logoMimeType ?? null,
+          };
         },
       },
     } as unknown as PrismaService;
@@ -244,7 +259,16 @@ describe('OrganizationsService theme settings', () => {
     const result = await service.updateThemeSettings(organizationId, themeSettings);
 
     expect(updateCalls).toEqual([
-      { themeSettings: { ...themeSettings, logoObjectKey: 'organizations/org/branding/1', logoMimeType: 'image/png' } },
+      {
+        where: { organizationId },
+        create: {
+          organizationId,
+          settings: themeSettings,
+          logoObjectKey: 'organizations/org/branding/1',
+          logoMimeType: 'image/png',
+        },
+        update: { settings: themeSettings },
+      },
     ]);
     expect(getInlinePresignedUrl).toHaveBeenCalledWith('organizations/org/branding/1', 'image/png');
     expect(result.themeSettings).toMatchObject({ logoUrl: 'https://files.example.com/signed-logo' });
@@ -255,11 +279,22 @@ describe('OrganizationsService theme settings', () => {
     const updateCalls: unknown[] = [];
     const prisma = {
       organization: {
-        findFirst: async () => ({ themeSettings }),
-        update: async ({ data }: { data: { themeSettings: unknown } }) => {
-          updateCalls.push(data);
-
-          return { themeSettings: data.themeSettings };
+        findFirst: async () => ({
+          theme: {
+            settings: createThemeSettingsInput(),
+            logoObjectKey: themeSettings.logoObjectKey,
+            logoMimeType: themeSettings.logoMimeType,
+          },
+        }),
+      },
+      organizationTheme: {
+        upsert: async (args: { create: { settings: unknown; logoObjectKey: string; logoMimeType: string } }) => {
+          updateCalls.push(args);
+          return {
+            settings: args.create.settings,
+            logoObjectKey: args.create.logoObjectKey,
+            logoMimeType: args.create.logoMimeType,
+          };
         },
       },
     } as unknown as PrismaService;
@@ -276,7 +311,16 @@ describe('OrganizationsService theme settings', () => {
 
     expect(uploadOrganizationLogo).toHaveBeenCalledWith(file, organizationId);
     expect(updateCalls).toEqual([
-      { themeSettings: { ...themeSettings, logoObjectKey: 'organizations/org/branding/new', logoMimeType: 'image/png' } },
+      {
+        where: { organizationId },
+        create: {
+          organizationId,
+          settings: createThemeSettingsInput(),
+          logoObjectKey: 'organizations/org/branding/new',
+          logoMimeType: 'image/png',
+        },
+        update: { logoObjectKey: 'organizations/org/branding/new', logoMimeType: 'image/png' },
+      },
     ]);
     expect(deleteObject).toHaveBeenCalledWith('organizations/org/branding/old');
     expect(result.themeSettings).toMatchObject({ logoUrl: 'https://files.example.com/new-logo' });
