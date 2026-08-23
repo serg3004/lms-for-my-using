@@ -52,7 +52,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
       );
       return { lesson, course, allLessons, materials, completedIds };
     },
-    [lessonId],
+    [lessonId, t],
     { unauthenticated: t('lessonDetail.sessionExpired'), error: t('lessonDetail.loadError') },
   );
 

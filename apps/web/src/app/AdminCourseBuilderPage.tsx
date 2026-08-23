@@ -84,7 +84,7 @@ export function AdminCourseBuilderPage() {
       ]);
       return { course, lessons, currentUser };
     },
-    [courseId],
+    [courseId, t],
     {
       unauthenticated: t('admin.courseBuilder.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.courseBuilder.loadError', 'Unable to load the course.'),
