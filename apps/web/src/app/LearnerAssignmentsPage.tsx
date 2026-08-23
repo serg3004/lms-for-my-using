@@ -132,7 +132,7 @@ export function LearnerAssignmentsPage() {
     return <PageState title={t('assignments.title')} message={loadState.message} variant="error" action={<a href="/login">{t('login.navLink')}</a>} />;
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return <PageState title={t('assignments.title')} message={loadState.message} variant="error" action={<a href="/learn">{t('learner.navLink')}</a>} />;
   }
 

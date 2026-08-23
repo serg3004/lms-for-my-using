@@ -226,7 +226,7 @@ export function AdminResultsCertificatesPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.results.title', 'Results')} message={loadState.message} variant="error" />

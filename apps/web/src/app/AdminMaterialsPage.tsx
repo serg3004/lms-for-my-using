@@ -1,4 +1,4 @@
-import { type ChangeEvent, type DragEvent, type FormEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { type ChangeEvent, type DragEvent, type FormEvent, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadMaterialFileWithProgress } from '../shared/apiClient.js';
@@ -14,6 +14,7 @@ import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavIt
 import { EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { ACCEPTED_MATERIAL_FILE_TYPES, validateMaterialFile } from './materials/fileValidation.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Course = { id: string; organizationId: string; title: string; status: string };
 type Lesson = { id: string; title: string; order: number };
@@ -30,10 +31,7 @@ type Material = {
   status: string;
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; materials: Material[] }
-  | { status: 'error'; message: string };
+type AdminMaterialsData = { courses: Course[]; lessons: Lesson[]; materials: Material[] };
 
 const MATERIAL_STATUSES: MaterialStatus[] = ['active', 'archived'];
 
@@ -47,7 +45,6 @@ export function AdminMaterialsPage() {
     archived: t('admin.materials.status.archived', 'Archived'),
   };
   const materialMutations = useMaterialMutations();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
   const [materialSearch, setMaterialSearch] = useState('');
@@ -87,10 +84,13 @@ export function AdminMaterialsPage() {
   });
   const [editErrors, setEditErrors] = useState<FormValidationErrors<'title' | 'fileUrl'>>({});
 
-  const loadMaterials = useCallback(async (courseId?: string) => {
-    try {
+  const pendingCourseIdRef = useRef<string | undefined>(undefined);
+
+  const { state: loadState, reload: loadMaterials, mutate } = useAsyncData<AdminMaterialsData>(
+    async () => {
       const { items: courses } = await apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200');
-      const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');
+      const nextCourseId = pendingCourseIdRef.current ?? (selectedCourseId || courses[0]?.id || '');
+      pendingCourseIdRef.current = undefined;
       const [lessons, materials] = nextCourseId
         ? await Promise.all([
             apiRequest<Lesson[]>(`/courses/${encodeURIComponent(nextCourseId)}/lessons`),
@@ -99,29 +99,25 @@ export function AdminMaterialsPage() {
         : [[], []];
 
       setSelectedCourseId(nextCourseId);
-      setLoadState({ status: 'loaded', courses, lessons: sortLessons(lessons), materials });
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.materials.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.materials.loadError', 'Unable to load materials.');
-      setLoadState({ status: 'error', message });
-    }
-  }, [t, selectedCourseId]);
-
-  useEffect(() => {
-    void loadMaterials();
-  }, [loadMaterials]);
+      return { courses, lessons: sortLessons(lessons), materials };
+    },
+    [t],
+    {
+      unauthenticated: t('admin.materials.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.materials.loadError', 'Unable to load materials.'),
+    },
+  );
 
   const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === selectedCourseId) : undefined;
+    return loadState.status === 'loaded' ? loadState.data.courses.find((c) => c.id === selectedCourseId) : undefined;
   }, [loadState, selectedCourseId]);
 
   async function handleCourseChange(courseId: string) {
+    pendingCourseIdRef.current = courseId;
     setSelectedCourseId(courseId);
     setSelectedLessonId('');
     setSubmitState({ status: 'idle' });
-    await loadMaterials(courseId);
+    await loadMaterials();
   }
 
   function selectFile(file: File, target: 'create' | 'edit') {
@@ -237,7 +233,7 @@ export function AdminMaterialsPage() {
       setPendingMaterialId(null);
       setDescription('');
       setSubmitState({ status: 'idle' });
-      await loadMaterials(selectedCourse.id);
+      await loadMaterials();
     } catch (error) {
       if (uploadAttempted) {
         const message = error instanceof ApiClientError && error.status === 503
@@ -258,13 +254,9 @@ export function AdminMaterialsPage() {
   async function handleUpdateStatus(materialId: string, newStatus: string) {
     try {
       const updated = await materialMutations.updateStatus(materialId, newStatus);
-      setLoadState((prev) =>
-        prev.status === 'loaded'
-          ? { ...prev, materials: prev.materials.map((m) => (m.id === materialId ? updated : m)) }
-          : prev,
-      );
+      mutate((data) => ({ ...data, materials: data.materials.map((m) => (m.id === materialId ? updated : m)) }));
     } catch {
-      await loadMaterials(selectedCourseId);
+      await loadMaterials();
     }
   }
 
@@ -321,11 +313,7 @@ export function AdminMaterialsPage() {
         dispatchEditUpload({ type: 'success' });
       }
       editDialogRef.current?.close();
-      setLoadState((prev) =>
-        prev.status === 'loaded'
-          ? { ...prev, materials: prev.materials.map((m) => (m.id === editMaterial.id ? updated : m)) }
-          : prev,
-      );
+      mutate((data) => ({ ...data, materials: data.materials.map((m) => (m.id === editMaterial.id ? updated : m)) }));
     } catch {
       setEditState({
         status: 'error',
@@ -342,7 +330,7 @@ export function AdminMaterialsPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.materials.title', 'Materials')} message={loadState.message} variant="error" />
@@ -372,13 +360,13 @@ export function AdminMaterialsPage() {
       <section className="admin-content-grid">
         <AdminCard>
             <h2>{t('admin.materials.createTitle', 'Add material')}</h2>
-            {loadState.courses.length === 0 ? (
+            {loadState.data.courses.length === 0 ? (
               <EmptyState message={t('admin.materials.noCourses', 'Create a course before adding materials.')} />
             ) : (
               <form className="admin-form" onSubmit={handleCreateMaterial}>
                 <FormField id="material-create-course" label={t('admin.materials.course', 'Course')}>
                   <select id="material-create-course" value={selectedCourseId} onChange={(event) => void handleCourseChange(event.target.value)}>
-                    {loadState.courses.map((course) => (
+                    {loadState.data.courses.map((course) => (
                       <option key={course.id} value={course.id}>
                         {course.title}
                       </option>
@@ -388,7 +376,7 @@ export function AdminMaterialsPage() {
                 <FormField id="material-create-lesson" label={t('admin.materials.lesson', 'Lesson')}>
                   <select id="material-create-lesson" value={selectedLessonId} onChange={(event) => setSelectedLessonId(event.target.value)}>
                     <option value="">{t('admin.materials.noLesson', 'No lesson')}</option>
-                    {loadState.lessons.map((lesson) => (
+                    {loadState.data.lessons.map((lesson) => (
                       <option key={lesson.id} value={lesson.id}>
                         {lesson.order}. {lesson.title}
                       </option>
@@ -515,7 +503,7 @@ export function AdminMaterialsPage() {
               }
             />
             <MaterialTable
-              materials={loadState.materials.filter((material) => {
+              materials={loadState.data.materials.filter((material) => {
                 const matchesSearch =
                   !materialSearch.trim() || material.title.toLowerCase().includes(materialSearch.trim().toLowerCase());
                 const matchesKind = materialKindFilter === 'all' || material.kind === materialKindFilter;
@@ -523,7 +511,7 @@ export function AdminMaterialsPage() {
               })}
               t={t}
               onEdit={(materialId) => {
-                const material = loadState.materials.find((item) => item.id === materialId);
+                const material = loadState.data.materials.find((item) => item.id === materialId);
                 if (material) openEditDialog(material);
               }}
               onStatusChange={(materialId, status) => void handleUpdateStatus(materialId, status)}

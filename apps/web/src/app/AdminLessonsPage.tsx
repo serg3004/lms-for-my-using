@@ -228,7 +228,7 @@ export function AdminLessonsPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.lessons.title', 'Lessons')} message={loadState.message} variant="error" />

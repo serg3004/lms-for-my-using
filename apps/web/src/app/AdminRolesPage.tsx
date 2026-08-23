@@ -153,7 +153,7 @@ export function AdminRolesPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.roles.title', 'Roles')} message={loadState.message} variant="error" />

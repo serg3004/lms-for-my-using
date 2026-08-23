@@ -316,24 +316,30 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders materials page happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [course],
-      lessons: [lesson],
-      materials: [
-        {
-          id: 'material-1',
-          title: 'Safety Handbook',
-          slug: 'safety-handbook',
-          description: null,
-          kind: 'link' as const,
-          fileName: null,
-          fileUrl: 'https://example.com/handbook.pdf',
-          mimeType: null,
-          sizeBytes: null,
-          status: 'active',
+    // useState call order in AdminMaterialsPage: 25 form/dialog states, then
+    // useAsyncData's internal loadState useState is call 26.
+    useStateAtCalls({
+      26: {
+        status: 'loaded',
+        data: {
+          courses: [course],
+          lessons: [lesson],
+          materials: [
+            {
+              id: 'material-1',
+              title: 'Safety Handbook',
+              slug: 'safety-handbook',
+              description: null,
+              kind: 'link' as const,
+              fileName: null,
+              fileUrl: 'https://example.com/handbook.pdf',
+              mimeType: null,
+              sizeBytes: null,
+              status: 'active',
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminMaterialsPage />);

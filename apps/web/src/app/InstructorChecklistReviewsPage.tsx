@@ -64,7 +64,7 @@ export function InstructorChecklistReviewsPage() {
       </InstructorPageLayout>
     );
   }
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <InstructorPageLayout>
         <PageState title={t('checklistReview.title', 'Checklist review')} message={loadState.message} variant="error" />

@@ -85,7 +85,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <PageState
         title={t('courseDetail.title')}
