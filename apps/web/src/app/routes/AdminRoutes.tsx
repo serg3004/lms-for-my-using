@@ -21,7 +21,7 @@ export function AdminRoutes() {
     <Route path="/admin/users" element={<AdminUsersPage />} />
     <Route path="/admin/roles" element={<AdminRolesPage />} />
     <Route path="/admin/org-structure" element={<AdminOrgStructurePage />} />
-    <Route path="/admin/theme-settings" element={<AdminThemeSettingsPage />} />
+    <Route path="/admin/appearance" element={<AdminThemeSettingsPage />} />
     <Route path="/admin/courses" element={<AdminCoursesPage />} />
     <Route path="/admin/courses/:courseId" element={<AdminCourseBuilderPage />} />
     <Route path="/admin/lessons" element={<AdminLessonsPage />} />

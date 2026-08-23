@@ -169,6 +169,8 @@ describe('admin page smoke rendering', () => {
     expect(html).toContain('Основной цвет');
     expect(html).toContain('Отступы страницы');
     expect(html).toContain('Фон сайдбара');
+    expect(html).toContain('href="/admin/appearance"');
+    expect(html).not.toContain('/admin/theme-settings');
   });
   it('renders dashboard loading state without crashing', () => {
     useLoadingState();
