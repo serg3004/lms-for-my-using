@@ -72,6 +72,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
     const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
     let cancelled = false;
+    setTimerError(null);
 
     void (async () => {
       try {
