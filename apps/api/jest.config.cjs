@@ -8,6 +8,7 @@ module.exports = {
   testPathIgnorePatterns: [
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

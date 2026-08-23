@@ -5,6 +5,7 @@ module.exports = {
   testMatch: [
     '<rootDir>/src/integration/api.database-smoke.spec.ts',
     '<rootDir>/src/integration/checklist-snapshot.database.spec.ts',
+    '<rootDir>/src/integration/checklist-deadline.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,

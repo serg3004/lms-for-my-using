@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -30,14 +29,14 @@ import type {
   ChecklistSummary,
 } from '../shared/api/types.js';
 import type { UserSummary } from '../shared/api/types.js';
+import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
+import { localDateTimeToUtcIso } from './checklistDeadline.js';
 import {
   isChecklistRequirementSatisfied,
   type ChecklistAnswerState,
 } from './checklistCompletion.js';
-
 const CHECKLIST_STATUSES: ChecklistStatus[] = ['draft', 'published', 'archived'];
 const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale'];
-
 export function filterChecklists(checklists: ChecklistSummary[], search: string, statusFilter: 'all' | ChecklistStatus) {
   return checklists.filter((checklist) => {
     if (statusFilter !== 'all' && checklist.status !== statusFilter) return false;
@@ -45,7 +44,6 @@ export function filterChecklists(checklists: ChecklistSummary[], search: string,
     return true;
   });
 }
-
 export function formatUserName(user: { firstName: string; lastName?: string | null; email: string }) {
   return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
 }
@@ -54,11 +52,9 @@ export function resolveUserName(users: UserSummary[], userId: string) {
   const user = users.find((u) => u.id === userId);
   return user ? formatUserName(user) : userId;
 }
-
 export function filterAssignableUsers(users: UserSummary[], instances: ChecklistInstanceSummary[]) {
   return users.filter((user) => !instances.some((instance) => instance.userId === user.id && instance.status !== 'expired'));
 }
-
 export function buildChecklistSettingsPayload(form: {
   title: string;
   description: string;
@@ -76,7 +72,6 @@ export function buildChecklistSettingsPayload(form: {
     scaleLevels: form.scoringMode === 'scale' ? form.scaleLevels : null,
   };
 }
-
 export function canAssignChecklist(checklistStatus: ChecklistStatus, assignUserId: string) {
   return checklistStatus === 'published' && assignUserId.trim().length > 0;
 }
@@ -88,7 +83,6 @@ export function applyItemPatch(items: ChecklistItemSummary[], itemId: string, pa
 export function removeItemById(items: ChecklistItemSummary[], itemId: string) {
   return items.filter((item) => item.id !== itemId);
 }
-
 export function applyScaleLevelPatch(levels: ChecklistScaleLevel[], index: number, patch: Partial<ChecklistScaleLevel>) {
   return levels.map((level, i) => (i === index ? { ...level, ...patch } : level));
 }
@@ -100,7 +94,6 @@ export function appendScaleLevel(levels: ChecklistScaleLevel[]) {
 export function removeScaleLevelAt(levels: ChecklistScaleLevel[], index: number) {
   return levels.filter((_, i) => i !== index);
 }
-
 type PreviewAnswer = ChecklistAnswerState;
 
 export function computePreviewResult(
@@ -112,7 +105,6 @@ export function computePreviewResult(
 ) {
   let totalScore = 0;
   let maxScore = 0;
-
   for (const item of items) {
     if (scoringMode === 'scale') {
       const topPoints = scaleLevels.reduce((max, level) => Math.max(max, level.points), 0);
@@ -127,7 +119,6 @@ export function computePreviewResult(
       totalScore += answers[item.id]?.checked ? item.points : 0;
     }
   }
-
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
   const allAnswered =
     items.length > 0 &&
@@ -136,7 +127,6 @@ export function computePreviewResult(
 
   return { totalScore, maxScore, percentage, passed, allAnswered };
 }
-
 const DEFAULT_SCALE: ChecklistScaleLevel[] = [
   { level: 1, label: 'Очень плохо', points: 0 },
   { level: 2, label: 'Плохо', points: 25 },
@@ -147,7 +137,6 @@ const DEFAULT_SCALE: ChecklistScaleLevel[] = [
 
 type AdminChecklistsData = { checklists: ChecklistSummary[]; currentUser: CurrentUser };
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
-
 export function AdminChecklistsPage() {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -155,7 +144,6 @@ export function AdminChecklistsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-
   const statusLabels: Record<ChecklistStatus, string> = {
     draft: t('admin.checklists.status.draft', 'Draft'),
     published: t('admin.checklists.status.published', 'Published'),
@@ -166,7 +154,6 @@ export function AdminChecklistsPage() {
     all_required: t('admin.checklists.scoring.allRequired', 'All items required'),
     scale: t('admin.checklists.scoring.scale', 'Custom scale'),
   };
-
   const { state: loadState, reload: load, mutate } = useAsyncData<AdminChecklistsData>(
     async () => {
       const currentUser = await getCurrentUser();
@@ -182,14 +169,12 @@ export function AdminChecklistsPage() {
       error: t('admin.checklists.loadError', 'Unable to load checklists.'),
     },
   );
-
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
     const updated = await getChecklist(id);
     mutate((data) => ({ ...data, checklists: data.checklists.map((c) => (c.id === id ? updated : c)) }));
   }, [mutate]);
-
   async function updateStatus(checklist: ChecklistSummary, status: ChecklistStatus) {
     setStatusError(null);
     try {
@@ -199,7 +184,6 @@ export function AdminChecklistsPage() {
       setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.statusError', 'Unable to update status.'));
     }
   }
-
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
@@ -211,7 +195,6 @@ export function AdminChecklistsPage() {
       setDeleteTarget(null);
     }
   }
-
   if (loadState.status === 'loading') {
     return <main className="admin-state"><PageState message={t('admin.checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
@@ -219,13 +202,11 @@ export function AdminChecklistsPage() {
   if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return <main className="admin-state"><PageState title={t('admin.checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
-
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
     { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments' },
     { label: t('admin.checklists.title', 'Checklists'), href: '/admin/checklists', isCurrent: true },
   ];
-
   if (selectedId) {
     const checklist = loadState.data.checklists.find((c) => c.id === selectedId);
     if (!checklist) {
@@ -245,7 +226,6 @@ export function AdminChecklistsPage() {
       </AdminPageLayout>
     );
   }
-
   const filtered = filterChecklists(loadState.data.checklists, search, statusFilter);
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.data.currentUser}>
@@ -322,7 +302,6 @@ export function AdminChecklistsPage() {
     </AdminPageLayout>
   );
 }
-
 export function ChecklistBuilder({
   checklist,
   statusLabels,
@@ -352,15 +331,14 @@ export function ChecklistBuilder({
   const [instances, setInstances] = useState<ChecklistInstanceSummary[]>([]);
   const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
   const [assignUserId, setAssignUserId] = useState('');
+  const [assignDueAt, setAssignDueAt] = useState('');
   const [assignError, setAssignError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, PreviewAnswer>>({});
-
   useEffect(() => {
     listInstancesForChecklist(checklist.id).then(setInstances).catch(() => setInstances([]));
     listUsers({ page: 1, pageSize: 200 }).then((result) => setOrgUsers(result.items)).catch(() => setOrgUsers([]));
   }, [checklist.id]);
-
   async function saveSettings() {
     setSaveState({ status: 'saving' });
     try {
@@ -371,7 +349,6 @@ export function ChecklistBuilder({
       setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.') });
     }
   }
-
   async function publish() {
     try {
       await updateChecklist(checklist.id, { status: 'published' });
@@ -380,7 +357,6 @@ export function ChecklistBuilder({
       setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.publishError', 'Unable to publish checklist.') });
     }
   }
-
   async function addItem() {
     if (!newItemText.trim()) return;
     const created = await createChecklistItem(checklist.id, { text: newItemText.trim(), points: 10, isRequired: true, photoRequired: false });
@@ -391,7 +367,6 @@ export function ChecklistBuilder({
   function updateItemLocally(itemId: string, patch: Partial<ChecklistItemSummary>) {
     setItems((prev) => applyItemPatch(prev, itemId, patch));
   }
-
   async function persistItem(itemId: string, patch: Partial<ChecklistItemSummary>) {
     const updated = await updateChecklistItem(itemId, patch);
     setItems((prev) => applyItemPatch(prev, itemId, updated));
@@ -401,7 +376,6 @@ export function ChecklistBuilder({
     await deleteChecklistItem(item.id);
     setItems((prev) => removeItemById(prev, item.id));
   }
-
   function updateScaleLevel(index: number, patch: Partial<ChecklistScaleLevel>) {
     setScaleLevels((prev) => applyScaleLevelPatch(prev, index, patch));
   }
@@ -413,23 +387,21 @@ export function ChecklistBuilder({
   function removeScaleLevel(index: number) {
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
-
   async function assign() {
     setAssignError(null);
     if (!assignUserId) return;
     try {
-      await assignChecklist(checklist.id, assignUserId);
+      await assignChecklist(checklist.id, assignUserId, localDateTimeToUtcIso(assignDueAt));
       setAssignUserId('');
+      setAssignDueAt('');
       const updated = await listInstancesForChecklist(checklist.id);
       setInstances(updated);
     } catch (error) {
       setAssignError(error instanceof ApiClientError ? error.message : t('admin.checklists.assignError', 'Unable to assign this checklist.'));
     }
   }
-
   const assignableUsers = filterAssignableUsers(orgUsers, instances);
   const previewResult = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, previewAnswers);
-
   return (
     <div className="admin-builder">
       <button type="button" className="admin-back-link" onClick={onBack}>
@@ -601,7 +573,6 @@ export function ChecklistBuilder({
               {t('admin.checklists.requiresReviewHint', 'When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.')}
             </p>
             {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}</p>}
-
             <Button type="button" variant="primary" disabled={saveState.status === 'saving'} onClick={() => void saveSettings()}>
               {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
             </Button>
@@ -615,6 +586,14 @@ export function ChecklistBuilder({
                   <option value={u.id} key={u.id}>{formatUserName(u)}</option>
                 ))}
               </select>
+            </FormField>
+            <FormField id="checklist-assign-due-at" label={t('admin.checklists.field.dueAt', 'Due date')} hint={t('admin.checklists.dueAtHint', 'Optional. Enter local time; it is stored as UTC.')}>
+              <input
+                id="checklist-assign-due-at"
+                type="datetime-local"
+                value={assignDueAt}
+                onChange={(e) => setAssignDueAt(e.target.value)}
+              />
             </FormField>
             {assignError && <p className="learner-quiz__submit-error" role="alert">{assignError}</p>}
             <Button type="button" variant="secondary" disabled={!canAssignChecklist(checklist.status, assignUserId)} onClick={() => void assign()}>
@@ -630,6 +609,7 @@ export function ChecklistBuilder({
                     <span>{resolveUserName(orgUsers, instance.userId)}</span>
                     <Badge variant="neutral">{t(`admin.checklists.instanceStatus.${instance.status}`, instance.status)}</Badge>
                     <span>{instance.totalScore}/{instance.maxScore} ({instance.percentage}%)</span>
+                    <ChecklistDeadlineMeta instance={instance} />
                   </li>
                 ))}
               </ul>

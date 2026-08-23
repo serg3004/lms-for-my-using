@@ -7,6 +7,7 @@ import type {
   BackgroundJobHandler,
   EnqueuedBackgroundJob,
   EnqueueBackgroundJobOptions,
+  RecurringBackgroundJobOptions,
 } from './background-jobs.types.js';
 import { getTelemetryContext, resolveRequestId, runWithTelemetryContext } from '../../common/telemetry/telemetry-context.js';
 
@@ -17,12 +18,37 @@ const DEFAULT_BACKOFF_MS = 1_000;
 export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(BackgroundJobsService.name);
   private readonly handlers = new Map<string, BackgroundJobHandler>();
+  private readonly recurringJobs = new Map<string, {
+    name: string;
+    data: BackgroundJobData;
+    options: Required<RecurringBackgroundJobOptions>;
+  }>();
 
   constructor(@Inject(BACKGROUND_JOB_BACKEND) private readonly backend: BackgroundJobBackend) {}
 
   registerHandler(name: string, handler: BackgroundJobHandler): void {
     if (this.handlers.has(name)) throw new ConflictException(`Background job handler "${name}" is already registered`);
     this.handlers.set(name, handler);
+  }
+
+  registerRecurring(
+    name: string,
+    data: BackgroundJobData,
+    options: RecurringBackgroundJobOptions,
+  ): void {
+    if (this.recurringJobs.has(options.schedulerId)) {
+      throw new ConflictException(`Background job scheduler "${options.schedulerId}" is already registered`);
+    }
+    this.recurringJobs.set(options.schedulerId, {
+      name,
+      data,
+      options: {
+        schedulerId: options.schedulerId,
+        everyMs: options.everyMs,
+        attempts: options.attempts ?? DEFAULT_ATTEMPTS,
+        backoffMs: options.backoffMs ?? DEFAULT_BACKOFF_MS,
+      },
+    });
   }
 
   enqueue(
@@ -50,6 +76,9 @@ export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDe
       if (job.telemetryContext) await runWithTelemetryContext(job.telemetryContext, execute);
       else await execute();
     });
+    for (const recurring of this.recurringJobs.values()) {
+      await this.backend.upsertRecurring(recurring.name, recurring.data, recurring.options);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
