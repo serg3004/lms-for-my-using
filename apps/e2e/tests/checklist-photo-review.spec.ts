@@ -70,8 +70,10 @@ async function login(page: Page, role: 'learner' | 'instructor') {
   await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/instructor\/dashboard$/);
 }
 
-async function close(context: BrowserContext) {
-  await context.close();
+async function closeContext(context: BrowserContext) {
+  if (context.browser()?.isConnected()) {
+    await context.close();
+  }
 }
 
 test('learner evidence is detected and opened by instructor before approval', async ({ browser }) => {
@@ -107,17 +109,24 @@ test('learner evidence is detected and opened by instructor before approval', as
   });
 
   try {
-    await login(learnerPage, 'learner');
-    await learnerPage.goto('/learn/checklists');
-    await learnerPage.getByText('Photo review E2E').click();
-    await learnerPage.locator('input[type="checkbox"]').check();
+    await test.step('learner marks the item and attaches object-backed evidence', async () => {
+      await login(learnerPage, 'learner');
+      await learnerPage.goto('/learn/checklists');
+      await learnerPage.getByText('Photo review E2E').click();
 
-    const fileInput = learnerPage.locator('input[type="file"]');
-    await expect(fileInput).toBeEnabled();
-    await fileInput.setInputFiles({
-      name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('evidence'),
+      const checkbox = learnerPage.locator('input[type="checkbox"]');
+      await expect(checkbox).toHaveCount(1);
+      await expect(checkbox).toBeEnabled();
+      await checkbox.check();
+
+      const fileInput = learnerPage.locator('input[type="file"]');
+      await expect(fileInput).toHaveCount(1);
+      await expect(fileInput).toBeEnabled();
+      await fileInput.setInputFiles({
+        name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('evidence'),
+      });
+      await expect(learnerPage.getByText('evidence.png')).toBeVisible();
     });
-    await expect(learnerPage.getByText('evidence.png')).toBeVisible();
 
     const instructorContext = await browser.newContext();
     const instructorPage = await instructorContext.newPage();
@@ -137,23 +146,25 @@ test('learner evidence is detected and opened by instructor before approval', as
     });
 
     try {
-      await login(instructorPage, 'instructor');
-      await instructorPage.goto('/instructor/checklists');
-      await instructorPage.getByText('Photo review E2E').click();
-      await expect(instructorPage.getByText('evidence.png')).toBeVisible();
-      await expect(instructorPage.getByText('photo missing', { exact: false })).toHaveCount(0);
+      await test.step('instructor opens evidence with retry and approves the result', async () => {
+        await login(instructorPage, 'instructor');
+        await instructorPage.goto('/instructor/checklists');
+        await instructorPage.getByText('Photo review E2E').click();
+        await expect(instructorPage.getByText('evidence.png')).toBeVisible();
+        await expect(instructorPage.getByText('photo missing', { exact: false })).toHaveCount(0);
 
-      const evidenceRow = instructorPage.getByText('evidence.png').locator('..');
-      await evidenceRow.getByRole('button').click();
-      await expect(instructorPage.getByRole('alert')).toBeVisible();
-      await evidenceRow.getByRole('button').click();
-      await expect(instructorPage.getByRole('img', { name: 'evidence.png' })).toBeVisible();
+        const evidenceRow = instructorPage.getByText('evidence.png').locator('..');
+        await evidenceRow.getByRole('button').click();
+        await expect(instructorPage.getByRole('alert')).toBeVisible();
+        await evidenceRow.getByRole('button').click();
+        await expect(instructorPage.getByRole('img', { name: 'evidence.png' })).toBeVisible();
 
-      await instructorPage.locator('button').filter({ hasText: '✓' }).click();
+        await instructorPage.locator('button').filter({ hasText: '✓' }).click();
+      });
     } finally {
-      await close(instructorContext);
+      await closeContext(instructorContext);
     }
   } finally {
-    await close(learnerContext);
+    await closeContext(learnerContext);
   }
 });

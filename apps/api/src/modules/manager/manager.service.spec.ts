@@ -113,8 +113,30 @@ describe('ManagerService getTeamSummary', () => {
       organizationId,
       deletedAt: null,
       OR: [
-        { user: { groupMemberships: { some: { organizationId, group: { managers: { some: { managerId, organizationId } } } } } } },
-        { group: { managers: { some: { managerId, organizationId } } } },
+        {
+          user: {
+            groupMemberships: {
+              some: {
+                organizationId,
+                deletedAt: null,
+                group: {
+                  organizationId,
+                  status: 'active',
+                  deletedAt: null,
+                  managers: { some: { managerId, organizationId, deletedAt: null } },
+                },
+              },
+            },
+          },
+        },
+        {
+          group: {
+            organizationId,
+            status: 'active',
+            deletedAt: null,
+            managers: { some: { managerId, organizationId, deletedAt: null } },
+          },
+        },
       ],
     });
   });
