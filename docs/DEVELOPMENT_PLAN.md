@@ -1893,7 +1893,7 @@ Repository evidence, границы live-проверки и команды пр
 
 ---
 
-## PR 162 — Final production readiness verification и release gate 🔲
+## PR 162 — Final production readiness verification и release gate ✅
 
 **Проблема:** После выполнения отдельных PR 151–161 нельзя автоматически считать продукт готовым — часть изменений затрагивает API, DB, frontend, UX, observability и legal readiness одновременно. Нужна явная финальная проверка, что всё вместе работает и не создало регрессий.
 
@@ -1970,6 +1970,14 @@ Repository evidence, границы live-проверки и команды пр
 - `LearnerTopNav` и `AdminSidebar` рендерятся без ошибок — покрыто render-тестами
 - `vite build` завершается без ошибок
 - lint, typecheck, tests, build — зелёные
+
+**Факт:** добавлен fail-closed release gate, который принимает только привязанный
+к полному SHA и окружению evidence record: CI, CodeQL, Prisma, API/Web smoke,
+environment и rollback должны иметь `PASS` и ссылку/идентификатор evidence,
+blockers должны отсутствовать, а accepted risks — иметь владельца и причину.
+Процедура и честный результат repository-аудита зафиксированы в
+`docs/RELEASE_GATE.md`: открытых P0 implementation gaps нет, P1 и live checks
+не объявлены закрытыми, production `GO` без fresh external evidence не дан.
 
 > **Факт:** CSS-токены (`--color-background`, `--color-primary`, `--shadow-card`, `--radius-*` и др.) определены в `global.css`. Шрифт Manrope подключён self-hosted. `shared/ui.tsx` — Button, Badge, Card, PageState, EmptyState, Avatar, ProgressBar, StatusBadge и др. `shared/adminPage.tsx` — `AdminPageLayout`/`AdminPageHeader`/`AdminCard`.
 

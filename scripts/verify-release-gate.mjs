@@ -1,0 +1,87 @@
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+
+const PASS = 'PASS';
+
+export function validateReleaseEvidence(value) {
+  const errors = [];
+  const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+
+  for (const field of ['releaseId', 'sha', 'environment', 'owner', 'verifiedAt']) {
+    if (typeof object[field] !== 'string' || object[field].trim() === '') {
+      errors.push(`${field} must be a non-empty string`);
+    }
+  }
+
+  if (typeof object.sha === 'string' && !/^[0-9a-f]{40}$/i.test(object.sha)) {
+    errors.push('sha must be a full 40-character Git commit SHA');
+  }
+  if (typeof object.verifiedAt === 'string' && Number.isNaN(Date.parse(object.verifiedAt))) {
+    errors.push('verifiedAt must be an ISO-8601 timestamp');
+  }
+
+  const requiredChecks = [
+    'ci',
+    'codeql',
+    'prismaGenerate',
+    'apiSmoke',
+    'webSmoke',
+    'environment',
+    'rollback',
+  ];
+  const checks = object.checks && typeof object.checks === 'object' && !Array.isArray(object.checks)
+    ? object.checks
+    : {};
+
+  for (const check of requiredChecks) {
+    const evidence = checks[check];
+    if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
+      errors.push(`checks.${check} is required`);
+      continue;
+    }
+    if (evidence.status !== PASS) errors.push(`checks.${check}.status must be PASS`);
+    if (typeof evidence.evidence !== 'string' || evidence.evidence.trim() === '') {
+      errors.push(`checks.${check}.evidence must be a non-empty string`);
+    }
+  }
+
+  if (!Array.isArray(object.blockers)) {
+    errors.push('blockers must be an array');
+  } else if (object.blockers.length > 0) {
+    errors.push('blockers must be empty for a GO release');
+  }
+
+  if (!Array.isArray(object.acceptedRisks)) {
+    errors.push('acceptedRisks must be an array');
+  } else {
+    object.acceptedRisks.forEach((risk, index) => {
+      if (!risk || typeof risk !== 'object' || typeof risk.id !== 'string' || typeof risk.reason !== 'string' || typeof risk.owner !== 'string') {
+        errors.push(`acceptedRisks[${index}] must contain string id, reason, and owner`);
+      }
+    });
+  }
+
+  if (object.verdict !== 'GO') errors.push('verdict must be GO');
+  return errors;
+}
+
+async function main() {
+  const file = process.argv[2];
+  if (!file) throw new Error('Usage: pnpm release:gate -- <release-evidence.json>');
+
+  const evidence = JSON.parse(await readFile(file, 'utf8'));
+  const errors = validateReleaseEvidence(evidence);
+  if (errors.length > 0) {
+    console.error(`Release gate: BLOCKED\n- ${errors.join('\n- ')}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`Release gate: GO (${evidence.releaseId}, ${evidence.sha})`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(`Release gate: ERROR: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
