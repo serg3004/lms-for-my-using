@@ -24,6 +24,7 @@ import { NotificationsController } from '../notifications/notifications.controll
 import { OpenApiController } from '../openapi/openapi.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
 import { ProgressController } from '../progress/progress.controller.js';
+import { ReportsController } from '../reports/reports.controller.js';
 import { UsersController } from '../users/users.controller.js';
 import { AuthController } from './auth.controller.js';
 import { RolesGuard } from './roles.guard.js';
@@ -53,6 +54,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
   { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
   { file: 'progress/progress.controller.ts', Controller: ProgressController },
+  { file: 'reports/reports.controller.ts', Controller: ReportsController },
   { file: 'users/users.controller.ts', Controller: UsersController },
 ];
 

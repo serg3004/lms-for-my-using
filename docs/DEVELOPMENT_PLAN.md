@@ -1555,6 +1555,8 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ## PR 150 — Reports and analytics MVP 🔲
 
+**Реализованный MVP:** admin/manager summary API и admin dashboard показывают прогресс пользователей, выданные сертификаты и просроченные назначения из БД. Progress CSV включает только имя, курс, прогресс и score. Advanced BI, произвольные конструкторы отчётов и универсальный XLSX export не входят в этот PR.
+
 - Определить минимальный reports MVP
 - Реализовать отчёт по прогрессу пользователей
 - Реализовать отчёт по выданным сертификатам

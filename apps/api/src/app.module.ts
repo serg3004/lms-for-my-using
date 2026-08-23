@@ -27,6 +27,7 @@ import { OpenApiModule } from './modules/openapi/openapi.module.js';
 import { OutboxModule } from './modules/outbox/public.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -78,6 +79,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OutboxModule,
     OrganizationsModule,
     ProgressModule,
+    ReportsModule,
     UploadModule,
     UsersModule,
   ],

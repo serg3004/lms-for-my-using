@@ -507,6 +507,7 @@ describe('admin page smoke rendering', () => {
               status: 'issued',
             },
           ],
+          overdueAssignments: [],
           assessmentResults: [
             {
               id: 'result-1',

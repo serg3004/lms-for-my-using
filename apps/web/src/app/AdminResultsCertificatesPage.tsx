@@ -15,6 +15,11 @@ type Assessment = { id: string; courseId: string; title: string; passingScore: n
 type Progress = { id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
 type Certificate = { id: string; courseId: string; userId: string; issuedAt: string; status: string };
 type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean; completedAt: string | null };
+type ReportUser = { id: string; firstName: string; lastName: string; email: string };
+type ReportProgress = Omit<Progress, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
+type ReportCertificate = Omit<Certificate, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
+type OverdueAssignment = { id: string; dueAt: string; course: { id: string; title: string }; user: ReportUser | null; group: { id: string; name: string } | null };
+type ReportsSummary = { progress: ReportProgress[]; certificates: ReportCertificate[]; overdueAssignments: OverdueAssignment[] };
 
 type AdminResultsData = {
   courses: Course[];
@@ -23,6 +28,7 @@ type AdminResultsData = {
   progressItems: Progress[];
   certificates: Certificate[];
   assessmentResults: AssessmentResult[];
+  overdueAssignments: OverdueAssignment[];
   selectedAssessmentId: string;
 };
 
@@ -43,7 +49,11 @@ export function progressPercent(progress: Progress) {
   return progress.status === 'completed' ? 100 : (progress.score ?? 0);
 }
 
-export function downloadResultsCsv(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
+export function serializeCsv(rows: string[][]) {
+  return rows.map((row) => row.map((value) => `"${value.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+}
+
+export function buildProgressExportRows(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
   const header = [
     t('admin.results.col.learner', 'Learner'),
     t('admin.results.col.course', 'Course'),
@@ -56,9 +66,11 @@ export function downloadResultsCsv(courses: Course[], users: User[], progressIte
     `${progressPercent(progress)}%`,
     progress.score != null ? `${progress.score}%` : '',
   ]);
-  const lines = [header, ...rows]
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
+  return [header, ...rows];
+}
+
+export function downloadResultsCsv(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
+  const lines = serializeCsv(buildProgressExportRows(courses, users, progressItems, t));
 
   const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -88,9 +100,7 @@ export function buildAssessmentResultsExportRows(results: AssessmentResult[], us
 }
 
 export function downloadAssessmentResultsCsv(results: AssessmentResult[], users: User[], t: TFunction) {
-  const lines = buildAssessmentResultsExportRows(results, users, t)
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
+  const lines = serializeCsv(buildAssessmentResultsExportRows(results, users, t));
 
   const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -136,19 +146,20 @@ export function AdminResultsCertificatesPage() {
 
   const { state: loadState, reload: loadData } = useAsyncData<AdminResultsData>(
     async () => {
-      const [{ items: courses }, { items: users }, assessments, { items: progressItems }, { items: certificates }] = await Promise.all([
+      const [{ items: courses }, { items: users }, assessments, reports] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
         apiRequest<Assessment[]>('/assessments'),
-        apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
-        apiRequest<PaginatedResponse<Certificate>>('/certificates?pageSize=200'),
+        apiRequest<ReportsSummary>('/reports/summary'),
       ]);
+      const progressItems = reports.progress.map((item) => ({ ...item, courseId: item.course.id, userId: item.user.id }));
+      const certificates = reports.certificates.map((item) => ({ ...item, courseId: item.course.id, userId: item.user.id }));
       const selectedAssessmentId = assessmentId || assessments[0]?.id || '';
       const assessmentResults = selectedAssessmentId
         ? await apiRequest<AssessmentResult[]>(`/assessments/${encodeURIComponent(selectedAssessmentId)}/results`)
         : [];
 
-      return { courses, users, assessments, progressItems, certificates, assessmentResults, selectedAssessmentId };
+      return { courses, users, assessments, progressItems, certificates, overdueAssignments: reports.overdueAssignments, assessmentResults, selectedAssessmentId };
     },
     [assessmentId, t],
     {
@@ -268,14 +279,14 @@ export function AdminResultsCertificatesPage() {
             ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0), 0) / scored.length)
             : null;
         const issuedCertificates = loadState.data.certificates.filter((c) => c.status === 'issued').length;
-        const overdueCount = loadState.data.progressItems.filter((p) => p.status !== 'completed').length;
+        const overdueCount = loadState.data.overdueAssignments.length;
 
         return (
           <StatsGrid>
             <StatCard label={t('admin.results.stats.avgCompletion', 'Avg. completion')} value={`${avgCompletion}%`} />
             <StatCard label={t('admin.results.stats.avgScore', 'Avg. score')} value={avgScore != null ? `${avgScore}%` : '—'} />
             <StatCard label={t('admin.results.stats.certificates', 'Certificates issued')} value={issuedCertificates} />
-            <StatCard label={t('admin.results.stats.pending', 'In progress')} value={overdueCount} />
+            <StatCard label={t('admin.results.stats.overdue', 'Overdue assignments')} value={overdueCount} />
           </StatsGrid>
         );
       })()}
@@ -320,6 +331,35 @@ export function AdminResultsCertificatesPage() {
         keyExtractor={(p) => p.id}
         emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
       />
+
+      <section className="admin-results-reports">
+        <AdminCard>
+          <h2>{t('admin.results.certificatesReport', 'Issued certificates')}</h2>
+          <DataTable<Certificate>
+            columns={[
+              { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (item) => findUserLabel(loadState.data.users, item.userId) },
+              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => findCourseTitle(loadState.data.courses, item.courseId) },
+              { key: 'date', label: t('admin.results.col.date', 'Date'), render: (item) => formatNullableDate(item.issuedAt, '—') },
+            ] satisfies Column<Certificate>[]}
+            rows={loadState.data.certificates}
+            keyExtractor={(item) => item.id}
+            emptyMessage={t('admin.results.noCertificates', 'No certificates have been issued yet.')}
+          />
+        </AdminCard>
+        <AdminCard>
+          <h2>{t('admin.results.overdueReport', 'Overdue assignments')}</h2>
+          <DataTable<OverdueAssignment>
+            columns={[
+              { key: 'target', label: t('admin.results.col.learnerOrGroup', 'Learner or group'), render: (item) => item.user ? `${item.user.firstName} ${item.user.lastName}`.trim() || item.user.email : item.group?.name ?? '—' },
+              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => item.course.title },
+              { key: 'due', label: t('admin.results.col.dueDate', 'Due date'), render: (item) => formatNullableDate(item.dueAt, '—') },
+            ] satisfies Column<OverdueAssignment>[]}
+            rows={loadState.data.overdueAssignments}
+            keyExtractor={(item) => item.id}
+            emptyMessage={t('admin.results.noOverdue', 'There are no overdue assignments.')}
+          />
+        </AdminCard>
+      </section>
 
       <section className="admin-results-secondary">
         <AdminCard>
