@@ -178,32 +178,38 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders assessments happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      rows: [
-        {
-          assessment: {
-            id: 'assessment-1',
-            organizationId: 'org-1',
-            courseId: 'course-1',
-            lessonId: 'lesson-1',
-            title: 'MVP Quiz',
-            slug: 'mvp-quiz',
-            description: 'Check MVP understanding',
-            status: 'published',
-            passingScore: 70,
-            maxAttempts: 3,
-            availableAfterCourseCompletion: false,
-            createdAt: '2026-01-01T00:00:00.000Z',
-            updatedAt: '2026-01-01T00:00:00.000Z',
-          },
-          courseTitle: 'MVP Onboarding Course',
-          questionCount: 5,
-          attemptsUsed: 0,
-          bestPercentage: null,
-          completed: false,
+    // useState call order in LearnerAssessmentsPage: 1 query, 2 statusFilter, 3 courseFilter,
+    // then useAsyncData's internal loadState is call 4.
+    useStateAtCalls({
+      4: {
+        status: 'loaded',
+        data: {
+          rows: [
+            {
+              assessment: {
+                id: 'assessment-1',
+                organizationId: 'org-1',
+                courseId: 'course-1',
+                lessonId: 'lesson-1',
+                title: 'MVP Quiz',
+                slug: 'mvp-quiz',
+                description: 'Check MVP understanding',
+                status: 'published',
+                passingScore: 70,
+                maxAttempts: 3,
+                availableAfterCourseCompletion: false,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+              courseTitle: 'MVP Onboarding Course',
+              questionCount: 5,
+              attemptsUsed: 0,
+              bestPercentage: null,
+              completed: false,
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentsPage />);
@@ -222,8 +228,12 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders checklists happy path without crashing', () => {
-    useFirstCallReadyState({
+    // useState call order in LearnerChecklistsPage: 1 openInstanceId, then useAsyncData's
+    // internal loadState is call 2.
+    useStateAtCalls({
+      2: {
       status: 'loaded',
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -259,6 +269,8 @@ describe('learner page smoke rendering', () => {
           results: [],
         },
       ],
+      },
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
@@ -269,6 +281,7 @@ describe('learner page smoke rendering', () => {
   it('renders the checklist taking view (scale scoring, photo slot) without crashing', () => {
     const loaded = {
       status: 'loaded' as const,
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -312,9 +325,10 @@ describe('learner page smoke rendering', () => {
           ],
         },
       ],
+      },
     };
-    // Call order in LearnerChecklistsPage: 1 loadState, 2 openInstanceId.
-    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+    // useState call order in LearnerChecklistsPage: 1 openInstanceId, 2 useAsyncData's internal loadState.
+    useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
 
@@ -325,6 +339,7 @@ describe('learner page smoke rendering', () => {
   it('shows the photo attach prompt for a marked item and the mark-first hint for an unanswered one', () => {
     const loaded = {
       status: 'loaded' as const,
+      data: {
       instances: [
         {
           id: 'instance-1',
@@ -365,8 +380,9 @@ describe('learner page smoke rendering', () => {
           ],
         },
       ],
+      },
     };
-    useStateAtCalls({ 1: loaded, 2: 'instance-1' });
+    useStateAtCalls({ 1: 'instance-1', 2: loaded });
 
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
 
@@ -383,23 +399,29 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders certificates happy path without crashing', () => {
-    useReadyState({
-      status: 'loaded',
-      certificates: [
-        {
-          id: 'cert-1',
-          organizationId: 'org-1',
-          courseId: 'course-1',
-          userId: 'user-1',
-          assessmentAttemptId: null,
-          status: 'issued',
-          issuedAt: '2026-01-01T00:00:00.000Z',
-          revokedAt: null,
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-          course: { id: 'course-1', title: 'Safety Course' },
+    // useState call order in LearnerCertificatesPage: 1 statusFilter, 2 yearFilter, then
+    // useAsyncData's internal loadState is call 3.
+    useStateAtCalls({
+      3: {
+        status: 'loaded',
+        data: {
+          certificates: [
+            {
+              id: 'cert-1',
+              organizationId: 'org-1',
+              courseId: 'course-1',
+              userId: 'user-1',
+              assessmentAttemptId: null,
+              status: 'issued',
+              issuedAt: '2026-01-01T00:00:00.000Z',
+              revokedAt: null,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              course: { id: 'course-1', title: 'Safety Course' },
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<LearnerCertificatesPage />);
@@ -583,33 +605,36 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders assessment detail happy path without crashing', () => {
-    useReadyState({
+    // useAsyncData's internal loadState useState is the only (and first) useState call here.
+    useFirstCallReadyState({
       status: 'loaded',
-      assessment: {
-        id: 'assessment-1',
-        organizationId: 'org-1',
-        courseId: 'course-1',
-        lessonId: null,
-        title: 'Safety Knowledge Test',
-        slug: 'safety-knowledge-test',
-        description: null,
-        status: 'published',
-        passingScore: 70,
-        maxAttempts: 3,
-        availableAfterCourseCompletion: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-        course: { id: 'course-1', title: 'Workplace Safety' },
+      data: {
+        assessment: {
+          id: 'assessment-1',
+          organizationId: 'org-1',
+          courseId: 'course-1',
+          lessonId: null,
+          title: 'Safety Knowledge Test',
+          slug: 'safety-knowledge-test',
+          description: null,
+          status: 'published',
+          passingScore: 70,
+          maxAttempts: 3,
+          availableAfterCourseCompletion: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          course: { id: 'course-1', title: 'Workplace Safety' },
+        },
+        questionCount: 5,
+        attempts: [
+          {
+            id: 'attempt-1', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 8, maxScore: 10, percentage: 80, passed: true, startedAt: '2026-01-02T00:00:00.000Z', completedAt: '2026-01-02T00:10:00.000Z', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:10:00.000Z',
+          },
+          {
+            id: 'attempt-2', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 5, maxScore: 10, percentage: 50, passed: false, startedAt: '2026-01-01T00:00:00.000Z', completedAt: '2026-01-01T00:10:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:10:00.000Z',
+          },
+        ],
       },
-      questionCount: 5,
-      attempts: [
-        {
-          id: 'attempt-1', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 8, maxScore: 10, percentage: 80, passed: true, startedAt: '2026-01-02T00:00:00.000Z', completedAt: '2026-01-02T00:10:00.000Z', createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:10:00.000Z',
-        },
-        {
-          id: 'attempt-2', organizationId: 'org-1', assessmentId: 'assessment-1', userId: 'user-1', status: 'completed', score: 5, maxScore: 10, percentage: 50, passed: false, startedAt: '2026-01-01T00:00:00.000Z', completedAt: '2026-01-01T00:10:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:10:00.000Z',
-        },
-      ],
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentDetailPage assessmentId="assessment-1" />);
@@ -697,29 +722,31 @@ describe('learner page smoke rendering', () => {
   it('renders assessment review happy path without crashing', () => {
     const loadedResult = {
       status: 'loaded',
-      result: {
-        id: 'attempt-2',
-        organizationId: 'org-1',
-        assessmentId: 'assessment-1',
-        userId: 'user-1',
-        status: 'completed',
-        score: 5,
-        maxScore: 10,
-        percentage: 50,
-        passed: false,
-        startedAt: '2026-01-01T00:00:00.000Z',
-        completedAt: '2026-01-01T00:10:00.000Z',
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:10:00.000Z',
-        assessment: { id: 'assessment-1', title: 'Safety Knowledge Test', slug: 'safety-knowledge-test', passingScore: 70, passMessage: null, failMessage: null },
-        user: { id: 'user-1', email: 'learner@example.com', firstName: 'Ann', lastName: 'Smith' },
-        answers: [
-          {
-            id: 'answer-1', questionId: 'q-1', selectedOptionId: 'opt-2', selectedOptionIds: null, isCorrect: false, score: 0,
-            question: { id: 'q-1', title: 'What is the primary safety rule?', type: 'single_choice', points: 1, order: 1 },
-            selectedOption: { id: 'opt-2', text: 'Run when in doubt', imageUrl: null },
-          },
-        ],
+      data: {
+        result: {
+          id: 'attempt-2',
+          organizationId: 'org-1',
+          assessmentId: 'assessment-1',
+          userId: 'user-1',
+          status: 'completed',
+          score: 5,
+          maxScore: 10,
+          percentage: 50,
+          passed: false,
+          startedAt: '2026-01-01T00:00:00.000Z',
+          completedAt: '2026-01-01T00:10:00.000Z',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:10:00.000Z',
+          assessment: { id: 'assessment-1', title: 'Safety Knowledge Test', slug: 'safety-knowledge-test', passingScore: 70, passMessage: null, failMessage: null },
+          user: { id: 'user-1', email: 'learner@example.com', firstName: 'Ann', lastName: 'Smith' },
+          answers: [
+            {
+              id: 'answer-1', questionId: 'q-1', selectedOptionId: 'opt-2', selectedOptionIds: null, isCorrect: false, score: 0,
+              question: { id: 'q-1', title: 'What is the primary safety rule?', type: 'single_choice', points: 1, order: 1 },
+              selectedOption: { id: 'opt-2', text: 'Run when in doubt', imageUrl: null },
+            },
+          ],
+        },
       },
     };
 
@@ -779,7 +806,9 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders progress happy path without crashing', () => {
-    useReadyState({
+    // useState call order in LearnerProgressPage: 1 period, then useAsyncData's internal loadState.
+    useStateAtCalls({
+      2: {
       status: 'loaded',
       data: {
         period: 30,
@@ -811,6 +840,7 @@ describe('learner page smoke rendering', () => {
         recentActivity: [
           { type: 'lesson_completed', courseId: 'course-1', courseTitle: 'Workplace Safety', date: '2026-01-02T00:00:00.000Z' },
         ],
+      },
       },
     });
 

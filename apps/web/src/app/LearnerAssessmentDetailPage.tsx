@@ -1,31 +1,24 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAssessmentAttempts, listAssessmentQuestions } from '../shared/api/assessments.js';
-import { ApiClientError, AssessmentSummary, getAssessment } from '../shared/apiClient.js';
+import { AssessmentSummary, getAssessment } from '../shared/apiClient.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { getCourseHref } from '../shared/learnerRoutes.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type ReadableAssessmentSummary = AssessmentSummary & {
   courseTitle?: string | null;
   course?: { title?: string | null } | null;
 };
 
-type AssessmentDetailLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      assessment: ReadableAssessmentSummary;
-      questionCount?: number;
-      attempts?: AssessmentAttemptSummary[];
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type AssessmentDetailData = {
+  assessment: ReadableAssessmentSummary;
+  questionCount?: number;
+  attempts?: AssessmentAttemptSummary[];
+};
 
 const COLORS = {
   surface: '#ffffff',
@@ -45,54 +38,29 @@ function getCourseTitle(assessment: ReadableAssessmentSummary, fallback: string)
 
 export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<AssessmentDetailLoadState>({ status: 'idle' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<AssessmentDetailData>(
+    async () => {
+      const assessment = await getAssessment(assessmentId);
+      const [questions, attempts] = await Promise.all([
+        listAssessmentQuestions(assessmentId),
+        listAssessmentAttempts(assessmentId),
+      ]);
 
-    async function loadAssessment() {
-      setLoadState({ status: 'loading' });
-
-      try {
-        const assessment = await getAssessment(assessmentId);
-        const [questions, attempts] = await Promise.all([
-          listAssessmentQuestions(assessmentId),
-          listAssessmentAttempts(assessmentId),
-        ]);
-
-        if (isMounted) {
-          setLoadState({ status: 'loaded', assessment, questionCount: questions.length, attempts });
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('assessments.sessionExpired') });
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 404) {
-          setLoadState({ status: 'notFound', message: t('assessments.notFound') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('assessments.loadError') });
-      }
-    }
-
-    void loadAssessment();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [assessmentId, t]);
+      return { assessment, questionCount: questions.length, attempts };
+    },
+    [assessmentId, t],
+    {
+      unauthenticated: t('assessments.sessionExpired'),
+      notFound: t('assessments.notFound'),
+      error: t('assessments.loadError'),
+    },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const assessmentsAction = <a href="/learn/assessments">{t('assessments.navLink')}</a>;
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('assessments.loadingDetail')} variant="loading" />;
   }
 
@@ -113,10 +81,10 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
     );
   }
 
-  const { assessment } = loadState;
+  const { assessment } = loadState.data;
   const courseTitle = getCourseTitle(assessment, 'Course');
-  const questionCount = loadState.questionCount ?? 0;
-  const attempts = loadState.attempts ?? [];
+  const questionCount = loadState.data.questionCount ?? 0;
+  const attempts = loadState.data.attempts ?? [];
   const completedAttempts = attempts.filter((a) => a.status === 'completed');
   const bestPercentage = completedAttempts.reduce<number | null>(
     (best, a) => (best === null || a.percentage > best ? a.percentage : best),

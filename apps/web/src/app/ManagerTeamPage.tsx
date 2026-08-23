@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getManagerTeamSummary, type ManagerTeamMember, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
 import { Badge, PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; summary: ManagerTeamSummary }
-  | { status: 'error' };
+type ManagerTeamData = { summary: ManagerTeamSummary };
 
 type StatusFilter = 'all' | 'good' | 'risk';
 
@@ -18,30 +16,17 @@ function memberName(member: ManagerTeamMember) {
 
 export function ManagerTeamPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const summary = await getManagerTeamSummary();
-        if (isMounted) setState({ status: 'loaded', summary });
-      } catch {
-        if (isMounted) setState({ status: 'error' });
-      }
-    }
-
-    void load();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { state } = useAsyncData<ManagerTeamData>(
+    async () => ({ summary: await getManagerTeamSummary() }),
+    [t],
+    { unauthenticated: t('manager.team.loadError'), error: t('manager.team.loadError') },
+  );
 
   const filtered = useMemo(() => {
-    const members = state.status === 'loaded' ? state.summary.members : [];
+    const members = state.status === 'loaded' ? state.data.summary.members : [];
     const q = search.trim().toLowerCase();
     return members.filter((member) => {
       const matchesSearch = !q || memberName(member).toLowerCase().includes(q) || member.email.toLowerCase().includes(q);
@@ -58,7 +43,7 @@ export function ManagerTeamPage() {
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
     return (
       <ManagerPageLayout>
         <PageState message={t('manager.team.loadError')} variant="error" />

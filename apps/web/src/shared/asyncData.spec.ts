@@ -35,4 +35,15 @@ describe('toAsyncDataErrorState', () => {
   it('maps a non-Error rejection to the generic error status', () => {
     expect(toAsyncDataErrorState('boom', messages)).toEqual({ status: 'error', message: messages.error });
   });
+
+  it('maps a 404 ApiClientError to the notFound status when messages.notFound is set', () => {
+    const error = new ApiClientError('Not found', 404);
+    const withNotFound = { ...messages, notFound: 'This item was not found.' };
+    expect(toAsyncDataErrorState(error, withNotFound)).toEqual({ status: 'notFound', message: withNotFound.notFound });
+  });
+
+  it('maps a 404 ApiClientError to the generic error status when messages.notFound is not set', () => {
+    const error = new ApiClientError('Not found', 404);
+    expect(toAsyncDataErrorState(error, messages)).toEqual({ status: 'error', message: messages.error });
+  });
 });

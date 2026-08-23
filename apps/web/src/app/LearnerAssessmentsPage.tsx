@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAssessmentAttempts, listAssessmentQuestions, listAssessments } from '../shared/api/assessments.js';
 import { listCourses } from '../shared/api/courses.js';
-import { ApiClientError } from '../shared/apiClient.js';
 import type { AssessmentSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type AssessmentRow = {
   assessment: AssessmentSummary;
@@ -16,12 +16,7 @@ type AssessmentRow = {
   completed: boolean;
 };
 
-type AssessmentsLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; rows: AssessmentRow[] }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type LearnerAssessmentsData = { rows: AssessmentRow[] };
 
 const COLORS = {
   surface: '#ffffff',
@@ -45,67 +40,43 @@ type StatusFilter = 'all' | 'available' | 'completed';
 
 export function LearnerAssessmentsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<AssessmentsLoadState>({ status: 'idle' });
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<LearnerAssessmentsData>(
+    async () => {
+      const [assessments, coursesResult] = await Promise.all([listAssessments(), listCourses({ page: 1, pageSize: 100 })]);
+      const courseTitleById = new Map(coursesResult.items.map((course) => [course.id, course.title]));
 
-    async function loadAssessments() {
-      setLoadState({ status: 'loading' });
+      const rows = await Promise.all(
+        assessments.map(async (assessment): Promise<AssessmentRow> => {
+          const [questions, attempts] = await Promise.all([
+            listAssessmentQuestions(assessment.id),
+            listAssessmentAttempts(assessment.id),
+          ]);
+          const completedAttempts = attempts.filter((attempt) => attempt.status === 'completed');
+          const bestPercentage = completedAttempts.reduce<number | null>(
+            (best, attempt) => (best === null || attempt.percentage > best ? attempt.percentage : best),
+            null,
+          );
 
-      try {
-        const [assessments, coursesResult] = await Promise.all([listAssessments(), listCourses({ page: 1, pageSize: 100 })]);
-        const courseTitleById = new Map(coursesResult.items.map((course) => [course.id, course.title]));
+          return {
+            assessment,
+            courseTitle: courseTitleById.get(assessment.courseId) ?? '',
+            questionCount: questions.length,
+            attemptsUsed: attempts.length,
+            bestPercentage,
+            completed: completedAttempts.some((attempt) => attempt.passed),
+          };
+        }),
+      );
 
-        const rows = await Promise.all(
-          assessments.map(async (assessment): Promise<AssessmentRow> => {
-            const [questions, attempts] = await Promise.all([
-              listAssessmentQuestions(assessment.id),
-              listAssessmentAttempts(assessment.id),
-            ]);
-            const completedAttempts = attempts.filter((attempt) => attempt.status === 'completed');
-            const bestPercentage = completedAttempts.reduce<number | null>(
-              (best, attempt) => (best === null || attempt.percentage > best ? attempt.percentage : best),
-              null,
-            );
-
-            return {
-              assessment,
-              courseTitle: courseTitleById.get(assessment.courseId) ?? '',
-              questionCount: questions.length,
-              attemptsUsed: attempts.length,
-              bestPercentage,
-              completed: completedAttempts.some((attempt) => attempt.passed),
-            };
-          }),
-        );
-
-        if (isMounted) {
-          setLoadState({ status: 'loaded', rows });
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('assessments.sessionExpired') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('assessments.loadError') });
-      }
-    }
-
-    void loadAssessments();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [t]);
+      return { rows };
+    },
+    [t],
+    { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const learnerAction = <a href="/learn">{t('learner.navLink')}</a>;
@@ -113,7 +84,7 @@ export function LearnerAssessmentsPage() {
   const courseOptions = useMemo(() => {
     if (loadState.status !== 'loaded') return [];
     const seen = new Map<string, string>();
-    for (const row of loadState.rows) {
+    for (const row of loadState.data.rows) {
       if (!seen.has(row.assessment.courseId)) seen.set(row.assessment.courseId, row.courseTitle);
     }
     return [...seen.entries()];
@@ -122,7 +93,7 @@ export function LearnerAssessmentsPage() {
   const filteredRows = useMemo(() => {
     if (loadState.status !== 'loaded') return [];
     const q = query.trim().toLowerCase();
-    return loadState.rows.filter((row) => {
+    return loadState.data.rows.filter((row) => {
       const matchesQuery = !q || row.assessment.title.toLowerCase().includes(q);
       const matchesStatus =
         statusFilter === 'all' || (statusFilter === 'completed' ? row.completed : !row.completed);
@@ -131,7 +102,7 @@ export function LearnerAssessmentsPage() {
     });
   }, [loadState, query, statusFilter, courseFilter]);
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('assessments.loading')} variant="loading" />;
   }
 
@@ -141,13 +112,13 @@ export function LearnerAssessmentsPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <PageState title={t('assessments.title')} message={loadState.message} variant="error" action={learnerAction} />
     );
   }
 
-  const { rows } = loadState;
+  const { rows } = loadState.data;
   const availableCount = rows.filter((r) => !r.completed).length;
   const completedCount = rows.filter((r) => r.completed).length;
   const bestScores = rows.map((r) => r.bestPercentage).filter((v): v is number => v !== null);

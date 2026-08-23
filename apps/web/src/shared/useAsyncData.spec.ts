@@ -122,4 +122,19 @@ describe('useAsyncData', () => {
     expect(load).toHaveBeenCalledTimes(2);
     expect(setState).toHaveBeenLastCalledWith({ status: 'loaded', data: { items: [2] } });
   });
+
+  it('mutate() patches already-loaded data without touching other statuses', () => {
+    const { setState } = setup();
+    const load = vi.fn().mockResolvedValue({ items: [1] });
+
+    const { mutate } = useAsyncData<{ items: number[] }>(load, [], messages);
+    mutate((data) => ({ items: [...data.items, 2] }));
+
+    const updater = setState.mock.calls[setState.mock.calls.length - 1][0] as (
+      current: { status: string; data?: { items: number[] } },
+    ) => unknown;
+
+    expect(updater({ status: 'loaded', data: { items: [1] } })).toEqual({ status: 'loaded', data: { items: [1, 2] } });
+    expect(updater({ status: 'loading' })).toEqual({ status: 'loading' });
+  });
 });

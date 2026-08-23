@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError, CurrentUser, apiRequest, getCurrentUser } from '../shared/apiClient.js';
+import { CurrentUser, apiRequest, getCurrentUser } from '../shared/apiClient.js';
 import { listCourses } from '../shared/api/courses.js';
 import { listProgress } from '../shared/api/progress.js';
 import { listCertificates } from '../shared/api/certificates.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type AdminUserStatus = 'active' | 'invited' | 'suspended' | 'archived';
 
@@ -43,12 +43,7 @@ type DashboardStats = {
   activity: ActivityItem[];
 };
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'authenticated'; user: CurrentUser; stats: DashboardStats }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type AdminDashboardData = { user: CurrentUser; stats: DashboardStats };
 
 function getUserDisplayName(user: CurrentUser) {
   const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
@@ -136,44 +131,21 @@ function downloadDashboardReport(stats: DashboardStats, t: TFunction) {
 
 export function AdminDashboardPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<AdminDashboardData>(
+    async () => {
+      const user = await getCurrentUser();
+      const stats = await loadDashboardStats(t);
+      return { user, stats };
+    },
+    [t],
+    {
+      unauthenticated: t('admin.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.loadError', 'Unable to load admin dashboard. Try again later.'),
+    },
+  );
 
-    async function loadDashboard() {
-      setLoadState({ status: 'loading' });
-
-      try {
-        const user = await getCurrentUser();
-        const stats = await loadDashboardStats(t);
-
-        if (isMounted) {
-          setLoadState({ status: 'authenticated', user, stats });
-        }
-      } catch (error) {
-        if (!isMounted) return;
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({
-            status: 'unauthenticated',
-            message: t('admin.sessionExpired', 'Your session expired. Sign in again.'),
-          });
-          return;
-        }
-
-        setLoadState({
-          status: 'error',
-          message: t('admin.loadError', 'Unable to load admin dashboard. Try again later.'),
-        });
-      }
-    }
-
-    void loadDashboard();
-    return () => { isMounted = false; };
-  }, [t]);
-
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
         <p>{t('admin.loading', 'Loading admin dashboard...')}</p>
@@ -191,7 +163,7 @@ export function AdminDashboardPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main className="admin-state">
         <h1>{t('admin.title', 'Admin dashboard')}</h1>
@@ -200,7 +172,7 @@ export function AdminDashboardPage() {
     );
   }
 
-  const { user, stats } = loadState;
+  const { user, stats } = loadState.data;
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin dashboard'), href: '/admin', isCurrent: true },

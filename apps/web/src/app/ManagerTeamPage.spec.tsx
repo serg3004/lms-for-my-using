@@ -5,30 +5,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const loadedState = {
   status: 'loaded',
-  summary: {
-    membersCount: 2,
-    completionRate: 60,
-    dueThisWeekCount: 1,
-    overdueCount: 1,
-    avgTeamScore: 84,
-    upcomingDeadlines: [],
-    members: [
-      { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
-      { userId: 'user-2', firstName: 'Мария', lastName: 'Иванова', email: 'm@demo.com', activeCoursesCount: 3, completionPercent: 46, status: 'risk' },
-    ],
+  data: {
+    summary: {
+      membersCount: 2,
+      completionRate: 60,
+      dueThisWeekCount: 1,
+      overdueCount: 1,
+      avgTeamScore: 84,
+      upcomingDeadlines: [],
+      members: [
+        { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
+        { userId: 'user-2', firstName: 'Мария', lastName: 'Иванова', email: 'm@demo.com', activeCoursesCount: 3, completionPercent: 46, status: 'risk' },
+      ],
+    },
   },
 };
 
 const emptyState = {
   status: 'loaded',
-  summary: {
-    membersCount: 0,
-    completionRate: 0,
-    dueThisWeekCount: 0,
-    overdueCount: 0,
-    avgTeamScore: null,
-    upcomingDeadlines: [],
-    members: [],
+  data: {
+    summary: {
+      membersCount: 0,
+      completionRate: 0,
+      dueThisWeekCount: 0,
+      overdueCount: 0,
+      avgTeamScore: null,
+      upcomingDeadlines: [],
+      members: [],
+    },
   },
 };
 
@@ -55,11 +59,13 @@ afterEach(() => {
 });
 
 describe('ManagerTeamPage', () => {
+  // useState call order in ManagerTeamPage: 1 search, 2 statusFilter, then useAsyncData's
+  // internal loadState is call 3.
   it('renders the team table with progress and risk status', () => {
     reactMocks.useState
-      .mockReturnValueOnce([loadedState, vi.fn()])
       .mockReturnValueOnce(['', vi.fn()])
       .mockReturnValueOnce(['all', vi.fn()])
+      .mockReturnValueOnce([loadedState, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
 
     const html = renderToStaticMarkup(<ManagerTeamPage />);
@@ -74,9 +80,9 @@ describe('ManagerTeamPage', () => {
 
   it('renders an empty state when the team has no members', () => {
     reactMocks.useState
-      .mockReturnValueOnce([emptyState, vi.fn()])
       .mockReturnValueOnce(['', vi.fn()])
       .mockReturnValueOnce(['all', vi.fn()])
+      .mockReturnValueOnce([emptyState, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
 
     const html = renderToStaticMarkup(<ManagerTeamPage />);

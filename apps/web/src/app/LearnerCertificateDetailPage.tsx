@@ -53,7 +53,7 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <>
         <PageState title={t('certificates.detailTitle')} message={loadState.message} variant="error" action={certificatesAction} />

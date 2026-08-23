@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { Badge, Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
@@ -138,18 +139,12 @@ const DEFAULT_SCALE: ChecklistScaleLevel[] = [
   { level: 5, label: 'Отлично', points: 100 },
 ];
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; checklists: ChecklistSummary[]; currentUser: CurrentUser }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type AdminChecklistsData = { checklists: ChecklistSummary[]; currentUser: CurrentUser };
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
 export function AdminChecklistsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ChecklistStatus>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -168,31 +163,28 @@ export function AdminChecklistsPage() {
     scale: t('admin.checklists.scoring.scale', 'Custom scale'),
   };
 
-  const load = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-    try {
+  const { state: loadState, reload: load, mutate } = useAsyncData<AdminChecklistsData>(
+    async () => {
       const currentUser = await getCurrentUser();
       if (!currentUser) {
-        setLoadState({ status: 'unauthenticated', message: t('admin.checklists.sessionExpired', 'Your session has expired. Please sign in again.') });
-        return;
+        throw new ApiClientError('Unauthorized', 401);
       }
       const checklists = await listChecklists();
-      setLoadState({ status: 'loaded', checklists, currentUser });
-    } catch (error) {
-      setLoadState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.loadError', 'Unable to load checklists.') });
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+      return { checklists, currentUser };
+    },
+    [t],
+    {
+      unauthenticated: t('admin.checklists.sessionExpired', 'Your session has expired. Please sign in again.'),
+      error: t('admin.checklists.loadError', 'Unable to load checklists.'),
+    },
+  );
 
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
     const updated = await getChecklist(id);
-    setLoadState((prev) => (prev.status === 'loaded' ? { ...prev, checklists: prev.checklists.map((c) => (c.id === id ? updated : c)) } : prev));
-  }, []);
+    mutate((data) => ({ ...data, checklists: data.checklists.map((c) => (c.id === id ? updated : c)) }));
+  }, [mutate]);
 
   async function updateStatus(checklist: ChecklistSummary, status: ChecklistStatus) {
     setStatusError(null);
@@ -216,10 +208,10 @@ export function AdminChecklistsPage() {
     }
   }
 
-  if (loadState.status === 'loading' || loadState.status === 'idle') {
+  if (loadState.status === 'loading') {
     return <main className="admin-state"><PageState message={t('admin.checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
-  if (loadState.status === 'unauthenticated' || loadState.status === 'error') {
+  if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return <main className="admin-state"><PageState title={t('admin.checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
 
@@ -230,13 +222,13 @@ export function AdminChecklistsPage() {
   ];
 
   if (selectedId) {
-    const checklist = loadState.checklists.find((c) => c.id === selectedId);
+    const checklist = loadState.data.checklists.find((c) => c.id === selectedId);
     if (!checklist) {
       setSelectedId(null);
       return null;
     }
     return (
-      <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.currentUser}>
+      <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.data.currentUser}>
         <ChecklistBuilder
           checklist={checklist}
           statusLabels={statusLabels}
@@ -249,10 +241,10 @@ export function AdminChecklistsPage() {
     );
   }
 
-  const filtered = filterChecklists(loadState.checklists, search, statusFilter);
+  const filtered = filterChecklists(loadState.data.checklists, search, statusFilter);
 
   return (
-    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.currentUser}>
+    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.data.currentUser}>
       <AdminPageHeader
         eyebrow={t('admin.checklists.eyebrow', 'Knowledge control')}
         title={t('admin.checklists.title', 'Checklists')}
@@ -262,7 +254,7 @@ export function AdminChecklistsPage() {
             variant="primary"
             type="button"
             onClick={async () => {
-              const created = await createChecklist(loadState.currentUser.organizationId, {
+              const created = await createChecklist(loadState.data.currentUser.organizationId, {
                 title: t('admin.checklists.newChecklistTitle', 'New checklist'),
                 scoringMode: 'sum_points',
                 passThreshold: 80,

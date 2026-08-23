@@ -93,7 +93,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <PageState
         title={t('lessonDetail.title')}

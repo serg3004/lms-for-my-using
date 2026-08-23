@@ -62,7 +62,7 @@ export function LearnerCoursesPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return <PageState title={t('courses.title')} message={loadState.message} variant="error" />;
   }
 
