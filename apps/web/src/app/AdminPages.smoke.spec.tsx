@@ -180,16 +180,18 @@ describe('admin page smoke rendering', () => {
 
   it('renders dashboard authenticated state without crashing', () => {
     useFirstCallReadyState({
-      status: 'authenticated',
-      user: currentUser,
-      stats: {
-        usersTotal: 4,
-        coursesTotal: 2,
-        completionRate: 50,
-        certificatesTotal: 1,
-        pendingActivationCount: 1,
-        systemAvailable: true,
-        activity: [{ key: 'user-1', date: ts, message: 'New user added: Admin User' }],
+      status: 'loaded',
+      data: {
+        user: currentUser,
+        stats: {
+          usersTotal: 4,
+          coursesTotal: 2,
+          completionRate: 50,
+          certificatesTotal: 1,
+          pendingActivationCount: 1,
+          systemAvailable: true,
+          activity: [{ key: 'user-1', date: ts, message: 'New user added: Admin User' }],
+        },
       },
     });
 
