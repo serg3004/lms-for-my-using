@@ -1784,7 +1784,7 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 
 ---
 
-## PR 159 — Accessibility baseline 🔲
+## PR 159 — Accessibility baseline ✅
 
 **Проблема:** В проекте есть отдельные a11y элементы, но нет подтверждённого baseline по всему приложению: нет skip link, heading hierarchy не проверена, icon-only кнопки могут не иметь aria-label.
 
@@ -1809,6 +1809,8 @@ RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — пос
 - Loading/error states содержат `aria-live="polite"` или `role="alert"` — покрыто render тестом
 - `docs/A11Y_MANUAL_CHECKLIST.md` содержит список оставшихся manual проверок
 - lint, typecheck, tests, build — зелёные
+
+> **Факт:** skip navigation and main landmarks are present in every shared workspace layout; named tables and render tests cover the reusable UI baseline, while Playwright + axe checks all role workspaces, heading structure, keyboard focus, and WCAG AA violations. Remaining assistive-technology and visual checks are recorded in `docs/A11Y_MANUAL_CHECKLIST.md`.
 
 ---
 

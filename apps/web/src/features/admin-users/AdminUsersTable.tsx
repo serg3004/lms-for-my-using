@@ -24,5 +24,5 @@ export function AdminUsersTable({ users, onEdit, onToggleStatus }: { users: Admi
     { key: 'lastLogin', label: t('admin.users.col.lastLogin', 'Last login'), render: (u) => u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : t('admin.users.never', 'Never') },
     { key: 'actions', label: t('admin.users.col.actions', 'Actions'), render: (u) => <><button className="admin-btn admin-btn--sm admin-btn--secondary" onClick={() => onEdit(u)} type="button">{t('admin.users.edit', 'Edit')}</button>{' '}<button className={`admin-btn admin-btn--sm ${u.status === 'active' ? 'admin-btn--danger' : 'admin-btn--secondary'}`} onClick={() => onToggleStatus(u)} type="button">{u.status === 'active' ? t('admin.users.deactivate', 'Deactivate') : t('admin.users.activate', 'Activate')}</button></> },
   ];
-  return <DataTable columns={columns} rows={users} keyExtractor={(u) => u.id} emptyMessage={t('admin.users.empty', 'No users match the current filters.')} />;
+  return <DataTable label={t('admin.users.title', 'Users')} columns={columns} rows={users} keyExtractor={(u) => u.id} emptyMessage={t('admin.users.empty', 'No users match the current filters.')} />;
 }

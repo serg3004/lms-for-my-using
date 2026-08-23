@@ -292,6 +292,7 @@ export function AdminResultsCertificatesPage() {
       })()}
 
       <DataTable<Progress>
+        label={t('admin.results.progressReport', 'Learner progress')}
         columns={[
           {
             key: 'learner',
@@ -336,6 +337,7 @@ export function AdminResultsCertificatesPage() {
         <AdminCard>
           <h2>{t('admin.results.certificatesReport', 'Issued certificates')}</h2>
           <DataTable<Certificate>
+            label={t('admin.results.certificatesReport', 'Issued certificates')}
             columns={[
               { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (item) => findUserLabel(loadState.data.users, item.userId) },
               { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => findCourseTitle(loadState.data.courses, item.courseId) },
@@ -349,6 +351,7 @@ export function AdminResultsCertificatesPage() {
         <AdminCard>
           <h2>{t('admin.results.overdueReport', 'Overdue assignments')}</h2>
           <DataTable<OverdueAssignment>
+            label={t('admin.results.overdueReport', 'Overdue assignments')}
             columns={[
               { key: 'target', label: t('admin.results.col.learnerOrGroup', 'Learner or group'), render: (item) => item.user ? `${item.user.firstName} ${item.user.lastName}`.trim() || item.user.email : item.group?.name ?? '—' },
               { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => item.course.title },
@@ -439,6 +442,7 @@ export function AdminResultsCertificatesPage() {
                 </select>
               </label>
               <DataTable<AssessmentResult>
+                label={t('admin.results.assessmentReport', 'Assessment results')}
                 columns={[
                   { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.data.users, r.userId) },
                   { key: 'score', label: t('admin.results.col.score', 'Score'), render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },

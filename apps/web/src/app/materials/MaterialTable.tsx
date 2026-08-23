@@ -48,6 +48,7 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
   ];
   return (
     <DataTable
+      label={t('admin.materials.title', 'Materials')}
       columns={columns}
       rows={materials}
       keyExtractor={(m) => m.id}

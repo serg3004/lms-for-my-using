@@ -231,6 +231,7 @@ export function AdminAssessmentBuilderPage() {
     />
 
     <DataTable<Assessment>
+      label={t('admin.assessmentBuilder.title', 'Assessments')}
       columns={[
         { key: 'title', label: t('admin.assessmentBuilder.col.title', 'Title'), render: (a) => a.title },
         { key: 'questions', label: t('admin.assessmentBuilder.col.questions', 'Questions'), render: (a) => rowStats[a.id]?.questionsCount ?? '—' },

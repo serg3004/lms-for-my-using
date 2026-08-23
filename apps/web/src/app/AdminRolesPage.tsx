@@ -234,7 +234,7 @@ export function AdminRolesPage() {
           {loadState.data.memberships.length === 0 ? (
             <EmptyState message={t('admin.roles.empty', 'No role assignments found.')} />
           ) : (
-            <table>
+            <table aria-label={t('admin.roles.currentTitle', 'Current assignments')}>
               <thead>
                 <tr>
                   <th>{t('admin.roles.user', 'User')}</th>

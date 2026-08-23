@@ -78,7 +78,7 @@ export function ManagerTeamPage() {
       </div>
 
       <div className="admin-table-wrap">
-        <table>
+        <table aria-label={t('manager.team.title')}>
           <thead>
             <tr>
               <th>{t('manager.team.columnEmployee')}</th>

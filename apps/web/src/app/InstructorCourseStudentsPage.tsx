@@ -198,7 +198,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
 
       <p style={{ color: COLORS.muted }}>{t('instructor.courseStudents.totalStudents', { count: students.length })}</p>
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+      <table aria-label={t('instructor.courseStudents.title')} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
         <thead>
           <tr>
             <th style={{ textAlign: 'left', padding: '0.5rem' }}>{t('instructor.courseStudents.colName')}</th>

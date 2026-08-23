@@ -218,14 +218,14 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
             padding: '24px',
           }}
         >
-          <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('assessments.attemptsHistoryTitle')}</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <h2 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('assessments.attemptsHistoryTitle')}</h2>
+          <table aria-label={t('assessments.attemptsHistoryTitle')} style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', color: COLORS.muted, fontSize: '13px' }}>
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryDate')}</th>
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryScore')}</th>
                 <th style={{ padding: '8px 12px', fontWeight: 600 }}>{t('assessments.attemptsHistoryResult')}</th>
-                <th style={{ padding: '8px 12px', fontWeight: 600 }}></th>
+                <th aria-label={t('common.actions', 'Actions')} style={{ padding: '8px 12px', fontWeight: 600 }}></th>
               </tr>
             </thead>
             <tbody>

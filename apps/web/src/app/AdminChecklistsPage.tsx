@@ -290,6 +290,7 @@ export function AdminChecklistsPage() {
         }
       />
       <DataTable<ChecklistSummary>
+        label={t('admin.checklists.title', 'Checklists')}
         columns={[
           { key: 'title', label: t('admin.checklists.col.title', 'Title'), render: (c) => c.title },
           { key: 'items', label: t('admin.checklists.col.items', 'Items'), render: (c) => c.items.length },

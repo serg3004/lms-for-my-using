@@ -232,6 +232,7 @@ export function AdminAssignmentCompletionPage() {
       <AdminCard>
         <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
         <DataTable<Assignment>
+          label={t('admin.assignments.listTitle', 'Assignments')}
           columns={[
             { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
             { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
@@ -261,6 +262,7 @@ export function AdminAssignmentCompletionPage() {
       <AdminCard>
         <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
         <DataTable<Progress>
+          label={t('admin.assignments.progressListTitle', 'Course progress')}
           columns={[
             { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
             { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.data.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
