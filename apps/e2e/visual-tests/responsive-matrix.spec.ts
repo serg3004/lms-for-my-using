@@ -113,15 +113,10 @@ for (const width of widths) {
       if (width <= 375) await expectTouchTargets(page);
 
       const dialogFits = await page.evaluate(() => {
-        const dialog = document.createElement('dialog');
-        dialog.className = 'admin-dialog';
-        dialog.innerHTML = '<div class="admin-dialog__header"><h2>Responsive dialog</h2><button class="admin-dialog__close">×</button></div><form class="admin-form"><input aria-label="Dialog field"><button>Save</button></form>';
-        document.body.append(dialog);
-        dialog.showModal();
+        const dialog = document.querySelector('dialog.admin-user-dialog');
+        if (!dialog) return false;
         const rect = dialog.getBoundingClientRect();
-        const fits = rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
-        dialog.remove();
-        return fits;
+        return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
       });
       expect(dialogFits).toBe(true);
       await captureVisualBaseline(page, testInfo, `admin-users-${width}`);
