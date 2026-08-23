@@ -72,6 +72,61 @@ function paginated<T>(items: T[]) {
   return { items, page: 1, pageSize: 100, total: items.length };
 }
 
+// Mirrors apps/web/src/shared/api/types.ts -- every required field is included so a
+// Playwright network mock can't silently drift from what the frontend actually expects,
+// even though page.route() responses aren't type-checked against those types.
+function course(overrides: { id: string; title: string; status: string; slug?: string; category?: string | null; durationMinutes?: number | null }) {
+  return {
+    id: overrides.id,
+    organizationId: 'visual-org',
+    title: overrides.title,
+    slug: overrides.slug ?? overrides.id,
+    description: null,
+    category: overrides.category ?? null,
+    durationMinutes: overrides.durationMinutes ?? null,
+    status: overrides.status,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
+function assignment(overrides: { id: string; courseId: string; courseTitle: string; userId: string | null; groupId?: string | null; status: string; dueAt: string | null }) {
+  return {
+    id: overrides.id,
+    organizationId: 'visual-org',
+    courseId: overrides.courseId,
+    userId: overrides.userId,
+    groupId: overrides.groupId ?? null,
+    status: overrides.status,
+    dueAt: overrides.dueAt,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    course: { title: overrides.courseTitle },
+  };
+}
+
+function assessment(overrides: { id: string; courseId: string; title: string; status: string }) {
+  return {
+    id: overrides.id,
+    organizationId: 'visual-org',
+    courseId: overrides.courseId,
+    lessonId: null,
+    title: overrides.title,
+    slug: overrides.id,
+    description: null,
+    status: overrides.status,
+    passingScore: 80,
+    maxAttempts: 3,
+    timeLimitMinutes: null,
+    availableAfterCourseCompletion: false,
+    passMessage: null,
+    failMessage: null,
+    showCorrectAnswers: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+}
+
 async function installLearnerMocks(page: Page) {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
@@ -92,17 +147,19 @@ async function installLearnerMocks(page: Page) {
   }));
   await page.route('**/api/v1/courses?*', (route) => route.fulfill({
     json: paginated([
-      { id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
-      { id: 'course-2', organizationId: 'visual-org', title: 'Safety at work', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      course({ id: 'course-1', title: 'Onboarding basics', status: 'published' }),
+      course({ id: 'course-2', title: 'Safety at work', status: 'published' }),
+      course({ id: 'course-3', title: 'Fire safety refresher', status: 'published' }),
     ]),
   }));
   await page.route('**/api/v1/assignments?*', (route) => route.fulfill({
     json: paginated([
-      { id: 'assignment-1', organizationId: 'visual-org', courseId: 'course-1', userId: 'visual-learner', status: 'in_progress', dueAt: '2099-01-01T00:00:00.000Z', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', course: { title: 'Onboarding basics' } },
+      assignment({ id: 'assignment-1', courseId: 'course-1', courseTitle: 'Onboarding basics', userId: 'visual-learner', status: 'in_progress', dueAt: '2099-01-01T00:00:00.000Z' }),
+      assignment({ id: 'assignment-2', courseId: 'course-3', courseTitle: 'Fire safety refresher', userId: 'visual-learner', status: 'not_started', dueAt: '2099-02-01T00:00:00.000Z' }),
     ]),
   }));
   await page.route('**/api/v1/assessments', (route) => route.fulfill({
-    json: [{ id: 'assessment-1', organizationId: 'visual-org', courseId: 'course-1', title: 'Onboarding quiz', status: 'published', passThreshold: 80, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }],
+    json: [assessment({ id: 'assessment-1', courseId: 'course-1', title: 'Onboarding quiz', status: 'published' })],
   }));
   await page.route('**/api/v1/certificates?*', (route) => route.fulfill({ json: paginated([]) }));
   await page.route('**/api/v1/progress?*', (route) => route.fulfill({ json: paginated([]) }));
@@ -139,11 +196,15 @@ async function installManagerMocks(page: Page) {
       members: [
         { userId: 'visual-user-1', firstName: 'Responsive', lastName: 'One', email: 'one@example.invalid', activeCoursesCount: 2, completionPercent: 40, status: 'risk' },
         { userId: 'visual-user-2', firstName: 'Responsive', lastName: 'Two', email: 'two@example.invalid', activeCoursesCount: 1, completionPercent: 90, status: 'good' },
+        { userId: 'visual-user-3', firstName: 'Responsive', lastName: 'Three', email: 'three@example.invalid', activeCoursesCount: 3, completionPercent: 65, status: 'good' },
       ],
     },
   }));
   await page.route('**/api/v1/courses?*', (route) => route.fulfill({
-    json: paginated([{ id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' }]),
+    json: paginated([
+      course({ id: 'course-1', title: 'Onboarding basics', status: 'published' }),
+      course({ id: 'course-2', title: 'Safety at work', status: 'published' }),
+    ]),
   }));
 }
 
@@ -167,8 +228,9 @@ async function installInstructorMocks(page: Page) {
   }));
   await page.route('**/api/v1/courses?*', (route) => route.fulfill({
     json: paginated([
-      { id: 'course-1', organizationId: 'visual-org', title: 'Onboarding basics', description: null, status: 'published', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
-      { id: 'course-2', organizationId: 'visual-org', title: 'Draft course', description: null, status: 'draft', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' },
+      course({ id: 'course-1', title: 'Onboarding basics', status: 'published' }),
+      course({ id: 'course-2', title: 'Draft course', status: 'draft' }),
+      course({ id: 'course-3', title: 'Safety at work', status: 'published' }),
     ]),
   }));
   await page.route('**/api/v1/progress?*', (route) => route.fulfill({ json: paginated([]) }));
