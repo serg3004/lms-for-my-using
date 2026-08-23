@@ -1,4 +1,4 @@
-import { handleStartupError, toStartupErrorDetails } from './startup';
+import { handleStartupError, toSafeError, toStartupErrorDetails } from './startup';
 
 describe('startup error handling', () => {
   const originalExitCode = process.exitCode;
@@ -23,6 +23,16 @@ describe('startup error handling', () => {
       message: '[redacted]',
       stack: ['[redacted]', 'at bootstrap'].join('\n'),
     });
+  });
+
+  it('creates an Error safe to send to external observability services', () => {
+    const error = new Error('DATABASE_URL=postgres://admin:password@database.example/lms');
+
+    const safeError = toSafeError(error);
+
+    expect(safeError).toBeInstanceOf(Error);
+    expect(safeError.message).toBe('[redacted]');
+    expect(safeError.stack).not.toContain('postgres://');
   });
 
   it('logs startup failures and marks the process as failed', () => {

@@ -9,6 +9,7 @@ import {
 import { ZodError } from 'zod';
 
 import { createApiErrorResponse, type ApiErrorDetail, type ApiErrorResponse } from '../api-response.js';
+import { toSafeError, toStartupErrorDetails } from '../startup.js';
 
 type HttpRequest = {
   url?: string;
@@ -174,6 +175,8 @@ function isPrismaKnownRequestError(exception: unknown): exception is PrismaLikeE
 export class ApiExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(ApiExceptionFilter.name);
 
+  constructor(private readonly captureException?: (error: Error) => void) {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const http = host.switchToHttp();
     const response = http.getResponse<HttpResponse>();
@@ -181,10 +184,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const normalizedError = this.normalizeException(exception);
 
     if (normalizedError.statusCode >= 500) {
+      const safeError = toSafeError(exception);
       this.logger.error(
-        { err: exception instanceof Error ? { message: exception.message, name: exception.name } : String(exception) },
+        { err: toStartupErrorDetails(safeError) },
         `${normalizedError.code}: ${normalizedError.message}`,
       );
+      this.captureException?.(safeError);
     }
 
     response.status(normalizedError.statusCode).json(

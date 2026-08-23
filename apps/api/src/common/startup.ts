@@ -17,6 +17,14 @@ function redactSensitiveText(text: string): string {
     .join('\n');
 }
 
+export function toSafeError(error: unknown): Error {
+  const details = toStartupErrorDetails(error);
+  const safeError = new Error(details.message);
+  safeError.name = details.name;
+  if (details.stack) safeError.stack = details.stack;
+  return safeError;
+}
+
 export function toStartupErrorDetails(error: unknown): StartupErrorDetails {
   if (error instanceof Error) {
     return {
