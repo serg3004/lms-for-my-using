@@ -386,7 +386,7 @@ export { listCourseMaterials } from './api/materials.js';
 export { listProgress } from './api/progress.js';
 export { createAssignment, getAssignment, getAssignmentPath, listAssignments } from './api/assignments.js';
 export { createAssessmentAttempt, getAssessment, getAssessmentPath, getAttemptResult, listAssessments, startAssessmentAttempt } from './api/assessments.js';
-export { getCertificate, getCertificatePath, issueCertificate, listCertificates } from './api/certificates.js';
+export { getCertificate, getCertificatePath, getCertificatePdfPath, issueCertificate, listCertificates } from './api/certificates.js';
 export { getOrganization } from './api/organizations.js';
 export { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './api/notifications.js';
 export { listMemberships } from './api/memberships.js';

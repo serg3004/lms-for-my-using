@@ -8,6 +8,10 @@ export function getCertificatePath(certificateId: string) {
   return `${certificatesPath}/${encodeURIComponent(certificateId)}`;
 }
 
+export function getCertificatePdfPath(certificateId: string) {
+  return `/api/v1${getCertificatePath(certificateId)}/pdf`;
+}
+
 export function listCertificates(params?: { page?: number; pageSize?: number }) {
   const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
   return apiRequest<PaginatedResponse<CertificateSummary>>(`${certificatesPath}${qs}`);

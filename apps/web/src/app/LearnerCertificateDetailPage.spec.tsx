@@ -54,7 +54,7 @@ describe('LearnerCertificateDetailPage', () => {
 
     expect(html).toContain('Organization');
     expect(html).toContain('Course');
-    expect(html).not.toContain('123e4567-e89b-12d3-a456-426614174000');
+    expect(html).toContain('href="/api/v1/certificates/123e4567-e89b-12d3-a456-426614174000/pdf"');
     expect(html).not.toContain('223e4567-e89b-12d3-a456-426614174000');
     expect(html).not.toContain('323e4567-e89b-12d3-a456-426614174000');
     expect(html).not.toContain('423e4567-e89b-12d3-a456-426614174000');

@@ -5,6 +5,7 @@ import type { UserRole } from '../auth/public.js';
 import { isManagerTeamScoped, ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import type { IssueCertificateInput } from './certificates.schemas.js';
+import { renderCertificatePdf } from './certificate-pdf.js';
 
 const privilegedCertificateRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 
@@ -124,6 +125,11 @@ export class CertificatesService {
     await this.ensureCertificateAccess(certificate.userId, actor.id, organizationId, actor);
 
     return certificate;
+  }
+
+  async getCertificatePdf(certificateId: string, actor: TeamScopeActor) {
+    const certificate = await this.getCertificate(certificateId, actor);
+    return renderCertificatePdf(certificate);
   }
 
   async issueCertificate(input: IssueCertificateInput, actorOrId: TeamScopeActor | string) {

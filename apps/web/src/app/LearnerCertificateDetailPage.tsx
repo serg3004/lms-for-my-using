@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getCertificate } from '../shared/apiClient.js';
+import { getCertificate, getCertificatePdfPath } from '../shared/apiClient.js';
 import { getCurrentUser } from '../shared/api/auth.js';
 import type { CurrentUser } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
@@ -165,9 +165,9 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
           <section style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
             <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: '#172033' }}>{t('certificates.actionsTitle')}</h3>
             <div style={{ display: 'grid', gap: '10px' }}>
-              <button className="learner-btn learner-btn--primary" type="button" onClick={() => window.print()}>
+              <a className="learner-btn learner-btn--primary" href={getCertificatePdfPath(certificate.id)} download>
                 {t('certificates.downloadPdf')}
-              </button>
+              </a>
               <button className="learner-btn learner-btn--primary" type="button" onClick={() => window.print()}>
                 {t('certificates.printBtn')}
               </button>
