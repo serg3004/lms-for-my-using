@@ -533,30 +533,37 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders assignment completion happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
-      users: [
-        {
-          id: 'user-1',
-          email: 'learner@demo.com',
-          firstName: 'Learner',
-          lastName: 'User',
-          middleName: null,
-          status: 'active',
+    // useState call order in AdminAssignmentCompletionPage: 9 form/dialog states, then
+    // useAsyncData's internal loadState useState is call 10.
+    useStateAtCalls({
+      10: {
+        status: 'loaded',
+        data: {
+          courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
+          users: [
+            {
+              id: 'user-1',
+              email: 'learner@demo.com',
+              firstName: 'Learner',
+              lastName: 'User',
+              middleName: null,
+              status: 'active',
+            },
+          ],
+          groups: [],
+          assignments: [
+            {
+              id: 'assignment-1',
+              courseId: 'course-1',
+              userId: 'user-1',
+              groupId: null,
+              status: 'assigned',
+              dueAt: null,
+            },
+          ],
+          progressItems: [],
         },
-      ],
-      assignments: [
-        {
-          id: 'assignment-1',
-          courseId: 'course-1',
-          userId: 'user-1',
-          groupId: null,
-          status: 'assigned',
-          dueAt: null,
-        },
-      ],
-      progressItems: [],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);

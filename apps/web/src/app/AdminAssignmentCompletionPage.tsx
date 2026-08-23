@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -6,6 +6,7 @@ import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavIt
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   ASSIGNMENT_STATUSES,
   computeAssignmentStats,
@@ -21,14 +22,10 @@ import {
   type User,
 } from './admin-assignments/model.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; courses: Course[]; users: User[]; groups: Group[]; assignments: Assignment[]; progressItems: Progress[] }
-  | { status: 'error'; message: string };
+type AdminAssignmentCompletionData = { courses: Course[]; users: User[]; groups: Group[]; assignments: Assignment[]; progressItems: Progress[] };
 
 export function AdminAssignmentCompletionPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [courseId, setCourseId] = useState('');
   const [assignTo, setAssignTo] = useState<'user' | 'group'>('user');
   const [userId, setUserId] = useState('');
@@ -53,8 +50,10 @@ export function AdminAssignmentCompletionPage() {
     cancelled: t('admin.assignments.status.cancelled', 'Cancelled'),
   };
 
-  const loadData = useCallback(async (nextCourseId?: string) => {
-    try {
+  const pendingCourseIdRef = useRef<string | undefined>(undefined);
+
+  const { state: loadState, reload: loadData, mutate } = useAsyncData<AdminAssignmentCompletionData>(
+    async () => {
       const [{ items: courses }, { items: users }, groups, { items: assignments }, { items: progressItems }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
@@ -62,27 +61,23 @@ export function AdminAssignmentCompletionPage() {
         apiRequest<PaginatedResponse<Assignment>>('/assignments?pageSize=200'),
         apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
       ]);
-      const selectedCourseId = nextCourseId ?? (courseId || courses[0]?.id || '');
+      const selectedCourseId = pendingCourseIdRef.current ?? (courseId || courses[0]?.id || '');
+      pendingCourseIdRef.current = undefined;
 
       setCourseId(selectedCourseId);
       setUserId((current) => current || users[0]?.id || '');
       setGroupId((current) => current || groups[0]?.id || '');
-      setLoadState({ status: 'loaded', courses, users, groups, assignments, progressItems });
-    } catch (error) {
-      const message =
-        error instanceof ApiClientError && error.status === 401
-          ? t('admin.assignments.sessionExpired', 'Your session expired. Sign in again.')
-          : t('admin.assignments.loadError', 'Unable to load assignment management data.');
-      setLoadState({ status: 'error', message });
-    }
-  }, [courseId, t]);
-
-  useEffect(() => {
-    void loadData();
-  }, [loadData]);
+      return { courses, users, groups, assignments, progressItems };
+    },
+    [t],
+    {
+      unauthenticated: t('admin.assignments.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.assignments.loadError', 'Unable to load assignment management data.'),
+    },
+  );
 
   const selectedCourse = useMemo(() => {
-    return loadState.status === 'loaded' ? loadState.courses.find((c) => c.id === courseId) : undefined;
+    return loadState.status === 'loaded' ? loadState.data.courses.find((c) => c.id === courseId) : undefined;
   }, [courseId, loadState]);
 
   function openAssignDialog() {
@@ -119,7 +114,7 @@ export function AdminAssignmentCompletionPage() {
       setDueAt('');
       setSubmitState({ status: 'idle' });
       assignDialogRef.current?.close();
-      await loadData(selectedCourse.id);
+      await loadData();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
@@ -135,13 +130,9 @@ export function AdminAssignmentCompletionPage() {
         method: 'PATCH',
         body: JSON.stringify({ status: newStatus }),
       });
-      setLoadState((prev) =>
-        prev.status === 'loaded'
-          ? { ...prev, assignments: prev.assignments.map((a) => (a.id === assignmentId ? updated : a)) }
-          : prev,
-      );
+      mutate((data) => ({ ...data, assignments: data.assignments.map((a) => (a.id === assignmentId ? updated : a)) }));
     } catch {
-      await loadData(courseId);
+      await loadData();
     }
   }
 
@@ -177,7 +168,7 @@ export function AdminAssignmentCompletionPage() {
       setScore('');
       setSubmitState({ status: 'idle' });
       progressDialogRef.current?.close();
-      await loadData(selectedCourse.id);
+      await loadData();
     } catch {
       setSubmitState({
         status: 'error',
@@ -194,7 +185,7 @@ export function AdminAssignmentCompletionPage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.assignments.title', 'Assignments')} message={loadState.message} variant="error" />
@@ -202,7 +193,7 @@ export function AdminAssignmentCompletionPage() {
     );
   }
 
-  const stats = computeAssignmentStats(loadState.assignments, Date.now());
+  const stats = computeAssignmentStats(loadState.data.assignments, Date.now());
 
   return (
     <AdminPageLayout
@@ -220,7 +211,7 @@ export function AdminAssignmentCompletionPage() {
               variant="primary"
               type="button"
               onClick={openAssignDialog}
-              disabled={loadState.courses.length === 0 || loadState.users.length === 0}
+              disabled={loadState.data.courses.length === 0 || loadState.data.users.length === 0}
             >
               + {t('admin.assignments.create', 'Assign course')}
             </Button>
@@ -242,10 +233,10 @@ export function AdminAssignmentCompletionPage() {
         <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
         <DataTable<Assignment>
           columns={[
-            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.courses, a.courseId) },
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
             { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
-              ? findUserLabel(loadState.users, a.userId, a.userId)
-              : findGroupLabel(loadState.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
+              ? findUserLabel(loadState.data.users, a.userId, a.userId)
+              : findGroupLabel(loadState.data.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
             { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
               ? new Date(a.dueAt).toLocaleDateString()
               : t('admin.assignments.noDueDate', '—') },
@@ -261,7 +252,7 @@ export function AdminAssignmentCompletionPage() {
               </select>
             )},
           ] satisfies Column<Assignment>[]}
-          rows={loadState.assignments}
+          rows={loadState.data.assignments}
           keyExtractor={(a) => a.id}
           emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
         />
@@ -271,8 +262,8 @@ export function AdminAssignmentCompletionPage() {
         <h2>{t('admin.assignments.progressListTitle', 'Course progress')}</h2>
         <DataTable<Progress>
           columns={[
-            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.courses, p.courseId) },
-            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
+            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.data.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
             { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (p) => (
               p.status === 'completed'
                 ? t('admin.assignments.completed', 'Completed')
@@ -280,7 +271,7 @@ export function AdminAssignmentCompletionPage() {
             )},
             { key: 'score', label: t('admin.assignments.col.score', 'Score'), render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
           ] satisfies Column<Progress>[]}
-          rows={loadState.progressItems}
+          rows={loadState.data.progressItems}
           keyExtractor={(p) => p.id}
           emptyMessage={t('admin.assignments.progressEmpty', 'No course progress found.')}
         />
@@ -291,7 +282,7 @@ export function AdminAssignmentCompletionPage() {
           <h2>{t('admin.assignments.createTitle', 'Assign course')}</h2>
           <button className="admin-dialog__close" type="button" aria-label={t('admin.assignments.close', 'Close')} onClick={() => assignDialogRef.current?.close()}>×</button>
         </header>
-        {loadState.courses.length === 0 || loadState.users.length === 0 ? (
+        {loadState.data.courses.length === 0 || loadState.data.users.length === 0 ? (
           <EmptyState
             message={t(
               'admin.assignments.noData',
@@ -302,7 +293,7 @@ export function AdminAssignmentCompletionPage() {
           <form className="admin-form" onSubmit={handleCreateAssignment}>
             <FormField id="assign-create-course" label={t('admin.assignments.course', 'Course')}>
               <select id="assign-create-course" value={courseId} onChange={(event) => setCourseId(event.target.value)}>
-                {loadState.courses.map((course) => (
+                {loadState.data.courses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.title}
                   </option>
@@ -318,7 +309,7 @@ export function AdminAssignmentCompletionPage() {
             {assignTo === 'user' ? (
               <FormField id="assign-create-user" label={t('admin.assignments.learner', 'Learner')}>
                 <select id="assign-create-user" value={userId} onChange={(event) => setUserId(event.target.value)}>
-                  {loadState.users.map((user) => (
+                  {loadState.data.users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {getUserLabel(user)}
                     </option>
@@ -327,13 +318,13 @@ export function AdminAssignmentCompletionPage() {
               </FormField>
             ) : (
               <FormField id="assign-create-group" label={t('admin.assignments.group', 'Group')}>
-                {loadState.groups.length === 0 ? (
+                {loadState.data.groups.length === 0 ? (
                   <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
                     {t('admin.assignments.noGroups', 'No groups found. Create a group first.')}
                   </p>
                 ) : (
                   <select id="assign-create-group" value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-                    {loadState.groups.map((group) => (
+                    {loadState.data.groups.map((group) => (
                       <option key={group.id} value={group.id}>
                         {group.name}
                       </option>
