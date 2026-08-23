@@ -110,8 +110,11 @@ test('learner evidence is detected and opened by instructor before approval', as
     await login(learnerPage, 'learner');
     await learnerPage.goto('/learn/checklists');
     await learnerPage.getByText('Photo review E2E').click();
-    await learnerPage.getByLabel('Done').check();
-    await learnerPage.locator('input[type="file"]').setInputFiles({
+    await learnerPage.locator('input[type="checkbox"]').check();
+
+    const fileInput = learnerPage.locator('input[type="file"]');
+    await expect(fileInput).toBeEnabled();
+    await fileInput.setInputFiles({
       name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('evidence'),
     });
     await expect(learnerPage.getByText('evidence.png')).toBeVisible();
@@ -139,11 +142,14 @@ test('learner evidence is detected and opened by instructor before approval', as
       await instructorPage.getByText('Photo review E2E').click();
       await expect(instructorPage.getByText('evidence.png')).toBeVisible();
       await expect(instructorPage.getByText('photo missing', { exact: false })).toHaveCount(0);
-      await instructorPage.getByRole('button', { name: 'Open photo' }).click();
+
+      const evidenceRow = instructorPage.getByText('evidence.png').locator('..');
+      await evidenceRow.getByRole('button').click();
       await expect(instructorPage.getByRole('alert')).toBeVisible();
-      await instructorPage.getByRole('button', { name: 'Retry photo' }).click();
+      await evidenceRow.getByRole('button').click();
       await expect(instructorPage.getByRole('img', { name: 'evidence.png' })).toBeVisible();
-      await instructorPage.getByRole('button', { name: 'Approve' }).click();
+
+      await instructorPage.locator('button').filter({ hasText: '✓' }).click();
     } finally {
       await close(instructorContext);
     }

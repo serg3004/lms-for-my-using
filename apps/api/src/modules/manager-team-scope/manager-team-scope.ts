@@ -21,7 +21,19 @@ export class ManagerTeamScope {
       groupMemberships: {
         some: {
           organizationId: actor.organizationId,
-          group: { managers: { some: { managerId: actor.id, organizationId: actor.organizationId } } },
+          deletedAt: null,
+          group: {
+            organizationId: actor.organizationId,
+            status: 'active',
+            deletedAt: null,
+            managers: {
+              some: {
+                managerId: actor.id,
+                organizationId: actor.organizationId,
+                deletedAt: null,
+              },
+            },
+          },
         },
       },
     };
@@ -29,7 +41,18 @@ export class ManagerTeamScope {
 
   group(actor: TeamScopeActor) {
     if (!isManagerTeamScoped(actor)) return {};
-    return { managers: { some: { managerId: actor.id, organizationId: actor.organizationId } } };
+    return {
+      organizationId: actor.organizationId,
+      status: 'active',
+      deletedAt: null,
+      managers: {
+        some: {
+          managerId: actor.id,
+          organizationId: actor.organizationId,
+          deletedAt: null,
+        },
+      },
+    };
   }
 
   assignment(actor: TeamScopeActor) {
