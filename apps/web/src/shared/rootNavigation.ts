@@ -33,6 +33,12 @@ const instructorNavigationItem: RootNavigationItem = {
   href: '/instructor',
 };
 
+const mentorNavigationItem: RootNavigationItem = {
+  labelKey: 'mentor.navLink',
+  fallbackLabel: 'Mentor',
+  href: '/mentor',
+};
+
 export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null): RootNavigationItem[] {
   if (!user) {
     return [{ labelKey: 'login.navLink', href: '/login' }];
@@ -46,6 +52,9 @@ export function getRootNavigationItems(user: Pick<CurrentUser, 'roles'> | null):
   }
   if (user.roles.includes('manager')) {
     return [managerNavigationItem, ...learnerNavigationItems];
+  }
+  if (user.roles.includes('mentor')) {
+    return [mentorNavigationItem, ...learnerNavigationItems];
   }
   return learnerNavigationItems;
 }

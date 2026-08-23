@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +9,8 @@ import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+
+type ChecklistReviewsLayout = ComponentType<{ children: ReactNode; firstName?: string; lastName?: string }>;
 
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
   return item.photoRequired && !result.photoUrl;
@@ -29,7 +31,7 @@ const COLORS = {
 
 type InstructorChecklistReviewsData = { instances: ChecklistInstanceSummary[]; firstName?: string; lastName?: string };
 
-export function InstructorChecklistReviewsPage() {
+export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }: { Layout?: ChecklistReviewsLayout } = {}) {
   const { t } = useTranslation();
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -47,35 +49,35 @@ export function InstructorChecklistReviewsPage() {
 
   if (loadState.status === 'loading') {
     return (
-      <InstructorPageLayout>
+      <Layout>
         <PageState message={t('checklistReview.loading', 'Loading pending reviews...')} variant="loading" />
-      </InstructorPageLayout>
+      </Layout>
     );
   }
   if (loadState.status === 'unauthenticated') {
     return (
-      <InstructorPageLayout>
+      <Layout>
         <PageState
           title={t('checklistReview.title', 'Checklist review')}
           message={loadState.message}
           variant="error"
           action={<a href="/login">{t('login.navLink')}</a>}
         />
-      </InstructorPageLayout>
+      </Layout>
     );
   }
   if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
-      <InstructorPageLayout>
+      <Layout>
         <PageState title={t('checklistReview.title', 'Checklist review')} message={loadState.message} variant="error" />
-      </InstructorPageLayout>
+      </Layout>
     );
   }
 
   const open = openId ? loadState.data.instances.find((i) => i.id === openId) : null;
 
   return (
-    <InstructorPageLayout firstName={loadState.data.firstName} lastName={loadState.data.lastName}>
+    <Layout firstName={loadState.data.firstName} lastName={loadState.data.lastName}>
       <div style={{ padding: '24px 0', maxWidth: 860 }}>
         <h1 style={{ color: COLORS.text }}>{t('checklistReview.title', 'Checklist review')}</h1>
         <p style={{ color: COLORS.muted }}>{t('checklistReview.subtitle', 'Checklists submitted by learners that are waiting for your confirmation.')}</p>
@@ -104,7 +106,7 @@ export function InstructorChecklistReviewsPage() {
           </ul>
         )}
       </div>
-    </InstructorPageLayout>
+    </Layout>
   );
 }
 

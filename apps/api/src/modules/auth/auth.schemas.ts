@@ -10,7 +10,7 @@ const strongPasswordSchema = z
   .regex(/[0-9]/, 'Password must contain a number')
   .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
 
-export const userRoleSchema: z.ZodType<UserRole> = z.enum(['learner', 'instructor', 'manager', 'admin']);
+export const userRoleSchema: z.ZodType<UserRole> = z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']);
 
 const organizationLoginSchema = z
   .string()

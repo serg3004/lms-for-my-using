@@ -491,12 +491,14 @@
       "options": {
         "admin": "Administrator",
         "instructor": "Instructor",
+        "mentor": "Mentor",
         "manager": "Manager",
         "learner": "Learner"
       },
       "descriptions": {
         "admin": "Full system access.",
         "instructor": "Courses and learners.",
+        "mentor": "Reviews checklist submissions.",
         "manager": "Team and results.",
         "learner": "Learning and certificates."
       }
@@ -1406,6 +1408,9 @@
       "empty": "No students with progress in this course"
     },
     "navChecklists": "Checklists"
+  },
+  "mentor": {
+    "navLink": "Mentor"
   },
   "accountSwitcher": {
     "button": "Switch account"
