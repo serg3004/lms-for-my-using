@@ -34,6 +34,7 @@ export class ManagerService {
         overdueCount: 0,
         avgTeamScore: null,
         upcomingDeadlines: [],
+        overdueAssignments: [],
         members: [],
       };
     }
@@ -56,6 +57,7 @@ export class ManagerService {
       this.prisma.assignment.findMany({
         where: { organizationId, userId: { in: memberIds }, deletedAt: null },
         select: {
+          id: true,
           userId: true,
           status: true,
           dueAt: true,
@@ -93,6 +95,7 @@ export class ManagerService {
     let overdueCount = 0;
     let dueThisWeekCount = 0;
     const upcomingDeadlines: { courseTitle: string; userId: string; dueAt: string }[] = [];
+    const overdueAssignments: { assignmentId: string; courseTitle: string; userId: string; dueAt: string }[] = [];
 
     for (const assignment of assignmentRows) {
       if (assignment.status === 'completed' || !assignment.dueAt || !assignment.userId) continue;
@@ -100,6 +103,12 @@ export class ManagerService {
       if (assignment.dueAt < now) {
         overdueCount += 1;
         overdueByUser.set(assignment.userId, (overdueByUser.get(assignment.userId) ?? 0) + 1);
+        overdueAssignments.push({
+          assignmentId: assignment.id,
+          courseTitle: assignment.course.title,
+          userId: assignment.userId,
+          dueAt: assignment.dueAt.toISOString(),
+        });
       } else if (assignment.dueAt <= dueSoonAt) {
         dueThisWeekCount += 1;
         dueThisWeekByUser.set(assignment.userId, (dueThisWeekByUser.get(assignment.userId) ?? 0) + 1);
@@ -107,6 +116,7 @@ export class ManagerService {
       }
     }
     upcomingDeadlines.sort((a, b) => (a.dueAt < b.dueAt ? -1 : 1));
+    overdueAssignments.sort((a, b) => (a.dueAt < b.dueAt ? -1 : 1));
 
     let teamCompletedLessons = 0;
     let teamTotalLessons = 0;
@@ -150,6 +160,7 @@ export class ManagerService {
       overdueCount,
       avgTeamScore,
       upcomingDeadlines: upcomingDeadlines.slice(0, UPCOMING_DEADLINES_LIMIT),
+      overdueAssignments,
       members,
     };
   }

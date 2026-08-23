@@ -1404,7 +1404,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 144 — Manager workspace 🔲
+## PR 144 — Manager workspace ✅
 
 - Определить реальные MVP-сценарии manager
 - Добавить routes для manager workspace
@@ -1416,6 +1416,11 @@ Assessments, certificates и upload являются критичными для
 - Manager при логине попадает в отдельную зону, недоступную learner и admin
 - Данные в dashboard берутся из реального API (нет hardcoded mock-данных)
 - ProtectedRoute корректно ограничивает доступ для других ролей
+
+> **Факт:** workspace реализован на `/manager/*`: dashboard, команда и отдельный
+> список просроченных назначений используют реальный `/manager/team-summary`.
+> Login redirect и route-level policy допускают manager и отклоняют другие роли;
+> render/data-state и access-control сценарии покрыты тестами.
 
 ---
 

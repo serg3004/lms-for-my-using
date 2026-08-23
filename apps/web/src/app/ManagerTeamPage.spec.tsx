@@ -12,6 +12,7 @@ const loadedState = {
     overdueCount: 1,
     avgTeamScore: 84,
     upcomingDeadlines: [],
+    overdueAssignments: [],
     members: [
       { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
       { userId: 'user-2', firstName: 'Мария', lastName: 'Иванова', email: 'm@demo.com', activeCoursesCount: 3, completionPercent: 46, status: 'risk' },
@@ -28,6 +29,7 @@ const emptyState = {
     overdueCount: 0,
     avgTeamScore: null,
     upcomingDeadlines: [],
+    overdueAssignments: [],
     members: [],
   },
 };

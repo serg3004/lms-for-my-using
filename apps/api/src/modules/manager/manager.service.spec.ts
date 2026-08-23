@@ -26,6 +26,7 @@ describe('ManagerService getTeamSummary', () => {
       overdueCount: 0,
       avgTeamScore: null,
       upcomingDeadlines: [],
+      overdueAssignments: [],
       members: [],
     });
   });
@@ -51,8 +52,8 @@ describe('ManagerService getTeamSummary', () => {
       },
       assignment: {
         findMany: async () => [
-          { userId: memberAId, status: 'assigned', dueAt: daysFromNow(-1), course: { title: 'Course A' } },
-          { userId: memberBId, status: 'assigned', dueAt: daysFromNow(3), course: { title: 'Course B' } },
+          { id: 'assignment-a', userId: memberAId, status: 'assigned', dueAt: daysFromNow(-1), course: { title: 'Course A' } },
+          { id: 'assignment-b', userId: memberBId, status: 'assigned', dueAt: daysFromNow(3), course: { title: 'Course B' } },
         ],
       },
       lesson: {
@@ -71,6 +72,9 @@ describe('ManagerService getTeamSummary', () => {
     expect(summary.overdueCount).toBe(1);
     expect(summary.avgTeamScore).toBe(80);
     expect(summary.upcomingDeadlines).toEqual([{ courseTitle: 'Course B', userId: memberBId, dueAt: expect.any(String) }]);
+    expect(summary.overdueAssignments).toEqual([
+      { assignmentId: 'assignment-a', courseTitle: 'Course A', userId: memberAId, dueAt: expect.any(String) },
+    ]);
 
     const memberA = summary.members.find((m) => m.userId === memberAId);
     const memberB = summary.members.find((m) => m.userId === memberBId);

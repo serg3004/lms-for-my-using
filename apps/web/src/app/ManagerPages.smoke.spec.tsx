@@ -19,6 +19,7 @@ vi.mock('react', async () => {
 });
 
 import { ManagerDashboardPage } from './ManagerDashboardPage';
+import { ManagerOverduePage } from './ManagerOverduePage';
 import { ManagerTeamPage } from './ManagerTeamPage';
 
 function useLoadingState() {
@@ -38,5 +39,10 @@ describe('Manager pages smoke tests', () => {
   it('ManagerTeamPage renders without crashing in loading state', () => {
     useLoadingState();
     expect(() => renderToStaticMarkup(<ManagerTeamPage />)).not.toThrow();
+  });
+
+  it('ManagerOverduePage renders without crashing in loading state', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    expect(() => renderToStaticMarkup(<ManagerOverduePage />)).not.toThrow();
   });
 });

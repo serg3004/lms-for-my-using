@@ -22,6 +22,7 @@ const loadedState = {
     upcomingDeadlines: [
       { courseTitle: 'Техника безопасности', userId: 'user-1', dueAt: '2026-08-05T00:00:00.000Z' },
     ],
+    overdueAssignments: [],
     members: [
       { userId: 'user-1', firstName: 'Алексей', lastName: 'Смирнов', email: 'a@demo.com', activeCoursesCount: 2, completionPercent: 84, status: 'good' },
     ],
