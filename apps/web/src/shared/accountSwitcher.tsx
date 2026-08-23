@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, type UserRole } from './apiClient.js';
 
-const ROLE_ORDER: readonly UserRole[] = ['admin', 'instructor', 'manager', 'learner'];
+const ROLE_ORDER: readonly UserRole[] = ['admin', 'instructor', 'mentor', 'manager', 'learner'];
 
 const ROLE_HOME: Record<UserRole, string> = {
   admin: '/admin',
   instructor: '/instructor/dashboard',
+  mentor: '/mentor',
   manager: '/manager/dashboard',
   learner: '/learn',
 };
@@ -15,6 +16,7 @@ const ROLE_HOME: Record<UserRole, string> = {
 const ROLE_LABEL_KEY: Record<UserRole, string> = {
   admin: 'admin.navLink',
   instructor: 'instructor.navLink',
+  mentor: 'mentor.navLink',
   manager: 'manager.navLink',
   learner: 'learner.navLink',
 };
@@ -22,6 +24,7 @@ const ROLE_LABEL_KEY: Record<UserRole, string> = {
 export function getActiveRole(pathname: string): UserRole | null {
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
   if (pathname.startsWith('/instructor')) return 'instructor';
+  if (pathname.startsWith('/mentor')) return 'mentor';
   if (pathname.startsWith('/manager')) return 'manager';
   if (pathname.startsWith('/learn')) return 'learner';
   return null;

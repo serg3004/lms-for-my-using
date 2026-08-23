@@ -30,6 +30,7 @@ enum OrganizationPlan {
 enum UserRole {
   learner
   instructor
+  mentor
   manager
   admin
 }

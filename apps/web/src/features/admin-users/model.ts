@@ -49,7 +49,7 @@ export const EMPTY_USER_FORM: UserForm = {
 };
 
 export const EMPTY_USER_FILTERS: AdminUsersFilters = { query: '', role: '', status: '' };
-export const USER_ROLES = ['learner', 'instructor', 'manager', 'admin'] as const satisfies readonly UserRole[];
+export const USER_ROLES = ['learner', 'instructor', 'mentor', 'manager', 'admin'] as const satisfies readonly UserRole[];
 export const USER_STATUSES: UserStatus[] = ['active', 'invited', 'suspended', 'archived'];
 
 export function userName(user: AdminUserSummary) {

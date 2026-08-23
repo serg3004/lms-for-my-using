@@ -53,7 +53,7 @@ export const importUsersSchema = z.object({
 export const updateUserSchema = createUserSchema
   .omit({ organizationId: true, password: true })
   .extend({
-    role: z.enum(['learner', 'instructor', 'manager', 'admin']).nullable().optional(),
+    role: z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']).nullable().optional(),
   });
 
 export const updateUserStatusSchema = z.object({

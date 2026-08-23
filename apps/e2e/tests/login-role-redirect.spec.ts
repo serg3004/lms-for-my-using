@@ -5,12 +5,13 @@ import { expect, test } from '../fixtures/isolated-test.js';
 const organization = 'demo-company';
 const password = 'Demo1234!';
 
-type DemoRole = 'admin' | 'manager' | 'instructor' | 'learner';
+type DemoRole = 'admin' | 'manager' | 'instructor' | 'mentor' | 'learner';
 
 const roleDestinations: Array<{ role: DemoRole; destination: string }> = [
   { role: 'admin', destination: '/admin' },
   { role: 'manager', destination: '/manager/dashboard' },
   { role: 'instructor', destination: '/instructor/dashboard' },
+  { role: 'mentor', destination: '/mentor' },
   { role: 'learner', destination: '/learn' },
 ];
 

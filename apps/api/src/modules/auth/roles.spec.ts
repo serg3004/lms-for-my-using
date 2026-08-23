@@ -2,7 +2,7 @@ import { isLearnerOnly, rolePolicies, type UserRole } from './roles.js';
 
 type PolicyName = keyof typeof rolePolicies;
 
-const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'learner'];
+const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'mentor', 'learner'];
 
 function expectPolicy(policyName: PolicyName, allowedRoles: readonly UserRole[]) {
   const expectedRoles = new Set(allowedRoles);
@@ -31,6 +31,10 @@ describe('isLearnerOnly', () => {
 
   it('returns false for instructor', () => {
     expect(isLearnerOnly(['instructor'])).toBe(false);
+  });
+
+  it('returns false for mentor', () => {
+    expect(isLearnerOnly(['mentor'])).toBe(false);
   });
 
   it('returns false for admin who also has learner role', () => {
@@ -124,10 +128,10 @@ describe('rolePolicies', () => {
     notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
     checklistsRead: ['admin', 'manager', 'instructor'],
     checklistsCreate: ['admin', 'instructor'],
-    checklistInstancesRead: ['admin', 'manager', 'instructor', 'learner'],
+    checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistInstancesCreate: ['admin', 'manager', 'instructor'],
     checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],
-    checklistReviewWrite: ['admin', 'manager', 'instructor'],
+    checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
   } satisfies Record<PolicyName, readonly UserRole[]>;
 
   it('has an expected-roles entry for every key of rolePolicies (and no extra ones)', () => {

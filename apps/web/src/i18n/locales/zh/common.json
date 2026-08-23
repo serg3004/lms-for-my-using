@@ -491,12 +491,14 @@
       "options": {
         "admin": "管理员",
         "instructor": "讲师",
+        "mentor": "导师",
         "manager": "经理",
         "learner": "学员"
       },
       "descriptions": {
         "admin": "完整系统访问权限。",
         "instructor": "课程与学员。",
+        "mentor": "审核检查清单。",
         "manager": "团队与结果。",
         "learner": "学习与证书。"
       }
@@ -1405,6 +1407,9 @@
       "empty": "该课程暂无学员进度"
     },
     "navChecklists": "检查清单"
+  },
+  "mentor": {
+    "navLink": "导师"
   },
   "accountSwitcher": {
     "button": "切换账户"

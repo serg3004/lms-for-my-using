@@ -8,6 +8,7 @@ import { AdminRoutes } from './routes/AdminRoutes.js';
 import { InstructorRoutes } from './routes/InstructorRoutes.js';
 import { LearnerRoutes } from './routes/LearnerRoutes.js';
 import { ManagerRoutes } from './routes/ManagerRoutes.js';
+import { MentorRoutes } from './routes/MentorRoutes.js';
 import { PublicRoutes } from './routes/PublicRoutes.js';
 
 export { getRootNavigationItems } from './navigationPolicy.js';
@@ -24,6 +25,7 @@ export function App() {
             {AdminRoutes()}
             {ManagerRoutes()}
             {InstructorRoutes()}
+            {MentorRoutes()}
             {LearnerRoutes()}
             {PublicRoutes()}
           </Routes>

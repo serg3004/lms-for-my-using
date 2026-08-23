@@ -26,15 +26,16 @@ type MembershipSummary = {
   createdAt: string;
 };
 
-type AdminRole = 'learner' | 'instructor' | 'manager' | 'admin';
+type AdminRole = 'learner' | 'instructor' | 'mentor' | 'manager' | 'admin';
 
 type AdminRolesData = { users: AdminUserSummary[]; memberships: MembershipSummary[] };
 
-const adminRoles: AdminRole[] = ['learner', 'instructor', 'manager', 'admin'];
+const adminRoles: AdminRole[] = ['learner', 'instructor', 'mentor', 'manager', 'admin'];
 
 const ROLE_DESCRIPTIONS: Record<AdminRole, string> = {
   admin: 'Full system access.',
   instructor: 'Courses and learners.',
+  mentor: 'Reviews checklist submissions.',
   manager: 'Team and results.',
   learner: 'Learning and certificates.',
 };

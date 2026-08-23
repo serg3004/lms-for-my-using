@@ -46,10 +46,10 @@ export const rolePolicies = {
   notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
   checklistsRead: ['admin', 'manager', 'instructor'],
   checklistsCreate: ['admin', 'instructor'],
-  checklistInstancesRead: ['admin', 'manager', 'instructor', 'learner'],
+  checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistInstancesCreate: ['admin', 'manager', 'instructor'],
   checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],
-  checklistReviewWrite: ['admin', 'manager', 'instructor'],
+  checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export function Roles(...roles: UserRole[]) {
@@ -65,5 +65,5 @@ export function AuthenticatedAccess() {
 }
 
 export function isLearnerOnly(roles: readonly UserRole[]): boolean {
-  return !roles.some((r) => r === 'admin' || r === 'manager' || r === 'instructor');
+  return !roles.some((r) => r === 'admin' || r === 'manager' || r === 'instructor' || r === 'mentor');
 }

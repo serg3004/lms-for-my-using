@@ -1459,7 +1459,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 146 — Curator role: решение по доменной модели 🔲
+## PR 146 — Curator role: решение по доменной модели ✅
 
 - Решить, нужна ли роль `curator` (в Prisma enum её нет)
 - Если нужна — подготовить Prisma migration, обновить guards, policies, seed, tests
@@ -1469,6 +1469,38 @@ Assessments, certificates и upload являются критичными для
 **Критерии готовности:**
 - `docs/ADR_CURATOR_ROLE.md` существует с явным решением и обоснованием
 - Нет расхождения между Prisma enum и документацией по ролям
+
+**Факт:** реальная, ранее не выполненная задача — в `Prisma.UserRole` роли не было вообще, а в мастер-спеке
+термин «куратор» использовался непоследовательно (в одном списке — как отдельная роль, во всех рабочих
+сценариях — как синоним instructor). По прямому запросу пользователя решение: роль нужна отдельная, техническое
+имя `mentor` (английское, как у всех остальных ролей), UI-лейбл «Наставник» (ru) / «Mentor» (en). Права —
+явно подтверждены пользователем, не придуманы: ревью чек-листов (`checklistReviewWrite`), **в дополнение** к
+instructor (не замена) — instructor по-прежнему может ревьюить чек-листы. Больше никаких прав у mentor нет —
+это самая узкая роль в системе.
+
+Реализовано: Prisma migration (`20260823140000_add_mentor_role`, применена и проверена на реальном Postgres),
+единый источник правды `packages/shared/src/constants/roles.ts` (`USER_ROLES`), `rolePolicies`/`isLearnerOnly`
+в `apps/api/src/modules/auth/roles.ts` (mentor добавлен к `checklistReviewWrite` и `checklistInstancesRead`),
+три Zod-схемы с захардкоженным списком из 4 ролей, которые иначе отклоняли бы `mentor` даже при разрешающем
+RBAC (`auth.schemas.ts`, `users.schemas.ts`, `memberships.schemas.ts` — последняя обслуживает реальный endpoint
+назначения роли, без неё admin не смог бы назначить mentor через UI). Frontend: новый маршрут `/mentor`
+(`MentorRoutes.tsx`), `navigationPolicy.ts`/`rootNavigation.ts`/`accountSwitcher.tsx`/`LoginPage.tsx` расширены
+по тому же паттерну, что и остальные роли; `InstructorChecklistReviewsPage.tsx` получил параметризуемый
+`Layout`-проп вместо дублирования ~250 строк логики ревью — `MentorChecklistReviewsPage.tsx` переиспользует её
+под собственным (сильно урезанным) `mentorLayout.tsx`. `AdminRolesPage.tsx` и отдельный (второй, локальный)
+список ролей в `features/admin-users/model.ts` дополнены — admin назначает mentor через уже существующий UI, без
+новых экранов. i18n: `mentor.navLink` + `admin.roles.options.mentor`/`descriptions.mentor` во всех 4 локалях
+(en/ru/zh/kk). Seed: демо-пользователь `mentor@demo.com` — реально прогнан через `admin:demo-seed` против
+локального Postgres, membership с ролью `mentor` подтверждён напрямую в БД.
+
+Обновлены и прошли: `roles.spec.ts` (тест полноты `expectedRolePolicies` — именно он поймал бы недостающую
+роль в checklist-политиках), `api-policy.audit.spec.ts`, `navigationPolicy.spec.ts`, e2e
+`login-role-redirect.spec.ts`/`accessibility.spec.ts`. Полный прогон: API 1283/1283, web 485/485, shared
+10/10, typecheck/lint чисты во всех четырёх пакетах (`apps/api`, `apps/web`, `packages/shared`, `apps/e2e`).
+Браузерный Playwright e2e не прогнан локально в этой сессии (несовпадение версии chromium в песочнице) —
+полагаемся на CI. `docs/API_RBAC_MATRIX.md` обновлён (добавлена колонка Mentor + строки checklist-политик,
+которых в таблице не было вообще — обнаружено и исправлено попутно). Решение зафиксировано в
+`docs/ADR_CURATOR_ROLE.md`.
 
 ---
 

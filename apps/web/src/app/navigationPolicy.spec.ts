@@ -4,7 +4,7 @@ import { canAccessPath, protectedPathPrefixes } from './navigationPolicy.js';
 
 describe('navigationPolicy', () => {
   it('keeps every role workspace behind authentication', () => {
-    expect(protectedPathPrefixes).toEqual(['/learn', '/admin', '/manager', '/instructor']);
+    expect(protectedPathPrefixes).toEqual(['/learn', '/admin', '/manager', '/instructor', '/mentor']);
   });
 
   it('allows admins and managers into the admin workspace', () => {
@@ -19,6 +19,12 @@ describe('navigationPolicy', () => {
     expect(canAccessPath('/manager/team', { roles: ['admin'] })).toBe(false);
     expect(canAccessPath('/instructor/courses', { roles: ['instructor'] })).toBe(true);
     expect(canAccessPath('/instructor/courses', { roles: ['manager'] })).toBe(false);
+  });
+
+  it('limits the mentor workspace to the mentor role', () => {
+    expect(canAccessPath('/mentor', { roles: ['mentor'] })).toBe(true);
+    expect(canAccessPath('/mentor', { roles: ['instructor'] })).toBe(false);
+    expect(canAccessPath('/mentoring', { roles: [] })).toBe(true);
   });
 
   it('allows authenticated users into learner and public routes', () => {

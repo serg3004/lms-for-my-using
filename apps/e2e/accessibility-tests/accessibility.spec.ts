@@ -6,7 +6,7 @@ import { expect, test } from '../fixtures/isolated-test.js';
 const organization = 'demo-company';
 const password = 'Demo1234!';
 
-type DemoRole = 'admin' | 'manager' | 'instructor' | 'learner';
+type DemoRole = 'admin' | 'manager' | 'instructor' | 'mentor' | 'learner';
 
 async function loginAs(page: Page, role: DemoRole) {
   await page.goto('/login');
@@ -40,6 +40,7 @@ test.describe('WCAG AA browser baseline', () => {
     { role: 'admin', destination: '/admin' },
     { role: 'manager', destination: '/manager/dashboard' },
     { role: 'instructor', destination: '/instructor/dashboard' },
+    { role: 'mentor', destination: '/mentor' },
     { role: 'learner', destination: '/learn' },
   ];
 

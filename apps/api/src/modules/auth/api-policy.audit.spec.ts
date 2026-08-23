@@ -56,7 +56,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'users/users.controller.ts', Controller: UsersController },
 ];
 
-const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'learner'];
+const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'mentor', 'learner'];
 
 const protectedEndpoints = controllerEntries.flatMap(({ Controller }) =>
   Object.getOwnPropertyNames(Controller.prototype).flatMap((methodName) => {

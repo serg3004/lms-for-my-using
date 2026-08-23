@@ -18,6 +18,7 @@ const id = {
   learner: '10000000-0000-4000-8000-000000000012',
   instructor: '10000000-0000-4000-8000-000000000013',
   manager: '10000000-0000-4000-8000-000000000014',
+  mentor: '10000000-0000-4000-8000-000000000015',
   group: '10000000-0000-4000-8000-000000000021',
   // Course
   course: '10000000-0000-4000-8000-000000000031',
@@ -149,6 +150,16 @@ export async function seedDemo(prisma) {
         position: 'Team Manager',
         status: 'active',
       },
+      {
+        id: id.mentor,
+        organizationId: id.org,
+        email: 'mentor@demo.com',
+        passwordHash,
+        firstName: 'Mira',
+        lastName: 'Mentor',
+        position: 'Checklist Mentor',
+        status: 'active',
+      },
     ],
     skipDuplicates: true,
   });
@@ -181,6 +192,13 @@ export async function seedDemo(prisma) {
         organizationId: id.org,
         userId: id.manager,
         role: 'manager',
+        assignedBy: id.admin,
+      },
+      {
+        id: '10000000-0000-4000-8000-0000000000f5',
+        organizationId: id.org,
+        userId: id.mentor,
+        role: 'mentor',
         assignedBy: id.admin,
       },
     ],

@@ -16,35 +16,45 @@ token flows. All other protected endpoints use `AuthGuard` and `RolesGuard`.
 
 ## Role policies
 
-| Resource/action | Admin | Manager | Instructor | Learner |
-| --- | :---: | :---: | :---: | :---: |
-| Organizations — read/create | ✓ |  |  |  |
-| Users — read/create | ✓ | ✓ |  |  |
-| Memberships — read | ✓ | ✓ |  |  |
-| Memberships — create | ✓ |  |  |  |
-| Groups — read/create | ✓ | ✓ |  |  |
-| Courses — read | ✓ | ✓ | ✓ | ✓ |
-| Courses — create/update/delete | ✓ |  | ✓ |  |
-| Lessons — read | ✓ | ✓ | ✓ | ✓ |
-| Lessons — read all (admin listing, `lessonsReadAll`) | ✓ |  |  |  |
-| Lessons — create/update/delete | ✓ |  | ✓ |  |
-| Course materials — read | ✓ | ✓ | ✓ | ✓ |
-| Course materials/upload — create/update/delete/reassign to lesson | ✓ |  | ✓ |  |
-| Assignments — read | ✓ | ✓ | ✓ | ✓ |
-| Assignments — create/update (learner: нет self-enrollment, см. §13 `ENTITY_TECHSPEC_IMPLEMENTED.md`) | ✓ | ✓ | ✓ |  |
-| Progress — read/create | ✓ | ✓ | ✓ | ✓ |
-| Assessments — read | ✓ | ✓ | ✓ | ✓ |
-| Assessments — create/update/delete | ✓ |  | ✓ |  |
-| Assessment questions/options — read | ✓ | ✓ | ✓ |  |
-| Assessment questions/options — create | ✓ |  | ✓ |  |
-| Assessment attempts — read | ✓ | ✓ | ✓ |  |
-| Assessment attempt results — read | ✓ | ✓ | ✓ | ✓ |
-| Assessment attempts — create | ✓ | ✓ | ✓ | ✓ |
-| Certificates — read | ✓ | ✓ | ✓ | ✓ |
-| Certificates — create | ✓ | ✓ | ✓ |  |
-| Theme settings — read | ✓ | ✓ | ✓ | ✓ |
-| Theme settings — write | ✓ |  |  |  |
-| Manager team summary — read | ✓ | ✓ |  |  |
+| Resource/action | Admin | Manager | Instructor | Mentor | Learner |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Organizations — read/create | ✓ |  |  |  |  |
+| Users — read/create | ✓ | ✓ |  |  |  |
+| Memberships — read | ✓ | ✓ |  |  |  |
+| Memberships — create | ✓ |  |  |  |  |
+| Groups — read/create | ✓ | ✓ |  |  |  |
+| Courses — read | ✓ | ✓ | ✓ |  | ✓ |
+| Courses — create/update/delete | ✓ |  | ✓ |  |  |
+| Lessons — read | ✓ | ✓ | ✓ |  | ✓ |
+| Lessons — read all (admin listing, `lessonsReadAll`) | ✓ |  |  |  |  |
+| Lessons — create/update/delete | ✓ |  | ✓ |  |  |
+| Course materials — read | ✓ | ✓ | ✓ |  | ✓ |
+| Course materials/upload — create/update/delete/reassign to lesson | ✓ |  | ✓ |  |  |
+| Assignments — read | ✓ | ✓ | ✓ |  | ✓ |
+| Assignments — create/update (learner: нет self-enrollment, см. §13 `ENTITY_TECHSPEC_IMPLEMENTED.md`) | ✓ | ✓ | ✓ |  |  |
+| Progress — read/create | ✓ | ✓ | ✓ |  | ✓ |
+| Assessments — read | ✓ | ✓ | ✓ |  | ✓ |
+| Assessments — create/update/delete | ✓ |  | ✓ |  |  |
+| Assessment questions/options — read | ✓ | ✓ | ✓ |  |  |
+| Assessment questions/options — create | ✓ |  | ✓ |  |  |
+| Assessment attempts — read | ✓ | ✓ | ✓ |  |  |
+| Assessment attempt results — read | ✓ | ✓ | ✓ |  | ✓ |
+| Assessment attempts — create | ✓ | ✓ | ✓ |  | ✓ |
+| Certificates — read | ✓ | ✓ | ✓ |  | ✓ |
+| Certificates — create | ✓ | ✓ | ✓ |  |  |
+| Theme settings — read | ✓ | ✓ | ✓ |  | ✓ |
+| Theme settings — write | ✓ |  |  |  |  |
+| Manager team summary — read | ✓ | ✓ |  |  |  |
+| Checklists — read/create | ✓ | ✓* | ✓ |  |  |
+| Checklist instances — read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Checklist instances — create (assign) | ✓ | ✓ | ✓ |  |  |
+| Checklist item results — write (submit answer/photo) | ✓ | ✓ | ✓ |  | ✓ |
+| Checklist review — write (approve/reject an item) | ✓ | ✓ | ✓ | ✓ |  |
+
+\* Manager only has `checklistsRead`, not `checklistsCreate` — see `rolePolicies` in `apps/api/src/modules/auth/roles.ts`.
+
+Mentor was added in PR 146 (`docs/ADR_CURATOR_ROLE.md`) scoped narrowly to the checklist review workflow — it
+does not gain any of the course/lesson/assignment/assessment access instructor or manager have.
 
 ## Object-level scope (`CourseAccessGuard`)
 
