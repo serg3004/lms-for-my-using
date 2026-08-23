@@ -1298,7 +1298,8 @@
       "columnDueDate": "截止日期",
       "columnStatus": "状态",
       "status": "逾期",
-      "empty": "没有逾期任务。"
+      "empty": "没有逾期任务。",
+      "unknownTarget": "未知目标"
     }
   },
   "instructor": {

@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; user: CurrentUser; courses: CourseSummary[]; studentCounts: Map<string, number> }
-  | { status: 'error' };
+type InstructorCoursesData = { user: CurrentUser; courses: CourseSummary[]; studentCounts: Map<string, number> };
 
 type StatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
@@ -26,43 +24,34 @@ const COLORS = {
 
 export function InstructorCoursesPage() {
   const { t, i18n } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const [user, page, { items: progressItems }] = await Promise.all([
-          getCurrentUser(),
-          listCourses({ pageSize: 100 }),
-          listProgress({ pageSize: 100 }),
-        ]);
-        if (!isMounted) return;
-        const studentsByCourse = new Map<string, Set<string>>();
-        for (const progress of progressItems) {
-          const set = studentsByCourse.get(progress.courseId) ?? new Set<string>();
-          set.add(progress.userId);
-          studentsByCourse.set(progress.courseId, set);
-        }
-        const counts = new Map<string, number>();
-        for (const [courseId, students] of studentsByCourse) counts.set(courseId, students.size);
-        setState({ status: 'loaded', user, courses: page.items, studentCounts: counts });
-      } catch {
-        if (isMounted) setState({ status: 'error' });
+  const { state } = useAsyncData<InstructorCoursesData>(
+    async () => {
+      const [user, page, { items: progressItems }] = await Promise.all([
+        getCurrentUser(),
+        listCourses({ pageSize: 100 }),
+        listProgress({ pageSize: 100 }),
+      ]);
+      const studentsByCourse = new Map<string, Set<string>>();
+      for (const progress of progressItems) {
+        const set = studentsByCourse.get(progress.courseId) ?? new Set<string>();
+        set.add(progress.userId);
+        studentsByCourse.set(progress.courseId, set);
       }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, []);
+      const counts = new Map<string, number>();
+      for (const [courseId, students] of studentsByCourse) counts.set(courseId, students.size);
+      return { user, courses: page.items, studentCounts: counts };
+    },
+    [t],
+    { unauthenticated: t('instructor.courses.loadError'), error: t('instructor.courses.loadError') },
+  );
 
   const filteredCourses = useMemo(() => {
     if (state.status !== 'loaded') return [];
     const q = search.trim().toLowerCase();
-    return state.courses.filter((course) => {
+    return state.data.courses.filter((course) => {
       const matchesSearch = !q || course.title.toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'all' || course.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -77,7 +66,7 @@ export function InstructorCoursesPage() {
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
     return (
       <InstructorPageLayout>
         <p role="alert">{t('instructor.courses.loadError')}</p>
@@ -85,7 +74,7 @@ export function InstructorCoursesPage() {
     );
   }
 
-  const { user, studentCounts } = state;
+  const { user, studentCounts } = state.data;
 
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>

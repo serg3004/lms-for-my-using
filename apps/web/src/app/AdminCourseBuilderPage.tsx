@@ -205,7 +205,7 @@ export function AdminCourseBuilderPage() {
     );
   }
 
-  if (pageState.status === 'error') {
+  if (pageState.status === 'error' || pageState.status === 'notFound') {
     return (
       <main className="admin-state">
         <PageState message={pageState.message} variant="error" />

@@ -1,14 +1,14 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAssessments } from '../shared/api/assessments.js';
 import { getProgressSummary } from '../shared/api/progress.js';
-import { ApiClientError, AssignmentSummary, getAssignment } from '../shared/apiClient.js';
+import { AssignmentSummary, getAssignment } from '../shared/apiClient.js';
 import type { AssessmentSummary } from '../shared/api/types.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { getCourseHref } from '../shared/learnerRoutes.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type ReadableAssignmentSummary = AssignmentSummary & {
   courseTitle?: string | null;
@@ -17,18 +17,11 @@ type ReadableAssignmentSummary = AssignmentSummary & {
   groupName?: string | null;
 };
 
-type AssignmentDetailLoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | {
-      status: 'loaded';
-      assignment: ReadableAssignmentSummary;
-      progressPercent?: number;
-      assessment?: AssessmentSummary | null;
-    }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type AssignmentDetailData = {
+  assignment: ReadableAssignmentSummary;
+  progressPercent?: number;
+  assessment?: AssessmentSummary | null;
+};
 
 const COLORS = {
   surface: '#ffffff',
@@ -49,61 +42,31 @@ function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string)
 
 export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: string }) {
   const { t, i18n } = useTranslation();
-  const [loadState, setLoadState] = useState<AssignmentDetailLoadState>({ status: 'idle' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state: loadState } = useAsyncData<AssignmentDetailData>(
+    async () => {
+      const assignment = await getAssignment(assignmentId);
+      const [progress, assessments] = await Promise.all([
+        getProgressSummary(30),
+        listAssessments(),
+      ]);
+      const courseProgress = progress.courses.find((c) => c.courseId === assignment.courseId);
+      const assessment = assessments.find((a) => a.courseId === assignment.courseId) ?? null;
 
-    async function loadAssignment() {
-      setLoadState({ status: 'loading' });
-
-      try {
-        const assignment = await getAssignment(assignmentId);
-        const [progress, assessments] = await Promise.all([
-          getProgressSummary(30),
-          listAssessments(),
-        ]);
-        const courseProgress = progress.courses.find((c) => c.courseId === assignment.courseId);
-        const assessment = assessments.find((a) => a.courseId === assignment.courseId) ?? null;
-
-        if (isMounted) {
-          setLoadState({
-            status: 'loaded',
-            assignment,
-            progressPercent: courseProgress?.percentage,
-            assessment,
-          });
-        }
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('assignments.sessionExpired') });
-          return;
-        }
-
-        if (error instanceof ApiClientError && error.status === 404) {
-          setLoadState({ status: 'notFound', message: t('assignments.notFound') });
-          return;
-        }
-
-        setLoadState({ status: 'error', message: t('assignments.loadError') });
-      }
-    }
-
-    void loadAssignment();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [assignmentId, t]);
+      return { assignment, progressPercent: courseProgress?.percentage, assessment };
+    },
+    [assignmentId, t],
+    {
+      unauthenticated: t('assignments.sessionExpired'),
+      notFound: t('assignments.notFound'),
+      error: t('assignments.loadError'),
+    },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const assignmentsAction = <a href="/learn/assignments">{t('assignments.navLink')}</a>;
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('assignments.loadingDetail')} variant="loading" />;
   }
 
@@ -124,10 +87,10 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
     );
   }
 
-  const { assignment } = loadState;
+  const { assignment } = loadState.data;
   const courseTitle = getCourseTitle(assignment, 'Course');
-  const progressPercent = loadState.progressPercent ?? 0;
-  const assessment = loadState.assessment ?? null;
+  const progressPercent = loadState.data.progressPercent ?? 0;
+  const assessment = loadState.data.assessment ?? null;
   const isOverdue = assignment.dueAt != null && new Date(assignment.dueAt).getTime() < Date.now();
   const dueLabel = assignment.dueAt
     ? formatNullableDate(assignment.dueAt, t('assignments.notAvailable'))

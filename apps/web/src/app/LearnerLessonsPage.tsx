@@ -89,7 +89,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <>
         <PageState title={t('lessons.title')} message={loadState.message} variant="error" action={courseAction} />

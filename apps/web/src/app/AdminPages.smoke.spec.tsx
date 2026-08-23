@@ -180,16 +180,18 @@ describe('admin page smoke rendering', () => {
 
   it('renders dashboard authenticated state without crashing', () => {
     useFirstCallReadyState({
-      status: 'authenticated',
-      user: currentUser,
-      stats: {
-        usersTotal: 4,
-        coursesTotal: 2,
-        completionRate: 50,
-        certificatesTotal: 1,
-        pendingActivationCount: 1,
-        systemAvailable: true,
-        activity: [{ key: 'user-1', date: ts, message: 'New user added: Admin User' }],
+      status: 'loaded',
+      data: {
+        user: currentUser,
+        stats: {
+          usersTotal: 4,
+          coursesTotal: 2,
+          completionRate: 50,
+          certificatesTotal: 1,
+          pendingActivationCount: 1,
+          systemAvailable: true,
+          activity: [{ key: 'user-1', date: ts, message: 'New user added: Admin User' }],
+        },
       },
     });
 
@@ -316,24 +318,30 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders materials page happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [course],
-      lessons: [lesson],
-      materials: [
-        {
-          id: 'material-1',
-          title: 'Safety Handbook',
-          slug: 'safety-handbook',
-          description: null,
-          kind: 'link' as const,
-          fileName: null,
-          fileUrl: 'https://example.com/handbook.pdf',
-          mimeType: null,
-          sizeBytes: null,
-          status: 'active',
+    // useState call order in AdminMaterialsPage: 25 form/dialog states, then
+    // useAsyncData's internal loadState useState is call 26.
+    useStateAtCalls({
+      26: {
+        status: 'loaded',
+        data: {
+          courses: [course],
+          lessons: [lesson],
+          materials: [
+            {
+              id: 'material-1',
+              title: 'Safety Handbook',
+              slug: 'safety-handbook',
+              description: null,
+              kind: 'link' as const,
+              fileName: null,
+              fileUrl: 'https://example.com/handbook.pdf',
+              mimeType: null,
+              sizeBytes: null,
+              status: 'active',
+            },
+          ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminMaterialsPage />);
@@ -394,28 +402,34 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders checklists happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      currentUser,
-      checklists: [
-        {
-          id: 'checklist-1',
-          organizationId: 'org-1',
-          title: 'Приёмка нового стажёра',
-          description: null,
-          status: 'published',
-          scoringMode: 'sum_points',
-          passThreshold: 80,
-          scaleLevels: null,
-          requiresReview: false,
-          createdBy: 'user-1',
-          createdAt: ts,
-          updatedAt: ts,
-          items: [
-            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+    // useState call order in AdminChecklistsPage: 1 search, 2 statusFilter, 3 selectedId,
+    // 4 deleteTarget, 5 statusError, then useAsyncData's internal loadState is call 6.
+    useStateAtCalls({
+      6: {
+        status: 'loaded',
+        data: {
+          currentUser,
+          checklists: [
+            {
+              id: 'checklist-1',
+              organizationId: 'org-1',
+              title: 'Приёмка нового стажёра',
+              description: null,
+              status: 'published',
+              scoringMode: 'sum_points',
+              passThreshold: 80,
+              scaleLevels: null,
+              requiresReview: false,
+              createdBy: 'user-1',
+              createdAt: ts,
+              updatedAt: ts,
+              items: [
+                { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: true },
+              ],
+            },
           ],
         },
-      ],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminChecklistsPage />);
@@ -426,32 +440,35 @@ describe('admin page smoke rendering', () => {
   it('renders the checklist builder view (scale scoring, items, assignments) without crashing', () => {
     const loaded = {
       status: 'loaded' as const,
-      currentUser,
-      checklists: [
-        {
-          id: 'checklist-1',
-          organizationId: 'org-1',
-          title: 'Аттестация кассира',
-          description: 'Проверка стандарта обслуживания',
-          status: 'draft',
-          scoringMode: 'scale',
-          passThreshold: 60,
-          scaleLevels: [
-            { level: 1, label: 'Очень плохо', points: 0 },
-            { level: 2, label: 'Отлично', points: 100 },
-          ],
-          requiresReview: true,
-          createdBy: 'user-1',
-          createdAt: ts,
-          updatedAt: ts,
-          items: [
-            { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
-          ],
-        },
-      ],
+      data: {
+        currentUser,
+        checklists: [
+          {
+            id: 'checklist-1',
+            organizationId: 'org-1',
+            title: 'Аттестация кассира',
+            description: 'Проверка стандарта обслуживания',
+            status: 'draft',
+            scoringMode: 'scale',
+            passThreshold: 60,
+            scaleLevels: [
+              { level: 1, label: 'Очень плохо', points: 0 },
+              { level: 2, label: 'Отлично', points: 100 },
+            ],
+            requiresReview: true,
+            createdBy: 'user-1',
+            createdAt: ts,
+            updatedAt: ts,
+            items: [
+              { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
+            ],
+          },
+        ],
+      },
     };
-    // Call order in AdminChecklistsPage: 1 loadState, 2 search, 3 statusFilter, 4 selectedId, 5 deleteTarget, 6 statusError.
-    useStateAtCalls({ 1: loaded, 4: 'checklist-1' });
+    // Call order in AdminChecklistsPage: 1 search, 2 statusFilter, 3 selectedId, 4 deleteTarget,
+    // 5 statusError, 6 useAsyncData's internal loadState.
+    useStateAtCalls({ 3: 'checklist-1', 6: loaded });
 
     const html = renderToStaticMarkup(<AdminChecklistsPage />);
 
@@ -518,30 +535,37 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders assignment completion happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
-      users: [
-        {
-          id: 'user-1',
-          email: 'learner@demo.com',
-          firstName: 'Learner',
-          lastName: 'User',
-          middleName: null,
-          status: 'active',
+    // useState call order in AdminAssignmentCompletionPage: 9 form/dialog states, then
+    // useAsyncData's internal loadState useState is call 10.
+    useStateAtCalls({
+      10: {
+        status: 'loaded',
+        data: {
+          courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
+          users: [
+            {
+              id: 'user-1',
+              email: 'learner@demo.com',
+              firstName: 'Learner',
+              lastName: 'User',
+              middleName: null,
+              status: 'active',
+            },
+          ],
+          groups: [],
+          assignments: [
+            {
+              id: 'assignment-1',
+              courseId: 'course-1',
+              userId: 'user-1',
+              groupId: null,
+              status: 'assigned',
+              dueAt: null,
+            },
+          ],
+          progressItems: [],
         },
-      ],
-      assignments: [
-        {
-          id: 'assignment-1',
-          courseId: 'course-1',
-          userId: 'user-1',
-          groupId: null,
-          status: 'assigned',
-          dueAt: null,
-        },
-      ],
-      progressItems: [],
+      },
     });
 
     const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);

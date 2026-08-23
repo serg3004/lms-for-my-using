@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
@@ -26,43 +27,29 @@ const COLORS = {
   primarySoft: '#eef2ff',
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; instances: ChecklistInstanceSummary[] }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type LearnerChecklistsData = { instances: ChecklistInstanceSummary[] };
 
 export function LearnerChecklistsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoadState({ status: 'loading' });
-    try {
-      const instances = await listMyChecklistInstances();
-      setLoadState({ status: 'loaded', instances });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setLoadState({ status: 'unauthenticated', message: t('checklists.sessionExpired', 'Your session has expired. Please sign in again.') });
-        return;
-      }
-      setLoadState({ status: 'error', message: t('checklists.loadError', 'Unable to load your checklists.') });
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { state: loadState, reload: load } = useAsyncData<LearnerChecklistsData>(
+    async () => ({ instances: await listMyChecklistInstances() }),
+    [t],
+    {
+      unauthenticated: t('checklists.sessionExpired', 'Your session has expired. Please sign in again.'),
+      error: t('checklists.loadError', 'Unable to load your checklists.'),
+    },
+  );
 
   if (loadState.status === 'loading') {
     return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
-  if (loadState.status === 'unauthenticated' || loadState.status === 'error') {
+  if (loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') {
     return <main style={{ padding: 32 }}><PageState title={t('checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
 
-  const open = openInstanceId ? loadState.instances.find((i) => i.id === openInstanceId) : null;
+  const open = openInstanceId ? loadState.data.instances.find((i) => i.id === openInstanceId) : null;
 
   if (open) {
     return (
@@ -70,10 +57,7 @@ export function LearnerChecklistsPage() {
         <ChecklistTaking
           instance={open}
           onBack={() => setOpenInstanceId(null)}
-          onUpdated={async () => {
-            const instances = await listMyChecklistInstances();
-            setLoadState({ status: 'loaded', instances });
-          }}
+          onUpdated={load}
           t={t}
         />
       </main>
@@ -85,11 +69,11 @@ export function LearnerChecklistsPage() {
       <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
       <p style={{ color: COLORS.muted }}>{t('checklists.subtitle', 'Checklists assigned to you — complete them and attach photos where required.')}</p>
 
-      {loadState.instances.length === 0 ? (
+      {loadState.data.instances.length === 0 ? (
         <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-          {loadState.instances.map((instance) => (
+          {loadState.data.instances.map((instance) => (
             <li
               key={instance.id}
               style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, cursor: 'pointer' }}

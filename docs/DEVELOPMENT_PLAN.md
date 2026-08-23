@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-08-09 (реализован PR 207: boundaries модульного монолита)
+**Обновлён:** 2026-08-23 (добавлен checklist roadmap PR 217–222)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -1360,13 +1360,23 @@ Assessments, certificates и upload являются критичными для
 
 По пути найден и исправлен реальный баг в самом `useAsyncData.ts`: `useState(toLoadingState)` передавал функцию-инициализатор без вызова — ломало `LearnerCertificateDetailPage.spec.tsx`, чей мок не разворачивает функции-инициализаторы. Заменено на `useState(toLoadingState())` (обычный объект — ленивая инициализация не нужна, вычисление тривиальное), заодно приведено к тому же стилю, что и все страницы в проекте.
 
-Сознательно НЕ мигрированы: `AdminMaterialsPage.tsx` и `AdminChecklistsPage.tsx` — обе делают точечную мутацию уже загруженного состояния (`setLoadState((prev) => ...)`) без полной перезагрузки, что не укладывается в контракт `{state, reload}`; и 4 страницы с уже существующими `.spec.tsx`, завязанными на порядок хуков, которые не потребовалось трогать в этом заходе (`ManagerDashboardPage`, `ManagerTeamPage`, `LearnerHomePage`, `LearnerProgressPage`) — задокументировано в ADR как кандидаты на отдельный follow-up.
+Третий заход (по прямому запросу пользователя — "закрыть задачу полностью"): мигрированы все оставшиеся 18 из 19 найденных страниц.
 
-Два сознательных мелких упрощения поведения (задокументированы в ADR): у `LearnerLessonsPage`/`LearnerCertificateDetailPage` отдельный статус `notFound` (404) свёрнут в общий `error` (тот же action-линк, только без отдельного текста); там, где раньше не было разделения 401/прочих ошибок (`AdminLessonsPage`, `AdminOrgStructurePage`, `AdminResultsCertificatesPage`, `InstructorChecklistReviewsPage`), теперь появилась стандартная ветка `unauthenticated` с "сессия истекла" и ссылкой на логин — это улучшение, не регресс. Добавлен новый ключ перевода `checklistReview.sessionExpired` в `ru`/`kk`.
+Понадобилось два новых архитектурных решения в самом `useAsyncData`/`asyncData.ts` (оба задокументированы в ADR как отдельные follow-up-решения):
+1. **`mutate(updater)`** — точечное обновление уже загруженных данных без полной перезагрузки (аналог `mutate()` в SWR/React Query). Понадобилось 5 страницам: `AdminMaterialsPage`, `AdminChecklistsPage` (обе — ранее сознательно исключённые), `ManagerDashboardPage` (при повторной проверке обнаружилось, что тоже точечно патчит `summary` после назначения обучения), `AdminAssignmentCompletionPage`, `InstructorCourseFormPage`.
+2. **Статус `notFound`** — для страниц, различающих 404 отдельным сообщением от общей ошибки: `LearnerAssessmentDetailPage`, `LearnerAssessmentReviewPage`, `LearnerAssignmentDetailPage`. Добавление нового статуса — cross-cutting изменение типа: все 17 уже мигрированных страниц, не запросившие `notFound`, нужно было обновить, чтобы их `error`-ветка по-прежнему ловила и `notFound` (иначе TypeScript переставал сужать тип до `loaded` в последней ветке).
 
-Добавлены `asyncData.spec.ts`/`useAsyncData.spec.ts`, покрывающие loading/loaded/unauthenticated/error и cancellation — техника мока `useState`/`useEffect`/`useCallback`/`useRef`, расширяющая уже принятую в проекте (`ManagerDashboardPage.spec.tsx`). Обновлены все затронутые smoke/spec-тесты (`LearnerPages.smoke.spec.tsx`, `AdminPages.smoke.spec.tsx`, `InstructorPages.smoke.spec.tsx`, `LearnerCertificateDetailPage.spec.tsx`), т.к. позиция useState с load-state сдвинулась при миграции — исправлено через `useStateAtCalls({N: ...})` с точным номером вызова (каждый номер перепроверен построчным подсчётом `useState`-вызовов).
+Остальные 10 страниц — механическая миграция без новых возможностей хука: `ManagerTeamPage`, `LearnerHomePage`, `LearnerProgressPage`, `AdminDashboardPage`, `InstructorCourseStudentsPage`, `InstructorCoursesPage`, `InstructorDashboardPage`, `LearnerAssessmentsPage`, `LearnerCertificatesPage`, `LearnerChecklistsPage`.
 
-Полный прогон `apps/web`: typecheck чист, lint чист (включая `react-hooks/exhaustive-deps`, нашёл и исправил реальный memo-баг в `useAdminUsers.ts`), 477/477 тестов зелёные, coverage выше порога 40%. Плюс: полный локальный e2e-сьют (20/20) и ручная живая проверка через браузер (API + web dev server, реальная сессия под admin/learner/instructor) всех 14 мигрированных страниц — без единой ошибки в консоли, включая реальный pending-чек-лист и черновик курса из демо-данных PR 133.
+Сознательно НЕ мигрирована: `LearnerAssessmentTakingPage.tsx` — кроме обычного `LoadState` у неё отдельный `SubmitState` для сдачи теста, и `useEffect`-таймер, который напрямую пишет `setLoadState({status:'error', ...})` в обход обычного цикла загрузки (не `reload()`, не точечный патч — принудительный переход в error из побочного канала). `useAsyncData`/`mutate()` такое не поддерживают и не должны ради одного потребителя. Также вне паттерна остались два вложенных, самодостаточных фетча внутри уже мигрированных страниц: `AssignTrainingModal` в `ManagerDashboardPage` (свой `listCourses` для выпадающего списка) и `PhotoAttachment` в `LearnerChecklistsPage` (свой `getChecklistItemPhotoUrl`) — оба локальны для модалки/карточки и не связаны с состоянием загрузки родительской страницы.
+
+Добавлены тесты на `mutate()` (`useAsyncData.spec.ts`) и на `notFound`-ветвление `toAsyncDataErrorState` (`asyncData.spec.ts`). Обновлены все затронутые smoke/spec-тесты (`LearnerPages.smoke.spec.tsx`, `AdminPages.smoke.spec.tsx`, `ManagerTeamPage.spec.tsx`, `LearnerProgressPage.spec.tsx`, `ManagerDashboardPage.spec.tsx`) — позиции `useState` сдвинулись при миграции, исправлено через `useStateAtCalls({N: ...})` с точным номером вызова.
+
+Два сознательных мелких упрощения поведения из второго захода (см. выше) остаются в силе и задокументированы в ADR.
+
+Добавлены `asyncData.spec.ts`/`useAsyncData.spec.ts`, покрывающие loading/loaded/unauthenticated/notFound/error, cancellation и `mutate()` — техника мока `useState`/`useEffect`/`useCallback`/`useRef`, расширяющая уже принятую в проекте (`ManagerDashboardPage.spec.tsx`).
+
+Полный прогон `apps/web` после каждого захода: typecheck чист, lint чист, все тесты зелёные (480/480 после третьего захода). E2E — не прогонялся заново локально в третьем заходе (полагаемся на CI-пайплайн e2e для этой партии, т.к. паттерн идентичен уже верифицированным 17 страницам из первых двух заходов); рекомендуется прогнать `apps/e2e` в CI перед мержем как обычно.
 
 ---
 
@@ -3085,6 +3095,324 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
+## Фаза I — Checklist workflow hardening
+
+> **Цель фазы:** превратить существующий checklist-модуль из рабочего V1 в устойчивый production workflow с корректными completion-инвариантами, неизменяемой историей назначений, полноценным evidence review, deadline lifecycle, массовыми назначениями и операционным контролем.
+>
+> **Порядок обязателен:** PR 217 и PR 218 являются фундаментальными. PR 219 опирается на корректную semantics evidence из PR 217; PR 221 — на expiration lifecycle PR 220; PR 222 строится после стабилизации полного lifecycle.
+
+## PR 217 — Checklist completion correctness 🔲
+
+**Проблема:** `ChecklistItem.isRequired` и `ChecklistItem.photoRequired` существуют в data model, но current completion flow не использует их как единый бизнес-инвариант. Optional item может фактически блокировать завершение из-за ожидания result для всех items, а `photoRequired=true` не гарантирует наличие evidence до перехода instance в `submitted/completed`. Критический edge case: последний обязательный пункт можно отметить, instance завершится, после чего attach photo уже запрещён terminal status.
+
+**Цель:** checklist instance не может перейти в `submitted` или `completed`, пока не выполнены все обязательные требования каждого required item.
+
+**Backend:**
+- Выделить единые domain helpers/методы: `hasValidAnswer`, `hasRequiredEvidence`, `isItemSatisfied`, `areRequiredItemsSatisfied` или эквиваленты.
+- Зафиксировать states пункта: `skipped optional`, `answered`, `awaiting evidence`, `satisfied`.
+- Для `isRequired=true` требовать `satisfied`; `isRequired=false` разрешает полностью пропустить item.
+- Если optional item начали выполнять и у него `photoRequired=true`, сохранённый ответ должен соответствовать photo-rule.
+- Canonical признаком фото считать storage-backed metadata (`photoObjectKey` и связанная metadata), а не legacy `photoUrl`.
+- Исправить `calculateAndPersistInstance()`: наличие `ChecklistItemResult` само по себе не означает completion.
+- После `attachItemPhoto()` повторно пересчитывать instance: последний required item без фото оставляет `in_progress`, upload evidence переводит в `submitted` либо `completed`.
+- Разделить completion eligibility и score calculation; существующую scoring mathematics в этом PR не менять без отдельного требования.
+- При `requiresReview=true` разрешать `in_progress → submitted` только после satisfaction всех required items.
+
+**Frontend learner:**
+- Перестать считать progress только через `results.length`.
+- Различать `не начато`, `ответ сохранён`, `требуется фото`, `выполнено`.
+- Показывать progress по satisfied required items и явно маркировать optional items.
+- Не показывать item completed при отсутствии required photo.
+
+**Admin builder/preview:**
+- Сделать `isRequired` явной настройкой рядом с `photoRequired`.
+- Preview/result model использует ту же semantics, что runtime service.
+
+**Тесты:**
+- required без photo requirement;
+- required + photo required с/без evidence;
+- optional без ответа, с ответом, skipped photo-required, answer без required photo;
+- mixed required/optional;
+- regression последнего required item: ответ оставляет `in_progress`, attach photo завершает/отправляет instance;
+- `requiresReview=false/true`;
+- `sum_points`, `all_required`, `scale`;
+- terminal instance нельзя менять;
+- frontend tests progress/status/evidence indicators.
+
+**Документация:** значения `isRequired`, `photoRequired`, satisfied item и последовательность `answer → evidence → completion/review`.
+
+**Не входит:** snapshot/versioning, deadlines, bulk assignment, reviewer routing, analytics.
+
+**Критерии готовности:**
+- Нет `submitted/completed` с невыполненным required item или отсутствующим required photo.
+- Optional item можно пропустить.
+- Последний required photo корректно завершает lifecycle.
+- Runtime, preview и learner UI используют одну semantics.
+- Regression/unit/integration/UI tests проходят.
+
+---
+
+## PR 218 — Immutable/versioned checklist assignments 🔲
+
+**Проблема:** `ChecklistInstance` связан с mutable `Checklist`; выполнение и пересчёт читают текущие live items/configuration. Изменение text, points, `isRequired`, `photoRequired`, scale levels, threshold или scoring mode после assignment способно изменить уже выданное задание.
+
+**Цель:** каждый instance навсегда сохраняет checklist-конфигурацию момента назначения; изменения template влияют только на будущие assignments.
+
+**Архитектура:**
+- На первом этапе использовать immutable assignment snapshot вместо тяжёлого CMS-style `ChecklistVersion`.
+- Добавить в `ChecklistInstance` JSON `templateSnapshot` и `snapshotVersion`.
+- Snapshot хранит checklist id/title/description, `scoringMode`, `passThreshold`, `requiresReview`, scale levels, а для каждого item — original id, text, points, order, `isRequired`, `photoRequired`.
+- Snapshot создаётся в `assignChecklist()` в одной transaction с instance и никогда не обновляется.
+
+**Backend/API:**
+- Get instance, submit validation, completion, scoring, photo requirements и review читают snapshot.
+- Сохранить совместимый API shape `instance.checklist`, но наполнять его snapshot contents.
+- Existing result FK может хранить original `itemId`; snapshot — source of truth бизнес-параметров assignment.
+- Archive/delete/edit live template не ломают old instance.
+- UI шаблона сообщает: изменения published template влияют только на будущие назначения.
+
+**Migration/legacy:**
+- Prisma migration для snapshot fields.
+- Новые instances всегда имеют snapshot.
+- Existing legacy instances получают best-effort backfill current template либо безопасный transitional fallback.
+- Документировать, что историческую конфигурацию до snapshot нельзя достоверно восстановить, если template менялся; current-state backfill не является исторически точной версией.
+- Добавить schema/version guard для будущих форматов snapshot.
+
+**Тесты:**
+- Assign old instance, затем изменить points/text/required/photo, добавить item, изменить threshold; old instance остаётся прежним, new instance получает новое.
+- Soft-delete item/archive template не ломают old instance.
+- Изменение photo requirement/scale levels не влияет на old instance.
+- Score/review рассчитываются по snapshot.
+- DB integration: new snapshot, legacy/backfill, invalid snapshot.
+
+**Документация:** принцип `Checklist template = mutable authoring resource`, `ChecklistInstance = immutable historical assignment`; migration/backfill limitations.
+
+**Не входит:** UI Version 1/2, rollback, compare versions, глобальный audit template changes.
+
+**Критерии готовности:**
+- После assignment изменение template не меняет contents/requirements/score/outcome old instance.
+- Новые assignments получают current configuration.
+- Legacy transition задокументирован и тестируется.
+- Migration/API compatibility проверены.
+
+---
+
+## PR 219 — Checklist photo review UX/contract 🔲
+
+**Проблема:** learner upload использует object-backed evidence (`photoObjectKey`, `photoFileName`, temporary download endpoint), а reviewer UI частично определяет evidence через legacy `result.photoUrl`. При `photoUrl=null` валидное фото может выглядеть отсутствующим; полноценный просмотр доказательства слабый.
+
+**Цель:** current uploaded photo надёжно определяется как evidence и безопасно открывается reviewer.
+
+**Contract:**
+- Canonical evidence marker — storage-backed photo metadata, не `photoUrl`.
+- Вынести `hasChecklistPhotoEvidence(result)` или эквивалент и использовать в learner/reviewer UI и тестах.
+- Legacy `photoUrl` не удалять в этом PR; считать compatibility field.
+
+**Reviewer UI:**
+- Показывать item text, answer/scale, points, learner comment, required/optional, photo-required, review comment, Approve/Reject.
+- Evidence: file name/thumbnail + `Открыть фото`.
+- URL получать только через protected/presigned `getChecklistItemPhotoUrl(instanceId, itemId)`.
+- Loading/error/retry для temporary URL.
+- Не отдавать raw object key и не строить storage URL в browser.
+- Legacy/corrupt submitted instance без required evidence показывать как проблему.
+
+**Security/RBAC:** organization isolation, learner ownership, reviewer role/team scope, foreign instance/item denial; no evidence → safe 404/contract error.
+
+**Тесты:**
+- `photoUrl=null` + object metadata = attached.
+- Missing evidence flagged.
+- Temporary URL/thumbnail и retry.
+- Backend own-org success, foreign-org denial, no-evidence 404.
+- Playwright learner uploads → submits → instructor sees evidence → approves.
+
+**Документация:** storage metadata = source of truth; download URL temporary.
+
+**Не входит:** новый storage provider/upload pipeline или удаление legacy field.
+
+**Критерии готовности:**
+- Object-backed photo корректно определяется и открывается reviewer.
+- `photoUrl` не определяет attachment state.
+- Cross-org/cross-scope access закрыт тестами.
+- Evidence review E2E проходит.
+
+---
+
+## PR 220 — Checklist deadline lifecycle 🔲
+
+**Проблема:** `ChecklistInstance` уже имеет `dueAt` и `expired`, assignment API принимает deadline, но нет полного expiration workflow. Deadline не гарантирует блокировку после срока, stale instances автоматически не expire.
+
+**Цель:** `dueAt` становится серверным бизнес-правилом, независимым от задержек worker.
+
+**Lifecycle:**
+- `dueAt <= now` + `assigned/in_progress` → `expired`.
+- `submitted` не expires: работа уже отправлена и может reviewed позже.
+- `completed` не меняется.
+- `expired` terminal.
+- `dueAt=null` никогда auto-expire.
+
+**Write-time correctness:**
+- Перед submit item/attach photo проверять deadline.
+- При истечении атомарно переводить active instance в `expired` и отклонять mutation.
+- Correctness не зависит от background worker.
+
+**Background processing:**
+- Переиспользовать `BackgroundJobsService`/BullMQ, без второй queue system.
+- Idempotent batch-expiration handler для overdue active instances.
+- Conditional updates пачками; repeat безопасен.
+- Scheduling встроить в current worker architecture без нового scheduler stack.
+
+**Data/performance:** индекс под expiration query (`status + dueAt` с tenant scope); точный composite index подтвердить реальными query paths.
+
+**Frontend:**
+- Learner: due date, warning, expired badge, disabled controls, понятный текст.
+- Admin/reviewer: due date + expired state.
+- Existing single assignment UI позволяет задать deadline.
+- Backend хранит UTC ISO; UI отображает user/application timezone.
+
+**Тесты:** `now <`, `==`, `>` dueAt, no dueAt; submitted-before/review-after; completed; idempotent worker; job+submit race; batch + tenant isolation; controlled clock без sleeps.
+
+**Не входит:** reminders/escalation notifications.
+
+**Критерии готовности:**
+- После dueAt выполнение невозможно даже при задержке worker.
+- Stale active → expired.
+- Submitted/completed не портятся job.
+- UI/API единообразно отражают expired.
+- Migration/index/worker tests проходят.
+
+---
+
+## PR 221 — Checklist assignment expansion 🔲
+
+**Проблема:** current flow `один checklist → один user`, хотя уже есть groups, memberships, manager team scope и dueAt.
+
+**Цель:** назначать checklist нескольким users/groups/manager team с дедупликацией, scope enforcement и общим deadline.
+
+**API:**
+- Сохранить single assignment endpoint.
+- Добавить bulk endpoint, например `POST /checklists/:id/instances/bulk`.
+- Targets: `{ type: user, id }`, `{ type: group, id }`, `{ type: manager_team }`, optional dueAt.
+- Комбинация target types разрешена.
+
+**Backend:**
+- Проверить published checklist/scope actor.
+- Expand targets в user IDs.
+- Проверить organization/deleted/group access.
+- Переиспользовать `GroupMember` и `ManagerTeamScope`, не создавать новую team model.
+- Manager team = users managed groups; чужие groups fail-closed.
+- Дедуплицировать overlap user/group/team.
+- Валидировать весь target set до записи.
+- Создавать assignments одной transaction.
+
+**Duplicate/active policy:**
+- Duplicate targets → dedupe.
+- Existing active instance → skip, batch не падает.
+- Invalid/cross-org/unauthorized target → reject request до записи.
+- Унифицировать UI/backend: повторное назначение разрешено после `completed`/`expired`, блокируется для `assigned/in_progress/submitted`.
+
+**Response:** summary `created`, `skippedActive`, resolved/recipient counts; bounded limits descriptors/recipients по current repository/deployment assumptions, overflow → 400.
+
+**Frontend dialog:** Users / Groups / My team; search/pagination; deadline; preview recipients/skips; confirmation; result `создано N, пропущено M`.
+
+**Тесты:** one/many users; one/multiple groups; overlaps; manager team/foreign group denial; foreign org/deleted/empty; active skip; completed/expired repeat; dueAt; rollback; limits; deterministic dedupe.
+
+**Не входит:** recurring schedules, reminders, role-based dynamic rules.
+
+**Критерии готовности:**
+- Bulk users/groups/team одним request.
+- Scope/tenant isolation server-side.
+- Overlap без duplicates.
+- Active skipped; invalid target без partial write.
+- UI масштабируется search/pagination.
+
+---
+
+## PR 222 — Checklist analytics and review workflow 🔲
+
+**Проблема:** submitted instances образуют преимущественно organization-wide queue без явного owner; filters/operational visibility ограничены; нет checklist-specific durable истории state transitions и агрегированной аналитики. General Audit Log проекта остаётся `OWNER-DECISION` и не должен неявно реализовываться этим PR.
+
+**Цель:** reviewer routing, server-side filters, operational dashboard и immutable checklist event timeline поверх стабильного lifecycle PR 217–221.
+
+### Reviewer assignment
+
+**Data model:** добавить в `ChecklistInstance` nullable `reviewerId`, `reviewAssignedAt`, при необходимости `reviewAssignedBy`. Не смешивать instance reviewer с `ChecklistItemResult.reviewerId`: первый — ответственный, второй — actor item decision.
+
+**Backend/UI:**
+- Reviewer задаётся при assignment либо `PATCH /checklist-instances/:id/reviewer`.
+- Queue: `Assigned to me`, `Unassigned`, `All` только в подходящем scope.
+- Assigned instance не должен silently review чужой reviewer; admin override только по текущей RBAC policy.
+- Manager scope через `ManagerTeamScope` server-side.
+
+### Server-side filters
+
+**Review queue:** checklist, learner, group, reviewer, status, submitted range, due date, passed/failing, rejected items, evidence state.
+
+**History:** assigned/in_progress/submitted/completed/expired, date range, pagination.
+
+Не загружать весь org dataset для browser filtering. Сохранить compatibility endpoints либо добавить paged search endpoint и мигрировать UI постепенно.
+
+### Analytics
+
+**Backend aggregate API:** например `GET /checklists/analytics` с date/checklist/group/reviewer/team filters; aggregates считать в DB/backend.
+
+**Метрики:** assignments total; counts assigned/in_progress/submitted/completed/expired; completion rate; pass rate; average percentage; expired/overdue rate; pending review; average completion/review time; problematic items (most rejected, lowest average score, highest evidence/rejection rate).
+
+**Dashboard:** KPI `Assigned | Completed | Pass rate | Expired | Awaiting review`; completion trend, review queue, problematic checklists/items. На первом этапе cards/tables приоритетнее новой chart library. Manager analytics server-scoped.
+
+### Checklist-specific audit trail
+
+**Ограничение:** не реализовывать общий LMS General Audit Log; добавить только durable checklist-specific history.
+
+**Data model:** `ChecklistInstanceEvent`: id, organizationId, instanceId, eventType, actorUserId nullable, itemId nullable, metadata JSON, createdAt.
+
+**Events:** `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired`. UI clicks/page views не логировать.
+
+**Transactionality:** event пишется в той же DB transaction, что business mutation. Approve/reject атомарно обновляет result, event, recalculation и при необходимости `completed`. Outbox можно использовать для доставки, но он не заменяет durable audit storage.
+
+**Audit API/UI:** protected `GET /checklist-instances/:id/events` с RBAC/org/team scope; timeline assignment/start/evidence/submit/decisions/resubmit/completion/expiration.
+
+**Performance:** индексы reviewer/status, instance status/dueAt, checklist/status, submitted/completed dates, event `(instanceId, createdAt)` по реальным query paths.
+
+**Тесты:** reviewer assignment/unauthorized/admin override; manager isolation; filters/pagination; analytics zero/real + tenant/team scope; aggregate correctness; event order/actor; rollback без orphan event; cross-org event denial; web My reviews/Unassigned/filters/dashboard/timeline; Playwright assignment → learner completes → reviewer queue → reject → event → resubmit → approve → completed → analytics updated.
+
+**Документация:** reviewer scope contract, metric definitions, checklist event model и отличие durable history от Outbox/General Audit Log.
+
+**Не входит:** глобальный audit framework, внешняя BI-платформа, notifications/escalations без отдельного scope.
+
+**Критерии готовности:**
+- Однозначный reviewer routing либо controlled unassigned queue.
+- Filters/pagination server-side с tenant/team scope.
+- Aggregates воспроизводимы DB-тестами.
+- Значимые transitions имеют immutable durable history в одной transaction.
+- General Audit Log scope не расширен неявно.
+- Full review lifecycle E2E и CI проходят.
+
+---
+
+## Порядок выполнения checklist-серии
+
+```text
+PR 217 → PR 218 → PR 219 → PR 220 → PR 221 → PR 222
+```
+
+**Почему именно так:**
+- PR 217 фиксирует completion/evidence инварианты.
+- PR 218 замораживает правильные rules в historical assignments.
+- PR 219 опирается на гарантию required evidence.
+- PR 220 вводит deadline lifecycle.
+- PR 221 использует `expired` для repeat/bulk assignment policy.
+- PR 222 строит routing/analytics/history поверх стабильного lifecycle.
+
+**Итог фазы:**
+- authoring: `draft → publish`;
+- assignment: `published template → immutable snapshot → users/groups/team → due date`;
+- execution: `required/optional items → answers → required evidence → submit`;
+- review: `assigned reviewer → evidence → approve/reject → comments`;
+- lifecycle: `assigned → in_progress → submitted → completed` либо `assigned/in_progress → expired`;
+- control: server-side filters → review queue → analytics → immutable checklist event timeline.
+
+---
+
 ## Граф зависимостей
 
 ```text
@@ -3096,6 +3424,7 @@ PR 193 → PR 194, PR 195, PR 196, PR 197, PR 198
 PR 199 → PR 200, PR 201, PR 202, PR 203
 PR 208 → PR 209
 PR 212 → PR 213 → PR 214
+PR 217 → PR 218 → PR 219 → PR 220 → PR 221 → PR 222
 ```
 
 ## Рекомендуемая первая очередь

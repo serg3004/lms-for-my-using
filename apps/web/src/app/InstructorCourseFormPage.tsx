@@ -9,6 +9,7 @@ import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { FormField } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { slugify } from '../shared/slugify.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Mode = 'create' | 'edit';
 
@@ -21,10 +22,7 @@ type FormState = {
   status: string;
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; organizationId: string; firstName: string; lastName: string | null; lessons: LessonSummary[]; updatedAt: string | null }
-  | { status: 'error'; message: string };
+type InstructorCourseFormData = { organizationId: string; firstName: string; lastName: string | null; lessons: LessonSummary[]; updatedAt: string | null };
 
 type LessonField = 'title';
 type LessonDialogState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
@@ -37,7 +35,6 @@ type InstructorCourseFormPageProps = {
 export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFormPageProps) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [form, setForm] = useState<FormState>({ title: '', slug: '', description: '', category: '', durationMinutes: '', status: 'draft' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -50,54 +47,38 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
   const addLessonDialogRef = useRef<HTMLDialogElement>(null);
   const editLessonDialogRef = useRef<HTMLDialogElement>(null);
 
+  const { state: loadState, mutate } = useAsyncData<InstructorCourseFormData>(
+    async () => {
+      const user = await getCurrentUser();
+
+      let lessons: LessonSummary[] = [];
+      let updatedAt: string | null = null;
+
+      if (mode === 'edit' && courseId) {
+        const [course, courseLessons] = await Promise.all([getCourse(courseId), listLessons(courseId)]);
+        setForm({
+          title: course.title,
+          slug: course.slug,
+          description: course.description ?? '',
+          category: course.category ?? '',
+          durationMinutes: course.durationMinutes != null ? String(course.durationMinutes) : '',
+          status: course.status,
+        });
+        lessons = [...courseLessons].sort((a, b) => a.order - b.order);
+        updatedAt = course.updatedAt;
+      }
+
+      return { organizationId: user.organizationId, firstName: user.firstName, lastName: user.lastName, lessons, updatedAt };
+    },
+    [mode, courseId, t],
+    { unauthenticated: t('instructor.courseForm.loadError'), error: t('instructor.courseForm.loadError') },
+  );
+
   async function reloadLessons() {
     if (mode !== 'edit' || !courseId) return;
     const refreshedLessons = await listLessons(courseId);
-    setLoadState((prev) => (prev.status === 'loaded' ? { ...prev, lessons: [...refreshedLessons].sort((a, b) => a.order - b.order) } : prev));
+    mutate((data) => ({ ...data, lessons: [...refreshedLessons].sort((a, b) => a.order - b.order) }));
   }
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const user = await getCurrentUser();
-        if (!isMounted) return;
-
-        let lessons: LessonSummary[] = [];
-        let updatedAt: string | null = null;
-
-        if (mode === 'edit' && courseId) {
-          const [course, courseLessons] = await Promise.all([getCourse(courseId), listLessons(courseId)]);
-          if (!isMounted) return;
-          setForm({
-            title: course.title,
-            slug: course.slug,
-            description: course.description ?? '',
-            category: course.category ?? '',
-            durationMinutes: course.durationMinutes != null ? String(course.durationMinutes) : '',
-            status: course.status,
-          });
-          lessons = [...courseLessons].sort((a, b) => a.order - b.order);
-          updatedAt = course.updatedAt;
-        }
-
-        setLoadState({
-          status: 'loaded',
-          organizationId: user.organizationId,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          lessons,
-          updatedAt,
-        });
-      } catch {
-        if (isMounted) setLoadState({ status: 'error', message: t('instructor.courseForm.loadError') });
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, [mode, courseId, t]);
 
   useEffect(() => {
     if (showAddLesson) addLessonDialogRef.current?.showModal();
@@ -127,7 +108,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
     try {
       if (mode === 'create') {
         await createCourse({
-          organizationId: loadState.organizationId,
+          organizationId: loadState.data.organizationId,
           title: form.title.trim(),
           slug: form.slug.trim(),
           description: form.description.trim() || undefined,
@@ -162,10 +143,10 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
     setLessonDialogState({ status: 'submitting' });
     try {
       await createLesson(courseId, {
-        organizationId: loadState.organizationId,
+        organizationId: loadState.data.organizationId,
         title,
         slug: slugify(title),
-        order: loadState.lessons.length,
+        order: loadState.data.lessons.length,
         status: 'draft',
       });
       setShowAddLesson(false);
@@ -217,21 +198,23 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
     setEditingLesson(lesson);
   }
 
-  const firstName = loadState.status === 'loaded' ? loadState.firstName : undefined;
-  const lastName = loadState.status === 'loaded' ? (loadState.lastName ?? undefined) : undefined;
+  const firstName = loadState.status === 'loaded' ? loadState.data.firstName : undefined;
+  const lastName = loadState.status === 'loaded' ? (loadState.data.lastName ?? undefined) : undefined;
   const eyebrow = mode === 'create' ? t('instructor.courseForm.eyebrowCreate') : t('instructor.courseForm.eyebrowEdit');
   const pageTitle = mode === 'create' ? t('instructor.courseForm.createTitle') : t('instructor.courseForm.editTitle');
   const subtitle = mode === 'create' ? t('instructor.courseForm.subCreate') : t('instructor.courseForm.subEdit');
   const submitLabel = mode === 'create' ? t('instructor.courseForm.submitCreate') : t('instructor.courseForm.submitSave');
-  const lessons = loadState.status === 'loaded' ? loadState.lessons : [];
-  const updatedAt = loadState.status === 'loaded' ? loadState.updatedAt : null;
+  const lessons = loadState.status === 'loaded' ? loadState.data.lessons : [];
+  const updatedAt = loadState.status === 'loaded' ? loadState.data.updatedAt : null;
 
   return (
     <InstructorPageLayout firstName={firstName} lastName={lastName}>
       <Link to="/instructor/courses">← {t('instructor.courseForm.backToCourses')}</Link>
 
       {loadState.status === 'loading' && <p role="status">{t('instructor.courseForm.loading')}</p>}
-      {loadState.status === 'error' && <p role="alert">{loadState.message}</p>}
+      {(loadState.status === 'unauthenticated' || loadState.status === 'notFound' || loadState.status === 'error') && (
+        <p role="alert">{loadState.message}</p>
+      )}
 
       {loadState.status === 'loaded' && (
         <form id="course-form" onSubmit={handleSubmit}>

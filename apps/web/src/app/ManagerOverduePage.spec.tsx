@@ -10,20 +10,29 @@ afterEach(() => { reactMocks.useEffect.mockReset(); reactMocks.useState.mockRese
 
 describe('ManagerOverduePage', () => {
   it('renders overdue assignments returned by the manager API', () => {
-    reactMocks.useState.mockReturnValueOnce([{ status: 'loaded', summary: {
+    reactMocks.useState.mockReturnValueOnce([{ status: 'loaded', data: { summary: {
       membersCount: 1, completionRate: 50, dueThisWeekCount: 0, overdueCount: 1, avgTeamScore: null, upcomingDeadlines: [],
-      overdueAssignments: [{ assignmentId: 'a1', userId: 'u1', courseTitle: 'Safety', dueAt: '2026-08-20T00:00:00.000Z' }],
+      overdueAssignments: [{ assignmentId: 'a1', userId: 'u1', groupId: null, groupName: null, courseTitle: 'Safety', dueAt: '2026-08-20T00:00:00.000Z' }],
       members: [{ userId: 'u1', firstName: 'Alex', lastName: 'Smith', email: 'a@example.com', activeCoursesCount: 1, completionPercent: 50, status: 'risk' }],
-    } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    } } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<ManagerOverduePage />);
     expect(html).toContain('Alex Smith'); expect(html).toContain('Safety'); expect(html).toContain('Просрочено');
   });
 
+  it('renders the managed group for a group-targeted assignment', () => {
+    reactMocks.useState.mockReturnValueOnce([{ status: 'loaded', data: { summary: {
+      membersCount: 0, completionRate: 0, dueThisWeekCount: 0, overdueCount: 1, avgTeamScore: null, upcomingDeadlines: [],
+      overdueAssignments: [{ assignmentId: 'a2', userId: null, groupId: 'g1', groupName: 'Warehouse', courseTitle: 'Safety', dueAt: '2026-08-20T00:00:00.000Z' }],
+      members: [],
+    } } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    expect(renderToStaticMarkup(<ManagerOverduePage />)).toContain('Warehouse');
+  });
+
   it('renders an empty state', () => {
-    reactMocks.useState.mockReturnValueOnce([{ status: 'loaded', summary: {
+    reactMocks.useState.mockReturnValueOnce([{ status: 'loaded', data: { summary: {
       membersCount: 0, completionRate: 0, dueThisWeekCount: 0, overdueCount: 0, avgTeamScore: null,
       upcomingDeadlines: [], overdueAssignments: [], members: [],
-    } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    } } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
     expect(renderToStaticMarkup(<ManagerOverduePage />)).toContain('Просроченных назначений нет.');
   });
 });

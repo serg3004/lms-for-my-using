@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
 import type { ProgressSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Stats = {
   total: number;
@@ -14,16 +14,12 @@ type Stats = {
   completionPercent: number;
 };
 
-type LoadState =
-  | {
-      status: 'loaded';
-      user: CurrentUser;
-      stats: Stats;
-      popularCourseTitle: string | null;
-      completionsToday: number;
-    }
-  | { status: 'loading' }
-  | { status: 'error' };
+type InstructorDashboardData = {
+  user: CurrentUser;
+  stats: Stats;
+  popularCourseTitle: string | null;
+  completionsToday: number;
+};
 
 export function computeStats(courses: CourseSummary[], progressItems: { userId: string; status: string }[]): Stats {
   const published = courses.filter((c) => c.status === 'published').length;
@@ -59,35 +55,25 @@ function countCompletionsToday(progressItems: ProgressSummary[]): number {
 
 export function InstructorDashboardPage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state } = useAsyncData<InstructorDashboardData>(
+    async () => {
+      const [user, coursesPage, progressPage] = await Promise.all([
+        getCurrentUser(),
+        listCourses({ pageSize: 100 }),
+        listProgress({ pageSize: 100 }),
+      ]);
 
-    async function load() {
-      try {
-        const [user, coursesPage, progressPage] = await Promise.all([
-          getCurrentUser(),
-          listCourses({ pageSize: 100 }),
-          listProgress({ pageSize: 100 }),
-        ]);
-
-        if (!isMounted) return;
-        setState({
-          status: 'loaded',
-          user,
-          stats: computeStats(coursesPage.items, progressPage.items),
-          popularCourseTitle: findPopularCourseTitle(coursesPage.items, progressPage.items),
-          completionsToday: countCompletionsToday(progressPage.items),
-        });
-      } catch {
-        if (isMounted) setState({ status: 'error' });
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, []);
+      return {
+        user,
+        stats: computeStats(coursesPage.items, progressPage.items),
+        popularCourseTitle: findPopularCourseTitle(coursesPage.items, progressPage.items),
+        completionsToday: countCompletionsToday(progressPage.items),
+      };
+    },
+    [t],
+    { unauthenticated: t('instructor.dashboard.loadError'), error: t('instructor.dashboard.loadError') },
+  );
 
   if (state.status === 'loading') {
     return (
@@ -97,7 +83,7 @@ export function InstructorDashboardPage() {
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
     return (
       <InstructorPageLayout>
         <p role="alert">{t('instructor.dashboard.loadError')}</p>
@@ -105,7 +91,7 @@ export function InstructorDashboardPage() {
     );
   }
 
-  const { user, stats, popularCourseTitle, completionsToday } = state;
+  const { user, stats, popularCourseTitle, completionsToday } = state.data;
 
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>

@@ -1,28 +1,26 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getManagerTeamSummary, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
 import { Badge, PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
-type LoadState = { status: 'loading' } | { status: 'loaded'; summary: ManagerTeamSummary } | { status: 'error' };
+type ManagerOverdueData = { summary: ManagerTeamSummary };
 
 export function ManagerOverduePage() {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
-
-  useEffect(() => {
-    let isMounted = true;
-    void getManagerTeamSummary()
-      .then((summary) => { if (isMounted) setState({ status: 'loaded', summary }); })
-      .catch(() => { if (isMounted) setState({ status: 'error' }); });
-    return () => { isMounted = false; };
-  }, []);
+  const { state } = useAsyncData<ManagerOverdueData>(
+    async () => ({ summary: await getManagerTeamSummary() }),
+    [t],
+    { unauthenticated: t('manager.overdue.loadError'), error: t('manager.overdue.loadError') },
+  );
 
   if (state.status === 'loading') return <ManagerPageLayout><PageState message={t('manager.overdue.loading')} variant="loading" /></ManagerPageLayout>;
-  if (state.status === 'error') return <ManagerPageLayout><PageState message={t('manager.overdue.loadError')} variant="error" /></ManagerPageLayout>;
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
+    return <ManagerPageLayout><PageState message={t('manager.overdue.loadError')} variant="error" /></ManagerPageLayout>;
+  }
 
-  const { summary } = state;
+  const { summary } = state.data;
   return (
     <ManagerPageLayout>
       <div style={{ marginBottom: '22px' }}>
@@ -35,7 +33,9 @@ export function ManagerOverduePage() {
         <tbody>
           {summary.overdueAssignments.map((assignment) => {
             const member = summary.members.find((item) => item.userId === assignment.userId);
-            const name = member ? [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email : assignment.userId;
+            const name = member
+              ? [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email
+              : assignment.groupName ?? assignment.userId ?? t('manager.overdue.unknownTarget');
             return <tr key={assignment.assignmentId}><td>{name}</td><td>{assignment.courseTitle}</td><td>{new Date(assignment.dueAt).toLocaleDateString()}</td><td><Badge variant="overdue">{t('manager.overdue.status')}</Badge></td></tr>;
           })}
           {summary.overdueAssignments.length === 0 ? <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>{t('manager.overdue.empty')}</td></tr> : null}

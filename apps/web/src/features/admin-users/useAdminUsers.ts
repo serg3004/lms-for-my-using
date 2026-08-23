@@ -40,10 +40,11 @@ export function useAdminUsers() {
     },
   );
 
-  const state: AdminUsersLoadState = useMemo(
-    () => (asyncState.status === 'loaded' ? { status: 'loaded', ...asyncState.data } : asyncState),
-    [asyncState],
-  );
+  const state: AdminUsersLoadState = useMemo(() => {
+    if (asyncState.status === 'loaded') return { status: 'loaded', ...asyncState.data };
+    if (asyncState.status === 'notFound') return { status: 'error', message: asyncState.message };
+    return asyncState;
+  }, [asyncState]);
 
   const users = useMemo(() => state.status === 'loaded' ? filterAdminUsers(state.users, filters) : [], [filters, state]);
 

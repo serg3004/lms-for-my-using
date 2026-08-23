@@ -277,7 +277,7 @@ export function AdminOrgStructurePage() {
     );
   }
 
-  if (loadState.status === 'error') {
+  if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <main className="admin-state">
         <PageState title={t('admin.orgStructure.title', 'Organization')} message={loadState.message} variant="error" />

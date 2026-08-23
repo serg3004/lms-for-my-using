@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -12,6 +12,7 @@ import {
   type ProgressSummary,
 } from '../shared/apiClient.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type StudentRow = {
   userId: string;
@@ -23,10 +24,7 @@ type StudentRow = {
   status: 'completed' | 'in_progress';
 };
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; user: CurrentUser; course: CourseSummary; students: StudentRow[] }
-  | { status: 'error' };
+type InstructorCourseStudentsData = { user: CurrentUser; course: CourseSummary; students: StudentRow[] };
 
 export function buildStudentRows(
   progressItems: ProgressSummary[],
@@ -120,41 +118,27 @@ const COLORS = {
 
 export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStudentsPageProps) {
   const { t } = useTranslation();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'in_progress'>('all');
 
-  useEffect(() => {
-    let isMounted = true;
+  const { state } = useAsyncData<InstructorCourseStudentsData>(
+    async () => {
+      const [currentUser, course, progressPage] = await Promise.all([
+        getCurrentUser(),
+        getCourse(courseId),
+        listProgress({ pageSize: 100 }),
+      ]);
 
-    async function load() {
-      try {
-        const [currentUser, course, progressPage] = await Promise.all([
-          getCurrentUser(),
-          getCourse(courseId),
-          listProgress({ pageSize: 100 }),
-        ]);
-
-        if (!isMounted) return;
-        setState({
-          status: 'loaded',
-          user: currentUser,
-          course,
-          students: buildStudentRows(progressPage.items, courseId),
-        });
-      } catch {
-        if (isMounted) setState({ status: 'error' });
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, [courseId]);
+      return { user: currentUser, course, students: buildStudentRows(progressPage.items, courseId) };
+    },
+    [courseId, t],
+    { unauthenticated: t('instructor.courseStudents.loadError'), error: t('instructor.courseStudents.loadError') },
+  );
 
   const filteredStudents = useMemo(() => {
     if (state.status !== 'loaded') return [];
     const q = search.trim().toLowerCase();
-    return state.students.filter((row) => {
+    return state.data.students.filter((row) => {
       const matchesSearch = !q || row.name.toLowerCase().includes(q) || row.email.toLowerCase().includes(q);
       const matchesStatus = statusFilter === 'all' || row.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -169,7 +153,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
     );
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
     return (
       <InstructorPageLayout>
         <p role="alert">{t('instructor.courseStudents.loadError')}</p>
@@ -177,7 +161,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
     );
   }
 
-  const { user, course, students } = state;
+  const { user, course, students } = state.data;
 
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>

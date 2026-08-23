@@ -1,46 +1,27 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, AssessmentAttemptResult, getAttemptResult } from '../shared/apiClient.js';
+import { AssessmentAttemptResult, getAttemptResult } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 import { getAssessmentOptionLabel } from './assessment-taking/model.js';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'loaded'; result: AssessmentAttemptResult }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'notFound'; message: string }
-  | { status: 'error'; message: string };
+type AssessmentReviewData = { result: AssessmentAttemptResult };
 
 export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }) {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      setLoadState({ status: 'loading' });
-      try {
-        const result = await getAttemptResult(attemptId);
-        if (isMounted) setLoadState({ status: 'loaded', result });
-      } catch (error) {
-        if (!isMounted) return;
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('assessments.sessionExpired') });
-          return;
-        }
-        if (error instanceof ApiClientError && error.status === 404) {
-          setLoadState({ status: 'notFound', message: t('assessments.reviewNotFound') });
-          return;
-        }
-        setLoadState({ status: 'error', message: t('assessments.loadError') });
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, [attemptId, t]);
+  const { state: loadState } = useAsyncData<AssessmentReviewData>(
+    async () => {
+      const result = await getAttemptResult(attemptId);
+      return { result };
+    },
+    [attemptId, t],
+    {
+      unauthenticated: t('assessments.sessionExpired'),
+      notFound: t('assessments.reviewNotFound'),
+      error: t('assessments.loadError'),
+    },
+  );
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const assessmentsAction = <a href="/learn/assessments">{t('assessments.navLink')}</a>;
@@ -57,7 +38,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
     return <PageState title={t('assessments.reviewTitle')} message={loadState.message} variant="error" action={assessmentsAction} />;
   }
 
-  const { result } = loadState;
+  const { result } = loadState.data;
   const assessmentHref = `/learn/assessments/${encodeURIComponent(result.assessmentId)}`;
 
   return (
