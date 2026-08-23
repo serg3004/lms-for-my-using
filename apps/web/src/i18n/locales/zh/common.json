@@ -1239,6 +1239,7 @@
     "brandSub": "经理",
     "navDashboard": "面板",
     "navTeam": "团队",
+    "navOverdue": "逾期",
     "dashboard": {
       "eyebrow": "团队",
       "title": "经理面板",
@@ -1285,6 +1286,20 @@
       "columnProgress": "进度",
       "columnStatus": "状态",
       "empty": "未找到员工。"
+    },
+    "overdue": {
+      "eyebrow": "截止日期",
+      "title": "逾期学习",
+      "subtitle": "需要您关注的任务。",
+      "loading": "正在加载逾期任务...",
+      "loadError": "无法加载数据，请稍后重试。",
+      "columnEmployee": "员工",
+      "columnCourse": "课程",
+      "columnDueDate": "截止日期",
+      "columnStatus": "状态",
+      "status": "逾期",
+      "empty": "没有逾期任务。",
+      "unknownTarget": "未知目标"
     }
   },
   "instructor": {

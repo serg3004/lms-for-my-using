@@ -3,6 +3,7 @@ import { Navigate, Outlet, Route } from 'react-router-dom';
 
 const ManagerDashboardPage = lazy(() => import('../ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })));
 const ManagerTeamPage = lazy(() => import('../ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })));
+const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m) => ({ default: m.ManagerOverduePage })));
 
 export function ManagerRoutes() {
   return (
@@ -10,6 +11,7 @@ export function ManagerRoutes() {
       <Route index element={<Navigate replace to="/manager/dashboard" />} />
       <Route path="dashboard" element={<ManagerDashboardPage />} />
       <Route path="team" element={<ManagerTeamPage />} />
+      <Route path="overdue" element={<ManagerOverduePage />} />
     </Route>
   );
 }

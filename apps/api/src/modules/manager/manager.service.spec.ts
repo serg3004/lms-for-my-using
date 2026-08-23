@@ -16,6 +16,10 @@ describe('ManagerService getTeamSummary', () => {
   it('returns zeroed summary when the manager has no team members', async () => {
     const prisma = {
       user: { findMany: async () => [] },
+      progress: { findMany: async () => [] },
+      assessmentAttempt: { findMany: async () => [] },
+      assignment: { findMany: async () => [] },
+      lesson: { groupBy: async () => [] },
     } as unknown as PrismaService;
     const service = new ManagerService(prisma);
 
@@ -26,11 +30,13 @@ describe('ManagerService getTeamSummary', () => {
       overdueCount: 0,
       avgTeamScore: null,
       upcomingDeadlines: [],
+      overdueAssignments: [],
       members: [],
     });
   });
 
   it('aggregates per-member completion, risk status, overdue and due-this-week counts', async () => {
+    let assignmentWhere: unknown;
     const prisma = {
       user: {
         findMany: async () => [
@@ -50,10 +56,14 @@ describe('ManagerService getTeamSummary', () => {
         findMany: async () => [{ percentage: 90 }, { percentage: 70 }],
       },
       assignment: {
-        findMany: async () => [
-          { userId: memberAId, status: 'assigned', dueAt: daysFromNow(-1), course: { title: 'Course A' } },
-          { userId: memberBId, status: 'assigned', dueAt: daysFromNow(3), course: { title: 'Course B' } },
-        ],
+        findMany: async (args: { where: unknown }) => {
+          assignmentWhere = args.where;
+          return [
+          { id: 'assignment-a', userId: memberAId, groupId: null, status: 'assigned', dueAt: daysFromNow(-1), course: { title: 'Course A' }, group: null },
+          { id: 'assignment-b', userId: memberBId, groupId: null, status: 'assigned', dueAt: daysFromNow(3), course: { title: 'Course B' }, group: null },
+          { id: 'assignment-group', userId: null, groupId: 'group-a', status: 'assigned', dueAt: daysFromNow(-2), course: { title: 'Course A' }, group: { name: 'Warehouse' } },
+          ];
+        },
       },
       lesson: {
         groupBy: async () => [
@@ -68,9 +78,13 @@ describe('ManagerService getTeamSummary', () => {
 
     expect(summary.membersCount).toBe(2);
     expect(summary.dueThisWeekCount).toBe(1);
-    expect(summary.overdueCount).toBe(1);
+    expect(summary.overdueCount).toBe(2);
     expect(summary.avgTeamScore).toBe(80);
     expect(summary.upcomingDeadlines).toEqual([{ courseTitle: 'Course B', userId: memberBId, dueAt: expect.any(String) }]);
+    expect(summary.overdueAssignments).toEqual([
+      { assignmentId: 'assignment-group', courseTitle: 'Course A', userId: null, groupId: 'group-a', groupName: 'Warehouse', dueAt: expect.any(String) },
+      { assignmentId: 'assignment-a', courseTitle: 'Course A', userId: memberAId, groupId: null, groupName: null, dueAt: expect.any(String) },
+    ]);
 
     const memberA = summary.members.find((m) => m.userId === memberAId);
     const memberB = summary.members.find((m) => m.userId === memberBId);
@@ -95,5 +109,13 @@ describe('ManagerService getTeamSummary', () => {
     });
 
     expect(summary.completionRate).toBe(50);
+    expect(assignmentWhere).toEqual({
+      organizationId,
+      deletedAt: null,
+      OR: [
+        { user: { groupMemberships: { some: { organizationId, group: { managers: { some: { managerId, organizationId } } } } } } },
+        { group: { managers: { some: { managerId, organizationId } } } },
+      ],
+    });
   });
 });

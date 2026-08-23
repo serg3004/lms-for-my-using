@@ -10,6 +10,7 @@ import { Avatar, SkipLink } from './ui.js';
 const MANAGER_NAV_DEFS = [
   { key: 'manager.navDashboard', href: '/manager/dashboard' },
   { key: 'manager.navTeam', href: '/manager/team' },
+  { key: 'manager.navOverdue', href: '/manager/overdue' },
 ] as const;
 
 type UserState =

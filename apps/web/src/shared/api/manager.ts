@@ -17,6 +17,14 @@ export type ManagerTeamSummary = {
   overdueCount: number;
   avgTeamScore: number | null;
   upcomingDeadlines: { courseTitle: string; userId: string; dueAt: string }[];
+  overdueAssignments: {
+    assignmentId: string;
+    courseTitle: string;
+    userId: string | null;
+    groupId: string | null;
+    groupName: string | null;
+    dueAt: string;
+  }[];
   members: ManagerTeamMember[];
 };
 

@@ -1256,6 +1256,7 @@
     "brandSub": "Менеджер",
     "navDashboard": "Панель",
     "navTeam": "Команда",
+    "navOverdue": "Просрочено",
     "dashboard": {
       "eyebrow": "Команда",
       "title": "Панель менеджера",
@@ -1302,6 +1303,20 @@
       "columnProgress": "Прогресс",
       "columnStatus": "Статус",
       "empty": "Сотрудники не найдены."
+    },
+    "overdue": {
+      "eyebrow": "Сроки",
+      "title": "Просроченное обучение",
+      "subtitle": "Назначения, которые требуют вашего внимания.",
+      "loading": "Загрузка просроченных назначений...",
+      "loadError": "Не удалось загрузить данные. Попробуйте позже.",
+      "columnEmployee": "Сотрудник",
+      "columnCourse": "Курс",
+      "columnDueDate": "Срок",
+      "columnStatus": "Статус",
+      "status": "Просрочено",
+      "empty": "Просроченных назначений нет.",
+      "unknownTarget": "Неизвестная цель"
     }
   },
   "instructor": {

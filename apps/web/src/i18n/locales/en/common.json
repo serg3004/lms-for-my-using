@@ -1239,6 +1239,7 @@
     "brandSub": "Manager",
     "navDashboard": "Dashboard",
     "navTeam": "Team",
+    "navOverdue": "Overdue",
     "dashboard": {
       "eyebrow": "Team",
       "title": "Manager dashboard",
@@ -1285,6 +1286,20 @@
       "columnProgress": "Progress",
       "columnStatus": "Status",
       "empty": "No employees found."
+    },
+    "overdue": {
+      "eyebrow": "Deadlines",
+      "title": "Overdue learning",
+      "subtitle": "Assignments that require your attention.",
+      "loading": "Loading overdue assignments...",
+      "loadError": "Unable to load data. Try again later.",
+      "columnEmployee": "Employee",
+      "columnCourse": "Course",
+      "columnDueDate": "Due date",
+      "columnStatus": "Status",
+      "status": "Overdue",
+      "empty": "No overdue assignments.",
+      "unknownTarget": "Unknown target"
     }
   },
   "instructor": {

@@ -26,18 +26,6 @@ export class ManagerService {
     });
     const memberIds = teamUsers.map((user) => user.id);
 
-    if (memberIds.length === 0) {
-      return {
-        membersCount: 0,
-        completionRate: 0,
-        dueThisWeekCount: 0,
-        overdueCount: 0,
-        avgTeamScore: null,
-        upcomingDeadlines: [],
-        members: [],
-      };
-    }
-
     const [progressRows, attemptRows, assignmentRows] = await Promise.all([
       this.prisma.progress.findMany({
         where: {
@@ -54,12 +42,15 @@ export class ManagerService {
         select: { percentage: true },
       }),
       this.prisma.assignment.findMany({
-        where: { organizationId, userId: { in: memberIds }, deletedAt: null },
+        where: { organizationId, ...this.teamScope.assignment(actor), deletedAt: null },
         select: {
+          id: true,
           userId: true,
+          groupId: true,
           status: true,
           dueAt: true,
           course: { select: { title: true } },
+          group: { select: { name: true } },
         },
       }),
     ]);
@@ -93,20 +84,39 @@ export class ManagerService {
     let overdueCount = 0;
     let dueThisWeekCount = 0;
     const upcomingDeadlines: { courseTitle: string; userId: string; dueAt: string }[] = [];
+    const overdueAssignments: {
+      assignmentId: string;
+      courseTitle: string;
+      userId: string | null;
+      groupId: string | null;
+      groupName: string | null;
+      dueAt: string;
+    }[] = [];
 
     for (const assignment of assignmentRows) {
-      if (assignment.status === 'completed' || !assignment.dueAt || !assignment.userId) continue;
+      if (assignment.status === 'completed' || !assignment.dueAt) continue;
 
       if (assignment.dueAt < now) {
         overdueCount += 1;
-        overdueByUser.set(assignment.userId, (overdueByUser.get(assignment.userId) ?? 0) + 1);
-      } else if (assignment.dueAt <= dueSoonAt) {
+        if (assignment.userId) {
+          overdueByUser.set(assignment.userId, (overdueByUser.get(assignment.userId) ?? 0) + 1);
+        }
+        overdueAssignments.push({
+          assignmentId: assignment.id,
+          courseTitle: assignment.course.title,
+          userId: assignment.userId,
+          groupId: assignment.groupId,
+          groupName: assignment.group?.name ?? null,
+          dueAt: assignment.dueAt.toISOString(),
+        });
+      } else if (assignment.dueAt <= dueSoonAt && assignment.userId) {
         dueThisWeekCount += 1;
         dueThisWeekByUser.set(assignment.userId, (dueThisWeekByUser.get(assignment.userId) ?? 0) + 1);
         upcomingDeadlines.push({ courseTitle: assignment.course.title, userId: assignment.userId, dueAt: assignment.dueAt.toISOString() });
       }
     }
     upcomingDeadlines.sort((a, b) => (a.dueAt < b.dueAt ? -1 : 1));
+    overdueAssignments.sort((a, b) => (a.dueAt < b.dueAt ? -1 : 1));
 
     let teamCompletedLessons = 0;
     let teamTotalLessons = 0;
@@ -150,6 +160,7 @@ export class ManagerService {
       overdueCount,
       avgTeamScore,
       upcomingDeadlines: upcomingDeadlines.slice(0, UPCOMING_DEADLINES_LIMIT),
+      overdueAssignments,
       members,
     };
   }
