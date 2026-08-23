@@ -41,7 +41,7 @@ const statusLabels = { draft: 'Черновик', published: 'Опубликов
 const scoringModeLabels = { sum_points: 'Сумма баллов', all_required: 'Все пункты обязательны', scale: 'Своя шкала' };
 
 describe('ChecklistBuilder (real hooks)', () => {
-  it('renders the scale-mode scoring config, items and assignment section without crashing', () => {
+  it('renders required/photo item controls, scale config and assignment section without crashing', () => {
     const html = renderToStaticMarkup(
       <ChecklistBuilder
         checklist={checklist}
@@ -56,6 +56,7 @@ describe('ChecklistBuilder (real hooks)', () => {
     expect(html).toContain('Работа с кассой');
     expect(html).toContain('Очень плохо');
     expect(html).toContain('Отлично');
+    expect(html).toContain('Required item');
     expect(html).toContain('Photo required');
     expect(html).toContain('Select an employee');
   });

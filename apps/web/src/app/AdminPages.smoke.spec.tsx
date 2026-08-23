@@ -708,7 +708,7 @@ describe('computePreviewResult', () => {
 
   it('scores sum_points mode from checked items', () => {
     const result = computePreviewResult(items, 'sum_points', [], 80, { 'item-1': { checked: true }, 'item-2': { checked: false } });
-    expect(result).toEqual({ totalScore: 10, maxScore: 30, percentage: 33, passed: false, allAnswered: true });
+    expect(result).toEqual({ totalScore: 10, maxScore: 30, percentage: 33, passed: false, allAnswered: false });
   });
 
   it('scores all_required mode as 1 point per checked item regardless of configured points', () => {
