@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, apiRequest, getCurrentUser, type CurrentUser } from '../../shared/apiClient.js';
+import { apiRequest, getCurrentUser, type CurrentUser } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
+import { useAsyncData } from '../../shared/useAsyncData.js';
 import { EMPTY_USER_FILTERS, userName, userRole, type AdminUserSummary, type AdminUsersFilters } from './model.js';
 
 export type AdminUsersLoadState =
-  | { status: 'idle' | 'loading' }
+  | { status: 'loading' }
   | { status: 'loaded'; users: AdminUserSummary[]; currentUser: CurrentUser; total: number; pageSize: number }
   | { status: 'unauthenticated' | 'error'; message: string };
+
+type AdminUsersData = { users: AdminUserSummary[]; currentUser: CurrentUser; total: number; pageSize: number };
 
 export function filterAdminUsers(users: AdminUserSummary[], filters: AdminUsersFilters) {
   const query = filters.query.trim().toLocaleLowerCase();
@@ -20,25 +23,28 @@ export function filterAdminUsers(users: AdminUserSummary[], filters: AdminUsersF
 
 export function useAdminUsers() {
   const { t } = useTranslation();
-  const [state, setState] = useState<AdminUsersLoadState>({ status: 'idle' });
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AdminUsersFilters>(EMPTY_USER_FILTERS);
 
-  const reload = useCallback(async () => {
-    setState({ status: 'loading' });
-    try {
+  const { state: asyncState, reload } = useAsyncData<AdminUsersData>(
+    async () => {
       const [result, currentUser] = await Promise.all([
         apiRequest<PaginatedResponse<AdminUserSummary>>(`/users?page=${page}&pageSize=20`), getCurrentUser(),
       ]);
-      setState({ status: 'loaded', users: result.items, currentUser, total: result.total, pageSize: result.pageSize });
-    } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        setState({ status: 'unauthenticated', message: t('admin.users.sessionExpired', 'Your session expired. Sign in again.') });
-      } else setState({ status: 'error', message: t('admin.users.loadError', 'Unable to load users. Try again later.') });
-    }
-  }, [page, t]);
+      return { users: result.items, currentUser, total: result.total, pageSize: result.pageSize };
+    },
+    [page],
+    {
+      unauthenticated: t('admin.users.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.users.loadError', 'Unable to load users. Try again later.'),
+    },
+  );
 
-  useEffect(() => { void reload(); }, [reload]);
+  const state: AdminUsersLoadState = useMemo(
+    () => (asyncState.status === 'loaded' ? { status: 'loaded', ...asyncState.data } : asyncState),
+    [asyncState],
+  );
+
   const users = useMemo(() => state.status === 'loaded' ? filterAdminUsers(state.users, filters) : [], [filters, state]);
 
   function updateFilters(next: AdminUsersFilters) {

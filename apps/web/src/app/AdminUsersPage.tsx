@@ -50,7 +50,7 @@ export function AdminUsersPage() {
     }
   }
 
-  if (usersQuery.state.status === 'idle' || usersQuery.state.status === 'loading') return <main className="admin-state"><PageState message={t('admin.users.loading', 'Loading users...')} variant="loading" /></main>;
+  if (usersQuery.state.status === 'loading') return <main className="admin-state"><PageState message={t('admin.users.loading', 'Loading users...')} variant="loading" /></main>;
   if (usersQuery.state.status === 'unauthenticated' || usersQuery.state.status === 'error') return <main className="admin-state"><PageState title={t('admin.users.title', 'Users')} message={usersQuery.state.message} variant="error" /></main>;
   if (usersQuery.state.status !== 'loaded') return null;
   const loadedState = usersQuery.state;

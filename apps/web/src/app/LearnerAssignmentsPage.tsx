@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAssignments } from '../shared/api/assignments.js';
-import { ApiClientError } from '../shared/apiClient.js';
 import type { AssignmentSummary } from '../shared/api/types.js';
 import { Pagination, PageState } from '../shared/ui.js';
+import { useAsyncData } from '../shared/useAsyncData.js';
 
 type ExtendedAssignment = AssignmentSummary & {
   courseTitle?: string | null;
@@ -13,12 +13,7 @@ type ExtendedAssignment = AssignmentSummary & {
   groupName?: string | null;
 };
 
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'loaded'; assignments: ExtendedAssignment[]; total: number; pageSize: number }
-  | { status: 'unauthenticated'; message: string }
-  | { status: 'error'; message: string };
+type AssignmentsData = { assignments: ExtendedAssignment[]; total: number; pageSize: number };
 
 type StatusFilter = 'all' | 'assigned' | 'completed' | 'overdue';
 type TypeFilter = 'all' | 'course';
@@ -103,43 +98,21 @@ function ProgressBar({ pct, success, label }: { pct: number; success?: boolean; 
 
 export function LearnerAssignmentsPage() {
   const { t } = useTranslation();
-  const [loadState, setLoadState] = useState<LoadState>({ status: 'idle' });
   const [page, setPage] = useState(1);
+  const { state: loadState } = useAsyncData<AssignmentsData>(
+    async () => {
+      const result = await listAssignments({ page, pageSize: 20 });
+      return { assignments: result.items as ExtendedAssignment[], total: result.total, pageSize: result.pageSize };
+    },
+    [page],
+    { unauthenticated: t('assignments.sessionExpired'), error: t('assignments.loadError') },
+  );
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      setLoadState({ status: 'loading' });
-      try {
-        const result = await listAssignments({ page, pageSize: 20 });
-        if (isMounted) {
-          setLoadState({
-            status: 'loaded',
-            assignments: result.items as ExtendedAssignment[],
-            total: result.total,
-            pageSize: result.pageSize,
-          });
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        if (error instanceof ApiClientError && error.status === 401) {
-          setLoadState({ status: 'unauthenticated', message: t('assignments.sessionExpired') });
-          return;
-        }
-        setLoadState({ status: 'error', message: t('assignments.loadError') });
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, [t, page]);
-
   const filtered = useMemo(() => {
-    const all = loadState.status === 'loaded' ? loadState.assignments : [];
+    const all = loadState.status === 'loaded' ? loadState.data.assignments : [];
     const q = search.toLowerCase();
     return all.filter((a) => {
       const title = getCourseTitle(a) ?? '';
@@ -151,7 +124,7 @@ export function LearnerAssignmentsPage() {
     });
   }, [loadState, search, statusFilter, typeFilter]);
 
-  if (loadState.status === 'idle' || loadState.status === 'loading') {
+  if (loadState.status === 'loading') {
     return <PageState message={t('assignments.loading')} variant="loading" />;
   }
 
@@ -163,7 +136,7 @@ export function LearnerAssignmentsPage() {
     return <PageState title={t('assignments.title')} message={loadState.message} variant="error" action={<a href="/learn">{t('learner.navLink')}</a>} />;
   }
 
-  const { assignments, total, pageSize } = loadState;
+  const { assignments, total, pageSize } = loadState.data;
 
   const activeCount = assignments.filter((a) => a.status !== 'completed').length;
   const dueThisWeek = assignments.filter((a) => isDueThisWeek(a.dueAt)).length;
