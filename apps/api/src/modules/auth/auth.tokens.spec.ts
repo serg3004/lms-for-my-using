@@ -66,6 +66,14 @@ describe('Auth tokens', () => {
     expect(claims.email).toBe(userJwtPayload.email);
   });
 
+  it('keeps authorization roles out of the JWT', async () => {
+    const { token } = await signJwt(userJwtPayload, jwtSecret);
+    const claims = await verifyJwt(token, jwtSecret);
+
+    expect(claims).not.toHaveProperty('role');
+    expect(claims).not.toHaveProperty('roles');
+  });
+
   it('keeps access tokens short-lived', async () => {
     const { token, expiresAt } = await signJwt(userJwtPayload, jwtSecret);
     const claims = await verifyJwt(token, jwtSecret);

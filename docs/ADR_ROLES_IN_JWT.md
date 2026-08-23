@@ -8,7 +8,7 @@
 
 The access token issued by `AuthService.login` / `refreshSession` (`apps/api/src/modules/auth/auth.tokens.ts`) needs to carry enough identity for the API to authorize requests. Two standard approaches exist:
 
-1. **Roles in JWT** — bake the user's role(s) into the signed token at issue time. Every subsequent request decodes the token and trusts the embedded roles until the token expires (access tokens in this codebase live 1 hour).
+1. **Roles in JWT** — bake the user's role(s) into the signed token at issue time. Every subsequent request decodes the token and trusts the embedded roles until the token expires (access tokens in this codebase live 15 minutes).
 2. **DB-backed roles** — the token carries only a stable identity (`sub`, `organizationId`, `email`, `jti`), and every authorization check re-reads the user's roles from the `memberships` table.
 
 A user in this system can hold **multiple roles** (the `Membership` model has `@@unique([organizationId, userId, role])`, not a single `role` column on `User`), and roles are administered by an admin/manager through the Users/Memberships API — i.e. role changes must be able to take effect without the affected user needing to log out.
@@ -25,7 +25,7 @@ This ADR formalizes that as the intended architecture rather than an accident, a
 
 ## Rationale
 
-- **Immediate revocation.** An admin removing a user's `manager` membership (or disabling the account) takes effect on the user's *very next request*, because `RolesGuard` re-reads the DB every time. With roles embedded in the JWT, the change would only take effect after the 1-hour access token expired and was refreshed — a meaningful window where a de-provisioned manager could still exercise manager-only endpoints.
+- **Immediate revocation.** An admin removing a user's `manager` membership (or disabling the account) takes effect on the user's *very next request*, because `RolesGuard` re-reads the DB every time. With roles embedded in the JWT, the change would only take effect after the 15-minute access token expired and was refreshed — a meaningful window where a de-provisioned manager could still exercise manager-only endpoints.
 - **Multi-role support without payload growth.** A user can hold several roles; DB-backed lookup treats this uniformly (`membershipRoles.some(...)`) without needing to keep the token's role list in sync with membership changes across renewals.
 - **Smaller, more stable token.** The JWT payload never needs to change shape when the permission model evolves (e.g. adding a new role or splitting membership scopes) — only the guard's DB query and `rolePolicies` map (`roles.ts`) change.
 - **Existing session/refresh model already assumes a DB round-trip.** `getCurrentUser`, `refreshSession`, and `RolesGuard` all already hit Postgres (`session` and `membership` lookups) on the request path, so DB-backed roles add no new architectural cost — there is no "stateless JWT" property being given up that the system relies on elsewhere.
@@ -38,4 +38,4 @@ DB-backed roles add one `membership.findMany` query per request that hits a role
 
 - No code change was required to implement this decision — it already matches the codebase.
 - Any future change that considers embedding roles in the JWT must explain how it will preserve immediate revocation, or must accept and document the resulting propagation delay.
-- Role-guard behavior is covered by `apps/api/src/modules/auth/roles.guard.spec.ts` (allowed role, cached-within-request lookup, missing policy fails closed, disallowed role rejected, missing current user rejected) and `apps/api/src/modules/auth/api-policy.audit.spec.ts` (endpoint-to-policy coverage audit).
+- The token contract is covered by `apps/api/src/modules/auth/auth.tokens.spec.ts`, including an explicit assertion that no `role` or `roles` claim is issued. Role-guard behavior is covered by `apps/api/src/modules/auth/roles.guard.spec.ts` (allowed role, cached-within-request lookup, missing policy fails closed, disallowed role rejected, missing current user rejected) and `apps/api/src/modules/auth/api-policy.audit.spec.ts` (endpoint-to-policy coverage audit).
