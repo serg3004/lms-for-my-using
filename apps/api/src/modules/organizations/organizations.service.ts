@@ -128,19 +128,18 @@ export class OrganizationsService {
   async updateThemeSettings(organizationId: string, themeSettings: ThemeSettingsInput) {
     const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
 
-    const updated = await this.prisma.organization.update({
-      where: { id: organizationId },
-      data: {
-        themeSettings: {
-          ...themeSettings,
-          logoObjectKey: existing?.logoObjectKey,
-          logoMimeType: existing?.logoMimeType,
-        },
+    const updated = await this.prisma.organizationTheme.upsert({
+      where: { organizationId },
+      create: {
+        organizationId,
+        settings: themeSettings,
+        logoObjectKey: existing?.logoObjectKey,
+        logoMimeType: existing?.logoMimeType,
       },
-      select: { themeSettings: true },
+      update: { settings: themeSettings },
     });
 
-    return { themeSettings: await this.withResolvedLogoUrl(updated.themeSettings) };
+    return { themeSettings: await this.withResolvedLogoUrl(this.toStoredThemeSettings(updated)) };
   }
 
   async uploadLogo(organizationId: string, file: Express.Multer.File) {
@@ -149,19 +148,22 @@ export class OrganizationsService {
 
     const logoObjectKey = await this.uploadService.uploadOrganizationLogo(file, organizationId);
 
-    const updated = await this.prisma.organization.update({
-      where: { id: organizationId },
-      data: {
-        themeSettings: { ...existing, logoObjectKey, logoMimeType: file.mimetype },
+    const updated = await this.prisma.organizationTheme.upsert({
+      where: { organizationId },
+      create: {
+        organizationId,
+        settings: this.settingsDocument(existing),
+        logoObjectKey,
+        logoMimeType: file.mimetype,
       },
-      select: { themeSettings: true },
+      update: { logoObjectKey, logoMimeType: file.mimetype },
     });
 
     if (previousLogoObjectKey) {
       await this.uploadService.deleteObject(previousLogoObjectKey).catch(() => undefined);
     }
 
-    return { themeSettings: await this.withResolvedLogoUrl(updated.themeSettings) };
+    return { themeSettings: await this.withResolvedLogoUrl(this.toStoredThemeSettings(updated)) };
   }
 
   async resetThemeSettings(organizationId: string) {
@@ -171,11 +173,7 @@ export class OrganizationsService {
       await this.uploadService.deleteObject(existing.logoObjectKey).catch(() => undefined);
     }
 
-    await this.prisma.organization.update({
-      where: { id: organizationId },
-      data: { themeSettings: Prisma.JsonNull },
-      select: { id: true },
-    });
+    await this.prisma.organizationTheme.deleteMany({ where: { organizationId } });
 
     return { themeSettings: null };
   }
@@ -183,14 +181,32 @@ export class OrganizationsService {
   private async findRawThemeSettings(organizationId: string): Promise<Prisma.JsonValue | null> {
     const organization = await this.prisma.organization.findFirst({
       where: { id: organizationId, deletedAt: null },
-      select: { themeSettings: true },
+      select: { theme: true },
     });
 
     if (!organization) {
       throw new NotFoundException('Organization not found');
     }
 
-    return organization.themeSettings;
+    return organization.theme ? (this.toStoredThemeSettings(organization.theme) as unknown as Prisma.JsonValue) : null;
+  }
+
+  private toStoredThemeSettings(theme: { settings: Prisma.JsonValue; logoObjectKey: string | null; logoMimeType: string | null }) {
+    return {
+      ...(theme.settings as Partial<ThemeSettingsInput>),
+      ...(theme.logoObjectKey ? { logoObjectKey: theme.logoObjectKey } : {}),
+      ...(theme.logoMimeType ? { logoMimeType: theme.logoMimeType } : {}),
+    };
+  }
+
+  private settingsDocument(theme: StoredThemeSettings | null): Prisma.InputJsonValue {
+    if (!theme) return {};
+
+    const settings = { ...theme };
+    delete settings.logoObjectKey;
+    delete settings.logoMimeType;
+
+    return settings as Prisma.InputJsonValue;
   }
 
   private async withResolvedLogoUrl(themeSettings: Prisma.JsonValue | null): Promise<Prisma.JsonValue | null> {
