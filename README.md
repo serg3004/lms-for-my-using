@@ -4,7 +4,7 @@ Learning management system.
 
 ## Project status
 
-Current stage: early MVP foundation.
+Current stage: MVP release candidate with a fail-closed, environment-specific release gate. A production `GO` still requires fresh CI, CodeQL, smoke, dependency, and rollback evidence; see `docs/RELEASE_GATE.md`.
 
 Implemented backend foundation:
 - Health API
@@ -15,12 +15,12 @@ Implemented backend foundation:
 - AuthGuard, RolesGuard / RBAC, OrganizationScopeGuard
 - Protected direct user and organization creation endpoints
 - Courses, lessons, materials, assignments, progress, assessments, attempts, reports, certificates API skeletons
-- Course materials currently support metadata/link references only; server-side file upload/storage is not implemented
+- Course materials support private S3-compatible buffered/multipart uploads, short-lived authorized downloads, quarantine, and malware-scanner integration; provider readiness remains a live deployment concern
 - Assessment attempts are allowed only for published assessments
 - Centralized API error format
 - Shared API error response type aligned with backend error envelope
 - Runtime-generated OpenAPI contract and Swagger UI
-- Runtime API environment validation for `API_PORT` and `JWT_SECRET`
+- Runtime API environment validation for database, auth, proxy, rate-limit, observability, and worker settings
 - MVP API smoke coverage
 - MVP Definition of Done, Pilot Checklist, Local Runbook, Seed Data
 - RBAC Matrix and API Contracts
@@ -40,11 +40,7 @@ Current auth/session implementation:
 
 ## Storage/upload status
 
-Current storage/upload implementation:
-- Course material records can reference externally hosted files or links through metadata such as `fileName`, `fileUrl`, `mimeType`, and `sizeBytes`.
-- `POST /api/v1/courses/:courseId/materials` accepts metadata/link data only.
-- The API does not accept raw file bytes, multipart upload, presigned upload URLs, or server-side object storage writes.
-- Production-grade storage/upload is out of current MVP scope and should be planned separately with provider, auth, tenant isolation, validation, scanning, retention, audit, and tests.
+Current storage/upload implementation includes S3-compatible buffered and multipart uploads, tenant-scoped authorization, private short-lived download URLs, quarantine/scanner callbacks, and cleanup commands. Production provider, CORS, scanner availability, and cleanup scheduling require fresh live verification and are not proven by repository configuration.
 
 ## Implemented backend API
 
@@ -139,6 +135,7 @@ POST /api/v1/certificates
 - `docs/API_CONTRACTS.md` (includes API status; `API_STATUS.md` retired 2026-08-06)
 - `docs/DEVELOPMENT_PLAN.md` (project changelog — `docs/PROJECT_LOG.md` retired 2026-08-06)
 - `docs/TODO_VERIFY.md`
+- `docs/RELEASE_GATE.md`
 
 ## Current Prisma baseline
 
