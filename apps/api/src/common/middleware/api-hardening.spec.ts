@@ -81,7 +81,12 @@ describe('API hardening middleware', () => {
     expect(nextTracker.calls).toBe(1);
   });
 
-  it('limits sensitive POST routes after the configured threshold', async () => {
+  it.each([
+    '/api/v1/auth/login',
+    '/api/v1/auth/password-reset/request',
+    '/api/v1/auth/password-reset/confirm',
+    '/api/v1/organizations/register',
+  ])('limits sensitive POST route %s after the configured threshold', async (url) => {
     let currentTime = 1_000;
     const store = createInMemoryRateLimitStore(() => currentTime);
     const middleware = createSensitiveRouteRateLimitMiddleware(store, {
@@ -89,7 +94,7 @@ describe('API hardening middleware', () => {
       account: [{ maxRequests: 20, windowMs: 60_000 }],
       global: { maxRequests: 100, windowMs: 60_000 },
     });
-    const request = createRequest();
+    const request = createRequest({ url });
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const nextTracker = createNextTracker();
@@ -120,7 +125,7 @@ describe('API hardening middleware', () => {
         code: 'TOO_MANY_REQUESTS',
         message: 'Too many requests',
       },
-      path: '/api/v1/auth/login',
+      path: url,
     });
     expect(body.timestamp).toEqual(expect.any(String));
     expect(nextTracker.calls).toBe(0);
