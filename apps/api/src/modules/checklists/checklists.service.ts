@@ -14,6 +14,8 @@ import {
   UpdateChecklistItemInput,
 } from './checklists.schemas.js';
 
+const CHECKLIST_SNAPSHOT_VERSION = 1;
+
 const checklistSelect = {
   id: true,
   organizationId: true,
@@ -85,6 +87,12 @@ const instanceWithResultsSelect = {
   },
 } as const;
 
+const instanceWithSnapshotSelect = {
+  ...instanceWithResultsSelect,
+  templateSnapshot: true,
+  snapshotVersion: true,
+} as const;
+
 type ScoringItem = { id: string; points: number; isRequired: boolean };
 type CompletionItem = { id: string; isRequired: boolean; photoRequired: boolean };
 type CompletionResult = {
@@ -93,6 +101,37 @@ type CompletionResult = {
   scaleLevel: number | null;
   photoObjectKey: string | null;
   reviewStatus: string;
+};
+type ChecklistSnapshotItem = {
+  id: string;
+  checklistId: string;
+  order: number;
+  text: string;
+  points: number;
+  isRequired: boolean;
+  photoRequired: boolean;
+};
+type ChecklistRuntime = {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  scoringMode: string;
+  passThreshold: number;
+  scaleLevels: ScaleLevel[] | null;
+  requiresReview: boolean;
+  items: ChecklistSnapshotItem[];
+};
+type ChecklistTemplateSnapshot = {
+  version: typeof CHECKLIST_SNAPSHOT_VERSION;
+  checklist: ChecklistRuntime;
+};
+type SnapshotInstance = Prisma.ChecklistInstanceGetPayload<{ select: typeof instanceWithSnapshotSelect }>;
+type SnapshotRuntimeRef = {
+  checklistId: string;
+  templateSnapshot?: Prisma.JsonValue | null;
+  snapshotVersion?: number | null;
 };
 
 @Injectable()
@@ -258,7 +297,7 @@ export class ChecklistsService {
   async assignChecklist(checklistId: string, organizationId: string, input: AssignChecklistInput, assignedBy: string) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, status: true },
+      select: checklistSelect,
     });
 
     if (!checklist) {
@@ -288,9 +327,20 @@ export class ChecklistsService {
     }
 
     const items = await this.prisma.checklistItem.findMany({
-      where: { checklistId, deletedAt: null },
-      select: { id: true, points: true, isRequired: true },
+      where: { checklistId, organizationId, deletedAt: null },
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        checklistId: true,
+        order: true,
+        text: true,
+        points: true,
+        isRequired: true,
+        photoRequired: true,
+      },
     });
+    const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
+    const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
     return this.prisma.checklistInstance.create({
       data: {
@@ -298,48 +348,56 @@ export class ChecklistsService {
         checklistId,
         userId: input.userId,
         assignedBy,
-        maxScore: this.computeMaxScore(items, await this.getScoringContext(checklistId, organizationId)),
+        maxScore: this.computeMaxScore(runtimeChecklist.items, runtimeChecklist),
+        templateSnapshot: snapshot as unknown as Prisma.InputJsonValue,
+        snapshotVersion: CHECKLIST_SNAPSHOT_VERSION,
         dueAt: input.dueAt ? new Date(input.dueAt) : undefined,
       },
       select: instanceSelect,
     });
   }
 
-  listMyInstances(userId: string, organizationId: string) {
-    return this.prisma.checklistInstance.findMany({
+  async listMyInstances(userId: string, organizationId: string) {
+    const instances = await this.prisma.checklistInstance.findMany({
       where: { userId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: instanceWithResultsSelect,
+      select: instanceWithSnapshotSelect,
     });
+
+    return instances.map((instance) => this.presentInstance(instance));
   }
 
-  listInstancesForChecklist(checklistId: string, organizationId: string) {
-    return this.prisma.checklistInstance.findMany({
+  async listInstancesForChecklist(checklistId: string, organizationId: string) {
+    const instances = await this.prisma.checklistInstance.findMany({
       where: { checklistId, organizationId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
-      select: instanceWithResultsSelect,
+      select: instanceWithSnapshotSelect,
     });
+
+    return instances.map((instance) => this.presentInstance(instance));
   }
 
-  listPendingReview(organizationId: string) {
-    return this.prisma.checklistInstance.findMany({
+  async listPendingReview(organizationId: string) {
+    const instances = await this.prisma.checklistInstance.findMany({
       where: { organizationId, status: 'submitted', deletedAt: null },
       orderBy: { submittedAt: 'asc' },
-      select: instanceWithResultsSelect,
+      select: instanceWithSnapshotSelect,
     });
+
+    return instances.map((instance) => this.presentInstance(instance));
   }
 
   async getInstance(instanceId: string, organizationId: string) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: instanceWithResultsSelect,
+      select: instanceWithSnapshotSelect,
     });
 
     if (!instance) {
       throw new NotFoundException('Checklist assignment not found');
     }
 
-    return instance;
+    return this.presentInstance(instance);
   }
 
   async submitItemResult(
@@ -352,7 +410,14 @@ export class ChecklistsService {
   ) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: { id: true, userId: true, status: true, checklistId: true },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        checklistId: true,
+        templateSnapshot: true,
+        snapshotVersion: true,
+      },
     });
 
     if (!instance) {
@@ -367,15 +432,8 @@ export class ChecklistsService {
       throw new BadRequestException('This checklist assignment is no longer editable');
     }
 
-    const checklist = await this.prisma.checklist.findFirstOrThrow({
-      where: { id: instance.checklistId },
-      select: { scoringMode: true, scaleLevels: true, requiresReview: true },
-    });
-
-    const item = await this.prisma.checklistItem.findFirst({
-      where: { id: itemId, checklistId: instance.checklistId, deletedAt: null },
-      select: { id: true, points: true },
-    });
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    const item = checklist.items.find((candidate) => candidate.id === itemId);
 
     if (!item) {
       throw new NotFoundException('Checklist item not found');
@@ -384,7 +442,7 @@ export class ChecklistsService {
     const points = this.computeItemPoints(
       checklist.scoringMode,
       item.points,
-      checklist.scaleLevels as ScaleLevel[] | null,
+      checklist.scaleLevels,
       input,
     );
 
@@ -549,6 +607,169 @@ export class ChecklistsService {
     return { url, expiresIn };
   }
 
+  private toRuntimeChecklist(
+    checklist: {
+      id: string;
+      organizationId: string;
+      title: string;
+      description: string | null;
+      status: string;
+      scoringMode: string;
+      passThreshold: number;
+      scaleLevels: Prisma.JsonValue | null;
+      requiresReview: boolean;
+    },
+    items: ChecklistSnapshotItem[],
+  ): ChecklistRuntime {
+    return {
+      id: checklist.id,
+      organizationId: checklist.organizationId,
+      title: checklist.title,
+      description: checklist.description,
+      status: checklist.status,
+      scoringMode: checklist.scoringMode,
+      passThreshold: checklist.passThreshold,
+      scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
+      requiresReview: checklist.requiresReview,
+      items: items.map((item) => ({ ...item })),
+    };
+  }
+
+  private buildTemplateSnapshot(checklist: ChecklistRuntime): ChecklistTemplateSnapshot {
+    return {
+      version: CHECKLIST_SNAPSHOT_VERSION,
+      checklist: {
+        ...checklist,
+        scaleLevels: checklist.scaleLevels?.map((level) => ({ ...level })) ?? null,
+        items: checklist.items.map((item) => ({ ...item })),
+      },
+    };
+  }
+
+  private parseTemplateSnapshot(value: Prisma.JsonValue | null | undefined): ChecklistTemplateSnapshot | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+
+    const snapshot = value as unknown as Partial<ChecklistTemplateSnapshot>;
+    const checklist = snapshot.checklist;
+    if (
+      snapshot.version !== CHECKLIST_SNAPSHOT_VERSION ||
+      !checklist ||
+      typeof checklist !== 'object' ||
+      Array.isArray(checklist) ||
+      typeof checklist.id !== 'string' ||
+      typeof checklist.organizationId !== 'string' ||
+      typeof checklist.title !== 'string' ||
+      (checklist.description !== null && typeof checklist.description !== 'string') ||
+      typeof checklist.status !== 'string' ||
+      typeof checklist.scoringMode !== 'string' ||
+      typeof checklist.passThreshold !== 'number' ||
+      (checklist.scaleLevels !== null && !Array.isArray(checklist.scaleLevels)) ||
+      typeof checklist.requiresReview !== 'boolean' ||
+      !Array.isArray(checklist.items) ||
+      !checklist.items.every(
+        (item) =>
+          item &&
+          typeof item === 'object' &&
+          typeof item.id === 'string' &&
+          typeof item.checklistId === 'string' &&
+          typeof item.order === 'number' &&
+          typeof item.text === 'string' &&
+          typeof item.points === 'number' &&
+          typeof item.isRequired === 'boolean' &&
+          typeof item.photoRequired === 'boolean',
+      )
+    ) {
+      return null;
+    }
+
+    return snapshot as ChecklistTemplateSnapshot;
+  }
+
+  private getStoredSnapshot(instance: SnapshotRuntimeRef): ChecklistTemplateSnapshot | null {
+    if (instance.templateSnapshot == null) {
+      return null;
+    }
+
+    if (instance.snapshotVersion !== CHECKLIST_SNAPSHOT_VERSION) {
+      throw new BadRequestException('Unsupported checklist assignment snapshot version');
+    }
+
+    const snapshot = this.parseTemplateSnapshot(instance.templateSnapshot);
+    if (!snapshot) {
+      throw new BadRequestException('Invalid checklist assignment snapshot');
+    }
+
+    return snapshot;
+  }
+
+  private async resolveRuntimeChecklist(instance: SnapshotRuntimeRef, organizationId: string): Promise<ChecklistRuntime> {
+    const snapshot = this.getStoredSnapshot(instance);
+    if (snapshot) {
+      return snapshot.checklist;
+    }
+
+    const [checklist, items] = await Promise.all([
+      this.prisma.checklist.findFirstOrThrow({
+        where: { id: instance.checklistId, organizationId },
+        select: {
+          id: true,
+          organizationId: true,
+          title: true,
+          description: true,
+          status: true,
+          scoringMode: true,
+          passThreshold: true,
+          scaleLevels: true,
+          requiresReview: true,
+        },
+      }),
+      this.prisma.checklistItem.findMany({
+        where: { checklistId: instance.checklistId, deletedAt: null },
+        orderBy: { order: 'asc' },
+        select: {
+          id: true,
+          checklistId: true,
+          order: true,
+          text: true,
+          points: true,
+          isRequired: true,
+          photoRequired: true,
+        },
+      }),
+    ]);
+
+    return this.toRuntimeChecklist(checklist, items);
+  }
+
+  private presentInstance(instance: SnapshotInstance) {
+    const snapshot = this.getStoredSnapshot(instance);
+    const checklist = snapshot
+      ? { ...instance.checklist, ...snapshot.checklist }
+      : instance.checklist;
+
+    return {
+      id: instance.id,
+      organizationId: instance.organizationId,
+      checklistId: instance.checklistId,
+      userId: instance.userId,
+      assignedBy: instance.assignedBy,
+      status: instance.status,
+      totalScore: instance.totalScore,
+      maxScore: instance.maxScore,
+      percentage: instance.percentage,
+      passed: instance.passed,
+      dueAt: instance.dueAt,
+      submittedAt: instance.submittedAt,
+      completedAt: instance.completedAt,
+      createdAt: instance.createdAt,
+      updatedAt: instance.updatedAt,
+      checklist,
+      results: instance.results,
+    };
+  }
+
   private computeItemPoints(
     scoringMode: string,
     itemPoints: number,
@@ -571,13 +792,6 @@ export class ChecklistsService {
 
     // sum_points
     return input.checked ? itemPoints : 0;
-  }
-
-  private async getScoringContext(checklistId: string, organizationId: string) {
-    return this.prisma.checklist.findFirstOrThrow({
-      where: { id: checklistId, organizationId },
-      select: { scoringMode: true, scaleLevels: true },
-    });
   }
 
   private computeMaxScore(items: ScoringItem[], scoring: { scoringMode: string; scaleLevels: unknown }) {
@@ -612,38 +826,34 @@ export class ChecklistsService {
   private async recomputeInstance(instanceId: string, organizationId: string) {
     const instance = await this.prisma.checklistInstance.findFirstOrThrow({
       where: { id: instanceId, organizationId },
-      select: { checklistId: true, status: true },
+      select: {
+        checklistId: true,
+        status: true,
+        templateSnapshot: true,
+        snapshotVersion: true,
+      },
     });
-
-    const [checklist, items, results] = await Promise.all([
-      this.prisma.checklist.findFirstOrThrow({
-        where: { id: instance.checklistId },
-        select: { passThreshold: true, requiresReview: true, scoringMode: true },
-      }),
-      this.prisma.checklistItem.findMany({
-        where: { checklistId: instance.checklistId, deletedAt: null },
-        select: { id: true, isRequired: true, photoRequired: true },
-      }),
-      this.prisma.checklistItemResult.findMany({
-        where: { instanceId },
-        select: {
-          itemId: true,
-          checked: true,
-          scaleLevel: true,
-          points: true,
-          photoObjectKey: true,
-          reviewStatus: true,
-        },
-      }),
-    ]);
-
-    const resultByItemId = new Map(results.map((result) => [result.itemId, result]));
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    const results = await this.prisma.checklistItemResult.findMany({
+      where: { instanceId },
+      select: {
+        itemId: true,
+        checked: true,
+        scaleLevel: true,
+        points: true,
+        photoObjectKey: true,
+        reviewStatus: true,
+      },
+    });
+    const itemIds = new Set(checklist.items.map((item) => item.id));
+    const relevantResults = results.filter((result) => itemIds.has(result.itemId));
+    const resultByItemId = new Map(relevantResults.map((result) => [result.itemId, result]));
     const allRequirementsSatisfied =
-      items.length > 0 &&
-      items.every((item) => this.isItemSatisfied(checklist.scoringMode, item, resultByItemId.get(item.id)));
-    const reviewableResults = results.filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
+      checklist.items.length > 0 &&
+      checklist.items.every((item) => this.isItemSatisfied(checklist.scoringMode, item, resultByItemId.get(item.id)));
+    const reviewableResults = relevantResults.filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
     const allReviewed = reviewableResults.every((result) => result.reviewStatus !== 'pending');
-    const totalScore = results.reduce(
+    const totalScore = relevantResults.reduce(
       (sum, result) => sum + (result.reviewStatus === 'rejected' ? 0 : result.points),
       0,
     );
@@ -678,17 +888,11 @@ export class ChecklistsService {
       status = 'in_progress';
     }
 
-    // Recompute maxScore from the live scoring context so a later item edit stays accurate.
-    const scoringContext = await this.getScoringContext(instance.checklistId, organizationId);
-    const itemPointsList = await this.prisma.checklistItem.findMany({
-      where: { checklistId: instance.checklistId, deletedAt: null },
-      select: { id: true, points: true, isRequired: true },
-    });
-    const maxScore = this.computeMaxScore(itemPointsList, scoringContext);
+    const maxScore = this.computeMaxScore(checklist.items, checklist);
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
     const passed = status === 'completed' && percentage >= checklist.passThreshold;
 
-    return this.prisma.checklistInstance.update({
+    const updated = await this.prisma.checklistInstance.update({
       where: { id: instanceId },
       data: {
         status,
@@ -699,7 +903,9 @@ export class ChecklistsService {
         ...(submittedAt ? { submittedAt } : {}),
         ...(completedAt ? { completedAt } : {}),
       },
-      select: instanceWithResultsSelect,
+      select: instanceWithSnapshotSelect,
     });
+
+    return this.presentInstance(updated);
   }
 }

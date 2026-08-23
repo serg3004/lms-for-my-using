@@ -2,7 +2,10 @@ const baseConfig = require('./jest.config.cjs');
 
 module.exports = {
   ...baseConfig,
-  testMatch: ['<rootDir>/src/integration/api.database-smoke.spec.ts'],
+  testMatch: [
+    '<rootDir>/src/integration/api.database-smoke.spec.ts',
+    '<rootDir>/src/integration/checklist-snapshot.database.spec.ts',
+  ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,
 };

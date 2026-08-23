@@ -5,7 +5,10 @@ module.exports = {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   roots: ['<rootDir>/src'],
-  testPathIgnorePatterns: ['/src/integration/api\\.database-smoke\\.spec\\.ts$'],
+  testPathIgnorePatterns: [
+    '/src/integration/api\\.database-smoke\\.spec\\.ts$',
+    '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
+  ],
   testEnvironment: 'node',
   collectCoverageFrom: [
     'src/**/*.ts',
