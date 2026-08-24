@@ -61,6 +61,7 @@ describe('useAsyncData', () => {
 
     runEffect();
     expect(load).toHaveBeenCalledTimes(1);
+    expect(load.mock.calls[0]?.[0]).toBeInstanceOf(AbortSignal);
     expect(setState).toHaveBeenCalledWith({ status: 'loading' });
 
     await Promise.resolve();
@@ -93,7 +94,7 @@ describe('useAsyncData', () => {
     expect(setState).toHaveBeenLastCalledWith({ status: 'error', message: messages.error });
   });
 
-  it('discards a stale response once the effect has been cancelled', async () => {
+  it('aborts the request and discards a stale response once the effect has been cancelled', async () => {
     const { setState, runEffect } = setup();
     let resolveLoad!: (value: { items: number[] }) => void;
     const load = vi.fn().mockReturnValue(new Promise((resolve) => { resolveLoad = resolve; }));
@@ -101,11 +102,30 @@ describe('useAsyncData', () => {
     useAsyncData(load, [], messages);
     const cleanup = runEffect();
     cleanup?.();
+    expect(load.mock.calls[0]?.[0].aborted).toBe(true);
     resolveLoad({ items: [1] });
     await Promise.resolve();
     await Promise.resolve();
 
     expect(setState).not.toHaveBeenCalledWith({ status: 'loaded', data: { items: [1] } });
+  });
+
+  it('aborts the previous request when reload starts a replacement', async () => {
+    const { setState } = setup();
+    const signals: AbortSignal[] = [];
+    const load = vi.fn((signal: AbortSignal) => {
+      signals.push(signal);
+      return new Promise<{ items: number[] }>(() => undefined);
+    });
+
+    const { reload } = useAsyncData(load, [], messages);
+    void reload();
+    void reload();
+
+    expect(signals).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
+    expect(setState).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'error' }));
   });
 
   it('reload() re-runs the loader and resolves once the new state is applied', async () => {

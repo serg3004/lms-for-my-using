@@ -3878,7 +3878,7 @@ frontend quality и observability.
 
 ---
 
-## PR 233 — Add request cancellation to shared frontend data loading 🔲
+## PR 233 — Add request cancellation to shared frontend data loading ✅
 
 **Проблема:** shared async data helper не применяет stale result после cleanup, но сам HTTP request не обязательно отменяется, поэтому устаревшие запросы продолжают расходовать ресурсы.
 
@@ -3890,12 +3890,14 @@ frontend quality и observability.
 - добавить tests на rapid navigation и race scenarios.
 
 **Критерии готовности:**
-- [ ] unmount отменяет поддерживаемый request;
-- [ ] смена параметров отменяет устаревший request;
-- [ ] abort не показывается пользователю как API failure;
-- [ ] timeout продолжает работать;
-- [ ] single-flight refresh не регрессировал;
-- [ ] cancellation/race tests проходят.
+- [x] unmount отменяет поддерживаемый request;
+- [x] смена параметров отменяет устаревший request;
+- [x] abort не показывается пользователю как API failure;
+- [x] timeout продолжает работать;
+- [x] single-flight refresh не регрессировал;
+- [x] cancellation/race tests проходят.
+
+> **Статус (2026-08-24):** реализовано. `useAsyncData` создаёт отдельный `AbortController` для каждого запуска, передаёт loader-у `AbortSignal` и отменяет предыдущую загрузку при cleanup/reload. `apiRequest` объединяет caller signal с внутренним timeout signal: пользовательская отмена остаётся `AbortError`, а timeout по-прежнему нормализуется в `ApiClientError` со статусом `408`. Shared single-flight refresh не привязан к signal отдельного consumer-а. Unit tests покрывают unmount, replacement race, caller abort, timeout и concurrent refresh.
 
 ---
 

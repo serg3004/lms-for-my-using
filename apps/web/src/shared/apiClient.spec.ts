@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiRequest, uploadChecklistItemPhotoWithProgress, uploadMaterialFileWithProgress } from './apiClient';
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -26,6 +27,40 @@ function createStorageStub() {
 }
 
 describe('apiRequest', () => {
+  it('forwards caller cancellation while keeping the request timeout signal active', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn<typeof fetch>((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = apiRequest('/slow', { signal: controller.signal });
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).not.toBe(controller.signal);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  });
+
+  it('still reports the internal request timeout as an API failure', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const request = apiRequest('/slow');
+    const rejection = expect(request).rejects.toMatchObject({
+      name: 'ApiClientError',
+      status: 408,
+      message: 'Request timed out',
+    });
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    await rejection;
+    vi.useRealTimers();
+  });
+
   it('throws ApiClientError with normalized 429 ApiErrorResponse details', async () => {
     const errorResponse = {
       statusCode: 429,
