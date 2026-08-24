@@ -113,8 +113,6 @@ jobs:
         run: pnpm --recursive typecheck
 
       - name: Tests
-        id: coverage-tests
-        continue-on-error: true
         run: pnpm --recursive test:coverage
 
       - name: Upload coverage reports
@@ -128,10 +126,6 @@ jobs:
             packages/shared/coverage/
           if-no-files-found: error
           retention-days: 30
-
-      - name: Enforce coverage gates
-        if: always()
-        run: test "${{ steps.coverage-tests.outcome }}" = "success"
 
       - name: Staging smoke script tests
         run: bash scripts/smoke-staging.test.sh

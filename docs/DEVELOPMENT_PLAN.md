@@ -3794,6 +3794,9 @@ frontend quality и observability.
 > `critical-path-summary.json`. Проверка fail-closed требует наличия файлов каждой группы и
 > не допускает падения statements/branches/functions/lines ниже числового baseline,
 > подтверждённого полным API coverage run (92 suites, 1369 tests).
+> Coverage test step сохраняет исходный exit code и сообщение об ошибке; artifact step с
+> `if: always()` выполняется после него без `continue-on-error` и без вторичного shell-gate,
+> поэтому регрессия не маскируется общим сообщением `test failure = success`.
 
 ---
 
