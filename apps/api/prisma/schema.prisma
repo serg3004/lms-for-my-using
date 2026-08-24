@@ -419,6 +419,7 @@ model MultipartUpload {
   material CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, status, expiresAt])
+  @@index([status, expiresAt, id])
   @@index([materialId, status])
   @@map("multipart_uploads")
 }

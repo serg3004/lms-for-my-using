@@ -5,7 +5,12 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { UploadService } from '../upload/upload.service.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
-import { MaterialMultipartUploadService, MULTIPART_PART_SIZE_BYTES } from './material-multipart-upload.service.js';
+import {
+  MaterialMultipartUploadService,
+  MULTIPART_CLEANUP_BATCH_SIZE,
+  MULTIPART_CLEANUP_CONCURRENCY,
+  MULTIPART_PART_SIZE_BYTES,
+} from './material-multipart-upload.service.js';
 
 const session = {
   id: 'session-a', uploadId: 'upload-a', organizationId: 'organization-a', materialId: 'material-a',
@@ -87,5 +92,69 @@ describe('MaterialMultipartUploadService', () => {
     await expect(service.cleanupExpired(false)).resolves.toMatchObject({ dryRun: false, count: 1 });
     expect(storage.abortMultipartUpload).toHaveBeenCalledWith(session.objectKey, session.uploadId);
     expect(prisma.multipartUpload.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'aborted' } }));
+  });
+
+  it('reads a large expired set in deterministic bounded batches', async () => {
+    const { service, prisma } = setup();
+    const expired = Array.from({ length: MULTIPART_CLEANUP_BATCH_SIZE * 2 + 5 }, (_, index) => ({
+      ...session,
+      id: `session-${index.toString().padStart(3, '0')}`,
+      uploadId: `upload-${index}`,
+    }));
+    (prisma.multipartUpload.findMany as jest.Mock)
+      .mockResolvedValueOnce(expired.slice(0, MULTIPART_CLEANUP_BATCH_SIZE))
+      .mockResolvedValueOnce(expired.slice(MULTIPART_CLEANUP_BATCH_SIZE, MULTIPART_CLEANUP_BATCH_SIZE * 2))
+      .mockResolvedValueOnce(expired.slice(MULTIPART_CLEANUP_BATCH_SIZE * 2));
+
+    await expect(service.cleanupExpired(true)).resolves.toEqual({ dryRun: true, count: expired.length, failedCount: 0 });
+    expect(prisma.multipartUpload.findMany).toHaveBeenCalledTimes(3);
+    expect(prisma.multipartUpload.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      take: MULTIPART_CLEANUP_BATCH_SIZE,
+      orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+    }));
+    expect(prisma.multipartUpload.findMany).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      cursor: { id: expired[MULTIPART_CLEANUP_BATCH_SIZE - 1]?.id },
+      skip: 1,
+      take: MULTIPART_CLEANUP_BATCH_SIZE,
+    }));
+  });
+
+  it('limits abort concurrency and continues after individual failures', async () => {
+    const { service, prisma, storage } = setup();
+    const expired = Array.from({ length: MULTIPART_CLEANUP_CONCURRENCY + 2 }, (_, index) => ({
+      ...session, id: `session-${index}`, uploadId: `upload-${index}`,
+    }));
+    (prisma.multipartUpload.findMany as jest.Mock).mockResolvedValueOnce(expired);
+    let active = 0;
+    let peak = 0;
+    (storage.abortMultipartUpload as jest.Mock).mockImplementation(async (_key, uploadId) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await Promise.resolve();
+      active -= 1;
+      if (uploadId === 'upload-2') throw new Error('provider failure');
+    });
+
+    await expect(service.cleanupExpired(false)).resolves.toEqual({ dryRun: false, count: expired.length, failedCount: 1 });
+    expect(peak).toBe(MULTIPART_CLEANUP_CONCURRENCY);
+    expect(storage.abortMultipartUpload).toHaveBeenCalledTimes(expired.length);
+    expect(prisma.multipartUpload.update).toHaveBeenCalledTimes(expired.length - 1);
+    expect(prisma.multipartUpload.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'session-2' } }));
+  });
+
+  it('safely retries a session left pending by an earlier failed cleanup', async () => {
+    const { service, prisma, storage } = setup();
+    const retrySession = { ...session, id: 'session-retry', uploadId: 'upload-retry' };
+    (prisma.multipartUpload.findMany as jest.Mock)
+      .mockResolvedValueOnce([retrySession])
+      .mockResolvedValueOnce([retrySession]);
+    (storage.abortMultipartUpload as jest.Mock)
+      .mockRejectedValueOnce(new Error('temporary provider failure'))
+      .mockResolvedValueOnce(undefined);
+
+    await expect(service.cleanupExpired(false)).resolves.toMatchObject({ count: 1, failedCount: 1 });
+    await expect(service.cleanupExpired(false)).resolves.toMatchObject({ count: 1, failedCount: 0 });
+    expect(prisma.multipartUpload.update).toHaveBeenCalledTimes(1);
+    expect(prisma.multipartUpload.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: retrySession.id } }));
   });
 });
