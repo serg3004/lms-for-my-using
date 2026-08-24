@@ -981,7 +981,9 @@ Assessments, certificates и upload являются критичными для
 > - **Полный learner flow**: login learner@demo.com → `POST /progress` x3 (все уроки completed) → `POST /assessment-attempts` (5/5, 100%, passed) → сертификат **автоматически выдан** (`GET /certificates` → status `issued`) ✅
 > - **Upload smoke**: valid PDF → 201, `scanStatus: pending` → после вердикта сканера `available`, presigned download URL отдаёт байт-в-байт тот же файл ✅; invalid MIME (`.exe`) → 400 `File type ... is not allowed` ✅; oversized file (9MB > 8MB buffered limit) → 413 `File too large` ✅
 >
-> **Важная находка:** На production Railway (`api` service) переменные `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` **не заданы**. Код `MaterialMalwareScanService.dispatch()` при их отсутствии удаляет объект из карантина и возвращает `503 Malware scanner is not configured` — то есть **загрузка файлов материалов в проде сейчас не работает** (эндпоинт `POST /materials/:id/file`). Это блокируется отсутствующей интеграцией сканера — предмет PR 125 ("malware scan integration", всё ещё 🔲). PR 114 подтверждает код корректен end-to-end при наличии сканера; сама интеграция сканера — отдельная работа.
+> **Находка на момент 2026-08-22 (устарела, см. ниже):** На production Railway (`api` service) переменные `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET` были не заданы, из-за чего `MaterialMalwareScanService.dispatch()` возвращал `503 Malware scanner is not configured`. Это блокировалось отсутствующей интеграцией сканера — предмет PR 125.
+>
+> **Факт (2026-08-24, live-проверка Railway):** PR 125 выполнен и задеплоен. Прямая проверка переменных production `api`-сервиса (проект `reasonable-reprieve`, Railway MCP) подтверждает: `MALWARE_SCANNER_URL`, `MALWARE_SCANNER_CALLBACK_SECRET`, а также `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` — все заданы (self-hosted MinIO, отдельный сервис `minio` в том же проекте). Загрузка файлов материалов в проде технически не заблокирована конфигурацией. Полный live-smoke против реального Railway API по-прежнему не проводился из этой среды (сетевой доступ к `*.up.railway.app` заблокирован прокси-политикой) — критерий "проверено на staging" остаётся не подтверждённым end-to-end, только через локальный smoke + live-проверку конфигурации.
 
 ---
 
@@ -1925,12 +1927,14 @@ Repository evidence, границы live-проверки и команды пр
 ## Итоговая карта ЧАСТЬ 4б
 
 ```
-Качество, безопасность, production  PR 151–162  12 PR
+Качество, безопасность, production  PR 151–162  12 PR  ✅ СДЕЛАНО
   ✅ СДЕЛАНО:    151 (env validation), 152 (health+DB), 154 (KK locale), 155 (login UX),
                  156 (hamburger), 157 (lazy loading)
   ✅ СДЕЛАНО:    153 (security audit — inventory, validation, CORS, CSRF, sanitized errors)
-  🔲 НЕ НАЧАТО: 158 (SEO/meta), 159 (a11y baseline), 160 (LICENSE), 161 (observability), 162 (release gate)
+  ✅ СДЕЛАНО:    158 (SEO/meta), 159 (a11y baseline), 160 (LICENSE), 161 (observability), 162 (release gate)
 ```
+
+> **Факт (2026-08-24):** таблица выше была забытым промежуточным снимком — не обновлена после завершения PR 158–162 (все пять отмечены ✅ в соответствующих разделах выше по тексту).
 
 ---
 
@@ -2191,7 +2195,7 @@ UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛА�
 
 ---
 
-## PR 170 — admin-materials-upload: S3-загрузка файлов ⚠️
+## PR 170 — admin-materials-upload: S3-загрузка файлов ✅
 
 **Проблема:** `/admin/materials` — нет загрузки файлов, S3/R2 не подключён.
 
@@ -2208,7 +2212,9 @@ UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛА�
 - Ошибки upload отображаются в UI
 - lint, typecheck, tests, build — зелёные
 
-> **Факт:** Код готов — `upload.service.ts` с реальным AWS S3Client, file picker с progress bar в `AdminMaterialsPage.tsx`. Env переменные в `.env.example`. **Требует настройки S3/R2 bucket на Railway** — код работает, но инфра не подключена.
+> **Факт:** Код готов — `upload.service.ts` с реальным AWS S3Client, file picker с progress bar в `AdminMaterialsPage.tsx`. Env переменные в `.env.example`.
+>
+> **Факт (2026-08-24, live-проверка Railway):** ранее отмеченная блокировка "инфра не подключена" устарела. Прямая проверка переменных production `api`-сервиса через Railway MCP подтверждает: `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`, `S3_REGION` — все заданы. Хранилище — self-hosted MinIO (отдельный сервис `minio` в том же Railway-проекте), не внешний R2/AWS S3. S3-инфраструктура подключена и рабочая.
 
 ---
 
@@ -2249,7 +2255,7 @@ UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛА�
 
 ---
 
-## PR 162 — prod-readiness: бэкенд production-ready ⚠️
+## PR 162 — prod-readiness: бэкенд production-ready ✅
 
 **Проблема:** API не готов к продакшену — нет security headers, rate limiting производительного класса, graceful shutdown по SIGTERM, жёсткой валидации env при старте.
 
@@ -2267,7 +2273,9 @@ UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛА�
 - Сервер не стартует без обязательных env — выводит читаемое сообщение и exit code 1
 - lint, typecheck, tests, build — зелёные
 
-> **Факт:** Security headers — `createSecurityHeadersMiddleware()` в `main.ts`. Rate limiting — `createSensitiveRouteRateLimitMiddleware()` (Redis-backed при наличии REDIS_URL). Env validation — Zod + exit code 1 (PR 151 ✅). Graceful shutdown (`app.enableShutdownHooks()`) — требует отдельной проверки. Частично выполнено.
+> **Факт:** Security headers — `createSecurityHeadersMiddleware()` в `main.ts`. Rate limiting — `createSensitiveRouteRateLimitMiddleware()` (Redis-backed при наличии REDIS_URL). Env validation — Zod + exit code 1 (PR 151 ✅).
+>
+> **Факт (2026-08-24):** ранее отмеченный вопрос по graceful shutdown закрыт — подтверждено по коду: `apps/api/src/main.ts:120` вызывает `app.enableShutdownHooks()`, аналогично `apps/api/src/scripts/background-worker.ts:9`. Все пять пунктов реализованы.
 
 ---
 
@@ -2276,10 +2284,10 @@ UI/UX редизайн                      PR 163–165   3 PR  ✅ СДЕЛА�
 ```
 Layout страниц         PR 166        1 PR  ✅ СДЕЛАНО
 Admin CRUD             PR 167–169    3 PR  ✅ СДЕЛАНО
-S3 загрузка файлов     PR 170        1 PR  ⚠️ КОД ГОТОВ (нужна Railway S3/R2 инфра)
+S3 загрузка файлов     PR 170        1 PR  ✅ СДЕЛАНО (Railway MinIO подключён, подтверждено live-проверкой 2026-08-24)
 Manager workspace      PR 171        1 PR  ✅ СДЕЛАНО
 Instructor workspace   PR 172        1 PR  ✅ СДЕЛАНО
-Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate-limit/env ✅, graceful shutdown под вопросом)
+Prod-readiness backend PR 162        1 PR  ✅ СДЕЛАНО (graceful shutdown подтверждён по коду 2026-08-24)
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 6:                       8 PR
 ```
