@@ -66,14 +66,42 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Dependency audit
-        run: pnpm audit --audit-level high
+      - name: Collect dependency audit report
+        id: dependency-audit
+        continue-on-error: true
+        run: |
+          mkdir -p security-audit-artifacts
+          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json
+
+      - name: Collect code-hygiene report
+        id: code-hygiene
+        continue-on-error: true
+        run: pnpm security:hygiene security-audit-artifacts/code-hygiene.json
+
+      - name: Upload security audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-audit-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: security-audit-artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce dependency and static-security gates
+        if: always()
+        run: |
+          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
+          test "${{ steps.dependency-audit.outcome }}" = "success"
+          test "${{ steps.code-hygiene.outcome }}" = "success"
 
       - name: Validate security waivers
         run: node scripts/validate-security-waivers.mjs security-waivers.json "$RUNNER_TEMP/trivyignore"
 
       - name: Validate repository governance policy
         run: pnpm security:branch-protection:test
+
+      - name: Security artifact tests
+        run: pnpm security:artifacts:test
 
       - name: Lint
         run: pnpm --recursive lint

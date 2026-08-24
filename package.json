@@ -14,6 +14,8 @@
     "test:e2e": "playwright test --config apps/e2e/playwright.config.ts",
     "test:visual": "playwright test --config apps/e2e/playwright.visual.config.ts",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
+    "security:artifacts:test": "node --test scripts/security-audit-artifacts.test.mjs",
+    "security:hygiene": "node scripts/generate-code-hygiene-report.mjs",
     "security:branch-protection:test": "node --test scripts/configure-branch-protection.test.mjs",
     "security:branch-protection:audit": "node scripts/configure-branch-protection.mjs",
     "test:integration:db:local": "bash scripts/test-api-database.sh",
