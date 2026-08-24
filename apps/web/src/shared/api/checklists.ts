@@ -71,6 +71,25 @@ export function assignChecklist(checklistId: string, userId: string, dueAt?: str
   });
 }
 
+export type BulkChecklistTarget =
+  | { type: 'user'; id: string }
+  | { type: 'group'; id: string }
+  | { type: 'manager_team' };
+
+export type BulkChecklistAssignmentResult = {
+  created: number;
+  skippedActive: number;
+  resolvedRecipients: number;
+  recipientCount: number;
+};
+
+export function bulkAssignChecklist(checklistId: string, targets: BulkChecklistTarget[], dueAt?: string) {
+  return apiRequest<BulkChecklistAssignmentResult>(`/checklists/${encodeURIComponent(checklistId)}/instances/bulk`, {
+    method: 'POST',
+    body: JSON.stringify({ targets, dueAt }),
+  });
+}
+
 export function listInstancesForChecklist(checklistId: string) {
   return apiRequest<ChecklistInstanceSummary[]>(`/checklists/${encodeURIComponent(checklistId)}/instances`);
 }

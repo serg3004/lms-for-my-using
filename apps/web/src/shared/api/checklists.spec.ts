@@ -84,6 +84,22 @@ describe('checklists api requests', () => {
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/checklist-1/instances');
   });
 
+  it('bulk assigns mixed checklist targets', async () => {
+    const { bulkAssignChecklist } = await import('./checklists.js');
+    await bulkAssignChecklist('checklist-1', [
+      { type: 'user', id: 'user-1' },
+      { type: 'group', id: 'group-1' },
+      { type: 'manager_team' },
+    ], '2026-09-01T10:00:00.000Z');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/checklist-1/instances/bulk', {
+      method: 'POST',
+      body: JSON.stringify({
+        targets: [{ type: 'user', id: 'user-1' }, { type: 'group', id: 'group-1' }, { type: 'manager_team' }],
+        dueAt: '2026-09-01T10:00:00.000Z',
+      }),
+    });
+  });
+
   it("lists the current user's checklist instances", () => {
     listMyChecklistInstances();
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/mine');

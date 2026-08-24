@@ -5,6 +5,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { UploadService } from '../upload/public.js';
 import {
   AssignChecklistInput,
+  BulkAssignChecklistInput,
   CreateChecklistInput,
   CreateChecklistItemInput,
   ReviewChecklistItemResultInput,
@@ -12,6 +13,7 @@ import {
   SubmitChecklistItemResultInput,
   UpdateChecklistInput,
   UpdateChecklistItemInput,
+  MAX_BULK_CHECKLIST_RECIPIENTS,
 } from './checklists.schemas.js';
 import {
   CHECKLIST_EXPIRED_MESSAGE,
@@ -365,6 +367,98 @@ export class ChecklistsService {
         dueAt: input.dueAt ? new Date(input.dueAt) : undefined,
       },
       select: instanceSelect,
+    });
+  }
+
+  async bulkAssignChecklist(
+    checklistId: string,
+    organizationId: string,
+    input: BulkAssignChecklistInput,
+    assignedBy: string,
+    actorRoles: string[],
+  ) {
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      select: checklistSelect,
+    });
+    if (!checklist) throw new NotFoundException('Checklist not found');
+    if (checklist.status !== 'published') {
+      throw new BadRequestException('Cannot assign a checklist that is not published');
+    }
+
+    const userTargetIds = input.targets.filter((target) => target.type === 'user').map((target) => target.id);
+    const groupTargetIds = input.targets.filter((target) => target.type === 'group').map((target) => target.id);
+    const includeManagerTeam = input.targets.some((target) => target.type === 'manager_team');
+    const managerScoped = actorRoles.includes('manager') && !actorRoles.some((role) => role === 'admin' || role === 'instructor');
+
+    const managedGroups = await this.prisma.managerGroup.findMany({
+      where: { organizationId, managerId: assignedBy, deletedAt: null },
+      select: { groupId: true },
+    });
+    const managedGroupIds = managedGroups.map(({ groupId }) => groupId);
+    if (managerScoped && groupTargetIds.some((id) => !managedGroupIds.includes(id))) {
+      throw new ForbiddenException('You can only assign checklists to groups you manage');
+    }
+
+    const requestedGroupIds = [...new Set([...groupTargetIds, ...(includeManagerTeam ? managedGroupIds : [])])];
+    const groups = requestedGroupIds.length === 0 ? [] : await this.prisma.group.findMany({
+      where: { id: { in: requestedGroupIds }, organizationId, status: 'active', deletedAt: null },
+      select: { id: true },
+    });
+    if (groups.length !== requestedGroupIds.length) {
+      throw new BadRequestException('One or more target groups are invalid');
+    }
+
+    const membershipGroupIds = [...new Set([...requestedGroupIds, ...(managerScoped ? managedGroupIds : [])])];
+    const memberships = membershipGroupIds.length === 0 ? [] : await this.prisma.groupMember.findMany({
+      where: { organizationId, groupId: { in: membershipGroupIds }, deletedAt: null },
+      select: { userId: true, groupId: true },
+    });
+    const recipientIds = new Set(userTargetIds);
+    memberships.filter(({ groupId }) => requestedGroupIds.includes(groupId)).forEach(({ userId }) => recipientIds.add(userId));
+    if (recipientIds.size === 0) throw new BadRequestException('Bulk assignment resolved to no recipients');
+    if (recipientIds.size > MAX_BULK_CHECKLIST_RECIPIENTS) {
+      throw new BadRequestException(`Bulk assignment is limited to ${MAX_BULK_CHECKLIST_RECIPIENTS} recipients`);
+    }
+
+    const orderedRecipientIds = [...recipientIds].sort();
+    const users = orderedRecipientIds.length === 0 ? [] : await this.prisma.user.findMany({
+      where: { id: { in: orderedRecipientIds }, organizationId, status: 'active', deletedAt: null },
+      select: { id: true },
+    });
+    if (users.length !== orderedRecipientIds.length) {
+      throw new BadRequestException('One or more target users are invalid');
+    }
+    if (managerScoped) {
+      const managedMemberIds = new Set(memberships.filter(({ groupId }) => managedGroupIds.includes(groupId)).map(({ userId }) => userId));
+      if (orderedRecipientIds.some((id) => !managedMemberIds.has(id))) {
+        throw new ForbiddenException('You can only assign checklists to users in groups you manage');
+      }
+    }
+
+    const items = await this.prisma.checklistItem.findMany({
+      where: { checklistId, organizationId, deletedAt: null }, orderBy: { order: 'asc' },
+      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true },
+    });
+    const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
+    const snapshot = this.buildTemplateSnapshot(runtimeChecklist) as unknown as Prisma.InputJsonValue;
+    const dueAt = input.dueAt ? new Date(input.dueAt) : undefined;
+
+    return this.prisma.$transaction(async (transaction) => {
+      const active = orderedRecipientIds.length === 0 ? [] : await transaction.checklistInstance.findMany({
+        where: { checklistId, organizationId, userId: { in: orderedRecipientIds }, status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null },
+        select: { userId: true },
+      });
+      const activeIds = new Set(active.map(({ userId }) => userId));
+      const createFor = orderedRecipientIds.filter((id) => !activeIds.has(id));
+      if (createFor.length > 0) {
+        await transaction.checklistInstance.createMany({ data: createFor.map((userId) => ({
+          organizationId, checklistId, userId, assignedBy,
+          maxScore: this.computeMaxScore(runtimeChecklist.items, runtimeChecklist),
+          templateSnapshot: snapshot, snapshotVersion: CHECKLIST_SNAPSHOT_VERSION, dueAt,
+        })) });
+      }
+      return { created: createFor.length, skippedActive: activeIds.size, resolvedRecipients: orderedRecipientIds.length, recipientCount: orderedRecipientIds.length };
     });
   }
 

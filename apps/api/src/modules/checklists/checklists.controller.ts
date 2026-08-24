@@ -10,6 +10,7 @@ import { ChecklistReviewAccessService } from './checklist-review-access.service.
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
+  bulkAssignChecklistSchema,
   createChecklistItemSchema,
   createChecklistSchema,
   reviewChecklistItemResultSchema,
@@ -90,6 +91,13 @@ export class ChecklistsController {
   assignChecklist(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = assignChecklistSchema.parse(body);
     return this.checklistsService.assignChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
+  }
+  @Post('checklists/:checklistId/instances/bulk')
+  @Roles(...rolePolicies.checklistInstancesCreate)
+  bulkAssignChecklist(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = bulkAssignChecklistSchema.parse(body);
+    const actor = request.currentUser!;
+    return this.checklistsService.bulkAssignChecklist(checklistId, actor.organizationId, input, actor.id, actor.roles);
   }
   @Get('checklists/:checklistId/instances')
   @Roles(...rolePolicies.checklistsRead)
