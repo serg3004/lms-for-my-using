@@ -3891,7 +3891,7 @@ frontend quality и observability.
 
 ---
 
-## PR 238 — Protect `main` and require repository quality gates 🔲
+## PR 238 — Protect `main` and require repository quality gates 🟡
 
 **Проблема:** на момент аудита `main` не имела branch protection/required status checks, поэтому наличие CI не гарантировало его обязательное прохождение перед изменением основной ветки.
 
@@ -3902,14 +3902,35 @@ frontend quality и observability.
 - не обходить protection административными исключениями без отдельного операционного решения;
 - повторно проверить настройки через GitHub Branch API.
 
+**Реализация и repository governance (2026-08-24):**
+
+- стабильные required contexts: `Checks` из `.github/workflows/ci.yml` и
+  `Analyze (javascript-typescript)` из `.github/workflows/codeql.yml`;
+- любое изменение `main` выполняется через pull request; deletion, force-push и
+  прямой push запрещены ruleset-правилом без bypass actors;
+- ветка PR должна быть актуальна относительно `main`, все review threads должны
+  быть закрыты, а оба required contexts — успешно завершены;
+- policy-as-code находится в `scripts/configure-branch-protection.mjs`, её unit- и
+  workflow-contract тест запускается в основном CI;
+- безопасный аудит: `GITHUB_REPOSITORY=owner/repository pnpm security:branch-protection:audit`;
+- применение владельцем: `GITHUB_REPOSITORY=owner/repository GITHUB_TOKEN=<admin-token> pnpm security:branch-protection:audit -- --apply`.
+  Токен должен иметь repository Administration write; значение токена не
+  сохраняется в git или Actions secrets без отдельного операционного решения.
+  После записи скрипт обязательно перечитывает ruleset и состояние ветки через
+  GitHub API. Audit возвращает ненулевой код при любом drift.
+
+**Статус:** реализация и локальная проверка policy завершены; фактическое
+применение и read-back для hosted repository ожидают Administration credential
+владельца. До подтверждения API пункт не переводится в ✅.
+
 **Критерии готовности:**
-- [ ] required checks перечислены и имеют стабильные имена;
-- [ ] обычный процесс изменения `main` идёт только через PR;
-- [ ] direct push в `main` запрещён политикой;
-- [ ] основной CI является required check;
-- [ ] согласованные security checks являются required;
-- [ ] merge невозможен при failed required check;
-- [ ] фактическая protection state повторно подтверждена через GitHub API.
+- [x] required checks перечислены и имеют стабильные имена;
+- [x] обычный процесс изменения `main` формализован только через PR;
+- [x] direct push в `main` запрещён целевой политикой;
+- [x] основной CI задан как required check;
+- [x] CodeQL задан как required security check;
+- [x] целевая политика блокирует merge при failed required check;
+- [ ] фактическая protection state повторно подтверждена через GitHub API с credential владельца.
 
 ---
 
