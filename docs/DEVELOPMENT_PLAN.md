@@ -3440,7 +3440,7 @@ Prod-readiness backend PR 162        1 PR  ✅ СДЕЛАНО (graceful shutdown
 
 ---
 
-## PR 222 — Checklist analytics and review workflow 🔲
+## PR 222 — Checklist analytics and review workflow 🟡
 
 **Проблема:** submitted instances образуют преимущественно organization-wide queue без явного owner; filters/operational visibility ограничены; нет checklist-specific durable истории state transitions и агрегированной аналитики. General Audit Log проекта остаётся `OWNER-DECISION` и не должен неявно реализовываться этим PR.
 
@@ -3499,6 +3499,16 @@ Prod-readiness backend PR 162        1 PR  ✅ СДЕЛАНО (graceful shutdown
 - Значимые transitions имеют immutable durable history в одной transaction.
 - General Audit Log scope не расширен неявно.
 - Full review lifecycle E2E и CI проходят.
+
+> **Статус (2026-08-24):** backend реализован и уже смёржен (PR #651): `ChecklistInstance.reviewerId/reviewAssignedAt/reviewAssignedBy`,
+> `ChecklistInstanceEvent` durable timeline, `assignReviewer`/`getAnalytics`/`listEvents` в `ChecklistsService`,
+> `PATCH /checklist-instances/:id/reviewer`, `GET /checklists/analytics`, `GET /checklist-instances/:id/events`.
+> При этом backend-тесты полностью отсутствовали — этот пробел закрыт `checklists.review-workflow.spec.ts`
+> (reviewer assignment: eligible/rejected/unassign/cross-org/unknown-instance; event timeline: order, cross-org denial,
+> unknown-instance, same-transaction write; analytics: zero dataset, real mixed dataset aggregates, org/team scope).
+> Ещё не закрыто: frontend-тесты для `MentorChecklistReviewsPage`/`InstructorChecklistReviewsPage` и Playwright E2E
+> полного review lifecycle (assignment → completion → queue → reject → event → resubmit → approve → completed → analytics),
+> которые явно требуются критериями готовности выше. Статус остаётся 🟡, пока эти сценарии не покрыты.
 
 ---
 
