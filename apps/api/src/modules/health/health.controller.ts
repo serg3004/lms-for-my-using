@@ -1,7 +1,8 @@
-import { Controller, Get, HttpCode, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Inject, ServiceUnavailableException } from '@nestjs/common';
 
 import { PublicAccess } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
+import { BACKGROUND_JOB_BACKEND, type BackgroundJobBackend, type BackgroundJobOperationalStatus } from '../background-jobs/public.js';
 import { DatabaseHealthService } from './database-health.service.js';
 import { RedisHealthService } from './redis-health.service.js';
 
@@ -10,6 +11,7 @@ type HealthOkResponse = {
   db: 'ok';
   redis: 'ok' | 'disabled';
   storage: 'ok' | 'disabled';
+  queues: BackgroundJobOperationalStatus;
 };
 
 type HealthErrorResponse = {
@@ -17,9 +19,8 @@ type HealthErrorResponse = {
   db: 'ok' | 'unavailable';
   redis: 'ok' | 'disabled' | 'unavailable';
   storage: 'ok' | 'disabled' | 'unavailable';
+  queues: BackgroundJobOperationalStatus | { status: 'unavailable' };
 };
-
-type HealthDependencyStatus = HealthErrorResponse['redis'];
 
 export type HealthResponse = HealthOkResponse | HealthErrorResponse;
 
@@ -29,6 +30,7 @@ export class HealthController {
     private readonly database: DatabaseHealthService,
     private readonly redis: RedisHealthService,
     private readonly upload: UploadService,
+    @Inject(BACKGROUND_JOB_BACKEND) private readonly backgroundJobs: BackgroundJobBackend,
   ) {}
 
   @Get('live')
@@ -53,11 +55,13 @@ export class HealthController {
       this.database.checkReadiness(),
       this.redis.checkReadiness(),
       this.upload.checkReadiness(),
+      this.backgroundJobs.getOperationalStatus(),
     ]);
-    const dependencyStatus: Record<'db' | 'redis' | 'storage', HealthDependencyStatus> = {
+    const dependencyStatus = {
       db: checks[0].status === 'fulfilled' ? 'ok' : 'unavailable',
       redis: checks[1].status === 'fulfilled' ? checks[1].value : 'unavailable',
       storage: checks[2].status === 'fulfilled' ? checks[2].value : 'unavailable',
+      queues: checks[3].status === 'fulfilled' ? checks[3].value : { status: 'unavailable' as const },
     };
 
     if (checks.some((check) => check.status === 'rejected')) {
@@ -79,6 +83,7 @@ export class HealthController {
       db: 'ok',
       redis: checks[1].status === 'fulfilled' ? checks[1].value : 'disabled',
       storage: checks[2].status === 'fulfilled' ? checks[2].value : 'disabled',
+      queues: checks[3].status === 'fulfilled' ? checks[3].value : { status: 'disabled', waiting: 0, active: 0, delayed: 0, failed: 0, deadLetter: 0 },
     };
   }
 }

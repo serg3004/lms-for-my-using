@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Job, Queue, Worker } from 'bullmq';
 import { createHash } from 'node:crypto';
-import { jobs, queueDepth, redisErrors } from '../../common/observability/metrics.js';
+import { jobs, queueDepth, redisErrors, retryExhausted } from '../../common/observability/metrics.js';
 
 import type { BackgroundJobBackend } from './background-job.backend.js';
 import { toBackgroundJob } from './background-job.backend.js';
@@ -38,6 +38,7 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     this.worker.on('failed', (job, error) => {
       if (job) jobs.inc({ name: job.name, outcome: 'failed' });
       if (!job || job.attemptsMade < (job.opts.attempts ?? 1)) return;
+      retryExhausted.inc({ name: job.name });
       this.logger.error(`Background job ${job.id ?? 'unknown'} exhausted retries`, error.stack);
       void this.moveToDeadLetter(job, error).catch((deadLetterError: unknown) => {
         this.logger.error('Failed to persist dead-letter job', deadLetterError);
@@ -97,12 +98,33 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
     await Promise.all([this.queue.close(), this.deadLetterQueue.close()]);
   }
 
+  async getOperationalStatus() {
+    const [counts, deadLetterCounts] = await Promise.all([
+      this.queue.getJobCounts('waiting', 'active', 'delayed', 'failed'),
+      this.deadLetterQueue.getJobCounts('waiting', 'active', 'delayed', 'failed', 'completed'),
+    ]);
+    const status = {
+      status: 'ok' as const,
+      waiting: counts.waiting ?? 0,
+      active: counts.active ?? 0,
+      delayed: counts.delayed ?? 0,
+      failed: counts.failed ?? 0,
+      deadLetter: Object.values(deadLetterCounts).reduce((total, count) => total + count, 0),
+    };
+    for (const state of ['waiting', 'active', 'delayed', 'failed'] as const) {
+      queueDepth.set({ queue: 'background', state }, status[state]);
+    }
+    queueDepth.set({ queue: 'dead_letter', state: 'total' }, status.deadLetter);
+    return status;
+  }
+
   private async moveToDeadLetter(job: Job<StoredJob>, error: Error): Promise<void> {
     await this.deadLetterQueue.add(job.name, {
       ...job.data,
       sourceJobId: job.id ?? 'unknown',
       failedReason: error.message,
     }, { jobId: `dead-${job.id ?? 'unknown'}`, removeOnComplete: false, removeOnFail: false });
+    await this.getOperationalStatus();
   }
   private async updateDepth(): Promise<void> {
     try {

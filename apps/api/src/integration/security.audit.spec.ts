@@ -21,6 +21,7 @@ import { DatabaseHealthService } from '../modules/health/database-health.service
 import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { UploadService } from '../modules/upload/upload.service.js';
+import { BACKGROUND_JOB_BACKEND } from '../modules/background-jobs/public.js';
 import { AuthController } from '../modules/auth/auth.controller.js';
 import { AuthService } from '../modules/auth/auth.service.js';
 import { MaterialMalwareScanController } from '../modules/course-materials/material-malware-scan.controller.js';
@@ -136,6 +137,7 @@ describe('Security audit', () => {
         { provide: DatabaseHealthService, useValue: { checkReadiness: () => Promise.resolve('ok') } },
         { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
         { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
+        { provide: BACKGROUND_JOB_BACKEND, useValue: { getOperationalStatus: () => Promise.resolve({ status: 'disabled', waiting: 0, active: 0, delayed: 0, failed: 0, deadLetter: 0 }) } },
       ],
     }).compile();
 

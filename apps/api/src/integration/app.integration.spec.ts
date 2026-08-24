@@ -22,6 +22,7 @@ import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { OpenApiController } from '../modules/openapi/openapi.controller.js';
 import { UploadService } from '../modules/upload/upload.service.js';
+import { BACKGROUND_JOB_BACKEND } from '../modules/background-jobs/public.js';
 import { setupOpenApi } from '../openapi/swagger.js';
 
 type HttpTestResponse = {
@@ -189,6 +190,7 @@ describe('API integration scaffold', () => {
         { provide: DatabaseHealthService, useValue: { checkReadiness: () => Promise.resolve('ok') } },
         { provide: RedisHealthService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
         { provide: UploadService, useValue: { checkReadiness: () => Promise.resolve('disabled') } },
+        { provide: BACKGROUND_JOB_BACKEND, useValue: { getOperationalStatus: () => Promise.resolve({ status: 'disabled', waiting: 0, active: 0, delayed: 0, failed: 0, deadLetter: 0 }) } },
       ],
     }).compile();
 

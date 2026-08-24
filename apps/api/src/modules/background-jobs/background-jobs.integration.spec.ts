@@ -49,6 +49,16 @@ class InMemoryBackgroundJobBackend implements BackgroundJobBackend {
   ): Promise<void> {
     this.recurring.push({ name, data, options });
   }
+  async getOperationalStatus() {
+    return {
+      status: 'ok' as const,
+      waiting: this.jobs.size,
+      active: 0,
+      delayed: 0,
+      failed: 0,
+      deadLetter: this.deadLetters.length,
+    };
+  }
   async close(): Promise<void> {
     await this.draining;
     this.closed = true;

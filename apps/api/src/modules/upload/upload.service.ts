@@ -2,7 +2,7 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { AbortMultipartUploadCommand, CompleteMultipartUploadCommand, CopyObjectCommand, CreateMultipartUploadCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, ListMultipartUploadsCommand, ListObjectsV2Command, PutObjectCommand, S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
-import { s3Duration } from '../../common/observability/metrics.js';
+import { s3Duration, s3Errors } from '../../common/observability/metrics.js';
 
 export type UploadResult = {
   objectKey: string;
@@ -60,6 +60,7 @@ export class UploadService {
           return result;
         } catch (error) {
           end({ outcome: 'error' });
+          s3Errors.inc({ operation });
           throw error;
         }
       },

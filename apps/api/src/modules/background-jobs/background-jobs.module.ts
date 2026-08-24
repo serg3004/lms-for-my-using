@@ -16,6 +16,6 @@ import { DisabledBackgroundJobBackend } from './disabled-background-job.backend.
     },
     BackgroundJobsService,
   ],
-  exports: [BackgroundJobsService],
+  exports: [BackgroundJobsService, BACKGROUND_JOB_BACKEND],
 })
 export class BackgroundJobsModule {}
