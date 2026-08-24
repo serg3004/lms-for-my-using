@@ -2,6 +2,27 @@ import { z } from 'zod';
 
 export type { UserRole } from '../constants/roles.js';
 
+export const API_ERROR_CODES = [
+  'AUTH_INVALID_CREDENTIALS',
+  'BAD_REQUEST',
+  'CONFLICT',
+  'DATABASE_ERROR',
+  'FORBIDDEN',
+  'HEALTH_CHECK_FAILED',
+  'HTTP_ERROR',
+  'INTERNAL_SERVER_ERROR',
+  'NOT_FOUND',
+  'RATE_LIMIT_UNAVAILABLE',
+  'SESSION_EXPIRED',
+  'TOO_MANY_REQUESTS',
+  'UNAUTHORIZED',
+  'UNPROCESSABLE_ENTITY',
+  'VALIDATION_ERROR',
+] as const;
+
+export const apiErrorCodeSchema = z.enum(API_ERROR_CODES);
+export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
+
 export const apiErrorDetailSchema = z
   .object({
     field: z.string().optional(),
@@ -12,7 +33,7 @@ export const apiErrorDetailSchema = z
 
 export const apiErrorSchema = z
   .object({
-    code: z.string(),
+    code: apiErrorCodeSchema,
     message: z.string(),
     details: z.array(apiErrorDetailSchema).optional(),
   })

@@ -4,6 +4,8 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type SupportedLocale } from './const
 import { USER_ROLES, userRoleSchema, type UserRole } from './constants/roles.js';
 import { paginationQuerySchema, type PaginationQuery } from './schemas/pagination.schema.js';
 import {
+  API_ERROR_CODES,
+  apiErrorCodeSchema,
   apiErrorResponseSchema,
   paginatedResponseSchema,
   type ApiErrorResponse,
@@ -62,6 +64,12 @@ describe('API response contracts', () => {
     expect(apiErrorResponseSchema.safeParse({ ...errorResponse, statusCode: '422' }).success).toBe(false);
     expect(apiErrorResponseSchema.safeParse({ ...errorResponse, requestId: 'extra' }).success).toBe(false);
     expectTypeOf(apiErrorResponseSchema.parse(errorResponse)).toEqualTypeOf<ApiErrorResponse>();
+  });
+
+  it('exposes stable, typed error codes and rejects unknown codes', () => {
+    expect(apiErrorCodeSchema.options).toEqual(API_ERROR_CODES);
+    expect(apiErrorCodeSchema.parse('AUTH_INVALID_CREDENTIALS')).toBe('AUTH_INVALID_CREDENTIALS');
+    expect(apiErrorCodeSchema.safeParse('BACKEND_PROSE_AS_CODE').success).toBe(false);
   });
 
   it('validates paginated DTOs with their item contract', () => {

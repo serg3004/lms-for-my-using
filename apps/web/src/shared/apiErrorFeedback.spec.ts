@@ -20,10 +20,22 @@ describe('getLoginErrorMessage', () => {
     expect(getLoginErrorMessage(error, t)).toBe('login.errors.tooManyRequests:Too many attempts. Please wait and try again.');
   });
 
-  it('returns API error messages for non-rate-limit API errors', () => {
-    const error = new ApiClientError('Invalid credentials', 401);
+  it('localizes stable invalid-credentials errors instead of exposing backend prose', () => {
+    const error = new ApiClientError('Diagnostic backend prose', 401, {
+      statusCode: 401,
+      error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Diagnostic backend prose' },
+      path: '/api/v1/auth/login',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
 
-    expect(getLoginErrorMessage(error, t)).toBe('Invalid credentials');
+    expect(getLoginErrorMessage(error, t)).toBe('login.errors.invalidCredentials:Invalid organization, email, or password.');
+    expect(getLoginErrorMessage(error, t)).not.toContain('Diagnostic backend prose');
+  });
+
+  it('uses a localized safe fallback for unknown and legacy API errors', () => {
+    const error = new ApiClientError('Sensitive or untranslated backend prose', 401);
+
+    expect(getLoginErrorMessage(error, t)).toBe('login.errors.generic:Login failed');
   });
 
   it('returns generic login feedback for unknown errors', () => {

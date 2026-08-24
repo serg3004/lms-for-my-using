@@ -3742,7 +3742,7 @@ frontend quality и observability.
 
 ---
 
-## PR 231 — Localize API errors through stable error codes 🔲
+## PR 231 — Localize API errors through stable error codes ✅
 
 **Проблема:** frontend поддерживает `ru/en/kk/zh`, но часть `ApiClientError` отображается через backend `error.message`; английский backend prose может попадать в неанглийский интерфейс.
 
@@ -3754,13 +3754,13 @@ frontend quality и observability.
 - синхронизировать backend/frontend types и API docs без необоснованного breaking change.
 
 **Критерии готовности:**
-- [ ] invalid login отображается на выбранном locale;
-- [ ] backend prose не является primary user-facing translation;
-- [ ] stable error codes типизированы и протестированы;
-- [ ] unknown code имеет безопасный локализованный fallback;
-- [ ] `ru`, `en`, `kk`, `zh` покрыты tests;
-- [ ] backend/frontend contract tests проходят;
-- [ ] API documentation обновлена при изменении public contract.
+- [x] invalid login отображается на выбранном locale;
+- [x] backend prose не является primary user-facing translation;
+- [x] stable error codes типизированы и протестированы;
+- [x] unknown code имеет безопасный локализованный fallback;
+- [x] `ru`, `en`, `kk`, `zh` покрыты tests;
+- [x] backend/frontend contract tests проходят;
+- [x] API documentation обновлена при изменении public contract.
 
 ---
 

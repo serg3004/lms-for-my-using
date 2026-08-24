@@ -1,4 +1,4 @@
-import type { ApiErrorDetail, ApiErrorResponse } from './api/types.js';
+import type { ApiErrorCode, ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
 
 const apiBasePath = '/api/v1';
 const csrfTokenCookieName = 'lms_csrf_token';
@@ -6,7 +6,7 @@ const csrfHeaderName = 'x-csrf-token';
 const unsafeMethods = new Set(['DELETE', 'PATCH', 'POST', 'PUT']);
 
 export class ApiClientError extends Error {
-  readonly code: string;
+  readonly code: ApiErrorCode;
   readonly details: ApiErrorDetail[];
   readonly response: ApiErrorResponse | null;
 
