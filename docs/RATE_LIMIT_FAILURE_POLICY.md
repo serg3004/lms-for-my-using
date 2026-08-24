@@ -4,17 +4,17 @@
 >
 > **Назначение:** описать фактическое поведение sensitive-route rate limiting при нормальной работе Redis, runtime Redis outage и explicit startup fallback без Redis.
 >
-> **Проверено по `main`:** `4585e8b641b65484a6a29d2383d46f259a3e1e15` (2026-08-09).
+> **Актуализировано для PR 224:** 2026-08-24.
 
 ## 1. Термины и режимы
 
 Документ различает три режима:
 
 1. `REDIS-PRIMARY` — Redis configured и доступен; primary limiter использует Redis.
-2. `RUNTIME-DEGRADED` — Redis configured, но запрос к Redis падает во время работы; sensitive route использует локальный in-memory fallback для этого запроса/процесса.
+2. `RUNTIME-FAIL-CLOSED` — Redis configured, но запрос к Redis падает во время работы; security-critical sensitive route отклоняется с `503 RATE_LIMIT_UNAVAILABLE`.
 3. `STARTUP-IN-MEMORY` — Redis intentionally отсутствует, а `ALLOW_IN_MEMORY_RATE_LIMIT=true`; приложение запускается с in-memory limiter как primary implementation.
 
-`RUNTIME-DEGRADED` и `STARTUP-IN-MEMORY` — разные operational states и `MUST NOT` описываться как одно и то же поведение.
+`RUNTIME-FAIL-CLOSED` и `STARTUP-IN-MEMORY` — разные operational states и `MUST NOT` описываться как одно и то же поведение.
 
 ---
 
@@ -29,7 +29,7 @@ Current hardening middleware защищает sensitive flows, включая:
 - password reset confirm;
 - organization registration.
 
-Policy использует комбинацию global/IP/account-style keys в зависимости от route и сохраняет текущие thresholds независимо от того, Redis primary или local fallback выполняет check.
+Policy использует комбинацию global/IP/account-style keys в зависимости от route. Thresholds применяются через shared Redis в normal mode и через intentional in-memory store только в explicit `STARTUP-IN-MEMORY`.
 
 ---
 
@@ -48,29 +48,17 @@ Policy использует комбинацию global/IP/account-style keys в
 
 ---
 
-## 4. Runtime Redis outage: `RUNTIME-DEGRADED`
+## 4. Runtime Redis outage: `RUNTIME-FAIL-CLOSED`
 
 **Статус:** `IMPLEMENTED`
 
-Если Redis configured, но конкретная limiter operation завершается ошибкой:
+Если configured Redis operation завершается ошибкой, login, password-reset request/confirm и organization registration отклоняются с нормализованным `503 RATE_LIMIT_UNAVAILABLE` и `Retry-After: 1`. Middleware повторяет Redis operation на следующем запросе и автоматически возвращается в `REDIS-PRIMARY` после восстановления. Локальный counter в этом runtime path не используется: одинаковое fail-closed решение на каждой API replica не позволяет умножить эффективный лимит числом instances.
 
-1. запрос **не становится unbounded fail-open**;
-2. middleware переключает проверку на local in-memory fallback;
-3. fallback использует те же configured limits/window semantics для соответствующего limiter;
-4. последующие запросы снова пытаются использовать Redis — permanent switch не происходит;
-5. при восстановлении Redis primary path снова начинает работать.
+Обычные API routes не проходят через sensitive limiter и остаются доступны; общий readiness configured Redis при этом остаётся `503`. Это отделяет security-critical fail-safe policy от availability обычного API.
 
 ### Observability этого режима
 
-Runtime-degraded path имеет специальные hooks/log events для degraded/recovered/request outcomes и может отправлять exception/event в optional Sentry integration, если она configured.
-
-Это относится именно к Redis-configured runtime path.
-
-### Ограничение local fallback
-
-In-memory fallback существует отдельно в каждом process/instance. Он не является distributed limiter и не даёт глобальную консистентность Redis-backed counters.
-
-**Вывод:** runtime outage остаётся bounded на уровне отдельного процесса, но уровень защиты weaker, чем shared Redis primary.
+Первый сбой перехода пишет structured event `rate_limit_fail_closed` без request body, credentials или Redis URL, увеличивает `lms_redis_errors_total{component="rate_limiter"}` и может быть отправлен в configured Sentry. Каждый отклонённый запрос увеличивает `lms_rate_limit_rejects_total{mode="redis-unavailable",route=...}`. Восстановление пишет `rate_limit_recovered`. Фактическая доставка alerts остаётся `LIVE-VERIFY`.
 
 ---
 
@@ -100,11 +88,11 @@ Production env validation требует Redis, если не выставлен
 
 **Статус:** `NOT-READY`
 
-Sensitive routes могут продолжать обслуживаться через local fallback, однако Redis readiness check возвращает failure, и `/api/v1/health/ready` должен быть 503.
+Sensitive routes fail closed с `503 RATE_LIMIT_UNAVAILABLE`; Redis readiness check также возвращает failure, и `/api/v1/health/ready` должен быть 503. Обычные API routes этим middleware не блокируются.
 
 Это сознательное различие:
 
-- availability sensitive endpoint может сохраняться;
+- sensitive endpoint явно недоступен с retryable `503`;
 - deployment/readiness сообщает, что configured dependency degraded.
 
 ### Redis intentionally disabled через explicit fallback
@@ -119,35 +107,15 @@ Readiness может вернуть `redis: disabled`, и endpoint может о
 
 ## 7. Fail-open / fail-closed terminology
 
-Нельзя описывать current policy просто как `fail-open` или `fail-closed` без уточнения уровня.
-
-### Runtime request availability
-
-При Redis error sensitive route может продолжить работу через bounded local limiter — то есть Redis failure сам по себе не закрывает endpoint полностью.
-
-### Abuse-control enforcement
-
-Limiter не становится unlimited: local threshold check остаётся активным.
-
-### Distributed enforcement
-
-Distributed/shared state теряется, пока используется in-memory fallback.
-
-Поэтому точная формулировка:
-
-> Redis failure degrades distributed rate limiting to a bounded per-process local limiter; it does not intentionally disable rate limiting.
+При configured Redis runtime failure security-critical sensitive routes работают **fail-closed**. Это сохраняет единую политику между replicas ценой временной недоступности auth/registration flows. `STARTUP-IN-MEMORY` остаётся отдельным explicit emergency режимом: он разрешён только через `ALLOW_IN_MEMORY_RATE_LIMIT=true` и не обеспечивает distributed limits.
 
 ---
 
 ## 8. Counter consistency during failure
 
-**Статус:** `BEST-EFFORT`
+**Статус:** `FAIL-CLOSED`
 
-Redis operation может частично успеть изменить remote state до ошибки, после чего текущий request проходит local fallback evaluation.
-
-Следовательно нельзя гарантировать идеальную синхронизацию Redis и local counters во время partial failures.
-
-Это предпочтительнее полного bypass, но документация не должна обещать strict exactly-once/global counter semantics при Redis outage.
+Redis operation может успеть частично изменить remote counter до ошибки, но запрос всё равно отклоняется. После recovery атомарный Lua `INCR` + conditional `PEXPIRE` остаётся источником shared counters; middleware не пытается объединять local и Redis state.
 
 ---
 
@@ -157,7 +125,7 @@ Redis operation может частично успеть изменить remote
 
 **Статус:** `IMPLEMENTED`
 
-Rate-limit code создаёт structured log events, включая degraded/recovered/request outcomes.
+Rate-limit code создаёт structured log events, включая fail-closed/recovered/request outcomes.
 
 Название события/поля вроде `rate_limit_request_total` в log payload не является доказательством наличия отдельного Prometheus/metrics backend.
 
@@ -184,7 +152,7 @@ Repository не подтверждает настроенный pager/on-call ro
 `apps/api/src/common/middleware/api-hardening.spec.ts` покрывает ключевые сценарии, включая:
 
 - Redis-backed decisions;
-- Redis failure → local fallback;
+- Redis failure → fail-closed `503` на всех sensitive routes;
 - recovery обратно к Redis;
 - sensitive route limits;
 - relevant degraded behavior.
@@ -201,12 +169,12 @@ Repository не подтверждает настроенный pager/on-call ro
 
 ### Temporary runtime incident
 
-`RUNTIME-DEGRADED`:
+`RUNTIME-FAIL-CLOSED`:
 
-- endpoint availability может сохраниться;
-- per-process limiting остаётся;
+- sensitive endpoint возвращает `503 RATE_LIMIT_UNAVAILABLE`;
+- ordinary API routes остаются доступны;
 - readiness red;
-- distributed protection degraded;
+- каждая replica принимает одинаковое fail-closed решение;
 - требуется operational investigation.
 
 ### Explicit emergency startup
@@ -222,8 +190,8 @@ Repository не подтверждает настроенный pager/on-call ro
 ## 12. Правила для ИИ-агента
 
 1. `MUST` различать runtime outage и startup-without-Redis.
-2. `MUST NOT` писать, что Redis failure полностью отключает rate limiting.
-3. `MUST NOT` писать, что local fallback обеспечивает distributed/global limits.
+2. `MUST` указывать fail-closed `503` для sensitive routes при configured Redis failure.
+3. `MUST NOT` смешивать runtime fail-closed с explicit `STARTUP-IN-MEMORY`.
 4. `MUST` указывать readiness 503 для configured-but-down Redis.
 5. `MUST` указывать возможность `redis: disabled` для explicit in-memory startup mode.
 6. `MUST NOT` считать structured log field полноценной metrics backend integration без evidence.
