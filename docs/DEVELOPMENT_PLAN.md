@@ -3716,7 +3716,7 @@ frontend quality и observability.
 
 ---
 
-## PR 229 — Add production migration drift and pre-deploy safety checks 🔲
+## PR 229 — Add production migration drift and pre-deploy safety checks ✅
 
 **Проблема:** CI проверяет migrations на чистой database, но это не подтверждает соответствие migration history реальной production DB и отсутствие drift.
 
@@ -3728,13 +3728,38 @@ frontend quality и observability.
 - не выполнять production migration или deployment автоматически этим PR.
 
 **Критерии готовности:**
-- [ ] существует воспроизводимый pre-deploy migration check;
-- [ ] drift обнаруживается до destructive deployment;
-- [ ] проверка не изменяет production data;
-- [ ] failed/drifted migration имеет documented response;
-- [ ] backup/restore prerequisites описаны;
-- [ ] clean-DB migration CI сохранён;
-- [ ] production deployment этим PR не выполняется.
+- [x] существует воспроизводимый pre-deploy migration check;
+- [x] drift обнаруживается до destructive deployment;
+- [x] проверка не изменяет production data;
+- [x] failed/drifted migration имеет documented response;
+- [x] backup/restore prerequisites описаны;
+- [x] clean-DB migration CI сохранён;
+- [x] production deployment этим PR не выполняется.
+
+> **Реализовано (2026-08-24):** `pnpm migration:production:check` с явно переданным
+> `DATABASE_URL` сначала запускает read-only `prisma migrate status`, затем read-only
+> `prisma migrate diff --exit-code` между live datasource и committed datamodel. Любая
+> pending/failed/diverged migration, schema drift или ошибка introspection блокирует
+> pre-deploy; URL не передаётся аргументом процесса и не печатается скриптом. CI проверяет
+> fail-closed поведение скрипта и по-прежнему применяет весь migration chain к чистой БД.
+>
+> **Обязательный порядок production pre-deploy:** (1) зафиксировать commit/image SHA и
+> maintenance window; (2) убедиться, что последний зашифрованный backup успешен, доступен
+> restore owner и restore drill соответствует процедуре PR 215; для risky/data migrations
+> создать свежий backup и проверить его manifest; (3) подключить least-privilege read-only
+> production credential как `DATABASE_URL` и выполнить `pnpm migration:production:check`;
+> (4) только при exit code 0 отдельно согласовать и выполнить forward-only migration/deploy.
+> Этот check ничего не мигрирует и не запускает deployment.
+>
+> **Если check заблокирован:** не запускать `migrate deploy`, не редактировать и не удалять
+> строки `_prisma_migrations` вручную и не применять reverse SQL. Сохранить sanitized output,
+> commit SHA и database target; определить, является ли причина pending/failed/diverged
+> history или live schema drift; сверить применённые migrations с repository и расследовать
+> источник out-of-band DDL. Восстановление делать только в isolated database по процедуре
+> backup/restore; после peer-reviewed forward corrective migration или официально согласованного
+> Prisma recovery снова выполнить check. Для failed migration `prisma migrate resolve` допустим
+> только после проверки фактического состояния БД и отдельного approval — данный PR его не
+> автоматизирует.
 
 ---
 
