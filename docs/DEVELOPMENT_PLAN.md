@@ -3589,7 +3589,7 @@ frontend quality и observability.
 
 ---
 
-## PR 224 — Harden distributed rate limiting and Redis failure behavior 🔲
+## PR 224 — Harden distributed rate limiting and Redis failure behavior ✅
 
 **Проблема:** при недоступности Redis rate limiter переходит на локальную память процесса; в multi-instance окружении каждый instance получает отдельный счётчик и эффективный лимит масштабируется с числом реплик.
 
@@ -3602,12 +3602,14 @@ frontend quality и observability.
 - документировать operational behavior.
 
 **Критерии готовности:**
-- [ ] отказ Redis не позволяет незаметно обойти sensitive rate limits через несколько API instances;
-- [ ] degraded-mode behavior явно определён;
-- [ ] login/password-reset/registration покрыты failure-mode tests;
-- [ ] факт degraded mode наблюдаем через безопасные logs/metrics;
-- [ ] normal Redis flow не регрессировал;
-- [ ] конфигурация и эксплуатационные ограничения документированы.
+- [x] отказ Redis не позволяет незаметно обойти sensitive rate limits через несколько API instances;
+- [x] degraded-mode behavior явно определён;
+- [x] login/password-reset/registration покрыты failure-mode tests;
+- [x] факт degraded mode наблюдаем через безопасные logs/metrics;
+- [x] normal Redis flow не регрессировал;
+- [x] конфигурация и эксплуатационные ограничения документированы.
+
+> **Факт (2026-08-24):** configured Redis остаётся единственным shared authority для sensitive-route counters. При runtime Redis error login, password-reset request/confirm и organization registration теперь fail closed с нормализованным `503 RATE_LIMIT_UNAVAILABLE` и `Retry-After: 1` на каждой replica, поэтому локальные per-instance counters больше не умножают эффективный лимит. Обычные API routes остаются доступны, а следующий sensitive request повторно пробует Redis и автоматически восстанавливает distributed mode. Переход наблюдаем через safe structured events `rate_limit_fail_closed`/`rate_limit_recovered`, `lms_redis_errors_total` и `lms_rate_limit_rejects_total{mode="redis-unavailable"}`; secrets и request body не логируются. Explicit startup escape hatch `ALLOW_IN_MEMORY_RATE_LIMIT=true` сохранён как отдельный, осознанно недистрибутивный emergency mode. Tests покрывают все четыре sensitive flows, одинаковое fail-closed поведение нескольких middleware instances, ordinary-route availability, recovery и атомарный Lua Redis flow. Operational contract актуализирован в `docs/RATE_LIMIT_FAILURE_POLICY.md`; live Redis topology и alert delivery остаются `LIVE-VERIFY`.
 
 ---
 

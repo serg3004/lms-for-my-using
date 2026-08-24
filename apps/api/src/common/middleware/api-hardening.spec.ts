@@ -334,12 +334,13 @@ describe('Redis rate limit store', () => {
     '/api/v1/auth/password-reset/request',
     '/api/v1/auth/password-reset/confirm',
     '/api/v1/organizations/register',
-  ])('enforces the local emergency limit when Redis fails on %s', async (url) => {
+  ])('fails closed when Redis fails on %s', async (url) => {
     const store = {
       increment: jest.fn().mockRejectedValue(new Error('Redis connection refused')),
     };
     const modeChanged = jest.fn();
     const recordRequest = jest.fn();
+    const rejected = jest.fn();
     const middleware = createSensitiveRouteRateLimitMiddleware(
       store,
       {
@@ -347,19 +348,63 @@ describe('Redis rate limit store', () => {
         account: [{ maxRequests: 1, windowMs: 60_000 }],
         global: { maxRequests: 100, windowMs: 60_000 },
       },
-      { observability: { modeChanged, recordRequest } },
+      { observability: { modeChanged, recordRequest, rejected } },
     );
 
-    await middleware(createRequest({ url }) as never, createResponse() as never, () => undefined);
     const response = createResponse();
     const nextTracker = createNextTracker();
     await middleware(createRequest({ url }) as never, response as never, nextTracker.next.bind(nextTracker));
 
-    expect(response.statusCode).toBe(429);
+    expect(response.statusCode).toBe(503);
+    expect(response.headers.get('Retry-After')).toBe('1');
+    expect(JSON.parse(response.body)).toMatchObject({
+      statusCode: 503,
+      error: {
+        code: 'RATE_LIMIT_UNAVAILABLE',
+        message: 'Authentication service temporarily unavailable',
+      },
+      path: url,
+    });
     expect(nextTracker.calls).toBe(0);
     expect(modeChanged).toHaveBeenCalledTimes(1);
-    expect(modeChanged).toHaveBeenCalledWith('local-degraded', expect.any(Error));
-    expect(recordRequest).toHaveBeenCalledWith('local-degraded', url);
+    expect(modeChanged).toHaveBeenCalledWith('redis-unavailable', expect.any(Error));
+    expect(recordRequest).toHaveBeenCalledWith('redis-unavailable', url);
+    expect(rejected).toHaveBeenCalledWith('redis-unavailable', url);
+  });
+
+  it('does not multiply the effective sensitive-route limit across instances during a Redis outage', async () => {
+    const unavailableRedis = {
+      increment: jest.fn().mockRejectedValue(new Error('Redis connection refused')),
+    };
+    const firstInstance = createSensitiveRouteRateLimitMiddleware(unavailableRedis);
+    const secondInstance = createSensitiveRouteRateLimitMiddleware(unavailableRedis);
+
+    for (const middleware of [firstInstance, secondInstance]) {
+      const response = createResponse();
+      const nextTracker = createNextTracker();
+      await middleware(createRequest() as never, response as never, nextTracker.next.bind(nextTracker));
+      expect(response.statusCode).toBe(503);
+      expect(nextTracker.calls).toBe(0);
+    }
+  });
+
+  it('keeps ordinary API routes available during a Redis outage', async () => {
+    const unavailableRedis = {
+      increment: jest.fn().mockRejectedValue(new Error('Redis connection refused')),
+    };
+    const middleware = createSensitiveRouteRateLimitMiddleware(unavailableRedis);
+    const response = createResponse();
+    const nextTracker = createNextTracker();
+
+    await middleware(
+      createRequest({ method: 'GET', url: '/api/v1/courses' }) as never,
+      response as never,
+      nextTracker.next.bind(nextTracker),
+    );
+
+    expect(nextTracker.calls).toBe(1);
+    expect(response.statusCode).toBe(200);
+    expect(unavailableRedis.increment).not.toHaveBeenCalled();
   });
 
   it('returns to Redis mode automatically after the store recovers', async () => {
@@ -379,7 +424,7 @@ describe('Redis rate limit store', () => {
     await middleware(createRequest() as never, createResponse() as never, () => undefined);
 
     expect(modeChanged.mock.calls).toEqual([
-      ['local-degraded', expect.any(Error)],
+      ['redis-unavailable', expect.any(Error)],
       ['redis'],
     ]);
     expect(recordRequest).toHaveBeenLastCalledWith('redis', '/api/v1/auth/login');

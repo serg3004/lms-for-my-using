@@ -22,6 +22,9 @@ type Middleware = (request: ApiRequest, response: ApiResponse, next: NextFunctio
 const TOO_MANY_REQUESTS_STATUS = 429;
 const TOO_MANY_REQUESTS_CODE = 'TOO_MANY_REQUESTS';
 const TOO_MANY_REQUESTS_MESSAGE = 'Too many requests';
+const SERVICE_UNAVAILABLE_STATUS = 503;
+const RATE_LIMIT_UNAVAILABLE_CODE = 'RATE_LIMIT_UNAVAILABLE';
+const RATE_LIMIT_UNAVAILABLE_MESSAGE = 'Authentication service temporarily unavailable';
 const API_CONTENT_SECURITY_POLICY = [
   "default-src 'none'",
   "script-src 'none'",
@@ -82,7 +85,7 @@ export type InMemoryRateLimitStore = RateLimitStore & {
   size(): number;
 };
 
-export type RateLimitMode = 'redis' | 'local-degraded';
+export type RateLimitMode = 'redis' | 'redis-unavailable';
 
 export type RateLimitObservability = {
   recordRequest(mode: RateLimitMode, route: string): void;
@@ -91,7 +94,6 @@ export type RateLimitObservability = {
 };
 
 export type SensitiveRateLimitOptions = {
-  fallbackStore?: RateLimitStore;
   observability?: RateLimitObservability;
 };
 
@@ -220,8 +222,7 @@ export function createSensitiveRouteRateLimitMiddleware(
   options: SensitiveRateLimitOptions = {},
 ): Middleware {
   const resolvedStore = store ?? createInMemoryRateLimitStore();
-  const fallbackStore = options.fallbackStore ?? createInMemoryRateLimitStore();
-  let degraded = false;
+  let redisUnavailable = false;
 
   return async (request, response, next) => {
     if (!isRateLimitedRoute(request)) {
@@ -243,21 +244,40 @@ export function createSensitiveRouteRateLimitMiddleware(
     try {
       counts = await Promise.all(rules.map(({ key, rule }) => resolvedStore.increment(key, rule.windowMs)));
       options.observability?.recordRequest('redis', requestPath);
-      if (degraded) {
-        degraded = false;
+      if (redisUnavailable) {
+        redisUnavailable = false;
         options.observability?.modeChanged('redis');
       }
     } catch (error) {
-      counts = await Promise.all(rules.map(({ key, rule }) => fallbackStore.increment(key, rule.windowMs)));
-      options.observability?.recordRequest('local-degraded', requestPath);
-      if (!degraded) {
-        degraded = true;
-        options.observability?.modeChanged('local-degraded', error);
+      // A configured Redis store is the only shared authority across API replicas.
+      // Falling back to process-local counters here would multiply every limit by
+      // the replica count. Fail closed for security-critical routes instead. When
+      // no store is configured, resolvedStore is intentionally in-memory from
+      // startup and this branch is not involved.
+      options.observability?.recordRequest('redis-unavailable', requestPath);
+      options.observability?.rejected?.('redis-unavailable', requestPath);
+      if (!redisUnavailable) {
+        redisUnavailable = true;
+        options.observability?.modeChanged('redis-unavailable', error);
       }
+      response.statusCode = SERVICE_UNAVAILABLE_STATUS;
+      response.setHeader('Content-Type', 'application/json');
+      response.setHeader('Retry-After', '1');
+      response.end(
+        JSON.stringify(
+          createApiErrorResponse({
+            statusCode: SERVICE_UNAVAILABLE_STATUS,
+            code: RATE_LIMIT_UNAVAILABLE_CODE,
+            message: RATE_LIMIT_UNAVAILABLE_MESSAGE,
+            path: request.url ?? requestPath,
+          }),
+        ),
+      );
+      return;
     }
 
     if (counts.some((count, index) => count > (rules[index]?.rule.maxRequests ?? 0))) {
-      options.observability?.rejected?.(degraded ? 'local-degraded' : 'redis', requestPath);
+      options.observability?.rejected?.('redis', requestPath);
       response.statusCode = TOO_MANY_REQUESTS_STATUS;
       response.setHeader('Content-Type', 'application/json');
       response.end(

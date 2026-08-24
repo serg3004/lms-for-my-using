@@ -91,16 +91,16 @@ async function bootstrap(): Promise<void> {
               rateLimitRejects.inc({ mode, route });
             },
             modeChanged(mode, error) {
-              if (mode === 'local-degraded') {
+              if (mode === 'redis-unavailable') {
                 redisErrors.inc({ component: 'rate_limiter' });
                 logger.error(
                   {
-                    event: 'rate_limit_degraded',
+                    event: 'rate_limit_fail_closed',
                     mode,
                     error: error instanceof Error ? error.message : String(error),
                     alert: true,
                   },
-                  'Redis rate limiter unavailable; local emergency limiter activated',
+                  'Redis rate limiter unavailable; sensitive routes are failing closed',
                 );
                 captureRateLimitFailure?.(error);
                 return;
