@@ -27,28 +27,38 @@ This document records the current LMS module boundaries and the rules for extend
 
 API domain modules live under `apps/api/src/modules`.
 
-Current modules include:
+Current production `AppModule` imports are listed below. This table is the checked inventory: every module wired in `apps/api/src/app.module.ts` must appear here, including infrastructure modules that do not expose controllers.
 
-- `assessment-attempts`
-- `assessment-questions`
-- `assessments`
-- `assignments`
-- `auth`
-- `certificates`
-- `course-access`
-- `course-materials`
-- `courses`
-- `groups`
-- `health`
-- `lessons`
-- `manager`
-- `manager-team-scope`
-- `memberships`
-- `openapi`
-- `organizations`
-- `progress`
-- `upload`
-- `users`
+| Module | Path | Actual responsibility |
+|---|---|---|
+| `LoggerModule` | `nestjs-pino` (configured in `apps/api/src/app.module.ts`) | Structured HTTP/application logging, request IDs, and redaction. |
+| `DatabaseModule` | `apps/api/src/database` | Global Prisma database access. |
+| `ObservabilityModule` | `apps/api/src/common/observability` | Metrics, telemetry context, and API observability middleware. |
+| `CourseAccessModule` | `apps/api/src/modules/course-access` | Global course ownership policy and guard for course-scoped instructor access. |
+| `AssessmentAttemptsModule` | `apps/api/src/modules/assessment-attempts` | Assessment attempt creation, retrieval, submission, and results. |
+| `AssessmentQuestionsModule` | `apps/api/src/modules/assessment-questions` | Assessment question and option management. |
+| `AssessmentsModule` | `apps/api/src/modules/assessments` | Assessment CRUD and reads. |
+| `AssignmentsModule` | `apps/api/src/modules/assignments` | Assignment CRUD and reads. |
+| `BackgroundJobsModule` | `apps/api/src/modules/background-jobs` | Global background-job dispatch, using BullMQ when Redis is configured and a disabled backend otherwise. |
+| `AuthModule` | `apps/api/src/modules/auth` | Authentication/session flows, authorization guards, and role policies. |
+| `CertificatesModule` | `apps/api/src/modules/certificates` | Certificate issuance and retrieval. |
+| `ChecklistsModule` | `apps/api/src/modules/checklists` | Checklist definitions, assigned instances, learner results, reviews, and deadline processing. |
+| `CourseMaterialsModule` | `apps/api/src/modules/course-materials` | Course material metadata, upload lifecycle, lesson assignment, and malware-scan callback. |
+| `CoursesModule` | `apps/api/src/modules/courses` | Course CRUD and reads. |
+| `GroupsModule` | `apps/api/src/modules/groups` | Organization group management. |
+| `HealthModule` | `apps/api/src/modules/health` | Liveness and readiness endpoints. |
+| `LessonsModule` | `apps/api/src/modules/lessons` | Lesson CRUD and reads. |
+| `ManagerModule` | `apps/api/src/modules/manager` | Manager team-summary endpoint. |
+| `MembershipsModule` | `apps/api/src/modules/memberships` | Organization membership reads and creation. |
+| `ManagerTeamScopeModule` | `apps/api/src/modules/manager-team-scope` | Global query-scope helper limiting managers to their teams. |
+| `NotificationsModule` | `apps/api/src/modules/notifications` | In-app notification listing and read-state updates. |
+| `OpenApiModule` | `apps/api/src/modules/openapi` | Static OpenAPI document endpoint. |
+| `OutboxModule` | `apps/api/src/modules/outbox` | Global transactional-outbox enqueue service. |
+| `OrganizationsModule` | `apps/api/src/modules/organizations` | Organization registration, reads, and creation. |
+| `ProgressModule` | `apps/api/src/modules/progress` | Learner course-progress reads and updates. |
+| `ReportsModule` | `apps/api/src/modules/reports` | Report generation, export retrieval, and report-file downloads. |
+| `UploadModule` | `apps/api/src/modules/upload` | Shared object-storage upload operations and validation; it exposes no controller. |
+| `UsersModule` | `apps/api/src/modules/users` | Organization user reads and creation. |
 
 Each API domain module should own its own:
 
@@ -61,7 +71,7 @@ Each API domain module should own its own:
 Cross-cutting concerns should stay outside domain modules:
 
 | Concern | Preferred location |
-|-t-|---|
+|---|---|
 | Prisma client/module | `apps/api/src/database` |
 | Auth guards, role policies, shared decorators | `apps/api/src/common` or `apps/api/src/modules/auth` when auth-specific |
 | Env/config | `apps/api/src/config` |

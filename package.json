@@ -25,7 +25,8 @@
     "migration:production:check": "bash scripts/check-production-migrations.sh",
     "migration:production:check:test": "bash scripts/check-production-migrations.test.sh",
     "release:gate": "node scripts/verify-release-gate.mjs",
-    "release:gate:test": "node --test scripts/verify-release-gate.test.mjs"
+    "release:gate:test": "node --test scripts/verify-release-gate.test.mjs",
+    "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

@@ -3654,7 +3654,7 @@ frontend quality и observability.
 
 ---
 
-## PR 226 — Synchronize architecture and RBAC documentation with code 🔲
+## PR 226 — Synchronize architecture and RBAC documentation with code ✅
 
 **Проблема:** `docs/ARCHITECTURE_MODULE_BOUNDARIES.md` отстаёт от фактического `AppModule`, а `docs/API_RBAC_MATRIX.md` содержит внутреннее расхождение между заявленным количеством и перечисленными controllers.
 
@@ -3666,12 +3666,14 @@ frontend quality и observability.
 - добавить лёгкую consistency-проверку или генерацию inventory, если это возможно без избыточной инфраструктуры.
 
 **Критерии готовности:**
-- [ ] все production modules из `AppModule` отражены в architecture docs;
-- [ ] ответственность модулей соответствует текущему коду;
-- [ ] RBAC matrix внутренне согласована;
-- [ ] отсутствуют придуманные endpoints/modules;
-- [ ] при наличии автоматической проверки она падает на подтверждаемом drift;
-- [ ] documentation checks/CI проходят.
+- [x] все production modules из `AppModule` отражены в architecture docs;
+- [x] ответственность модулей соответствует текущему коду;
+- [x] RBAC matrix внутренне согласована;
+- [x] отсутствуют придуманные endpoints/modules;
+- [x] при наличии автоматической проверки она падает на подтверждаемом drift;
+- [x] documentation checks/CI проходят.
+
+> **Факт (2026-08-24):** checked inventory в `docs/ARCHITECTURE_MODULE_BOUNDARIES.md` теперь зеркалирует все imports production `AppModule`, включая инфраструктурные модули без controllers, и фиксирует их фактическую ответственность. В `docs/API_RBAC_MATRIX.md` исправлен course-scope inventory: `CourseAccessGuard` установлен на 8, а не 9 перечисленных controllers; `courses` не заявляется как guard-protected controller. Лёгкий `docs:consistency:test` сравнивает architecture inventory с `AppModule`, а RBAC count/list — со всеми фактическими controller files, содержащими `CourseAccessGuard`; подтверждённый drift в любом направлении приводит к падению проверки.
 
 ---
 
