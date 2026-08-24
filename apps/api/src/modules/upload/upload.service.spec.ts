@@ -1,4 +1,6 @@
 import { ServiceUnavailableException } from '@nestjs/common';
+import { jest } from '@jest/globals';
+import { s3Errors } from '../../common/observability/metrics.js';
 
 import { UploadService } from './upload.service.js';
 
@@ -49,6 +51,23 @@ describe('UploadService', () => {
 
     const configured = new UploadService();
     expect(configured.isConfigured()).toBe(true);
+  });
+
+  it('records failed storage operations without storage identifiers in metric labels', async () => {
+    let middleware: ((next: (args: unknown) => Promise<unknown>, context: { commandName?: string }) =>
+      (args: unknown) => Promise<unknown>) | undefined;
+    const client = { middlewareStack: { add: jest.fn((value) => { middleware = value; }) } };
+    const metricService = Object.create(UploadService.prototype) as UploadService;
+
+    (metricService as unknown as { addMetricsMiddleware(client: unknown): void }).addMetricsMiddleware(client);
+    const failure = new Error('contains-private-object-key');
+    const before = (await s3Errors.get()).values.find(({ labels }) => labels.operation === 'PutObject')?.value ?? 0;
+    const handler = middleware?.(jest.fn().mockRejectedValue(failure), { commandName: 'PutObjectCommand' });
+
+    await expect(handler?.({ input: { Bucket: 'private-bucket', Key: 'private-key' } })).rejects.toBe(failure);
+    const sample = (await s3Errors.get()).values.find(({ labels }) => labels.operation === 'PutObject');
+    expect(sample?.value).toBe(before + 1);
+    expect(sample?.labels).toEqual({ operation: 'PutObject' });
   });
 
   it('signs short-lived attachment downloads on the isolated file origin', async () => {
