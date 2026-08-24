@@ -3562,9 +3562,17 @@ frontend quality и observability.
 ---
 ## Фаза J — Post-audit hardening roadmap
 
-> **Цель фазы:** закрыть подтверждённые риски технического аудита 2026-08-24: целостность progress, distributed rate limiting, наблюдаемость CI/security, документационный drift, масштабируемость cleanup, migration safety, i18n/error contracts, frontend resilience, a11y и repository governance.
+> **Цель фазы:** закрыть подтверждённые риски технического аудита 2026-08-24: целостность progress, distributed rate limiting, наблюдаемость CI/security, документационный drift, масштабируемость cleanup, migration safety, i18n/error contracts, frontend resilience, a11y и repository governance. Дополнено по итогам follow-up-аудита (2026-08-24): production Docker/API env contract, unbounded ReportsService queries, multipart presign fanout bounds, password-reset delivery readiness + отдельный documentation drift в `docs/TODO_VERIFY.md`, реальный visual regression gate и read-only production infrastructure verification.
 >
-> **Порядок:** P0 — PR 223, 238, 224; P1 — PR 231, 232, 227, 229, 225, 226, 228, 230, 236; P2 — PR 233, 234, 235, 237.
+> **Порядок:** P0 — PR 223, 238, 260, 224; P1 — PR 231, 232, 261, 227, 262, 229, 263, 225, 226, 228, 230, 236; P2 — PR 233, 264, 234, 235, 237, 265.
+>
+> **Rationale новых PR (260–265):**
+> - PR 260 закрывает подтверждённый mismatch между `infra/docker/docker-compose.prod.yml` и production API env validation (`apps/api/src/config/env.ts`); выполняется после включения repository quality gates PR 238.
+> - PR 261 устраняет unbounded `findMany()` в `ReportsService` до дальнейшего роста tenant datasets.
+> - PR 262 дополняет multipart scalability hardening PR 227: PR 227 ограничивает cleanup, PR 262 — initialization/presign fanout.
+> - PR 263 закрывает operational gap password-reset delivery readiness и устраняет подтверждённый documentation drift TV-031 в `docs/TODO_VERIFY.md`; публичный anti-enumeration contract сохраняется без изменений.
+> - PR 264 превращает существующий responsive screenshot-collection flow в настоящий pixel-baseline regression gate; scope отделён от accessibility PR 234 и resilience PR 235.
+> - PR 265 выполняется последним как read-only live verification после repository-side hardening; неподтверждённое внешнее состояние не считается дефектом без фактических данных.
 
 ## PR 223 — Fix course-level progress race condition ✅
 
@@ -4423,3 +4431,175 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - PR 256 использует layout/data-density foundations PR 245/247.
 - PR 257 опирается на общий accessibility gate PR 234.
 - PR 259 выполняется после network/aggregation PR 244/250/251/252, чтобы измерять итоговую архитектуру, а не промежуточные проблемы.
+
+---
+
+## Фаза J (продолжение) — Post-audit hardening, follow-up 2026-08-24
+
+> Эта серия продолжает нумерацию **после PR 259**, а не после PR 238: числа 239–244 к моменту follow-up-аудита уже были заняты не связанной frontend/product серией (PR 239–259 выше). Пункты ниже относятся к тому же аудиту 2026-08-24, что и PR 223–238, и включены в общий порядок "Фазы J" (см. `Порядок` в начале раздела).
+
+## PR 260 — Fix production Docker/API environment contract 🔲
+
+**Проблема:** production Docker Compose не передаёт API полный набор переменных, которые обязательны для production validation. В частности, текущий API production contract требует Redis configuration и metrics bearer token, тогда как `infra/docker/docker-compose.prod.yml` не обеспечивает полный contract. Документированный production startup поэтому может завершиться ошибкой конфигурации.
+
+**Что нужно и что будет сделано:**
+- сверить `infra/docker/docker-compose.prod.yml`, `.env.production.example`, Docker env example и `apps/api/src/config/env.ts`;
+- привести production Compose environment contract в соответствие с фактической API env schema;
+- не хранить реальные credentials, tokens или secrets в Git;
+- проверить, что documented production env example содержит все обязательные имена переменных;
+- добавить безопасную автоматическую проверку production Compose/env contract;
+- проверить API startup с production-like environment;
+- обновить deployment/runbook документацию.
+
+**Критерии готовности:**
+- [ ] `docker compose config` успешно валидирует production configuration;
+- [ ] все обязательные production API variables передаются API container;
+- [ ] `loadApiEnv()` успешно проходит при корректно заполненном production-like env;
+- [ ] отсутствие обязательной переменной приводит к понятной startup/configuration error;
+- [ ] реальные secrets отсутствуют в Git и CI artifacts;
+- [ ] автоматическая проверка обнаруживает drift Compose ↔ API env schema;
+- [ ] production deployment documentation соответствует current configuration;
+- [ ] local development environment не регрессировал.
+
+---
+
+## PR 261 — Scale ReportsService without unbounded dataset loading 🔲
+
+**Проблема:** Reports summary загружает подходящие progress, certificates и overdue assignments через `findMany()` без pagination/limit. При росте tenant это увеличивает DB traffic, heap usage и latency, хотя значительная часть результата требуется только для counts и summary metrics.
+
+**Что нужно и что будет сделано:**
+- определить, какие report metrics можно считать database-side через Prisma `count`, `aggregate`, `groupBy` или эквивалентные bounded queries;
+- не загружать полный progress dataset там, где требуется только aggregate;
+- ограничить certificates/overdue lists через pagination, limit или согласованный top-N;
+- проверить фактические query paths и необходимые индексы;
+- не вводить query-per-row N+1;
+- сохранить существующий API response contract, если его изменение не требуется;
+- если contract необходимо изменить, выполнять это отдельно как совместимое API изменение;
+- добавить performance-oriented integration tests на dataset существенно больше demo/seed данных.
+
+**Критерии готовности:**
+- [ ] summary не требует загрузки полного tenant progress dataset в память;
+- [ ] counts и summaries рассчитываются bounded/database-side queries;
+- [ ] certificates и overdue assignments имеют явный bounded contract либо database aggregation;
+- [ ] отсутствует N+1 query pattern;
+- [ ] основные queries используют подходящие индексы по фактическим filters;
+- [ ] существующий API contract не ломается без отдельного обоснования;
+- [ ] large-dataset integration tests проходят;
+- [ ] результаты summary совпадают с текущей бизнес-логикой.
+
+---
+
+## PR 262 — Bound multipart presign fanout and upload size validation 🔲
+
+**Проблема:** multipart initialization (`MaterialMultipartUploadService.initiate`) вычисляет число частей из `sizeBytes` и создаёт presigned URLs параллельно через `Promise.all` для всего набора частей сразу. De facto fanout сейчас ограничен существующим `MAX_UPLOAD_FILE_SIZE_BYTES = 50MB` и `MULTIPART_PART_SIZE_BYTES = 8MB` (`upload.validation.ts`) — то есть не более ~7 частей за раз, явного unbounded DoS-вектора при текущих лимитах нет. Проблема — отсутствие явного, документированного и покрытого тестами max-part-count контракта, независимого от текущего значения `MAX_UPLOAD_FILE_SIZE_BYTES`: изменение любого из двух констант без согласованной проверки может незаметно снять эту неявную границу.
+
+**Что нужно и что будет сделано:**
+- явно задокументировать maximum supported upload size и его связь с `MULTIPART_PART_SIZE_BYTES`;
+- добавить явный, независимо проверяемый max multipart part count (не полагаться только на побочный эффект `MAX_UPLOAD_FILE_SIZE_BYTES`);
+- отклонять unsupported `sizeBytes` до создания multipart upload/session, если он превышает max part count;
+- рассмотреть ограничение concurrency presign generation при дальнейшем росте лимитов;
+- не использовать unbounded `Promise.all()` для потенциально большого пользовательского input;
+- сохранить текущее поведение для поддерживаемых размеров файлов;
+- добавить lower/upper boundary и overflow tests, включая явный тест на изменение констант.
+
+**Критерии готовности:**
+- [ ] maximum multipart part count определён явно и не зависит только от побочного эффекта другого лимита;
+- [ ] unsupported size отклоняется до expensive storage calls;
+- [ ] presign generation не создаёт unbounded concurrency при росте лимитов;
+- [ ] допустимые текущие upload sizes продолжают работать;
+- [ ] boundary tests покрывают значение на лимите и значение выше лимита;
+- [ ] multipart complete/abort behavior не регрессировал.
+
+---
+
+## PR 263 — Add password-reset delivery readiness and synchronize its documentation 🔲
+
+**Проблема:** password reset flow реализован (PR 136), однако delivery provider является deployment-dependent. При отсутствии configured `PASSWORD_RESET_DELIVERY_URL` reset request сохраняет anti-enumeration response `{ accepted: true }`, но пользователь фактически не получает reset link.
+
+Дополнительно был подтверждён documentation drift: `docs/TODO_VERIFY.md` (TV-031) описывал password reset как `SKELETON`/намеренный `503`, хотя текущая реализация и `docs/PASSWORD_RESET_STATUS.md` фиксируют работающие request/confirm endpoints и provider-neutral delivery. Этот drift уже исправлен в рамках follow-up-аудита 2026-08-24 (TV-031 обновлён на `ACCEPTED`/`DONE`/`LIVE-VERIFY`); данный PR закрывает оставшийся operational readiness gap.
+
+**Что нужно и что будет сделано:**
+- формализовать production contract для `PASSWORD_RESET_DELIVERY_URL`;
+- проверить production env example/config documentation;
+- определить readiness/degraded semantics для отсутствующего delivery provider;
+- сохранить anti-user-enumeration contract публичного reset request;
+- readiness failure показывать только через безопасный operational/health contract;
+- определить предсказуемое поведение provider timeout/error;
+- не логировать reset token, credentials или полный reset URL;
+- добавить integration tests для configured provider;
+- добавить negative test для отсутствующего provider;
+- добавить test для provider error/timeout;
+- проверить успешный end-to-end delivery handoff;
+- сохранить `LIVE-VERIFY` для фактической production configuration provider, если она не подтверждена внешними данными.
+
+**Критерии готовности:**
+- [ ] production configuration явно описывает reset delivery provider;
+- [ ] система отличает application readiness от отсутствия configured delivery;
+- [ ] публичный request сохраняет anti-enumeration semantics;
+- [ ] reset token никогда не попадает в logs/metrics/errors;
+- [ ] provider failure обрабатывается предсказуемо и наблюдаемо без sensitive data;
+- [ ] configured delivery flow покрыт integration test;
+- [ ] unconfigured provider покрыт negative test;
+- [ ] provider error/timeout покрыт test;
+- [ ] `docs/TODO_VERIFY.md` и `docs/PASSWORD_RESET_STATUS.md` не противоречат друг другу;
+- [ ] неподтверждённая live production provider configuration остаётся `LIVE-VERIFY`.
+
+---
+
+## PR 264 — Add a real pixel-baseline visual regression gate 🔲
+
+**Проблема:** существующая responsive visual suite создаёт screenshots и CI artifacts, но наличие screenshot artifact само по себе не проверяет visual regression: `toHaveScreenshot`/pixel-diff assertion в репозитории не используется нигде. Без pixel-baseline assertion непреднамеренное изменение UI может не привести к падению теста.
+
+**Что нужно и что будет сделано:**
+- добавить Playwright `expect(page).toHaveScreenshot()` либо equivalent Playwright snapshot assertion для стабильных views;
+- хранить baseline images versioned вместе с тестовой конфигурацией;
+- разделить responsive/layout assertions и pixel regression assertions;
+- стабилизировать dynamic content, timestamps, animations и nondeterministic fixtures;
+- исключать dynamic regions только там, где это обосновано;
+- покрыть ключевые desktop и mobile dashboard/workspace states;
+- определить controlled baseline-update procedure;
+- не принимать новые baseline snapshots автоматически при failed CI.
+
+**Критерии готовности:**
+- [ ] реальное изменение контролируемых UI pixels вызывает test failure;
+- [ ] baseline snapshots находятся под version control;
+- [ ] baseline update является явным reviewable изменением;
+- [ ] dynamic content стабилизирован или обоснованно masked;
+- [ ] ключевые desktop states покрыты;
+- [ ] ключевые mobile states покрыты;
+- [ ] существующие responsive/layout assertions сохранены;
+- [ ] visual test suite стабильно проходит в CI.
+
+---
+
+## PR 265 — Verify live production infrastructure state 🔲
+
+**Проблема:** repository audit не может доказать фактическое состояние внешней production infrastructure: Railway replica/resource settings, live Redis, S3/R2 configuration, PostgreSQL migration state, backup/PITR и реальную queue/storage topology. Это verification gap, а не подтверждённый production defect.
+
+**Что нужно и что будет сделано:**
+- подготовить read-only production verification checklist;
+- зафиксировать дату, environment и источник каждого результата;
+- проверить Railway service topology, replicas и resource settings;
+- проверить наличие и доступность production Redis;
+- проверить storage provider/bucket configuration;
+- проверить необходимые CORS/lifecycle settings для storage;
+- проверить фактическую queue/DLQ topology;
+- проверить Prisma migration state read-only способом;
+- проверить наличие backup/PITR;
+- проверить наличие доказанного restore test либо явно отметить его отсутствие;
+- не читать и не публиковать значения secrets;
+- не изменять production configuration в рамках verification;
+- любые production mutations/deployments вынести в отдельные явно согласованные задачи.
+
+**Критерии готовности:**
+- [ ] production DB migration state зафиксирован с датой;
+- [ ] backup/PITR status подтверждён фактическим источником;
+- [ ] restore-test status подтверждён либо явно отмечен как missing/unverified;
+- [ ] Redis topology подтверждена;
+- [ ] storage provider/bucket/configuration подтверждены;
+- [ ] queue/DLQ topology подтверждена;
+- [ ] Railway replica/resource settings зафиксированы;
+- [ ] результаты имеют дату и источник доказательства;
+- [ ] sensitive values не сохранены в документации или CI artifacts;
+- [ ] verification не изменяет production;
+- [ ] все оставшиеся unknowns явно остаются `LIVE-VERIFY`/`[НЕ ПРОВЕРЕНО]`.

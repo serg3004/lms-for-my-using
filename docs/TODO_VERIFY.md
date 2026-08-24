@@ -94,7 +94,7 @@
 | ID | Решение | Decision | Implementation | Live | Комментарий |
 |---|---|---|---|---|---|
 | TV-030 | Invite flow | `OWNER-DECISION` | `PARTIAL` | `NOT-REQUIRED` | Admin-created user flow существует; полноценный invite lifecycle требует product decision. |
-| TV-031 | Password reset delivery | `DEFERRED` | `SKELETON` | `LIVE-VERIFY` | Request/confirm endpoints есть, но service намеренно возвращает 503; email delivery/provider не настроены canonical образом. |
+| TV-031 | Password reset delivery | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Request/confirm endpoints реализованы в PR 136: token хранится только как SHA-256 hash с TTL и одноразовым consumption, публичный ответ сохраняет anti-enumeration `{ accepted: true }`. Provider-neutral delivery настраивается через `PASSWORD_RESET_DELIVERY_URL`/`PASSWORD_RESET_DELIVERY_TOKEN` (см. `docs/PASSWORD_RESET_STATUS.md`) — устаревшее упоминание намеренного `503` из ранних PR 61/68 здесь неактуально. Фактическое наличие configured delivery provider в конкретном production окружении остаётся `LIVE-VERIFY`; readiness/degraded-mode contract для этого случая отслеживается в `docs/DEVELOPMENT_PLAN.md` PR 263. |
 | TV-032 | Login/sensitive-route rate limiting | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Redis/local fallback code реализован; live Redis state требует verification. |
 | TV-033 | Refresh token storage | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | HttpOnly refresh cookie + server-side session/hash/rotation. |
 | TV-034 | Access token current contract | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Использовать current auth controller/session docs; не возвращаться к старому localStorage proposal без отдельной redesign задачи. |
