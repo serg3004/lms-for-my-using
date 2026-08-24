@@ -4102,6 +4102,9 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > визуально приглушены. Адаптивная композиция складывает details и CTA на tablet/mobile;
 > существующие loading/error/empty состояния сохранены. Добавлены learner UI tests
 > на порядок блоков, primary action и overdue presentation.
+> После WCAG AA проверки визуальное ослабление KPI выполнено без `opacity` на
+> контейнере: muted background, отсутствие тени и меньший размер значения сохраняют
+> нормативный контраст текста для browser accessibility baseline.
 
 ---
 ## PR 240 — Learner Mobile Navigation 🔲

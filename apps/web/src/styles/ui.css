@@ -1699,7 +1699,15 @@
 
 .learner-dashboard__stats {
   margin-top: 36px;
-  opacity: 0.82;
+}
+
+.learner-dashboard__stats .stat-card {
+  background: var(--color-surface-muted);
+  box-shadow: none;
+}
+
+.learner-dashboard__stats .stat-card__value {
+  font-size: 23px;
 }
 
 @media (max-width: 760px) {
