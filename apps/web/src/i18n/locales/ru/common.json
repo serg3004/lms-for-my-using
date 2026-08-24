@@ -802,14 +802,17 @@
       "upcomingDeadlines": {
         "title": "Ближайшие дедлайны",
         "empty": "Нет предстоящих дедлайнов.",
-        "dueLabel": "Срок: {{date}}"
+        "dueLabel": "Срок: {{date}}",
+        "overdueLabel": "Просрочено с {{date}}"
       },
       "recentActivity": {
         "title": "Недавняя активность",
         "empty": "Активности пока нет.",
         "lessonCompleted": "Пройден урок в курсе «{{title}}»",
         "certificateIssued": "Получен сертификат за курс «{{title}}»"
-      }
+      },
+      "nextAction": "Следующее действие",
+      "statsLabel": "Сводка обучения"
     }
   },
   "courses": {

@@ -66,6 +66,28 @@ describe('LearnerHomePage', () => {
     expect(html).toContain('Завершён урок «Введение»');
     expect(html).toContain('>3<');
     expect(html).toContain('>2<');
+    expect(html.indexOf('Основы безопасности')).toBeLessThan(html.indexOf('>3<'));
+  });
+
+  it('highlights overdue work and keeps it in the action area', () => {
+    reactMocks.useState.mockReturnValueOnce([{
+      ...loadedState,
+      data: {
+        ...loadedState.data,
+        upcomingDeadlines: [{
+          id: 'assignment-overdue',
+          title: 'Просроченное задание',
+          dueAt: '2025-01-01T00:00:00.000Z',
+          isOverdue: true,
+        }],
+      },
+    }, vi.fn()]);
+
+    const html = renderToStaticMarkup(<LearnerHomePage />);
+
+    expect(html).toContain('learner-dashboard__deadline--overdue');
+    expect(html).toContain('Просрочено с');
+    expect(html).toContain('href="/learn/assignments/assignment-overdue"');
   });
 
   it('renders empty states when there is nothing to show', () => {
