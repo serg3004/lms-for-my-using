@@ -15,6 +15,15 @@ const scannedExtensions = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']
 const excludedPaths = /^(?:node_modules|dist|coverage|playwright-report|test-results)\//;
 const excludedFiles = new Set(['scripts/generate-code-hygiene-report.mjs']);
 
+function isTestOrFixturePath(path) {
+  const segments = path.split('/');
+  const basename = segments.at(-1) ?? '';
+  const directories = segments.slice(0, -1);
+  return directories.some((segment) => ['test', 'tests', 'fixtures'].includes(segment))
+    || /^(?:test|tests|fixtures)[.-]/.test(basename)
+    || /\.(?:spec|test)\.[^.]+$/.test(basename);
+}
+
 export function scanEntries(entries) {
   const findings = [];
   for (const { path, content } of entries) {
@@ -24,7 +33,7 @@ export function scanEntries(entries) {
         pattern.expression.lastIndex = 0;
         if (pattern.id === 'dynamic-code-execution' && /^\s*eval\([^)]*:\s*/.test(line)) continue;
         if (pattern.expression.test(line)) {
-          const severity = pattern.severity === 'blocking' && /(?:^|\/)(?:test|tests|fixtures)(?:\/|\.|-)|\.(?:spec|test)\.[^.]+$/.test(path)
+          const severity = pattern.severity === 'blocking' && isTestOrFixturePath(path)
             ? 'informational'
             : pattern.severity;
           findings.push({

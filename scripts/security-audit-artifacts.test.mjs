@@ -16,8 +16,11 @@ test('code hygiene separates informational and blocking findings', () => {
 });
 
 test('unsafe examples in test files are informational', () => {
-  const findings = scanEntries([{ path: 'example.test.mjs', content: 'eval(input);' }]);
-  assert.equal(findings[0].severity, 'informational');
+  const findings = scanEntries([
+    { path: 'example.test.mjs', content: 'eval(input);' },
+    { path: 'tests/example.mjs', content: 'eval(input);' },
+  ]);
+  assert.deepEqual(findings.map(({ severity }) => severity), ['informational', 'informational']);
 });
 
 test('dependency audit normalizes missing severity counts', () => {
