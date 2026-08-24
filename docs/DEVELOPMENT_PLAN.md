@@ -780,7 +780,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 97 — feat: backend file upload service (S3-compatible)
+## PR 97 — feat: backend file upload service (S3-compatible) ✅
 
 Что входит:
 - AWS S3 SDK (работает с Cloudflare R2, MinIO, AWS S3)
@@ -791,7 +791,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 98 — feat: frontend file upload in admin materials
+## PR 98 — feat: frontend file upload in admin materials ✅
 
 Что входит:
 - File picker в форме создания материала
@@ -2063,7 +2063,7 @@ blockers должны отсутствовать, а accepted risks — имет
 ## Итоговая карта ЧАСТЬ 4б
 
 ```
-Качество, безопасность, production  PR 151–162  12 PR  🔲 НЕ НАЧАТО
+Качество, безопасность, production  PR 151–162  12 PR  ✅ СДЕЛАНО (151–162)
 ```
 
 ---
@@ -3196,7 +3196,9 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 >
 > **Порядок обязателен:** PR 217 и PR 218 являются фундаментальными. PR 219 опирается на корректную semantics evidence из PR 217; PR 221 — на expiration lifecycle PR 220; PR 222 строится после стабилизации полного lifecycle.
 
-## PR 217 — Checklist completion correctness 🔲
+## PR 217 — Checklist completion correctness ✅
+
+> **Факт (2026-08-24):** реализовано и смержено — `apps/api/src/modules/checklists/checklists.service.ts` содержит единую completion-логику на основе `isRequired`/`photoRequired`, покрыта `checklists.completion.spec.ts` и `checklist-completion.integration.spec.ts` (merge PR #621).
 
 **Проблема:** `ChecklistItem.isRequired` и `ChecklistItem.photoRequired` существуют в data model, но current completion flow не использует их как единый бизнес-инвариант. Optional item может фактически блокировать завершение из-за ожидания result для всех items, а `photoRequired=true` не гарантирует наличие evidence до перехода instance в `submitted/completed`. Критический edge case: последний обязательный пункт можно отметить, instance завершится, после чего attach photo уже запрещён terminal status.
 
@@ -3247,7 +3249,9 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 218 — Immutable/versioned checklist assignments 🔲
+## PR 218 — Immutable/versioned checklist assignments ✅
+
+> **Факт (2026-08-24):** реализовано и смержено — `templateSnapshot`/`snapshotVersion` в `apps/api/prisma/schema.prisma` (`ChecklistInstance`), snapshot создаётся в `assignChecklist()`; покрыто `checklists.snapshot.spec.ts` и `integration/checklist-snapshot.database.spec.ts` (merge PR #629, `feat/checklist-instance-snapshots`).
 
 **Проблема:** `ChecklistInstance` связан с mutable `Checklist`; выполнение и пересчёт читают текущие live items/configuration. Изменение text, points, `isRequired`, `photoRequired`, scale levels, threshold или scoring mode после assignment способно изменить уже выданное задание.
 
@@ -3292,7 +3296,9 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 219 — Checklist photo review UX/contract 🔲
+## PR 219 — Checklist photo review UX/contract ✅
+
+> **Факт (2026-08-24):** реализовано и смержено — canonical evidence через `photoObjectKey`/`getChecklistItemPhotoUrl` (`apps/web/src/shared/api/checklists.ts`), `checklist-review-access.service.ts`; покрыто `checklists.photo-review.spec.ts` (merge PR #635, `fix/checklist-photo-review`).
 
 **Проблема:** learner upload использует object-backed evidence (`photoObjectKey`, `photoFileName`, temporary download endpoint), а reviewer UI частично определяет evidence через legacy `result.photoUrl`. При `photoUrl=null` валидное фото может выглядеть отсутствующим; полноценный просмотр доказательства слабый.
 
@@ -3332,7 +3338,9 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 220 — Checklist deadline lifecycle 🔲
+## PR 220 — Checklist deadline lifecycle ✅
+
+> **Факт (2026-08-24):** реализовано и смержено — `apps/api/src/modules/checklists/checklist-deadline.worker.ts` и `checklist-deadlines.ts` (BullMQ, идемпотентный batch-expiration); покрыто `checklists.deadline.spec.ts` и `integration/checklist-deadline.database.spec.ts` (merge PR #642, `feat/checklist-deadline-lifecycle`).
 
 **Проблема:** `ChecklistInstance` уже имеет `dueAt` и `expired`, assignment API принимает deadline, но нет полного expiration workflow. Deadline не гарантирует блокировку после срока, stale instances автоматически не expire.
 
@@ -3377,7 +3385,9 @@ Prod-readiness backend PR 162        1 PR  ⚠️ ЧАСТИЧНО (headers/rate
 
 ---
 
-## PR 221 — Checklist assignment expansion 🔲
+## PR 221 — Checklist assignment expansion ✅
+
+> **Факт (2026-08-24):** реализовано и смержено — эндпоинт `POST /checklists/:checklistId/instances/bulk` в `checklists.controller.ts`, `bulkAssignChecklistSchema`; покрыто `checklists.bulk-assignment.spec.ts` (merge PR #650, `codex/implement-pr-221-checklist-assignment-expansion`).
 
 **Проблема:** current flow `один checklist → один user`, хотя уже есть groups, memberships, manager team scope и dueAt.
 
