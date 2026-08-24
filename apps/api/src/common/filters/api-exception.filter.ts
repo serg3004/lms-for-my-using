@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { ZodError } from 'zod';
 
-import { createApiErrorResponse, type ApiErrorDetail, type ApiErrorResponse } from '../api-response.js';
+import { createApiErrorResponse, type ApiErrorCode, type ApiErrorDetail, type ApiErrorResponse } from '../api-response.js';
 import { toSafeError, toStartupErrorDetails } from '../startup.js';
 
 type HttpRequest = {
@@ -36,7 +36,7 @@ type PrismaLikeError = {
 
 type NormalizedApiError = {
   statusCode: number;
-  code: string;
+  code: ApiErrorCode;
   message: string;
   details?: ApiErrorDetail[];
 };
@@ -51,7 +51,7 @@ function getExceptionResponse(exception: HttpException): ExceptionResponse {
   return exception.getResponse() as ExceptionResponse;
 }
 
-function getHttpErrorCode(statusCode: number) {
+function getHttpErrorCode(statusCode: number): ApiErrorCode {
   switch (statusCode) {
     case HttpStatus.BAD_REQUEST:
       return 'BAD_REQUEST';
@@ -91,8 +91,19 @@ function normalizeApiErrorDetails(value: unknown): ApiErrorDetail[] | undefined 
   return details.length > 0 ? details : undefined;
 }
 
+const stableErrorCodes = new Set<ApiErrorCode>([
+  'AUTH_INVALID_CREDENTIALS', 'BAD_REQUEST', 'CONFLICT', 'DATABASE_ERROR', 'FORBIDDEN',
+  'HEALTH_CHECK_FAILED', 'HTTP_ERROR', 'INTERNAL_SERVER_ERROR', 'NOT_FOUND',
+  'RATE_LIMIT_UNAVAILABLE', 'SESSION_EXPIRED', 'TOO_MANY_REQUESTS', 'UNAUTHORIZED',
+  'UNPROCESSABLE_ENTITY', 'VALIDATION_ERROR',
+]);
+
+function isApiErrorCode(value: unknown): value is ApiErrorCode {
+  return typeof value === 'string' && stableErrorCodes.has(value as ApiErrorCode);
+}
+
 function normalizeApiErrorPayload(statusCode: number, value: unknown): NormalizedApiError | undefined {
-  if (!isRecord(value) || typeof value.code !== 'string' || typeof value.message !== 'string') {
+  if (!isRecord(value) || !isApiErrorCode(value.code) || typeof value.message !== 'string') {
     return undefined;
   }
 

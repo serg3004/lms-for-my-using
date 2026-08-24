@@ -35,11 +35,26 @@ describe('LoginPage smoke', () => {
       expect(loginResources[locale].rememberMe).toBeTruthy();
       expect(loginResources[locale].forgotPassword).toBeTruthy();
       expect(loginResources[locale].forgotPasswordHelp).toBeTruthy();
+      expect(loginResources[locale].errors.invalidCredentials).toBeTruthy();
+      expect(loginResources[locale].errors.tooManyRequests).toBeTruthy();
     }
   });
 
   it('maps API login errors to user-facing messages', () => {
-    expect(getLoginErrorMessage(new ApiClientError('Invalid credentials', 401), (key) => key)).toBe('Invalid credentials');
+    const error = new ApiClientError('Invalid credentials', 401, {
+      statusCode: 401,
+      error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid credentials' },
+      path: '/api/v1/auth/login',
+      timestamp: '2026-01-01T00:00:00.000Z',
+    });
+
+    for (const locale of ['ru', 'en', 'kk', 'zh'] as const) {
+      const translate = (key: string, fallback: string) => {
+        const errorKey = key.replace('login.errors.', '') as keyof typeof loginResources[typeof locale]['errors'];
+        return loginResources[locale].errors[errorKey] ?? fallback;
+      };
+      expect(getLoginErrorMessage(error, translate)).toBe(loginResources[locale].errors.invalidCredentials);
+    }
   });
 });
 

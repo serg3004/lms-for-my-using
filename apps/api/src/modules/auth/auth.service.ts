@@ -36,6 +36,15 @@ const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 
 type CurrentUserRecord = Omit<CurrentUser, 'roles'>;
 
+function invalidCredentialsException() {
+  return new UnauthorizedException({
+    error: {
+      code: 'AUTH_INVALID_CREDENTIALS',
+      message: 'Invalid credentials',
+    },
+  });
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -57,7 +66,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     return this.withRoles(user);
@@ -76,7 +85,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     return this.withRoles(user);
@@ -96,13 +105,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     const isPasswordValid = await verifyPassword(input.password, user.passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     return this.withRoles({
@@ -226,7 +235,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     const { token, jti, expiresAt } = await signJwt({
@@ -300,7 +309,7 @@ export class AuthService {
     });
 
     if (!organization) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw invalidCredentialsException();
     }
 
     return organization.id;

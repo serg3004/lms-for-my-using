@@ -65,12 +65,14 @@ Error response rules:
 - Error responses should use the shared `ApiErrorResponse` shape from `apps/api/src/common/api-response.ts`.
 - `statusCode` must match the HTTP status code.
 - `error.code` must be stable and machine-readable.
-- `error.message` must be safe to show to API clients.
+- Stable codes are defined and typed by `API_ERROR_CODES` in `packages/shared/src/types/api.ts`.
+- `error.message` is a safe diagnostic detail for API clients; user interfaces translate known `error.code` values and use a localized fallback for unknown or legacy responses instead of displaying backend prose.
 - `error.details` is optional and should be used for field-level validation details.
 - `path` should preserve the request path that produced the error.
 - `timestamp` must be an ISO timestamp.
 
 Zod validation errors return `400 Bad Request` with `VALIDATION_ERROR`.
+Invalid login identities or passwords return `401 Unauthorized` with `AUTH_INVALID_CREDENTIALS`; login throttling returns `TOO_MANY_REQUESTS`.
 
 ## List query consistency plan
 

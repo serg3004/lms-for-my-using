@@ -1,10 +1,10 @@
-import type { ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
+import type { ApiErrorCode, ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
 
-export type { ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
+export type { ApiErrorCode, ApiErrorDetail, ApiErrorResponse } from '@lms/shared/types/api';
 
 type CreateApiErrorResponseInput = {
   statusCode: number;
-  code: string;
+  code: ApiErrorCode;
   message: string;
   path: string;
   details?: ApiErrorDetail[];

@@ -383,9 +383,14 @@ describe('AuthService login', () => {
     const prisma = createLoginPrisma({ userResult: null });
     const authService = new AuthService(prisma);
 
-    await expect(
-      authService.login({ organizationId: orgId, email: 'nobody@example.com', password: 'Test1234!' }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    const error = await authService
+      .login({ organizationId: orgId, email: 'nobody@example.com', password: 'Test1234!' })
+      .catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(UnauthorizedException);
+    expect((error as UnauthorizedException).getResponse()).toEqual({
+      error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid credentials' },
+    });
   });
 
   it('rejects login with wrong password', async () => {
