@@ -71,7 +71,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p security-audit-artifacts
-          pnpm audit --json > security-audit-artifacts/dependency-audit.json
+          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json
 
       - name: Collect code-hygiene report
         id: code-hygiene

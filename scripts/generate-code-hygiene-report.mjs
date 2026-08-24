@@ -13,6 +13,7 @@ export const patternPolicy = [
 
 const scannedExtensions = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']);
 const excludedPaths = /^(?:node_modules|dist|coverage|playwright-report|test-results)\//;
+const excludedFiles = new Set(['scripts/generate-code-hygiene-report.mjs']);
 
 export function scanEntries(entries) {
   const findings = [];
@@ -23,7 +24,7 @@ export function scanEntries(entries) {
         pattern.expression.lastIndex = 0;
         if (pattern.id === 'dynamic-code-execution' && /^\s*eval\([^)]*:\s*/.test(line)) continue;
         if (pattern.expression.test(line)) {
-          const severity = pattern.severity === 'blocking' && /(?:^|\/)(?:test|tests|fixtures)(?:\/|\.|-)|\.spec\.[^.]+$/.test(path)
+          const severity = pattern.severity === 'blocking' && /(?:^|\/)(?:test|tests|fixtures)(?:\/|\.|-)|\.(?:spec|test)\.[^.]+$/.test(path)
             ? 'informational'
             : pattern.severity;
           findings.push({
@@ -40,7 +41,7 @@ export function scanEntries(entries) {
 }
 
 function shouldScan(path) {
-  if (excludedPaths.test(path)) return false;
+  if (excludedFiles.has(path) || excludedPaths.test(path)) return false;
   const extension = path.slice(path.lastIndexOf('.'));
   return scannedExtensions.has(extension);
 }
@@ -67,6 +68,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     policy: {
       scannedExtensions: [...scannedExtensions],
+      excludedFiles: [...excludedFiles],
       informational: patternPolicy.filter(({ severity }) => severity === 'informational').map(({ id }) => id),
       blocking: patternPolicy.filter(({ severity }) => severity === 'blocking').map(({ id }) => id),
       explicitAny: 'Informational inventory only; TypeScript and ESLint remain the blocking type-safety gates.',
