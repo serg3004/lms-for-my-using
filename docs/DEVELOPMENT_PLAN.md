@@ -4508,7 +4508,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 261 — Scale ReportsService without unbounded dataset loading 🔲
+## PR 261 — Scale ReportsService without unbounded dataset loading ✅
 
 **Проблема:** Reports summary загружает подходящие progress, certificates и overdue assignments через `findMany()` без pagination/limit. При росте tenant это увеличивает DB traffic, heap usage и latency, хотя значительная часть результата требуется только для counts и summary metrics.
 
@@ -4523,14 +4523,24 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - добавить performance-oriented integration tests на dataset существенно больше demo/seed данных.
 
 **Критерии готовности:**
-- [ ] summary не требует загрузки полного tenant progress dataset в память;
-- [ ] counts и summaries рассчитываются bounded/database-side queries;
-- [ ] certificates и overdue assignments имеют явный bounded contract либо database aggregation;
-- [ ] отсутствует N+1 query pattern;
-- [ ] основные queries используют подходящие индексы по фактическим filters;
-- [ ] существующий API contract не ломается без отдельного обоснования;
-- [ ] large-dataset integration tests проходят;
-- [ ] результаты summary совпадают с текущей бизнес-логикой.
+- [x] summary не требует загрузки полного tenant progress dataset в память;
+- [x] counts и summaries рассчитываются bounded/database-side queries;
+- [x] certificates и overdue assignments имеют явный bounded contract либо database aggregation;
+- [x] отсутствует N+1 query pattern;
+- [x] основные queries используют подходящие индексы по фактическим filters;
+- [x] существующий API contract не ломается без отдельного обоснования;
+- [x] large-dataset integration tests проходят;
+- [x] результаты summary совпадают с текущей бизнес-логикой.
+
+> **Факт (2026-08-24):** `ReportsService.getSummary()` больше не грузит unbounded `findMany()`. Списки `progress`/`certificates`/`overdueAssignments` ограничены top-100 (`REPORTS_LIST_LIMIT`, стабильная сортировка с tie-breaker по `id`); N+1 не было и раньше (3 top-level запроса с nested `select`, не осталось изменений). Добавлен новый **`counts`**-объект (`progressTotal`, `progressCompletedTotal`, `progressAvgScore`, `certificatesIssuedTotal`, `overdueTotal`), рассчитываемый через Prisma `count`/`aggregate` по тому же scoped `where`, что и bounded-списки (включая manager team scope) — это совместимое расширение контракта, а не breaking change: старые поля `progress`/`certificates`/`overdueAssignments` сохранены, добавлено новое поле.
+>
+> Фронтенд (`AdminResultsCertificatesPage.tsx`) был единственным потребителем `/reports/summary` и уже показывал списки как таблицы, а stat-карточки (avg. completion, avg. score, issued certificates, overdue count) считал client-side из тех же массивов — при простом bounded-урезании эти цифры стали бы неверными для tenant с >100 записей. Поэтому stat-карточки переведены на новый `counts` (корректны независимо от размера tenant), таблицы продолжают показывать bounded top-100 (что и раньше было единственным разумным способом показать данные в UI).
+>
+> Добавлены индексы под фактические query paths: `Progress` — `@@index([organizationId, updatedAt])` (сортировка "недавняя активность"); `Assignment` — `@@index([organizationId, status, dueAt])` (фильтр `status=assigned AND dueAt<now`, сортировка по `dueAt`). `Certificate` уже имел подходящий `@@index([organizationId, issuedAt, id])`. Миграция `20260824190000_reports_summary_indexes`.
+>
+> Добавлен performance-oriented integration test (`apps/api/src/integration/reports-summary.database.spec.ts`, реальный Postgres): сеет 150 progress/certificate/assignment записей (> лимита в 100) и проверяет, что списки урезаны до 100, а `counts` отражают полный датасет (100/150 completed, `avgScore` = 50.5 по scores 1..100, 120/150 issued certificates, 150 overdue) — то есть подтверждает именно то, что stat-карточки не сломались бы при урезании без database-side aggregation.
+>
+> Проверено: `pnpm --filter @lms/api test` (93/93 suites, 1376/1376 тестов, включая новый database integration test), `pnpm --filter @lms/web test` (70/70, 511/511), `pnpm --recursive lint`/`typecheck`/`build` — все зелёные.
 
 ---
 

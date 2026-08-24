@@ -508,6 +508,13 @@ describe('admin page smoke rendering', () => {
             },
           ],
           overdueAssignments: [],
+          reportsCounts: {
+            progressTotal: 0,
+            progressCompletedTotal: 0,
+            progressAvgScore: null,
+            certificatesIssuedTotal: 1,
+            overdueTotal: 0,
+          },
           assessmentResults: [
             {
               id: 'result-1',

@@ -9,6 +9,7 @@ module.exports = {
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
+    '/src/integration/reports-summary\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

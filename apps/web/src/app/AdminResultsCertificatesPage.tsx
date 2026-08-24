@@ -19,7 +19,14 @@ type ReportUser = { id: string; firstName: string; lastName: string; email: stri
 type ReportProgress = Omit<Progress, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
 type ReportCertificate = Omit<Certificate, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
 type OverdueAssignment = { id: string; dueAt: string; course: { id: string; title: string }; user: ReportUser | null; group: { id: string; name: string } | null };
-type ReportsSummary = { progress: ReportProgress[]; certificates: ReportCertificate[]; overdueAssignments: OverdueAssignment[] };
+type ReportsCounts = {
+  progressTotal: number;
+  progressCompletedTotal: number;
+  progressAvgScore: number | null;
+  certificatesIssuedTotal: number;
+  overdueTotal: number;
+};
+type ReportsSummary = { progress: ReportProgress[]; certificates: ReportCertificate[]; overdueAssignments: OverdueAssignment[]; counts: ReportsCounts };
 
 type AdminResultsData = {
   courses: Course[];
@@ -29,6 +36,7 @@ type AdminResultsData = {
   certificates: Certificate[];
   assessmentResults: AssessmentResult[];
   overdueAssignments: OverdueAssignment[];
+  reportsCounts: ReportsCounts;
   selectedAssessmentId: string;
 };
 
@@ -159,7 +167,17 @@ export function AdminResultsCertificatesPage() {
         ? await apiRequest<AssessmentResult[]>(`/assessments/${encodeURIComponent(selectedAssessmentId)}/results`)
         : [];
 
-      return { courses, users, assessments, progressItems, certificates, overdueAssignments: reports.overdueAssignments, assessmentResults, selectedAssessmentId };
+      return {
+        courses,
+        users,
+        assessments,
+        progressItems,
+        certificates,
+        overdueAssignments: reports.overdueAssignments,
+        reportsCounts: reports.counts,
+        assessmentResults,
+        selectedAssessmentId,
+      };
     },
     [assessmentId, t],
     {
@@ -268,18 +286,12 @@ export function AdminResultsCertificatesPage() {
       />
 
       {(() => {
-        const completedProgress = loadState.data.progressItems.filter((p) => p.status === 'completed');
+        const counts = loadState.data.reportsCounts;
         const avgCompletion =
-          loadState.data.progressItems.length > 0
-            ? Math.round((completedProgress.length / loadState.data.progressItems.length) * 100)
-            : 0;
-        const scored = loadState.data.progressItems.filter((p) => p.score != null);
-        const avgScore =
-          scored.length > 0
-            ? Math.round(scored.reduce((sum, p) => sum + (p.score ?? 0), 0) / scored.length)
-            : null;
-        const issuedCertificates = loadState.data.certificates.filter((c) => c.status === 'issued').length;
-        const overdueCount = loadState.data.overdueAssignments.length;
+          counts.progressTotal > 0 ? Math.round((counts.progressCompletedTotal / counts.progressTotal) * 100) : 0;
+        const avgScore = counts.progressAvgScore != null ? Math.round(counts.progressAvgScore) : null;
+        const issuedCertificates = counts.certificatesIssuedTotal;
+        const overdueCount = counts.overdueTotal;
 
         return (
           <StatsGrid>
