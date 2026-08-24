@@ -183,8 +183,19 @@ export function loadLocalEnvFiles({
 }
 
 export function loadApiEnv(env = process.env): ApiEnv {
-  // Railway injects PORT; map it to API_PORT so the schema picks it up
   const normalizedEnv: MutableEnv = { ...env };
+
+  // Docker Compose's `${VAR:-}` interpolation sets unset optional variables to an
+  // empty string rather than omitting them. Treat empty string as "not provided" so
+  // optional schema fields (REDIS_URL, METRICS_BEARER_TOKEN, ...) validate correctly
+  // regardless of whether the caller is a shell, Compose, or Railway.
+  for (const key of Object.keys(normalizedEnv)) {
+    if (normalizedEnv[key] === '') {
+      delete normalizedEnv[key];
+    }
+  }
+
+  // Railway injects PORT; map it to API_PORT so the schema picks it up
   if (!normalizedEnv['API_PORT'] && normalizedEnv['PORT']) {
     normalizedEnv['API_PORT'] = normalizedEnv['PORT'];
   }

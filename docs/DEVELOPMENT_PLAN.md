@@ -4450,7 +4450,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 > Эта серия продолжает нумерацию **после PR 259**, а не после PR 238: числа 239–244 к моменту follow-up-аудита уже были заняты не связанной frontend/product серией (PR 239–259 выше). Пункты ниже относятся к тому же аудиту 2026-08-24, что и PR 223–238, и включены в общий порядок "Фазы J" (см. `Порядок` в начале раздела).
 
-## PR 260 — Fix production Docker/API environment contract 🔲
+## PR 260 — Fix production Docker/API environment contract ✅
 
 **Проблема:** production Docker Compose не передаёт API полный набор переменных, которые обязательны для production validation. В частности, текущий API production contract требует Redis configuration и metrics bearer token, тогда как `infra/docker/docker-compose.prod.yml` не обеспечивает полный contract. Документированный production startup поэтому может завершиться ошибкой конфигурации.
 
@@ -4464,14 +4464,22 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - обновить deployment/runbook документацию.
 
 **Критерии готовности:**
-- [ ] `docker compose config` успешно валидирует production configuration;
-- [ ] все обязательные production API variables передаются API container;
-- [ ] `loadApiEnv()` успешно проходит при корректно заполненном production-like env;
-- [ ] отсутствие обязательной переменной приводит к понятной startup/configuration error;
-- [ ] реальные secrets отсутствуют в Git и CI artifacts;
-- [ ] автоматическая проверка обнаруживает drift Compose ↔ API env schema;
-- [ ] production deployment documentation соответствует current configuration;
-- [ ] local development environment не регрессировал.
+- [x] `docker compose config` успешно валидирует production configuration;
+- [x] все обязательные production API variables передаются API container;
+- [x] `loadApiEnv()` успешно проходит при корректно заполненном production-like env;
+- [x] отсутствие обязательной переменной приводит к понятной startup/configuration error;
+- [x] реальные secrets отсутствуют в Git и CI artifacts;
+- [x] автоматическая проверка обнаруживает drift Compose ↔ API env schema;
+- [x] production deployment documentation соответствует current configuration;
+- [x] local development environment не регрессировал.
+
+> **Факт (2026-08-24):** `infra/docker/docker-compose.prod.yml` теперь передаёт API-контейнеру `METRICS_BEARER_TOKEN` (required, `:?` — fail-fast на этапе `docker compose config`, до старта контейнера) и `REDIS_URL`/`ALLOW_IN_MEMORY_RATE_LIMIT` (по умолчанию `ALLOW_IN_MEMORY_RATE_LIMIT=true`, т.к. этот compose-стек — единственный API-инстанс без горизонтального масштабирования; `REDIS_URL` можно задать в `.env` для distributed rate limiting). Также довинчены ранее задокументированные, но не прокидывавшиеся `SENTRY_DSN`, `LOG_LEVEL`, `S3_ENDPOINT`/`S3_BUCKET`/`S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY`/`S3_FORCE_PATH_STYLE`, `MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET`.
+>
+> `apps/api/src/config/env.ts` (`loadApiEnv`) теперь трактует пустую строку как «не задано» для всех переменных — это устраняет расхождение между Compose-семантикой `${VAR:-}` (пустая строка при незаданной переменной) и Zod-схемой (`.optional()` ожидает `undefined`, не `''`). Без этого фикса опциональные переменные, оставленные пустыми в `.env`, ломали бы валидацию. Четыре переменные (`S3_REGION`, `S3_FILE_ORIGIN`, `S3_PRESIGNED_TTL_SECONDS`, `S3_ORPHAN_RETENTION_DAYS`) сознательно НЕ прокинуты через Compose: их код читает через `?? default` напрямую из `process.env` (не через Zod-схему), и пустая строка обошла бы дефолт — задокументировано в самом compose-файле и в `.env.example`.
+>
+> Добавлен `apps/api/src/config/docker-compose-env-contract.spec.ts` — реальный drift-детектор: резолвит `infra/docker/docker-compose.prod.yml` через `docker compose config` (не самописный YAML-парсер) и скармливает результат настоящему `loadApiEnv()`. Если в будущем кто-то добавит новую обязательную production-переменную в `env.ts`, не обновив Compose (или наоборот), happy-path тест немедленно упадёт. Также покрыт fail-fast сценарий отсутствия `METRICS_BEARER_TOKEN`/`DATABASE_URL`.
+>
+> Проверено: `docker compose config` проходит на `.env`, собранном из обновлённого `.env.example`; `pnpm --filter @lms/api test` (93/93 suites, 1374/1374 tests), `pnpm --recursive lint`, `pnpm --recursive typecheck` — все зелёные. Secrets/values из production Railway никуда не публиковались — проверялись только имена переменных.
 
 ---
 

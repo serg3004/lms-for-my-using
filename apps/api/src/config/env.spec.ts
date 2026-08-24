@@ -250,4 +250,37 @@ describe('API environment validation', () => {
       }),
     ).toThrow(/FRONTEND_URL/);
   });
+
+  it('treats empty-string optional variables as unset (Docker Compose `${VAR:-}` fallback)', () => {
+    const apiEnv = loadApiEnv({
+      NODE_ENV: 'production',
+      DATABASE_URL: validDatabaseUrl,
+      JWT_SECRET: validJwtSecret,
+      TRUST_PROXY: '1',
+      METRICS_BEARER_TOKEN: validMetricsToken,
+      ALLOW_IN_MEMORY_RATE_LIMIT: 'true',
+      REDIS_URL: '',
+      SENTRY_DSN: '',
+      OTEL_EXPORTER_OTLP_ENDPOINT: '',
+      OTEL_SERVICE_NAME: '',
+    });
+
+    expect(apiEnv.REDIS_URL).toBeUndefined();
+    expect(apiEnv.SENTRY_DSN).toBeUndefined();
+    expect(apiEnv.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
+    expect(apiEnv.OTEL_SERVICE_NAME).toBeUndefined();
+  });
+
+  it('still requires Redis in production when REDIS_URL is an empty string and no override is set', () => {
+    expect(() =>
+      loadApiEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: validDatabaseUrl,
+        JWT_SECRET: validJwtSecret,
+        TRUST_PROXY: '1',
+        METRICS_BEARER_TOKEN: validMetricsToken,
+        REDIS_URL: '',
+      }),
+    ).toThrow(/REDIS_URL.*required in production/);
+  });
 });
