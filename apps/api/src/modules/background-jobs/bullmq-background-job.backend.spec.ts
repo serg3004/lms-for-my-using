@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 import { queueDepth } from '../../common/observability/metrics.js';
 
 import { BullMqBackgroundJobBackend } from './bullmq-background-job.backend.js';
+import { DisabledBackgroundJobBackend } from './disabled-background-job.backend.js';
 
 describe('BullMqBackgroundJobBackend operational checks', () => {
   it('reports queue and dead-letter counts and refreshes their metrics', async () => {
@@ -38,6 +39,21 @@ describe('BullMqBackgroundJobBackend operational checks', () => {
     });
 
     await expect(backend.getOperationalStatus()).resolves.toMatchObject({
+      waiting: 0,
+      active: 0,
+      delayed: 0,
+      failed: 0,
+      deadLetter: 0,
+    });
+  });
+});
+
+describe('DisabledBackgroundJobBackend operational checks', () => {
+  it('reports a safe disabled status without contacting Redis', async () => {
+    const backend = new DisabledBackgroundJobBackend();
+
+    await expect(backend.getOperationalStatus()).resolves.toEqual({
+      status: 'disabled',
       waiting: 0,
       active: 0,
       delayed: 0,
