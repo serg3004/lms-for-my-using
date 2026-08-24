@@ -40,6 +40,28 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       TRUST_PROXY: loopback,linklocal,uniquelocal
+      # Required by apps/api/src/config/env.ts in production (Prometheus bearer auth).
+      METRICS_BEARER_TOKEN: ${METRICS_BEARER_TOKEN:?Set METRICS_BEARER_TOKEN in .env (generate with openssl rand -hex 32)}
+      # Required in production unless ALLOW_IN_MEMORY_RATE_LIMIT=true. This compose
+      # stack runs a single API instance, so in-memory rate limiting is a safe default;
+      # set REDIS_URL below to opt into distributed, restart-safe rate limiting instead.
+      REDIS_URL: ${REDIS_URL:-}
+      ALLOW_IN_MEMORY_RATE_LIMIT: ${ALLOW_IN_MEMORY_RATE_LIMIT:-true}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Optional S3-compatible storage. Leave unset in .env to disable file uploads.
+      # S3_REGION, S3_FILE_ORIGIN, S3_PRESIGNED_TTL_SECONDS and S3_ORPHAN_RETENTION_DAYS
+      # are intentionally NOT passed through: their call sites use `?? default` on the
+      # raw value, so an empty string (Compose's fallback for an unset `${VAR:-}`) would
+      # silently override the default instead of falling back to it. Set them directly
+      # in this file if you ever need non-default values.
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-}
+      MALWARE_SCANNER_URL: ${MALWARE_SCANNER_URL:-}
+      MALWARE_SCANNER_CALLBACK_SECRET: ${MALWARE_SCANNER_CALLBACK_SECRET:-}
     networks:
       - lms_internal
     depends_on:
