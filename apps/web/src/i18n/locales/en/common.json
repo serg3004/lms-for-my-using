@@ -802,14 +802,17 @@
       "upcomingDeadlines": {
         "title": "Upcoming deadlines",
         "empty": "No upcoming deadlines.",
-        "dueLabel": "Due {{date}}"
+        "dueLabel": "Due {{date}}",
+        "overdueLabel": "Overdue since {{date}}"
       },
       "recentActivity": {
         "title": "Recent activity",
         "empty": "No activity yet.",
         "lessonCompleted": "Completed a lesson in \"{{title}}\"",
         "certificateIssued": "Earned a certificate for \"{{title}}\""
-      }
+      },
+      "nextAction": "Next action",
+      "statsLabel": "Learning summary"
     }
   },
   "courses": {

@@ -802,14 +802,17 @@
       "upcomingDeadlines": {
         "title": "近期截止日期",
         "empty": "暂无即将到来的截止日期。",
-        "dueLabel": "截止：{{date}}"
+        "dueLabel": "截止：{{date}}",
+        "overdueLabel": "已逾期（截止日期：{{date}}）"
       },
       "recentActivity": {
         "title": "最近动态",
         "empty": "暂无动态。",
         "lessonCompleted": "在《{{title}}》课程中完成了一节课",
         "certificateIssued": "获得《{{title}}》课程证书"
-      }
+      },
+      "nextAction": "下一步行动",
+      "statsLabel": "学习摘要"
     }
   },
   "courses": {

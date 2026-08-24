@@ -802,14 +802,17 @@
       "upcomingDeadlines": {
         "title": "Жақын мерзімдер",
         "empty": "Жақын мерзімдер жоқ.",
-        "dueLabel": "Мерзімі: {{date}}"
+        "dueLabel": "Мерзімі: {{date}}",
+        "overdueLabel": "{{date}} күнінен кешіктірілген"
       },
       "recentActivity": {
         "title": "Соңғы белсенділік",
         "empty": "Әзірге белсенділік жоқ.",
         "lessonCompleted": "«{{title}}» курсында сабақ өтілді",
         "certificateIssued": "«{{title}}» курсы үшін сертификат алынды"
-      }
+      },
+      "nextAction": "Келесі әрекет",
+      "statsLabel": "Оқу қорытындысы"
     }
   },
   "courses": {
