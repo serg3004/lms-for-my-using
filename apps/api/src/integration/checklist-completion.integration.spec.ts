@@ -158,6 +158,9 @@ describe('Checklist completion HTTP contract', () => {
         }),
         findMany: jest.fn(async () => results),
       },
+      checklistInstanceEvent: {
+        createMany: jest.fn(async ({ data }: { data: unknown[] }) => ({ count: data.length })),
+      },
     } as unknown as PrismaService;
 
     const moduleReference = await Test.createTestingModule({

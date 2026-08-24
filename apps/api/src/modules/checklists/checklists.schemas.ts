@@ -59,6 +59,7 @@ export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>
 export const assignChecklistSchema = z.object({
   userId: z.string().uuid(),
   dueAt: z.string().datetime().optional(),
+  reviewerId: z.string().uuid().nullable().optional(),
 });
 export type AssignChecklistInput = z.infer<typeof assignChecklistSchema>;
 
@@ -92,3 +93,17 @@ export const reviewChecklistItemResultSchema = z.object({
   comment: z.string().trim().max(1000).optional(),
 });
 export type ReviewChecklistItemResultInput = z.infer<typeof reviewChecklistItemResultSchema>;
+
+export const assignChecklistReviewerSchema = z.object({ reviewerId: z.string().uuid().nullable() }).strict();
+export const checklistQueueQuerySchema = z.object({
+  assignment: z.enum(['mine', 'unassigned', 'all']).default('mine'),
+  checklistId: z.string().uuid().optional(), learnerId: z.string().uuid().optional(),
+  status: checklistInstanceStatusSchema.optional(), passed: z.enum(['true', 'false']).optional(),
+  from: z.string().datetime().optional(), to: z.string().datetime().optional(),
+  page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type ChecklistQueueQuery = z.infer<typeof checklistQueueQuerySchema>;
+export const checklistAnalyticsQuerySchema = z.object({
+  checklistId: z.string().uuid().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
+});
+export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySchema>;
