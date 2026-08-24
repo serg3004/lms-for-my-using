@@ -3949,3 +3949,475 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - PR 231 стабилизирует пользовательский error contract до усиления locale parity в PR 232.
 - PR 229 должен предшествовать production migrations из последующих schema-changing PR.
 - PR 225 и PR 230 улучшают доказательность последующих CI-проверок.
+
+---
+## Фаза K — Frontend/Product Architecture & UX roadmap (PR 239–259)
+
+> **Цель фазы:** повысить полезность learner/manager сценариев, завершить отсутствующие frontend flows, уменьшить дублирование состояния и layout-логики, улучшить data density, responsive UX, локализацию и accessibility без смены текущей дизайн-системы.
+>
+> **Принцип:** использовать существующие React/Vite/i18next и собственные `shared/ui.tsx` + `styles/tokens.css`/`styles/ui.css`; не добавлять Tailwind/shadcn/ui без отдельной необходимости.
+>
+> **Связи с уже запланированными работами:** PR 254 дополняет PR 231/232, PR 257 использует результаты PR 234, а новые resilience-проверки не дублируют PR 235.
+
+## PR 239 — Learner Dashboard: приоритет следующего действия 🔲
+
+**Проблема:** на `/learn` KPI визуально конкурируют с главным learner-сценарием — понять, что нужно сделать сейчас; `Continue Learning`, дедлайны и просроченные действия должны иметь более высокий приоритет.
+
+**Что нужно и что будет сделано:**
+- перестроить композицию `LearnerHomePage`;
+- поднять наверх продолжение текущего курса, ближайшее обязательное действие и просроченные/ближайшие дедлайны;
+- перенести `StatsGrid` ниже action-блока и уменьшить его визуальный вес;
+- сохранить текущие `PageState`/`EmptyState`, semantic tokens и responsive behavior;
+- не добавлять новую UI-библиотеку.
+
+**Критерии готовности:**
+- [ ] главным CTA на `/learn` является продолжение обучения или следующее действие;
+- [ ] просроченные действия визуально отличаются от обычных;
+- [ ] KPI остаются доступны, но не конкурируют с primary CTA;
+- [ ] empty/loading/error состояния сохранены;
+- [ ] desktop/tablet/mobile layout проверен;
+- [ ] learner UI tests проходят.
+
+---
+## PR 240 — Learner Mobile Navigation 🔲
+
+**Проблема:** на мобильной ширине learner sidebar скрывается, но полноценной замены primary navigation нет.
+
+**Что нужно и что будет сделано:**
+- добавить нижнюю mobile navigation в learner layout;
+- включить Home, Courses, Notifications и Profile;
+- добавить active state и safe-area support;
+- исключить перекрытие контента нижней панелью;
+- desktop sidebar оставить без изменения.
+
+**Критерии готовности:**
+- [ ] navigation появляется на принятом mobile breakpoint;
+- [ ] все четыре primary destination доступны с любого learner-экрана;
+- [ ] active route визуально и семантически определяется;
+- [ ] keyboard navigation и focus state работают;
+- [ ] touch targets соответствуют принятому WCAG 2.2 baseline;
+- [ ] контент не перекрывается navigation bar;
+- [ ] desktop layout не регрессировал.
+
+---
+## PR 241 — Password Reset UI 🔲
+
+**Проблема:** frontend не закрывает пользовательский сценарий восстановления пароля, несмотря на существующий password-reset backend contract.
+
+**Что нужно и что будет сделано:**
+- добавить страницу запроса восстановления пароля;
+- добавить страницу установки нового пароля по reset token;
+- добавить переход из `/login`;
+- реализовать sending/sent/invalid-or-expired/success/error states;
+- использовать существующие backend endpoints;
+- локализовать flow для `ru/en/kk/zh`.
+
+**Критерии готовности:**
+- [ ] reset flow доступен из login screen;
+- [ ] reset request использует существующий API;
+- [ ] новый пароль устанавливается по валидному token;
+- [ ] invalid/expired token имеет отдельное безопасное состояние;
+- [ ] после успеха доступен переход к login;
+- [ ] UI не раскрывает существование аккаунта сверх backend contract;
+- [ ] все четыре locale покрыты.
+
+---
+## PR 242 — Полноценный Notification Center 🔲
+
+**Проблема:** notification API и bell существуют, но learner не имеет полноценного inbox; ошибка загрузки bell может выглядеть как валидное отсутствие уведомлений.
+
+**Что нужно и что будет сделано:**
+- добавить `/learn/notifications`;
+- реализовать список read/unread уведомлений;
+- добавить mark-as-read и mark-all-as-read;
+- поддержать переход к связанному объекту, когда notification содержит target;
+- исправить NotificationBell: loading/error/retry/unread counter;
+- убрать преобразование API error в фиктивный пустой список.
+
+**Критерии готовности:**
+- [ ] API error не отображается как «уведомлений нет»;
+- [ ] пользователь видит историю уведомлений;
+- [ ] одно уведомление и все уведомления можно отметить прочитанными;
+- [ ] unread counter синхронизируется после действий;
+- [ ] empty/loading/error states реализованы;
+- [ ] mobile navigation ведёт на Notification Center.
+
+---
+## PR 243 — Learner Profile и пользовательские настройки 🔲
+
+**Проблема:** у learner нет `/learn/profile` как self-service точки для пользовательских данных и настроек, включая locale.
+
+**Что нужно и что будет сделано:**
+- добавить `/learn/profile`;
+- отображать данные текущего пользователя;
+- дать редактировать только разрешённые preferences;
+- вынести выбор языка в profile;
+- определить locale source of truth: явный выбор → `User.locale` → fallback `ru`;
+- синхронизировать i18next, persisted preference и session state;
+- при отсутствии PATCH preferences API сначала определить минимальный backend contract.
+
+**Критерии готовности:**
+- [ ] Profile доступен из learner navigation;
+- [ ] текущий locale отображается корректно;
+- [ ] изменение языка сразу обновляет UI;
+- [ ] выбор сохраняется после reload/login при наличии backend support;
+- [ ] read-only identity fields нельзя изменить случайно;
+- [ ] все четыре locale поддержаны;
+- [ ] backend scope changes, если нужны, типизированы и протестированы.
+
+---
+## PR 244 — Централизованный SessionProvider 🔲
+
+**Проблема:** authenticated layouts и страницы независимо вызывают `getCurrentUser()`, создавая дублирующие запросы и несколько источников session state.
+
+**Что нужно и что будет сделано:**
+- добавить authenticated `SessionProvider`;
+- централизовать `currentUser`, loading, error и `refreshUser`;
+- перевести role layouts и страницы на единый session context;
+- убрать повторные `getCurrentUser()` там, где данные уже доступны;
+- связать refresh с profile/locale flow;
+- не добавлять Redux/Zustand только ради session state.
+
+**Критерии готовности:**
+- [ ] текущий пользователь загружается один раз для authenticated shell;
+- [ ] role layouts используют единый session contract;
+- [ ] `refreshUser()` обновляет UI после изменения profile/preferences;
+- [ ] logout очищает session state;
+- [ ] role/permission routing сохраняет текущее поведение;
+- [ ] regression tests проходят.
+
+---
+## PR 245 — Унифицированный Workspace Layout 🔲
+
+**Проблема:** learner/manager/mentor/instructor layouts содержат пересекающуюся shell-логику, а manager operational screens наследуют ограничения ширины, характерные для learner content.
+
+**Что нужно и что будет сделано:**
+- выделить общий `WorkspaceLayout`;
+- параметризовать navigation, header, content width, density и role actions;
+- ввести минимум `readable` и `dense/fluid` content modes;
+- learner mobile navigation оставить специализированным слоем;
+- мигрировать role layouts без изменения route contracts.
+
+**Критерии готовности:**
+- [ ] общая shell-разметка не дублируется между role layouts;
+- [ ] manager operational pages используют доступную desktop-ширину;
+- [ ] learner content сохраняет readable width;
+- [ ] routes и permissions не изменены;
+- [ ] responsive navigation работает;
+- [ ] визуальные regression checks для role layouts проходят.
+
+---
+## PR 246 — Shared Feedback и Accessible Interactive Primitives 🔲
+
+**Проблема:** страницы используют разные реализации success/error feedback, dialogs и popovers; notification/menu interactions не имеют единого keyboard/focus contract.
+
+**Что нужно и что будет сделано:**
+- расширить существующие `shared/ui.tsx` и `styles/ui.css`;
+- унифицировать `Toast`/`InlineFeedback`, `ConfirmDialog`, `Popover/Menu`, `Select`, `Textarea`;
+- добавлять `Breadcrumbs` только там, где это подтверждено текущими flows;
+- реализовать Escape, outside click, focus management, focus return и ARIA semantics;
+- использовать существующие design tokens, не внедряя shadcn/Tailwind.
+
+**Критерии готовности:**
+- [ ] mutations используют единый success/error contract;
+- [ ] destructive actions подтверждаются через общий dialog;
+- [ ] popover закрывается Escape и возвращает focus инициатору;
+- [ ] keyboard navigation работает;
+- [ ] компоненты используют semantic tokens;
+- [ ] shared UI tests проходят;
+- [ ] новая UI framework не добавлена.
+
+---
+## PR 247 — Усиление DataTable для operational screens 🔲
+
+**Проблема:** текущий `DataTable` покрывает простой список, но manager/admin workflows требуют большей data density и действий над данными.
+
+**Что нужно и что будет сделано:**
+- добавить optional sorting;
+- добавить density variants;
+- добавить row selection и batch-action slot;
+- добавить expandable row и responsive priority columns;
+- интегрировать common empty/loading patterns;
+- сохранить обратную совместимость существующих usages.
+
+**Критерии готовности:**
+- [ ] существующие DataTable usages не ломаются;
+- [ ] sorting включается только на явно поддержанных колонках;
+- [ ] есть compact/dense variant;
+- [ ] row selection поддерживает batch actions;
+- [ ] mobile variant сохраняет primary information без перегруженного horizontal scroll;
+- [ ] keyboard/focus states проверены;
+- [ ] component API типизирован.
+
+---
+## PR 248 — Manager Reports 🔲
+
+**Проблема:** manager/report summary данные существуют, но отдельного рабочего reporting UI с drill-down отсутствует.
+
+**Что нужно и что будет сделано:**
+- добавить `/manager/reports`;
+- показать enrollment, completion, overdue и progress metrics;
+- добавить фильтры по доступным manager dimensions;
+- связать aggregate metrics с drill-down к сотрудникам/назначениям;
+- сохранить manager scope без выдачи admin permissions;
+- расширять backend filters/export только при подтверждённой необходимости.
+
+**Критерии готовности:**
+- [ ] manager видит только scoped данные своей области ответственности;
+- [ ] summary metrics имеют понятный период и контекст;
+- [ ] KPI ведут к релевантным деталям;
+- [ ] filters корректно влияют на результаты;
+- [ ] empty/loading/error states реализованы;
+- [ ] desktop/tablet/mobile layout проверен;
+- [ ] backend authorization tests проходят при изменении API.
+
+---
+## PR 249 — Manager Reminders для просроченных назначений 🔲
+
+**Проблема:** `/manager/overdue` показывает просрочку, но не позволяет manager выполнить следующее действие — отправить напоминание.
+
+**Что нужно и что будет сделано:**
+- добавить single `Remind` action;
+- добавить batch reminders через row selection;
+- реализовать sending/success/partial-failure/failure feedback;
+- исключить случайные повторные отправки;
+- добавить backend scoped reminder command/API с tenant/manager authorization.
+
+**Критерии готовности:**
+- [ ] manager может отправить reminder одному сотруднику;
+- [ ] manager может отправить reminder выбранной группе;
+- [ ] backend проверяет tenant и manager scope;
+- [ ] partial failures отображаются явно;
+- [ ] duplicate submit защищён;
+- [ ] неприменимые записи не позволяют отправить reminder;
+- [ ] API/UI tests проходят.
+
+---
+## PR 250 — Корректные aggregate KPI для Admin Dashboard 🔲
+
+**Проблема:** часть admin KPI вычисляется frontend из ограниченной страницы данных (`pageSize=100`), поэтому при большем объёме dashboard может показывать sample вместо организационной метрики.
+
+**Что нужно и что будет сделано:**
+- добавить backend aggregate dashboard contract;
+- возвращать authoritative totals/rates с сервера;
+- перевести `AdminDashboardPage` на aggregate DTO;
+- исключить paginated entity lists как источник глобальных KPI;
+- сохранить существующие list endpoints без breaking changes.
+
+**Критерии готовности:**
+- [ ] completion rate не зависит от `pageSize`;
+- [ ] значения корректны при >100 записях;
+- [ ] frontend не загружает полный progress list ради KPI;
+- [ ] aggregate endpoint типизирован;
+- [ ] list API остаётся обратно совместимым;
+- [ ] backend/frontend tests проходят.
+
+---
+## PR 251 — Learner Dashboard Summary API 🔲
+
+**Проблема:** `LearnerHomePage` загружает несколько collections и дополнительно lessons для нескольких courses, создавая fan-out запросов и неоднозначное поведение при partial failure.
+
+**Что нужно и что будет сделано:**
+- определить learner dashboard DTO;
+- включить current/continue course, next lesson/action, progress, deadlines, overdue items и минимальные dashboard stats;
+- добавить специализированный dashboard endpoint либо эквивалентный enriched contract;
+- убрать дополнительные `listLessons(courseId)` только ради home screen;
+- определить безопасное поведение при partial data problems.
+
+**Критерии готовности:**
+- [ ] dashboard не выполняет N дополнительных lesson requests;
+- [ ] next lesson/action определяется единообразно;
+- [ ] ошибка одного источника не превращается в фиктивные `0 lessons`;
+- [ ] loading/error contract однозначен;
+- [ ] старые course/lesson endpoints не ломаются;
+- [ ] количество network requests уменьшено и проверено.
+
+---
+## PR 252 — Instructor Course Summary Metrics 🔲
+
+**Проблема:** student/completion counts на instructor course screens не должны рассчитываться из ограниченной страницы progress.
+
+**Что нужно и что будет сделано:**
+- добавить authoritative course summary DTO;
+- включить enrolled, in-progress/completed и при необходимости overdue counts;
+- использовать summary contract в `InstructorCoursesPage`;
+- убрать progress collection requests, выполняемые только ради counters.
+
+**Критерии готовности:**
+- [ ] counts не зависят от pagination;
+- [ ] metrics соответствуют серверным агрегатам;
+- [ ] course list не делает лишние progress requests;
+- [ ] instructor видит только разрешённые courses;
+- [ ] существующая course navigation не изменена;
+- [ ] tests проходят.
+
+---
+## PR 253 — Декомпозиция AdminChecklistsPage 🔲
+
+**Проблема:** `AdminChecklistsPage.tsx` совмещает список, builder, settings, items editing, assignments, preview и mutation orchestration, что затрудняет сопровождение и тестирование.
+
+**Что нужно и что будет сделано:**
+- использовать существующий feature-подход проекта как ориентир;
+- выделить `ChecklistTable`, `ChecklistSettingsForm`, `ChecklistItemsEditor`, `ChecklistAssignmentPanel`, `ChecklistPreviewDialog`;
+- вынести domain model/hooks/mutations из page JSX;
+- оставить page orchestration layer;
+- не выполнять несвязанный refactoring соседних admin features.
+
+**Критерии готовности:**
+- [ ] checklist behavior не изменён;
+- [ ] page больше не содержит реализацию всех внутренних подкомпонентов;
+- [ ] domain logic отделена от presentation JSX;
+- [ ] повторяющиеся handlers/state сгруппированы;
+- [ ] существующие tests адаптированы и проходят;
+- [ ] diff ограничен checklist feature.
+
+---
+## PR 254 — i18n Hardening для ru/en/kk/zh 🔲
+
+**Проблема:** четыре locale подключены, но остаются конкретные hardcoded/system-string проблемы, date-format inconsistency и недостаточная проверка long-string resilience. Базовые stable error codes и locale parity уже запланированы в PR 231/232 и не должны дублироваться.
+
+**Что нужно и что будет сделано:**
+- убрать hardcoded `Выйти` из shared learner top navigation;
+- локализовать системный default checklist scale до создания сущности, не переводя authored content;
+- ввести единый locale-aware date formatter;
+- после PR 231/232 использовать stable API error code translations и parity gate для `ru/en/kk/zh`;
+- добавить glossary терминов LMS;
+- добавить long-string/pseudo-localization проверку для основных viewport.
+
+**Критерии готовности:**
+- [ ] shared UI не оставляет русские системные строки при другой locale;
+- [ ] dates форматируются по `i18n.resolvedLanguage`;
+- [ ] checklist defaults локализованы, authored content не переводится автоматически;
+- [ ] glossary фиксирует ключевую терминологию четырёх locale;
+- [ ] 320/375/768/desktop layouts проверены на длинных строках;
+- [ ] PR 231/232 не дублируются, а используются как dependencies;
+- [ ] i18n tests проходят.
+
+---
+## PR 255 — Design Tokens, Tenant Styling и Motion 🔲
+
+**Проблема:** дизайн-система существует, но отдельные screens обходят её локальными hex-цветами/visual constants; motion не имеет единого semantic contract.
+
+**Что нужно и что будет сделано:**
+- расширить `tokens.css` semantic control-size, spacing, accent/selected и motion tokens по подтверждённой необходимости;
+- убрать локальные brand colors в затрагиваемых instructor/manager components;
+- перевести hero/selected/accent states на tenant-aware tokens;
+- добавить `prefers-reduced-motion`;
+- использовать productive motion для popover, feedback, row expansion и state transitions;
+- сохранить текущий CSS-based design-system ADR.
+
+**Критерии готовности:**
+- [ ] затронутые screens не используют локальные brand hex при наличии semantic token;
+- [ ] tenant appearance применяется к соответствующим accent states;
+- [ ] motion durations/easing централизованы;
+- [ ] reduced-motion отключает необязательные transitions;
+- [ ] новая CSS/UI framework не добавлена;
+- [ ] ADR остаётся актуальным либо обновлён;
+- [ ] visual tests/checks проходят.
+
+---
+## PR 256 — Responsive Manager/Admin Operational UI 🔲
+
+**Проблема:** operational tables и dashboards могут деградировать на узких viewport в horizontal-scroll интерфейс вместо адаптивного рабочего сценария.
+
+**Что нужно и что будет сделано:**
+- использовать dense workspace/data-table contracts из PR 245/247;
+- определить priority columns для manager/admin tables;
+- скрывать вторичные колонки на узких viewport с доступом через expandable row/card;
+- сохранять primary actions на touch devices;
+- проверить 320, 375, 768 и desktop viewport;
+- проверить target sizes.
+
+**Критерии готовности:**
+- [ ] critical information доступна без обязательного горизонтального скролла;
+- [ ] secondary details доступны через progressive disclosure;
+- [ ] row actions доступны на touch device;
+- [ ] 320/375 layouts не имеют clipping/overlap;
+- [ ] desktop keyboard workflow не ухудшен;
+- [ ] используется общий responsive DataTable contract;
+- [ ] responsive tests/checks проходят.
+
+---
+## PR 257 — Accessibility Baseline для shared UI 🔲
+
+**Проблема:** a11y primitives уже существуют, а PR 234 усиливает общий axe gate, но новым menu/dialog/table/navigation patterns нужен конкретный shared-component baseline.
+
+**Что нужно и что будет сделано:**
+- проверить Button, Input, Select, Dialog, Popover/Menu, DataTable, Pagination и mobile navigation;
+- зафиксировать keyboard navigation, visible focus, Escape, focus return, ARIA, target size и semantic contrast requirements;
+- добавить автоматизированные tests там, где это устойчиво;
+- использовать результаты/quality gate PR 234 вместо создания параллельной axe-политики.
+
+**Критерии готовности:**
+- [ ] интерактивные shared components доступны с клавиатуры;
+- [ ] focus indicator видим;
+- [ ] modal/popover корректно управляют focus;
+- [ ] touch targets соответствуют принятому baseline;
+- [ ] error/success state не передаётся только цветом;
+- [ ] проверки закреплены tests или documented QA checklist;
+- [ ] PR 234 остаётся единым общим accessibility quality gate.
+
+---
+## PR 258 — Admin Audit Log 🔲
+
+**Проблема:** исходная продуктовая концепция предусматривает admin audit workflow, но отдельный frontend audit-log screen отсутствует; наличие полного read API нужно подтвердить перед реализацией.
+
+**Что нужно и что будет сделано:**
+- проверить существующий backend audit contract;
+- если read API отсутствует, добавить минимальный read-only contract;
+- добавить admin audit screen;
+- отображать actor, action, target, timestamp и detail;
+- добавить filters/pagination в пределах backend capabilities;
+- не позволять изменять audit events через UI;
+- не раскрывать secrets или чувствительные payload fields.
+
+**Критерии готовности:**
+- [ ] audit events доступны только разрешённым ролям;
+- [ ] список paginated;
+- [ ] фильтры работают по поддержанным backend dimensions;
+- [ ] event detail содержит достаточный безопасный контекст;
+- [ ] audit UI read-only;
+- [ ] empty/loading/error states реализованы;
+- [ ] authorization/API/UI tests проходят.
+
+---
+## PR 259 — Frontend Performance Verification 🔲
+
+**Проблема:** подтверждены сетевые и aggregation inefficiencies, но нет оснований массово добавлять `React.memo/useMemo` без профилирования.
+
+**Что нужно и что будет сделано:**
+- после PR 244/250/251/252 профилировать `/learn`, `/manager/team`, `/manager/overdue`, крупные admin tables и checklist builder;
+- использовать React Performance Tracks/доступный profiler tooling;
+- зафиксировать expensive renders и повторные network requests;
+- добавлять memoization только в подтверждённых hotspots;
+- повторить профиль после изменений;
+- не смешивать performance pass с посторонним refactoring.
+
+**Критерии готовности:**
+- [ ] нет дублирующего `/auth/me` из уже мигрированных authenticated flows;
+- [ ] `/learn` не имеет прежнего lesson fan-out;
+- [ ] render bottlenecks подтверждены профилем;
+- [ ] memoization добавлена только при измеримой необходимости;
+- [ ] повторный профиль не показывает регрессию;
+- [ ] performance findings и ограничения задокументированы;
+- [ ] frontend tests/build проходят.
+
+---
+## Порядок выполнения frontend/product серии
+
+```text
+Волна 1: PR 239 → PR 241 → PR 242 → PR 244 → PR 240 → PR 254
+Волна 2: PR 246 → PR 247 → PR 245 → PR 255 → PR 256 → PR 257
+Волна 3: PR 248 → PR 249 → PR 243
+Волна 4: PR 250 → PR 251 → PR 252 → PR 259
+Волна 5: PR 253 → PR 258
+```
+
+**Зависимости и rationale:**
+- PR 240 зависит от Notification/Profile destinations из PR 242/243 только на уровне полноты навигации; временные недоступные destinations не должны вести в dead routes.
+- PR 243 логично выполнять после PR 244, чтобы profile updates использовали единый session state.
+- PR 249 использует row selection/batch-action contract из PR 247.
+- PR 254 дополняет, а не дублирует PR 231/232.
+- PR 256 использует layout/data-density foundations PR 245/247.
+- PR 257 опирается на общий accessibility gate PR 234.
+- PR 259 выполняется после network/aggregation PR 244/250/251/252, чтобы измерять итоговую архитектуру, а не промежуточные проблемы.
