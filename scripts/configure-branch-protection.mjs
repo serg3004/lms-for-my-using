@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 
 export const RULESET_NAME = 'Protect main';
 export const REQUIRED_CHECKS = ['Checks', 'Analyze (javascript-typescript)'];
+export const REQUIRED_DEFAULT_BRANCH = 'main';
 
 export function desiredRuleset() {
   return {
@@ -25,15 +26,17 @@ export function desiredRuleset() {
           dismiss_stale_reviews_on_push: false,
           require_code_owner_review: false,
           require_last_push_approval: false,
-          required_review_thread_resolution: false,
+          required_review_thread_resolution: true,
         },
       },
       {
         type: 'required_status_checks',
         parameters: {
-          strict_required_status_checks_policy: false,
+          strict_required_status_checks_policy: true,
           do_not_enforce_on_create: false,
-          required_status_checks: REQUIRED_CHECKS.map((context) => ({ context })),
+          required_status_checks: REQUIRED_CHECKS.map((context) => ({
+            context,
+          })),
         },
       },
     ],
@@ -59,10 +62,13 @@ export function verifyRuleset(ruleset) {
 
   const pullRequest = ruleByType(ruleset, 'pull_request')?.parameters;
   if (pullRequest?.required_approving_review_count !== 0) failures.push('required approvals must be 0');
+  if (pullRequest?.required_review_thread_resolution !== true) {
+    failures.push('review threads must be resolved');
+  }
 
   const statusParameters = ruleByType(ruleset, 'required_status_checks')?.parameters;
-  if (statusParameters?.strict_required_status_checks_policy !== false) {
-    failures.push('up-to-date requirement must be disabled');
+  if (statusParameters?.strict_required_status_checks_policy !== true) {
+    failures.push('required-check branches must be up to date');
   }
   const actualChecks = (statusParameters?.required_status_checks ?? []).map(({ context }) => context).sort();
   const expectedChecks = [...REQUIRED_CHECKS].sort();
@@ -91,41 +97,71 @@ export async function configure({ repository, token, apply = false, fetchImpl = 
       ...options,
       headers: { ...headers, ...options.headers },
     });
-    if (!response.ok) throw new Error(`GitHub API ${options.method ?? 'GET'} ${path}: ${response.status} ${await response.text()}`);
+    if (!response.ok)
+      throw new Error(`GitHub API ${options.method ?? 'GET'} ${path}: ${response.status} ${await response.text()}`);
     return response.json();
   };
 
   const repositoryInfo = await request('');
+  if (repositoryInfo.default_branch !== REQUIRED_DEFAULT_BRANCH) {
+    throw new Error(`Expected default branch "${REQUIRED_DEFAULT_BRANCH}", got "${repositoryInfo.default_branch}"`);
+  }
   const branch = await request(`/branches/${encodeURIComponent(repositoryInfo.default_branch)}`);
   const rulesets = await request('/rulesets');
+  const matchingRuleset = rulesets.find(({ name, target }) => name === RULESET_NAME && target === 'branch');
+  const existingRuleset = matchingRuleset ? await request(`/rulesets/${matchingRuleset.id}`) : null;
+  const verificationFailures = existingRuleset
+    ? verifyRuleset(existingRuleset)
+    : [`missing active ruleset "${RULESET_NAME}"`];
+  if (!branch.protected) verificationFailures.push(`${repositoryInfo.default_branch} is not protected`);
   const summary = {
     repository,
     defaultBranch: repositoryInfo.default_branch,
     branchProtected: branch.protected,
-    existingRuleset: rulesets.find(({ name, target }) => name === RULESET_NAME && target === 'branch') ?? null,
+    existingRuleset,
+    verified: verificationFailures.length === 0,
+    verificationFailures,
   };
   if (!apply) return summary;
   if (!token) throw new Error('GITHUB_TOKEN with repository Administration write permission is required with --apply');
 
   const body = JSON.stringify(desiredRuleset());
   const saved = summary.existingRuleset
-    ? await request(`/rulesets/${summary.existingRuleset.id}`, { method: 'PUT', body, headers: { 'Content-Type': 'application/json' } })
-    : await request('/rulesets', { method: 'POST', body, headers: { 'Content-Type': 'application/json' } });
+    ? await request(`/rulesets/${summary.existingRuleset.id}`, {
+        method: 'PUT',
+        body,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    : await request('/rulesets', {
+        method: 'POST',
+        body,
+        headers: { 'Content-Type': 'application/json' },
+      });
   const readBack = await request(`/rulesets/${saved.id}`);
   const failures = verifyRuleset(readBack);
   if (failures.length) throw new Error(`Ruleset read-back verification failed:\n- ${failures.join('\n- ')}`);
   const protectedBranch = await request(`/branches/${encodeURIComponent(repositoryInfo.default_branch)}`);
   if (!protectedBranch.protected) throw new Error(`${repositoryInfo.default_branch} is still reported as unprotected`);
-  return { ...summary, action: summary.existingRuleset ? 'updated' : 'created', rulesetId: saved.id, verified: true };
+  return {
+    ...summary,
+    action: summary.existingRuleset ? 'updated' : 'created',
+    rulesetId: saved.id,
+    verified: true,
+    verificationFailures: [],
+  };
 }
 
 async function main() {
   const apply = process.argv.includes('--apply');
   const repository = process.env.GITHUB_REPOSITORY;
-  const result = await configure({ repository, token: process.env.GITHUB_TOKEN, apply });
+  const result = await configure({
+    repository,
+    token: process.env.GITHUB_TOKEN,
+    apply,
+  });
   console.log(JSON.stringify(result, null, 2));
-  if (!apply && !result.branchProtected) {
-    console.error('Branch protection is not active. Re-run with an authorized GITHUB_TOKEN and --apply.');
+  if (!apply && !result.verified) {
+    console.error('Branch protection does not match policy. Re-run with an authorized GITHUB_TOKEN and --apply.');
     process.exitCode = 2;
   }
 }

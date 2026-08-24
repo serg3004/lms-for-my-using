@@ -72,6 +72,9 @@ jobs:
       - name: Validate security waivers
         run: node scripts/validate-security-waivers.mjs security-waivers.json "$RUNNER_TEMP/trivyignore"
 
+      - name: Validate repository governance policy
+        run: pnpm security:branch-protection:test
+
       - name: Lint
         run: pnpm --recursive lint
 
