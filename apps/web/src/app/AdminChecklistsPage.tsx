@@ -53,7 +53,8 @@ export function resolveUserName(users: UserSummary[], userId: string) {
   return user ? formatUserName(user) : userId;
 }
 export function filterAssignableUsers(users: UserSummary[], instances: ChecklistInstanceSummary[]) {
-  return users.filter((user) => !instances.some((instance) => instance.userId === user.id && instance.status !== 'expired'));
+  const activeStatuses = new Set(['assigned', 'in_progress', 'submitted']);
+  return users.filter((user) => !instances.some((instance) => instance.userId === user.id && activeStatuses.has(instance.status)));
 }
 export function buildChecklistSettingsPayload(form: {
   title: string;

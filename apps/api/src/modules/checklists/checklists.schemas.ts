@@ -62,6 +62,21 @@ export const assignChecklistSchema = z.object({
 });
 export type AssignChecklistInput = z.infer<typeof assignChecklistSchema>;
 
+export const MAX_BULK_CHECKLIST_TARGETS = 100;
+export const MAX_BULK_CHECKLIST_RECIPIENTS = 1_000;
+
+const bulkChecklistTargetSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('user'), id: z.string().uuid() }).strict(),
+  z.object({ type: z.literal('group'), id: z.string().uuid() }).strict(),
+  z.object({ type: z.literal('manager_team') }).strict(),
+]);
+
+export const bulkAssignChecklistSchema = z.object({
+  targets: z.array(bulkChecklistTargetSchema).min(1).max(MAX_BULK_CHECKLIST_TARGETS),
+  dueAt: z.string().datetime().optional(),
+}).strict();
+export type BulkAssignChecklistInput = z.infer<typeof bulkAssignChecklistSchema>;
+
 export const submitChecklistItemResultSchema = z
   .object({
     checked: z.boolean(),
