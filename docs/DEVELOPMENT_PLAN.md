@@ -4145,7 +4145,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] desktop layout не регрессировал.
 
 ---
-## PR 241 — Password Reset UI 🔲
+## PR 241 — Password Reset UI ✅
 
 **Проблема:** frontend не закрывает пользовательский сценарий восстановления пароля, несмотря на существующий password-reset backend contract.
 
@@ -4158,13 +4158,15 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - локализовать flow для `ru/en/kk/zh`.
 
 **Критерии готовности:**
-- [ ] reset flow доступен из login screen;
-- [ ] reset request использует существующий API;
-- [ ] новый пароль устанавливается по валидному token;
-- [ ] invalid/expired token имеет отдельное безопасное состояние;
-- [ ] после успеха доступен переход к login;
-- [ ] UI не раскрывает существование аккаунта сверх backend contract;
-- [ ] все четыре locale покрыты.
+- [x] reset flow доступен из login screen;
+- [x] reset request использует существующий API;
+- [x] новый пароль устанавливается по валидному token;
+- [x] invalid/expired token имеет отдельное безопасное состояние;
+- [x] после успеха доступен переход к login;
+- [x] UI не раскрывает существование аккаунта сверх backend contract;
+- [x] все четыре locale покрыты.
+
+**Статус (2026-08-24):** реализованы `/password-reset` request/confirm states, безопасный generic sent response, обработка invalid/expired token, переходы из login и обратно, а также локализация `ru/en/kk/zh`. Добавлены UI/API contract tests.
 
 ---
 ## PR 242 — Полноценный Notification Center 🔲
