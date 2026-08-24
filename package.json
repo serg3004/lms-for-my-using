@@ -24,6 +24,7 @@
     "test:backup-restore": "bash tests/scripts/backup-restore.test.sh",
     "migration:production:check": "bash scripts/check-production-migrations.sh",
     "migration:production:check:test": "bash scripts/check-production-migrations.test.sh",
+    "compose:resources:test": "bash scripts/docker-compose-resources.test.sh",
     "release:gate": "node scripts/verify-release-gate.mjs",
     "release:gate:test": "node --test scripts/verify-release-gate.test.mjs"
   },
