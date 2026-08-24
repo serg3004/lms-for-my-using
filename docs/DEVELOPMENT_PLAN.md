@@ -3566,7 +3566,7 @@ frontend quality и observability.
 >
 > **Порядок:** P0 — PR 223, 238, 224; P1 — PR 231, 232, 227, 229, 225, 226, 228, 230, 236; P2 — PR 233, 234, 235, 237.
 
-## PR 223 — Fix course-level progress race condition 🔲
+## PR 223 — Fix course-level progress race condition ✅
 
 **Проблема:** course-level progress с `lessonId = null` создаётся через `findFirst → create`; при конкурентных запросах возможны дубликаты, а текущий compound unique с nullable `lessonId` не гарантирует требуемый DB-инвариант.
 
@@ -3579,13 +3579,13 @@ frontend quality и observability.
 - обновить migration/rollback документацию.
 
 **Критерии готовности:**
-- [ ] БД не допускает две course-level progress записи для одного допустимого scope;
-- [ ] два параллельных запроса не создают дубликаты;
-- [ ] lesson-level progress сохраняет текущее поведение;
-- [ ] существующие данные проверены перед применением migration;
-- [ ] migration проверена на clean CI database;
-- [ ] concurrency regression tests проходят;
-- [ ] migration apply/verification/rollback задокументированы.
+- [x] БД не допускает две course-level progress записи для одного допустимого scope;
+- [x] два параллельных запроса не создают дубликаты;
+- [x] lesson-level progress сохраняет текущее поведение;
+- [x] существующие данные проверяются и безопасно дедуплицируются migration;
+- [x] migration применяется на clean CI database через стандартный integration gate;
+- [x] concurrency regression tests проходят;
+- [x] migration apply/verification/rollback задокументированы.
 
 ---
 

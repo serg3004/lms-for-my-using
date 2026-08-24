@@ -94,19 +94,34 @@ export class ProgressService {
       });
     }
 
-    // Course-level progress (no specific lessonId) isn't covered by the compound unique index:
-    // Postgres treats NULL lessonId values as distinct, so a plain unique index can't target
-    // "this course, this user, no lesson" as a single row. Falls back to find-then-write.
-    const existing = await this.prisma.progress.findFirst({
-      where: { organizationId: input.organizationId, courseId: input.courseId, lessonId: null, userId: input.userId, deletedAt: null },
-      select: { id: true },
-    });
+    // Prisma cannot model an upsert target backed by a partial unique index. Keep the
+    // insert/update decision in one PostgreSQL statement so concurrent first writes are
+    // serialized by progress_course_level_active_key rather than racing in application code.
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      INSERT INTO "progress" (
+        "id", "organization_id", "course_id", "lesson_id", "user_id",
+        "status", "score", "completed_at", "created_at", "updated_at"
+      ) VALUES (
+        gen_random_uuid(), ${input.organizationId}::uuid, ${input.courseId}::uuid, NULL,
+        ${input.userId}::uuid, ${input.status}::"ProgressStatus", ${input.score ?? null},
+        ${input.completedAt ?? null}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+      )
+      ON CONFLICT ("organization_id", "course_id", "user_id")
+        WHERE "lesson_id" IS NULL AND "deleted_at" IS NULL
+      DO UPDATE SET
+        "status" = EXCLUDED."status",
+        "score" = EXCLUDED."score",
+        "completed_at" = EXCLUDED."completed_at",
+        "updated_at" = CURRENT_TIMESTAMP
+      RETURNING "id"
+    `;
 
-    if (existing) {
-      return this.prisma.progress.update({ where: { id: existing.id }, data: update, select: progressSelect });
+    const row = rows[0];
+    if (!row) {
+      throw new Error('Course-level progress upsert returned no row');
     }
 
-    return this.prisma.progress.create({ data: input, select: progressSelect });
+    return this.prisma.progress.findUniqueOrThrow({ where: { id: row.id }, select: progressSelect });
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {
