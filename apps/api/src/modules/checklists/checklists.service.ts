@@ -6,6 +6,8 @@ import { UploadService } from '../upload/public.js';
 import {
   AssignChecklistInput,
   BulkAssignChecklistInput,
+  ChecklistAnalyticsQuery,
+  ChecklistQueueQuery,
   CreateChecklistInput,
   CreateChecklistItemInput,
   ReviewChecklistItemResultInput,
@@ -61,6 +63,9 @@ const instanceSelect = {
   checklistId: true,
   userId: true,
   assignedBy: true,
+  reviewerId: true,
+  reviewAssignedAt: true,
+  reviewAssignedBy: true,
   status: true,
   totalScore: true,
   maxScore: true,
@@ -355,8 +360,9 @@ export class ChecklistsService {
     const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
-    return this.prisma.checklistInstance.create({
-      data: {
+    return this.prisma.$transaction(async (transaction) => {
+      if (input.reviewerId) await this.assertValidReviewer(transaction, input.reviewerId, organizationId);
+      const instance = await transaction.checklistInstance.create({ data: {
         organizationId,
         checklistId,
         userId: input.userId,
@@ -365,8 +371,16 @@ export class ChecklistsService {
         templateSnapshot: snapshot as unknown as Prisma.InputJsonValue,
         snapshotVersion: CHECKLIST_SNAPSHOT_VERSION,
         dueAt: input.dueAt ? new Date(input.dueAt) : undefined,
+        reviewerId: input.reviewerId, reviewAssignedAt: input.reviewerId ? new Date() : undefined,
+        reviewAssignedBy: input.reviewerId ? assignedBy : undefined,
       },
       select: instanceSelect,
+      });
+      await transaction.checklistInstanceEvent.create({ data: {
+        organizationId, instanceId: instance.id, eventType: 'assigned', actorUserId: assignedBy,
+        metadata: input.reviewerId ? { reviewerId: input.reviewerId } : undefined,
+      }});
+      return instance;
     });
   }
 
@@ -480,6 +494,79 @@ export class ChecklistsService {
     return instances.map((instance) => this.presentInstance(instance));
   }
 
+  async searchReviewQueue(organizationId: string, reviewerId: string, query: ChecklistQueueQuery, userScope: object = {}) {
+    const where: Prisma.ChecklistInstanceWhereInput = {
+      organizationId, deletedAt: null, ...userScope,
+      ...(query.assignment === 'mine' ? { reviewerId } : query.assignment === 'unassigned' ? { reviewerId: null } : {}),
+      ...(query.checklistId ? { checklistId: query.checklistId } : {}),
+      ...(query.learnerId ? { userId: query.learnerId } : {}),
+      ...(query.status ? { status: query.status } : { status: 'submitted' }),
+      ...(query.passed ? { passed: query.passed === 'true' } : {}),
+      ...((query.from || query.to) ? { submittedAt: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } } : {}),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.checklistInstance.findMany({ where, orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize, select: instanceWithSnapshotSelect }),
+      this.prisma.checklistInstance.count({ where }),
+    ]);
+    return { items: items.map((item) => this.presentInstance(item)), page: query.page, pageSize: query.pageSize, total };
+  }
+
+  async assignReviewer(instanceId: string, organizationId: string, reviewerId: string | null, actorUserId: string) {
+    return this.prisma.$transaction(async (transaction) => {
+      const instance = await transaction.checklistInstance.findFirst({ where: { id: instanceId, organizationId, deletedAt: null }, select: { id: true, status: true } });
+      if (!instance) throw new NotFoundException('Checklist assignment not found');
+      if (reviewerId) await this.assertValidReviewer(transaction, reviewerId, organizationId);
+      const updated = await transaction.checklistInstance.update({ where: { id: instanceId }, data: { reviewerId, reviewAssignedAt: reviewerId ? new Date() : null, reviewAssignedBy: reviewerId ? actorUserId : null }, select: instanceSelect });
+      await transaction.checklistInstanceEvent.create({ data: { organizationId, instanceId, eventType: 'reviewer_assigned', actorUserId, metadata: { reviewerId } } });
+      return updated;
+    });
+  }
+
+  async listEvents(instanceId: string, organizationId: string) {
+    const exists = await this.prisma.checklistInstance.findFirst({ where: { id: instanceId, organizationId, deletedAt: null }, select: { id: true } });
+    if (!exists) throw new NotFoundException('Checklist assignment not found');
+    return this.prisma.checklistInstanceEvent.findMany({ where: { instanceId, organizationId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+  }
+
+  async getAnalytics(organizationId: string, query: ChecklistAnalyticsQuery, userScope: object = {}) {
+    const where: Prisma.ChecklistInstanceWhereInput = { organizationId, deletedAt: null, ...userScope, ...(query.checklistId ? { checklistId: query.checklistId } : {}), ...((query.from || query.to) ? { createdAt: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } } : {}) };
+    const rows = await this.prisma.checklistInstance.findMany({ where, select: { status: true, passed: true, percentage: true, createdAt: true, submittedAt: true, completedAt: true } });
+    const counts = Object.fromEntries(['assigned', 'in_progress', 'submitted', 'completed', 'expired'].map((status) => [status, rows.filter((row) => row.status === status).length]));
+    const completed = rows.filter((row) => row.status === 'completed');
+    const reviewed = completed.filter((row) => row.submittedAt && row.completedAt);
+    const average = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+    return { assignmentsTotal: rows.length, counts, completionRate: rows.length ? completed.length / rows.length : 0, passRate: completed.length ? completed.filter((row) => row.passed).length / completed.length : 0, averagePercentage: average(completed.map((row) => row.percentage)), expiredRate: rows.length ? counts.expired / rows.length : 0, pendingReview: counts.submitted, averageCompletionTimeMs: average(completed.filter((row) => row.completedAt).map((row) => row.completedAt!.getTime() - row.createdAt.getTime())), averageReviewTimeMs: average(reviewed.map((row) => row.completedAt!.getTime() - row.submittedAt!.getTime())) };
+  }
+
+  private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {
+    const reviewer = await transaction.user.findFirst({ where: { id: reviewerId, organizationId, deletedAt: null, memberships: { some: { role: { in: ['admin', 'manager', 'instructor', 'mentor'] }, organizationId } } }, select: { id: true } });
+    if (!reviewer) throw new BadRequestException('Reviewer is not eligible to review checklists');
+  }
+
+  private async recordMutationEvents(
+    organizationId: string,
+    instanceId: string,
+    actorUserId: string,
+    itemId: string,
+    eventType: 'item_answered' | 'photo_attached' | 'item_approved' | 'item_rejected',
+    previousStatus: string,
+    nextStatus: string,
+  ) {
+    const events: Prisma.ChecklistInstanceEventCreateManyInput[] = [
+      { organizationId, instanceId, actorUserId, itemId, eventType },
+    ];
+    if (previousStatus === 'assigned' && nextStatus !== 'assigned') {
+      events.push({ organizationId, instanceId, actorUserId, eventType: 'started' });
+    }
+    if (previousStatus !== 'submitted' && nextStatus === 'submitted') {
+      events.push({ organizationId, instanceId, actorUserId, eventType: 'submitted' });
+    }
+    if (previousStatus !== 'completed' && nextStatus === 'completed') {
+      events.push({ organizationId, instanceId, actorUserId, eventType: 'completed' });
+    }
+    await this.prisma.checklistInstanceEvent.createMany({ data: events });
+  }
+
   async getInstance(instanceId: string, organizationId: string) {
     let instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
@@ -586,7 +673,9 @@ export class ChecklistsService {
       },
     });
 
-    return this.recomputeInstance(instanceId, organizationId);
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.recordMutationEvents(organizationId, instanceId, requesterId, itemId, 'item_answered', instance.status, updated.status);
+    return updated;
   }
 
   async reviewItemResult(
@@ -628,7 +717,9 @@ export class ChecklistsService {
       },
     });
 
-    return this.recomputeInstance(instanceId, organizationId);
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.recordMutationEvents(organizationId, instanceId, reviewerId, itemId, input.status === 'approved' ? 'item_approved' : 'item_rejected', instance.status, updated.status);
+    return updated;
   }
 
   async attachItemPhoto(
@@ -675,7 +766,9 @@ export class ChecklistsService {
       await this.uploadService.deleteObject(previousObjectKey).catch(() => undefined);
     }
 
-    return this.recomputeInstance(instanceId, organizationId);
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.recordMutationEvents(organizationId, instanceId, requesterId, itemId, 'photo_attached', instance.status, updated.status);
+    return updated;
   }
 
   async getItemPhotoDownload(
@@ -914,6 +1007,9 @@ export class ChecklistsService {
       checklistId: instance.checklistId,
       userId: instance.userId,
       assignedBy: instance.assignedBy,
+      reviewerId: instance.reviewerId,
+      reviewAssignedAt: instance.reviewAssignedAt,
+      reviewAssignedBy: instance.reviewAssignedBy,
       status: instance.status,
       totalScore: instance.totalScore,
       maxScore: instance.maxScore,

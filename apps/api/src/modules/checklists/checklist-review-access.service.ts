@@ -28,18 +28,23 @@ export class ChecklistReviewAccessService {
   }
 
   async assertReviewerCanAccess(user: CurrentUser, instanceId: string) {
-    if (!isManagerTeamScoped(user)) return;
-
     const instance = await this.prisma.checklistInstance.findFirst({
       where: {
         id: instanceId,
         organizationId: user.organizationId,
         deletedAt: null,
-        ...this.teamScope.userOwnedResource(user),
+        ...(isManagerTeamScoped(user) ? this.teamScope.userOwnedResource(user) : {}),
       },
-      select: { id: true },
+      select: { id: true, reviewerId: true },
     });
 
     if (!instance) throw new NotFoundException('Checklist assignment not found');
+    if (instance.reviewerId && instance.reviewerId !== user.id && !user.roles.includes('admin')) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+  }
+
+  reviewQueueScope(user: CurrentUser) {
+    return isManagerTeamScoped(user) ? this.teamScope.userOwnedResource(user) : {};
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Post, Delete, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Post, Delete, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -10,6 +10,7 @@ import { ChecklistReviewAccessService } from './checklist-review-access.service.
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
+  assignChecklistReviewerSchema,
   bulkAssignChecklistSchema,
   createChecklistItemSchema,
   createChecklistSchema,
@@ -17,6 +18,8 @@ import {
   submitChecklistItemResultSchema,
   updateChecklistItemSchema,
   updateChecklistSchema,
+  checklistAnalyticsQuerySchema,
+  checklistQueueQuerySchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -34,6 +37,13 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsRead)
   listChecklists(@Req() request: AuthenticatedRequest) {
     return this.checklistsService.listChecklists(request.currentUser!.organizationId);
+  }
+
+  @Get('checklists/analytics')
+  @Roles(...rolePolicies.checklistReviewWrite)
+  getAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalytics(user.organizationId, checklistAnalyticsQuerySchema.parse(rawQuery), this.reviewAccess.reviewQueueScope(user));
   }
 
   @Get('checklists/:id')
@@ -115,6 +125,32 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const instances = await this.checklistsService.listPendingReview(user.organizationId);
     return this.reviewAccess.filterPending(user, instances);
+  }
+  @Get('checklist-instances/review-queue')
+  @Roles(...rolePolicies.checklistReviewWrite)
+  searchReviewQueue(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const query = checklistQueueQuerySchema.parse(rawQuery);
+    return this.checklistsService.searchReviewQueue(user.organizationId, user.id, query, this.reviewAccess.reviewQueueScope(user));
+  }
+  @Patch('checklist-instances/:id/reviewer')
+  @Roles(...rolePolicies.checklistReviewWrite)
+  async assignReviewer(@Param('id') instanceId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    const { reviewerId } = assignChecklistReviewerSchema.parse(body);
+    return this.checklistsService.assignReviewer(instanceId, user.organizationId, reviewerId, user.id);
+  }
+  @Get('checklist-instances/:id/events')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async listEvents(@Param('id') instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    else {
+      const instance = await this.checklistsService.getInstance(instanceId, user.organizationId);
+      if (instance.userId !== user.id) throw new ForbiddenException('You can only view your own checklist assignment');
+    }
+    return this.checklistsService.listEvents(instanceId, user.organizationId);
   }
   @Get('checklist-instances/:id')
   @Roles(...rolePolicies.checklistInstancesRead)

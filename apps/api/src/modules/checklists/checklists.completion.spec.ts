@@ -152,6 +152,7 @@ function createHarness({
       findMany: jest.fn(async () => items),
     },
     checklistItemResult,
+    checklistInstanceEvent: { createMany: jest.fn(async () => ({ count: 1 })) },
   } as unknown as PrismaService;
 
   const uploadService = {

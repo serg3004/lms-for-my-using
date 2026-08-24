@@ -204,7 +204,9 @@ function createFakePrisma() {
       findFirst: async ({ where }: { where: Record<string, unknown> }) =>
         users.find((u) => u.id === where['id'] && u.organizationId === where['organizationId']) ?? null,
     },
+    checklistInstanceEvent: { create: async () => ({ id: nextId('event') }), createMany: async () => ({ count: 1 }) },
   };
+  Object.assign(prisma, { $transaction: async (operation: unknown) => typeof operation === 'function' ? operation(prisma) : Promise.all(operation as Promise<unknown>[]) });
   return prisma as unknown as PrismaService;
 }
 

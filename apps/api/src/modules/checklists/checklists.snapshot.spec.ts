@@ -99,7 +99,9 @@ describe('ChecklistsService immutable assignment snapshots', () => {
         findFirst: jest.fn(async () => null),
         create: createInstance,
       },
+      checklistInstanceEvent: { create: jest.fn(async () => ({ id: 'event-id' })) },
     };
+    Object.assign(prisma, { $transaction: async (operation: (transaction: typeof prisma) => unknown) => operation(prisma) });
     const service = createService(prisma);
 
     await service.assignChecklist(checklistId, organizationId, { userId }, assignerId);

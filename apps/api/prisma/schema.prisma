@@ -138,6 +138,18 @@ enum ChecklistReviewStatus {
   approved
   rejected
 }
+enum ChecklistInstanceEventType {
+  assigned
+  started
+  item_answered
+  photo_attached
+  submitted
+  reviewer_assigned
+  item_approved
+  item_rejected
+  completed
+  expired
+}
 model Organization {
   id                              String                         @id @default(uuid()) @db.Uuid
   name                            String
@@ -169,6 +181,7 @@ model Organization {
   checklistItems                  ChecklistItem[]
   checklistInstances              ChecklistInstance[]
   checklistItemResults            ChecklistItemResult[]
+  checklistInstanceEvents         ChecklistInstanceEvent[]
   theme                           OrganizationTheme?
   @@map("organizations")
 }
@@ -220,6 +233,9 @@ model User {
   checklistInstances         ChecklistInstance[]   @relation("ChecklistInstanceUser")
   checklistInstancesAssigned ChecklistInstance[]   @relation("ChecklistInstanceAssignedBy")
   checklistItemReviews       ChecklistItemResult[] @relation("ChecklistItemResultReviewedBy")
+  checklistInstancesReviewed ChecklistInstance[]   @relation("ChecklistInstanceReviewer")
+  checklistReviewsAssigned   ChecklistInstance[]   @relation("ChecklistInstanceReviewAssignedBy")
+  checklistInstanceEvents    ChecklistInstanceEvent[] @relation("ChecklistInstanceEventActor")
   @@unique([organizationId, email])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -649,6 +665,9 @@ model ChecklistInstance {
   checklistId      String                  @map("checklist_id") @db.Uuid
   userId           String                  @map("user_id") @db.Uuid
   assignedBy       String?                 @map("assigned_by") @db.Uuid
+  reviewerId       String?                 @map("reviewer_id") @db.Uuid
+  reviewAssignedAt DateTime?               @map("review_assigned_at") @db.Timestamptz
+  reviewAssignedBy String?                 @map("review_assigned_by") @db.Uuid
   status           ChecklistInstanceStatus @default(assigned)
   totalScore       Int                     @default(0) @map("total_score")
   maxScore         Int                     @default(0) @map("max_score")
@@ -666,11 +685,31 @@ model ChecklistInstance {
   checklist      Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   user           User                  @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
   assignedByUser User?                 @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+  reviewer       User?                 @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewAssigner User?                 @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
   results        ChecklistItemResult[]
+  events         ChecklistInstanceEvent[]
   @@index([organizationId, status])
+  @@index([organizationId, reviewerId, status])
   @@index([checklistId, status])
   @@index([userId])
   @@map("checklist_instances")
+}
+model ChecklistInstanceEvent {
+  id             String                     @id @default(uuid()) @db.Uuid
+  organizationId String                     @map("organization_id") @db.Uuid
+  instanceId     String                     @map("instance_id") @db.Uuid
+  eventType      ChecklistInstanceEventType @map("event_type")
+  actorUserId    String?                    @map("actor_user_id") @db.Uuid
+  itemId         String?                    @map("item_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance     ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor        User?             @relation("ChecklistInstanceEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  @@index([instanceId, createdAt, id])
+  @@index([organizationId, createdAt])
+  @@map("checklist_instance_events")
 }
 model ChecklistItemResult {
   id             String                @id @default(uuid()) @db.Uuid
