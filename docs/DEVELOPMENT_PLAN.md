@@ -3629,7 +3629,7 @@ frontend quality и observability.
 
 ---
 
-## PR 225 — Add dependency and static-security audit artifacts to CI 🔲
+## PR 225 — Add dependency and static-security audit artifacts to CI ✅
 
 **Проблема:** `pnpm audit`, security scans и code-hygiene проверки выполняются не в форме единого сохраняемого отчёта, из-за чего последующий аудит конкретного SHA зависит от доступности job logs и внешнего code search.
 
@@ -3642,13 +3642,15 @@ frontend quality и observability.
 - не ослаблять Gitleaks, Trivy и CodeQL.
 
 **Критерии готовности:**
-- [ ] dependency audit report сохраняется для каждого relevant CI run;
-- [ ] HIGH/CRITICAL dependency findings видны независимо от краткости stdout;
-- [ ] code-hygiene report содержит согласованный набор patterns;
-- [ ] политика `any` формализована;
-- [ ] artifacts однозначно связаны с SHA;
-- [ ] существующие security gates не отключены;
-- [ ] CI проходит либо baseline существующих нарушений явно зафиксирован.
+- [x] dependency audit report сохраняется для каждого relevant CI run;
+- [x] HIGH/CRITICAL dependency findings видны независимо от краткости stdout;
+- [x] code-hygiene report содержит согласованный набор patterns;
+- [x] политика `any` формализована;
+- [x] artifacts однозначно связаны с SHA;
+- [x] существующие security gates не отключены;
+
+> **Факт (2026-08-24):** CI сохраняет на 30 дней единый artifact `security-audit-<SHA>-<run>-<attempt>` с полным JSON-отчётом `pnpm audit` и JSON-инвентарём code hygiene. HIGH/CRITICAL dependency findings и unsafe dynamic-code/HTML-injection patterns остаются blocking gates; `.skip`/`.todo`, `TODO`/`FIXME`, `console.log` и explicit `any` учитываются informational. `any` намеренно не запрещён regex-проверкой: блокирующими источниками истины для type safety остаются TypeScript и ESLint. Gitleaks, Trivy и CodeQL не ослаблены. Локальные artifact tests, hygiene gate, dependency gate и lint проходят; общий typecheck по-прежнему фиксирует существующий в baseline дефект resolution `@axe-core/playwright` в `apps/e2e`, не относящийся к PR 225.
+- [x] CI проходит либо baseline существующих нарушений явно зафиксирован.
 
 ---
 
