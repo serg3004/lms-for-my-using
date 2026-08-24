@@ -61,8 +61,8 @@ does not gain any of the course/lesson/assignment/assessment access instructor o
 Role policies above answer "can this role call this endpoint at all" — a separate, second guard answers "can
 *this specific user* touch *this specific course*". `CourseAccessGuard` (`apps/api/src/modules/course-access/`)
 is wired via `@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)` alongside the role guards on 8 controllers:
-`courses`, `lessons`, `course-materials`, `assessments`, `assessment-questions`, `assessment-attempts`,
-`assignments`, `progress`, `certificates`.
+`lessons`, `course-materials`, `assessments`, `assessment-questions`, `assessment-attempts`, `assignments`,
+`progress`, `certificates`.
 
 - For a user whose only roles are course-scoped (currently: `instructor`), the guard resolves the course a
   request touches (via `@CourseScope(...)` metadata on the handler) and rejects it unless that course — or the
