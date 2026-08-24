@@ -8,9 +8,32 @@ import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import type { CompleteMultipartUploadInput, InitiateMultipartUploadInput } from './multipart-upload.schemas.js';
 
 export const MULTIPART_PART_SIZE_BYTES = 8 * 1024 * 1024;
+// Independent, explicit cap on multipart fanout — deliberately not derived from
+// MAX_UPLOAD_FILE_SIZE_BYTES at runtime. Currently ceil(50MB / 8MB) = 7: if
+// MAX_UPLOAD_FILE_SIZE_BYTES (apps/api/src/modules/upload/upload.validation.ts) or
+// MULTIPART_PART_SIZE_BYTES ever change, this constant must be re-evaluated
+// deliberately rather than silently widening the number of concurrent presign
+// requests and multipart parts a single upload can generate.
+export const MAX_MULTIPART_PART_COUNT = 7;
+// Bounds how many presigned part URLs are requested from storage concurrently,
+// independent of how large MAX_MULTIPART_PART_COUNT is allowed to grow later.
+export const MULTIPART_PRESIGN_CONCURRENCY = 5;
 export const MULTIPART_CLEANUP_BATCH_SIZE = 100;
 export const MULTIPART_CLEANUP_CONCURRENCY = 5;
 const UPLOAD_TTL_MS = 24 * 60 * 60_000;
+
+// Extracted so it can be tested independent of MAX_UPLOAD_FILE_SIZE_BYTES: today no
+// sizeBytes accepted by validateUploadMetadata can produce a partCount this rejects
+// (50MB / 8MB rounds up to exactly MAX_MULTIPART_PART_COUNT), but this guard exists
+// specifically for the day someone raises the file-size limit without noticing the
+// multipart fanout it would also allow.
+export function assertMultipartPartCountWithinLimit(partCount: number): void {
+  if (partCount > MAX_MULTIPART_PART_COUNT) {
+    throw new BadRequestException(
+      `File requires ${partCount} multipart parts, exceeding the maximum of ${MAX_MULTIPART_PART_COUNT}`,
+    );
+  }
+}
 
 @Injectable()
 export class MaterialMultipartUploadService {
@@ -23,6 +46,10 @@ export class MaterialMultipartUploadService {
 
   async initiate(materialId: string, organizationId: string, input: InitiateMultipartUploadInput) {
     validateUploadMetadata(input.fileName, input.mimeType, input.sizeBytes);
+
+    const partCount = Math.ceil(input.sizeBytes / MULTIPART_PART_SIZE_BYTES);
+    assertMultipartPartCountWithinLimit(partCount);
+
     await this.materials.getMaterialStorageReference(materialId, organizationId);
 
     const objectKey = this.storage.createQuarantineObjectKey(organizationId, materialId);
@@ -39,11 +66,18 @@ export class MaterialMultipartUploadService {
       throw error;
     }
 
-    const partCount = Math.ceil(input.sizeBytes / MULTIPART_PART_SIZE_BYTES);
-    const parts = await Promise.all(Array.from({ length: partCount }, async (_, index) => ({
-      partNumber: index + 1,
-      url: await this.storage.getMultipartPartUrl(objectKey, uploadId, index + 1),
-    })));
+    const parts: { partNumber: number; url: string }[] = [];
+    for (let offset = 0; offset < partCount; offset += MULTIPART_PRESIGN_CONCURRENCY) {
+      const batchSize = Math.min(MULTIPART_PRESIGN_CONCURRENCY, partCount - offset);
+      const batch = await Promise.all(
+        Array.from({ length: batchSize }, async (_, index) => {
+          const partNumber = offset + index + 1;
+          return { partNumber, url: await this.storage.getMultipartPartUrl(objectKey, uploadId, partNumber) };
+        }),
+      );
+      parts.push(...batch);
+    }
+
     return { uploadId, partSizeBytes: MULTIPART_PART_SIZE_BYTES, expiresAt, parts };
   }
 

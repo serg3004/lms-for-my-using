@@ -4592,7 +4592,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 262 — Bound multipart presign fanout and upload size validation 🔲
+## PR 262 — Bound multipart presign fanout and upload size validation ✅
 
 **Проблема:** multipart initialization (`MaterialMultipartUploadService.initiate`) вычисляет число частей из `sizeBytes` и создаёт presigned URLs параллельно через `Promise.all` для всего набора частей сразу. De facto fanout сейчас ограничен существующим `MAX_UPLOAD_FILE_SIZE_BYTES = 50MB` и `MULTIPART_PART_SIZE_BYTES = 8MB` (`upload.validation.ts`) — то есть не более ~7 частей за раз, явного unbounded DoS-вектора при текущих лимитах нет. Проблема — отсутствие явного, документированного и покрытого тестами max-part-count контракта, независимого от текущего значения `MAX_UPLOAD_FILE_SIZE_BYTES`: изменение любого из двух констант без согласованной проверки может незаметно снять эту неявную границу.
 
@@ -4606,12 +4606,20 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - добавить lower/upper boundary и overflow tests, включая явный тест на изменение констант.
 
 **Критерии готовности:**
-- [ ] maximum multipart part count определён явно и не зависит только от побочного эффекта другого лимита;
-- [ ] unsupported size отклоняется до expensive storage calls;
-- [ ] presign generation не создаёт unbounded concurrency при росте лимитов;
-- [ ] допустимые текущие upload sizes продолжают работать;
-- [ ] boundary tests покрывают значение на лимите и значение выше лимита;
-- [ ] multipart complete/abort behavior не регрессировал.
+- [x] maximum multipart part count определён явно и не зависит только от побочного эффекта другого лимита;
+- [x] unsupported size отклоняется до expensive storage calls;
+- [x] presign generation не создаёт unbounded concurrency при росте лимитов;
+- [x] допустимые текущие upload sizes продолжают работать;
+- [x] boundary tests покрывают значение на лимите и значение выше лимита;
+- [x] multipart complete/abort behavior не регрессировал.
+
+> **Факт (2026-08-24):** добавлен `MAX_MULTIPART_PART_COUNT = 7` в `apps/api/src/modules/course-materials/material-multipart-upload.service.ts` — независимая константа (не вычисляется из `MAX_UPLOAD_FILE_SIZE_BYTES` в рантайме), с комментарием о том, что её нужно пересматривать вручную при изменении `MAX_UPLOAD_FILE_SIZE_BYTES`/`MULTIPART_PART_SIZE_BYTES`. Проверка вынесена в отдельную экспортируемую функцию `assertMultipartPartCountWithinLimit()` и вызывается в `initiate()` сразу после `validateUploadMetadata()`, до любых storage/DB вызовов (`createMultipartUpload`, `prisma.multipartUpload.create`).
+>
+> Presign generation переведён с unbounded `Promise.all()` по всем частям на батчи по `MULTIPART_PRESIGN_CONCURRENCY = 5` (тот же паттерн, что уже использовался для cleanup concurrency в PR 227) — конкурентность ограничена независимо от того, насколько вырастет `MAX_MULTIPART_PART_COUNT` в будущем.
+>
+> Тесты (`material-multipart-upload.service.spec.ts`, +5 новых): boundary — файл ровно на `MAX_UPLOAD_FILE_SIZE_BYTES` (что сейчас даёт ровно `MAX_MULTIPART_PART_COUNT` частей) проходит; overflow — `assertMultipartPartCountWithinLimit()` отклоняет `MAX_MULTIPART_PART_COUNT + 1`; explicit test на изменение констант — симулирует гипотетический файл 500MB (больше текущего `MAX_UPLOAD_FILE_SIZE_BYTES`) и подтверждает, что guard всё равно отклоняет его независимо от текущего значения size-лимита; concurrency test — измеряет peak concurrency вызовов `getMultipartPartUrl()` (тем же паттерном, что уже использовался для cleanup, PR 227) и подтверждает `peak === MULTIPART_PRESIGN_CONCURRENCY`, при этом порядок и количество частей в ответе не нарушены.
+>
+> Проверено: `pnpm --filter @lms/api test` (93/93 suites, 1380/1380 тестов), `pnpm --filter @lms/api lint`/`typecheck` — зелёные.
 
 ---
 

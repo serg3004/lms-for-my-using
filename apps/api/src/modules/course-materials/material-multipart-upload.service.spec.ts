@@ -2,14 +2,18 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { MAX_UPLOAD_FILE_SIZE_BYTES } from '../upload/public.js';
 import { UploadService } from '../upload/upload.service.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import {
+  assertMultipartPartCountWithinLimit,
   MaterialMultipartUploadService,
+  MAX_MULTIPART_PART_COUNT,
   MULTIPART_CLEANUP_BATCH_SIZE,
   MULTIPART_CLEANUP_CONCURRENCY,
   MULTIPART_PART_SIZE_BYTES,
+  MULTIPART_PRESIGN_CONCURRENCY,
 } from './material-multipart-upload.service.js';
 
 const session = {
@@ -54,6 +58,71 @@ describe('MaterialMultipartUploadService', () => {
     expect(result.parts).toHaveLength(2);
     expect(storage.createQuarantineObjectKey).toHaveBeenCalledWith('organization-a', 'material-a');
     expect(prisma.multipartUpload.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ organizationId: 'organization-a' }) }));
+  });
+
+  it('accepts a file at exactly the max multipart part count', async () => {
+    const { service, storage, prisma } = setup();
+    // The largest sizeBytes validateUploadMetadata allows also happens to be the
+    // largest that produces exactly MAX_MULTIPART_PART_COUNT parts today — that
+    // coincidence is exactly what assertMultipartPartCountWithinLimit exists to
+    // keep true on purpose rather than by accident.
+    const sizeBytes = MAX_UPLOAD_FILE_SIZE_BYTES;
+    expect(Math.ceil(sizeBytes / MULTIPART_PART_SIZE_BYTES)).toBe(MAX_MULTIPART_PART_COUNT);
+
+    const result = await service.initiate('material-a', 'organization-a', {
+      fileName: 'video.mp4', mimeType: 'video/mp4', sizeBytes,
+    });
+
+    expect(result.parts).toHaveLength(MAX_MULTIPART_PART_COUNT);
+    expect(result.parts.map((part) => part.partNumber)).toEqual(
+      Array.from({ length: MAX_MULTIPART_PART_COUNT }, (_, index) => index + 1),
+    );
+    expect(prisma.multipartUpload.create).toHaveBeenCalledTimes(1);
+    expect(storage.getMultipartPartUrl).toHaveBeenCalledTimes(MAX_MULTIPART_PART_COUNT);
+  });
+
+  it('rejects a part count over the limit before touching storage or the database', () => {
+    expect(() => assertMultipartPartCountWithinLimit(MAX_MULTIPART_PART_COUNT + 1)).toThrow(BadRequestException);
+    expect(() => assertMultipartPartCountWithinLimit(MAX_MULTIPART_PART_COUNT)).not.toThrow();
+  });
+
+  it('rejects an overflowing part count even if the upstream size limit were raised', () => {
+    // Simulates MAX_UPLOAD_FILE_SIZE_BYTES growing without a corresponding review of
+    // multipart fanout: this guard must still reject a hypothetical 500MB file
+    // regardless of what validateUploadMetadata currently allows.
+    const hypotheticalSizeBytes = 500 * 1024 * 1024;
+    const partCount = Math.ceil(hypotheticalSizeBytes / MULTIPART_PART_SIZE_BYTES);
+
+    expect(partCount).toBeGreaterThan(MAX_MULTIPART_PART_COUNT);
+    expect(() => assertMultipartPartCountWithinLimit(partCount)).toThrow(
+      `File requires ${partCount} multipart parts, exceeding the maximum of ${MAX_MULTIPART_PART_COUNT}`,
+    );
+  });
+
+  it('bounds presign concurrency across multiple batches without losing or reordering parts', async () => {
+    const { service, storage } = setup();
+    let active = 0;
+    let peak = 0;
+    (storage.getMultipartPartUrl as jest.Mock).mockImplementation(async (_key, _id, part) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await Promise.resolve();
+      active -= 1;
+      return `https://storage.test/part/${part}`;
+    });
+
+    const result = await service.initiate('material-a', 'organization-a', {
+      fileName: 'video.mp4', mimeType: 'video/mp4', sizeBytes: MAX_UPLOAD_FILE_SIZE_BYTES,
+    });
+
+    expect(peak).toBeLessThanOrEqual(MULTIPART_PRESIGN_CONCURRENCY);
+    expect(peak).toBe(MULTIPART_PRESIGN_CONCURRENCY);
+    expect(result.parts.map((part) => part.partNumber)).toEqual(
+      Array.from({ length: MAX_MULTIPART_PART_COUNT }, (_, index) => index + 1),
+    );
+    expect(result.parts.map((part) => part.url)).toEqual(
+      result.parts.map((part) => `https://storage.test/part/${part.partNumber}`),
+    );
   });
 
   it('does not reveal or complete another tenant upload', async () => {
