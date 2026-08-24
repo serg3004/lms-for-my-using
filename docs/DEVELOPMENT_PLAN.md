@@ -3772,7 +3772,7 @@ frontend quality и observability.
 
 ---
 
-## PR 232 — Enforce i18n key parity across all four locales 🔲
+## PR 232 — Enforce i18n key parity across all four locales ✅
 
 **Проблема:** текущая locale parity проверка подтверждённо контролирует `kk` относительно `ru`, но не обеспечивает аналогичный автоматический gate для `en` и `zh`.
 
@@ -3784,12 +3784,14 @@ frontend quality и observability.
 - выдавать понятный diff missing/extra keys.
 
 **Критерии готовности:**
-- [ ] `en`, `kk`, `zh` автоматически сравниваются с canonical locale;
-- [ ] пропущенный обязательный key ломает parity test;
-- [ ] nested keys проверяются;
-- [ ] fallback на `ru` покрыт test;
-- [ ] все четыре текущих locale проходят проверку;
-- [ ] i18next runtime behavior не изменено случайно.
+- [x] `en`, `kk`, `zh` автоматически сравниваются с canonical locale;
+- [x] пропущенный обязательный key ломает parity test;
+- [x] nested keys проверяются;
+- [x] fallback на `ru` покрыт test;
+- [x] все четыре текущих locale проходят проверку;
+- [x] i18next runtime behavior не изменено случайно.
+
+> **Статус (2026-08-24):** реализовано. `ru` остаётся canonical/fallback locale; parity test рекурсивно сравнивает полный набор ключей `en`, `kk`, `zh`, выводит отдельные списки missing/extra keys и проверяет runtime fallback. Каталоги синхронизированы с canonical набором ключей.
 
 ---
 

@@ -642,7 +642,10 @@
       "lessonSaveError": "无法创建课时。",
       "cancel": "取消",
       "add": "添加",
-      "delete": "删除"
+      "delete": "删除",
+      "lessonsCount_one": "{{count}} 节课",
+      "lessonsCount_few": "{{count}} 节课",
+      "lessonsCount_many": "{{count}} 节课"
     },
     "checklists": {
       "title": "检查清单",
@@ -1059,7 +1062,11 @@
     "statusBadgeUrgent": "紧急",
     "statusBadgeActive": "进行中",
     "statusBadgeDone": "已完成",
-    "typeBadgeCourse": "课程"
+    "typeBadgeCourse": "课程",
+    "authRequired": "请登录以查看任务。",
+    "courseId": "课程 ID",
+    "groupId": "群组 ID",
+    "userId": "用户 ID"
   },
   "assignmentDetail": {
     "eyebrow": "必修任务",
@@ -1189,7 +1196,11 @@
     "previousQuestion": "← 上一题",
     "nextQuestion": "下一题 →",
     "progressLabel": "测试进度",
-    "subtitleTaking": "第 {{current}}/{{total}} 题 · 及格分数 {{score}}%"
+    "subtitleTaking": "第 {{current}}/{{total}} 题 · 及格分数 {{score}}%",
+    "assessmentId": "测验 ID",
+    "authRequired": "请登录以查看测验。",
+    "courseId": "课程 ID",
+    "lessonId": "课时 ID"
   },
   "certificates": {
     "navLink": "证书",
@@ -1236,7 +1247,13 @@
     "shareBtn": "分享",
     "actionsTitle": "操作",
     "verificationTitle": "真伪验证",
-    "verificationText": "可使用唯一代码验证证书："
+    "verificationText": "可使用唯一代码验证证书：",
+    "assessmentAttemptId": "测验尝试 ID",
+    "authRequired": "请登录以查看证书。",
+    "certificateId": "证书 ID",
+    "courseId": "课程 ID",
+    "revokedAt": "撤销日期",
+    "userId": "用户 ID"
   },
   "manager": {
     "navLink": "经理",
@@ -1343,7 +1360,10 @@
       "createFirstCourse": "创建您的第一个课程",
       "studentsCount_other": "{{count}} 名学员",
       "studentsLink": "学员",
-      "editLink": "编辑"
+      "editLink": "编辑",
+      "studentsCount_one": "{{count}} 名学员",
+      "studentsCount_few": "{{count}} 名学员",
+      "studentsCount_many": "{{count}} 名学员"
     },
     "courseForm": {
       "loadError": "无法加载数据。",
@@ -1485,6 +1505,7 @@
     "approve": "通过",
     "reject": "驳回",
     "commentPlaceholder": "备注（可选）",
-    "currentResult": "当前结果"
+    "currentResult": "当前结果",
+    "sessionExpired": "会话已过期。请重新登录。"
   }
 }
