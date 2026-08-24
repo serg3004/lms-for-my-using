@@ -643,7 +643,9 @@
       "lessonSaveError": "Unable to create the lesson.",
       "cancel": "Cancel",
       "add": "Add",
-      "delete": "Delete"
+      "delete": "Delete",
+      "lessonsCount_few": "{{count}} lessons",
+      "lessonsCount_many": "{{count}} lessons"
     },
     "checklists": {
       "eyebrow": "Knowledge control",
@@ -1035,7 +1037,6 @@
     "loadError": "Unable to load assignments. Try again later.",
     "notFound": "Assignment not found.",
     "empty": "No assignments are available yet.",
-    "assignmentId": "Assignment ID",
     "courseId": "Course ID",
     "userId": "User ID",
     "groupId": "Group ID",
@@ -1049,7 +1050,23 @@
     "statusBadgeUrgent": "Urgent",
     "statusBadgeActive": "In progress",
     "statusBadgeDone": "Completed",
-    "typeBadgeCourse": "Course"
+    "typeBadgeCourse": "Course",
+    "completedAt": "Completed",
+    "courseLabel": "Course",
+    "emptyHint": "Change the search or selected filters.",
+    "filterActive": "In progress",
+    "filterAll": "All statuses",
+    "filterCompleted": "Completed",
+    "filterOverdue": "Urgent",
+    "open": "Open",
+    "searchPlaceholder": "Find assignment...",
+    "sortNearest": "Nearest due date first",
+    "statsActive": "Active assignments",
+    "statsCompleted": "Completed total",
+    "statsDueWeek": "Due this week",
+    "statsOverdue": "Overdue",
+    "subtitle": "Track deadlines and complete required learning on time.",
+    "viewResult": "Result"
   },
   "assignmentDetail": {
     "eyebrow": "Required assignment",
@@ -1344,7 +1361,9 @@
       "studentsCount_one": "{{count}} student",
       "studentsCount_other": "{{count}} students",
       "studentsLink": "Students",
-      "editLink": "Edit"
+      "editLink": "Edit",
+      "studentsCount_few": "{{count}} students",
+      "studentsCount_many": "{{count}} students"
     },
     "courseForm": {
       "loadError": "Unable to load data.",
@@ -1486,6 +1505,7 @@
     "approve": "Approve",
     "reject": "Reject",
     "commentPlaceholder": "Comment (optional)",
-    "currentResult": "Current result"
+    "currentResult": "Current result",
+    "sessionExpired": "Your session expired. Sign in again."
   }
 }
