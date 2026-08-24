@@ -33,5 +33,9 @@ export class DisabledBackgroundJobBackend implements BackgroundJobBackend {
     void options;
   }
 
+  async getOperationalStatus() {
+    return { status: 'disabled' as const, waiting: 0, active: 0, delayed: 0, failed: 0, deadLetter: 0 };
+  }
+
   async close(): Promise<void> {}
 }

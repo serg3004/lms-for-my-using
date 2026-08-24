@@ -8,6 +8,14 @@ import type {
 } from './background-jobs.types.js';
 
 export const BACKGROUND_JOB_BACKEND = Symbol('BACKGROUND_JOB_BACKEND');
+export type BackgroundJobOperationalStatus = {
+  status: 'ok' | 'disabled';
+  waiting: number;
+  active: number;
+  delayed: number;
+  failed: number;
+  deadLetter: number;
+};
 export interface BackgroundJobBackend {
   start(processor: BackgroundJobHandler): Promise<void>;
   enqueue(
@@ -20,6 +28,7 @@ export interface BackgroundJobBackend {
     data: BackgroundJobData,
     options: Required<RecurringBackgroundJobOptions>,
   ): Promise<void>;
+  getOperationalStatus(): Promise<BackgroundJobOperationalStatus>;
   close(): Promise<void>;
 }
 export function toBackgroundJob(

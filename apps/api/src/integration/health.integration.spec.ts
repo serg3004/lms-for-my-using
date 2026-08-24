@@ -8,6 +8,7 @@ import { DatabaseHealthService } from '../modules/health/database-health.service
 import { HealthController } from '../modules/health/health.controller.js';
 import { RedisHealthService } from '../modules/health/redis-health.service.js';
 import { UploadService } from '../modules/upload/upload.service.js';
+import { BACKGROUND_JOB_BACKEND } from '../modules/background-jobs/public.js';
 
 type HttpTestResponse = {
   statusCode?: number;
@@ -56,6 +57,10 @@ describe('Health readiness HTTP contract', () => {
         {
           provide: UploadService,
           useValue: { checkReadiness: () => Promise.resolve('disabled') },
+        },
+        {
+          provide: BACKGROUND_JOB_BACKEND,
+          useValue: { getOperationalStatus: () => Promise.resolve({ status: 'disabled', waiting: 0, active: 0, delayed: 0, failed: 0, deadLetter: 0 }) },
         },
       ],
     }).compile();

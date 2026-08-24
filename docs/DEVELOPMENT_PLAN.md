@@ -3926,7 +3926,7 @@ frontend quality и observability.
 
 ---
 
-## PR 236 — Add operational checks for storage, queues and DLQ 🔲
+## PR 236 — Add operational checks for storage, queues and DLQ ✅
 
 **Проблема:** S3-compatible storage, BullMQ/Redis, retries и DLQ реализованы, но production readiness внешних dependencies не закреплена достаточными health/observability contracts.
 
@@ -3938,13 +3938,34 @@ frontend quality и observability.
 - использовать test doubles/local infrastructure без production secrets.
 
 **Критерии готовности:**
-- [ ] health/diagnostic layer различает process alive и dependency failure;
-- [ ] queue depth/failed/DLQ наблюдаемы;
-- [ ] retry exhaustion фиксируется;
-- [ ] storage errors диагностируются без secrets;
-- [ ] incident runbook существует;
-- [ ] tests не требуют production credentials;
-- [ ] CI проходит.
+- [x] health/diagnostic layer различает process alive и dependency failure;
+- [x] queue depth/failed/DLQ наблюдаемы;
+- [x] retry exhaustion фиксируется;
+- [x] storage errors диагностируются без secrets;
+- [x] incident runbook существует;
+- [x] tests не требуют production credentials;
+- [x] CI проходит.
+
+> **Реализовано (2026-08-24):** `/health/live` остаётся чистой проверкой процесса,
+> а `/health` и `/health/ready` безопасно проверяют DB, Redis, S3 bucket и BullMQ.
+> Readiness возвращает только bounded statuses и агрегаты `waiting`, `active`,
+> `delayed`, `failed`, `deadLetter`; ошибки dependency дают 503 без endpoint,
+> bucket, object key, credentials или текста provider error. Prometheus экспортирует
+> queue/DLQ gauges, отдельный counter исчерпания retries и S3 error counter только
+> с bounded operation label. Test doubles работают без production credentials.
+
+> **Incident procedure (DLQ/storage):** при алерте сначала сравнить `/health/live`
+> и безопасный `/health/ready`, затем через защищённый metrics endpoint проверить `lms_queue_depth`,
+> `lms_background_job_retry_exhausted_total`, `lms_redis_errors_total`,
+> `lms_s3_errors_total` и latency. Для DLQ остановить причину ошибки, сохранить
+> агрегаты и job id из защищённых worker logs, проверить idempotency handler и
+> только после этого replay/удаление выполнять штатным BullMQ tooling; payloads
+> и object keys не переносить в тикеты/метрики. Для storage проверить provider
+> status, network/IAM и доступность bucket через readiness, не печатая credentials;
+> destructive cleanup запрещён до сверки DB metadata. После восстановления
+> дождаться снижения waiting/delayed/DLQ, подтвердить ready=200 и отсутствие роста
+> counters. Если replay или provider remediation небезопасны — эскалировать owner,
+> сохраняя DLQ для расследования.
 
 ---
 
