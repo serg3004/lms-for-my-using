@@ -1,6 +1,6 @@
 # План разработки LMS
 
-**Обновлён:** 2026-08-23 (добавлен checklist roadmap PR 217–222)
+**Обновлён:** 2026-08-24 (добавлен post-audit roadmap PR 223–238)
 **Статус:** Рабочий документ — совместная разработка Claude Code + ChatGPT
 
 ---
@@ -3548,3 +3548,373 @@ frontend quality и observability.
 - performance baseline, correlation ID, метрики, SLO и alerts работают;
 - backup восстановлен на практике, incident response проверен tabletop exercise;
 - dependency, secret, SAST и container scans являются CI gates.
+
+---
+## Фаза J — Post-audit hardening roadmap
+
+> **Цель фазы:** закрыть подтверждённые риски технического аудита 2026-08-24: целостность progress, distributed rate limiting, наблюдаемость CI/security, документационный drift, масштабируемость cleanup, migration safety, i18n/error contracts, frontend resilience, a11y и repository governance.
+>
+> **Порядок:** P0 — PR 223, 238, 224; P1 — PR 231, 232, 227, 229, 225, 226, 228, 230, 236; P2 — PR 233, 234, 235, 237.
+
+## PR 223 — Fix course-level progress race condition 🔲
+
+**Проблема:** course-level progress с `lessonId = null` создаётся через `findFirst → create`; при конкурентных запросах возможны дубликаты, а текущий compound unique с nullable `lessonId` не гарантирует требуемый DB-инвариант.
+
+**Что нужно и что будет сделано:**
+- добавить DB-level uniqueness для course-level progress, предпочтительно partial unique index по фактическому query scope;
+- перед миграцией проверить существующие данные на дубликаты и определить безопасную стратегию их устранения;
+- сделать write-path атомарным и предсказуемо обрабатывать unique conflict;
+- добавить concurrency regression test на два параллельных запроса;
+- не менять semantics lesson-level progress;
+- обновить migration/rollback документацию.
+
+**Критерии готовности:**
+- [ ] БД не допускает две course-level progress записи для одного допустимого scope;
+- [ ] два параллельных запроса не создают дубликаты;
+- [ ] lesson-level progress сохраняет текущее поведение;
+- [ ] существующие данные проверены перед применением migration;
+- [ ] migration проверена на clean CI database;
+- [ ] concurrency regression tests проходят;
+- [ ] migration apply/verification/rollback задокументированы.
+
+---
+
+## PR 224 — Harden distributed rate limiting and Redis failure behavior 🔲
+
+**Проблема:** при недоступности Redis rate limiter переходит на локальную память процесса; в multi-instance окружении каждый instance получает отдельный счётчик и эффективный лимит масштабируется с числом реплик.
+
+**Что нужно и что будет сделано:**
+- определить fail-safe policy отдельно для security-critical auth endpoints и обычного API;
+- исключить незаметный переход sensitive routes к небезопасному per-instance лимиту;
+- добавить degraded-mode logging/metrics без secrets;
+- сохранить атомарную Redis semantics в normal mode;
+- добавить tests на Redis unavailable/recovery и multi-instance assumptions;
+- документировать operational behavior.
+
+**Критерии готовности:**
+- [ ] отказ Redis не позволяет незаметно обойти sensitive rate limits через несколько API instances;
+- [ ] degraded-mode behavior явно определён;
+- [ ] login/password-reset/registration покрыты failure-mode tests;
+- [ ] факт degraded mode наблюдаем через безопасные logs/metrics;
+- [ ] normal Redis flow не регрессировал;
+- [ ] конфигурация и эксплуатационные ограничения документированы.
+
+---
+
+## PR 225 — Add dependency and static-security audit artifacts to CI 🔲
+
+**Проблема:** `pnpm audit`, security scans и code-hygiene проверки выполняются не в форме единого сохраняемого отчёта, из-за чего последующий аудит конкретного SHA зависит от доступности job logs и внешнего code search.
+
+**Что нужно и что будет сделано:**
+- сохранять machine-readable dependency audit report как CI artifact;
+- добавить контролируемый scan для `.skip`, `.todo`, `TODO`, `FIXME`, `console.log` и согласованных unsafe patterns;
+- отдельно определить политику для `any`, чтобы не вводить ложный запрет допустимых случаев;
+- разделить informational findings и blocking gates;
+- привязать artifacts к commit SHA;
+- не ослаблять Gitleaks, Trivy и CodeQL.
+
+**Критерии готовности:**
+- [ ] dependency audit report сохраняется для каждого relevant CI run;
+- [ ] HIGH/CRITICAL dependency findings видны независимо от краткости stdout;
+- [ ] code-hygiene report содержит согласованный набор patterns;
+- [ ] политика `any` формализована;
+- [ ] artifacts однозначно связаны с SHA;
+- [ ] существующие security gates не отключены;
+- [ ] CI проходит либо baseline существующих нарушений явно зафиксирован.
+
+---
+
+## PR 226 — Synchronize architecture and RBAC documentation with code 🔲
+
+**Проблема:** `docs/ARCHITECTURE_MODULE_BOUNDARIES.md` отстаёт от фактического `AppModule`, а `docs/API_RBAC_MATRIX.md` содержит внутреннее расхождение между заявленным количеством и перечисленными controllers.
+
+**Что нужно и что будет сделано:**
+- сверить архитектурный inventory с production `AppModule`;
+- добавить отсутствующие модули и их фактическую ответственность;
+- исправить RBAC matrix и числовые несоответствия;
+- не документировать функциональность, которой нет в коде;
+- добавить лёгкую consistency-проверку или генерацию inventory, если это возможно без избыточной инфраструктуры.
+
+**Критерии готовности:**
+- [ ] все production modules из `AppModule` отражены в architecture docs;
+- [ ] ответственность модулей соответствует текущему коду;
+- [ ] RBAC matrix внутренне согласована;
+- [ ] отсутствуют придуманные endpoints/modules;
+- [ ] при наличии автоматической проверки она падает на подтверждаемом drift;
+- [ ] documentation checks/CI проходят.
+
+---
+
+## PR 227 — Batch expired multipart upload cleanup 🔲
+
+**Проблема:** cleanup просроченных multipart uploads выбирает весь набор pending-expired записей и обрабатывает его последовательно без `take`/cursor/batch, что плохо масштабируется при росте данных.
+
+**Что нужно и что будет сделано:**
+- перейти на bounded batch/cursor processing;
+- использовать ограниченную concurrency только если она безопасна для storage API;
+- определить безопасный batch size и при необходимости конфигурацию;
+- сделать обработку устойчивой к ошибке отдельного multipart abort;
+- сохранить идемпотентность повторного cleanup;
+- добавить tests на большой набор, partial failures и повторный запуск.
+
+**Критерии готовности:**
+- [ ] один cleanup run не загружает неограниченное число записей;
+- [ ] batch size ограничен и документирован;
+- [ ] ошибка одной записи не повреждает обработку остальных;
+- [ ] повторный cleanup безопасен;
+- [ ] quarantine/multipart/storage flows не регрессировали;
+- [ ] unit/integration tests проходят.
+
+---
+
+## PR 228 — Add container resource limits and capacity documentation 🔲
+
+**Проблема:** production Docker Compose не задаёт явной CPU/memory resource policy; фактические Railway limits не хранятся в репозитории и должны проверяться отдельно.
+
+**Что нужно и что будет сделано:**
+- определить и добавить resource policy для production Compose services либо документировать эквивалентный поддерживаемый механизм;
+- не менять local development compose semantics без необходимости;
+- описать health/restart behavior и признаки resource exhaustion;
+- документировать минимальные/рекомендуемые ресурсы API, PostgreSQL, web, Redis/scanner;
+- добавить Railway verification checklist без выдумывания live settings.
+
+**Критерии готовности:**
+- [ ] production Compose имеет явную resource policy;
+- [ ] local development workflow не сломан;
+- [ ] health/restart behavior проверен;
+- [ ] capacity assumptions документированы;
+- [ ] Railway-only параметры явно отделены как external verification;
+- [ ] Docker/Compose validation и CI проходят.
+
+---
+
+## PR 229 — Add production migration drift and pre-deploy safety checks 🔲
+
+**Проблема:** CI проверяет migrations на чистой database, но это не подтверждает соответствие migration history реальной production DB и отсутствие drift.
+
+**Что нужно и что будет сделано:**
+- добавить безопасную read-only pre-deploy проверку Prisma migration state;
+- задокументировать действия при drift/failed migration;
+- сохранить forward-only policy, дополнив её operational safeguards;
+- описать backup/restore prerequisites;
+- не выполнять production migration или deployment автоматически этим PR.
+
+**Критерии готовности:**
+- [ ] существует воспроизводимый pre-deploy migration check;
+- [ ] drift обнаруживается до destructive deployment;
+- [ ] проверка не изменяет production data;
+- [ ] failed/drifted migration имеет documented response;
+- [ ] backup/restore prerequisites описаны;
+- [ ] clean-DB migration CI сохранён;
+- [ ] production deployment этим PR не выполняется.
+
+---
+
+## PR 230 — Publish backend coverage reports and critical-path thresholds 🔲
+
+**Проблема:** coverage запускается в CI, но фактический числовой отчёт и покрытие критичных backend paths не закреплены как легко проверяемый artifact.
+
+**Что нужно и что будет сделано:**
+- публиковать coverage summary/report как CI artifact;
+- выделить critical paths: auth/session revocation, RBAC/course access, progress, upload/multipart, background jobs;
+- зафиксировать текущий baseline до повышения thresholds;
+- вводить thresholds без искусственного снижения качества или исключения critical tests.
+
+**Критерии готовности:**
+- [ ] каждый relevant CI run публикует coverage summary;
+- [ ] report связан с commit SHA;
+- [ ] coverage critical modules видим отдельно;
+- [ ] threshold не ниже подтверждённого baseline без обоснования;
+- [ ] critical security tests не исключены незаметно;
+- [ ] CI проходит.
+
+---
+
+## PR 231 — Localize API errors through stable error codes 🔲
+
+**Проблема:** frontend поддерживает `ru/en/kk/zh`, но часть `ApiClientError` отображается через backend `error.message`; английский backend prose может попадать в неанглийский интерфейс.
+
+**Что нужно и что будет сделано:**
+- определить стабильные API error codes для пользовательских auth и согласованных API errors;
+- сохранить backend message как diagnostic detail, но не как основной перевод UI;
+- отображать frontend message по error code через i18next;
+- добавить безопасный локализованный fallback неизвестного code;
+- синхронизировать backend/frontend types и API docs без необоснованного breaking change.
+
+**Критерии готовности:**
+- [ ] invalid login отображается на выбранном locale;
+- [ ] backend prose не является primary user-facing translation;
+- [ ] stable error codes типизированы и протестированы;
+- [ ] unknown code имеет безопасный локализованный fallback;
+- [ ] `ru`, `en`, `kk`, `zh` покрыты tests;
+- [ ] backend/frontend contract tests проходят;
+- [ ] API documentation обновлена при изменении public contract.
+
+---
+
+## PR 232 — Enforce i18n key parity across all four locales 🔲
+
+**Проблема:** текущая locale parity проверка подтверждённо контролирует `kk` относительно `ru`, но не обеспечивает аналогичный автоматический gate для `en` и `zh`.
+
+**Что нужно и что будет сделано:**
+- использовать текущий canonical/fallback locale как source of truth;
+- сравнивать обязательные keys `en`, `kk`, `zh` с canonical locale;
+- поддержать nested keys;
+- отдельно протестировать runtime fallback на `ru`;
+- выдавать понятный diff missing/extra keys.
+
+**Критерии готовности:**
+- [ ] `en`, `kk`, `zh` автоматически сравниваются с canonical locale;
+- [ ] пропущенный обязательный key ломает parity test;
+- [ ] nested keys проверяются;
+- [ ] fallback на `ru` покрыт test;
+- [ ] все четыре текущих locale проходят проверку;
+- [ ] i18next runtime behavior не изменено случайно.
+
+---
+
+## PR 233 — Add request cancellation to shared frontend data loading 🔲
+
+**Проблема:** shared async data helper не применяет stale result после cleanup, но сам HTTP request не обязательно отменяется, поэтому устаревшие запросы продолжают расходовать ресурсы.
+
+**Что нужно и что будет сделано:**
+- добавить `AbortSignal` в shared data-loading/API path, где он ещё не поддержан;
+- отменять request на unmount и смене зависимостей;
+- отличать abort от пользовательской API ошибки;
+- проверить совместимость с timeout и single-flight refresh;
+- добавить tests на rapid navigation и race scenarios.
+
+**Критерии готовности:**
+- [ ] unmount отменяет поддерживаемый request;
+- [ ] смена параметров отменяет устаревший request;
+- [ ] abort не показывается пользователю как API failure;
+- [ ] timeout продолжает работать;
+- [ ] single-flight refresh не регрессировал;
+- [ ] cancellation/race tests проходят.
+
+---
+
+## PR 234 — Strengthen accessibility quality gate 🔲
+
+**Проблема:** axe E2E блокирует `critical`/`serious`, но `moderate`/`minor` findings не образуют контролируемого quality backlog и могут накапливаться незаметно.
+
+**Что нужно и что будет сделано:**
+- публиковать полный axe report по severity;
+- сохранить blocking gate для `critical`/`serious`;
+- зафиксировать baseline существующих `moderate` findings, если они есть;
+- запретить незаметное появление новых moderate violations либо ввести согласованный threshold;
+- сохранить keyboard/focus и responsive accessibility checks.
+
+**Критерии готовности:**
+- [ ] CI показывает все axe findings по severity;
+- [ ] `critical`/`serious` продолжают блокировать CI;
+- [ ] для `moderate` определён baseline или blocking policy;
+- [ ] новые workspaces подключаются к a11y matrix;
+- [ ] keyboard/focus tests сохранены;
+- [ ] responsive/zoom accessibility tests проходят.
+
+---
+
+## PR 235 — Expand frontend resilience E2E scenarios 🔲
+
+**Проблема:** timeout, refresh/retry и часть race protection реализованы, но критичные empty/offline/network failure/session-expiry/duplicate-submit сценарии не закреплены единой E2E-матрицей.
+
+**Что нужно и что будет сделано:**
+- сформировать матрицу критичных role workspaces и failure states;
+- добавить empty-state scenarios;
+- покрыть 401/403/404/429/5xx, timeout и offline/network failure;
+- проверить expired session → refresh/re-auth flow;
+- проверить duplicate submit и rapid navigation для критичных mutations;
+- использовать существующие Playwright fixtures/mocks.
+
+**Критерии готовности:**
+- [ ] critical pages имеют empty-state tests;
+- [ ] 401/403/404/429/5xx покрыты там, где применимо;
+- [ ] timeout/network failure имеют user-visible safe state;
+- [ ] expired-session lifecycle протестирован;
+- [ ] duplicate submit/race protection проверены для critical mutations;
+- [ ] нет необработанных browser errors в тестовых сценариях;
+- [ ] E2E suite стабильно проходит в CI.
+
+---
+
+## PR 236 — Add operational checks for storage, queues and DLQ 🔲
+
+**Проблема:** S3-compatible storage, BullMQ/Redis, retries и DLQ реализованы, но production readiness внешних dependencies не закреплена достаточными health/observability contracts.
+
+**Что нужно и что будет сделано:**
+- добавить безопасные health/diagnostic signals для storage и background queue;
+- наблюдать queue depth, failed jobs, DLQ и retry exhaustion;
+- диагностировать storage failures без раскрытия object keys/credentials;
+- добавить runbook для DLQ/storage incident;
+- использовать test doubles/local infrastructure без production secrets.
+
+**Критерии готовности:**
+- [ ] health/diagnostic layer различает process alive и dependency failure;
+- [ ] queue depth/failed/DLQ наблюдаемы;
+- [ ] retry exhaustion фиксируется;
+- [ ] storage errors диагностируются без secrets;
+- [ ] incident runbook существует;
+- [ ] tests не требуют production credentials;
+- [ ] CI проходит.
+
+---
+
+## PR 237 — Establish dependency upgrade policy and staged major-upgrade backlog 🔲
+
+**Проблема:** часть lockfile dependencies отстаёт от актуальных releases, включая major-version разрывы; массовое обновление Prisma, BullMQ, ioredis, Zod и других пакетов одним PR создаст трудно проверяемый compatibility risk.
+
+**Что нужно и что будет сделано:**
+- актуализировать dependency update policy;
+- отделять patch/minor updates от major migrations;
+- для каждого major upgrade создавать самостоятельный compatibility plan;
+- проверять breaking changes, schema/runtime impact и lockfile;
+- не смешивать dependency modernization с функциональными изменениями.
+
+**Критерии готовности:**
+- [ ] dependency policy документирована и соответствует pnpm monorepo;
+- [ ] patch/minor и major upgrades разделены;
+- [ ] крупные major dependencies не обновляются массово одним PR;
+- [ ] каждый major имеет отдельный compatibility/migration plan;
+- [ ] после реальных updates обязательны lint/typecheck/tests/build;
+- [ ] lockfile изменяется только вместе с обоснованным dependency update.
+
+---
+
+## PR 238 — Protect `main` and require repository quality gates 🔲
+
+**Проблема:** на момент аудита `main` не имела branch protection/required status checks, поэтому наличие CI не гарантировало его обязательное прохождение перед изменением основной ветки.
+
+**Что нужно и что будет сделано:**
+- определить стабильный список required CI/security checks;
+- документировать repository governance и contribution flow;
+- включить branch protection для `main`: PR-only changes, required checks, запрет merge при failed gate;
+- не обходить protection административными исключениями без отдельного операционного решения;
+- повторно проверить настройки через GitHub Branch API.
+
+**Критерии готовности:**
+- [ ] required checks перечислены и имеют стабильные имена;
+- [ ] обычный процесс изменения `main` идёт только через PR;
+- [ ] direct push в `main` запрещён политикой;
+- [ ] основной CI является required check;
+- [ ] согласованные security checks являются required;
+- [ ] merge невозможен при failed required check;
+- [ ] фактическая protection state повторно подтверждена через GitHub API.
+
+---
+
+## Порядок выполнения post-audit серии
+
+```text
+P0: PR 223 → PR 238 → PR 224
+P1: PR 231 → PR 232 → PR 227 → PR 229 → PR 225 → PR 226 → PR 228 → PR 230 → PR 236
+P2: PR 233 → PR 234 → PR 235 → PR 237
+```
+
+**Зависимости и rationale:**
+- PR 223 первым закрывает риск целостности данных.
+- PR 238 желательно выполнить до основной серии, чтобы следующие изменения уже проходили обязательные quality gates.
+- PR 224 закрывает multi-instance security degradation.
+- PR 231 стабилизирует пользовательский error contract до усиления locale parity в PR 232.
+- PR 229 должен предшествовать production migrations из последующих schema-changing PR.
+- PR 225 и PR 230 улучшают доказательность последующих CI-проверок.
