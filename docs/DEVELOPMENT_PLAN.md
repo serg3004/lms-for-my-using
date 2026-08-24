@@ -3657,7 +3657,7 @@ frontend quality и observability.
 
 ---
 
-## PR 227 — Batch expired multipart upload cleanup 🔲
+## PR 227 — Batch expired multipart upload cleanup ✅
 
 **Проблема:** cleanup просроченных multipart uploads выбирает весь набор pending-expired записей и обрабатывает его последовательно без `take`/cursor/batch, что плохо масштабируется при росте данных.
 
@@ -3670,12 +3670,14 @@ frontend quality и observability.
 - добавить tests на большой набор, partial failures и повторный запуск.
 
 **Критерии готовности:**
-- [ ] один cleanup run не загружает неограниченное число записей;
-- [ ] batch size ограничен и документирован;
-- [ ] ошибка одной записи не повреждает обработку остальных;
-- [ ] повторный cleanup безопасен;
-- [ ] quarantine/multipart/storage flows не регрессировали;
-- [ ] unit/integration tests проходят.
+- [x] один cleanup run не загружает неограниченное число записей;
+- [x] batch size ограничен и документирован;
+- [x] ошибка одной записи не повреждает обработку остальных;
+- [x] повторный cleanup безопасен;
+- [x] quarantine/multipart/storage flows не регрессировали;
+- [x] unit/typecheck/lint tests проходят.
+
+> **Реализовано (2026-08-24):** `cleanupExpired()` читает просроченные `pending` sessions стабильным keyset cursor по `expiresAt/id` батчами не более 100 строк и использует покрывающий query-path индекс `(status, expiresAt, id)`. Execute обрабатывает storage abort с ограниченной concurrency 5 через `Promise.allSettled`: ошибка отдельной записи учитывается в `failedCount`, не останавливает остальные uploads и оставляет неуспешную session в `pending` для безопасного следующего запуска. Результат больше не накапливает неограниченный массив upload IDs. Unit tests покрывают набор больше двух батчей, cursor/take, concurrency, partial provider failure и успешный повторный cleanup.
 
 ---
 

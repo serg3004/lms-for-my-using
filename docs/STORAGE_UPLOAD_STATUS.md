@@ -69,7 +69,7 @@ Current storage architecture — S3-compatible и provider-neutral.
 | --- | --- | --- |
 | Buffered material upload | `implemented` | 8 MiB server-buffer limit, metadata/content/archive validation, quarantine и scan dispatch. |
 | Multipart initiate/complete/abort | `implemented` | DB-backed tenant/material-owned session, 8 MiB parts, 24-hour expiry, ordered ETags и actual-size check. |
-| Expired multipart cleanup | `implemented` | Dry-run по умолчанию; execute aborts S3 upload and marks DB session aborted. |
+| Expired multipart cleanup | `implemented` | Dry-run по умолчанию; keyset pagination читает по 100 sessions, execute aborts с concurrency 5 и marks DB session aborted; отдельная ошибка остаётся pending для retry и не останавливает batch. |
 | Malware scan dispatch/callback | `implemented` | Authenticated callback, bounded dispatch timeout, fail-closed rejection and clean promotion. |
 | Orphan object cleanup | `implemented` | Сверяет normal/quarantine objects с DB references; dry-run по умолчанию. |
 | Automatic cleanup scheduling | `missing` | Команды существуют, но repository не создаёт cron/scheduler. Это deployment task. |

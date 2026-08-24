@@ -8,6 +8,8 @@ import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import type { CompleteMultipartUploadInput, InitiateMultipartUploadInput } from './multipart-upload.schemas.js';
 
 export const MULTIPART_PART_SIZE_BYTES = 8 * 1024 * 1024;
+export const MULTIPART_CLEANUP_BATCH_SIZE = 100;
+export const MULTIPART_CLEANUP_CONCURRENCY = 5;
 const UPLOAD_TTL_MS = 24 * 60 * 60_000;
 
 @Injectable()
@@ -86,14 +88,37 @@ export class MaterialMultipartUploadService {
   }
 
   async cleanupExpired(dryRun = true, now = new Date()) {
-    const sessions = await this.prisma.multipartUpload.findMany({ where: { status: 'pending', expiresAt: { lte: now } } });
-    if (!dryRun) {
-      for (const session of sessions) {
-        await this.storage.abortMultipartUpload(session.objectKey, session.uploadId);
-        await this.prisma.multipartUpload.update({ where: { id: session.id }, data: { status: 'aborted' } });
+    let cursor: string | undefined;
+    let count = 0;
+    let failedCount = 0;
+
+    do {
+      const sessions = await this.prisma.multipartUpload.findMany({
+        where: { status: 'pending', expiresAt: { lte: now } },
+        orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
+        take: MULTIPART_CLEANUP_BATCH_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: { id: true, objectKey: true, uploadId: true },
+      });
+      if (sessions.length === 0) break;
+
+      count += sessions.length;
+      cursor = sessions.at(-1)?.id;
+      if (!dryRun) {
+        for (let offset = 0; offset < sessions.length; offset += MULTIPART_CLEANUP_CONCURRENCY) {
+          const results = await Promise.allSettled(
+            sessions.slice(offset, offset + MULTIPART_CLEANUP_CONCURRENCY).map(async (session) => {
+              await this.storage.abortMultipartUpload(session.objectKey, session.uploadId);
+              await this.prisma.multipartUpload.update({ where: { id: session.id }, data: { status: 'aborted' } });
+            }),
+          );
+          failedCount += results.filter((result) => result.status === 'rejected').length;
+        }
       }
-    }
-    return { dryRun, count: sessions.length, uploadIds: sessions.map((session) => session.uploadId) };
+      if (sessions.length < MULTIPART_CLEANUP_BATCH_SIZE) break;
+    } while (cursor);
+
+    return { dryRun, count, failedCount };
   }
 
   private async findOwned(uploadId: string, materialId: string, organizationId: string) {
