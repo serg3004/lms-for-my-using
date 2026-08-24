@@ -4729,7 +4729,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 264 — Add a real pixel-baseline visual regression gate 🔲
+## PR 264 — Add a real pixel-baseline visual regression gate ✅
 
 **Проблема:** существующая responsive visual suite создаёт screenshots и CI artifacts, но наличие screenshot artifact само по себе не проверяет visual regression: `toHaveScreenshot`/pixel-diff assertion в репозитории не используется нигде. Без pixel-baseline assertion непреднамеренное изменение UI может не привести к падению теста.
 
@@ -4744,14 +4744,27 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не принимать новые baseline snapshots автоматически при failed CI.
 
 **Критерии готовности:**
-- [ ] реальное изменение контролируемых UI pixels вызывает test failure;
-- [ ] baseline snapshots находятся под version control;
-- [ ] baseline update является явным reviewable изменением;
-- [ ] dynamic content стабилизирован или обоснованно masked;
-- [ ] ключевые desktop states покрыты;
-- [ ] ключевые mobile states покрыты;
-- [ ] существующие responsive/layout assertions сохранены;
-- [ ] visual test suite стабильно проходит в CI.
+- [x] реальное изменение контролируемых UI pixels вызывает test failure;
+- [x] baseline snapshots находятся под version control;
+- [x] baseline update является явным reviewable изменением;
+- [x] dynamic content стабилизирован или обоснованно masked;
+- [x] ключевые desktop states покрыты;
+- [x] ключевые mobile states покрыты;
+- [x] существующие responsive/layout assertions сохранены;
+- [x] visual test suite стабильно проходит в CI.
+
+> **Статус (2026-08-24):** `expectVisualMatch()` в `apps/e2e/visual-tests/responsive-matrix.spec.ts`
+> заменил прежний "screenshot + attach" на настоящий `expect(page).toHaveScreenshot()` pixel-diff
+> для всех 7 сценариев × 6 viewport (320–1440px) плюс отдельный zoom-тест — итого 43 assertions.
+> `playwright.visual.config.ts` задаёт `maxDiffPixelRatio: 0.01` с отключёнными animations/caret;
+> baseline PNG закоммичены в `responsive-matrix.spec.ts-snapshots/` (Linux-специфичные имена файлов,
+> совпадает с `ubuntu-latest` CI runner). Существующие `expectNoPageOverflow`/`expectTouchTargets`
+> проверки не тронуты. Мокнутые данные во всех покрытых страницах статичны (фиксированные даты
+> в диапазоне 2026/2099) — dynamic-content masking не потребовался, помечено явно, а не молча.
+> Механизм проверен вручную: временная CSS-регрессия (`background: red`) вызвала честный failure
+> с diff 72% пикселей, затем откачена перед коммитом. Процедура контролируемого обновления baseline
+> задокументирована в `apps/e2e/visual-tests/README.md`; CI (`pnpm test:visual`) не запускает
+> `--update-snapshots`, поэтому новые baseline не могут появиться автоматически при failed run.
 
 ---
 

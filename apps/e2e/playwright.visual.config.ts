@@ -9,6 +9,17 @@ export default defineConfig({
   forbidOnly: ci,
   retries: 0,
   reporter: ci ? [['line']] : [['list']],
+  // Baselines are generated on Linux (matches the ubuntu-latest CI runner) and committed
+  // under visual-tests/*-snapshots/ -- see visual-tests/README.md for the update procedure.
+  // A different OS renders fonts/anti-aliasing differently, so baselines are not portable
+  // across platforms; Playwright's default snapshot naming already suffixes them by platform.
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.01,
+      animations: 'disabled',
+      caret: 'hide',
+    },
+  },
   use: {
     ...devices['Desktop Chrome'],
     baseURL: 'http://127.0.0.1:5173',
