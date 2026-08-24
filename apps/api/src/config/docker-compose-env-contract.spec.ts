@@ -32,11 +32,24 @@ function writeEnvFile(dir: string, entries: Record<string, string>): string {
   return path;
 }
 
+// `docker compose` resolves `${VAR}` from the shell environment when the variable is
+// absent from --env-file (shell env takes precedence over the file). CI jobs (see
+// ci.yml) export DATABASE_URL for the whole job, so without stripping it here a test
+// that omits DATABASE_URL from its temp .env would still "see" the CI job's value and
+// fail to reproduce the missing-variable scenario it's meant to test.
+const MANAGED_ENV_KEYS = ['POSTGRES_PASSWORD', 'DATABASE_URL', 'JWT_SECRET', 'METRICS_BEARER_TOKEN', 'REDIS_URL'] as const;
+
+function isolatedShellEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of MANAGED_ENV_KEYS) delete env[key];
+  return env;
+}
+
 function resolveComposeApiEnvironment(envFilePath: string): Record<string, string> {
   const output = execFileSync(
     'docker',
     ['compose', '-f', composeFile, '--env-file', envFilePath, 'config', '--format', 'json'],
-    { encoding: 'utf8' },
+    { encoding: 'utf8', env: isolatedShellEnv() },
   );
   const config = JSON.parse(output) as { services: { api: { environment: Record<string, string> } } };
   return config.services.api.environment;
