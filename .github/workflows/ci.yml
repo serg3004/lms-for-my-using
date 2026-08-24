@@ -90,6 +90,9 @@ jobs:
       - name: Staging smoke script tests
         run: bash scripts/smoke-staging.test.sh
 
+      - name: Production migration check tests
+        run: pnpm migration:production:check:test
+
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
 
