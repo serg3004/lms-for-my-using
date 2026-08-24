@@ -4623,7 +4623,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 263 — Add password-reset delivery readiness and synchronize its documentation 🔲
+## PR 263 — Add password-reset delivery readiness and synchronize its documentation ✅
 
 **Проблема:** password reset flow реализован (PR 136), однако delivery provider является deployment-dependent. При отсутствии configured `PASSWORD_RESET_DELIVERY_URL` reset request сохраняет anti-enumeration response `{ accepted: true }`, но пользователь фактически не получает reset link.
 
@@ -4644,16 +4644,28 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить `LIVE-VERIFY` для фактической production configuration provider, если она не подтверждена внешними данными.
 
 **Критерии готовности:**
-- [ ] production configuration явно описывает reset delivery provider;
-- [ ] система отличает application readiness от отсутствия configured delivery;
-- [ ] публичный request сохраняет anti-enumeration semantics;
-- [ ] reset token никогда не попадает в logs/metrics/errors;
-- [ ] provider failure обрабатывается предсказуемо и наблюдаемо без sensitive data;
-- [ ] configured delivery flow покрыт integration test;
-- [ ] unconfigured provider покрыт negative test;
-- [ ] provider error/timeout покрыт test;
-- [ ] `docs/TODO_VERIFY.md` и `docs/PASSWORD_RESET_STATUS.md` не противоречат друг другу;
-- [ ] неподтверждённая live production provider configuration остаётся `LIVE-VERIFY`.
+- [x] production configuration явно описывает reset delivery provider;
+- [x] система отличает application readiness от отсутствия configured delivery;
+- [x] публичный request сохраняет anti-enumeration semantics;
+- [x] reset token никогда не попадает в logs/metrics/errors;
+- [x] provider failure обрабатывается предсказуемо и наблюдаемо без sensitive data;
+- [x] configured delivery flow покрыт integration test;
+- [x] unconfigured provider покрыт negative test;
+- [x] provider error/timeout покрыт test;
+- [x] `docs/TODO_VERIFY.md` и `docs/PASSWORD_RESET_STATUS.md` не противоречат друг другу;
+- [x] неподтверждённая live production provider configuration остаётся `LIVE-VERIFY`.
+
+> **Факт (2026-08-24):** `apps/api/src/modules/auth/password-reset.ts` — `PasswordResetDelivery.checkReadiness()` возвращает `'ok'`/`'disabled'` в зависимости от наличия `PASSWORD_RESET_DELIVERY_URL`; отсутствие provider — валидный операционный режим (anti-enumeration `{ accepted: true }` сохраняется всегда), поэтому **не** заведён в pass/fail-контракт `/health/ready` — метод существует для будущей/операционной интеграции без дублирования проверки env var.
+>
+> `send()` классифицирует сбои доставки на три ограниченных значения (`http_error`/`timeout`/`network_error`, через выделенный `PasswordResetDeliveryHttpError` и проверку `DOMException.name === 'TimeoutError'`, без парсинга `error.message`, который у fetch/`TypeError` может содержать endpoint URL) и инкрементит новую Prometheus-метрику `lms_password_reset_delivery_errors_total{reason}` (`apps/api/src/common/observability/metrics.ts`) + safe warning-лог без токена/URL. `AuthService.requestPasswordReset()` по-прежнему проглатывает любую ошибку доставки (`.catch(() => undefined)`) — публичный ответ и его timing не зависят от исхода доставки.
+>
+> Добавлен `apps/api/src/modules/auth/password-reset.spec.ts` (8 тестов, ранее выделенного теста на `PasswordResetDelivery` не было вообще — покрытие шло только косвенно через мок в `auth.password-reset.spec.ts`): readiness ok/disabled, unconfigured-provider no-op без вызова fetch, configured-provider успешная доставка с bearer-токеном, классификация `http_error`/`timeout`/`network_error`, явная проверка что токен никогда не попадает в текст брошенной ошибки. Provider вызовы тестируются через мок `globalThis.fetch` (тот же паттерн, что уже использован для malware-scanner в PR 125/`material-malware-scan.service.spec.ts`) — не через реальный HTTP-сервер, консистентно с существующей практикой тестирования исходящих webhook-вызовов в этом кодбейзе.
+>
+> `PASSWORD_RESET_DELIVERY_URL`/`PASSWORD_RESET_DELIVERY_TOKEN` задокументированы в `.env.production.example` и `infra/docker/.env.example` (ранее отсутствовали в обоих) и прокинуты через `infra/docker/docker-compose.prod.yml` (тот же паттерн, что PR 260 использовал для остальных optional-переменных — falsy-safe передача через `${VAR:-}`, `docker compose config` проверен).
+>
+> `docs/PASSWORD_RESET_STATUS.md` дополнен разделом про readiness/observability. `docs/TODO_VERIFY.md` TV-031 обновлён: readiness/degraded-mode contract, который раньше только анонсировался ссылкой на этот PR, теперь описан как закрытый; фактическая production-конфигурация провайдера остаётся `LIVE-VERIFY`.
+>
+> Проверено: `pnpm --filter @lms/api test` (94/94 suites, 1388/1388 тестов), `pnpm --filter @lms/api lint`/`typecheck` — зелёные.
 
 ---
 

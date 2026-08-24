@@ -66,6 +66,13 @@ export const jobs = new Counter({
   registers: [metricsRegistry],
 });
 
+export const passwordResetDeliveryErrors = new Counter({
+  name: 'lms_password_reset_delivery_errors_total',
+  help: 'Password reset delivery failures by bounded reason. Never labeled with tokens, URLs, or emails.',
+  labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+
 export function normalizeHttpRoute(url: string): string {
   const path = url.split('?')[0] || '/';
   return path

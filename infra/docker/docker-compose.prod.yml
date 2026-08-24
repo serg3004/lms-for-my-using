@@ -70,6 +70,10 @@ services:
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-}
       MALWARE_SCANNER_URL: ${MALWARE_SCANNER_URL:-}
       MALWARE_SCANNER_CALLBACK_SECRET: ${MALWARE_SCANNER_CALLBACK_SECRET:-}
+      # Optional. Without it, password reset requests still return the generic
+      # anti-enumeration response, but no reset email is delivered.
+      PASSWORD_RESET_DELIVERY_URL: ${PASSWORD_RESET_DELIVERY_URL:-}
+      PASSWORD_RESET_DELIVERY_TOKEN: ${PASSWORD_RESET_DELIVERY_TOKEN:-}
     networks:
       - lms_internal
     depends_on:
