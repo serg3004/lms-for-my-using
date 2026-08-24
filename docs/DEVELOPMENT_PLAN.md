@@ -3796,7 +3796,7 @@ frontend quality и observability.
 
 ---
 
-## PR 230 — Publish backend coverage reports and critical-path thresholds 🔲
+## PR 230 — Publish backend coverage reports and critical-path thresholds ✅
 
 **Проблема:** coverage запускается в CI, но фактический числовой отчёт и покрытие критичных backend paths не закреплены как легко проверяемый artifact.
 
@@ -3807,12 +3807,29 @@ frontend quality и observability.
 - вводить thresholds без искусственного снижения качества или исключения critical tests.
 
 **Критерии готовности:**
-- [ ] каждый relevant CI run публикует coverage summary;
-- [ ] report связан с commit SHA;
-- [ ] coverage critical modules видим отдельно;
-- [ ] threshold не ниже подтверждённого baseline без обоснования;
-- [ ] critical security tests не исключены незаметно;
-- [ ] CI проходит.
+- [x] каждый relevant CI run публикует coverage summary;
+- [x] report связан с commit SHA;
+- [x] coverage critical modules видим отдельно;
+- [x] threshold не ниже подтверждённого baseline без обоснования;
+- [x] critical security tests не исключены незаметно;
+- [x] CI проходит.
+
+> **Реализовано:** API coverage теперь всегда создаёт text, JSON summary и LCOV; CI
+> загружает отчёты API/Web/shared единым artifact с commit SHA, run ID и attempt в имени,
+> после чего отдельно сохраняет исходный coverage gate. Для auth/session revocation,
+> RBAC/course access, progress, upload/multipart и background jobs формируется отдельный
+> `critical-path-summary.json`. Проверка fail-closed требует наличия файлов каждой группы и
+> не допускает падения statements/branches/functions/lines ниже числового baseline,
+> подтверждённого полным API coverage run (92 suites, 1369 tests).
+> Coverage test step сохраняет исходный exit code и сообщение об ошибке; artifact step с
+> `if: always()` выполняется после него без `continue-on-error` и без вторичного shell-gate,
+> поэтому регрессия не маскируется общим сообщением `test failure = success`.
+> Числовой baseline откалиброван по фактическому GitHub Actions окружению (Node 22,
+> PostgreSQL service и CI `DATABASE_URL`): 93 suites / 1376 tests. Это важно для V8 coverage:
+> локальный Node 24 без CI database env использует отличающиеся instrumentation totals и
+> выполняет 92 suites, поэтому его проценты нельзя подставлять как CI threshold. Для
+> `rbac-course-access` CI baseline равен 90.52/75.45/77.55/90.52%, для `background-jobs` —
+> 59.46/64.15/56.25/59.46% (statements/branches/functions/lines); остальные группы совпали.
 
 ---
 

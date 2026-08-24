@@ -21,6 +21,7 @@ module.exports = {
     '!src/scripts/**',
   ],
   coverageProvider: 'v8',
+  coverageReporters: ['text', 'text-summary', 'json-summary', 'lcov'],
   coverageThreshold: {
     global: {
       statements: 60,
