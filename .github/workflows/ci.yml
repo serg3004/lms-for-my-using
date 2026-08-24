@@ -121,6 +121,9 @@ jobs:
       - name: Production migration check tests
         run: pnpm migration:production:check:test
 
+      - name: Production Compose resource policy tests
+        run: pnpm compose:resources:test
+
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
 

@@ -3701,7 +3701,7 @@ frontend quality и observability.
 
 ---
 
-## PR 228 — Add container resource limits and capacity documentation 🔲
+## PR 228 — Add container resource limits and capacity documentation ✅
 
 **Проблема:** production Docker Compose не задаёт явной CPU/memory resource policy; фактические Railway limits не хранятся в репозитории и должны проверяться отдельно.
 
@@ -3713,12 +3713,39 @@ frontend quality и observability.
 - добавить Railway verification checklist без выдумывания live settings.
 
 **Критерии готовности:**
-- [ ] production Compose имеет явную resource policy;
-- [ ] local development workflow не сломан;
-- [ ] health/restart behavior проверен;
-- [ ] capacity assumptions документированы;
-- [ ] Railway-only параметры явно отделены как external verification;
-- [ ] Docker/Compose validation и CI проходят.
+- [x] production Compose имеет явную resource policy;
+- [x] local development workflow не сломан;
+- [x] health/restart behavior проверен;
+- [x] capacity assumptions документированы;
+- [x] Railway-only параметры явно отделены как external verification;
+- [x] Docker/Compose validation и CI проходят.
+
+> **Реализовано (2026-08-24):** production Compose ограничивает PostgreSQL и API
+> одним CPU и 1 GiB памяти на container, Web — 0.5 CPU и 256 MiB; reservations
+> соответственно составляют 0.25 CPU/256 MiB, 0.25 CPU/256 MiB и 0.10 CPU/64 MiB.
+> Это стартовый профиль для одного API replica и пилотной нагрузки, а не измеренная
+> максимальная capacity. Перед ростом трафика профиль необходимо подтвердить staged
+> load/stress-прогонами из `docs/LOAD_TESTING_BASELINE.md`; признаки исчерпания —
+> throttling CPU, приближение RSS к limit, OOM kill/restart, failed healthcheck,
+> рост p95/error rate, PostgreSQL connections/slow queries и Redis/scanner queue/latency.
+>
+> Все три production services сохраняют `restart: unless-stopped`; image-level
+> healthchecks проверяют API readiness и Web, Compose healthcheck PostgreSQL блокирует
+> старт API до готовности БД. Resource reservations не гарантируют capacity вне
+> orchestrator, который их поддерживает, а memory limit может привести к OOM restart.
+> Local/test Compose не получают production limits. CI разворачивает оба Compose
+> файла через `docker compose config` и проверяет limits/reservations, restart policy,
+> PostgreSQL health dependency и отсутствие limits в local services.
+>
+> **Capacity / external services:** для отдельного Redis начать с 0.25 CPU/256 MiB,
+> для malware scanner — с 1 CPU/1 GiB, затем настраивать по telemetry и нагрузочным
+> измерениям; object storage является внешним S3-compatible сервисом. Эти значения,
+> как и Compose profile выше, являются planning assumptions, не live evidence.
+> Railway CPU/RAM, replicas, restart policy, healthcheck timeout и ресурсы managed
+> PostgreSQL/Redis/scanner задаются вне этого Compose и остаются `LIVE-VERIFY`:
+> перед deploy сверить каждый service в Railway dashboard/API, записать фактические
+> limits и replica count в deployment evidence, проверить `/api/v1/health/ready`,
+> telemetry/OOM/restarts и не заявлять соответствие репозиторию без этой проверки.
 
 ---
 
