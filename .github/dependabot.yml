@@ -13,13 +13,19 @@ updates:
           - "*"
 
   # npm/pnpm monorepo workspace
-  # Keep all workspace manifests in one update config so Dependabot updates
-  # the root pnpm-lock.yaml together with package.json changes.
+  # Single root directory only: Dependabot auto-discovers every workspace
+  # package.json (root, apps/api, apps/web, packages/shared) from the pnpm
+  # workspace root and updates the shared pnpm-lock.yaml as one unit. Listing
+  # apps/api or apps/web as separate `directories` entries makes Dependabot
+  # try to scan a workspace from inside a subdirectory, which pnpm workspaces
+  # don't support ("Dependabot should only update from the root workspace") —
+  # every one of those per-directory update runs failed with
+  # misconfigured_tooling for any package whose only manifest entry lives in
+  # a subdirectory (e.g. turbo, vite, vitest, @axe-core/playwright), which is
+  # why "npm_and_yarn ... Update #<id>" workflow runs kept failing in Actions
+  # while the weekly grouped PRs still got created from the root scan alone.
   - package-ecosystem: npm
-    directories:
-      - /
-      - /apps/api
-      - /apps/web
+    directory: /
     open-pull-requests-limit: 2
     schedule:
       interval: weekly
