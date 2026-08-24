@@ -312,17 +312,20 @@ async function executeApiRequest(path: string, init: RequestInit, signal: AbortS
     ...init,
     credentials: init.credentials ?? 'same-origin',
     headers: buildHeaders(init),
-    signal: init.signal ?? signal,
+    signal,
   });
 }
 
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, timeoutController.signal])
+    : timeoutController.signal;
   const refreshCountAtRequestStart = successfulRefreshCount;
 
   try {
-    let response = await executeApiRequest(path, init, controller.signal);
+    let response = await executeApiRequest(path, init, signal);
 
     if (response.status === 401 && path !== '/auth/login' && path !== '/auth/refresh') {
       const refreshed = successfulRefreshCount > refreshCountAtRequestStart
@@ -330,7 +333,7 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
         : await refreshAccessToken();
 
       if (refreshed) {
-        response = await executeApiRequest(path, init, controller.signal);
+        response = await executeApiRequest(path, init, signal);
       }
     }
 
@@ -351,6 +354,7 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (init.signal?.aborted) throw error;
       throw new ApiClientError('Request timed out', 408);
     }
     throw error;

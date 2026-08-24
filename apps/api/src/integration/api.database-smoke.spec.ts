@@ -151,11 +151,32 @@ describe('API database smoke', () => {
   it('serves health, authenticates a real user, and returns the current user', async () => {
     const healthResponse = await fetch(`${baseUrl}/api/v1/health`);
     expect(healthResponse.status).toBe(200);
-    expect(unwrapResponse(await readJson<{ status: string; db: string; redis: string; storage: string }>(healthResponse))).toEqual({
+    expect(unwrapResponse(await readJson<{
+      status: string;
+      db: string;
+      redis: string;
+      storage: string;
+      queues: {
+        status: string;
+        waiting: number;
+        active: number;
+        delayed: number;
+        failed: number;
+        deadLetter: number;
+      };
+    }>(healthResponse))).toEqual({
       status: 'ok',
       db: 'ok',
       redis: 'disabled',
       storage: 'disabled',
+      queues: {
+        status: 'disabled',
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        failed: 0,
+        deadLetter: 0,
+      },
     });
 
     const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {

@@ -52,6 +52,13 @@ export const s3Duration = new Histogram({
   registers: [metricsRegistry],
 });
 
+export const s3Errors = new Counter({
+  name: 'lms_s3_errors_total',
+  help: 'S3 failures by bounded operation name; bucket names and object keys are never labels.',
+  labelNames: ['operation'] as const,
+  registers: [metricsRegistry],
+});
+
 export const queueDepth = new Gauge({
   name: 'lms_queue_depth',
   help: 'Jobs waiting or delayed in the background queue.',
@@ -70,6 +77,13 @@ export const passwordResetDeliveryErrors = new Counter({
   name: 'lms_password_reset_delivery_errors_total',
   help: 'Password reset delivery failures by bounded reason. Never labeled with tokens, URLs, or emails.',
   labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+
+export const retryExhausted = new Counter({
+  name: 'lms_background_job_retry_exhausted_total',
+  help: 'Background jobs that exhausted all configured attempts.',
+  labelNames: ['name'] as const,
   registers: [metricsRegistry],
 });
 

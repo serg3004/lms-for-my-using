@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type DependencyList } from 'r
 import { toAsyncDataErrorState, toLoadedState, toLoadingState, type AsyncDataMessages, type AsyncDataState } from './asyncData.js';
 
 export function useAsyncData<T>(
-  load: () => Promise<T>,
+  load: (signal: AbortSignal) => Promise<T>,
   deps: DependencyList,
   messages: AsyncDataMessages,
 ): { state: AsyncDataState<T>; reload: () => Promise<void>; mutate: (updater: (data: T) => T) => void } {
@@ -12,17 +12,17 @@ export function useAsyncData<T>(
 
   const run = useCallback(async () => {
     cancelPrevious.current();
-    let cancelled = false;
+    const controller = new AbortController();
     cancelPrevious.current = () => {
-      cancelled = true;
+      controller.abort();
     };
 
     setState(toLoadingState());
     try {
-      const data = await load();
-      if (!cancelled) setState(toLoadedState(data));
+      const data = await load(controller.signal);
+      if (!controller.signal.aborted) setState(toLoadedState(data));
     } catch (error) {
-      if (!cancelled) setState(toAsyncDataErrorState(error, messages));
+      if (!controller.signal.aborted) setState(toAsyncDataErrorState(error, messages));
     }
     // deps is caller-controlled, mirroring the existing useAdminUsers.ts convention.
     // eslint-disable-next-line react-hooks/exhaustive-deps

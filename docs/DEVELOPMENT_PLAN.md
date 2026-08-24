@@ -3878,7 +3878,7 @@ frontend quality и observability.
 
 ---
 
-## PR 233 — Add request cancellation to shared frontend data loading 🔲
+## PR 233 — Add request cancellation to shared frontend data loading ✅
 
 **Проблема:** shared async data helper не применяет stale result после cleanup, но сам HTTP request не обязательно отменяется, поэтому устаревшие запросы продолжают расходовать ресурсы.
 
@@ -3890,12 +3890,14 @@ frontend quality и observability.
 - добавить tests на rapid navigation и race scenarios.
 
 **Критерии готовности:**
-- [ ] unmount отменяет поддерживаемый request;
-- [ ] смена параметров отменяет устаревший request;
-- [ ] abort не показывается пользователю как API failure;
-- [ ] timeout продолжает работать;
-- [ ] single-flight refresh не регрессировал;
-- [ ] cancellation/race tests проходят.
+- [x] unmount отменяет поддерживаемый request;
+- [x] смена параметров отменяет устаревший request;
+- [x] abort не показывается пользователю как API failure;
+- [x] timeout продолжает работать;
+- [x] single-flight refresh не регрессировал;
+- [x] cancellation/race tests проходят.
+
+> **Статус (2026-08-24):** реализовано. `useAsyncData` создаёт отдельный `AbortController` для каждого запуска, передаёт loader-у `AbortSignal` и отменяет предыдущую загрузку при cleanup/reload. `apiRequest` объединяет caller signal с внутренним timeout signal: пользовательская отмена остаётся `AbortError`, а timeout по-прежнему нормализуется в `ApiClientError` со статусом `408`. Shared single-flight refresh не привязан к signal отдельного consumer-а. Unit tests покрывают unmount, replacement race, caller abort, timeout и concurrent refresh.
 
 ---
 
@@ -3943,7 +3945,7 @@ frontend quality и observability.
 
 ---
 
-## PR 236 — Add operational checks for storage, queues and DLQ 🔲
+## PR 236 — Add operational checks for storage, queues and DLQ ✅
 
 **Проблема:** S3-compatible storage, BullMQ/Redis, retries и DLQ реализованы, но production readiness внешних dependencies не закреплена достаточными health/observability contracts.
 
@@ -3955,17 +3957,38 @@ frontend quality и observability.
 - использовать test doubles/local infrastructure без production secrets.
 
 **Критерии готовности:**
-- [ ] health/diagnostic layer различает process alive и dependency failure;
-- [ ] queue depth/failed/DLQ наблюдаемы;
-- [ ] retry exhaustion фиксируется;
-- [ ] storage errors диагностируются без secrets;
-- [ ] incident runbook существует;
-- [ ] tests не требуют production credentials;
-- [ ] CI проходит.
+- [x] health/diagnostic layer различает process alive и dependency failure;
+- [x] queue depth/failed/DLQ наблюдаемы;
+- [x] retry exhaustion фиксируется;
+- [x] storage errors диагностируются без secrets;
+- [x] incident runbook существует;
+- [x] tests не требуют production credentials;
+- [x] CI проходит.
+
+> **Реализовано (2026-08-24):** `/health/live` остаётся чистой проверкой процесса,
+> а `/health` и `/health/ready` безопасно проверяют DB, Redis, S3 bucket и BullMQ.
+> Readiness возвращает только bounded statuses и агрегаты `waiting`, `active`,
+> `delayed`, `failed`, `deadLetter`; ошибки dependency дают 503 без endpoint,
+> bucket, object key, credentials или текста provider error. Prometheus экспортирует
+> queue/DLQ gauges, отдельный counter исчерпания retries и S3 error counter только
+> с bounded operation label. Test doubles работают без production credentials.
+
+> **Incident procedure (DLQ/storage):** при алерте сначала сравнить `/health/live`
+> и безопасный `/health/ready`, затем через защищённый metrics endpoint проверить `lms_queue_depth`,
+> `lms_background_job_retry_exhausted_total`, `lms_redis_errors_total`,
+> `lms_s3_errors_total` и latency. Для DLQ остановить причину ошибки, сохранить
+> агрегаты и job id из защищённых worker logs, проверить idempotency handler и
+> только после этого replay/удаление выполнять штатным BullMQ tooling; payloads
+> и object keys не переносить в тикеты/метрики. Для storage проверить provider
+> status, network/IAM и доступность bucket через readiness, не печатая credentials;
+> destructive cleanup запрещён до сверки DB metadata. После восстановления
+> дождаться снижения waiting/delayed/DLQ, подтвердить ready=200 и отсутствие роста
+> counters. Если replay или provider remediation небезопасны — эскалировать owner,
+> сохраняя DLQ для расследования.
 
 ---
 
-## PR 237 — Establish dependency upgrade policy and staged major-upgrade backlog 🔲
+## PR 237 — Establish dependency upgrade policy and staged major-upgrade backlog ✅
 
 **Проблема:** часть lockfile dependencies отстаёт от актуальных releases, включая major-version разрывы; массовое обновление Prisma, BullMQ, ioredis, Zod и других пакетов одним PR создаст трудно проверяемый compatibility risk.
 
@@ -3977,12 +4000,39 @@ frontend quality и observability.
 - не смешивать dependency modernization с функциональными изменениями.
 
 **Критерии готовности:**
-- [ ] dependency policy документирована и соответствует pnpm monorepo;
-- [ ] patch/minor и major upgrades разделены;
-- [ ] крупные major dependencies не обновляются массово одним PR;
-- [ ] каждый major имеет отдельный compatibility/migration plan;
-- [ ] после реальных updates обязательны lint/typecheck/tests/build;
-- [ ] lockfile изменяется только вместе с обоснованным dependency update.
+- [x] dependency policy документирована и соответствует pnpm monorepo;
+- [x] patch/minor и major upgrades разделены;
+- [x] крупные major dependencies не обновляются массово одним PR;
+- [x] каждый major имеет отдельный compatibility/migration plan;
+- [x] после реальных updates обязательны lint/typecheck/tests/build;
+- [x] lockfile изменяется только вместе с обоснованным dependency update.
+
+**Реализация и staged backlog (2026-08-24):**
+
+- `docs/DEPENDENCY_UPDATE_POLICY.md` является активной policy: routine patch/minor
+  lane отделён от major-migration lane, а Dependabot рассматривается только как
+  источник предложений, не как разрешение на массовое обновление;
+- каждый major выполняется отдельным PR для одного compatibility domain, после
+  baseline на старой версии, review upstream migration guide и с независимым
+  rollback; функциональные изменения и несвязанный lockfile churn запрещены;
+- общий обязательный gate после реального update: `pnpm lint`, `pnpm typecheck`,
+  `pnpm test`, `pnpm build`; domain-specific проверки добавляются по таблице ниже;
+- lockfile генерируется только root `pnpm@9.15.0`, проверяется frozen install и
+  изменяется вместе с manifest либо с явным обоснованием lockfile-only изменения.
+
+| Этап | Compatibility domain | Статус | Обязательный compatibility plan перед update |
+|---|---|---|---|
+| 1 | Prisma CLI + `@prisma/client` | ⬜ backlog | Зафиксировать target major; изучить migration guide, schema/generated client и DB migration impact; выполнить generate, migration checks и API integration tests; исключить destructive rollback. |
+| 2 | Zod | ⬜ backlog | Зафиксировать target major; инвентаризировать parse/error semantics, transforms/defaults/refinements и API validation boundaries; выполнить focused contract/validation tests. |
+| 3 | BullMQ + ioredis | ⬜ backlog | Независимо подтвердить, нужен ли major каждому пакету и совместимы ли targets; проверить connection/retry defaults, delayed/retry/DLQ, worker idempotency и Redis operational/integration checks. |
+| 4 | NestJS platform + tooling | ⬜ backlog | Зафиксировать согласованный framework target; проверить adapters, decorators, OpenAPI, auth/exceptions и API integration suite. |
+| 5 | React/React DOM + router/i18n adapters | ⬜ backlog | Проверить peer ranges, rendering/routing/i18n; выполнить web build, browser E2E и accessibility gates. |
+| 6 | Vite/Vitest + TypeScript/ESLint toolchain | ⬜ backlog | Разделить runtime build/test toolchain и compiler/lint changes, если их нельзя безопасно проверить вместе; проверить Node support, configs/plugins, coverage, все workspace checks. |
+
+Статус PR 237 означает завершение policy/backlog, а не самих dependency upgrades.
+Для каждого этапа сначала создаётся отдельный migration issue/PR с подтверждённым
+target major и ссылкой на upstream guide. Этапы выполняются последовательно; если
+нового major нет, результат проверки фиксируется без искусственного update.
 
 ---
 
