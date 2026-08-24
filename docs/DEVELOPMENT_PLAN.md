@@ -1199,7 +1199,7 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 133 — Demo content cleanup ⚠️
+## PR 133 — Demo content cleanup ✅
 
 - Исправить идемпотентность seed (upsert вместо create там, где нужно)
 - Заменить все `example.com` ссылки на корректные demo-заглушки
@@ -1211,7 +1211,7 @@ Assessments, certificates и upload являются критичными для
 - Grep по `seed.mjs` не находит `example.com`
 - Staging содержит актуальные demo-данные
 
-**Факт:** во всех `createMany` в `seed.mjs` уже стоял/добавлен `skipDuplicates: true` — двойной прогон seed на локальной БД (чистой и уже заполненной) подтверждён идемпотентным (без роста числа записей). `https://example.com/...` в `courseMaterial.fileUrl` заменены на `https://cdn.internal.test/...` (grep по `example.com` в `seed.mjs` — пусто). Названия/описания курса, уроков, материалов и ассессмента (вопросы/варианты ответов) переведены на русский — проверено на чистой локальной БД. Дополнительно расширено демо-наполнение: второй курс в статусе `draft` (2 урока), ещё 2 learner'а в команде менеджера (всего 3), два чек-листа (один published с заявкой learner'а на ревью, один draft), два уведомления (`assessment_passed`/`assessment_failed`, единственные типы с UI-шаблоном). Тесты `admin-demo-seed.spec.ts` (14/14) зелёные. **Не сделано:** применение seed на Railway staging — отдельное живое действие, не входящее в этот код-чендж, нужно выполнить вручную/по отдельному запросу.
+**Факт:** во всех `createMany` в `seed.mjs` уже стоял/добавлен `skipDuplicates: true` — двойной прогон seed на локальной БД (чистой и уже заполненной) подтверждён идемпотентным (без роста числа записей). `https://example.com/...` в `courseMaterial.fileUrl` заменены на `https://cdn.internal.test/...` (grep по `example.com` в `seed.mjs` — пусто). Названия/описания курса, уроков, материалов и ассессмента (вопросы/варианты ответов) переведены на русский — проверено на чистой локальной БД. Дополнительно расширено демо-наполнение: второй курс в статусе `draft` (2 урока), ещё 2 learner'а в команде менеджера (всего 3), два чек-листа (один published с заявкой learner'а на ревью, один draft), два уведомления (`assessment_passed`/`assessment_failed`, единственные типы с UI-шаблоном). Тесты `admin-demo-seed.spec.ts` (14/14) зелёные. **Хвост закрыт:** прогон `admin-demo-seed.ts` в режиме `--dry-run` выполнен на реальном Railway-окружении (единственное окружение проекта называется `production`, но фактически это публичный demo-сайт — см. CLAUDE.md) через временный one-shot сервис, собранный из `apps/api/Dockerfile` c `DATABASE_URL` из реального Postgres-инстанса. Результат: `{"mode":"dry-run","status":"complete","missing":[]}` — все демо-данные (organization, admin, learner, course, 3 урока, assignment, assessment с 5 вопросами) уже присутствуют, `--apply` не потребовался. Временный сервис после проверки удалён.
 
 ---
 
