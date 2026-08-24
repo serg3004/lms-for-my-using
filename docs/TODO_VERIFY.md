@@ -69,11 +69,12 @@
 | ID | Решение | Decision | Implementation | Live | Комментарий |
 |---|---|---|---|---|---|
 | TV-019 | Tenant key: `organizationId` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Organization scoping — current tenant model. |
-| TV-020 | Separate departments table in MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Current groups/team model используется вместо отдельного departments domain. |
+| TV-020 | Separate departments table in MVP | `OWNER-DECISION` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Ранее `OUT-OF-MVP` (current groups/team model вместо отдельного departments domain). Пересмотр инициирован: подготовлен детальный 16-PR план (`docs/ORG_STRUCTURE_PR_PLAN.md`, PR 266–281) для полноценного `Department`-домена с deревом, несколькими руководителями, membership-историей и т.д. Требуется явное решение владельца по объёму — см. TV-056. |
 | TV-021 | Lesson content storage model | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Current schema/lesson implementation является authority; не проектировать blocks table без новой задачи. |
 | TV-022 | Soft-delete policy | `ACCEPTED` | `PARTIAL` | `NOT-REQUIRED` | Policy domain-specific, не универсальна. Current soft-deleted slug entities освобождают unique slug через tombstone suffix. |
 | TV-023 | PostgreSQL RLS required for MVP | `OUT-OF-MVP` | `NOT-REQUIRED` | `NOT-REQUIRED` | Backend organization scope является current boundary; RLS можно рассматривать post-MVP. |
 | TV-024 | General append-only Audit Log | `OWNER-DECISION` | `PARTIAL` | `NOT-REQUIRED` | Есть domain-specific audit/security events, но общего audit module нет. Решить `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`. |
+| TV-056 | Org structure overhaul scope (PR 266–281) | `OWNER-DECISION` | `NOT-IMPLEMENTED` | `NOT-REQUIRED` | Детальный план подготовлен в `docs/ORG_STRUCTURE_PR_PLAN.md`: произвольное дерево `Department`, несколько structural/functional руководителей с наследованием, `DepartmentMembership` с историей, `Position`-справочник, matrix `ReportingLine`, промышленный импорт. Это полноценный HRIS-модуль, а не инкремент — нужно явное решение владельца, весь объём (16 PR) или урезанный набор (например, только PR 266–274 без Position/ReportingLine/import). Единственное исключение — **PR 266** (закрытие privilege escalation в `ManagerGroup`, подтверждено по коду: `GroupsService.addManager()` не проверяет object-level scope) можно и нужно делать независимо от этого решения, это security-фикс существующей функциональности, а не новый scope. |
 
 ---
 
@@ -159,6 +160,7 @@
 3. **TV-047 — Notifications:** `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
 4. **TV-048 — Email provider:** provider и delivery requirements.
 5. **TV-054 — Backups/PITR:** обязательная policy и acceptance evidence.
+6. **TV-020 / TV-056 — Org structure overhaul:** полный объём (PR 266–281, `docs/ORG_STRUCTURE_PR_PLAN.md`) или урезанный набор; PR 266 (security-фикс) не ждёт этого решения.
 
 Staging topology или production provider также требуют owner/ops задачи, если требуется изменить current documented architecture; их live state нельзя угадывать.
 
@@ -181,3 +183,4 @@ Staging topology или production provider также требуют owner/ops 
 - `docs/PROJECT_SOURCE_OF_TRUTH.md`
 - `docs/MVP_SCOPE_LOCK.md`
 - `docs/DOCUMENTATION_AUDIT.md` — evidence аудита, не current decision authority.
+- `docs/ORG_STRUCTURE_PR_PLAN.md` — детальный план PR 266–281 (org structure overhaul), см. TV-020/TV-056.
