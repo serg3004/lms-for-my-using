@@ -4104,7 +4104,9 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > на порядок блоков, primary action и overdue presentation.
 > После WCAG AA проверки визуальное ослабление KPI выполнено без `opacity` на
 > контейнере: muted background, отсутствие тени и меньший размер значения сохраняют
-> нормативный контраст текста для browser accessibility baseline.
+> нормативный контраст текста. Targeted browser baseline
+> `WCAG AA browser baseline › learner workspace has an accessible rendered state`
+> повторно проверен в Chromium с реальными PostgreSQL migrations/demo seed и проходит.
 
 ---
 ## PR 240 — Learner Mobile Navigation 🔲
