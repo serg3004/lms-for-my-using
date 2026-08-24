@@ -3797,6 +3797,12 @@ frontend quality и observability.
 > Coverage test step сохраняет исходный exit code и сообщение об ошибке; artifact step с
 > `if: always()` выполняется после него без `continue-on-error` и без вторичного shell-gate,
 > поэтому регрессия не маскируется общим сообщением `test failure = success`.
+> Числовой baseline откалиброван по фактическому GitHub Actions окружению (Node 22,
+> PostgreSQL service и CI `DATABASE_URL`): 93 suites / 1376 tests. Это важно для V8 coverage:
+> локальный Node 24 без CI database env использует отличающиеся instrumentation totals и
+> выполняет 92 suites, поэтому его проценты нельзя подставлять как CI threshold. Для
+> `rbac-course-access` CI baseline равен 90.52/75.45/77.55/90.52%, для `background-jobs` —
+> 59.46/64.15/56.25/59.46% (statements/branches/functions/lines); остальные группы совпали.
 
 ---
 

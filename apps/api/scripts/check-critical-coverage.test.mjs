@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildCriticalPathReport, criticalPaths, thresholdFailures } from './check-critical-coverage.mjs';
+import {
+  buildCriticalPathReport,
+  coverageProfile,
+  criticalPaths,
+  thresholdFailures,
+} from './check-critical-coverage.mjs';
 
 const metric = (covered, total = 100) => ({ covered, total, skipped: 0, pct: covered });
 const entry = (covered = 100) => ({
@@ -28,4 +33,16 @@ test('aggregates every declared critical path and detects regression', () => {
 
 test('fails closed when a critical path stops matching collected source', () => {
   assert.throws(() => buildCriticalPathReport({}), /No coverage files matched critical path/);
+});
+
+test('selects the baseline profile from the CI environment', () => {
+  assert.equal(coverageProfile, process.env.CI === 'true' ? 'ci' : 'local');
+  assert.equal(
+    criticalPaths['rbac-course-access'].baseline.statements,
+    coverageProfile === 'ci' ? 90.52 : 91.05,
+  );
+  assert.equal(
+    criticalPaths['background-jobs'].baseline.functions,
+    coverageProfile === 'ci' ? 56.25 : 44.44,
+  );
 });
