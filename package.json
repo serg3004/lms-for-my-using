@@ -13,6 +13,8 @@
     "test": "turbo test",
     "test:e2e": "playwright test --config apps/e2e/playwright.config.ts",
     "test:visual": "playwright test --config apps/e2e/playwright.visual.config.ts",
+    "agent:preflight": "node scripts/agent-preflight.mjs",
+    "agent:preflight:test": "node --test scripts/agent-preflight.test.mjs",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
     "security:artifacts:test": "node --test scripts/security-audit-artifacts.test.mjs",
     "security:hygiene": "node scripts/generate-code-hygiene-report.mjs",

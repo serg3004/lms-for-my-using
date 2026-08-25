@@ -100,6 +100,9 @@ jobs:
       - name: Validate repository governance policy
         run: pnpm security:branch-protection:test
 
+      - name: Agent preflight tests
+        run: pnpm agent:preflight:test
+
       - name: Security artifact tests
         run: pnpm security:artifacts:test
 
