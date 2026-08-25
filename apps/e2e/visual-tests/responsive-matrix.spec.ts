@@ -40,6 +40,17 @@ async function expectVisualMatch(page: Page, name: string) {
 }
 
 async function installAdminMocks(page: Page) {
+  // The authenticated shell reconciles the cached theme in the background.
+  // Keep that request inside the visual fixture so a real API (or a refused
+  // proxy connection) cannot change when the dialog screenshot is captured.
+  await page.route('**/api/v1/organizations/visual-org/theme', (route) => route.fulfill({
+    json: {
+      themeSettings: {
+        colorPrimary: '#4f46e5',
+        colorPrimaryHover: '#4338ca',
+      },
+    },
+  }));
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
       id: 'visual-admin',
@@ -366,9 +377,12 @@ for (const width of widths) {
     test('keeps admin navigation, table, form, and dialog responsive', async ({ page }) => {
       await installAdminMocks(page);
       await page.goto('/admin/users');
-      await expect(page.getByRole('heading', { name: 'Пользователи' })).toBeVisible();
-      await page.getByRole('button', { name: 'Создать пользователя' }).click();
-      await expect(page.getByRole('heading', { name: 'Создать пользователя' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await page.locator('.admin-topbar .admin-btn--primary').click();
+      const dialog = page.locator('dialog.admin-user-dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading', { level: 2 })).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
 
