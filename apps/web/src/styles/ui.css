@@ -914,7 +914,6 @@
   transition: opacity 0.15s, background 0.15s, border-color 0.15s;
   white-space: nowrap;
   text-decoration: none;
-  min-height: 44px;
 }
 
 .ds-button:disabled {
@@ -925,7 +924,6 @@
 .ds-button--sm {
   padding: 0.3125rem 0.75rem;
   font-size: var(--text-xs);
-  min-height: 44px;
 }
 
 .ds-button--primary {
@@ -1999,8 +1997,8 @@
 }
 
 .ds-data-table__expand {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   font-size: var(--text-lg);
 }

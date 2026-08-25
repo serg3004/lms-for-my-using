@@ -4586,7 +4586,8 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > `:focus-visible`, таблицы — column semantics и доступные sort/selection/details,
 > pagination — именованный navigation landmark и live page status. Dialog и Menu
 > поддерживают Escape, начальный focus, keyboard menu navigation и возврат focus;
-> Button, menu items и table details controls имеют target не менее 44×44 px.
+> На touch viewport Button, menu items и table details controls имеют target не
+> менее 44×44 px без изменения desktop density и visual baselines.
 > Feedback-компоненты сохраняют текст, semantic roles и live regions, поэтому
 > success/error состояния не зависят только от цвета. Контракты покрыты shared UI
 > tests, а общий browser axe gate по-прежнему принадлежит PR 234.
