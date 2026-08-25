@@ -4449,7 +4449,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > формируется сервером из ограниченных top-N выборок и не влияет на aggregate значения.
 
 ---
-## PR 251 — Learner Dashboard Summary API 🔲
+## PR 251 — Learner Dashboard Summary API ✅
 
 **Проблема:** `LearnerHomePage` загружает несколько collections и дополнительно lessons для нескольких courses, создавая fan-out запросов и неоднозначное поведение при partial failure.
 
@@ -4461,12 +4461,25 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - определить безопасное поведение при partial data problems.
 
 **Критерии готовности:**
-- [ ] dashboard не выполняет N дополнительных lesson requests;
-- [ ] next lesson/action определяется единообразно;
-- [ ] ошибка одного источника не превращается в фиктивные `0 lessons`;
-- [ ] loading/error contract однозначен;
-- [ ] старые course/lesson endpoints не ломаются;
-- [ ] количество network requests уменьшено и проверено.
+- [x] dashboard не выполняет N дополнительных lesson requests;
+- [x] next lesson/action определяется единообразно;
+- [x] ошибка одного источника не превращается в фиктивные `0 lessons`;
+- [x] loading/error contract однозначен;
+- [x] старые course/lesson endpoints не ломаются;
+- [x] количество network requests уменьшено и проверено.
+
+> **Реализовано (2026-08-25):** добавлен `GET /learner-dashboard` (новый модуль
+> `learner-dashboard`), который одним authenticated-запросом возвращает
+> coursesCount/pendingAssignmentsCount/availableAssessmentsCount/certificatesCount,
+> top-3 continue-learning courses (completed/total lessons считаются
+> database-side через `lesson.groupBy`, без per-course `listLessons` вызовов),
+> upcoming deadlines и recent activity. `LearnerHomePage` теперь делает 2 запроса
+> (`getCurrentUser` + `getLearnerDashboardSummary`) вместо прежних до 8
+> (5 collections + до 3 `listLessons(courseId)`). Endpoint self-scoped по
+> `currentUser.id`/`organizationId`; частичный сбой всего запроса не может
+> тихо превратиться в `0 lessons` для отдельного курса, как это было при
+> `listLessons(courseId).catch(() => [])`. Существующие `/courses`, `/lessons`,
+> `/assignments`, `/progress`, `/certificates`, `/assessments` не изменены.
 
 ---
 ## PR 252 — Instructor Course Summary Metrics 🔲

@@ -45,6 +45,9 @@ token flows. All other protected endpoints use `AuthGuard` and `RolesGuard`.
 | Theme settings — read | ✓ | ✓ | ✓ |  | ✓ |
 | Theme settings — write | ✓ |  |  |  |  |
 | Manager team summary — read | ✓ | ✓ |  |  |  |
+| Reports — summary (`reportsRead`) | ✓ | ✓ |  |  |  |
+| Reports — admin dashboard aggregate (admin-only) | ✓ |  |  |  |  |
+| Learner dashboard (`/learner-dashboard`) — read | ✓ | ✓ | ✓ |  | ✓ |
 | Checklists — read/create | ✓ | ✓* | ✓ |  |  |
 | Checklist instances — read | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Checklist instances — create (assign) | ✓ | ✓ | ✓ |  |  |
