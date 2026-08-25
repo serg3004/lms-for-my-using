@@ -4316,7 +4316,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > **Реализовано (2026-08-25):** в shared UI добавлен единый feedback contract (`InlineFeedback` и live-region `Toast`), доступный `ConfirmDialog`, а также типизированные `Select` и `Textarea` с label/hint/error связями. Общий `Menu` реализует ARIA menu semantics, закрытие по Escape/outside click, циклическую навигацию Arrow Up/Down, Home/End и возврат focus на trigger; account switcher переведён на этот primitive. Компоненты используют существующие semantic design tokens, не добавляя UI framework, и покрыты shared UI regression tests.
 
 ---
-## PR 247 — Усиление DataTable для operational screens 🔲
+## PR 247 — Усиление DataTable для operational screens ✅
 
 **Проблема:** текущий `DataTable` покрывает простой список, но manager/admin workflows требуют большей data density и действий над данными.
 
@@ -4329,13 +4329,21 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить обратную совместимость существующих usages.
 
 **Критерии готовности:**
-- [ ] существующие DataTable usages не ломаются;
-- [ ] sorting включается только на явно поддержанных колонках;
-- [ ] есть compact/dense variant;
-- [ ] row selection поддерживает batch actions;
-- [ ] mobile variant сохраняет primary information без перегруженного horizontal scroll;
-- [ ] keyboard/focus states проверены;
-- [ ] component API типизирован.
+- [x] существующие DataTable usages не ломаются;
+- [x] sorting включается только на явно поддержанных колонках;
+- [x] есть compact/dense variant;
+- [x] row selection поддерживает batch actions;
+- [x] mobile variant сохраняет primary information без перегруженного horizontal scroll;
+- [x] keyboard/focus states проверены;
+- [x] component API типизирован.
+
+> **Реализовано (2026-08-25):** обратно совместимый generic `DataTable<T>` получил
+> opt-in controlled contracts для sorting, row selection с batch-action slot и expandable
+> rows, варианты плотности `default`/`compact`/`dense`, а также единые loading/empty states.
+> Приоритеты колонок `primary`/`secondary`/`tertiary` позволяют operational screens
+> сохранять основную информацию на mobile без обязательного широкого horizontal scroll.
+> Интерактивные controls имеют semantic table markup, доступные имена, `aria-sort`,
+> `aria-expanded` и видимые keyboard focus states; существующие usages не требуют изменений.
 
 ---
 ## PR 248 — Manager Reports 🔲
