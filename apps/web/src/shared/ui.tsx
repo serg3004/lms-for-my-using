@@ -331,42 +331,191 @@ export type Column<T> = {
   key: string;
   label: string;
   render: (row: T) => ReactNode;
+  sortable?: boolean;
+  priority?: 'primary' | 'secondary' | 'tertiary';
 };
 
-type DataTableProps<T> = {
+export type DataTableSort = {
+  key: string;
+  direction: 'ascending' | 'descending';
+};
+
+export type DataTableSelection<T> = {
+  selectedKeys: ReadonlySet<string>;
+  onChange: (selectedKeys: Set<string>) => void;
+  isRowSelectable?: (row: T) => boolean;
+  selectAllLabel?: string;
+  rowLabel?: (row: T) => string;
+};
+
+export type DataTableExpansion<T> = {
+  expandedKeys: ReadonlySet<string>;
+  onChange: (expandedKeys: Set<string>) => void;
+  render: (row: T) => ReactNode;
+  expandLabel?: (row: T) => string;
+  collapseLabel?: (row: T) => string;
+};
+
+export type DataTableProps<T> = {
   label: string;
   columns: Column<T>[];
   rows: T[];
   keyExtractor: (row: T) => string;
   emptyMessage?: string;
+  loading?: boolean;
+  loadingMessage?: string;
+  density?: 'default' | 'compact' | 'dense';
+  sort?: DataTableSort;
+  onSortChange?: (sort: DataTableSort) => void;
+  selection?: DataTableSelection<T>;
+  batchActions?: ReactNode | ((selectedRows: T[]) => ReactNode);
+  expansion?: DataTableExpansion<T>;
 };
 
-export function DataTable<T>({ label, columns, rows, keyExtractor, emptyMessage = 'No items.' }: DataTableProps<T>) {
+export function DataTable<T>({
+  label,
+  columns,
+  rows,
+  keyExtractor,
+  emptyMessage = 'No items.',
+  loading = false,
+  loadingMessage = 'Loading…',
+  density = 'default',
+  sort,
+  onSortChange,
+  selection,
+  batchActions,
+  expansion,
+}: DataTableProps<T>) {
+  if (loading) {
+    return <PageState message={loadingMessage} variant="loading" />;
+  }
+
   if (rows.length === 0) {
     return <EmptyState message={emptyMessage} />;
   }
 
+  const selectableRows = selection ? rows.filter((row) => selection.isRowSelectable?.(row) !== false) : [];
+  const selectedRows = selection ? rows.filter((row) => selection.selectedKeys.has(keyExtractor(row))) : [];
+  const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selection?.selectedKeys.has(keyExtractor(row)));
+  const columnSpan = columns.length + (selection ? 1 : 0) + (expansion ? 1 : 0);
+
+  function updateSelection(key: string, selected: boolean) {
+    if (!selection) return;
+    const next = new Set(selection.selectedKeys);
+    if (selected) next.add(key);
+    else next.delete(key);
+    selection.onChange(next);
+  }
+
+  function updateExpansion(key: string, expanded: boolean) {
+    if (!expansion) return;
+    const next = new Set(expansion.expandedKeys);
+    if (expanded) next.add(key);
+    else next.delete(key);
+    expansion.onChange(next);
+  }
+
   return (
-    <TableWrap>
-      <table aria-label={label}>
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.key}>{col.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={keyExtractor(row)}>
+    <div className={`ds-data-table ds-data-table--${density}`}>
+      {selection && batchActions && selectedRows.length > 0 ? (
+        <div className="ds-data-table__batch-actions" role="region" aria-label={`${selectedRows.length} selected`}>
+          <span aria-live="polite">{selectedRows.length} selected</span>
+          {typeof batchActions === 'function' ? batchActions(selectedRows) : batchActions}
+        </div>
+      ) : null}
+      <TableWrap>
+        <table aria-label={label}>
+          <thead>
+            <tr>
+              {selection ? (
+                <th className="ds-data-table__control" scope="col">
+                  <input
+                    aria-label={selection.selectAllLabel ?? 'Select all rows'}
+                    checked={allSelected}
+                    onChange={(event) => {
+                      const next = new Set(selection.selectedKeys);
+                      selectableRows.forEach((row) => {
+                        const key = keyExtractor(row);
+                        if (event.currentTarget.checked) next.add(key);
+                        else next.delete(key);
+                      });
+                      selection.onChange(next);
+                    }}
+                    type="checkbox"
+                  />
+                </th>
+              ) : null}
+              {expansion ? (
+                <th className="ds-data-table__control" scope="col">
+                  <span className="ui-visually-hidden">Details</span>
+                </th>
+              ) : null}
               {columns.map((col) => (
-                <td key={col.key}>{col.render(row)}</td>
+                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-priority={col.priority} key={col.key}>
+                  {col.sortable ? (
+                    <button
+                      className="ds-data-table__sort"
+                      onClick={() => onSortChange?.({
+                        key: col.key,
+                        direction: sort?.key === col.key && sort.direction === 'ascending' ? 'descending' : 'ascending',
+                      })}
+                      type="button"
+                    >
+                      {col.label}
+                      <span aria-hidden="true" className="ds-data-table__sort-icon">
+                        {sort?.key === col.key ? (sort.direction === 'ascending' ? '↑' : '↓') : '↕'}
+                      </span>
+                    </button>
+                  ) : col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const key = keyExtractor(row);
+              const selectable = selection?.isRowSelectable?.(row) !== false;
+              const expanded = expansion?.expandedKeys.has(key) ?? false;
+              return [
+                <tr key={key}>
+                  {selection ? (
+                    <td className="ds-data-table__control">
+                      <input
+                        aria-label={selection.rowLabel?.(row) ?? `Select row ${key}`}
+                        checked={selection.selectedKeys.has(key)}
+                        disabled={!selectable}
+                        onChange={(event) => updateSelection(key, event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                    </td>
+                  ) : null}
+                  {expansion ? (
+                    <td className="ds-data-table__control">
+                      <button
+                        aria-expanded={expanded}
+                        aria-label={expanded ? expansion.collapseLabel?.(row) ?? `Collapse row ${key}` : expansion.expandLabel?.(row) ?? `Expand row ${key}`}
+                        className="ds-data-table__expand"
+                        onClick={() => updateExpansion(key, !expanded)}
+                        type="button"
+                      >
+                        {expanded ? '−' : '+'}
+                      </button>
+                    </td>
+                  ) : null}
+                  {columns.map((col) => <td data-priority={col.priority} key={col.key}>{col.render(row)}</td>)}
+                </tr>,
+                expanded ? (
+                  <tr className="ds-data-table__expanded" key={`${key}-expanded`}>
+                    <td colSpan={columnSpan}>{expansion?.render(row)}</td>
+                  </tr>
+                ) : null,
+              ];
+            })}
+          </tbody>
+        </table>
+      </TableWrap>
+    </div>
   );
 }
 

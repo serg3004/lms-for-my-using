@@ -219,6 +219,70 @@ describe('design system — DataTable', () => {
 
     expect(html).toContain('No items.');
   });
+
+  it('renders opt-in sorting, density and responsive column priorities', () => {
+    const operationalColumns = [
+      { ...columns[0], sortable: true, priority: 'primary' as const },
+      { ...columns[1], priority: 'secondary' as const },
+    ];
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={operationalColumns}
+        density="dense"
+        keyExtractor={(row) => row.id}
+        label="Assessment results"
+        onSortChange={vi.fn()}
+        rows={[{ id: '1', name: 'Alice', score: 90 }]}
+        sort={{ key: 'name', direction: 'ascending' }}
+      />,
+    );
+
+    expect(html).toContain('ds-data-table--dense');
+    expect(html).toContain('aria-sort="ascending"');
+    expect(html).toContain('data-priority="primary"');
+    expect(html).toContain('data-priority="secondary"');
+    expect(html).toContain('ds-data-table__sort');
+  });
+
+  it('renders controlled selection, batch actions and expanded row content', () => {
+    const rows = [{ id: '1', name: 'Alice', score: 90 }, { id: '2', name: 'Bob', score: 75 }];
+    const html = renderToStaticMarkup(
+      <DataTable
+        batchActions={(selected) => <button type="button">Archive {selected.length}</button>}
+        columns={columns}
+        expansion={{
+          expandedKeys: new Set(['1']),
+          onChange: vi.fn(),
+          render: (row) => <p>Details for {row.name}</p>,
+        }}
+        keyExtractor={(row) => row.id}
+        label="Assessment results"
+        rows={rows}
+        selection={{
+          selectedKeys: new Set(['1']),
+          onChange: vi.fn(),
+          rowLabel: (row) => `Select ${row.name}`,
+        }}
+      />,
+    );
+
+    expect(html).toContain('aria-label="1 selected"');
+    expect(html).toContain('Archive 1');
+    expect(html).toContain('aria-label="Select Alice"');
+    expect(html).toContain('aria-expanded="true"');
+    expect(html).toContain('Details for Alice');
+    expect(html).toContain('colSpan="4"');
+  });
+
+  it('uses the shared loading state instead of rendering stale rows', () => {
+    const html = renderToStaticMarkup(
+      <DataTable label="Assessment results" columns={columns} rows={[{ id: '1', name: 'Alice', score: 90 }]} keyExtractor={(row) => row.id} loading loadingMessage="Loading results" />,
+    );
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Loading results');
+    expect(html).not.toContain('<table');
+  });
 });
 
 describe('design system — Toolbar', () => {

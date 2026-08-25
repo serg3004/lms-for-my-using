@@ -1891,6 +1891,87 @@
   background: var(--color-surface-muted);
 }
 
+.ds-data-table--compact th,
+.ds-data-table--compact td {
+  padding-block: 10px;
+}
+
+.ds-data-table--dense th,
+.ds-data-table--dense td {
+  padding: 6px 10px;
+}
+
+.ds-data-table__batch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--color-surface-muted);
+}
+
+.ds-data-table__batch-actions + .admin-table-wrap {
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.ds-data-table__control {
+  width: 44px;
+  text-align: center;
+}
+
+.ds-data-table__control input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.ds-data-table__sort,
+.ds-data-table__expand {
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ds-data-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  margin: -4px;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+.ds-data-table__sort-icon {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ds-data-table__expand {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-lg);
+}
+
+.ds-data-table__sort:focus-visible,
+.ds-data-table__expand:focus-visible,
+.ds-data-table__control input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.ds-data-table__expanded > td {
+  background: var(--color-surface-muted);
+}
+
 .td-title {
   font-weight: var(--fw-semibold);
   color: var(--color-text);
@@ -1923,8 +2004,17 @@
     flex-direction: column;
   }
 
-  .admin-table-wrap table {
+  .admin-table-wrap table:not([aria-label]) {
     min-width: 640px;
+  }
+
+  .ds-data-table [data-priority='secondary'],
+  .ds-data-table [data-priority='tertiary'] {
+    display: none;
+  }
+
+  .ds-data-table .admin-table-wrap table {
+    min-width: 0;
   }
 
   .edit-layout {
