@@ -472,6 +472,18 @@ test('DEBUG dump learner-home layout metrics', async ({ page }) => {
     const grid = document.querySelector('.stats-grid');
     const gridRows = grid ? new Set(Array.from(grid.children).map((c) => Math.round(c.getBoundingClientRect().top))).size : null;
     const main = document.querySelector('main');
+    const children = main
+      ? Array.from(main.children).map((el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            tag: el.tagName,
+            class: el.className || null,
+            top: Math.round(r.top),
+            height: Math.round(r.height),
+            outerHtmlStart: el.outerHTML.slice(0, 200),
+          };
+        })
+      : [];
     return {
       innerWidth: window.innerWidth,
       innerHeight: window.innerHeight,
@@ -482,6 +494,7 @@ test('DEBUG dump learner-home layout metrics', async ({ page }) => {
       hasVerticalScrollbar: document.documentElement.scrollHeight > document.documentElement.clientHeight,
       devicePixelRatio: window.devicePixelRatio,
       mainRect: main ? { height: Math.round(main.getBoundingClientRect().height) } : null,
+      mainChildren: children,
       statsGrid: rectOf('.stats-grid'),
       statsGridRows: gridRows,
       h1: rectOf('h1'),
