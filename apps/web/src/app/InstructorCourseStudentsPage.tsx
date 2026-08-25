@@ -105,15 +105,15 @@ type InstructorCourseStudentsPageProps = {
 };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
+  primarySoft: 'var(--color-accent-muted)',
 };
 
 export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStudentsPageProps) {
@@ -211,7 +211,7 @@ export function InstructorCourseStudentsPage({ courseId }: InstructorCourseStude
         </thead>
         <tbody>
           {filteredStudents.map((row) => (
-            <tr key={row.userId} style={{ borderTop: '1px solid #e5e7eb' }}>
+            <tr key={row.userId} style={{ borderTop: '1px solid var(--color-border)' }}>
               <td style={{ padding: '0.5rem' }}>{row.name}</td>
               <td style={{ padding: '0.5rem' }}>{row.email}</td>
               <td style={{ padding: '0.5rem' }}>
