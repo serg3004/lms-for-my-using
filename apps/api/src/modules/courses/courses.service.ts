@@ -54,6 +54,55 @@ export class CoursesService {
     return { items, page, pageSize, total };
   }
 
+  async listCourseSummaries(organizationId: string, page: number, pageSize: number, instructorId?: string) {
+    const result = await this.listCourses(organizationId, page, pageSize, instructorId);
+    const courseIds = result.items.map((course) => course.id);
+    if (courseIds.length === 0) return result;
+
+    const [lessonCounts, learnerProgress] = await Promise.all([
+      this.prisma.lesson.groupBy({
+        by: ['courseId'],
+        where: { organizationId, courseId: { in: courseIds }, deletedAt: null, status: 'published' },
+        _count: { _all: true },
+      }),
+      this.prisma.progress.groupBy({
+        by: ['courseId', 'userId', 'status'],
+        where: {
+          organizationId,
+          courseId: { in: courseIds },
+          deletedAt: null,
+          lessonId: { not: null },
+          lesson: { deletedAt: null, status: 'published' },
+        },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const lessonsByCourse = new Map(lessonCounts.map((row) => [row.courseId, row._count._all]));
+    const learnersByCourse = new Map<string, Map<string, number>>();
+    for (const row of learnerProgress) {
+      const learners = learnersByCourse.get(row.courseId) ?? new Map<string, number>();
+      if (!learners.has(row.userId)) learners.set(row.userId, 0);
+      if (row.status === completedProgressStatus) learners.set(row.userId, (learners.get(row.userId) ?? 0) + row._count._all);
+      learnersByCourse.set(row.courseId, learners);
+    }
+
+    return {
+      ...result,
+      items: result.items.map((course) => ({
+        ...course,
+        metrics: (() => {
+          const learners = learnersByCourse.get(course.id) ?? new Map<string, number>();
+          const totalLessons = lessonsByCourse.get(course.id) ?? 0;
+          const completed = totalLessons > 0
+            ? [...learners.values()].filter((completedLessons) => completedLessons >= totalLessons).length
+            : 0;
+          return { enrolled: learners.size, inProgress: learners.size - completed, completed };
+        })(),
+      })),
+    };
+  }
+
   async getCourse(courseId: string, organizationId: string, hideDrafts = false) {
     const course = await this.prisma.course.findFirst({
       where: {

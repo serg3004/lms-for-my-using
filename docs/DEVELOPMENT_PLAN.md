@@ -4482,7 +4482,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > `/assignments`, `/progress`, `/certificates`, `/assessments` не изменены.
 
 ---
-## PR 252 — Instructor Course Summary Metrics 🔲
+## PR 252 — Instructor Course Summary Metrics ✅
 
 **Проблема:** student/completion counts на instructor course screens не должны рассчитываться из ограниченной страницы progress.
 
@@ -4493,12 +4493,18 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - убрать progress collection requests, выполняемые только ради counters.
 
 **Критерии готовности:**
-- [ ] counts не зависят от pagination;
-- [ ] metrics соответствуют серверным агрегатам;
-- [ ] course list не делает лишние progress requests;
-- [ ] instructor видит только разрешённые courses;
-- [ ] существующая course navigation не изменена;
-- [ ] tests проходят.
+- [x] counts не зависят от pagination;
+- [x] metrics соответствуют серверным агрегатам;
+- [x] course list не делает лишние progress requests;
+- [x] instructor видит только разрешённые courses;
+- [x] существующая course navigation не изменена;
+- [x] tests проходят.
+
+> **Реализовано (2026-08-25):** `GET /courses/summary` возвращает страницу только
+> разрешённых instructor courses с authoritative `enrolled`, `inProgress` и
+> `completed` metrics, рассчитанными по полному набору сгруппированного progress,
+> а не по ограниченной странице collection API. `InstructorCoursesPage` использует
+> этот контракт и больше не запрашивает `/progress` ради счётчиков.
 
 ---
 ## PR 253 — Декомпозиция AdminChecklistsPage 🔲

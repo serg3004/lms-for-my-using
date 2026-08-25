@@ -162,6 +162,57 @@ describe('CoursesService completion', () => {
   });
 });
 
+describe('CoursesService course summaries', () => {
+  it('derives learner metrics from complete database groups rather than a progress page', async () => {
+    const findMany = jest.fn(async () => [
+      { id: courseId, title: 'Safety', _count: { lessons: 2 } },
+      { id: '44444444-4444-4444-4444-444444444444', title: 'Empty', _count: { lessons: 0 } },
+    ]);
+    const progressGroupBy = jest.fn(async () => [
+      { courseId, userId, status: 'completed', _count: { _all: 2 } },
+      { courseId, userId: '55555555-5555-5555-5555-555555555555', status: 'completed', _count: { _all: 1 } },
+      { courseId, userId: '55555555-5555-5555-5555-555555555555', status: 'in_progress', _count: { _all: 1 } },
+    ]);
+    const prisma = {
+      course: { findMany, count: async () => 2 },
+      lesson: { groupBy: async () => [{ courseId, _count: { _all: 2 } }] },
+      progress: { groupBy: progressGroupBy },
+    } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.listCourseSummaries(organizationId, 1, 100, userId)).resolves.toMatchObject({
+      items: [
+        { id: courseId, metrics: { enrolled: 2, inProgress: 1, completed: 1 } },
+        { metrics: { enrolled: 0, inProgress: 0, completed: 0 } },
+      ],
+      total: 2,
+    });
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ instructors: { some: { instructorId: userId, organizationId, deletedAt: null } } }),
+    }));
+    expect(progressGroupBy).toHaveBeenCalledWith(expect.objectContaining({
+      by: ['courseId', 'userId', 'status'],
+      where: expect.objectContaining({ courseId: { in: [courseId, '44444444-4444-4444-4444-444444444444'] } }),
+    }));
+  });
+
+  it('does not query aggregate tables for an empty course page', async () => {
+    const lessonGroupBy = jest.fn();
+    const progressGroupBy = jest.fn();
+    const prisma = {
+      course: { findMany: async () => [], count: async () => 0 },
+      lesson: { groupBy: lessonGroupBy },
+      progress: { groupBy: progressGroupBy },
+    } as unknown as PrismaService;
+    const service = new CoursesService(prisma, courseAccess);
+
+    await expect(service.listCourseSummaries(organizationId, 1, 20, userId)).resolves.toEqual({ items: [], page: 1, pageSize: 20, total: 0 });
+    expect(lessonGroupBy).not.toHaveBeenCalled();
+    expect(progressGroupBy).not.toHaveBeenCalled();
+  });
+});
+
 describe('CoursesService draft visibility', () => {
   it('listCourses does not filter by status when hideDrafts is not set (admin/manager/instructor)', async () => {
     const findMany = jest.fn(async () => []);

@@ -35,6 +35,15 @@ export class CoursesController {
     return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles));
   }
 
+  @Get('summary')
+  @Roles(...rolePolicies.coursesRead)
+  listCourseSummaries(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { page, pageSize } = paginationQuerySchema.parse(query);
+    const user = request.currentUser!;
+    const instructorId = this.courseAccess.isInstructorScoped(user) ? user.id : undefined;
+    return this.coursesService.listCourseSummaries(user.organizationId, page, pageSize, instructorId);
+  }
+
   @Get(':id')
   @Roles(...rolePolicies.coursesRead)
   async getCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
