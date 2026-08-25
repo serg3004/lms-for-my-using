@@ -18,28 +18,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-  ci:
-    name: Checks
+  quality:
+    name: Quality & security
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: lms_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d lms_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
 
     steps:
       - name: Checkout
@@ -115,6 +97,50 @@ jobs:
       - name: Typecheck
         run: pnpm --recursive typecheck
 
+  tests:
+    name: Tests & database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
       - name: Tests
         run: pnpm --recursive test:coverage
 
@@ -145,23 +171,192 @@ jobs:
       - name: Run API database integration tests
         run: pnpm --filter @lms/api test:integration:db
 
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
       - name: Build
         run: pnpm --recursive build
+
+  e2e:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+      NODE_ENV: test
+      JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @lms/api prisma:migrate:deploy
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Browser E2E
         run: pnpm test:e2e
+
+      - name: Upload safe Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-e2e-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  accessibility:
+    name: Accessibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
         env:
-          NODE_ENV: test
-          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+      NODE_ENV: test
+      JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
+
+      - name: Apply database migrations
+        run: pnpm --filter @lms/api prisma:migrate:deploy
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Accessibility baseline
         run: pnpm test:a11y
-        env:
-          NODE_ENV: test
-          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
+
+      - name: Upload safe Playwright failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-accessibility-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  visual:
+    name: Visual regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Responsive visual matrix
         run: pnpm test:visual
@@ -170,12 +365,30 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: playwright-visual-failure-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             playwright-report/
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  containers:
+    name: Container security
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [quality, tests, build]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Validate security waivers
+        run: node scripts/validate-security-waivers.mjs security-waivers.json "$RUNNER_TEMP/trivyignore"
 
       - name: Build API Docker image
         run: scripts/docker-build-retry.sh -f apps/api/Dockerfile -t lms-api:ci .
@@ -208,3 +421,51 @@ jobs:
           --severity HIGH,CRITICAL
           --ignorefile /trivyignore
           lms-web:ci
+
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - quality
+      - tests
+      - build
+      - e2e
+      - accessibility
+      - visual
+      - containers
+
+    steps:
+      - name: Verify required CI jobs
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          ACCESSIBILITY_RESULT: ${{ needs.accessibility.result }}
+          VISUAL_RESULT: ${{ needs.visual.result }}
+          CONTAINERS_RESULT: ${{ needs.containers.result }}
+        run: |
+          set -euo pipefail
+
+          failures=0
+          for entry in \
+            "quality=$QUALITY_RESULT" \
+            "tests=$TESTS_RESULT" \
+            "build=$BUILD_RESULT" \
+            "e2e=$E2E_RESULT" \
+            "accessibility=$ACCESSIBILITY_RESULT" \
+            "visual=$VISUAL_RESULT" \
+            "containers=$CONTAINERS_RESULT"; do
+            job="${entry%%=*}"
+            result="${entry#*=}"
+            echo "$job: $result"
+            if [[ "$result" != "success" ]]; then
+              failures=1
+            fi
+          done
+
+          if [[ "$failures" -ne 0 ]]; then
+            echo "::error::One or more required CI jobs did not succeed."
+            exit 1
+          fi
