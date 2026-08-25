@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, type UserRole } from './apiClient.js';
+import { useOptionalSession } from './session.js';
 
 const ROLE_ORDER: readonly UserRole[] = ['admin', 'instructor', 'mentor', 'manager', 'learner'];
 
@@ -37,24 +38,17 @@ export function getAvailableRoles(roles: UserRole[]): UserRole[] {
 
 export function AccountSwitcher() {
   const { t } = useTranslation();
-  const [roles, setRoles] = useState<UserRole[] | null>(null);
+  const session = useOptionalSession();
+  const [fallbackRoles, setFallbackRoles] = useState<UserRole[] | null>(null);
+  const roles = session ? session.currentUser?.roles ?? null : fallbackRoles;
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const user = await getCurrentUser();
-        if (isMounted) setRoles(user.roles);
-      } catch {
-        if (isMounted) setRoles(null);
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, []);
+    if (session) return;
+    let mounted = true;
+    void getCurrentUser().then((user) => { if (mounted) setFallbackRoles(user.roles); }).catch(() => { if (mounted) setFallbackRoles(null); });
+    return () => { mounted = false; };
+  }, [session]);
 
   if (!roles) return null;
 

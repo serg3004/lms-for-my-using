@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiClientError } from '../shared/apiClient';
 import type { CurrentUser } from '../shared/api/types';
+import { SessionProvider } from '../shared/session';
 import {
   getProtectedRouteAuthState,
   getProtectedRouteErrorState,
@@ -31,9 +32,11 @@ describe('ProtectedRoute', () => {
   it('renders loading state for protected paths before auth resolves', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/learn']}>
-        <ProtectedRoute protectedPathPrefixes={['/learn']}>
-          <p>Protected content</p>
-        </ProtectedRoute>
+        <SessionProvider authenticated>
+          <ProtectedRoute protectedPathPrefixes={['/learn']}>
+            <p>Protected content</p>
+          </ProtectedRoute>
+        </SessionProvider>
       </MemoryRouter>,
     );
 
@@ -44,9 +47,11 @@ describe('ProtectedRoute', () => {
   it('renders children immediately for unprotected paths', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter initialEntries={['/login']}>
-        <ProtectedRoute protectedPathPrefixes={['/learn']}>
-          <p>Public content</p>
-        </ProtectedRoute>
+        <SessionProvider authenticated={false}>
+          <ProtectedRoute protectedPathPrefixes={['/learn']}>
+            <p>Public content</p>
+          </ProtectedRoute>
+        </SessionProvider>
       </MemoryRouter>,
     );
 

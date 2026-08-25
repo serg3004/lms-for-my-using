@@ -2,12 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
-import { getCurrentUser, getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
+import { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
 import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
 import { Avatar, SkipLink } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
+import { useOptionalSession } from './session.js';
 
 export type LearnerNavItem = {
   label: string;
@@ -239,11 +240,6 @@ export function NotificationBell() {
 
 /* ── LearnerPageLayout ────────────────────────────────────────────────────── */
 
-type UserState =
-  | { status: 'loading' }
-  | { status: 'loaded'; firstName: string; lastName?: string }
-  | { status: 'error' };
-
 const LEARNER_NAV_DEFS = [
   { key: 'nav.home', href: '/learn' },
   { key: 'courses.title', href: '/learn/courses' },
@@ -262,33 +258,17 @@ type LearnerPageLayoutProps = {
 
 export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutProps) {
   const { t } = useTranslation();
-  const [userState, setUserState] = useState<UserState>({ status: 'loading' });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUser() {
-      try {
-        const user = await getCurrentUser();
-        if (isMounted) {
-          setUserState({ status: 'loaded', firstName: user.firstName, lastName: user.lastName ?? undefined });
-        }
-      } catch {
-        if (isMounted) setUserState({ status: 'error' });
-      }
-    }
-
-    void loadUser();
-    return () => { isMounted = false; };
-  }, []);
+  const session = useOptionalSession();
+  const currentUser = session?.currentUser;
 
   const path = currentPath ?? (typeof window !== 'undefined' ? window.location.pathname : '');
 
-  const firstName = userState.status === 'loaded' ? userState.firstName : undefined;
-  const lastName = userState.status === 'loaded' ? userState.lastName : undefined;
+  const firstName = currentUser?.firstName;
+  const lastName = currentUser?.lastName ?? undefined;
 
   async function handleLogout() {
     try { await logout(); } catch { /* ignore */ }
+    session?.clearSession();
     window.location.href = '/login';
   }
 

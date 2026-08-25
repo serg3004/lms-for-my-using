@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ForbiddenPage } from './ForbiddenPage.js';
-import { getCurrentUser } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/api/types.js';
+import { SessionProvider, useOptionalSession, useSession } from '../shared/session.js';
 import { syncOrganizationTheme } from '../shared/theme.js';
 
 type ProtectedRouteProps = {
@@ -33,43 +33,41 @@ export function getProtectedRouteErrorState(error: unknown): AuthState {
 
 export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: ProtectedRouteProps) {
   const location = useLocation();
-  const [authState, setAuthState] = useState<AuthState>('loading');
+  const session = useOptionalSession();
   const isProtectedPath = isProtectedRoutePath(location.pathname, protectedPathPrefixes);
+
+  if (!session) {
+    return (
+      <SessionProvider authenticated={isProtectedPath}>
+        <ProtectedRouteContent canAccess={canAccess} isProtectedPath={isProtectedPath} location={location}>
+          {children}
+        </ProtectedRouteContent>
+      </SessionProvider>
+    );
+  }
+
+  return <ProtectedRouteContent canAccess={canAccess} isProtectedPath={isProtectedPath} location={location}>{children}</ProtectedRouteContent>;
+}
+
+function ProtectedRouteContent({ children, canAccess, isProtectedPath, location }: Pick<ProtectedRouteProps, 'children' | 'canAccess'> & {
+  isProtectedPath: boolean;
+  location: ReturnType<typeof useLocation>;
+}) {
+  const { currentUser, error, status } = useSession();
 
   useEffect(() => {
     if (!isProtectedPath) {
       return;
     }
 
-    let isMounted = true;
+    if (isProtectedPath && currentUser) void syncOrganizationTheme(currentUser.organizationId);
+  }, [currentUser, isProtectedPath]);
 
-    async function checkCurrentUser() {
-      setAuthState('loading');
-
-      try {
-        const user = await getCurrentUser();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setAuthState(getProtectedRouteAuthState(user, canAccess));
-        void syncOrganizationTheme(user.organizationId);
-      } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
-        setAuthState(getProtectedRouteErrorState(error));
-      }
-    }
-
-    void checkCurrentUser();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [canAccess, isProtectedPath, location.pathname]);
+  const authState: AuthState = status === 'authenticated' && currentUser
+    ? getProtectedRouteAuthState(currentUser, canAccess)
+    : status === 'error'
+      ? getProtectedRouteErrorState(error)
+      : 'loading';
 
   if (!isProtectedPath) {
     return <>{children}</>;

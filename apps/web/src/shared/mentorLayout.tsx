@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { SkipLink } from './ui.js';
+import { useOptionalSession } from './session.js';
 
 type MentorPageLayoutProps = {
   children: ReactNode;
@@ -13,6 +14,8 @@ type MentorPageLayoutProps = {
 
 export function MentorPageLayout({ children, firstName, lastName }: MentorPageLayoutProps) {
   const { t } = useTranslation();
+  const session = useOptionalSession();
+  const currentUser = session?.currentUser;
 
   const navItems: LearnerNavItem[] = [
     { label: t('checklistReview.title', 'Checklist review'), href: '/mentor', isCurrent: true },
@@ -24,6 +27,7 @@ export function MentorPageLayout({ children, firstName, lastName }: MentorPageLa
     } catch {
       /* ignore */
     }
+    session?.clearSession();
     window.location.href = '/login';
   }
 
@@ -32,8 +36,8 @@ export function MentorPageLayout({ children, firstName, lastName }: MentorPageLa
       <SkipLink label={t('a11y.skipToContent')} />
       <LearnerTopNav
         brandLabel="LearnSpace"
-        firstName={firstName}
-        lastName={lastName}
+        firstName={firstName ?? currentUser?.firstName}
+        lastName={lastName ?? currentUser?.lastName ?? undefined}
         navItems={navItems}
         onLogout={() => { void handleLogout(); }}
         showAccountSwitcher

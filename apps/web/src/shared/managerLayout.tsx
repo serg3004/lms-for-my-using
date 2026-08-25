@@ -1,22 +1,17 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
-import { getCurrentUser } from './apiClient.js';
 import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
+import { useOptionalSession } from './session.js';
 
 const MANAGER_NAV_DEFS = [
   { key: 'manager.navDashboard', href: '/manager/dashboard' },
   { key: 'manager.navTeam', href: '/manager/team' },
   { key: 'manager.navOverdue', href: '/manager/overdue' },
 ] as const;
-
-type UserState =
-  | { status: 'loading' }
-  | { status: 'loaded'; firstName: string; lastName?: string }
-  | { status: 'error' };
 
 type ManagerPageLayoutProps = {
   children: ReactNode;
@@ -25,32 +20,13 @@ type ManagerPageLayoutProps = {
 
 export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutProps) {
   const { t } = useTranslation();
-  const [userState, setUserState] = useState<UserState>({ status: 'loading' });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUser() {
-      try {
-        const user = await getCurrentUser();
-        if (isMounted) {
-          setUserState({ status: 'loaded', firstName: user.firstName, lastName: user.lastName ?? undefined });
-        }
-      } catch {
-        if (isMounted) setUserState({ status: 'error' });
-      }
-    }
-
-    void loadUser();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const session = useOptionalSession();
+  const currentUser = session?.currentUser;
 
   const path = currentPath ?? (typeof window !== 'undefined' ? window.location.pathname : '');
 
-  const firstName = userState.status === 'loaded' ? userState.firstName : undefined;
-  const lastName = userState.status === 'loaded' ? userState.lastName : undefined;
+  const firstName = currentUser?.firstName;
+  const lastName = currentUser?.lastName ?? undefined;
 
   async function handleLogout() {
     try {
@@ -58,6 +34,7 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
     } catch {
       /* ignore */
     }
+    session?.clearSession();
     window.location.href = '/login';
   }
 
