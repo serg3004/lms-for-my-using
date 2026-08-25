@@ -1331,7 +1331,16 @@
       "columnStatus": "Status",
       "status": "Overdue",
       "empty": "No overdue assignments.",
-      "unknownTarget": "Unknown target"
+      "unknownTarget": "Unknown target",
+      "columnAction": "Action",
+      "remind": "Remind",
+      "sending": "Sending…",
+      "remindSelected": "Remind selected ({{count}})",
+      "reminderSuccess": "Reminders sent for {{count}} assignment(s).",
+      "reminderPartial": "Sent: {{sent}}. Could not send: {{failed}}.",
+      "reminderError": "Could not send reminders. Try again.",
+      "selectAll": "Select all applicable assignments",
+      "selectRow": "Select assignment for {{target}}"
     },
     "navReports": "Reports",
     "reports": {
@@ -1485,6 +1494,10 @@
       "assessment_failed": {
         "title": "Test failed",
         "message": "You did not pass \"{{assessmentTitle}}\" ({{percentage}}%)."
+      },
+      "manager_overdue_reminder": {
+        "title": "Overdue learning reminder",
+        "message": "“{{courseTitle}}” is overdue. Your manager has sent you a reminder."
       }
     },
     "centerTitle": "Notification Center",

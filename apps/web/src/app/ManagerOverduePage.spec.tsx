@@ -17,6 +17,7 @@ describe('ManagerOverduePage', () => {
     } } }, vi.fn()]).mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<ManagerOverduePage />);
     expect(html).toContain('Alex Smith'); expect(html).toContain('Safety'); expect(html).toContain('Просрочено');
+    expect(html).toContain('Напомнить'); expect(html).toContain('type="checkbox"');
   });
 
   it('renders the managed group for a group-targeted assignment', () => {

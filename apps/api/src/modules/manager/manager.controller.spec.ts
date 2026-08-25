@@ -23,4 +23,18 @@ describe('ManagerController getTeamSummary', () => {
 
     expect(calls).toEqual([[{ id: managerId, organizationId: orgId, roles: ['manager'] }]]);
   });
+
+  it('validates reminder ids and passes the authenticated actor to the service', () => {
+    const calls: unknown[] = [];
+    const assignmentId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const service = {
+      sendOverdueReminders: (...args: unknown[]) => { calls.push(args); return {}; },
+    } as unknown as ManagerService;
+    const controller = new ManagerController(service);
+
+    controller.sendOverdueReminders({ assignmentIds: [assignmentId] }, makeRequest(managerId, ['manager']));
+
+    expect(calls).toEqual([[{ id: managerId, organizationId: orgId, roles: ['manager'] }, [assignmentId]]]);
+    expect(() => controller.sendOverdueReminders({ assignmentIds: [] }, makeRequest(managerId, ['manager']))).toThrow();
+  });
 });

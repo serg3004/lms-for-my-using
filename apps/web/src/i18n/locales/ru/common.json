@@ -1331,7 +1331,16 @@
       "columnStatus": "Статус",
       "status": "Просрочено",
       "empty": "Просроченных назначений нет.",
-      "unknownTarget": "Неизвестная цель"
+      "unknownTarget": "Неизвестная цель",
+      "columnAction": "Действие",
+      "remind": "Напомнить",
+      "sending": "Отправка…",
+      "remindSelected": "Напомнить выбранным ({{count}})",
+      "reminderSuccess": "Напоминания отправлены по назначениям: {{count}}.",
+      "reminderPartial": "Отправлено: {{sent}}. Не удалось: {{failed}}.",
+      "reminderError": "Не удалось отправить напоминания. Попробуйте снова.",
+      "selectAll": "Выбрать все доступные назначения",
+      "selectRow": "Выбрать назначение для {{target}}"
     },
     "navReports": "Отчёты",
     "reports": {
@@ -1485,6 +1494,10 @@
       "assessment_failed": {
         "title": "Тест не сдан",
         "message": "Вы не сдали тест «{{assessmentTitle}}» ({{percentage}}%)."
+      },
+      "manager_overdue_reminder": {
+        "title": "Напоминание о просроченном обучении",
+        "message": "Курс «{{courseTitle}}» просрочен. Руководитель отправил вам напоминание."
       }
     },
     "centerTitle": "Центр уведомлений",

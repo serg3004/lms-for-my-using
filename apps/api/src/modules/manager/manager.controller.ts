@@ -1,10 +1,11 @@
-import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { ManagerService } from './manager.service.js';
+import { sendManagerRemindersSchema } from './manager.schemas.js';
 
 @Controller('manager')
 @UseGuards(AuthGuard, RolesGuard)
@@ -15,5 +16,12 @@ export class ManagerController {
   @Roles(...rolePolicies.managerTeamSummaryRead)
   getTeamSummary(@Req() request: AuthenticatedRequest) {
     return this.managerService.getTeamSummary(request.currentUser!);
+  }
+
+  @Post('overdue-reminders')
+  @Roles(...rolePolicies.managerTeamSummaryRead)
+  sendOverdueReminders(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = sendManagerRemindersSchema.parse(body);
+    return this.managerService.sendOverdueReminders(request.currentUser!, input.assignmentIds);
   }
 }
