@@ -813,7 +813,8 @@
       },
       "nextAction": "下一步行动",
       "statsLabel": "学习摘要"
-    }
+    },
+    "mobileNavigation": "学员导航"
   },
   "courses": {
     "navLink": "课程",
