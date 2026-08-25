@@ -4528,8 +4528,6 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > фиксируют локальные brand hex; popover, feedback и раскрытие строки используют
 > productive motion, а `prefers-reduced-motion` сводит необязательные animation и
 > transition к мгновенной смене состояния. CSS design-system ADR актуализирован.
-> Visual fixture для admin shell также перехватывает tenant theme endpoint, чтобы
-> responsive screenshots на 320/375px не зависели от фонового API/proxy race.
 
 ---
 ## PR 256 — Responsive Manager/Admin Operational UI 🔲
