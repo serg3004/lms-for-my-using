@@ -459,6 +459,27 @@ for (const width of widths) {
   });
 }
 
+test('DEBUG probe learner-home height growth over time', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await installLearnerMocks(page);
+  await page.goto('/learn');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+  const checkpoints = [0, 300, 800, 1500, 3000, 5000];
+  let previousText = '';
+  for (const delay of checkpoints) {
+    if (delay > 0) await page.waitForTimeout(delay - (checkpoints[checkpoints.indexOf(delay) - 1] ?? 0));
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    const text = await page.locator('main').innerText();
+    const diff = text === previousText ? '(unchanged)' : `(CHANGED, len ${previousText.length}->${text.length})`;
+    console.log(`[DEBUG] t=${delay}ms height=${height} textLen=${text.length} ${diff}`);
+    if (diff.startsWith('(CHANGED')) {
+      console.log(`[DEBUG] full text at t=${delay}ms:\n${text}`);
+    }
+    previousText = text;
+  }
+});
+
 test('remains usable at 200% browser zoom', async ({ page }) => {
   await page.setViewportSize({ width: 320, height });
   const getRefreshRequests = await installGuestMock(page);
