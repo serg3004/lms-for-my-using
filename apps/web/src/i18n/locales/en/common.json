@@ -1453,7 +1453,15 @@
         "title": "Test failed",
         "message": "You did not pass \"{{assessmentTitle}}\" ({{percentage}}%)."
       }
-    }
+    },
+    "centerTitle": "Notification Center",
+    "centerSubtitle": "All important events and next actions in one place.",
+    "loading": "Loading notifications…",
+    "retry": "Try again",
+    "viewAll": "View all notifications",
+    "read": "Read",
+    "unread": "New",
+    "updateError": "Could not update the notification. Please try again."
   },
   "a11y": {
     "skipToContent": "Skip to main content",
