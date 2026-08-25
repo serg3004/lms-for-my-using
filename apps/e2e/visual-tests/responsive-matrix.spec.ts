@@ -30,7 +30,17 @@ async function expectTouchTargets(page: Page) {
 // Real pixel-baseline regression assertion (not just an artifact upload): fails the test
 // when rendered pixels drift from the committed baseline in <spec-name>-snapshots/. See
 // visual-tests/README.md for the controlled baseline-update procedure.
+//
+// Settling before the screenshot matters here: CI observed the learner-home page's fullPage
+// scrollHeight vary by 86-107px between otherwise-identical runs (real Chromium, same commit,
+// same mocked data) -- not reproducible locally after 12 repeated loads, which points at a
+// CI-only render/layout timing race rather than nondeterministic content. `toHaveScreenshot`'s
+// own retry loop only re-screenshots the *current* DOM; it can't wait out a layout that is
+// still catching up. `networkidle` plus a short settle gives any in-flight rendering work a
+// chance to finish before the (dimension-sensitive) fullPage screenshot is taken.
 async function expectVisualMatch(page: Page, name: string) {
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(300);
   await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
 }
 
