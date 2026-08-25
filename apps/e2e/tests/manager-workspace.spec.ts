@@ -93,7 +93,7 @@ test.describe('manager workspace', () => {
       ],
     }));
     await expect(page.getByRole('heading', { name: 'Команда' })).toBeVisible();
-    await expect(page.getByRole('cell', { name: 'Alex Learner' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'Alex Learner', exact: true })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'admin@demo.com' })).toHaveCount(0);
 
     const forbiddenUser = await page.evaluate(async (userId) => {
