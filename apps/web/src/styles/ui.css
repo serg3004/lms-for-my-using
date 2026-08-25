@@ -1708,10 +1708,32 @@
 
 /* ── Learner shell (main content area) ───────────────────────────────────── */
 
-.learner-shell {
+.learner-shell,
+.workspace-shell {
   width: min(1120px, calc(100% - var(--space-page) * 2));
   margin: 0 auto;
   padding: 32px 0 48px;
+}
+
+.workspace-shell--readable {
+  max-width: 1120px;
+}
+
+.workspace-shell--dense {
+  width: min(1360px, calc(100% - var(--space-page) * 2));
+}
+
+.workspace-shell--fluid {
+  width: calc(100% - var(--space-page) * 2);
+  max-width: 1600px;
+}
+
+.workspace-shell--compact {
+  padding-top: 24px;
+}
+
+.workspace-role-actions {
+  display: contents;
 }
 
 /* Learner dashboard: actions lead, supporting metrics follow. */
