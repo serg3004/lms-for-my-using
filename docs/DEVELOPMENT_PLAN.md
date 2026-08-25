@@ -4258,6 +4258,10 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > синхронизирует locale из `/auth/me`, обеспечивая сохранение выбора после reload
 > и следующего login; неизвестное значение безопасно приводит к fallback `ru`.
 > Backend schema/service и frontend API/profile/navigation покрыты targeted tests.
+> Visual regression fixtures используют `locale: ru`, соответствующий русским
+> baseline-снимкам и селекторам сценариев: синхронизация сохранённого locale в
+> `SessionProvider` поэтому не переводит тестовую страницу на английский в середине
+> сценария.
 
 ---
 ## PR 244 — Централизованный SessionProvider ✅
