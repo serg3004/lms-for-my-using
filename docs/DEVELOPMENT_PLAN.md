@@ -4422,7 +4422,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > данных другого tenant/team. Контракт, authorization scope и UI покрыты API/UI tests.
 
 ---
-## PR 250 — Корректные aggregate KPI для Admin Dashboard 🔲
+## PR 250 — Корректные aggregate KPI для Admin Dashboard ✅
 
 **Проблема:** часть admin KPI вычисляется frontend из ограниченной страницы данных (`pageSize=100`), поэтому при большем объёме dashboard может показывать sample вместо организационной метрики.
 
@@ -4434,12 +4434,19 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить существующие list endpoints без breaking changes.
 
 **Критерии готовности:**
-- [ ] completion rate не зависит от `pageSize`;
-- [ ] значения корректны при >100 записях;
-- [ ] frontend не загружает полный progress list ради KPI;
-- [ ] aggregate endpoint типизирован;
-- [ ] list API остаётся обратно совместимым;
-- [ ] backend/frontend tests проходят.
+- [x] completion rate не зависит от `pageSize`;
+- [x] значения корректны при >100 записях;
+- [x] frontend не загружает полный progress list ради KPI;
+- [x] aggregate endpoint типизирован;
+- [x] list API остаётся обратно совместимым;
+- [x] backend/frontend tests проходят.
+
+> **Реализовано (2026-08-25):** добавлен admin-only `GET /reports/admin-dashboard`,
+> который вычисляет totals, completion rate и pending activation count через
+> tenant-scoped database aggregates по всему набору данных. Dashboard использует
+> типизированный summary contract и больше не загружает paginated users/courses/progress/
+> certificates для KPI; существующие list endpoints не изменены. Recent activity
+> формируется сервером из ограниченных top-N выборок и не влияет на aggregate значения.
 
 ---
 ## PR 251 — Learner Dashboard Summary API 🔲

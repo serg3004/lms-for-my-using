@@ -14,4 +14,10 @@ export class ReportsController {
   getSummary(@Req() request: AuthenticatedRequest) {
     return this.reportsService.getSummary(request.currentUser!);
   }
+
+  @Get('admin-dashboard')
+  @Roles('admin')
+  getAdminDashboard(@Req() request: AuthenticatedRequest) {
+    return this.reportsService.getAdminDashboard(request.currentUser!);
+  }
 }
