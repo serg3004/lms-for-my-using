@@ -19,10 +19,6 @@ name: Update visual regression baselines
 # disagree.
 on:
   workflow_dispatch: {}
-  # TEMPORARY, this PR only: bootstrap trigger, see PR description. Removed again once the
-  # baselines are regenerated.
-  push:
-    branches: [claude/pr-264-visual-regression-gate]
 
 permissions:
   contents: write
