@@ -454,6 +454,42 @@ for (const width of widths) {
   });
 }
 
+test('DEBUG dump learner-home layout metrics', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await installLearnerMocks(page);
+  await page.goto('/learn');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(300);
+
+  const info = await page.evaluate(() => {
+    const rectOf = (sel: string) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { top: Math.round(r.top), height: Math.round(r.height), width: Math.round(r.width) };
+    };
+    const grid = document.querySelector('.stats-grid');
+    const gridRows = grid ? new Set(Array.from(grid.children).map((c) => Math.round(c.getBoundingClientRect().top))).size : null;
+    const main = document.querySelector('main');
+    return {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      clientWidth: document.documentElement.clientWidth,
+      clientHeight: document.documentElement.clientHeight,
+      scrollHeight: document.documentElement.scrollHeight,
+      scrollWidth: document.documentElement.scrollWidth,
+      hasVerticalScrollbar: document.documentElement.scrollHeight > document.documentElement.clientHeight,
+      devicePixelRatio: window.devicePixelRatio,
+      mainRect: main ? { height: Math.round(main.getBoundingClientRect().height) } : null,
+      statsGrid: rectOf('.stats-grid'),
+      statsGridRows: gridRows,
+      h1: rectOf('h1'),
+    };
+  });
+  console.log(`[LAYOUT] ${JSON.stringify(info)}`);
+});
+
 test('remains usable at 200% browser zoom', async ({ page }) => {
   await page.setViewportSize({ width: 320, height });
   const getRefreshRequests = await installGuestMock(page);
