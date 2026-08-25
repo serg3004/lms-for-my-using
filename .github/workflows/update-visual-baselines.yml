@@ -12,12 +12,6 @@ name: Update visual regression baselines
 # commit is visible in the branch's history for review before merge.
 on:
   workflow_dispatch: {}
-  # TEMPORARY, this PR only: workflow_dispatch can't be invoked until this workflow file
-  # exists on the default branch, so this push trigger is the one-time bootstrap that lets
-  # it run before merge. Removed again in a follow-up commit on this same branch once the
-  # baselines are regenerated -- see the PR description.
-  push:
-    branches: [claude/pr-264-visual-regression-gate]
 
 permissions:
   contents: write
