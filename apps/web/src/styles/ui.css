@@ -2629,3 +2629,14 @@
   .notification-center__list button { align-items: flex-start; flex-direction: column; gap: 10px; }
   .notification-bell__menu { position: fixed; top: 64px; right: 8px; left: 8px; width: auto; }
 }
+
+/* Learner self-service profile */
+.learner-profile { display: grid; gap: var(--space-6); }
+.learner-profile__card { display: grid; gap: var(--space-4); border: 1px solid var(--color-border); }
+.learner-profile__identity { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4); margin: 0; }
+.learner-profile__identity dt, .learner-profile__readonly { color: var(--color-text-muted); }
+.learner-profile__identity dd { margin: 0; font-weight: 600; }
+.learner-profile__card select, .learner-profile__actions button { min-height: 44px; padding: 0 var(--space-3); }
+.learner-profile__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.learner-profile__actions [role="alert"] { color: var(--color-danger); }
+@media (max-width: 600px) { .learner-profile__identity { grid-template-columns: 1fr; } }

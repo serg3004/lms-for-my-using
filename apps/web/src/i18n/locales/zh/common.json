@@ -1564,5 +1564,23 @@
     "commentPlaceholder": "备注（可选）",
     "currentResult": "当前结果",
     "sessionExpired": "会话已过期。请重新登录。"
+  },
+  "profile": {
+    "title": "个人资料",
+    "subtitle": "个人信息和用户偏好设置。",
+    "identityTitle": "个人信息",
+    "name": "姓名",
+    "email": "电子邮箱",
+    "position": "职位",
+    "notSpecified": "未指定",
+    "readonlyHint": "如需更改个人信息，请联系管理员。",
+    "preferencesTitle": "偏好设置",
+    "language": "界面语言",
+    "save": "保存偏好设置",
+    "saving": "正在保存…",
+    "saved": "偏好设置已保存。",
+    "saveError": "无法保存偏好设置，请重试。",
+    "loading": "正在加载个人资料…",
+    "loadError": "无法加载个人资料。"
   }
 }

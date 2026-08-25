@@ -18,7 +18,7 @@ describe('LearnerPageLayout mobile navigation', () => {
     expect(html).toContain('href="/learn"');
     expect(html).toContain('href="/learn/courses"');
     expect(html).toContain('href="/learn/notifications"');
-    expect(html).toContain('href="#learner-account-controls"');
+    expect(html).toContain('href="/learn/profile"');
     expect(html.match(/class="learner-mobile-nav__link"/g)).toHaveLength(4);
     expect(html).toMatch(/aria-current="page"[^>]*href="\/learn\/courses"/);
   });

@@ -383,7 +383,7 @@ export type {
   UserRole,
 } from './api/types.js';
 
-export { getCurrentUser, login } from './api/auth.js';
+export { getCurrentUser, login, updateCurrentUserPreferences } from './api/auth.js';
 export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, updateCourse } from './api/courses.js';
 export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
 export { listCourseMaterials, getMaterialDownloadUrl } from './api/materials.js';

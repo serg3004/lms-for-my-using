@@ -40,6 +40,11 @@ export const passwordResetAcceptedSchema = z.object({
   accepted: z.literal(true),
 });
 
+export const supportedLocaleSchema = z.enum(['ru', 'en', 'kk', 'zh']);
+export const updatePreferencesSchema = z.object({
+  locale: supportedLocaleSchema,
+}).strict();
+
 export const currentUserSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
@@ -67,5 +72,6 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
+export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
 export type { UserRole } from '@lms/shared/types/api';

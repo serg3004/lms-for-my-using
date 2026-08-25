@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const apiRequest = vi.hoisted(() => vi.fn());
 vi.mock('./apiClient.js', () => ({ apiRequest }));
 
-import { confirmPasswordReset, getCurrentUser, login, requestPasswordReset } from './api/auth.js';
+import { confirmPasswordReset, getCurrentUser, login, requestPasswordReset, updateCurrentUserPreferences } from './api/auth.js';
 import { getProgressSummary, listProgress } from './api/progress.js';
 import { logout } from './logout.js';
 
@@ -25,6 +25,13 @@ describe('session API wrappers', () => {
   it('loads the current cookie-backed user', async () => {
     await getCurrentUser();
     expect(apiRequest).toHaveBeenCalledWith('/auth/me');
+  });
+
+  it('patches the current user locale preference', async () => {
+    await updateCurrentUserPreferences({ locale: 'kk' });
+    expect(apiRequest).toHaveBeenCalledWith('/auth/me/preferences', {
+      method: 'PATCH', body: JSON.stringify({ locale: 'kk' }),
+    });
   });
 
   it('posts password reset request and confirmation to the public auth contract', async () => {

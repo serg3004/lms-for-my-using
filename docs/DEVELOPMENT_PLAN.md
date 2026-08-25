@@ -4227,7 +4227,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 мобильном header.
 
 ---
-## PR 243 — Learner Profile и пользовательские настройки 🔲
+## PR 243 — Learner Profile и пользовательские настройки ✅
 
 **Проблема:** у learner нет `/learn/profile` как self-service точки для пользовательских данных и настроек, включая locale.
 
@@ -4241,13 +4241,27 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - при отсутствии PATCH preferences API сначала определить минимальный backend contract.
 
 **Критерии готовности:**
-- [ ] Profile доступен из learner navigation;
-- [ ] текущий locale отображается корректно;
-- [ ] изменение языка сразу обновляет UI;
-- [ ] выбор сохраняется после reload/login при наличии backend support;
-- [ ] read-only identity fields нельзя изменить случайно;
-- [ ] все четыре locale поддержаны;
-- [ ] backend scope changes, если нужны, типизированы и протестированы.
+- [x] Profile доступен из learner navigation;
+- [x] текущий locale отображается корректно;
+- [x] изменение языка сразу обновляет UI;
+- [x] выбор сохраняется после reload/login при наличии backend support;
+- [x] read-only identity fields нельзя изменить случайно;
+- [x] все четыре locale поддержаны;
+- [x] backend scope changes, если нужны, типизированы и протестированы.
+
+> **Реализовано (2026-08-25):** добавлен learner route `/learn/profile`, доступный
+> из desktop и mobile navigation. Identity-поля отображаются read-only, а язык
+> интерфейса выбирается из `ru/en/kk/zh`. Минимальный scoped contract
+> `PATCH /auth/me/preferences` принимает только поддерживаемый locale, сохраняет
+> его в `User.locale` и возвращает обновлённый current-user contract. После
+> сохранения i18next переключается без перезагрузки, а `SessionProvider` повторно
+> синхронизирует locale из `/auth/me`, обеспечивая сохранение выбора после reload
+> и следующего login; неизвестное значение безопасно приводит к fallback `ru`.
+> Backend schema/service и frontend API/profile/navigation покрыты targeted tests.
+> Visual regression fixtures используют `locale: ru`, соответствующий русским
+> baseline-снимкам и селекторам сценариев: синхронизация сохранённого locale в
+> `SessionProvider` поэтому не переводит тестовую страницу на английский в середине
+> сценария.
 
 ---
 ## PR 244 — Централизованный SessionProvider ✅
