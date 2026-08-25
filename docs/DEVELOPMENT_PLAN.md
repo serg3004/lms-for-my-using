@@ -4293,7 +4293,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] визуальные regression checks для role layouts проходят.
 
 ---
-## PR 246 — Shared Feedback и Accessible Interactive Primitives 🔲
+## PR 246 — Shared Feedback и Accessible Interactive Primitives ✅
 
 **Проблема:** страницы используют разные реализации success/error feedback, dialogs и popovers; notification/menu interactions не имеют единого keyboard/focus contract.
 
@@ -4305,13 +4305,15 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - использовать существующие design tokens, не внедряя shadcn/Tailwind.
 
 **Критерии готовности:**
-- [ ] mutations используют единый success/error contract;
-- [ ] destructive actions подтверждаются через общий dialog;
-- [ ] popover закрывается Escape и возвращает focus инициатору;
-- [ ] keyboard navigation работает;
-- [ ] компоненты используют semantic tokens;
-- [ ] shared UI tests проходят;
-- [ ] новая UI framework не добавлена.
+- [x] mutations используют единый success/error contract;
+- [x] destructive actions подтверждаются через общий dialog;
+- [x] popover закрывается Escape и возвращает focus инициатору;
+- [x] keyboard navigation работает;
+- [x] компоненты используют semantic tokens;
+- [x] shared UI tests проходят;
+- [x] новая UI framework не добавлена.
+
+> **Реализовано (2026-08-25):** в shared UI добавлен единый feedback contract (`InlineFeedback` и live-region `Toast`), доступный `ConfirmDialog`, а также типизированные `Select` и `Textarea` с label/hint/error связями. Общий `Menu` реализует ARIA menu semantics, закрытие по Escape/outside click, циклическую навигацию Arrow Up/Down, Home/End и возврат focus на trigger; account switcher переведён на этот primitive. Компоненты используют существующие semantic design tokens, не добавляя UI framework, и покрыты shared UI regression tests.
 
 ---
 ## PR 247 — Усиление DataTable для operational screens 🔲

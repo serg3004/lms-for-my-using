@@ -1,4 +1,15 @@
-import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type CSSProperties,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 
 type SkipLinkProps = { label: string; targetId?: string };
 
@@ -159,18 +170,47 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 
 export function Input({ label, hint, error, id, className, ...rest }: InputProps) {
   const inputCls = ['ds-input', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ');
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const descriptionId = hint || error ? `${inputId}-description` : undefined;
   return (
     <div className="ds-field">
       {label ? (
-        <label className="ds-field__label" htmlFor={id}>
+        <label className="ds-field__label" htmlFor={inputId}>
           {label}
         </label>
       ) : null}
-      <input id={id} className={inputCls} {...rest} />
-      {hint && !error ? <span className="ds-field__hint">{hint}</span> : null}
-      {error ? <span className="ds-field__error">{error}</span> : null}
+      <input aria-describedby={descriptionId} aria-invalid={error ? true : undefined} id={inputId} className={inputCls} {...rest} />
+      {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+      {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
     </div>
   );
+}
+
+type FieldProps = { label?: string; hint?: string; error?: string };
+
+export function Select({ label, hint, error, id, className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & FieldProps) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const descriptionId = hint || error ? `${fieldId}-description` : undefined;
+  return <div className="ds-field">
+    {label ? <label className="ds-field__label" htmlFor={fieldId}>{label}</label> : null}
+    <select {...rest} aria-describedby={descriptionId} aria-invalid={error ? true : undefined} className={['ds-input', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ')} id={fieldId}>{children}</select>
+    {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+    {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
+  </div>;
+}
+
+export function Textarea({ label, hint, error, id, className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & FieldProps) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const descriptionId = hint || error ? `${fieldId}-description` : undefined;
+  return <div className="ds-field">
+    {label ? <label className="ds-field__label" htmlFor={fieldId}>{label}</label> : null}
+    <textarea {...rest} aria-describedby={descriptionId} aria-invalid={error ? true : undefined} className={['ds-input', 'ds-textarea', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ')} id={fieldId} />
+    {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+    {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
+  </div>;
 }
 
 // ── SearchInput ──────────────────────────────────────────────────────────────
@@ -385,6 +425,99 @@ export function Toolbar({ left, right, className }: ToolbarProps) {
       {right ? <div className="admin-toolbar__right">{right}</div> : null}
     </div>
   );
+}
+
+// ── Feedback and interactive primitives ─────────────────────────────────────
+
+export type FeedbackTone = 'info' | 'success' | 'warning' | 'error';
+
+type FeedbackProps = { children: ReactNode; title?: string; tone?: FeedbackTone; action?: ReactNode; className?: string };
+
+export function InlineFeedback({ children, title, tone = 'info', action, className }: FeedbackProps) {
+  return <div className={['ds-feedback', `ds-feedback--${tone}`, className].filter(Boolean).join(' ')} role={tone === 'error' ? 'alert' : 'status'}>
+    <div>{title ? <strong className="ds-feedback__title">{title}</strong> : null}<div className="ds-feedback__message">{children}</div></div>
+    {action ? <div className="ds-feedback__action">{action}</div> : null}
+  </div>;
+}
+
+export function Toast(props: FeedbackProps) {
+  return <aside aria-atomic="true" aria-live={props.tone === 'error' ? 'assertive' : 'polite'} className="ds-toast"><InlineFeedback {...props} /></aside>;
+}
+
+type ConfirmDialogProps = {
+  open: boolean; title: string; message: ReactNode; onConfirm: () => void; onCancel: () => void;
+  confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean;
+};
+
+export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, busy }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const messageId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      dialog.showModal();
+      cancelRef.current?.focus();
+    } else if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  function close() {
+    onCancel();
+    requestAnimationFrame(() => returnFocusRef.current?.focus());
+  }
+
+  return <dialog aria-describedby={messageId} aria-labelledby={titleId} className="ds-dialog" ref={dialogRef}
+    onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <h2 id={titleId}>{title}</h2>
+    <div id={messageId}>{message}</div>
+    <div className="ds-dialog__actions">
+      <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={close} ref={cancelRef} type="button">{cancelLabel}</button>
+      <Button aria-busy={busy || undefined} disabled={busy} onClick={onConfirm} variant={danger ? 'danger' : 'primary'}>{confirmLabel}</Button>
+    </div>
+  </dialog>;
+}
+
+type MenuProps = { label: ReactNode; children: ReactNode; align?: 'start' | 'end'; className?: string; buttonClassName?: string };
+
+export function Menu({ label, children, align = 'start', className, buttonClassName }: MenuProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const root = rootRef.current;
+    const items = () => Array.from(root?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? []);
+    items()[0]?.focus();
+    function close(returnFocus = true) { setOpen(false); if (returnFocus) requestAnimationFrame(() => buttonRef.current?.focus()); }
+    function pointerDown(event: PointerEvent) { if (root && !root.contains(event.target as Node)) close(false); }
+    function keyDown(event: KeyboardEvent) {
+      const menuItems = items();
+      const index = menuItems.indexOf(document.activeElement as HTMLElement);
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const offset = event.key === 'ArrowDown' ? 1 : -1;
+        menuItems[(index + offset + menuItems.length) % menuItems.length]?.focus();
+      } else if (event.key === 'Home') { event.preventDefault(); menuItems[0]?.focus(); }
+      else if (event.key === 'End') { event.preventDefault(); menuItems.at(-1)?.focus(); }
+      else if (event.key === 'Tab') close(false);
+    }
+    document.addEventListener('pointerdown', pointerDown);
+    document.addEventListener('keydown', keyDown);
+    return () => { document.removeEventListener('pointerdown', pointerDown); document.removeEventListener('keydown', keyDown); };
+  }, [open]);
+
+  return <div className={['ds-menu', className].filter(Boolean).join(' ')} ref={rootRef}>
+    <button aria-controls={menuId} aria-expanded={open} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
+    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} onClick={() => setOpen(false)} role="menu">{children}</div> : null}
+  </div>;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
