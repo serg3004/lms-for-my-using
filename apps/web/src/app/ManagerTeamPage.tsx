@@ -65,7 +65,7 @@ export function ManagerTeamPage() {
   return (
     <ManagerPageLayout>
       <div style={{ marginBottom: '22px' }}>
-        <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+        <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
           {t('manager.team.eyebrow')}
         </div>
         <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 800 }}>{t('manager.team.title')}</h1>

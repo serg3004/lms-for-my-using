@@ -220,11 +220,11 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
         <form id="course-form" onSubmit={handleSubmit}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '18px', alignItems: 'flex-start', margin: '12px 0 20px' }}>
             <div>
-              <div style={{ color: '#4f46e5', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '7px' }}>
+              <div style={{ color: 'var(--color-primary)', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '7px' }}>
                 {eyebrow}
               </div>
               <h1 style={{ margin: 0, fontSize: '2rem' }}>{pageTitle}</h1>
-              <p style={{ color: '#6b7280', margin: '8px 0 0' }}>{subtitle}</p>
+              <p style={{ color: 'var(--color-text-muted)', margin: '8px 0 0' }}>{subtitle}</p>
             </div>
             <button type="submit" form="course-form" disabled={isSubmitting} className="admin-btn admin-btn--primary">
               {isSubmitting ? t('instructor.courseForm.saving') : submitLabel}
@@ -275,15 +275,15 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                 <>
                   <h3>{t('instructor.courseForm.lessonsTitle', { count: lessons.length })}</h3>
                   {lessons.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '14px' }}>{t('instructor.courseForm.lessonsEmpty')}</p>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '14px' }}>{t('instructor.courseForm.lessonsEmpty')}</p>
                   ) : (
                     <div style={{ display: 'grid', gap: '10px', marginBottom: '10px' }}>
                       {lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          style={{ display: 'grid', gridTemplateColumns: '42px 1fr auto', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e3e8ef', borderRadius: '14px' }}
+                          style={{ display: 'grid', gridTemplateColumns: '42px 1fr auto', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid var(--color-border)', borderRadius: '14px' }}
                         >
-                          <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: '#eef2ff', color: '#4f46e5', fontWeight: 800 }}>
+                          <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: 'var(--color-accent-muted)', color: 'var(--color-primary)', fontWeight: 800 }}>
                             {lesson.order}
                           </div>
                           <span>{lesson.title}</span>
@@ -312,8 +312,8 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                 <>
                   <h3>{t('instructor.courseForm.nextStepsTitle')}</h3>
                   {[1, 2, 3].map((step) => (
-                    <div key={step} style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid #e3e8ef', borderRadius: '14px', marginBottom: '10px' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: '#eef2ff', color: '#4f46e5', fontWeight: 800 }}>
+                    <div key={step} style={{ display: 'grid', gridTemplateColumns: '42px 1fr', gap: '12px', alignItems: 'center', padding: '14px', border: '1px solid var(--color-border)', borderRadius: '14px', marginBottom: '10px' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: 'var(--color-accent-muted)', color: 'var(--color-primary)', fontWeight: 800 }}>
                         {step}
                       </div>
                       <div>{t(`instructor.courseForm.nextStep${step}`)}</div>
@@ -330,7 +330,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                     </select>
                   </FormField>
                   {updatedAt ? (
-                    <p style={{ color: '#6b7280', fontSize: '13px' }}>
+                    <p style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>
                       {t('instructor.courseForm.lastUpdated', { date: new Date(updatedAt).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language) })}
                     </p>
                   ) : null}

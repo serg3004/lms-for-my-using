@@ -91,7 +91,7 @@ function AssignTrainingModal({
             <input className="ds-input" type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
           </label>
 
-          {status === 'error' ? <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{t('manager.dashboard.assign.error')}</p> : null}
+          {status === 'error' ? <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{t('manager.dashboard.assign.error')}</p> : null}
 
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
             <button type="button" className="ds-button ds-button--secondary ds-button--sm" onClick={onClose}>
@@ -149,7 +149,7 @@ export function ManagerDashboardPage() {
     <ManagerPageLayout>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '22px', flexWrap: 'wrap' }}>
         <div>
-          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+          <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
             {t('manager.dashboard.eyebrow')}
           </div>
           <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 800 }}>{t('manager.dashboard.title')}</h1>
@@ -161,7 +161,7 @@ export function ManagerDashboardPage() {
       </div>
 
       {assignedMessage ? (
-        <p role="status" style={{ color: '#0f9f6e', marginBottom: '16px' }}>{t('manager.dashboard.assign.success')}</p>
+        <p role="status" style={{ color: 'var(--color-success)', marginBottom: '16px' }}>{t('manager.dashboard.assign.success')}</p>
       ) : null}
 
       <StatsGrid>

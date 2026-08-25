@@ -17,16 +17,16 @@ export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistIte
   return item.photoRequired && !hasChecklistPhotoEvidence(result);
 }
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
 };
 
 type InstructorChecklistReviewsData = { instances: ChecklistInstanceSummary[]; firstName?: string; lastName?: string };
@@ -143,7 +143,7 @@ function ReviewDetail({
       <h2 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h2>
       <p style={{ color: COLORS.muted }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
       <ChecklistDeadlineMeta instance={instance} />
-      {error && <p style={{ color: '#dc2626' }} role="alert">{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)' }} role="alert">{error}</p>}
       <div style={{ display: 'grid', gap: 12 }}>
         {checklist.items.map((item) => {
           const result = instance.results.find((r) => r.itemId === item.id);
@@ -192,7 +192,7 @@ function ReviewDetail({
                       width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
                       border: `1px solid ${result.reviewStatus === 'approved' ? COLORS.success : COLORS.border}`,
                       background: result.reviewStatus === 'approved' ? COLORS.success : COLORS.surface,
-                      color: result.reviewStatus === 'approved' ? '#fff' : COLORS.text,
+                      color: result.reviewStatus === 'approved' ? 'var(--color-on-primary)' : COLORS.text,
                     }}
                     aria-label={t('checklistReview.approve', 'Approve')}
                   >
@@ -204,9 +204,9 @@ function ReviewDetail({
                     onClick={() => void decide(item.id, 'rejected')}
                     style={{
                       width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-                      border: `1px solid ${result.reviewStatus === 'rejected' ? '#dc2626' : COLORS.border}`,
-                      background: result.reviewStatus === 'rejected' ? '#dc2626' : COLORS.surface,
-                      color: result.reviewStatus === 'rejected' ? '#fff' : COLORS.text,
+                      border: `1px solid ${result.reviewStatus === 'rejected' ? 'var(--color-danger)' : COLORS.border}`,
+                      background: result.reviewStatus === 'rejected' ? 'var(--color-danger)' : COLORS.surface,
+                      color: result.reviewStatus === 'rejected' ? 'var(--color-on-primary)' : COLORS.text,
                     }}
                     aria-label={t('checklistReview.reject', 'Reject')}
                   >
@@ -235,7 +235,7 @@ function ReviewDetail({
           borderRadius: 14,
           padding: '16px 18px',
           background: instance.passed ? COLORS.successSoft : COLORS.warningSoft,
-          color: instance.passed ? '#166534' : COLORS.warning,
+          color: instance.passed ? COLORS.success : COLORS.warning,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',

@@ -98,7 +98,7 @@ export function InstructorDashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
         <div>
           <h1 style={{ margin: 0 }}>{t('instructor.dashboard.title')}</h1>
-          <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{t('instructor.dashboard.subtitle')}</p>
+          <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)' }}>{t('instructor.dashboard.subtitle')}</p>
         </div>
         <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
           {t('instructor.dashboard.createCourse')}
@@ -115,11 +115,11 @@ export function InstructorDashboardPage() {
       <section className="admin-content-grid" style={{ marginTop: '1rem' }}>
         <div className="admin-card">
           <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.popularCourseTitle')}</h3>
-          <p style={{ margin: 0, color: '#6b7280' }}>{popularCourseTitle ?? t('instructor.dashboard.popularCourseEmpty')}</p>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>{popularCourseTitle ?? t('instructor.dashboard.popularCourseEmpty')}</p>
         </div>
         <div className="admin-card">
           <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.recentActivityTitle')}</h3>
-          <p style={{ margin: 0, color: '#6b7280' }}>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
             {completionsToday > 0
               ? t('instructor.dashboard.recentActivityCount', { count: completionsToday })
               : t('instructor.dashboard.recentActivityEmpty')}
@@ -127,7 +127,7 @@ export function InstructorDashboardPage() {
         </div>
         <div className="admin-card">
           <h3 style={{ margin: '0 0 8px' }}>{t('instructor.dashboard.draftsTitle')}</h3>
-          <p style={{ margin: 0, color: '#6b7280' }}>
+          <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
             {stats.draft > 0
               ? t('instructor.dashboard.draftsCount', { count: stats.draft })
               : t('instructor.dashboard.draftsEmpty')}

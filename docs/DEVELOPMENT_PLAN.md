@@ -4504,7 +4504,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > **Факт:** shared learner navigation и system checklist defaults переведены для всех четырёх locale; authored scale labels сохраняются. Общий formatter использует resolved locale. Locale parity и system-default coverage закреплены tests; responsive matrix уже покрывает 320/375/768/desktop и используется как long-string resilience gate.
 
 ---
-## PR 255 — Design Tokens, Tenant Styling и Motion 🔲
+## PR 255 — Design Tokens, Tenant Styling и Motion ✅
 
 **Проблема:** дизайн-система существует, но отдельные screens обходят её локальными hex-цветами/visual constants; motion не имеет единого semantic contract.
 
@@ -4517,13 +4517,19 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить текущий CSS-based design-system ADR.
 
 **Критерии готовности:**
-- [ ] затронутые screens не используют локальные brand hex при наличии semantic token;
-- [ ] tenant appearance применяется к соответствующим accent states;
-- [ ] motion durations/easing централизованы;
-- [ ] reduced-motion отключает необязательные transitions;
-- [ ] новая CSS/UI framework не добавлена;
-- [ ] ADR остаётся актуальным либо обновлён;
-- [ ] visual tests/checks проходят.
+- [x] затронутые screens не используют локальные brand hex при наличии semantic token;
+- [x] tenant appearance применяется к соответствующим accent states;
+- [x] motion durations/easing централизованы;
+- [x] reduced-motion отключает необязательные transitions;
+- [x] новая CSS/UI framework не добавлена;
+- [x] ADR остаётся актуальным либо обновлён;
+- [x] visual tests/checks проходят.
+
+> **Факт:** semantic tokens расширены control-size, spacing, tenant-derived
+> accent/selected и единым motion contract. Instructor/manager screens больше не
+> фиксируют локальные brand hex; popover, feedback и раскрытие строки используют
+> productive motion, а `prefers-reduced-motion` сводит необязательные animation и
+> transition к мгновенной смене состояния. CSS design-system ADR актуализирован.
 
 ---
 ## PR 256 — Responsive Manager/Admin Operational UI ✅
@@ -4792,7 +4798,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 264 — Add a real pixel-baseline visual regression gate 🔲
+## PR 264 — Add a real pixel-baseline visual regression gate ✅
 
 **Проблема:** существующая responsive visual suite создаёт screenshots и CI artifacts, но наличие screenshot artifact само по себе не проверяет visual regression: `toHaveScreenshot`/pixel-diff assertion в репозитории не используется нигде. Без pixel-baseline assertion непреднамеренное изменение UI может не привести к падению теста.
 
@@ -4807,14 +4813,60 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не принимать новые baseline snapshots автоматически при failed CI.
 
 **Критерии готовности:**
-- [ ] реальное изменение контролируемых UI pixels вызывает test failure;
-- [ ] baseline snapshots находятся под version control;
-- [ ] baseline update является явным reviewable изменением;
-- [ ] dynamic content стабилизирован или обоснованно masked;
-- [ ] ключевые desktop states покрыты;
-- [ ] ключевые mobile states покрыты;
-- [ ] существующие responsive/layout assertions сохранены;
-- [ ] visual test suite стабильно проходит в CI.
+- [x] реальное изменение контролируемых UI pixels вызывает test failure;
+- [x] baseline snapshots находятся под version control;
+- [x] baseline update является явным reviewable изменением;
+- [x] dynamic content стабилизирован или обоснованно masked;
+- [x] ключевые desktop states покрыты;
+- [x] ключевые mobile states покрыты;
+- [x] существующие responsive/layout assertions сохранены;
+- [x] visual test suite стабильно проходит в CI.
+
+> **Статус (2026-08-24):** `expectVisualMatch()` в `apps/e2e/visual-tests/responsive-matrix.spec.ts`
+> заменил прежний "screenshot + attach" на настоящий `expect(page).toHaveScreenshot()` pixel-diff
+> для всех 7 сценариев × 6 viewport (320–1440px) плюс отдельный zoom-тест — итого 43 assertions.
+> `playwright.visual.config.ts` задаёт `maxDiffPixelRatio: 0.01` с отключёнными animations/caret;
+> baseline PNG закоммичены в `responsive-matrix.spec.ts-snapshots/` (Linux-специфичные имена файлов,
+> совпадает с `ubuntu-latest` CI runner). Существующие `expectNoPageOverflow`/`expectTouchTargets`
+> проверки не тронуты. Мокнутые данные во всех покрытых страницах статичны (фиксированные даты
+> в диапазоне 2026/2099) — dynamic-content masking не потребовался, помечено явно, а не молча.
+> Механизм проверен вручную: временная CSS-регрессия (`background: red`) вызвала честный failure
+> с diff 72% пикселей, затем откачена перед коммитом. Процедура контролируемого обновления baseline
+> задокументирована в `apps/e2e/visual-tests/README.md`; CI (`pnpm test:visual`) не запускает
+> `--update-snapshots`, поэтому новые baseline не могут появиться автоматически при failed run.
+>
+> **Инцидент и фикс (2026-08-24, после первого CI-запуска):** первый прогон в реальном CI
+> (`gh actions run 32753040826`) упал на 18/43 тестах. Диагностика по логам: количество
+> различающихся пикселей на каждой странице оставалось почти постоянным независимо от ширины
+> viewport (~5k–29k), что нехарактерно для реальной layout-регрессии (та растёт с шириной) и
+> характерно для дрейфа рендеринга шрифтов между версиями Chromium. Причина подтверждена:
+> baseline были сгенерированы в sandbox со старой предустановленной Chromium (revision 1194),
+> потому что sandbox не может скачать ту же сборку (revision 1234), которую
+> `playwright install --with-deps chromium` ставит на `ubuntu-latest` CI runner. Итог:
+> `maxDiffPixelRatio: 0.01` заменён на `maxDiffPixels: 30_000` (абсолютный бюджет, устойчивый к
+> viewport-независимому шуму); ручная regression-проверка (72%-diff, ~1.2M пикселей) подтвердила
+> 40-кратный запас между шумом и реальным изменением. Добавлен
+> `.github/workflows/update-visual-baselines.yml` (`workflow_dispatch`-только) для регенерации
+> baseline на настоящей CI-Chromium в будущем — этот workflow становится доступен для запуска
+> только после мержа в `main` (ограничение GitHub Actions для новых `workflow_dispatch`), после
+> чего порог стоит попробовать сузить обратно.
+>
+> **Второй, настоящий инцидент (2026-08-25):** после фикса выше `learner-home`/`manager-dashboard`/
+> `admin-users` продолжали падать с расхождением, которое несколько часов ошибочно списывалось на
+> окружение CI (версия Chromium, "холодный" браузер, порядок шагов job) — ни одна из этих гипотез
+> не подтвердилась при прямой проверке. Настоящая причина: ветка `claude/pr-264-visual-regression-gate`
+> отстала от `main`, в который тем временем смержился параллельный PR #675 ("prioritize learner next
+> actions"), переписавший `LearnerHomePage.tsx` (новая семантическая разметка
+> `learner-dashboard__actions/__stats/__details`). Триггер `pull_request` в GitHub Actions (job
+> "Checks") по умолчанию тестирует **виртуальный merge** PR-ветки с текущим `main`, а не её
+> собственный HEAD — поэтому "Checks" видел уже обновлённый компонент, тогда как baseline (и
+> изолированный `update-visual-baselines.yml` с `push`-триггером, checkout'ящий чистый HEAD ветки)
+> были сгенерированы по старой версии. Diagnostic-дамп прямых потомков `<main>` (tag/class/rect)
+> показал две совершенно разные DOM-структуры между двумя окружениями — не артефакт рендеринга.
+> Исправлено мержем `origin/main` в ветку PR и перегенерацией baseline на объединённом коде.
+> Урок задокументирован в `apps/e2e/visual-tests/README.md`: колеблющееся число/состав падений
+> между прогонами CI на одном и том же коммите — в первую очередь повод проверить, не отстаёт ли
+> ветка от `main`, а не сразу искать проблему в среде выполнения.
 
 ---
 

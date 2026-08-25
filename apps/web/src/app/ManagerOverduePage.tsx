@@ -38,7 +38,7 @@ export function ManagerOverduePage() {
   return (
     <ManagerPageLayout>
       <div style={{ marginBottom: '22px' }}>
-        <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>{t('manager.overdue.eyebrow')}</div>
+        <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>{t('manager.overdue.eyebrow')}</div>
         <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)', fontWeight: 800 }}>{t('manager.overdue.title')}</h1>
         <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('manager.overdue.subtitle')}</p>
       </div>
