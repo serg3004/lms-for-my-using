@@ -5,7 +5,7 @@ import { AccountSwitcher } from './accountSwitcher.js';
 import { getCurrentUser, getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
-import { describeNotification, markAllReadLocally, markReadLocally } from './notifications.js';
+import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
 import { Avatar, SkipLink } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
 
@@ -121,6 +121,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationSummary[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -130,15 +131,27 @@ export function NotificationBell() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    const syncCount = (event: Event) => setUnreadCount((event as CustomEvent<number>).detail);
+    window.addEventListener(NOTIFICATION_COUNT_EVENT, syncCount);
+    return () => window.removeEventListener(NOTIFICATION_COUNT_EVENT, syncCount);
+  }, []);
+
+  async function loadMenu() {
+    setLoadError(false);
+    setNotifications(null);
+    try {
+      setNotifications(await listNotifications());
+    } catch {
+      setLoadError(true);
+    }
+  }
+
   async function toggleOpen() {
     const next = !open;
     setOpen(next);
     if (next && notifications === null) {
-      try {
-        setNotifications(await listNotifications());
-      } catch {
-        setNotifications([]);
-      }
+      await loadMenu();
     }
   }
 
@@ -189,8 +202,13 @@ export function NotificationBell() {
               </button>
             ) : null}
           </div>
-          {notifications === null ? (
-            <div className="notification-bell__empty">…</div>
+          {loadError ? (
+            <div className="notification-bell__empty" role="alert">
+              <span>{t('notifications.loadError')}</span>
+              <button className="notification-bell__retry" type="button" onClick={() => { void loadMenu(); }}>{t('notifications.retry')}</button>
+            </div>
+          ) : notifications === null ? (
+            <div className="notification-bell__empty" role="status">{t('notifications.loading')}</div>
           ) : notifications.length === 0 ? (
             <div className="notification-bell__empty">{t('notifications.empty')}</div>
           ) : (
@@ -212,6 +230,7 @@ export function NotificationBell() {
               })}
             </ul>
           )}
+          <a className="notification-bell__all" href="/learn/notifications">{t('notifications.viewAll')}</a>
         </div>
       ) : null}
     </div>
@@ -233,6 +252,7 @@ const LEARNER_NAV_DEFS = [
   { key: 'checklists.navLink', href: '/learn/checklists' },
   { key: 'progress.navLink', href: '/learn/progress' },
   { key: 'certificates.navLink', href: '/learn/certificates' },
+  { key: 'notifications.bell', href: '/learn/notifications' },
 ] as const;
 
 type LearnerPageLayoutProps = {
