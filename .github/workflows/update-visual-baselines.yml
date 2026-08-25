@@ -49,6 +49,15 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
+      # Chromium/fontconfig render text slightly differently on a genuinely cold first launch
+      # in a fresh container than after a few prior launches (observed: an isolated first-launch
+      # run produced a shorter fullPage learner-home screenshot than the real "Checks" CI job,
+      # which always launches Chromium several times via test:e2e/test:a11y before the visual
+      # suite runs). Throw away one full run to warm the browser/font cache up to match that.
+      - name: Warm up Chromium/fontconfig (discarded run, mismatches expected)
+        run: pnpm --filter @lms/e2e exec playwright test --config playwright.visual.config.ts
+        continue-on-error: true
+
       - name: Regenerate visual baselines
         run: pnpm --filter @lms/e2e exec playwright test --config playwright.visual.config.ts --update-snapshots
 
