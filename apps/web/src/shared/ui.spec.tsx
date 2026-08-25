@@ -158,6 +158,7 @@ describe('design system — SearchInput', () => {
     );
     expect(html).toContain('ds-search__input');
     expect(html).toContain('ds-search__icon');
+    expect(html).toContain('aria-label="Search…"');
   });
 });
 
@@ -227,9 +228,9 @@ describe('design system — DataTable', () => {
       <DataTable label="Assessment results" columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
     );
 
-    expect(html).toContain('<th>Name</th>');
+    expect(html).toContain('<th scope="col">Name</th>');
     expect(html).toContain('aria-label="Assessment results"');
-    expect(html).toContain('<th>Score</th>');
+    expect(html).toContain('<th scope="col">Score</th>');
     expect(html).toContain('Alice');
     expect(html).toContain('90');
     expect(html).toContain('Bob');
@@ -352,6 +353,8 @@ describe('design system — Pagination', () => {
     const html = renderToStaticMarkup(<Pagination page={1} pageSize={20} total={100} onPage={vi.fn()} />);
     expect(html).toContain('1 / 5');
     expect(html).toContain('disabled=""');
+    expect(html).toContain('<nav aria-label="Pagination"');
+    expect(html).toContain('aria-live="polite"');
   });
 
   it('calls onPage with the previous and next page numbers when clicked', () => {

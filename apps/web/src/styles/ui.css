@@ -914,6 +914,7 @@
   transition: opacity 0.15s, background 0.15s, border-color 0.15s;
   white-space: nowrap;
   text-decoration: none;
+  min-height: 44px;
 }
 
 .ds-button:disabled {
@@ -924,6 +925,7 @@
 .ds-button--sm {
   padding: 0.3125rem 0.75rem;
   font-size: var(--text-xs);
+  min-height: 44px;
 }
 
 .ds-button--primary {
@@ -1066,7 +1068,7 @@
   transition: border-color 0.15s;
 }
 
-.ds-input:focus {
+.ds-input:focus-visible {
   outline: 3px solid rgb(37 99 235 / 20%);
   outline-offset: 1px;
   border-color: var(--color-primary);
@@ -1076,7 +1078,7 @@
   border-color: var(--color-danger);
 }
 
-.ds-input--error:focus {
+.ds-input--error:focus-visible {
   outline-color: rgb(220 38 38 / 20%);
 }
 
@@ -1698,7 +1700,7 @@
 .ds-menu__content { position: absolute; z-index: 100; top: calc(100% + 6px); min-width: 180px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 4px; background: var(--color-surface); box-shadow: var(--shadow-card); transform-origin: top; animation: ds-popover-enter var(--motion-duration-fast) var(--motion-ease-productive); }
 .ds-menu__content--start { left: 0; }
 .ds-menu__content--end { right: 0; }
-.ds-menu__content [role^='menuitem'] { display: block; width: 100%; border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--color-text); text-align: left; text-decoration: none; cursor: pointer; }
+.ds-menu__content [role^='menuitem'] { display: block; width: 100%; min-height: 44px; border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--color-text); text-align: left; text-decoration: none; cursor: pointer; }
 .ds-menu__content [role^='menuitem']:hover,
 .ds-menu__content [role^='menuitem']:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; background: var(--color-surface-muted); }
 
@@ -1997,8 +1999,8 @@
 }
 
 .ds-data-table__expand {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   font-size: var(--text-lg);
 }

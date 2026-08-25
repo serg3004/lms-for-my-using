@@ -4562,7 +4562,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > Responsive matrix проверяет manager team и Admin users на 320/375/768/desktop.
 
 ---
-## PR 257 — Accessibility Baseline для shared UI 🔲
+## PR 257 — Accessibility Baseline для shared UI ✅
 
 **Проблема:** a11y primitives уже существуют, а PR 234 усиливает общий axe gate, но новым menu/dialog/table/navigation patterns нужен конкретный shared-component baseline.
 
@@ -4573,13 +4573,23 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - использовать результаты/quality gate PR 234 вместо создания параллельной axe-политики.
 
 **Критерии готовности:**
-- [ ] интерактивные shared components доступны с клавиатуры;
-- [ ] focus indicator видим;
-- [ ] modal/popover корректно управляют focus;
-- [ ] touch targets соответствуют принятому baseline;
-- [ ] error/success state не передаётся только цветом;
-- [ ] проверки закреплены tests или documented QA checklist;
-- [ ] PR 234 остаётся единым общим accessibility quality gate.
+- [x] интерактивные shared components доступны с клавиатуры;
+- [x] focus indicator видим;
+- [x] modal/popover корректно управляют focus;
+- [x] touch targets соответствуют принятому baseline;
+- [x] error/success state не передаётся только цветом;
+- [x] проверки закреплены tests или documented QA checklist;
+- [x] PR 234 остаётся единым общим accessibility quality gate.
+
+> **Факт (2026-08-25):** аудит shared UI закрепил единый baseline без
+> параллельной axe-политики: поля имеют связанные label/error/hint и visible
+> `:focus-visible`, таблицы — column semantics и доступные sort/selection/details,
+> pagination — именованный navigation landmark и live page status. Dialog и Menu
+> поддерживают Escape, начальный focus, keyboard menu navigation и возврат focus;
+> Button, menu items и table details controls имеют target не менее 44×44 px.
+> Feedback-компоненты сохраняют текст, semantic roles и live regions, поэтому
+> success/error состояния не зависят только от цвета. Контракты покрыты shared UI
+> tests, а общий browser axe gate по-прежнему принадлежит PR 234.
 
 ---
 ## PR 258 — Admin Audit Log 🔲
