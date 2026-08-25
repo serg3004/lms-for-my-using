@@ -396,6 +396,13 @@ export type DataTableExpansion<T> = {
   collapseLabel?: (row: T) => string;
 };
 
+export type DataTableResponsiveDetails<T> = {
+  /** Accessible name for the column containing the mobile details toggle. */
+  label?: string;
+  expandLabel?: (row: T) => string;
+  collapseLabel?: (row: T) => string;
+};
+
 export type DataTableProps<T> = {
   label: string;
   columns: Column<T>[];
@@ -410,6 +417,11 @@ export type DataTableProps<T> = {
   selection?: DataTableSelection<T>;
   batchActions?: ReactNode | ((selectedRows: T[]) => ReactNode);
   expansion?: DataTableExpansion<T>;
+  /**
+   * Makes secondary and tertiary columns available in an expandable details
+   * region when responsive CSS removes them from the table row.
+   */
+  responsiveDetails?: DataTableResponsiveDetails<T>;
 };
 
 export function DataTable<T>({
@@ -426,7 +438,9 @@ export function DataTable<T>({
   selection,
   batchActions,
   expansion,
+  responsiveDetails,
 }: DataTableProps<T>) {
+  const [responsiveExpandedKeys, setResponsiveExpandedKeys] = useState<Set<string>>(new Set());
   if (loading) {
     return <PageState message={loadingMessage} variant="loading" />;
   }
@@ -438,7 +452,11 @@ export function DataTable<T>({
   const selectableRows = selection ? rows.filter((row) => selection.isRowSelectable?.(row) !== false) : [];
   const selectedRows = selection ? rows.filter((row) => selection.selectedKeys.has(keyExtractor(row))) : [];
   const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selection?.selectedKeys.has(keyExtractor(row)));
-  const columnSpan = columns.length + (selection ? 1 : 0) + (expansion ? 1 : 0);
+  const responsiveColumns = columns.filter((column) => column.priority === 'secondary' || column.priority === 'tertiary');
+  const hasResponsiveDetails = Boolean(responsiveDetails && responsiveColumns.length > 0);
+  const hasExpansion = Boolean(expansion || hasResponsiveDetails);
+  const expansionControlClass = `ds-data-table__control${expansion ? '' : ' ds-data-table__details-control'}`;
+  const columnSpan = columns.length + (selection ? 1 : 0) + (hasExpansion ? 1 : 0);
 
   function updateSelection(key: string, selected: boolean) {
     if (!selection) return;
@@ -449,11 +467,11 @@ export function DataTable<T>({
   }
 
   function updateExpansion(key: string, expanded: boolean) {
-    if (!expansion) return;
-    const next = new Set(expansion.expandedKeys);
+    const next = new Set(expansion?.expandedKeys ?? responsiveExpandedKeys);
     if (expanded) next.add(key);
     else next.delete(key);
-    expansion.onChange(next);
+    if (expansion) expansion.onChange(next);
+    else setResponsiveExpandedKeys(next);
   }
 
   return (
@@ -486,9 +504,9 @@ export function DataTable<T>({
                   />
                 </th>
               ) : null}
-              {expansion ? (
-                <th className="ds-data-table__control" scope="col">
-                  <span className="ui-visually-hidden">Details</span>
+              {hasExpansion ? (
+                <th className={expansionControlClass} scope="col">
+                  <span className="ui-visually-hidden">{responsiveDetails?.label ?? 'Details'}</span>
                 </th>
               ) : null}
               {columns.map((col) => (
@@ -516,7 +534,7 @@ export function DataTable<T>({
             {rows.map((row) => {
               const key = keyExtractor(row);
               const selectable = selection?.isRowSelectable?.(row) !== false;
-              const expanded = expansion?.expandedKeys.has(key) ?? false;
+              const expanded = expansion?.expandedKeys.has(key) ?? responsiveExpandedKeys.has(key);
               return [
                 <tr key={key}>
                   {selection ? (
@@ -530,11 +548,13 @@ export function DataTable<T>({
                       />
                     </td>
                   ) : null}
-                  {expansion ? (
-                    <td className="ds-data-table__control">
+                  {hasExpansion ? (
+                    <td className={expansionControlClass}>
                       <button
                         aria-expanded={expanded}
-                        aria-label={expanded ? expansion.collapseLabel?.(row) ?? `Collapse row ${key}` : expansion.expandLabel?.(row) ?? `Expand row ${key}`}
+                        aria-label={expanded
+                          ? expansion?.collapseLabel?.(row) ?? responsiveDetails?.collapseLabel?.(row) ?? `Collapse row ${key}`
+                          : expansion?.expandLabel?.(row) ?? responsiveDetails?.expandLabel?.(row) ?? `Expand row ${key}`}
                         className="ds-data-table__expand"
                         onClick={() => updateExpansion(key, !expanded)}
                         type="button"
@@ -547,7 +567,18 @@ export function DataTable<T>({
                 </tr>,
                 expanded ? (
                   <tr className="ds-data-table__expanded" key={`${key}-expanded`}>
-                    <td colSpan={columnSpan}>{expansion?.render(row)}</td>
+                    <td colSpan={columnSpan}>
+                      {expansion?.render(row) ?? (
+                        <dl className="ds-data-table__responsive-details">
+                          {responsiveColumns.map((column) => (
+                            <div key={column.key}>
+                              <dt>{column.label}</dt>
+                              <dd>{column.render(row)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      )}
+                    </td>
                   </tr>
                 ) : null,
               ];

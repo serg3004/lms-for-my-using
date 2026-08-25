@@ -4526,7 +4526,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] visual tests/checks проходят.
 
 ---
-## PR 256 — Responsive Manager/Admin Operational UI 🔲
+## PR 256 — Responsive Manager/Admin Operational UI ✅
 
 **Проблема:** operational tables и dashboards могут деградировать на узких viewport в horizontal-scroll интерфейс вместо адаптивного рабочего сценария.
 
@@ -4539,13 +4539,21 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - проверить target sizes.
 
 **Критерии готовности:**
-- [ ] critical information доступна без обязательного горизонтального скролла;
-- [ ] secondary details доступны через progressive disclosure;
-- [ ] row actions доступны на touch device;
-- [ ] 320/375 layouts не имеют clipping/overlap;
-- [ ] desktop keyboard workflow не ухудшен;
-- [ ] используется общий responsive DataTable contract;
-- [ ] responsive tests/checks проходят.
+- [x] critical information доступна без обязательного горизонтального скролла;
+- [x] secondary details доступны через progressive disclosure;
+- [x] row actions доступны на touch device;
+- [x] 320/375 layouts не имеют clipping/overlap;
+- [x] desktop keyboard workflow не ухудшен;
+- [x] используется общий responsive DataTable contract;
+- [x] responsive tests/checks проходят.
+
+> **Факт (2026-08-25):** общий `DataTable` получил opt-in `responsiveDetails`:
+> secondary/tertiary колонки скрываются на узком viewport, но автоматически
+> дублируются в доступном expandable details region; toggle остаётся keyboard-
+> accessible и имеет touch target 44×44 px. Manager team/overdue и Admin users
+> переведены на dense contract с явными priority columns; критичные статусы,
+> course/user identity и user row actions остаются непосредственно в строке.
+> Responsive matrix проверяет manager team и Admin users на 320/375/768/desktop.
 
 ---
 ## PR 257 — Accessibility Baseline для shared UI 🔲

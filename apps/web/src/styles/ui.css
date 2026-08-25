@@ -2011,6 +2011,35 @@
   background: var(--color-surface-muted);
 }
 
+.ds-data-table__responsive-details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.ds-data-table__responsive-details > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 0.4fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.ds-data-table__responsive-details dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+}
+
+.ds-data-table__responsive-details dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ds-data-table__details-control {
+  display: none;
+}
+
 .td-title {
   font-weight: var(--fw-semibold);
   color: var(--color-text);
@@ -2050,6 +2079,15 @@
   .ds-data-table [data-priority='secondary'],
   .ds-data-table [data-priority='tertiary'] {
     display: none;
+  }
+
+  .ds-data-table .ds-data-table__details-control {
+    display: table-cell;
+  }
+
+  .ds-data-table__expand {
+    width: 44px;
+    height: 44px;
   }
 
   .ds-data-table .admin-table-wrap table {

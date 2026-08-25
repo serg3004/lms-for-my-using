@@ -265,6 +265,7 @@ describe('design system — DataTable', () => {
         label="Assessment results"
         onSortChange={vi.fn()}
         rows={[{ id: '1', name: 'Alice', score: 90 }]}
+        responsiveDetails={{ label: 'More details' }}
         sort={{ key: 'name', direction: 'ascending' }}
       />,
     );
@@ -274,6 +275,9 @@ describe('design system — DataTable', () => {
     expect(html).toContain('data-priority="primary"');
     expect(html).toContain('data-priority="secondary"');
     expect(html).toContain('ds-data-table__sort');
+    expect(html).toContain('ds-data-table__details-control');
+    expect(html).toContain('aria-label="Expand row 1"');
+    expect(html).toContain('More details');
   });
 
   it('renders controlled selection, batch actions and expanded row content', () => {

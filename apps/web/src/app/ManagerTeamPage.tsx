@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getManagerTeamSummary, type ManagerTeamMember, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
-import { Badge, PageState } from '../shared/ui.js';
+import { Badge, DataTable, PageState, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type ManagerTeamData = { summary: ManagerTeamSummary };
@@ -51,6 +51,17 @@ export function ManagerTeamPage() {
     );
   }
 
+  const columns: Column<ManagerTeamMember>[] = [
+    { key: 'employee', label: t('manager.team.columnEmployee'), priority: 'primary', render: memberName },
+    { key: 'activeCourses', label: t('manager.team.columnActiveCourses'), priority: 'secondary', render: (member) => member.activeCoursesCount },
+    { key: 'progress', label: t('manager.team.columnProgress'), priority: 'secondary', render: (member) => `${member.completionPercent}%` },
+    { key: 'status', label: t('manager.team.columnStatus'), priority: 'primary', render: (member) => (
+      <Badge variant={member.status === 'good' ? 'done' : 'overdue'}>
+        {member.status === 'good' ? t('manager.team.filterGood') : t('manager.team.filterRisk')}
+      </Badge>
+    ) },
+  ];
+
   return (
     <ManagerPageLayout>
       <div style={{ marginBottom: '22px' }}>
@@ -77,39 +88,7 @@ export function ManagerTeamPage() {
         </select>
       </div>
 
-      <div className="admin-table-wrap">
-        <table aria-label={t('manager.team.title')}>
-          <thead>
-            <tr>
-              <th>{t('manager.team.columnEmployee')}</th>
-              <th>{t('manager.team.columnActiveCourses')}</th>
-              <th>{t('manager.team.columnProgress')}</th>
-              <th>{t('manager.team.columnStatus')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((member) => (
-              <tr key={member.userId}>
-                <td>{memberName(member)}</td>
-                <td>{member.activeCoursesCount}</td>
-                <td>{member.completionPercent}%</td>
-                <td>
-                  <Badge variant={member.status === 'good' ? 'done' : 'overdue'}>
-                    {member.status === 'good' ? t('manager.team.filterGood') : t('manager.team.filterRisk')}
-                  </Badge>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>
-                  {t('manager.team.empty')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable columns={columns} density="dense" emptyMessage={t('manager.team.empty')} keyExtractor={(member) => member.userId} label={t('manager.team.title')} responsiveDetails={{ label: t('courses.details'), expandLabel: (member) => `${t('courses.details')}: ${memberName(member)}`, collapseLabel: (member) => `${t('courses.details')}: ${memberName(member)}` }} rows={filtered} />
     </ManagerPageLayout>
   );
 }
