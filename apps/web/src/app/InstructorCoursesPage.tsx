@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentUser, listCourses, listProgress, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
+import { getCurrentUser, listCourseSummaries, type CurrentUser, type InstructorCourseSummary } from '../shared/apiClient.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
-type InstructorCoursesData = { user: CurrentUser; courses: CourseSummary[]; studentCounts: Map<string, number> };
+type InstructorCoursesData = { user: CurrentUser; courses: InstructorCourseSummary[] };
 
 type StatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
@@ -29,20 +29,11 @@ export function InstructorCoursesPage() {
 
   const { state } = useAsyncData<InstructorCoursesData>(
     async () => {
-      const [user, page, { items: progressItems }] = await Promise.all([
+      const [user, page] = await Promise.all([
         getCurrentUser(),
-        listCourses({ pageSize: 100 }),
-        listProgress({ pageSize: 100 }),
+        listCourseSummaries({ pageSize: 100 }),
       ]);
-      const studentsByCourse = new Map<string, Set<string>>();
-      for (const progress of progressItems) {
-        const set = studentsByCourse.get(progress.courseId) ?? new Set<string>();
-        set.add(progress.userId);
-        studentsByCourse.set(progress.courseId, set);
-      }
-      const counts = new Map<string, number>();
-      for (const [courseId, students] of studentsByCourse) counts.set(courseId, students.size);
-      return { user, courses: page.items, studentCounts: counts };
+      return { user, courses: page.items };
     },
     [t],
     { unauthenticated: t('instructor.courses.loadError'), error: t('instructor.courses.loadError') },
@@ -74,7 +65,7 @@ export function InstructorCoursesPage() {
     );
   }
 
-  const { user, studentCounts } = state.data;
+  const { user } = state.data;
 
   return (
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
@@ -122,7 +113,7 @@ export function InstructorCoursesPage() {
               : course.status === 'archived'
                 ? t('instructor.courses.statusArchived')
                 : t('instructor.courses.statusDraft');
-            const studentCount = studentCounts.get(course.id) ?? 0;
+            const studentCount = course.metrics.enrolled;
 
             return (
               <article
