@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
@@ -27,11 +27,16 @@ async function expectTouchTargets(page: Page) {
   expect(undersized, JSON.stringify(undersized)).toEqual([]);
 }
 
-async function captureVisualBaseline(page: Page, testInfo: TestInfo, name: string) {
-  const screenshot = await page.screenshot({ animations: 'disabled', caret: 'hide', fullPage: true });
-  expect(screenshot.subarray(1, 4).toString()).toBe('PNG');
-  expect(screenshot.byteLength).toBeGreaterThan(1_000);
-  await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
+// Real pixel-baseline regression assertion (not just an artifact upload): fails the test
+// when rendered pixels drift from the committed baseline in <spec-name>-snapshots/. See
+// visual-tests/README.md for the controlled baseline-update procedure.
+//
+// `networkidle` plus a short settle guards against capturing a screenshot before in-flight
+// rendering work (e.g. a route that resolves a tick late) has finished.
+async function expectVisualMatch(page: Page, name: string) {
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(300);
+  await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
 }
 
 async function installAdminMocks(page: Page) {
@@ -348,17 +353,17 @@ for (const width of widths) {
   test.describe(`${width}px viewport`, () => {
     test.use({ viewport: { width, height } });
 
-    test('matches the public navigation baseline without page overflow', async ({ page }, testInfo) => {
+    test('matches the public navigation baseline without page overflow', async ({ page }) => {
       const getRefreshRequests = await installGuestMock(page);
       await page.goto('/');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expect.poll(getRefreshRequests).toBeGreaterThan(0);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await captureVisualBaseline(page, testInfo, `public-home-${width}`);
+      await expectVisualMatch(page, `public-home-${width}`);
     });
 
-    test('keeps admin navigation, table, form, and dialog responsive', async ({ page }, testInfo) => {
+    test('keeps admin navigation, table, form, and dialog responsive', async ({ page }) => {
       await installAdminMocks(page);
       await page.goto('/admin/users');
       await expect(page.getByRole('heading', { name: 'Пользователи' })).toBeVisible();
@@ -374,37 +379,37 @@ for (const width of widths) {
         return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
       });
       expect(dialogFits).toBe(true);
-      await captureVisualBaseline(page, testInfo, `admin-users-${width}`);
+      await expectVisualMatch(page, `admin-users-${width}`);
     });
 
-    test('keeps the learner dashboard responsive', async ({ page }, testInfo) => {
+    test('keeps the learner dashboard responsive', async ({ page }) => {
       await installLearnerMocks(page);
       await page.goto('/learn');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await captureVisualBaseline(page, testInfo, `learner-home-${width}`);
+      await expectVisualMatch(page, `learner-home-${width}`);
     });
 
-    test('keeps the manager team dashboard responsive', async ({ page }, testInfo) => {
+    test('keeps the manager team dashboard responsive', async ({ page }) => {
       await installManagerMocks(page);
       await page.goto('/manager/dashboard');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await captureVisualBaseline(page, testInfo, `manager-dashboard-${width}`);
+      await expectVisualMatch(page, `manager-dashboard-${width}`);
     });
 
-    test('keeps the instructor dashboard responsive', async ({ page }, testInfo) => {
+    test('keeps the instructor dashboard responsive', async ({ page }) => {
       await installInstructorMocks(page);
       await page.goto('/instructor/dashboard');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await captureVisualBaseline(page, testInfo, `instructor-dashboard-${width}`);
+      await expectVisualMatch(page, `instructor-dashboard-${width}`);
     });
 
-    test('keeps the admin course builder and its add-lesson dialog responsive', async ({ page }, testInfo) => {
+    test('keeps the admin course builder and its add-lesson dialog responsive', async ({ page }) => {
       await installCourseBuilderMocks(page);
       await page.goto('/admin/courses/course-1');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -422,10 +427,10 @@ for (const width of widths) {
         return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
       });
       expect(dialogFits).toBe(true);
-      await captureVisualBaseline(page, testInfo, `admin-course-builder-${width}`);
+      await expectVisualMatch(page, `admin-course-builder-${width}`);
     });
 
-    test('keeps the admin checklist builder responsive', async ({ page }, testInfo) => {
+    test('keeps the admin checklist builder responsive', async ({ page }) => {
       await installChecklistBuilderMocks(page);
       await page.goto('/admin/checklists');
       await expect(page.getByRole('heading', { name: 'Чек-листы' })).toBeVisible();
@@ -444,7 +449,7 @@ for (const width of widths) {
       await expect(page.getByRole('button', { name: 'Добавить пункт' })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await captureVisualBaseline(page, testInfo, `admin-checklist-builder-${width}`);
+      await expectVisualMatch(page, `admin-checklist-builder-${width}`);
     });
   });
 }
