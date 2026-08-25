@@ -1,0 +1,72 @@
+name: Update visual regression baselines
+
+# Manual-only: regenerates apps/e2e/visual-tests/*-snapshots/*.png on the same
+# ubuntu-latest Chromium build the "Checks" CI job uses, then pushes the result
+# back to the branch that was dispatched. See apps/e2e/visual-tests/README.md.
+#
+# Baselines must be generated on the exact browser build CI installs -- a
+# baseline captured on a different OS or Chromium version fails as noisy
+# anti-aliasing/font-rendering diffs that are not real UI regressions. This
+# workflow is the controlled, reviewable way to do that: it never runs on
+# push/PR, only on an explicit human-triggered dispatch, and every resulting
+# commit is visible in the branch's history for review before merge.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update-baselines:
+    name: Regenerate baselines
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Regenerate visual baselines
+        run: pnpm --filter @lms/e2e exec playwright test --config playwright.visual.config.ts --update-snapshots
+
+      - name: Commit updated baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/e2e/visual-tests/responsive-matrix.spec.ts-snapshots/
+          if git diff --cached --quiet; then
+            echo "No baseline changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(e2e): regenerate visual baselines on ubuntu-latest Chromium"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-baselines-failure-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
