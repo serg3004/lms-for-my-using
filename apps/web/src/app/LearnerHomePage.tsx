@@ -1,26 +1,14 @@
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { formatDate } from '../shared/formatDate.js';
 
 import { getCurrentUser } from '../shared/api/auth.js';
-import { listCourses } from '../shared/api/courses.js';
-import { listAssignments } from '../shared/api/assignments.js';
-import { listAssessments } from '../shared/api/assessments.js';
-import { listCertificates } from '../shared/api/certificates.js';
-import { listLessons } from '../shared/api/lessons.js';
-import { listProgress } from '../shared/api/progress.js';
-import type { AssignmentSummary, CertificateSummary, CourseSummary, ProgressSummary } from '../shared/api/types.js';
+import { getLearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
+import type { LearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { Card, PageState, ProgressBar, SectionHeader, StatCard, StatsGrid } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-
-type AssignmentEntry = AssignmentSummary & {
-  course?: { title?: string | null } | null;
-};
-
-type CertificateEntry = CertificateSummary & {
-  course?: { title?: string | null } | null;
-};
 
 type ContinueLearningItem = {
   courseId: string;
@@ -53,91 +41,40 @@ type DashboardData = {
   recentActivity: ActivityItem[];
 };
 
-async function buildContinueLearning(
-  progress: ProgressSummary[],
-  courses: CourseSummary[],
-): Promise<ContinueLearningItem[]> {
-  const latestByCourseId = new Map<string, string>();
-  const completedLessonsByCourseId = new Map<string, Set<string>>();
-
-  for (const entry of progress) {
-    if (!entry.completedAt) continue;
-
-    const current = latestByCourseId.get(entry.courseId);
-    if (!current || entry.completedAt > current) {
-      latestByCourseId.set(entry.courseId, entry.completedAt);
-    }
-
-    if (entry.lessonId) {
-      const set = completedLessonsByCourseId.get(entry.courseId) ?? new Set<string>();
-      set.add(entry.lessonId);
-      completedLessonsByCourseId.set(entry.courseId, set);
-    }
-  }
-
-  const topCourseIds = [...latestByCourseId.entries()]
-    .sort((a, b) => (a[1] < b[1] ? 1 : -1))
-    .slice(0, 3)
-    .map(([courseId]) => courseId);
-
-  const items = await Promise.all(
-    topCourseIds.map(async (courseId) => {
-      const course = courses.find((c) => c.id === courseId);
-      const lessons = await listLessons(courseId).catch(() => []);
-      const completedLessons = completedLessonsByCourseId.get(courseId)?.size ?? 0;
-
-      return {
-        courseId,
-        title: getReadableTitle(course?.title, courseId),
-        completedLessons,
-        totalLessons: lessons.length,
-      };
-    }),
-  );
-
-  return items;
+function buildContinueLearning(summary: LearnerDashboardSummary): ContinueLearningItem[] {
+  return summary.continueLearning.map((item) => ({
+    courseId: item.courseId,
+    title: getReadableTitle(item.courseTitle, item.courseId),
+    completedLessons: item.completedLessons,
+    totalLessons: item.totalLessons,
+  }));
 }
 
-export function buildPriorityDeadlines(assignments: AssignmentEntry[], now = new Date()): DeadlineItem[] {
+export function buildPriorityDeadlines(
+  deadlines: LearnerDashboardSummary['upcomingDeadlines'],
+  now = new Date(),
+): DeadlineItem[] {
   const nowIso = now.toISOString();
 
-  return assignments
-    .filter((a) => a.status !== 'completed' && a.dueAt)
-    .sort((a, b) => (a.dueAt! < b.dueAt! ? -1 : 1))
-    .slice(0, 5)
-    .map((a) => ({
-      id: a.id,
-      title: getReadableTitle(a.course?.title, a.id),
-      dueAt: a.dueAt!,
-      isOverdue: a.dueAt! < nowIso,
-    }));
+  return deadlines.map((item) => ({
+    id: item.id,
+    title: getReadableTitle(item.courseTitle, item.id),
+    dueAt: item.dueAt,
+    isOverdue: item.dueAt < nowIso,
+  }));
 }
 
-function buildRecentActivity(
-  progress: ProgressSummary[],
-  certificates: CertificateEntry[],
-  courses: CourseSummary[],
-  t: (key: string, options?: Record<string, unknown>) => string,
-): ActivityItem[] {
-  const lessonEvents: ActivityItem[] = progress
-    .filter((p) => p.completedAt)
-    .map((p) => ({
-      key: `lesson-${p.id}`,
-      date: p.completedAt as string,
-      message: t('learner.dashboard.recentActivity.lessonCompleted', {
-        title: getReadableTitle(courses.find((c) => c.id === p.courseId)?.title, p.courseId),
-      }),
-    }));
-
-  const certificateEvents: ActivityItem[] = certificates.map((c) => ({
-    key: `certificate-${c.id}`,
-    date: c.issuedAt,
-    message: t('learner.dashboard.recentActivity.certificateIssued', {
-      title: getReadableTitle(c.course?.title, c.courseId),
-    }),
+function buildRecentActivity(summary: LearnerDashboardSummary, t: TFunction): ActivityItem[] {
+  return summary.recentActivity.map((item) => ({
+    key: `${item.type === 'lesson_completed' ? 'lesson' : 'certificate'}-${item.id}`,
+    date: item.date,
+    message: t(
+      item.type === 'lesson_completed'
+        ? 'learner.dashboard.recentActivity.lessonCompleted'
+        : 'learner.dashboard.recentActivity.certificateIssued',
+      { title: getReadableTitle(item.courseTitle, item.id) },
+    ),
   }));
-
-  return [...lessonEvents, ...certificateEvents].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 5);
 }
 
 export function LearnerHomePage() {
@@ -145,32 +82,17 @@ export function LearnerHomePage() {
 
   const { state: loadState } = useAsyncData<DashboardData>(
     async () => {
-      const [user, coursesResult, assignmentsResult, assessments, certificatesResult, progressResult] =
-        await Promise.all([
-          getCurrentUser(),
-          listCourses({ pageSize: 100 }),
-          listAssignments({ pageSize: 100 }),
-          listAssessments(),
-          listCertificates({ pageSize: 100 }),
-          listProgress({ pageSize: 100 }),
-        ]);
-
-      const courses = coursesResult.items;
-      const progress = progressResult.items;
-      const assignments = assignmentsResult.items as AssignmentEntry[];
-      const certificates = certificatesResult.items as CertificateEntry[];
-
-      const continueLearning = await buildContinueLearning(progress, courses);
+      const [user, summary] = await Promise.all([getCurrentUser(), getLearnerDashboardSummary()]);
 
       return {
         firstName: user.firstName,
-        coursesCount: courses.filter((c) => c.status === 'published').length,
-        pendingAssignmentsCount: assignments.filter((a) => a.status !== 'completed').length,
-        availableAssessmentsCount: assessments.filter((a) => a.status === 'published').length,
-        certificatesCount: certificates.length,
-        continueLearning,
-        upcomingDeadlines: buildPriorityDeadlines(assignments),
-        recentActivity: buildRecentActivity(progress, certificates, courses, t),
+        coursesCount: summary.coursesCount,
+        pendingAssignmentsCount: summary.pendingAssignmentsCount,
+        availableAssessmentsCount: summary.availableAssessmentsCount,
+        certificatesCount: summary.certificatesCount,
+        continueLearning: buildContinueLearning(summary),
+        upcomingDeadlines: buildPriorityDeadlines(summary.upcomingDeadlines),
+        recentActivity: buildRecentActivity(summary, t),
       };
     },
     [t],
