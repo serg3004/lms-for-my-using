@@ -1,7 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError, apiRequest, getCurrentUser } from '../shared/apiClient.js';
+import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   buildCreateGroupPayload,
@@ -39,6 +40,7 @@ type AdminOrgStructureData = { organizationId: string; groups: Group[]; employee
 
 export function AdminOrgStructurePage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
 
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -74,14 +76,13 @@ export function AdminOrgStructurePage() {
 
   const { state: loadState, reload: load } = useAsyncData<AdminOrgStructureData>(
     async () => {
-      const [user, groups, { total }] = await Promise.all([
-        getCurrentUser(),
+      const [groups, { total }] = await Promise.all([
         apiRequest<Group[]>('/groups'),
         apiRequest<PaginatedResponse<unknown>>('/users?pageSize=1'),
       ]);
-      return { organizationId: user.organizationId, groups, employeeCount: total };
+      return { organizationId: currentUser!.organizationId, groups, employeeCount: total };
     },
-    [t],
+    [currentUser, t],
     {
       unauthenticated: t('admin.orgStructure.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.orgStructure.loadError', 'Unable to load organization structure.'),

@@ -8,6 +8,18 @@ const reactMocks = vi.hoisted(() => ({
   useState: vi.fn(),
 }));
 
+const sessionMocks = vi.hoisted(() => ({
+  currentUser: {
+    id: 'user-1', organizationId: 'org-1', email: 'admin@demo.com', firstName: 'Admin', lastName: 'User',
+    middleName: null, position: null, shift: null, phone: null, status: 'active', locale: 'en', timezone: 'UTC', roles: ['admin'],
+  },
+}));
+
+vi.mock('../shared/session.js', () => ({
+  useSession: () => ({ currentUser: sessionMocks.currentUser, status: 'authenticated', refreshUser: vi.fn() }),
+  useOptionalSession: () => ({ currentUser: sessionMocks.currentUser, status: 'authenticated', refreshUser: vi.fn() }),
+}));
+
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
 

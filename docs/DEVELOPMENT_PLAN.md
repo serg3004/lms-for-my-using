@@ -4673,7 +4673,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] authorization/API/UI tests проходят.
 
 ---
-## PR 259 — Frontend Performance Verification 🔲
+## PR 259 — Frontend Performance Verification ✅
 
 **Проблема:** подтверждены сетевые и aggregation inefficiencies, но нет оснований массово добавлять `React.memo/useMemo` без профилирования.
 
@@ -4686,13 +4686,26 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не смешивать performance pass с посторонним refactoring.
 
 **Критерии готовности:**
-- [ ] нет дублирующего `/auth/me` из уже мигрированных authenticated flows;
-- [ ] `/learn` не имеет прежнего lesson fan-out;
-- [ ] render bottlenecks подтверждены профилем;
-- [ ] memoization добавлена только при измеримой необходимости;
-- [ ] повторный профиль не показывает регрессию;
-- [ ] performance findings и ограничения задокументированы;
-- [ ] frontend tests/build проходят.
+- [x] нет дублирующего `/auth/me` из уже мигрированных authenticated flows;
+- [x] `/learn` не имеет прежнего lesson fan-out;
+- [x] render bottlenecks подтверждены профилем;
+- [x] memoization добавлена только при измеримой необходимости (по факту — не добавлена, профиль не выявил hotspot);
+- [x] повторный профиль не показывает регрессию;
+- [x] performance findings и ограничения задокументированы;
+- [x] frontend tests/build проходят.
+
+> **Реализовано (2026-08-25):** полный отчёт — `docs/PR259_FRONTEND_PERFORMANCE_VERIFICATION.md`.
+> Профилирование прод-сборки (Chrome DevTools `Performance.getMetrics()` + сетевой профиль,
+> реальный Chromium, локальный demo-seed) для `/learn`, `/manager/team`, `/manager/overdue`,
+> `/admin/users`, `/admin/courses`, `/admin/checklists` подтвердило дублирующий `/auth/me`
+> (2-3 запроса на страницу вместо неизбежного минимума в 2 из-за 401+refresh-retry архитектуры)
+> на всех измеренных экранах кроме manager. Root cause: ~14 page-компонентов вызывали
+> `getCurrentUser()` напрямую вместо уже существующего `SessionProvider` (PR 244)/`useSession()`.
+> Исправлено для Learner/Admin/Manager страниц (9 файлов + `useAdminUsers` hook) — все экраны
+> вышли на минимум в 2 запроса. Instructor*-страницы намеренно не тронуты (конфликт с
+> параллельным PR 252). `/learn` lesson fan-out подтверждён устранённым (сделано в PR 251).
+> Явных render/scripting hotspot'ов профиль не выявил на demo-данных — memoization не добавлена
+> за отсутствием измеримой необходимости.
 
 ---
 ## Порядок выполнения frontend/product серии

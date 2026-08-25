@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../shared/formatDate.js';
 
-import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
-import type { CurrentUser } from '../shared/apiClient.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import { useSession } from '../shared/session.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, DataTable, Pagination, PageState, SearchInput, SectionHeader, StatCard, StatsGrid, Toolbar, type Column } from '../shared/ui.js';
@@ -35,7 +35,7 @@ type AdminCourseSummary = {
   _count: { lessons: number };
 };
 
-type AdminCoursesData = { courses: AdminCourseSummary[]; currentUser: CurrentUser; total: number; pageSize: number };
+type AdminCoursesData = { courses: AdminCourseSummary[]; total: number; pageSize: number };
 
 type CreateFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
 
@@ -67,6 +67,7 @@ function formatRelativeDate(value: string): string {
 
 export function AdminCoursesPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -94,11 +95,8 @@ export function AdminCoursesPage() {
 
   const { state: pageState, reload: loadData } = useAsyncData<AdminCoursesData>(
     async () => {
-      const [result, currentUser] = await Promise.all([
-        listCourses({ page, pageSize: 20 }) as Promise<PaginatedResponse<AdminCourseSummary>>,
-        getCurrentUser(),
-      ]);
-      return { courses: result.items, currentUser, total: result.total, pageSize: result.pageSize };
+      const result = await (listCourses({ page, pageSize: 20 }) as Promise<PaginatedResponse<AdminCourseSummary>>);
+      return { courses: result.items, total: result.total, pageSize: result.pageSize };
     },
     [page, t],
     {
@@ -140,7 +138,7 @@ export function AdminCoursesPage() {
     setFormState({ status: 'submitting' });
     try {
       await createCourse({
-        organizationId: pageState.data.currentUser.organizationId,
+        organizationId: currentUser!.organizationId,
         title,
         slug,
         description: formDescription.trim() || undefined,

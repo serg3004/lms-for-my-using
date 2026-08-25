@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-import { CurrentUser, apiRequest, getCurrentUser } from '../shared/apiClient.js';
+import { CurrentUser, apiRequest } from '../shared/apiClient.js';
 import { getAdminDashboardSummary } from '../shared/api/reports.js';
+import { useSession } from '../shared/session.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -30,7 +31,7 @@ type DashboardStats = {
   activity: ActivityItem[];
 };
 
-type AdminDashboardData = { user: CurrentUser; stats: DashboardStats };
+type AdminDashboardData = { stats: DashboardStats };
 
 function getUserDisplayName(user: CurrentUser) {
   const fullName = [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
@@ -89,12 +90,12 @@ function downloadDashboardReport(stats: DashboardStats, t: TFunction) {
 
 export function AdminDashboardPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
 
   const { state: loadState } = useAsyncData<AdminDashboardData>(
     async () => {
-      const user = await getCurrentUser();
       const stats = await loadDashboardStats(t);
-      return { user, stats };
+      return { stats };
     },
     [t],
     {
@@ -130,7 +131,8 @@ export function AdminDashboardPage() {
     );
   }
 
-  const { user, stats } = loadState.data;
+  const { stats } = loadState.data;
+  const user = currentUser!;
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin dashboard'), href: '/admin', isCurrent: true },

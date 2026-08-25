@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
-import type { CurrentUser } from '../shared/apiClient.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
@@ -136,10 +136,11 @@ export function createDefaultScale(t: TFunction): ChecklistScaleLevel[] {
   }));
 }
 
-type AdminChecklistsData = { checklists: ChecklistSummary[]; currentUser: CurrentUser };
+type AdminChecklistsData = { checklists: ChecklistSummary[] };
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 export function AdminChecklistsPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ChecklistStatus>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -157,12 +158,8 @@ export function AdminChecklistsPage() {
   };
   const { state: loadState, reload: load, mutate } = useAsyncData<AdminChecklistsData>(
     async () => {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) {
-        throw new ApiClientError('Unauthorized', 401);
-      }
       const checklists = await listChecklists();
-      return { checklists, currentUser };
+      return { checklists };
     },
     [t],
     {
@@ -215,7 +212,7 @@ export function AdminChecklistsPage() {
       return null;
     }
     return (
-      <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.data.currentUser}>
+      <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>
         <ChecklistBuilder
           checklist={checklist}
           statusLabels={statusLabels}
@@ -229,7 +226,7 @@ export function AdminChecklistsPage() {
   }
   const filtered = filterChecklists(loadState.data.checklists, search, statusFilter);
   return (
-    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={loadState.data.currentUser}>
+    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>
       <AdminPageHeader
         eyebrow={t('admin.checklists.eyebrow', 'Knowledge control')}
         title={t('admin.checklists.title', 'Checklists')}
@@ -239,7 +236,7 @@ export function AdminChecklistsPage() {
             variant="primary"
             type="button"
             onClick={async () => {
-              const created = await createChecklist(loadState.data.currentUser.organizationId, {
+              const created = await createChecklist(currentUser!.organizationId, {
                 title: t('admin.checklists.newChecklistTitle', 'New checklist'),
                 scoringMode: 'sum_points',
                 passThreshold: 80,

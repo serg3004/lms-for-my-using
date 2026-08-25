@@ -2,13 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../shared/formatDate.js';
 
-import { createAssignment, getCurrentUser, listCourses, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
+import { createAssignment, listCourses, type CourseSummary } from '../shared/apiClient.js';
 import { getManagerTeamSummary, type ManagerTeamSummary } from '../shared/api/manager.js';
+import { useSession } from '../shared/session.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
 import { Card, PageState, ProgressBar, StatCard, StatsGrid } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
-type ManagerDashboardData = { user: CurrentUser; summary: ManagerTeamSummary };
+type ManagerDashboardData = { summary: ManagerTeamSummary };
 
 function AssignTrainingModal({
   organizationId,
@@ -109,10 +110,11 @@ function AssignTrainingModal({
 
 export function ManagerDashboardPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const { state, mutate } = useAsyncData<ManagerDashboardData>(
     async () => {
-      const [user, summary] = await Promise.all([getCurrentUser(), getManagerTeamSummary()]);
-      return { user, summary };
+      const summary = await getManagerTeamSummary();
+      return { summary };
     },
     [t],
     { unauthenticated: t('manager.dashboard.loadError'), error: t('manager.dashboard.loadError') },
@@ -143,7 +145,8 @@ export function ManagerDashboardPage() {
     );
   }
 
-  const { user, summary } = state.data;
+  const { summary } = state.data;
+  const user = currentUser!;
 
   return (
     <ManagerPageLayout>

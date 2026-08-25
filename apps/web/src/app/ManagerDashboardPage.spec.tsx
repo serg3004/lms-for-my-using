@@ -3,17 +3,17 @@ import '../i18n/index.js';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('../shared/session.js', () => {
+  const session = {
+    currentUser: { id: 'manager-1', organizationId: 'org-1', email: 'manager@demo.com', firstName: 'Нур', lastName: 'Ахметов', middleName: null, position: null, shift: null, phone: null, status: 'active', locale: 'ru', timezone: 'UTC', roles: ['manager'] },
+    status: 'authenticated', refreshUser: vi.fn(),
+  };
+  return { useSession: () => session, useOptionalSession: () => session };
+});
+
 const loadedState = {
   status: 'loaded',
   data: {
-    user: {
-      id: 'manager-1',
-      organizationId: 'org-1',
-      email: 'manager@demo.com',
-      firstName: 'Нур',
-      lastName: 'Ахметов',
-      roles: ['manager'],
-    },
     summary: {
       membersCount: 2,
       completionRate: 72,
