@@ -218,17 +218,20 @@ export function Textarea({ label, hint, error, id, className, ...rest }: Textare
 type SearchInputProps = {
   value: string;
   onChange: (value: string) => void;
+  /** Accessible name. Falls back to the visible placeholder for compatibility. */
+  label?: string;
   placeholder?: string;
   className?: string;
 };
 
-export function SearchInput({ value, onChange, placeholder, className }: SearchInputProps) {
+export function SearchInput({ value, onChange, label, placeholder, className }: SearchInputProps) {
   return (
     <div className={['ds-search', className].filter(Boolean).join(' ')}>
       <span aria-hidden="true" className="ds-search__icon">
         ⌕
       </span>
       <input
+        aria-label={label ?? placeholder ?? 'Search'}
         className="ds-search__input"
         placeholder={placeholder}
         type="search"
@@ -510,7 +513,7 @@ export function DataTable<T>({
                 </th>
               ) : null}
               {columns.map((col) => (
-                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-priority={col.priority} key={col.key}>
+                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-priority={col.priority} key={col.key} scope="col">
                   {col.sortable ? (
                     <button
                       className="ds-data-table__sort"
@@ -643,7 +646,10 @@ export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confi
       returnFocusRef.current = document.activeElement as HTMLElement | null;
       dialog.showModal();
       cancelRef.current?.focus();
-    } else if (!open && dialog.open) dialog.close();
+    } else if (!open && dialog.open) {
+      dialog.close();
+      requestAnimationFrame(() => returnFocusRef.current?.focus());
+    }
   }, [open]);
 
   function close() {
@@ -673,7 +679,7 @@ export function Menu({ label, children, align = 'start', className, buttonClassN
   useEffect(() => {
     if (!open) return;
     const root = rootRef.current;
-    const items = () => Array.from(root?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? []);
+    const items = () => Array.from(root?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"]):not(:disabled)') ?? []);
     items()[0]?.focus();
     function close(returnFocus = true) { setOpen(false); if (returnFocus) requestAnimationFrame(() => buttonRef.current?.focus()); }
     function pointerDown(event: PointerEvent) { if (root && !root.contains(event.target as Node)) close(false); }
@@ -696,7 +702,7 @@ export function Menu({ label, children, align = 'start', className, buttonClassN
 
   return <div className={['ds-menu', className].filter(Boolean).join(' ')} ref={rootRef}>
     <button aria-controls={menuId} aria-expanded={open} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
-    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} onClick={() => setOpen(false)} role="menu">{children}</div> : null}
+    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} onClick={() => { setOpen(false); requestAnimationFrame(() => buttonRef.current?.focus()); }} role="menu">{children}</div> : null}
   </div>;
 }
 
@@ -724,13 +730,14 @@ type PaginationProps = {
   pageSize: number;
   total: number;
   onPage: (page: number) => void;
+  label?: string;
 };
 
-export function Pagination({ page, pageSize, total, onPage }: PaginationProps) {
+export function Pagination({ page, pageSize, total, onPage, label = 'Pagination' }: PaginationProps) {
   const totalPages = Math.ceil(total / pageSize);
   if (totalPages <= 1) return null;
   return (
-    <div className="ds-pagination">
+    <nav aria-label={label} className="ds-pagination">
       <button
         className="ds-button ds-button--secondary ds-button--sm"
         disabled={page <= 1}
@@ -739,7 +746,7 @@ export function Pagination({ page, pageSize, total, onPage }: PaginationProps) {
       >
         ← Prev
       </button>
-      <span className="ds-pagination__info">{page} / {totalPages}</span>
+      <span aria-atomic="true" aria-live="polite" className="ds-pagination__info">{page} / {totalPages}</span>
       <button
         className="ds-button ds-button--secondary ds-button--sm"
         disabled={page >= totalPages}
@@ -748,6 +755,6 @@ export function Pagination({ page, pageSize, total, onPage }: PaginationProps) {
       >
         Next →
       </button>
-    </div>
+    </nav>
   );
 }
