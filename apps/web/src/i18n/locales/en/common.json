@@ -1332,6 +1332,31 @@
       "status": "Overdue",
       "empty": "No overdue assignments.",
       "unknownTarget": "Unknown target"
+    },
+    "navReports": "Reports",
+    "reports": {
+      "eyebrow": "Analytics",
+      "title": "Team reports",
+      "subtitle": "Current learning progress across your area of responsibility.",
+      "period": "Current snapshot",
+      "loading": "Loading reports...",
+      "loadError": "Unable to load reports. Try again later.",
+      "employeeFilter": "Employee",
+      "allEmployees": "All employees",
+      "statusFilter": "Status",
+      "allStatuses": "All statuses",
+      "enrollments": "Active enrollments",
+      "completion": "Completion",
+      "overdue": "Overdue",
+      "progress": "Employees in view",
+      "employee": "Employee",
+      "details": "Details",
+      "openEmployee": "View employee",
+      "drilldown": "Report details",
+      "openTeam": "Open team details",
+      "openOverdue": "Open overdue assignments",
+      "empty": "No employees match these filters.",
+      "tableLabel": "Employee progress details"
     }
   },
   "instructor": {

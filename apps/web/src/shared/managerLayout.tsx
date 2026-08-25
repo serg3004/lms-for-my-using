@@ -11,6 +11,7 @@ const MANAGER_NAV_DEFS = [
   { key: 'manager.navDashboard', href: '/manager/dashboard' },
   { key: 'manager.navTeam', href: '/manager/team' },
   { key: 'manager.navOverdue', href: '/manager/overdue' },
+  { key: 'manager.navReports', href: '/manager/reports' },
 ] as const;
 
 type ManagerPageLayoutProps = {

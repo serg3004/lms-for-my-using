@@ -4348,7 +4348,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > `aria-expanded` и видимые keyboard focus states; существующие usages не требуют изменений.
 
 ---
-## PR 248 — Manager Reports 🔲
+## PR 248 — Manager Reports ✅
 
 **Проблема:** manager/report summary данные существуют, но отдельного рабочего reporting UI с drill-down отсутствует.
 
@@ -4361,13 +4361,20 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - расширять backend filters/export только при подтверждённой необходимости.
 
 **Критерии готовности:**
-- [ ] manager видит только scoped данные своей области ответственности;
-- [ ] summary metrics имеют понятный период и контекст;
-- [ ] KPI ведут к релевантным деталям;
-- [ ] filters корректно влияют на результаты;
-- [ ] empty/loading/error states реализованы;
-- [ ] desktop/tablet/mobile layout проверен;
-- [ ] backend authorization tests проходят при изменении API.
+- [x] manager видит только scoped данные своей области ответственности;
+- [x] summary metrics имеют понятный период и контекст;
+- [x] KPI ведут к релевантным деталям;
+- [x] filters корректно влияют на результаты;
+- [x] empty/loading/error states реализованы;
+- [x] desktop/tablet/mobile layout проверен;
+- [x] backend authorization tests проходят при изменении API (API не изменён).
+
+> **Реализовано (2026-08-25):** добавлен `/manager/reports` на базе существующего
+> manager-scoped `team-summary` contract без расширения прав или backend API. Страница
+> показывает текущий срез активных назначений, завершения, просрочки и состава выборки,
+> поддерживает фильтры по сотруднику и risk-статусу и пересчитывает KPI вместе с таблицей.
+> Drill-down ведёт к команде, конкретному сотруднику и просроченным назначениям;
+> loading/error/empty states и адаптивная раскладка покрыты UI/model regression tests.
 
 ---
 ## PR 249 — Manager Reminders для просроченных назначений 🔲

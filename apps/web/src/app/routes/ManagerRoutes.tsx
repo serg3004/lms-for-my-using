@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route } from 'react-router-dom';
 const ManagerDashboardPage = lazy(() => import('../ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })));
 const ManagerTeamPage = lazy(() => import('../ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })));
 const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m) => ({ default: m.ManagerOverduePage })));
+const ManagerReportsPage = lazy(() => import('../ManagerReportsPage.js').then((m) => ({ default: m.ManagerReportsPage })));
 
 export function ManagerRoutes() {
   return (
@@ -12,6 +13,7 @@ export function ManagerRoutes() {
       <Route path="dashboard" element={<ManagerDashboardPage />} />
       <Route path="team" element={<ManagerTeamPage />} />
       <Route path="overdue" element={<ManagerOverduePage />} />
+      <Route path="reports" element={<ManagerReportsPage />} />
     </Route>
   );
 }
