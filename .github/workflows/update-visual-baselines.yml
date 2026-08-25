@@ -11,22 +11,14 @@ name: Update visual regression baselines
 # push/PR, only on an explicit human-triggered dispatch, and every resulting
 # commit is visible in the branch's history for review before merge.
 #
-# This job's steps mirror ci.yml's "Checks" job (Postgres service, build,
-# Browser E2E, Accessibility baseline) up to the point where the visual suite
-# runs, rather than jumping straight to Playwright install + test:visual.
-# That's not incidental completeness: an isolated job that skips straight to
-# test:visual was observed to render one page (learner-home) 86px shorter than
-# the real "Checks" job does, deterministically, across repeated attempts --
-# including after adding a throwaway warm-up run of just the visual suite
-# (which did not reproduce the real job's rendering). Matching the actual
-# preceding steps is the only reliable way found so far to capture a baseline
-# that matches what "Checks" will compare against on every future PR.
+# Note: mismatches against "Checks" have also been caused by this branch being
+# behind `main` -- GitHub's pull_request trigger tests a virtual merge of the
+# PR branch with current main, so a branch with stale baselines but an
+# up-to-date main can show real, code-driven diffs that look like flakiness.
+# Merge/rebase onto main before regenerating if "Checks" and this workflow
+# disagree.
 on:
   workflow_dispatch: {}
-  # TEMPORARY, this PR only: bootstrap trigger, see PR description. Removed again once the
-  # baselines are regenerated.
-  push:
-    branches: [claude/pr-264-visual-regression-gate]
 
 permissions:
   contents: write
@@ -35,32 +27,13 @@ jobs:
   update-baselines:
     name: Regenerate baselines
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: lms_test
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d lms_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
-          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
@@ -76,29 +49,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        run: pnpm --filter @lms/api prisma:generate
-
-      - name: Apply database migrations
-        run: pnpm --filter @lms/api prisma:migrate:deploy
-
-      - name: Build
-        run: pnpm --recursive build
-
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
-
-      - name: Browser E2E
-        run: pnpm test:e2e
-        env:
-          NODE_ENV: test
-          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
-
-      - name: Accessibility baseline
-        run: pnpm test:a11y
-        env:
-          NODE_ENV: test
-          JWT_SECRET: e2e-only-jwt-secret-at-least-32-characters
 
       - name: Regenerate visual baselines
         run: pnpm --filter @lms/e2e exec playwright test --config playwright.visual.config.ts --update-snapshots

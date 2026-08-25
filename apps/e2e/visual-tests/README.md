@@ -52,6 +52,21 @@ Either way:
 Never run `--update-snapshots` in CI, and never commit a baseline you have not
 visually reviewed.
 
+## If baselines fail with wildly varying diffs across runs, check for a stale branch first
+
+Before chasing a rendering-environment theory, rule out the mundane cause: this
+branch being behind `main`. GitHub's `pull_request` trigger (what runs `ci.yml`'s
+"Checks" job) tests a **virtual merge** of the PR branch with the current `main`
+— not the branch's own HEAD. A `workflow_dispatch`/`push`-triggered job (like
+`update-visual-baselines.yml`) checks out the branch's real HEAD, with no merge.
+If `main` has moved since the branch's baselines were generated, "Checks" can be
+comparing against genuinely different, newer page markup while the isolated
+regen workflow keeps reproducing the old one — this looks exactly like
+nondeterministic CI noise (different failure counts, different pages, changing
+between runs) but is actually just two jobs testing two different versions of
+the code. `git merge origin/main` (or rebase) into the branch and regenerate
+baselines again before assuming anything about Chromium, fonts, or timing.
+
 ## Tolerance
 
 `playwright.visual.config.ts` sets `maxDiffPixels: 30_000` (not a ratio) with
