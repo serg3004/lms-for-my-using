@@ -14,7 +14,7 @@ vi.mock('../shared/api/users.js', () => ({
   listUsers: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 200, total: 0 }),
 }));
 
-import { ChecklistBuilder } from './AdminChecklistsPage';
+import { ChecklistBuilder, createDefaultScale } from './AdminChecklistsPage';
 
 const checklist = {
   id: 'checklist-1',
@@ -39,6 +39,14 @@ const checklist = {
 
 const statusLabels = { draft: 'Черновик', published: 'Опубликован', archived: 'В архиве' };
 const scoringModeLabels = { sum_points: 'Сумма баллов', all_required: 'Все пункты обязательны', scale: 'Своя шкала' };
+
+describe('localized checklist defaults', () => {
+  it('localizes new scale labels without replacing authored labels', () => {
+    const labels: Record<string, string> = { 'admin.checklists.defaultScale.1': 'Very poor', 'admin.checklists.defaultScale.2': 'Poor', 'admin.checklists.defaultScale.3': 'Good', 'admin.checklists.defaultScale.4': 'Very good', 'admin.checklists.defaultScale.5': 'Excellent' };
+    expect(createDefaultScale(((key: string) => labels[key]) as never).map((level) => level.label))
+      .toEqual(['Very poor', 'Poor', 'Good', 'Very good', 'Excellent']);
+  });
+});
 
 describe('ChecklistBuilder (real hooks)', () => {
   it('renders required/photo item controls, scale config and assignment section without crashing', () => {

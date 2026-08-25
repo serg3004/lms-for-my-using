@@ -128,13 +128,13 @@ export function computePreviewResult(
 
   return { totalScore, maxScore, percentage, passed, allAnswered };
 }
-const DEFAULT_SCALE: ChecklistScaleLevel[] = [
-  { level: 1, label: 'Очень плохо', points: 0 },
-  { level: 2, label: 'Плохо', points: 25 },
-  { level: 3, label: 'Хорошо', points: 50 },
-  { level: 4, label: 'Очень хорошо', points: 75 },
-  { level: 5, label: 'Отлично', points: 100 },
-];
+export function createDefaultScale(t: TFunction): ChecklistScaleLevel[] {
+  return [0, 25, 50, 75, 100].map((points, index) => ({
+    level: index + 1,
+    label: t(`admin.checklists.defaultScale.${index + 1}`),
+    points,
+  }));
+}
 
 type AdminChecklistsData = { checklists: ChecklistSummary[]; currentUser: CurrentUser };
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
@@ -323,7 +323,9 @@ export function ChecklistBuilder({
   const [scoringMode, setScoringMode] = useState<ChecklistScoringMode>(checklist.scoringMode);
   const [passThreshold, setPassThreshold] = useState(checklist.passThreshold);
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
-  const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(checklist.scaleLevels ?? DEFAULT_SCALE);
+  // Defaults are system copy and follow the locale at creation time. Existing labels are authored
+  // content, so changing the UI language must never rewrite them.
+  const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.

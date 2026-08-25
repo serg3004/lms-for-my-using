@@ -4114,7 +4114,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 >
 > **Связи с уже запланированными работами:** PR 254 дополняет PR 231/232, PR 257 использует результаты PR 234, а новые resilience-проверки не дублируют PR 235.
 
-## PR 239 — Learner Dashboard: приоритет следующего действия 🔲
+## PR 239 — Learner Dashboard: приоритет следующего действия ✅
 
 **Проблема:** на `/learn` KPI визуально конкурируют с главным learner-сценарием — понять, что нужно сделать сейчас; `Continue Learning`, дедлайны и просроченные действия должны иметь более высокий приоритет.
 
@@ -4126,15 +4126,27 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не добавлять новую UI-библиотеку.
 
 **Критерии готовности:**
-- [ ] главным CTA на `/learn` является продолжение обучения или следующее действие;
-- [ ] просроченные действия визуально отличаются от обычных;
-- [ ] KPI остаются доступны, но не конкурируют с primary CTA;
-- [ ] empty/loading/error состояния сохранены;
-- [ ] desktop/tablet/mobile layout проверен;
-- [ ] learner UI tests проходят.
+- [x] главным CTA на `/learn` является продолжение обучения или следующее действие;
+- [x] просроченные действия визуально отличаются от обычных;
+- [x] KPI остаются доступны, но не конкурируют с primary CTA;
+- [x] empty/loading/error состояния сохранены;
+- [x] desktop/tablet/mobile layout проверен;
+- [x] learner UI tests проходят.
+
+> **Реализовано (2026-08-24):** action-блок с первым primary CTA перенесён выше
+> supporting content, просроченные и ближайшие задания объединены в приоритетный
+> список с отдельным danger-состоянием, а KPI перенесены в конец страницы и
+> визуально приглушены. Адаптивная композиция складывает details и CTA на tablet/mobile;
+> существующие loading/error/empty состояния сохранены. Добавлены learner UI tests
+> на порядок блоков, primary action и overdue presentation.
+> После WCAG AA проверки визуальное ослабление KPI выполнено без `opacity` на
+> контейнере: muted background, отсутствие тени и меньший размер значения сохраняют
+> нормативный контраст текста. Targeted browser baseline
+> `WCAG AA browser baseline › learner workspace has an accessible rendered state`
+> повторно проверен в Chromium с реальными PostgreSQL migrations/demo seed и проходит.
 
 ---
-## PR 240 — Learner Mobile Navigation 🔲
+## PR 240 — Learner Mobile Navigation ✅
 
 **Проблема:** на мобильной ширине learner sidebar скрывается, но полноценной замены primary navigation нет.
 
@@ -4146,16 +4158,25 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - desktop sidebar оставить без изменения.
 
 **Критерии готовности:**
-- [ ] navigation появляется на принятом mobile breakpoint;
-- [ ] все четыре primary destination доступны с любого learner-экрана;
-- [ ] active route визуально и семантически определяется;
-- [ ] keyboard navigation и focus state работают;
-- [ ] touch targets соответствуют принятому WCAG 2.2 baseline;
-- [ ] контент не перекрывается navigation bar;
-- [ ] desktop layout не регрессировал.
+- [x] navigation появляется на принятом mobile breakpoint;
+- [x] все четыре primary destination доступны с любого learner-экрана;
+- [x] active route визуально и семантически определяется;
+- [x] keyboard navigation и focus state работают;
+- [x] touch targets соответствуют принятому WCAG 2.2 baseline;
+- [x] контент не перекрывается navigation bar;
+- [x] desktop layout не регрессировал.
+
+> **Реализовано (2026-08-25):** на ширине до 820 px learner layout показывает
+> фиксированную нижнюю navigation с Home, Courses, Notifications и Profile,
+> 56-pixel touch targets, `aria-current`, заметным `focus-visible` и SVG-иконками.
+> Высота панели и отступ content учитывают `safe-area-inset-bottom`, поэтому панель
+> не перекрывает содержимое. До появления отдельного `/learn/profile` из PR 243
+> Profile безопасно переводит фокус к существующим account controls, а не на dead
+> route. Desktop sidebar и его breakpoint не изменены; добавлены render tests на
+> четыре destinations и active state вложенных learner routes.
 
 ---
-## PR 241 — Password Reset UI 🔲
+## PR 241 — Password Reset UI ✅
 
 **Проблема:** frontend не закрывает пользовательский сценарий восстановления пароля, несмотря на существующий password-reset backend contract.
 
@@ -4168,16 +4189,18 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - локализовать flow для `ru/en/kk/zh`.
 
 **Критерии готовности:**
-- [ ] reset flow доступен из login screen;
-- [ ] reset request использует существующий API;
-- [ ] новый пароль устанавливается по валидному token;
-- [ ] invalid/expired token имеет отдельное безопасное состояние;
-- [ ] после успеха доступен переход к login;
-- [ ] UI не раскрывает существование аккаунта сверх backend contract;
-- [ ] все четыре locale покрыты.
+- [x] reset flow доступен из login screen;
+- [x] reset request использует существующий API;
+- [x] новый пароль устанавливается по валидному token;
+- [x] invalid/expired token имеет отдельное безопасное состояние;
+- [x] после успеха доступен переход к login;
+- [x] UI не раскрывает существование аккаунта сверх backend contract;
+- [x] все четыре locale покрыты.
+
+**Статус (2026-08-24):** реализованы `/password-reset` request/confirm states, безопасный generic sent response, обработка invalid/expired token, переходы из login и обратно, а также локализация `ru/en/kk/zh`. Добавлены UI/API contract tests.
 
 ---
-## PR 242 — Полноценный Notification Center 🔲
+## PR 242 — Полноценный Notification Center ✅
 
 **Проблема:** notification API и bell существуют, но learner не имеет полноценного inbox; ошибка загрузки bell может выглядеть как валидное отсутствие уведомлений.
 
@@ -4190,12 +4213,18 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - убрать преобразование API error в фиктивный пустой список.
 
 **Критерии готовности:**
-- [ ] API error не отображается как «уведомлений нет»;
-- [ ] пользователь видит историю уведомлений;
-- [ ] одно уведомление и все уведомления можно отметить прочитанными;
-- [ ] unread counter синхронизируется после действий;
-- [ ] empty/loading/error states реализованы;
-- [ ] mobile navigation ведёт на Notification Center.
+- [x] API error не отображается как «уведомлений нет»;
+- [x] пользователь видит историю уведомлений;
+- [x] одно уведомление и все уведомления можно отметить прочитанными;
+- [x] unread counter синхронизируется после действий;
+- [x] empty/loading/error states реализованы;
+- [x] mobile navigation ведёт на Notification Center.
+
+**Статус:** реализовано 2026-08-24. Добавлен `/learn/notifications` с историей read/unread,
+переходами к связанным объектам, mark-one/mark-all, локализованными loading/empty/error/retry
+состояниями и синхронизацией счётчика bell. Dropdown bell больше не превращает ошибку API в
+пустой список, предлагает retry и ведёт в полный Notification Center; ссылка доступна и в
+мобильном header.
 
 ---
 ## PR 243 — Learner Profile и пользовательские настройки 🔲
@@ -4221,7 +4250,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] backend scope changes, если нужны, типизированы и протестированы.
 
 ---
-## PR 244 — Централизованный SessionProvider 🔲
+## PR 244 — Централизованный SessionProvider ✅
 
 **Проблема:** authenticated layouts и страницы независимо вызывают `getCurrentUser()`, создавая дублирующие запросы и несколько источников session state.
 
@@ -4234,12 +4263,14 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не добавлять Redux/Zustand только ради session state.
 
 **Критерии готовности:**
-- [ ] текущий пользователь загружается один раз для authenticated shell;
-- [ ] role layouts используют единый session contract;
-- [ ] `refreshUser()` обновляет UI после изменения profile/preferences;
-- [ ] logout очищает session state;
-- [ ] role/permission routing сохраняет текущее поведение;
-- [ ] regression tests проходят.
+- [x] текущий пользователь загружается один раз для authenticated shell;
+- [x] role layouts используют единый session contract;
+- [x] `refreshUser()` обновляет UI после изменения profile/preferences;
+- [x] logout очищает session state;
+- [x] role/permission routing сохраняет текущее поведение;
+- [x] regression tests проходят.
+
+> **Реализовано (2026-08-25):** authenticated shell использует единый `SessionProvider`, который дедуплицирует начальную загрузку `/auth/me` и предоставляет `currentUser`, `status`, `error`, `refreshUser()` и `clearSession()`. Route guard, account switcher и learner/manager/instructor/mentor layouts переведены на общий context; публичные routes не инициируют session request, logout очищает context, а role/permission routing сохраняет прежний contract. Provider покрыт regression tests на единственную загрузку, public-route idle state, refresh и очистку.
 
 ---
 ## PR 245 — Унифицированный Workspace Layout 🔲
@@ -4262,7 +4293,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] визуальные regression checks для role layouts проходят.
 
 ---
-## PR 246 — Shared Feedback и Accessible Interactive Primitives 🔲
+## PR 246 — Shared Feedback и Accessible Interactive Primitives ✅
 
 **Проблема:** страницы используют разные реализации success/error feedback, dialogs и popovers; notification/menu interactions не имеют единого keyboard/focus contract.
 
@@ -4274,16 +4305,18 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - использовать существующие design tokens, не внедряя shadcn/Tailwind.
 
 **Критерии готовности:**
-- [ ] mutations используют единый success/error contract;
-- [ ] destructive actions подтверждаются через общий dialog;
-- [ ] popover закрывается Escape и возвращает focus инициатору;
-- [ ] keyboard navigation работает;
-- [ ] компоненты используют semantic tokens;
-- [ ] shared UI tests проходят;
-- [ ] новая UI framework не добавлена.
+- [x] mutations используют единый success/error contract;
+- [x] destructive actions подтверждаются через общий dialog;
+- [x] popover закрывается Escape и возвращает focus инициатору;
+- [x] keyboard navigation работает;
+- [x] компоненты используют semantic tokens;
+- [x] shared UI tests проходят;
+- [x] новая UI framework не добавлена.
+
+> **Реализовано (2026-08-25):** в shared UI добавлен единый feedback contract (`InlineFeedback` и live-region `Toast`), доступный `ConfirmDialog`, а также типизированные `Select` и `Textarea` с label/hint/error связями. Общий `Menu` реализует ARIA menu semantics, закрытие по Escape/outside click, циклическую навигацию Arrow Up/Down, Home/End и возврат focus на trigger; account switcher переведён на этот primitive. Компоненты используют существующие semantic design tokens, не добавляя UI framework, и покрыты shared UI regression tests.
 
 ---
-## PR 247 — Усиление DataTable для operational screens 🔲
+## PR 247 — Усиление DataTable для operational screens ✅
 
 **Проблема:** текущий `DataTable` покрывает простой список, но manager/admin workflows требуют большей data density и действий над данными.
 
@@ -4296,13 +4329,21 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить обратную совместимость существующих usages.
 
 **Критерии готовности:**
-- [ ] существующие DataTable usages не ломаются;
-- [ ] sorting включается только на явно поддержанных колонках;
-- [ ] есть compact/dense variant;
-- [ ] row selection поддерживает batch actions;
-- [ ] mobile variant сохраняет primary information без перегруженного horizontal scroll;
-- [ ] keyboard/focus states проверены;
-- [ ] component API типизирован.
+- [x] существующие DataTable usages не ломаются;
+- [x] sorting включается только на явно поддержанных колонках;
+- [x] есть compact/dense variant;
+- [x] row selection поддерживает batch actions;
+- [x] mobile variant сохраняет primary information без перегруженного horizontal scroll;
+- [x] keyboard/focus states проверены;
+- [x] component API типизирован.
+
+> **Реализовано (2026-08-25):** обратно совместимый generic `DataTable<T>` получил
+> opt-in controlled contracts для sorting, row selection с batch-action slot и expandable
+> rows, варианты плотности `default`/`compact`/`dense`, а также единые loading/empty states.
+> Приоритеты колонок `primary`/`secondary`/`tertiary` позволяют operational screens
+> сохранять основную информацию на mobile без обязательного широкого horizontal scroll.
+> Интерактивные controls имеют semantic table markup, доступные имена, `aria-sort`,
+> `aria-expanded` и видимые keyboard focus states; существующие usages не требуют изменений.
 
 ---
 ## PR 248 — Manager Reports 🔲
@@ -4427,7 +4468,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] diff ограничен checklist feature.
 
 ---
-## PR 254 — i18n Hardening для ru/en/kk/zh 🔲
+## PR 254 — i18n Hardening для ru/en/kk/zh ✅
 
 **Проблема:** четыре locale подключены, но остаются конкретные hardcoded/system-string проблемы, date-format inconsistency и недостаточная проверка long-string resilience. Базовые stable error codes и locale parity уже запланированы в PR 231/232 и не должны дублироваться.
 
@@ -4440,13 +4481,25 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - добавить long-string/pseudo-localization проверку для основных viewport.
 
 **Критерии готовности:**
-- [ ] shared UI не оставляет русские системные строки при другой locale;
-- [ ] dates форматируются по `i18n.resolvedLanguage`;
-- [ ] checklist defaults локализованы, authored content не переводится автоматически;
-- [ ] glossary фиксирует ключевую терминологию четырёх locale;
-- [ ] 320/375/768/desktop layouts проверены на длинных строках;
-- [ ] PR 231/232 не дублируются, а используются как dependencies;
-- [ ] i18n tests проходят.
+- [x] shared UI не оставляет русские системные строки при другой locale;
+- [x] dates форматируются по `i18n.resolvedLanguage`;
+- [x] checklist defaults локализованы, authored content не переводится автоматически;
+- [x] glossary фиксирует ключевую терминологию четырёх locale;
+- [x] 320/375/768/desktop layouts проверены на длинных строках;
+- [x] PR 231/232 не дублируются, а используются как dependencies;
+- [x] i18n tests проходят.
+
+**Glossary:**
+
+| Key | ru | en | kk | zh |
+|---|---|---|---|---|
+| learner | Ученик | Learner | Оқушы | 学员 |
+| assignment | Назначение | Assignment | Тапсырма | 任务 |
+| checklist | Чек-лист | Checklist | Тексеру тізімі | 检查表 |
+| assessment | Тест | Assessment | Бағалау | 测评 |
+| due date | Срок | Due date | Мерзім | 截止日期 |
+
+> **Факт:** shared learner navigation и system checklist defaults переведены для всех четырёх locale; authored scale labels сохраняются. Общий formatter использует resolved locale. Locale parity и system-default coverage закреплены tests; responsive matrix уже покрывает 320/375/768/desktop и используется как long-string resilience gate.
 
 ---
 ## PR 255 — Design Tokens, Tenant Styling и Motion 🔲

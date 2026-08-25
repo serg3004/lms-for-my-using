@@ -2,7 +2,7 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from 'rea
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, DataTable, Input, Pagination, ProgressBar, SearchInput, SkipLink, Spinner, Toolbar } from './ui';
+import { Avatar, Badge, Button, Card, ConfirmDialog, DataTable, InlineFeedback, Input, Menu, Pagination, ProgressBar, SearchInput, Select, SkipLink, Spinner, Textarea, Toast, Toolbar } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
 
@@ -51,6 +51,38 @@ describe('shared UI state components', () => {
     expect(html).toContain('role="status"');
     expect(html).toContain('No items');
     expect(html).toContain('Nothing to show yet');
+  });
+});
+
+describe('shared feedback and interactive primitives', () => {
+  it('uses the common live-region contract for inline and toast feedback', () => {
+    expect(renderToStaticMarkup(<InlineFeedback tone="error">Save failed</InlineFeedback>)).toContain('role="alert"');
+    const toast = renderToStaticMarkup(<Toast tone="success" title="Saved">Changes are live</Toast>);
+    expect(toast).toContain('aria-live="polite"');
+    expect(toast).toContain('ds-feedback--success');
+  });
+
+  it('connects labels, hints and errors for select and textarea fields', () => {
+    const select = renderToStaticMarkup(<Select id="role" label="Role" error="Required"><option>Admin</option></Select>);
+    expect(select).toContain('for="role"');
+    expect(select).toContain('aria-invalid="true"');
+    expect(select).toContain('aria-describedby="role-description"');
+    const textarea = renderToStaticMarkup(<Textarea id="bio" label="Bio" hint="Keep it short" />);
+    expect(textarea).toContain('aria-describedby="bio-description"');
+  });
+
+  it('renders an ARIA-labelled confirmation dialog', () => {
+    const html = renderToStaticMarkup(<ConfirmDialog message="This cannot be undone" onCancel={vi.fn()} onConfirm={vi.fn()} open={false} title="Delete course" />);
+    expect(html).toContain('<dialog');
+    expect(html).toContain('aria-labelledby=');
+    expect(html).toContain('aria-describedby=');
+  });
+
+  it('exposes menu state and ownership on the trigger', () => {
+    const html = renderToStaticMarkup(<Menu label="Actions"><button role="menuitem" type="button">Edit</button></Menu>);
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('aria-controls=');
   });
 });
 
@@ -218,6 +250,70 @@ describe('design system — DataTable', () => {
     );
 
     expect(html).toContain('No items.');
+  });
+
+  it('renders opt-in sorting, density and responsive column priorities', () => {
+    const operationalColumns = [
+      { ...columns[0], sortable: true, priority: 'primary' as const },
+      { ...columns[1], priority: 'secondary' as const },
+    ];
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={operationalColumns}
+        density="dense"
+        keyExtractor={(row) => row.id}
+        label="Assessment results"
+        onSortChange={vi.fn()}
+        rows={[{ id: '1', name: 'Alice', score: 90 }]}
+        sort={{ key: 'name', direction: 'ascending' }}
+      />,
+    );
+
+    expect(html).toContain('ds-data-table--dense');
+    expect(html).toContain('aria-sort="ascending"');
+    expect(html).toContain('data-priority="primary"');
+    expect(html).toContain('data-priority="secondary"');
+    expect(html).toContain('ds-data-table__sort');
+  });
+
+  it('renders controlled selection, batch actions and expanded row content', () => {
+    const rows = [{ id: '1', name: 'Alice', score: 90 }, { id: '2', name: 'Bob', score: 75 }];
+    const html = renderToStaticMarkup(
+      <DataTable
+        batchActions={(selected) => <button type="button">Archive {selected.length}</button>}
+        columns={columns}
+        expansion={{
+          expandedKeys: new Set(['1']),
+          onChange: vi.fn(),
+          render: (row) => <p>Details for {row.name}</p>,
+        }}
+        keyExtractor={(row) => row.id}
+        label="Assessment results"
+        rows={rows}
+        selection={{
+          selectedKeys: new Set(['1']),
+          onChange: vi.fn(),
+          rowLabel: (row) => `Select ${row.name}`,
+        }}
+      />,
+    );
+
+    expect(html).toContain('aria-label="1 selected"');
+    expect(html).toContain('Archive 1');
+    expect(html).toContain('aria-label="Select Alice"');
+    expect(html).toContain('aria-expanded="true"');
+    expect(html).toContain('Details for Alice');
+    expect(html).toContain('colSpan="4"');
+  });
+
+  it('uses the shared loading state instead of rendering stale rows', () => {
+    const html = renderToStaticMarkup(
+      <DataTable label="Assessment results" columns={columns} rows={[{ id: '1', name: 'Alice', score: 90 }]} keyExtractor={(row) => row.id} loading loadingMessage="Loading results" />,
+    );
+
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Loading results');
+    expect(html).not.toContain('<table');
   });
 });
 

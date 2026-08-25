@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { formatNullableDate } from '../shared/formatDate.js';
+
 import {
   buildAssessmentResultsExportRows,
   buildProgressExportRows,
@@ -88,7 +90,7 @@ describe('buildAssessmentResultsExportRows', () => {
 
     expect(buildAssessmentResultsExportRows(results, users, t)).toEqual([
       ['Learner', 'Score', 'Status', 'Date'],
-      ['Ann', '8/10 (80%)', 'Passed', new Date('2026-01-05T12:00:00.000Z').toLocaleString()],
+      ['Ann', '8/10 (80%)', 'Passed', formatNullableDate('2026-01-05T12:00:00.000Z', '—')],
       ['bob@example.com', '4/10 (40%)', 'Failed', '—'],
     ]);
   });

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, type UserRole } from './apiClient.js';
+import { useOptionalSession } from './session.js';
+import { Menu } from './ui.js';
 
 const ROLE_ORDER: readonly UserRole[] = ['admin', 'instructor', 'mentor', 'manager', 'learner'];
 
@@ -37,24 +39,16 @@ export function getAvailableRoles(roles: UserRole[]): UserRole[] {
 
 export function AccountSwitcher() {
   const { t } = useTranslation();
-  const [roles, setRoles] = useState<UserRole[] | null>(null);
-  const [open, setOpen] = useState(false);
+  const session = useOptionalSession();
+  const [fallbackRoles, setFallbackRoles] = useState<UserRole[] | null>(null);
+  const roles = session ? session.currentUser?.roles ?? null : fallbackRoles;
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function load() {
-      try {
-        const user = await getCurrentUser();
-        if (isMounted) setRoles(user.roles);
-      } catch {
-        if (isMounted) setRoles(null);
-      }
-    }
-
-    void load();
-    return () => { isMounted = false; };
-  }, []);
+    if (session) return;
+    let mounted = true;
+    void getCurrentUser().then((user) => { if (mounted) setFallbackRoles(user.roles); }).catch(() => { if (mounted) setFallbackRoles(null); });
+    return () => { mounted = false; };
+  }, [session]);
 
   if (!roles) return null;
 
@@ -64,18 +58,8 @@ export function AccountSwitcher() {
   const activeRole = getActiveRole(typeof window !== 'undefined' ? window.location.pathname : '');
 
   return (
-    <div className="account-switcher">
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="account-switcher__btn"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        {t('accountSwitcher.button')}
-      </button>
-      {open && (
-        <div className="account-switcher__menu" role="menu">
+    <Menu buttonClassName="account-switcher__btn" className="account-switcher" label={t('accountSwitcher.button')}>
+        <div className="account-switcher__menu">
           {available.map((role) => (
             <a
               className={`account-switcher__option${role === activeRole ? ' account-switcher__option--active' : ''}`}
@@ -87,7 +71,6 @@ export function AccountSwitcher() {
             </a>
           ))}
         </div>
-      )}
-    </div>
+    </Menu>
   );
 }

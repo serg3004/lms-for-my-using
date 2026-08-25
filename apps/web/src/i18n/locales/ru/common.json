@@ -732,7 +732,14 @@
       "previewFailed": "Не зачтено",
       "previewIncomplete": "Отмечены не все пункты",
       "previewReset": "Сбросить",
-      "selectUser": "Выберите сотрудника…"
+      "selectUser": "Выберите сотрудника…",
+      "defaultScale": {
+        "1": "Очень плохо",
+        "2": "Плохо",
+        "3": "Хорошо",
+        "4": "Очень хорошо",
+        "5": "Отлично"
+      }
     }
   },
   "notFound": {
@@ -787,7 +794,7 @@
     "authRequired": "Sign in to open the learner area.",
     "sessionExpired": "Your session expired. Sign in again.",
     "loadError": "Unable to load learner profile. Try again later.",
-    "profileTitle": "Profile",
+    "profileTitle": "Профиль",
     "name": "Name",
     "email": "Email",
     "organizationId": "Organization ID",
@@ -802,15 +809,19 @@
       "upcomingDeadlines": {
         "title": "Ближайшие дедлайны",
         "empty": "Нет предстоящих дедлайнов.",
-        "dueLabel": "Срок: {{date}}"
+        "dueLabel": "Срок: {{date}}",
+        "overdueLabel": "Просрочено с {{date}}"
       },
       "recentActivity": {
         "title": "Недавняя активность",
         "empty": "Активности пока нет.",
         "lessonCompleted": "Пройден урок в курсе «{{title}}»",
         "certificateIssued": "Получен сертификат за курс «{{title}}»"
-      }
-    }
+      },
+      "nextAction": "Следующее действие",
+      "statsLabel": "Сводка обучения"
+    },
+    "mobileNavigation": "Навигация ученика"
   },
   "courses": {
     "navLink": "Курсы",
@@ -1450,7 +1461,15 @@
         "title": "Тест не сдан",
         "message": "Вы не сдали тест «{{assessmentTitle}}» ({{percentage}}%)."
       }
-    }
+    },
+    "centerTitle": "Центр уведомлений",
+    "centerSubtitle": "Все важные события и следующие действия в одном месте.",
+    "loading": "Загрузка уведомлений…",
+    "retry": "Повторить",
+    "viewAll": "Все уведомления",
+    "read": "Прочитано",
+    "unread": "Новое",
+    "updateError": "Не удалось обновить уведомление. Попробуйте ещё раз."
   },
   "a11y": {
     "skipToContent": "Перейти к основному содержимому",

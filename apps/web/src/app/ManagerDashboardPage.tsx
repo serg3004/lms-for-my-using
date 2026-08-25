@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { createAssignment, getCurrentUser, listCourses, type CourseSummary, type CurrentUser } from '../shared/apiClient.js';
 import { getManagerTeamSummary, type ManagerTeamSummary } from '../shared/api/manager.js';
@@ -187,7 +188,7 @@ export function ManagerDashboardPage() {
                 const name = member ? [member.firstName, member.lastName].filter(Boolean).join(' ') : '';
                 return (
                   <li key={`${item.userId}-${index}`} style={{ fontSize: '14px' }}>
-                    {t('manager.dashboard.upcomingItem', { course: item.courseTitle, name, date: new Date(item.dueAt).toLocaleDateString() })}
+                    {t('manager.dashboard.upcomingItem', { course: item.courseTitle, name, date: formatDate(item.dueAt) })}
                   </li>
                 );
               })}

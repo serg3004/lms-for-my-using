@@ -732,7 +732,14 @@
       "previewFailed": "Fail",
       "previewIncomplete": "Not all items answered yet",
       "previewReset": "Reset",
-      "selectUser": "Select an employee…"
+      "selectUser": "Select an employee…",
+      "defaultScale": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Good",
+        "4": "Very good",
+        "5": "Excellent"
+      }
     }
   },
   "notFound": {
@@ -802,15 +809,19 @@
       "upcomingDeadlines": {
         "title": "Upcoming deadlines",
         "empty": "No upcoming deadlines.",
-        "dueLabel": "Due {{date}}"
+        "dueLabel": "Due {{date}}",
+        "overdueLabel": "Overdue since {{date}}"
       },
       "recentActivity": {
         "title": "Recent activity",
         "empty": "No activity yet.",
         "lessonCompleted": "Completed a lesson in \"{{title}}\"",
         "certificateIssued": "Earned a certificate for \"{{title}}\""
-      }
-    }
+      },
+      "nextAction": "Next action",
+      "statsLabel": "Learning summary"
+    },
+    "mobileNavigation": "Learner navigation"
   },
   "courses": {
     "navLink": "Courses",
@@ -1450,7 +1461,15 @@
         "title": "Test failed",
         "message": "You did not pass \"{{assessmentTitle}}\" ({{percentage}}%)."
       }
-    }
+    },
+    "centerTitle": "Notification Center",
+    "centerSubtitle": "All important events and next actions in one place.",
+    "loading": "Loading notifications…",
+    "retry": "Try again",
+    "viewAll": "View all notifications",
+    "read": "Read",
+    "unread": "New",
+    "updateError": "Could not update the notification. Please try again."
   },
   "a11y": {
     "skipToContent": "Skip to main content",

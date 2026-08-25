@@ -331,7 +331,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                   </FormField>
                   {updatedAt ? (
                     <p style={{ color: '#6b7280', fontSize: '13px' }}>
-                      {t('instructor.courseForm.lastUpdated', { date: new Date(updatedAt).toLocaleDateString(i18n.language) })}
+                      {t('instructor.courseForm.lastUpdated', { date: new Date(updatedAt).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language) })}
                     </p>
                   ) : null}
                 </>

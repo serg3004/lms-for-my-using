@@ -2,12 +2,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
-import { getCurrentUser, getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
+import { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
-import { describeNotification, markAllReadLocally, markReadLocally } from './notifications.js';
+import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
 import { Avatar, SkipLink } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
+import { useOptionalSession } from './session.js';
 
 export type LearnerNavItem = {
   label: string;
@@ -34,6 +35,7 @@ export function LearnerTopNav({
   showLanguageSwitcher = false,
   showAccountSwitcher = false,
 }: LearnerTopNavProps) {
+  const { t } = useTranslation();
   return (
     <header className="learner-topnav">
       <a className="learner-topnav__brand" href="/learn">
@@ -62,7 +64,7 @@ export function LearnerTopNav({
           <Avatar firstName={firstName} lastName={lastName} size="sm" />
         ) : null}
         <button className="learner-topnav__logout" type="button" onClick={onLogout}>
-          Выйти
+          {t('nav.logout')}
         </button>
       </div>
     </header>
@@ -121,6 +123,7 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationSummary[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -130,15 +133,27 @@ export function NotificationBell() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    const syncCount = (event: Event) => setUnreadCount((event as CustomEvent<number>).detail);
+    window.addEventListener(NOTIFICATION_COUNT_EVENT, syncCount);
+    return () => window.removeEventListener(NOTIFICATION_COUNT_EVENT, syncCount);
+  }, []);
+
+  async function loadMenu() {
+    setLoadError(false);
+    setNotifications(null);
+    try {
+      setNotifications(await listNotifications());
+    } catch {
+      setLoadError(true);
+    }
+  }
+
   async function toggleOpen() {
     const next = !open;
     setOpen(next);
     if (next && notifications === null) {
-      try {
-        setNotifications(await listNotifications());
-      } catch {
-        setNotifications([]);
-      }
+      await loadMenu();
     }
   }
 
@@ -189,8 +204,13 @@ export function NotificationBell() {
               </button>
             ) : null}
           </div>
-          {notifications === null ? (
-            <div className="notification-bell__empty">…</div>
+          {loadError ? (
+            <div className="notification-bell__empty" role="alert">
+              <span>{t('notifications.loadError')}</span>
+              <button className="notification-bell__retry" type="button" onClick={() => { void loadMenu(); }}>{t('notifications.retry')}</button>
+            </div>
+          ) : notifications === null ? (
+            <div className="notification-bell__empty" role="status">{t('notifications.loading')}</div>
           ) : notifications.length === 0 ? (
             <div className="notification-bell__empty">{t('notifications.empty')}</div>
           ) : (
@@ -212,6 +232,7 @@ export function NotificationBell() {
               })}
             </ul>
           )}
+          <a className="notification-bell__all" href="/learn/notifications">{t('notifications.viewAll')}</a>
         </div>
       ) : null}
     </div>
@@ -219,11 +240,6 @@ export function NotificationBell() {
 }
 
 /* ── LearnerPageLayout ────────────────────────────────────────────────────── */
-
-type UserState =
-  | { status: 'loading' }
-  | { status: 'loaded'; firstName: string; lastName?: string }
-  | { status: 'error' };
 
 const LEARNER_NAV_DEFS = [
   { key: 'nav.home', href: '/learn' },
@@ -233,7 +249,26 @@ const LEARNER_NAV_DEFS = [
   { key: 'checklists.navLink', href: '/learn/checklists' },
   { key: 'progress.navLink', href: '/learn/progress' },
   { key: 'certificates.navLink', href: '/learn/certificates' },
+  { key: 'notifications.bell', href: '/learn/notifications' },
 ] as const;
+
+const LEARNER_MOBILE_NAV_DEFS = [
+  { key: 'nav.home', href: '/learn', icon: 'home' },
+  { key: 'courses.title', href: '/learn/courses', icon: 'courses' },
+  { key: 'notifications.bell', href: '/learn/notifications', icon: 'notifications' },
+  { key: 'learner.profileTitle', href: '#learner-account-controls', icon: 'profile' },
+] as const;
+
+function MobileNavIcon({ icon }: { icon: (typeof LEARNER_MOBILE_NAV_DEFS)[number]['icon'] }) {
+  const paths = {
+    home: <path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3V10.5Z" />,
+    courses: <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v17H6.5A2.5 2.5 0 0 0 4 22V5.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v17h4.5a2.5 2.5 0 0 1 2.5 2V5.5Z" />,
+    notifications: <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4" />,
+    profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0" />,
+  };
+
+  return <svg aria-hidden="true" className="learner-mobile-nav__icon" viewBox="0 0 24 24">{paths[icon]}</svg>;
+}
 
 type LearnerPageLayoutProps = {
   children: ReactNode;
@@ -242,33 +277,17 @@ type LearnerPageLayoutProps = {
 
 export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutProps) {
   const { t } = useTranslation();
-  const [userState, setUserState] = useState<UserState>({ status: 'loading' });
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadUser() {
-      try {
-        const user = await getCurrentUser();
-        if (isMounted) {
-          setUserState({ status: 'loaded', firstName: user.firstName, lastName: user.lastName ?? undefined });
-        }
-      } catch {
-        if (isMounted) setUserState({ status: 'error' });
-      }
-    }
-
-    void loadUser();
-    return () => { isMounted = false; };
-  }, []);
+  const session = useOptionalSession();
+  const currentUser = session?.currentUser;
 
   const path = currentPath ?? (typeof window !== 'undefined' ? window.location.pathname : '');
 
-  const firstName = userState.status === 'loaded' ? userState.firstName : undefined;
-  const lastName = userState.status === 'loaded' ? userState.lastName : undefined;
+  const firstName = currentUser?.firstName;
+  const lastName = currentUser?.lastName ?? undefined;
 
   async function handleLogout() {
     try { await logout(); } catch { /* ignore */ }
+    session?.clearSession();
     window.location.href = '/login';
   }
 
@@ -301,7 +320,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
 
       <div className="learner-content">
         <header className="learner-header">
-          <div className="learner-header__end">
+          <div className="learner-header__end" id="learner-account-controls" tabIndex={-1}>
             <NotificationBell />
             <AccountSwitcher />
             <LanguageSwitcher />
@@ -313,6 +332,23 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
         </header>
         <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
       </div>
+      <nav className="learner-mobile-nav" aria-label={t('learner.mobileNavigation')}>
+        {LEARNER_MOBILE_NAV_DEFS.map((item) => {
+          const isCurrent = item.href.startsWith('/')
+            && (path === item.href || (item.href !== '/learn' && path.startsWith(`${item.href}/`)));
+          return (
+            <a
+              aria-current={isCurrent ? 'page' : undefined}
+              className="learner-mobile-nav__link"
+              href={item.href}
+              key={item.href}
+            >
+              <MobileNavIcon icon={item.icon} />
+              <span>{t(item.key)}</span>
+            </a>
+          );
+        })}
+      </nav>
     </div>
   );
 }

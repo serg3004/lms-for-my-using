@@ -12,8 +12,9 @@ describe('formatNullableDate', () => {
   });
 
   it('formats a valid ISO date string', () => {
-    const result = formatNullableDate('2026-01-15T10:00:00.000Z', '—');
-    expect(result).not.toBe('—');
-    expect(result).toContain('2026');
+    expect(formatNullableDate('2026-01-15T10:00:00.000Z', '—', 'en-US', { dateStyle: 'long' }))
+      .toBe('January 15, 2026');
+    expect(formatNullableDate('2026-01-15T10:00:00.000Z', '—', 'zh-CN', { dateStyle: 'long' }))
+      .toBe('2026年1月15日');
   });
 });

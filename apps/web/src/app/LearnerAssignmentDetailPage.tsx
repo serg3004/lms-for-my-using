@@ -95,7 +95,7 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
   const dueLabel = assignment.dueAt
     ? formatNullableDate(assignment.dueAt, t('assignments.notAvailable'))
     : t('assignments.notAvailable');
-  const createdLabel = new Date(assignment.createdAt).toLocaleDateString(i18n.language, {
+  const createdLabel = new Date(assignment.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

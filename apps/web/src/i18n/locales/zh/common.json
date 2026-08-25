@@ -732,7 +732,14 @@
       "previewFailed": "未通过",
       "previewIncomplete": "尚未回答所有项目",
       "previewReset": "重置",
-      "selectUser": "选择员工…"
+      "selectUser": "选择员工…",
+      "defaultScale": {
+        "1": "非常差",
+        "2": "差",
+        "3": "良好",
+        "4": "很好",
+        "5": "优秀"
+      }
     }
   },
   "notFound": {
@@ -802,15 +809,19 @@
       "upcomingDeadlines": {
         "title": "近期截止日期",
         "empty": "暂无即将到来的截止日期。",
-        "dueLabel": "截止：{{date}}"
+        "dueLabel": "截止：{{date}}",
+        "overdueLabel": "已逾期（截止日期：{{date}}）"
       },
       "recentActivity": {
         "title": "最近动态",
         "empty": "暂无动态。",
         "lessonCompleted": "在《{{title}}》课程中完成了一节课",
         "certificateIssued": "获得《{{title}}》课程证书"
-      }
-    }
+      },
+      "nextAction": "下一步行动",
+      "statsLabel": "学习摘要"
+    },
+    "mobileNavigation": "学员导航"
   },
   "courses": {
     "navLink": "课程",
@@ -1450,7 +1461,15 @@
         "title": "测试未通过",
         "message": "您未通过测试“{{assessmentTitle}}”（{{percentage}}%）。"
       }
-    }
+    },
+    "centerTitle": "通知中心",
+    "centerSubtitle": "在一处查看所有重要事件和后续操作。",
+    "loading": "正在加载通知…",
+    "retry": "重试",
+    "viewAll": "查看所有通知",
+    "read": "已读",
+    "unread": "新通知",
+    "updateError": "无法更新通知，请重试。"
   },
   "a11y": {
     "skipToContent": "跳到主要内容",

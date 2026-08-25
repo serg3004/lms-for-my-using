@@ -136,7 +136,7 @@ export function InstructorCoursesPage() {
                   </span>
                 </div>
                 <div style={{ color: COLORS.muted, fontSize: '13px' }}>
-                  {t('instructor.courses.studentsCount', { count: studentCount })} · {new Date(course.createdAt).toLocaleDateString(i18n.language)}
+                  {t('instructor.courses.studentsCount', { count: studentCount })} · {new Date(course.createdAt).toLocaleDateString(i18n.resolvedLanguage ?? i18n.language)}
                 </div>
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '8px' }}>
                   <Link

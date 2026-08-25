@@ -1,4 +1,15 @@
-import type { ButtonHTMLAttributes, CSSProperties, InputHTMLAttributes, ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type CSSProperties,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from 'react';
 
 type SkipLinkProps = { label: string; targetId?: string };
 
@@ -159,18 +170,47 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 
 export function Input({ label, hint, error, id, className, ...rest }: InputProps) {
   const inputCls = ['ds-input', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ');
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const descriptionId = hint || error ? `${inputId}-description` : undefined;
   return (
     <div className="ds-field">
       {label ? (
-        <label className="ds-field__label" htmlFor={id}>
+        <label className="ds-field__label" htmlFor={inputId}>
           {label}
         </label>
       ) : null}
-      <input id={id} className={inputCls} {...rest} />
-      {hint && !error ? <span className="ds-field__hint">{hint}</span> : null}
-      {error ? <span className="ds-field__error">{error}</span> : null}
+      <input aria-describedby={descriptionId} aria-invalid={error ? true : undefined} id={inputId} className={inputCls} {...rest} />
+      {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+      {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
     </div>
   );
+}
+
+type FieldProps = { label?: string; hint?: string; error?: string };
+
+export function Select({ label, hint, error, id, className, children, ...rest }: SelectHTMLAttributes<HTMLSelectElement> & FieldProps) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const descriptionId = hint || error ? `${fieldId}-description` : undefined;
+  return <div className="ds-field">
+    {label ? <label className="ds-field__label" htmlFor={fieldId}>{label}</label> : null}
+    <select {...rest} aria-describedby={descriptionId} aria-invalid={error ? true : undefined} className={['ds-input', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ')} id={fieldId}>{children}</select>
+    {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+    {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
+  </div>;
+}
+
+export function Textarea({ label, hint, error, id, className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement> & FieldProps) {
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
+  const descriptionId = hint || error ? `${fieldId}-description` : undefined;
+  return <div className="ds-field">
+    {label ? <label className="ds-field__label" htmlFor={fieldId}>{label}</label> : null}
+    <textarea {...rest} aria-describedby={descriptionId} aria-invalid={error ? true : undefined} className={['ds-input', 'ds-textarea', error ? 'ds-input--error' : null, className].filter(Boolean).join(' ')} id={fieldId} />
+    {hint && !error ? <span className="ds-field__hint" id={descriptionId}>{hint}</span> : null}
+    {error ? <span className="ds-field__error" id={descriptionId} role="alert">{error}</span> : null}
+  </div>;
 }
 
 // ── SearchInput ──────────────────────────────────────────────────────────────
@@ -331,42 +371,191 @@ export type Column<T> = {
   key: string;
   label: string;
   render: (row: T) => ReactNode;
+  sortable?: boolean;
+  priority?: 'primary' | 'secondary' | 'tertiary';
 };
 
-type DataTableProps<T> = {
+export type DataTableSort = {
+  key: string;
+  direction: 'ascending' | 'descending';
+};
+
+export type DataTableSelection<T> = {
+  selectedKeys: ReadonlySet<string>;
+  onChange: (selectedKeys: Set<string>) => void;
+  isRowSelectable?: (row: T) => boolean;
+  selectAllLabel?: string;
+  rowLabel?: (row: T) => string;
+};
+
+export type DataTableExpansion<T> = {
+  expandedKeys: ReadonlySet<string>;
+  onChange: (expandedKeys: Set<string>) => void;
+  render: (row: T) => ReactNode;
+  expandLabel?: (row: T) => string;
+  collapseLabel?: (row: T) => string;
+};
+
+export type DataTableProps<T> = {
   label: string;
   columns: Column<T>[];
   rows: T[];
   keyExtractor: (row: T) => string;
   emptyMessage?: string;
+  loading?: boolean;
+  loadingMessage?: string;
+  density?: 'default' | 'compact' | 'dense';
+  sort?: DataTableSort;
+  onSortChange?: (sort: DataTableSort) => void;
+  selection?: DataTableSelection<T>;
+  batchActions?: ReactNode | ((selectedRows: T[]) => ReactNode);
+  expansion?: DataTableExpansion<T>;
 };
 
-export function DataTable<T>({ label, columns, rows, keyExtractor, emptyMessage = 'No items.' }: DataTableProps<T>) {
+export function DataTable<T>({
+  label,
+  columns,
+  rows,
+  keyExtractor,
+  emptyMessage = 'No items.',
+  loading = false,
+  loadingMessage = 'Loading…',
+  density = 'default',
+  sort,
+  onSortChange,
+  selection,
+  batchActions,
+  expansion,
+}: DataTableProps<T>) {
+  if (loading) {
+    return <PageState message={loadingMessage} variant="loading" />;
+  }
+
   if (rows.length === 0) {
     return <EmptyState message={emptyMessage} />;
   }
 
+  const selectableRows = selection ? rows.filter((row) => selection.isRowSelectable?.(row) !== false) : [];
+  const selectedRows = selection ? rows.filter((row) => selection.selectedKeys.has(keyExtractor(row))) : [];
+  const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selection?.selectedKeys.has(keyExtractor(row)));
+  const columnSpan = columns.length + (selection ? 1 : 0) + (expansion ? 1 : 0);
+
+  function updateSelection(key: string, selected: boolean) {
+    if (!selection) return;
+    const next = new Set(selection.selectedKeys);
+    if (selected) next.add(key);
+    else next.delete(key);
+    selection.onChange(next);
+  }
+
+  function updateExpansion(key: string, expanded: boolean) {
+    if (!expansion) return;
+    const next = new Set(expansion.expandedKeys);
+    if (expanded) next.add(key);
+    else next.delete(key);
+    expansion.onChange(next);
+  }
+
   return (
-    <TableWrap>
-      <table aria-label={label}>
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.key}>{col.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={keyExtractor(row)}>
+    <div className={`ds-data-table ds-data-table--${density}`}>
+      {selection && batchActions && selectedRows.length > 0 ? (
+        <div className="ds-data-table__batch-actions" role="region" aria-label={`${selectedRows.length} selected`}>
+          <span aria-live="polite">{selectedRows.length} selected</span>
+          {typeof batchActions === 'function' ? batchActions(selectedRows) : batchActions}
+        </div>
+      ) : null}
+      <TableWrap>
+        <table aria-label={label}>
+          <thead>
+            <tr>
+              {selection ? (
+                <th className="ds-data-table__control" scope="col">
+                  <input
+                    aria-label={selection.selectAllLabel ?? 'Select all rows'}
+                    checked={allSelected}
+                    onChange={(event) => {
+                      const next = new Set(selection.selectedKeys);
+                      selectableRows.forEach((row) => {
+                        const key = keyExtractor(row);
+                        if (event.currentTarget.checked) next.add(key);
+                        else next.delete(key);
+                      });
+                      selection.onChange(next);
+                    }}
+                    type="checkbox"
+                  />
+                </th>
+              ) : null}
+              {expansion ? (
+                <th className="ds-data-table__control" scope="col">
+                  <span className="ui-visually-hidden">Details</span>
+                </th>
+              ) : null}
               {columns.map((col) => (
-                <td key={col.key}>{col.render(row)}</td>
+                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-priority={col.priority} key={col.key}>
+                  {col.sortable ? (
+                    <button
+                      className="ds-data-table__sort"
+                      onClick={() => onSortChange?.({
+                        key: col.key,
+                        direction: sort?.key === col.key && sort.direction === 'ascending' ? 'descending' : 'ascending',
+                      })}
+                      type="button"
+                    >
+                      {col.label}
+                      <span aria-hidden="true" className="ds-data-table__sort-icon">
+                        {sort?.key === col.key ? (sort.direction === 'ascending' ? '↑' : '↓') : '↕'}
+                      </span>
+                    </button>
+                  ) : col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableWrap>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const key = keyExtractor(row);
+              const selectable = selection?.isRowSelectable?.(row) !== false;
+              const expanded = expansion?.expandedKeys.has(key) ?? false;
+              return [
+                <tr key={key}>
+                  {selection ? (
+                    <td className="ds-data-table__control">
+                      <input
+                        aria-label={selection.rowLabel?.(row) ?? `Select row ${key}`}
+                        checked={selection.selectedKeys.has(key)}
+                        disabled={!selectable}
+                        onChange={(event) => updateSelection(key, event.currentTarget.checked)}
+                        type="checkbox"
+                      />
+                    </td>
+                  ) : null}
+                  {expansion ? (
+                    <td className="ds-data-table__control">
+                      <button
+                        aria-expanded={expanded}
+                        aria-label={expanded ? expansion.collapseLabel?.(row) ?? `Collapse row ${key}` : expansion.expandLabel?.(row) ?? `Expand row ${key}`}
+                        className="ds-data-table__expand"
+                        onClick={() => updateExpansion(key, !expanded)}
+                        type="button"
+                      >
+                        {expanded ? '−' : '+'}
+                      </button>
+                    </td>
+                  ) : null}
+                  {columns.map((col) => <td data-priority={col.priority} key={col.key}>{col.render(row)}</td>)}
+                </tr>,
+                expanded ? (
+                  <tr className="ds-data-table__expanded" key={`${key}-expanded`}>
+                    <td colSpan={columnSpan}>{expansion?.render(row)}</td>
+                  </tr>
+                ) : null,
+              ];
+            })}
+          </tbody>
+        </table>
+      </TableWrap>
+    </div>
   );
 }
 
@@ -385,6 +574,99 @@ export function Toolbar({ left, right, className }: ToolbarProps) {
       {right ? <div className="admin-toolbar__right">{right}</div> : null}
     </div>
   );
+}
+
+// ── Feedback and interactive primitives ─────────────────────────────────────
+
+export type FeedbackTone = 'info' | 'success' | 'warning' | 'error';
+
+type FeedbackProps = { children: ReactNode; title?: string; tone?: FeedbackTone; action?: ReactNode; className?: string };
+
+export function InlineFeedback({ children, title, tone = 'info', action, className }: FeedbackProps) {
+  return <div className={['ds-feedback', `ds-feedback--${tone}`, className].filter(Boolean).join(' ')} role={tone === 'error' ? 'alert' : 'status'}>
+    <div>{title ? <strong className="ds-feedback__title">{title}</strong> : null}<div className="ds-feedback__message">{children}</div></div>
+    {action ? <div className="ds-feedback__action">{action}</div> : null}
+  </div>;
+}
+
+export function Toast(props: FeedbackProps) {
+  return <aside aria-atomic="true" aria-live={props.tone === 'error' ? 'assertive' : 'polite'} className="ds-toast"><InlineFeedback {...props} /></aside>;
+}
+
+type ConfirmDialogProps = {
+  open: boolean; title: string; message: ReactNode; onConfirm: () => void; onCancel: () => void;
+  confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean;
+};
+
+export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, busy }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  const messageId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      dialog.showModal();
+      cancelRef.current?.focus();
+    } else if (!open && dialog.open) dialog.close();
+  }, [open]);
+
+  function close() {
+    onCancel();
+    requestAnimationFrame(() => returnFocusRef.current?.focus());
+  }
+
+  return <dialog aria-describedby={messageId} aria-labelledby={titleId} className="ds-dialog" ref={dialogRef}
+    onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+    <h2 id={titleId}>{title}</h2>
+    <div id={messageId}>{message}</div>
+    <div className="ds-dialog__actions">
+      <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={close} ref={cancelRef} type="button">{cancelLabel}</button>
+      <Button aria-busy={busy || undefined} disabled={busy} onClick={onConfirm} variant={danger ? 'danger' : 'primary'}>{confirmLabel}</Button>
+    </div>
+  </dialog>;
+}
+
+type MenuProps = { label: ReactNode; children: ReactNode; align?: 'start' | 'end'; className?: string; buttonClassName?: string };
+
+export function Menu({ label, children, align = 'start', className, buttonClassName }: MenuProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const root = rootRef.current;
+    const items = () => Array.from(root?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"])') ?? []);
+    items()[0]?.focus();
+    function close(returnFocus = true) { setOpen(false); if (returnFocus) requestAnimationFrame(() => buttonRef.current?.focus()); }
+    function pointerDown(event: PointerEvent) { if (root && !root.contains(event.target as Node)) close(false); }
+    function keyDown(event: KeyboardEvent) {
+      const menuItems = items();
+      const index = menuItems.indexOf(document.activeElement as HTMLElement);
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const offset = event.key === 'ArrowDown' ? 1 : -1;
+        menuItems[(index + offset + menuItems.length) % menuItems.length]?.focus();
+      } else if (event.key === 'Home') { event.preventDefault(); menuItems[0]?.focus(); }
+      else if (event.key === 'End') { event.preventDefault(); menuItems.at(-1)?.focus(); }
+      else if (event.key === 'Tab') close(false);
+    }
+    document.addEventListener('pointerdown', pointerDown);
+    document.addEventListener('keydown', keyDown);
+    return () => { document.removeEventListener('pointerdown', pointerDown); document.removeEventListener('keydown', keyDown); };
+  }, [open]);
+
+  return <div className={['ds-menu', className].filter(Boolean).join(' ')} ref={rootRef}>
+    <button aria-controls={menuId} aria-expanded={open} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
+    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} onClick={() => setOpen(false)} role="menu">{children}</div> : null}
+  </div>;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

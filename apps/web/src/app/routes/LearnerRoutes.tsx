@@ -19,6 +19,7 @@ const LearnerHomePage = lazy(() => import('../LearnerHomePage.js').then((m) => (
 const LearnerLessonDetailPage = lazy(() => import('../LearnerLessonDetailPage.js').then((m) => ({ default: m.LearnerLessonDetailPage })));
 const LearnerLessonMaterialsPage = lazy(() => import('../LearnerLessonMaterialsPage.js').then((m) => ({ default: m.LearnerLessonMaterialsPage })));
 const LearnerLessonsPage = lazy(() => import('../LearnerLessonsPage.js').then((m) => ({ default: m.LearnerLessonsPage })));
+const LearnerNotificationsPage = lazy(() => import('../LearnerNotificationsPage.js').then((m) => ({ default: m.LearnerNotificationsPage })));
 const LearnerProgressPage = lazy(() => import('../LearnerProgressPage.js').then((m) => ({ default: m.LearnerProgressPage })));
 
 function ParamRoute<Param extends string>({ param, Page }: { param: Param; Page: ComponentType<Record<Param, string>> }) {
@@ -41,6 +42,7 @@ export function LearnerRoutes() {
       <Route path="/learn/assessments" element={<LearnerAssessmentsPage />} />
       <Route path="/learn/checklists" element={<LearnerChecklistsPage />} />
       <Route path="/learn/certificates" element={<LearnerCertificatesPage />} />
+      <Route path="/learn/notifications" element={<LearnerNotificationsPage />} />
       <Route path="/learn/certificates/:certificateId" element={<ParamRoute param="certificateId" Page={LearnerCertificateDetailPage} />} />
       <Route path="/learn/assessments/:assessmentId/take" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentTakingPage} />} />
       <Route path="/learn/assessments/:assessmentId" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentDetailPage} />} />

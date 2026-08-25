@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { formatDate as formatLocaleDate } from '../shared/formatDate.js';
+
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
@@ -57,7 +59,7 @@ function getMembershipUserLabel(users: AdminUserSummary[], userId: string) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString();
+  return formatLocaleDate(value, undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function AdminRolesPage() {

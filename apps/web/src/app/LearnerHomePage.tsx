@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { getCurrentUser } from '../shared/api/auth.js';
 import { listCourses } from '../shared/api/courses.js';
@@ -32,6 +33,7 @@ type DeadlineItem = {
   id: string;
   title: string;
   dueAt: string;
+  isOverdue: boolean;
 };
 
 type ActivityItem = {
@@ -96,17 +98,18 @@ async function buildContinueLearning(
   return items;
 }
 
-function buildUpcomingDeadlines(assignments: AssignmentEntry[]): DeadlineItem[] {
-  const now = new Date().toISOString();
+export function buildPriorityDeadlines(assignments: AssignmentEntry[], now = new Date()): DeadlineItem[] {
+  const nowIso = now.toISOString();
 
   return assignments
-    .filter((a) => a.status !== 'completed' && a.dueAt && a.dueAt >= now)
+    .filter((a) => a.status !== 'completed' && a.dueAt)
     .sort((a, b) => (a.dueAt! < b.dueAt! ? -1 : 1))
     .slice(0, 5)
     .map((a) => ({
       id: a.id,
       title: getReadableTitle(a.course?.title, a.id),
       dueAt: a.dueAt!,
+      isOverdue: a.dueAt! < nowIso,
     }));
 }
 
@@ -166,7 +169,7 @@ export function LearnerHomePage() {
         availableAssessmentsCount: assessments.filter((a) => a.status === 'published').length,
         certificatesCount: certificates.length,
         continueLearning,
-        upcomingDeadlines: buildUpcomingDeadlines(assignments),
+        upcomingDeadlines: buildPriorityDeadlines(assignments),
         recentActivity: buildRecentActivity(progress, certificates, courses, t),
       };
     },
@@ -205,22 +208,18 @@ export function LearnerHomePage() {
         </p>
       </div>
 
-      <StatsGrid>
-        <StatCard label={t('courses.navLink')} value={data.coursesCount} />
-        <StatCard label={t('assignments.navLink')} value={data.pendingAssignmentsCount} />
-        <StatCard label={t('assessments.navLink')} value={data.availableAssessmentsCount} />
-        <StatCard label={t('certificates.navLink')} value={data.certificatesCount} />
-      </StatsGrid>
-
-      <div style={{ marginTop: '32px' }}>
+      <section className="learner-dashboard__actions" aria-labelledby="learner-next-action">
+        <h2 id="learner-next-action" className="learner-dashboard__eyebrow">
+          {t('learner.dashboard.nextAction')}
+        </h2>
         <SectionHeader title={t('learner.dashboard.continueLearning.title')} />
         {data.continueLearning.length === 0 ? (
           <p style={{ color: 'var(--color-text-muted)' }}>{t('learner.dashboard.continueLearning.empty')}</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
-            {data.continueLearning.map((item) => (
-              <Card key={item.courseId}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+          <div className="learner-dashboard__continue-list">
+            {data.continueLearning.map((item, index) => (
+              <Card key={item.courseId} className={index === 0 ? 'learner-dashboard__primary-card' : undefined}>
+                <div className="learner-dashboard__continue-row">
                   <div style={{ flex: 1 }}>
                     <strong>{item.title}</strong>
                     <div style={{ marginTop: '8px' }}>
@@ -240,7 +239,7 @@ export function LearnerHomePage() {
                       })}
                     </span>
                   </div>
-                  <a className="ds-button ds-button--secondary ds-button--sm" href={getCourseLessonsHref(item.courseId)}>
+                  <a className={`ds-button ${index === 0 ? 'ds-button--primary' : 'ds-button--secondary'} ds-button--sm`} href={getCourseLessonsHref(item.courseId)}>
                     {t('learner.dashboard.continueLearning.action')}
                   </a>
                 </div>
@@ -248,29 +247,40 @@ export function LearnerHomePage() {
             ))}
           </div>
         )}
-      </div>
-
-      <div style={{ marginTop: '32px', display: 'grid', gap: '32px', gridTemplateColumns: '1fr 1fr' }}>
-        <div>
+        <div className="learner-dashboard__deadlines">
           <SectionHeader title={t('learner.dashboard.upcomingDeadlines.title')} />
           {data.upcomingDeadlines.length === 0 ? (
             <p style={{ color: 'var(--color-text-muted)' }}>{t('learner.dashboard.upcomingDeadlines.empty')}</p>
           ) : (
             <div style={{ display: 'grid', gap: '10px' }}>
-              {data.upcomingDeadlines.map((item) => (
-                <Card compact key={item.id}>
-                  <a href={`/learn/assignments/${encodeURIComponent(item.id)}`}>{item.title}</a>
-                  <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                    {t('learner.dashboard.upcomingDeadlines.dueLabel', {
-                      date: new Date(item.dueAt).toLocaleDateString(),
-                    })}
-                  </div>
-                </Card>
-              ))}
+              {data.upcomingDeadlines.map((item, index) => {
+                const isPrimary = data.continueLearning.length === 0 && index === 0;
+                return (
+                  <Card
+                    compact
+                    key={item.id}
+                    className={`${item.isOverdue ? 'learner-dashboard__deadline--overdue ' : ''}${isPrimary ? 'learner-dashboard__primary-card' : ''}`.trim()}
+                  >
+                    <a
+                      className={isPrimary ? 'ds-button ds-button--primary ds-button--sm' : undefined}
+                      href={`/learn/assignments/${encodeURIComponent(item.id)}`}
+                    >
+                      {item.title}
+                    </a>
+                    <div className="learner-dashboard__deadline-meta">
+                      {t(item.isOverdue ? 'learner.dashboard.upcomingDeadlines.overdueLabel' : 'learner.dashboard.upcomingDeadlines.dueLabel', {
+                        date: formatDate(item.dueAt),
+                      })}
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
+      </section>
 
+      <div className="learner-dashboard__details">
         <div>
           <SectionHeader title={t('learner.dashboard.recentActivity.title')} />
           {data.recentActivity.length === 0 ? (
@@ -281,7 +291,7 @@ export function LearnerHomePage() {
                 <Card compact key={item.key}>
                   <div>{item.message}</div>
                   <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                    {new Date(item.date).toLocaleDateString()}
+                    {formatDate(item.date)}
                   </div>
                 </Card>
               ))}
@@ -289,6 +299,15 @@ export function LearnerHomePage() {
           )}
         </div>
       </div>
+
+      <section className="learner-dashboard__stats" aria-label={t('learner.dashboard.statsLabel')}>
+        <StatsGrid>
+          <StatCard label={t('courses.navLink')} value={data.coursesCount} />
+          <StatCard label={t('assignments.navLink')} value={data.pendingAssignmentsCount} />
+          <StatCard label={t('assessments.navLink')} value={data.availableAssessmentsCount} />
+          <StatCard label={t('certificates.navLink')} value={data.certificatesCount} />
+        </StatsGrid>
+      </section>
     </>
   );
 }

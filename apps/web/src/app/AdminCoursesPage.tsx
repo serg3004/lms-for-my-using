@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/apiClient.js';
@@ -61,7 +62,7 @@ function formatRelativeDate(value: string): string {
   if (days < 7) return `${days} дн. назад`;
   if (days < 14) return '1 нед. назад';
   if (days < 30) return `${Math.floor(days / 7)} нед. назад`;
-  return new Date(value).toLocaleDateString();
+  return formatDate(value);
 }
 
 export function AdminCoursesPage() {

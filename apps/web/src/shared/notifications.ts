@@ -2,6 +2,8 @@ import type { TFunction } from 'i18next';
 
 import type { NotificationSummary } from './api/types.js';
 
+export const NOTIFICATION_COUNT_EVENT = 'lms:notification-count-changed';
+
 /**
  * Notification content is stored server-side as { type, data } rather than pre-rendered text
  * (see backend buildAttemptResultNotification), so it can be rendered in the learner's own
