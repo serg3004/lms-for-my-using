@@ -732,7 +732,14 @@
       "previewFailed": "未通过",
       "previewIncomplete": "尚未回答所有项目",
       "previewReset": "重置",
-      "selectUser": "选择员工…"
+      "selectUser": "选择员工…",
+      "defaultScale": {
+        "1": "非常差",
+        "2": "差",
+        "3": "良好",
+        "4": "很好",
+        "5": "优秀"
+      }
     }
   },
   "notFound": {

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { getCurrentUser } from '../shared/api/auth.js';
 import { listCourses } from '../shared/api/courses.js';
@@ -268,7 +269,7 @@ export function LearnerHomePage() {
                     </a>
                     <div className="learner-dashboard__deadline-meta">
                       {t(item.isOverdue ? 'learner.dashboard.upcomingDeadlines.overdueLabel' : 'learner.dashboard.upcomingDeadlines.dueLabel', {
-                        date: new Date(item.dueAt).toLocaleDateString(),
+                        date: formatDate(item.dueAt),
                       })}
                     </div>
                   </Card>
@@ -290,7 +291,7 @@ export function LearnerHomePage() {
                 <Card compact key={item.key}>
                   <div>{item.message}</div>
                   <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                    {new Date(item.date).toLocaleDateString()}
+                    {formatDate(item.date)}
                   </div>
                 </Card>
               ))}

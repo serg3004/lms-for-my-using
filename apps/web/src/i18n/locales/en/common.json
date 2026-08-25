@@ -732,7 +732,14 @@
       "previewFailed": "Fail",
       "previewIncomplete": "Not all items answered yet",
       "previewReset": "Reset",
-      "selectUser": "Select an employee…"
+      "selectUser": "Select an employee…",
+      "defaultScale": {
+        "1": "Very poor",
+        "2": "Poor",
+        "3": "Good",
+        "4": "Very good",
+        "5": "Excellent"
+      }
     }
   },
   "notFound": {

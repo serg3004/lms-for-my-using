@@ -225,7 +225,7 @@ export function AdminCourseBuilderPage() {
       <AdminPageHeader
         eyebrow={t('admin.courseBuilder.eyebrow', 'Course editor')}
         title={course.title}
-        subtitle={`${t('admin.courseBuilder.lessonsCount', { count: lessons.length })} · ${t('admin.courseBuilder.updatedAt', { date: formatDate(course.updatedAt, i18n.language) })}`}
+        subtitle={`${t('admin.courseBuilder.lessonsCount', { count: lessons.length })} · ${t('admin.courseBuilder.updatedAt', { date: formatDate(course.updatedAt, i18n.resolvedLanguage ?? i18n.language) })}`}
         action={
           <Button variant="secondary" size="sm" type="button" onClick={() => window.location.assign('/admin/courses')}>
             ← {t('admin.courseBuilder.backToList', 'Back to list')}
@@ -366,7 +366,7 @@ export function AdminCourseBuilderPage() {
             <div className="info-row">
               <span className="info-row__label">{t('admin.courseBuilder.createdLabel', 'Created')}</span>
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-                {formatDate(course.createdAt, i18n.language)}
+                {formatDate(course.createdAt, i18n.resolvedLanguage ?? i18n.language)}
               </span>
             </div>
             <div style={{ marginTop: '16px', display: 'grid', gap: '8px' }}>

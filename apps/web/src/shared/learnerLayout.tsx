@@ -35,6 +35,7 @@ export function LearnerTopNav({
   showLanguageSwitcher = false,
   showAccountSwitcher = false,
 }: LearnerTopNavProps) {
+  const { t } = useTranslation();
   return (
     <header className="learner-topnav">
       <a className="learner-topnav__brand" href="/learn">
@@ -63,7 +64,7 @@ export function LearnerTopNav({
           <Avatar firstName={firstName} lastName={lastName} size="sm" />
         ) : null}
         <button className="learner-topnav__logout" type="button" onClick={onLogout}>
-          Выйти
+          {t('nav.logout')}
         </button>
       </div>
     </header>
