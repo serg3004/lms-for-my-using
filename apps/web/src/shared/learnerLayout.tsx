@@ -6,9 +6,10 @@ import { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRe
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
 import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
-import { Avatar, SkipLink } from './ui.js';
+import { Avatar } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
 import { useOptionalSession } from './session.js';
+import { WorkspaceLayout } from './workspaceLayout.js';
 
 export type LearnerNavItem = {
   label: string;
@@ -291,64 +292,49 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
     window.location.href = '/login';
   }
 
+  const mobileNavigation = (
+    <nav className="learner-mobile-nav" aria-label={t('learner.mobileNavigation')}>
+      {LEARNER_MOBILE_NAV_DEFS.map((item) => {
+        const isCurrent = item.href.startsWith('/')
+          && (path === item.href || (item.href !== '/learn' && path.startsWith(`${item.href}/`)));
+        return (
+          <a aria-current={isCurrent ? 'page' : undefined} className="learner-mobile-nav__link" href={item.href} key={item.href}>
+            <MobileNavIcon icon={item.icon} />
+            <span>{t(item.key)}</span>
+          </a>
+        );
+      })}
+    </nav>
+  );
+
   return (
-    <div className="learner-app">
-      <SkipLink label={t('a11y.skipToContent')} />
-      <aside className="learner-sidebar">
-        <div className="learner-sidebar__brand">
-          <div className="learner-sidebar__mark">L</div>
-          <div>
-            <strong className="learner-sidebar__brand-name">LMS</strong>
-            <span className="learner-sidebar__brand-sub">{t('nav.brandSub')}</span>
-          </div>
-        </div>
-
-        <div className="learner-sidebar__section-label">{t('nav.sectionLabel')}</div>
-        <nav className="learner-sidebar__nav" aria-label="Main navigation">
-          {LEARNER_NAV_DEFS.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`learner-sidebar__link${path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? ' learner-sidebar__link--active' : ''}`}
-              aria-current={path === item.href || (item.href !== '/learn' && path.startsWith(item.href)) ? 'page' : undefined}
-            >
-              {t(item.key)}
-            </a>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="learner-content">
-        <header className="learner-header">
-          <div className="learner-header__end" id="learner-account-controls" tabIndex={-1}>
+    <WorkspaceLayout
+      brandHref="/learn"
+      brandLabel="LMS"
+      brandSubLabel={t('nav.brandSub')}
+      contentMode="readable"
+      firstName={firstName}
+      lastName={lastName}
+      mobileNavigation={mobileNavigation}
+      navigation={LEARNER_NAV_DEFS.map((item) => ({
+        href: item.href,
+        label: t(item.key),
+        isCurrent: path === item.href || (item.href !== '/learn' && path.startsWith(item.href)),
+      }))}
+      navigationLabel="Main navigation"
+      skipLinkLabel={t('a11y.skipToContent')}
+      headerActions={
+        <div className="workspace-role-actions" id="learner-account-controls" tabIndex={-1}>
             <NotificationBell />
             <AccountSwitcher />
             <LanguageSwitcher />
-            {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
             <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
               {t('nav.logout')}
             </button>
-          </div>
-        </header>
-        <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
-      </div>
-      <nav className="learner-mobile-nav" aria-label={t('learner.mobileNavigation')}>
-        {LEARNER_MOBILE_NAV_DEFS.map((item) => {
-          const isCurrent = item.href.startsWith('/')
-            && (path === item.href || (item.href !== '/learn' && path.startsWith(`${item.href}/`)));
-          return (
-            <a
-              aria-current={isCurrent ? 'page' : undefined}
-              className="learner-mobile-nav__link"
-              href={item.href}
-              key={item.href}
-            >
-              <MobileNavIcon icon={item.icon} />
-              <span>{t(item.key)}</span>
-            </a>
-          );
-        })}
-      </nav>
-    </div>
+        </div>
+      }
+    >
+      {children}
+    </WorkspaceLayout>
   );
 }

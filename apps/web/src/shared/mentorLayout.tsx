@@ -1,10 +1,11 @@
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayout.js';
+import { AccountSwitcher } from './accountSwitcher.js';
+import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
-import { SkipLink } from './ui.js';
 import { useOptionalSession } from './session.js';
+import { WorkspaceLayout, type WorkspaceNavItem } from './workspaceLayout.js';
 
 type MentorPageLayoutProps = {
   children: ReactNode;
@@ -17,7 +18,7 @@ export function MentorPageLayout({ children, firstName, lastName }: MentorPageLa
   const session = useOptionalSession();
   const currentUser = session?.currentUser;
 
-  const navItems: LearnerNavItem[] = [
+  const navItems: WorkspaceNavItem[] = [
     { label: t('checklistReview.title', 'Checklist review'), href: '/mentor', isCurrent: true },
   ];
 
@@ -32,18 +33,20 @@ export function MentorPageLayout({ children, firstName, lastName }: MentorPageLa
   }
 
   return (
-    <>
-      <SkipLink label={t('a11y.skipToContent')} />
-      <LearnerTopNav
+    <WorkspaceLayout
+        brandHref="/mentor"
         brandLabel="LearnSpace"
+        contentMode="dense"
         firstName={firstName ?? currentUser?.firstName}
         lastName={lastName ?? currentUser?.lastName ?? undefined}
-        navItems={navItems}
-        onLogout={() => { void handleLogout(); }}
-        showAccountSwitcher
-        showLanguageSwitcher
-      />
-      <LearnerShell>{children}</LearnerShell>
-    </>
+        navigation={navItems}
+        navigationLabel="Main navigation"
+        skipLinkLabel={t('a11y.skipToContent')}
+        variant="topbar"
+        headerActions={<div className="workspace-role-actions">
+          <AccountSwitcher /><LanguageSwitcher />
+          <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>{t('nav.logout')}</button>
+        </div>}
+      >{children}</WorkspaceLayout>
   );
 }

@@ -1,10 +1,11 @@
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayout.js';
+import { AccountSwitcher } from './accountSwitcher.js';
+import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
-import { SkipLink } from './ui.js';
 import { useOptionalSession } from './session.js';
+import { WorkspaceLayout, type WorkspaceNavItem } from './workspaceLayout.js';
 
 type InstructorPageLayoutProps = {
   children: ReactNode;
@@ -24,7 +25,7 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
     { label: t('instructor.navChecklists'), href: '/instructor/checklists' },
   ] as const;
 
-  const navItems: LearnerNavItem[] = instructorNav.map((item) => ({
+  const navItems: WorkspaceNavItem[] = instructorNav.map((item) => ({
     ...item,
     isCurrent: path.startsWith(item.href),
   }));
@@ -40,18 +41,20 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
   }
 
   return (
-    <>
-      <SkipLink label={t('a11y.skipToContent')} />
-      <LearnerTopNav
+    <WorkspaceLayout
+        brandHref="/instructor/dashboard"
         brandLabel="LearnSpace"
+        contentMode="dense"
         firstName={firstName ?? currentUser?.firstName}
         lastName={lastName ?? currentUser?.lastName ?? undefined}
-        navItems={navItems}
-        onLogout={() => { void handleLogout(); }}
-        showAccountSwitcher
-        showLanguageSwitcher
-      />
-      <LearnerShell>{children}</LearnerShell>
-    </>
+        navigation={navItems}
+        navigationLabel="Main navigation"
+        skipLinkLabel={t('a11y.skipToContent')}
+        variant="topbar"
+        headerActions={<div className="workspace-role-actions">
+          <AccountSwitcher /><LanguageSwitcher />
+          <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>{t('nav.logout')}</button>
+        </div>}
+      >{children}</WorkspaceLayout>
   );
 }

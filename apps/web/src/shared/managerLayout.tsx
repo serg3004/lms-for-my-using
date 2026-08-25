@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { AccountSwitcher } from './accountSwitcher.js';
 import { LanguageSwitcher } from './learnerLayout.js';
 import { logout } from './logout.js';
-import { Avatar, SkipLink } from './ui.js';
 import { useOptionalSession } from './session.js';
+import { WorkspaceLayout } from './workspaceLayout.js';
 
 const MANAGER_NAV_DEFS = [
   { key: 'manager.navDashboard', href: '/manager/dashboard' },
@@ -38,45 +38,21 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
     window.location.href = '/login';
   }
 
-  return (
-    <div className="learner-app">
-      <SkipLink label={t('a11y.skipToContent')} />
-      <aside className="learner-sidebar">
-        <div className="learner-sidebar__brand">
-          <div className="learner-sidebar__mark">L</div>
-          <div>
-            <strong className="learner-sidebar__brand-name">LMS</strong>
-            <span className="learner-sidebar__brand-sub">{t('manager.brandSub')}</span>
-          </div>
-        </div>
-
-        <nav className="learner-sidebar__nav" aria-label="Main navigation">
-          {MANAGER_NAV_DEFS.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className={`learner-sidebar__link${path.startsWith(item.href) ? ' learner-sidebar__link--active' : ''}`}
-              aria-current={path.startsWith(item.href) ? 'page' : undefined}
-            >
-              {t(item.key)}
-            </a>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="learner-content">
-        <header className="learner-header">
-          <div className="learner-header__end">
-            <AccountSwitcher />
-            <LanguageSwitcher />
-            {firstName ? <Avatar firstName={firstName} lastName={lastName} size="sm" /> : null}
-            <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
-              {t('nav.logout')}
-            </button>
-          </div>
-        </header>
-        <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
-      </div>
-    </div>
-  );
+  return <WorkspaceLayout
+    brandHref="/manager/dashboard"
+    brandLabel="LMS"
+    brandSubLabel={t('manager.brandSub')}
+    contentMode="fluid"
+    density="compact"
+    firstName={firstName}
+    lastName={lastName}
+    navigation={MANAGER_NAV_DEFS.map((item) => ({ label: t(item.key), href: item.href, isCurrent: path.startsWith(item.href) }))}
+    navigationLabel="Main navigation"
+    skipLinkLabel={t('a11y.skipToContent')}
+    headerActions={<div className="workspace-role-actions">
+      <AccountSwitcher />
+      <LanguageSwitcher />
+      <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>{t('nav.logout')}</button>
+    </div>}
+  >{children}</WorkspaceLayout>;
 }
