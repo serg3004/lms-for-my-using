@@ -83,4 +83,59 @@ export class ReportsService {
       },
     };
   }
+
+  async getAdminDashboard(actor: TeamScopeActor) {
+    const where = { organizationId: actor.organizationId, deletedAt: null } as const;
+    const [
+      usersTotal,
+      coursesTotal,
+      progressTotal,
+      progressCompletedTotal,
+      certificatesTotal,
+      pendingActivationCount,
+      users,
+      certificates,
+      completedProgress,
+    ] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.course.count({ where }),
+      this.prisma.progress.count({ where }),
+      this.prisma.progress.count({ where: { ...where, completedAt: { not: null } } }),
+      this.prisma.certificate.count({ where }),
+      this.prisma.user.count({ where: { ...where, status: 'invited' } }),
+      this.prisma.user.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        take: 5,
+        select: { id: true, firstName: true, lastName: true, createdAt: true },
+      }),
+      this.prisma.certificate.findMany({
+        where,
+        orderBy: [{ issuedAt: 'desc' }, { id: 'asc' }],
+        take: 5,
+        select: { id: true, issuedAt: true },
+      }),
+      this.prisma.progress.findMany({
+        where: { ...where, completedAt: { not: null } },
+        orderBy: [{ completedAt: 'desc' }, { id: 'asc' }],
+        take: 5,
+        select: { id: true, completedAt: true },
+      }),
+    ]);
+
+    const activity = [
+      ...users.map((user) => ({ type: 'user_added' as const, id: user.id, date: user.createdAt, firstName: user.firstName, lastName: user.lastName })),
+      ...certificates.map((certificate) => ({ type: 'certificate_issued' as const, id: certificate.id, date: certificate.issuedAt })),
+      ...completedProgress.map((progress) => ({ type: 'lesson_completed' as const, id: progress.id, date: progress.completedAt! })),
+    ].sort((left, right) => right.date.getTime() - left.date.getTime()).slice(0, 5);
+
+    return {
+      usersTotal,
+      coursesTotal,
+      completionRate: progressTotal === 0 ? 0 : Math.round((progressCompletedTotal / progressTotal) * 100),
+      certificatesTotal,
+      pendingActivationCount,
+      activity,
+    };
+  }
 }

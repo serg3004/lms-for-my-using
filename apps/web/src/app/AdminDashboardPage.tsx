@@ -2,23 +2,10 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
 import { CurrentUser, apiRequest, getCurrentUser } from '../shared/apiClient.js';
-import { listCourses } from '../shared/api/courses.js';
-import { listProgress } from '../shared/api/progress.js';
-import { listCertificates } from '../shared/api/certificates.js';
-import type { PaginatedResponse } from '../shared/api/types.js';
+import { getAdminDashboardSummary } from '../shared/api/reports.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-
-type AdminUserStatus = 'active' | 'invited' | 'suspended' | 'archived';
-
-type AdminUserLite = {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  status: AdminUserStatus;
-  createdAt: string;
-};
 
 type HealthResponse = {
   status: 'ok' | 'error';
@@ -60,50 +47,21 @@ async function checkSystemAvailable(): Promise<boolean> {
 }
 
 async function loadDashboardStats(t: TFunction): Promise<DashboardStats> {
-  const [usersResult, coursesResult, progressResult, certificatesResult, systemAvailable] = await Promise.all([
-    apiRequest<PaginatedResponse<AdminUserLite>>('/users?page=1&pageSize=100'),
-    listCourses({ pageSize: 100 }),
-    listProgress({ pageSize: 100 }),
-    listCertificates({ pageSize: 100 }),
+  const [summary, systemAvailable] = await Promise.all([
+    getAdminDashboardSummary(),
     checkSystemAvailable(),
   ]);
 
-  const users = usersResult.items;
-  const completedProgress = progressResult.items.filter((item) => item.completedAt !== null);
-  const completionRate = progressResult.items.length
-    ? Math.round((completedProgress.length / progressResult.items.length) * 100)
-    : 0;
-
-  const userActivity: ActivityItem[] = users.map((user) => ({
-    key: `user-${user.id}`,
-    date: user.createdAt,
-    message: t('admin.dashboard.activity.userAdded', {
-      name: [user.firstName, user.lastName].filter(Boolean).join(' '),
-    }),
+  const activity: ActivityItem[] = summary.activity.map((item) => ({
+    key: `${item.type}-${item.id}`,
+    date: item.date,
+    message: item.type === 'user_added'
+      ? t('admin.dashboard.activity.userAdded', { name: [item.firstName, item.lastName].filter(Boolean).join(' ') })
+      : t(`admin.dashboard.activity.${item.type === 'certificate_issued' ? 'certificateIssued' : 'lessonCompleted'}`),
   }));
-
-  const certificateActivity: ActivityItem[] = certificatesResult.items.map((certificate) => ({
-    key: `certificate-${certificate.id}`,
-    date: certificate.issuedAt,
-    message: t('admin.dashboard.activity.certificateIssued'),
-  }));
-
-  const progressActivity: ActivityItem[] = completedProgress.map((item) => ({
-    key: `progress-${item.id}`,
-    date: item.completedAt as string,
-    message: t('admin.dashboard.activity.lessonCompleted'),
-  }));
-
-  const activity = [...userActivity, ...certificateActivity, ...progressActivity]
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-    .slice(0, 5);
 
   return {
-    usersTotal: usersResult.total,
-    coursesTotal: coursesResult.total,
-    completionRate,
-    certificatesTotal: certificatesResult.total,
-    pendingActivationCount: users.filter((user) => user.status === 'invited').length,
+    ...summary,
     systemAvailable,
     activity,
   };

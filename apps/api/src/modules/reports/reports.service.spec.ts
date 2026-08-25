@@ -45,6 +45,50 @@ function createPrismaSpy(overrides: {
 }
 
 describe('ReportsService', () => {
+  it('computes admin dashboard KPI from full-dataset counts while bounding activity queries', async () => {
+    const calls: Call[] = [];
+    const record = (resource: string, method: string, result: unknown) => async (args: Record<string, unknown>) => {
+      calls.push({ resource, method, args });
+      return result;
+    };
+    let progressCountCall = 0;
+    const prisma = {
+      user: {
+        count: async (args: Record<string, unknown>) => {
+          calls.push({ resource: 'user', method: 'count', args });
+          return (args.where as { status?: string }).status === 'invited' ? 17 : 140;
+        },
+        findMany: record('user', 'findMany', []),
+      },
+      course: { count: record('course', 'count', 12) },
+      progress: {
+        count: async (args: Record<string, unknown>) => {
+          calls.push({ resource: 'progress', method: 'count', args });
+          progressCountCall += 1;
+          return progressCountCall === 1 ? 250 : 180;
+        },
+        findMany: record('progress', 'findMany', []),
+      },
+      certificate: {
+        count: record('certificate', 'count', 45),
+        findMany: record('certificate', 'findMany', []),
+      },
+    } as unknown as PrismaService;
+
+    const result = await new ReportsService(prisma).getAdminDashboard({ id: 'admin-1', organizationId, roles: ['admin'] });
+
+    expect(result).toMatchObject({
+      usersTotal: 140,
+      coursesTotal: 12,
+      completionRate: 72,
+      certificatesTotal: 45,
+      pendingActivationCount: 17,
+    });
+    expect(calls.filter((call) => call.method === 'findMany')).toHaveLength(3);
+    expect(calls.filter((call) => call.method === 'findMany').every((call) => call.args.take === 5)).toBe(true);
+    expect(calls.every((call) => (call.args.where as { organizationId?: string }).organizationId === organizationId)).toBe(true);
+  });
+
   it('returns bounded lists plus database-computed counts, scoped to the actor organization', async () => {
     const { prisma, calls } = createPrismaSpy({
       progressFindMany: [{ id: 'progress-1' }],
