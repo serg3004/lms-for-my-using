@@ -377,6 +377,7 @@ for (const width of widths) {
       const dialog = page.locator('dialog.admin-user-dialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole('heading', { level: 2 })).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
 
