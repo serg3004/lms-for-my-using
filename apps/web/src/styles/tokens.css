@@ -7,6 +7,9 @@
   --color-text-muted: #667085;
   --color-primary: #4f46e5;
   --color-primary-hover: #4338ca;
+  --color-on-primary: #ffffff;
+  --color-accent-muted: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
+  --color-selected: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
   --color-danger: #dc2626;
   --color-success: #0f9f6e;
   --color-warning: #d97706;
@@ -20,7 +23,23 @@
   --radius-sm: 6px;
   --radius-md: 11px;
   --radius-lg: 18px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
   --space-page: clamp(16px, 4vw, 48px);
+
+  --control-size-sm: 32px;
+  --control-size-md: 40px;
+  --control-size-lg: 48px;
+
+  --motion-duration-instant: 100ms;
+  --motion-duration-fast: 160ms;
+  --motion-duration-normal: 240ms;
+  --motion-duration-slow: 360ms;
+  --motion-ease-productive: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;

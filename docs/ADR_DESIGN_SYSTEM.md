@@ -29,6 +29,12 @@ The design-system contract consists of:
 - base native-control and focus behavior in `apps/web/src/styles/global.css`;
 - cascade ordering declared centrally in `apps/web/src/styles/index.css`.
 
+The semantic token contract also covers control sizes, the shared spacing scale,
+tenant-derived accent/selected surfaces, and productive motion durations/easing.
+Feature code must use these meanings rather than copying brand colors or timing
+values. `prefers-reduced-motion` globally collapses non-essential CSS animation
+and transition time while preserving immediate state feedback.
+
 New or materially reworked product UI must use the shared React primitives when an appropriate primitive exists. Feature styles may arrange or extend a primitive through `className`, but must not redefine its basic color, typography, spacing, focus, disabled, or error treatment. Native controls are still appropriate for controls with unique interaction or layout needs, and receive consistent fallback styling from `global.css`.
 
 ## Rationale
@@ -55,6 +61,8 @@ Their render coverage lives in `apps/web/src/shared/ui.spec.tsx`. Every baseline
 - Prefer `Button`, `Input`, and `Badge` in new UI.
 - Treat `.admin-btn`, `.learner-btn`, `.ui-status-badge`, and feature-specific input rules as compatibility styles, not APIs for new code.
 - Add a semantic token before copying a literal color into a reusable component.
+- Use motion tokens for state transitions; motion must explain appearance,
+  feedback, or progressive disclosure rather than decorate static content.
 - Add or update a render test whenever a shared primitive's public variants change.
 
 ## Consequences

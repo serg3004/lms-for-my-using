@@ -35,6 +35,17 @@ async function captureVisualBaseline(page: Page, testInfo: TestInfo, name: strin
 }
 
 async function installAdminMocks(page: Page) {
+  // The authenticated shell reconciles the cached theme in the background.
+  // Keep that request inside the visual fixture so a real API (or a refused
+  // proxy connection) cannot change when the dialog screenshot is captured.
+  await page.route('**/api/v1/organizations/visual-org/theme', (route) => route.fulfill({
+    json: {
+      themeSettings: {
+        colorPrimary: '#4f46e5',
+        colorPrimaryHover: '#4338ca',
+      },
+    },
+  }));
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
       id: 'visual-admin',

@@ -11,15 +11,15 @@ type InstructorCoursesData = { user: CurrentUser; courses: CourseSummary[]; stud
 type StatusFilter = 'all' | 'published' | 'draft' | 'archived';
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  primarySoft: '#eef2ff',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  primarySoft: 'var(--color-accent-muted)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
 };
 
 export function InstructorCoursesPage() {
@@ -147,7 +147,7 @@ export function InstructorCoursesPage() {
                   </Link>
                   <Link
                     to={`/instructor/courses/${course.id}/edit`}
-                    style={{ flex: 1, textAlign: 'center', border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: 700, color: '#fff', textDecoration: 'none' }}
+                    style={{ flex: 1, textAlign: 'center', border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '10px', padding: '8px 10px', fontSize: '13px', fontWeight: 700, color: 'var(--color-on-primary)', textDecoration: 'none' }}
                   >
                     {t('instructor.courses.editLink')}
                   </Link>
