@@ -4146,7 +4146,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > повторно проверен в Chromium с реальными PostgreSQL migrations/demo seed и проходит.
 
 ---
-## PR 240 — Learner Mobile Navigation 🔲
+## PR 240 — Learner Mobile Navigation ✅
 
 **Проблема:** на мобильной ширине learner sidebar скрывается, но полноценной замены primary navigation нет.
 
@@ -4158,13 +4158,22 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - desktop sidebar оставить без изменения.
 
 **Критерии готовности:**
-- [ ] navigation появляется на принятом mobile breakpoint;
-- [ ] все четыре primary destination доступны с любого learner-экрана;
-- [ ] active route визуально и семантически определяется;
-- [ ] keyboard navigation и focus state работают;
-- [ ] touch targets соответствуют принятому WCAG 2.2 baseline;
-- [ ] контент не перекрывается navigation bar;
-- [ ] desktop layout не регрессировал.
+- [x] navigation появляется на принятом mobile breakpoint;
+- [x] все четыре primary destination доступны с любого learner-экрана;
+- [x] active route визуально и семантически определяется;
+- [x] keyboard navigation и focus state работают;
+- [x] touch targets соответствуют принятому WCAG 2.2 baseline;
+- [x] контент не перекрывается navigation bar;
+- [x] desktop layout не регрессировал.
+
+> **Реализовано (2026-08-25):** на ширине до 820 px learner layout показывает
+> фиксированную нижнюю navigation с Home, Courses, Notifications и Profile,
+> 56-pixel touch targets, `aria-current`, заметным `focus-visible` и SVG-иконками.
+> Высота панели и отступ content учитывают `safe-area-inset-bottom`, поэтому панель
+> не перекрывает содержимое. До появления отдельного `/learn/profile` из PR 243
+> Profile безопасно переводит фокус к существующим account controls, а не на dead
+> route. Desktop sidebar и его breakpoint не изменены; добавлены render tests на
+> четыре destinations и active state вложенных learner routes.
 
 ---
 ## PR 241 — Password Reset UI ✅

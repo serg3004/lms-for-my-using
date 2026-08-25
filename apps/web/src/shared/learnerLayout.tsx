@@ -251,6 +251,24 @@ const LEARNER_NAV_DEFS = [
   { key: 'notifications.bell', href: '/learn/notifications' },
 ] as const;
 
+const LEARNER_MOBILE_NAV_DEFS = [
+  { key: 'nav.home', href: '/learn', icon: 'home' },
+  { key: 'courses.title', href: '/learn/courses', icon: 'courses' },
+  { key: 'notifications.bell', href: '/learn/notifications', icon: 'notifications' },
+  { key: 'learner.profileTitle', href: '#learner-account-controls', icon: 'profile' },
+] as const;
+
+function MobileNavIcon({ icon }: { icon: (typeof LEARNER_MOBILE_NAV_DEFS)[number]['icon'] }) {
+  const paths = {
+    home: <path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3V10.5Z" />,
+    courses: <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v17H6.5A2.5 2.5 0 0 0 4 22V5.5Zm16 0A2.5 2.5 0 0 0 17.5 3H13v17h4.5a2.5 2.5 0 0 1 2.5 2V5.5Z" />,
+    notifications: <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4" />,
+    profile: <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0" />,
+  };
+
+  return <svg aria-hidden="true" className="learner-mobile-nav__icon" viewBox="0 0 24 24">{paths[icon]}</svg>;
+}
+
 type LearnerPageLayoutProps = {
   children: ReactNode;
   currentPath?: string;
@@ -301,7 +319,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
 
       <div className="learner-content">
         <header className="learner-header">
-          <div className="learner-header__end">
+          <div className="learner-header__end" id="learner-account-controls" tabIndex={-1}>
             <NotificationBell />
             <AccountSwitcher />
             <LanguageSwitcher />
@@ -313,6 +331,23 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
         </header>
         <main className="learner-shell" id="main-content" tabIndex={-1}>{children}</main>
       </div>
+      <nav className="learner-mobile-nav" aria-label={t('learner.mobileNavigation')}>
+        {LEARNER_MOBILE_NAV_DEFS.map((item) => {
+          const isCurrent = item.href.startsWith('/')
+            && (path === item.href || (item.href !== '/learn' && path.startsWith(`${item.href}/`)));
+          return (
+            <a
+              aria-current={isCurrent ? 'page' : undefined}
+              className="learner-mobile-nav__link"
+              href={item.href}
+              key={item.href}
+            >
+              <MobileNavIcon icon={item.icon} />
+              <span>{t(item.key)}</span>
+            </a>
+          );
+        })}
+      </nav>
     </div>
   );
 }

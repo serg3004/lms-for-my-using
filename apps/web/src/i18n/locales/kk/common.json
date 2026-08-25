@@ -813,7 +813,8 @@
       },
       "nextAction": "Келесі әрекет",
       "statsLabel": "Оқу қорытындысы"
-    }
+    },
+    "mobileNavigation": "Оқушы навигациясы"
   },
   "courses": {
     "navLink": "Курстар",

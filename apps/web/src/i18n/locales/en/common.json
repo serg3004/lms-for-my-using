@@ -813,7 +813,8 @@
       },
       "nextAction": "Next action",
       "statsLabel": "Learning summary"
-    }
+    },
+    "mobileNavigation": "Learner navigation"
   },
   "courses": {
     "navLink": "Courses",

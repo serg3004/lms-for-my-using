@@ -787,7 +787,7 @@
     "authRequired": "Sign in to open the learner area.",
     "sessionExpired": "Your session expired. Sign in again.",
     "loadError": "Unable to load learner profile. Try again later.",
-    "profileTitle": "Profile",
+    "profileTitle": "Профиль",
     "name": "Name",
     "email": "Email",
     "organizationId": "Organization ID",
@@ -813,7 +813,8 @@
       },
       "nextAction": "Следующее действие",
       "statsLabel": "Сводка обучения"
-    }
+    },
+    "mobileNavigation": "Навигация ученика"
   },
   "courses": {
     "navLink": "Курсы",
