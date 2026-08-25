@@ -31,3 +31,16 @@ export type ManagerTeamSummary = {
 export function getManagerTeamSummary() {
   return apiRequest<ManagerTeamSummary>('/manager/team-summary');
 }
+
+export type ManagerReminderResult = {
+  sent: number;
+  failed: number;
+  results: { assignmentId: string; status: 'sent' | 'failed'; recipients?: number; reason?: 'not_applicable' | 'no_recipients' }[];
+};
+
+export function sendManagerOverdueReminders(assignmentIds: string[]) {
+  return apiRequest<ManagerReminderResult>('/manager/overdue-reminders', {
+    method: 'POST',
+    body: JSON.stringify({ assignmentIds }),
+  });
+}

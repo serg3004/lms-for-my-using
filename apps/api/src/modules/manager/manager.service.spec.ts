@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+
 import { PrismaService } from '../../database/prisma.service.js';
 import { ManagerService } from './manager.service.js';
 
@@ -139,5 +141,48 @@ describe('ManagerService getTeamSummary', () => {
         },
       ],
     });
+  });
+});
+
+describe('ManagerService sendOverdueReminders', () => {
+  it('creates notifications for direct and group recipients and reports inaccessible rows', async () => {
+    const notificationCreateMany = jest.fn(async () => ({ count: 1 }));
+    const prisma = {
+      assignment: { findMany: jest.fn(async () => [
+        { id: 'direct', userId: memberAId, course: { title: 'Safety' }, group: null },
+        { id: 'group', userId: null, course: { title: 'Compliance' }, group: { members: [{ userId: memberAId }, { userId: memberBId }] } },
+      ]) },
+      notification: { createMany: notificationCreateMany },
+    } as unknown as PrismaService;
+    const service = new ManagerService(prisma);
+
+    const result = await service.sendOverdueReminders(
+      { id: managerId, organizationId, roles: ['manager'] },
+      ['direct', 'group', 'outside'],
+    );
+
+    expect(result).toMatchObject({ sent: 2, failed: 1 });
+    expect(result.results[2]).toEqual({ assignmentId: 'outside', status: 'failed', reason: 'not_applicable' });
+    expect(notificationCreateMany).toHaveBeenCalledTimes(2);
+    expect(notificationCreateMany).toHaveBeenLastCalledWith({ data: expect.arrayContaining([
+      expect.objectContaining({ userId: memberAId, type: 'manager_overdue_reminder' }),
+      expect.objectContaining({ userId: memberBId, type: 'manager_overdue_reminder' }),
+    ]) });
+    expect((prisma.assignment.findMany as jest.Mock).mock.calls[0][0].where).toMatchObject({
+      organizationId,
+      status: 'assigned',
+      dueAt: { lt: expect.any(Date) },
+    });
+  });
+
+  it('does not create a notification when a scoped group has no active recipients', async () => {
+    const notificationCreateMany = jest.fn();
+    const prisma = {
+      assignment: { findMany: async () => [{ id: 'group', userId: null, course: { title: 'Safety' }, group: { members: [] } }] },
+      notification: { createMany: notificationCreateMany },
+    } as unknown as PrismaService;
+
+    await expect(new ManagerService(prisma).sendOverdueReminders(organizationId, ['group'])).resolves.toMatchObject({ sent: 0, failed: 1 });
+    expect(notificationCreateMany).not.toHaveBeenCalled();
   });
 });

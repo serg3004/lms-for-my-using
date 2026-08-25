@@ -1331,7 +1331,16 @@
       "columnStatus": "状态",
       "status": "逾期",
       "empty": "没有逾期任务。",
-      "unknownTarget": "未知目标"
+      "unknownTarget": "未知目标",
+      "columnAction": "操作",
+      "remind": "提醒",
+      "sending": "正在发送…",
+      "remindSelected": "提醒所选项（{{count}}）",
+      "reminderSuccess": "已为 {{count}} 个任务发送提醒。",
+      "reminderPartial": "已发送：{{sent}}。未发送：{{failed}}。",
+      "reminderError": "无法发送提醒，请重试。",
+      "selectAll": "选择所有适用的任务",
+      "selectRow": "选择 {{target}} 的任务"
     },
     "navReports": "报告",
     "reports": {
@@ -1485,6 +1494,10 @@
       "assessment_failed": {
         "title": "测试未通过",
         "message": "您未通过测试“{{assessmentTitle}}”（{{percentage}}%）。"
+      },
+      "manager_overdue_reminder": {
+        "title": "逾期学习提醒",
+        "message": "“{{courseTitle}}”已逾期。您的经理向您发送了提醒。"
       }
     },
     "centerTitle": "通知中心",

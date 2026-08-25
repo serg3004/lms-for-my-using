@@ -4377,7 +4377,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > loading/error/empty states и адаптивная раскладка покрыты UI/model regression tests.
 
 ---
-## PR 249 — Manager Reminders для просроченных назначений 🔲
+## PR 249 — Manager Reminders для просроченных назначений ✅
 
 **Проблема:** `/manager/overdue` показывает просрочку, но не позволяет manager выполнить следующее действие — отправить напоминание.
 
@@ -4389,13 +4389,23 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - добавить backend scoped reminder command/API с tenant/manager authorization.
 
 **Критерии готовности:**
-- [ ] manager может отправить reminder одному сотруднику;
-- [ ] manager может отправить reminder выбранной группе;
-- [ ] backend проверяет tenant и manager scope;
-- [ ] partial failures отображаются явно;
-- [ ] duplicate submit защищён;
-- [ ] неприменимые записи не позволяют отправить reminder;
-- [ ] API/UI tests проходят.
+- [x] manager может отправить reminder одному сотруднику;
+- [x] manager может отправить reminder выбранной группе;
+- [x] backend проверяет tenant и manager scope;
+- [x] partial failures отображаются явно;
+- [x] duplicate submit защищён;
+- [x] неприменимые записи не позволяют отправить reminder;
+- [x] API/UI tests проходят.
+
+> **Реализовано (2026-08-25):** `/manager/overdue` получил одиночное и batch-действие
+> `Remind` на основе controlled row selection. На время запроса повторная отправка
+> блокируется, а результат показывает success, failure либо точный partial-failure count;
+> неуспешные строки остаются выбранными для осознанного повтора. Новый
+> `POST /manager/overdue-reminders` принимает не более 50 назначений, повторно проверяет
+> tenant, manager team scope, активный статус и факт просрочки, затем создаёт локализуемые
+> in-app notifications для сотрудника или активных участников управляемой группы.
+> Неприменимые и недоступные назначения возвращаются как per-row failures без раскрытия
+> данных другого tenant/team. Контракт, authorization scope и UI покрыты API/UI tests.
 
 ---
 ## PR 250 — Корректные aggregate KPI для Admin Dashboard 🔲

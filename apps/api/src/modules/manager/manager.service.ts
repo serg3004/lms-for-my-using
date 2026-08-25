@@ -164,4 +164,63 @@ export class ManagerService {
       members,
     };
   }
+
+  async sendOverdueReminders(actorInput: TeamScopeActor | string, assignmentIds: string[]) {
+    const actor = normalizeActor(actorInput);
+    const now = new Date();
+    const assignments = await this.prisma.assignment.findMany({
+      where: {
+        id: { in: assignmentIds },
+        organizationId: actor.organizationId,
+        ...this.teamScope.assignment(actor),
+        deletedAt: null,
+        status: 'assigned',
+        dueAt: { lt: now },
+      },
+      select: {
+        id: true,
+        course: { select: { title: true } },
+        userId: true,
+        group: {
+          select: {
+            members: {
+              where: { organizationId: actor.organizationId, deletedAt: null, user: { deletedAt: null } },
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+    const byId = new Map(assignments.map((assignment) => [assignment.id, assignment]));
+    const results: { assignmentId: string; status: 'sent' | 'failed'; recipients?: number; reason?: 'not_applicable' | 'no_recipients' }[] = [];
+
+    for (const assignmentId of assignmentIds) {
+      const assignment = byId.get(assignmentId);
+      if (!assignment) {
+        results.push({ assignmentId, status: 'failed', reason: 'not_applicable' });
+        continue;
+      }
+      const recipientIds = [...new Set(assignment.userId ? [assignment.userId] : (assignment.group?.members ?? []).map((item) => item.userId))];
+      if (recipientIds.length === 0) {
+        results.push({ assignmentId, status: 'failed', reason: 'no_recipients' });
+        continue;
+      }
+      await this.prisma.notification.createMany({
+        data: recipientIds.map((userId) => ({
+          organizationId: actor.organizationId,
+          userId,
+          type: 'manager_overdue_reminder',
+          data: { assignmentId, courseTitle: assignment.course.title },
+          link: `/learn/assignments/${assignmentId}`,
+        })),
+      });
+      results.push({ assignmentId, status: 'sent', recipients: recipientIds.length });
+    }
+
+    return {
+      sent: results.filter((result) => result.status === 'sent').length,
+      failed: results.filter((result) => result.status === 'failed').length,
+      results,
+    };
+  }
 }

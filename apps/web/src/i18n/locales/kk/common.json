@@ -1331,7 +1331,16 @@
       "columnStatus": "Күй",
       "status": "Мерзімі өткен",
       "empty": "Мерзімі өткен тапсырмалар жоқ.",
-      "unknownTarget": "Белгісіз мақсат"
+      "unknownTarget": "Белгісіз мақсат",
+      "columnAction": "Әрекет",
+      "remind": "Еске салу",
+      "sending": "Жіберілуде…",
+      "remindSelected": "Таңдалғандарға еске салу ({{count}})",
+      "reminderSuccess": "{{count}} тапсырма бойынша еске салу жіберілді.",
+      "reminderPartial": "Жіберілді: {{sent}}. Жіберілмеді: {{failed}}.",
+      "reminderError": "Еске салуларды жіберу мүмкін болмады.",
+      "selectAll": "Барлық қолжетімді тапсырманы таңдау",
+      "selectRow": "{{target}} үшін тапсырманы таңдау"
     },
     "navReports": "Есептер",
     "reports": {
@@ -1485,6 +1494,10 @@
       "assessment_failed": {
         "title": "Тест тапсырылмады",
         "message": "Сіз «{{assessmentTitle}}» тестін тапсыра алмадыңыз ({{percentage}}%)."
+      },
+      "manager_overdue_reminder": {
+        "title": "Мерзімі өткен оқу туралы еске салу",
+        "message": "«{{courseTitle}}» курсының мерзімі өтті. Менеджер еске салу жіберді."
       }
     },
     "centerTitle": "Хабарландыру орталығы",
