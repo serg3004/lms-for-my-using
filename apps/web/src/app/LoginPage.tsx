@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { login } from '../shared/api/auth.js';
@@ -359,16 +359,12 @@ export function LoginPage() {
                 />
                 <span>{t('login.rememberMe')}</span>
               </label>
-              <button
+              <Link
                 className="login-form__forgot"
-                onClick={() => {
-                  setErrorMessage(null);
-                  setInfoMessage(t('login.forgotPasswordHelp'));
-                }}
-                type="button"
+                to="/password-reset"
               >
                 {t('login.forgotPassword')}
-              </button>
+              </Link>
             </div>
 
             {infoMessage ? (

@@ -30,6 +30,15 @@ export type LoginResponse = {
   user: CurrentUser;
 };
 
+export type PasswordResetRequestInput = Pick<LoginInput, 'organizationId' | 'email'>;
+
+export type PasswordResetConfirmInput = {
+  token: string;
+  password: string;
+};
+
+export type PasswordResetAcceptedResponse = { accepted: true };
+
 export type CourseSummary = {
   id: string;
   organizationId: string;

@@ -237,6 +237,51 @@
   font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
+  text-decoration: none;
+}
+
+.password-reset-language {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+}
+
+.password-reset-language select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #e3e8ef;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #172033;
+}
+
+.password-reset-secondary {
+  margin-top: 18px;
+  display: block;
+  color: #4f46e5;
+  font-weight: 700;
+  text-align: center;
+}
+
+.password-reset-link {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.password-reset-status { text-align: center; }
+.password-reset-status .login-header p { margin-bottom: 24px; }
+.password-reset-status__icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 26px;
+  font-weight: 900;
 }
 
 .login-form__submit {

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const apiRequest = vi.hoisted(() => vi.fn());
 vi.mock('./apiClient.js', () => ({ apiRequest }));
 
-import { getCurrentUser, login } from './api/auth.js';
+import { confirmPasswordReset, getCurrentUser, login, requestPasswordReset } from './api/auth.js';
 import { getProgressSummary, listProgress } from './api/progress.js';
 import { logout } from './logout.js';
 
@@ -25,6 +25,17 @@ describe('session API wrappers', () => {
   it('loads the current cookie-backed user', async () => {
     await getCurrentUser();
     expect(apiRequest).toHaveBeenCalledWith('/auth/me');
+  });
+
+  it('posts password reset request and confirmation to the public auth contract', async () => {
+    const request = { organizationId: '00000000-0000-4000-8000-000000000001', email: 'user@example.com' };
+    const confirmation = { token: 'x'.repeat(43), password: 'NewPassword1!' };
+
+    await requestPasswordReset(request);
+    await confirmPasswordReset(confirmation);
+
+    expect(apiRequest).toHaveBeenNthCalledWith(1, '/auth/password-reset/request', { method: 'POST', body: JSON.stringify(request) });
+    expect(apiRequest).toHaveBeenNthCalledWith(2, '/auth/password-reset/confirm', { method: 'POST', body: JSON.stringify(confirmation) });
   });
 
   it('posts logout and propagates failures', async () => {
