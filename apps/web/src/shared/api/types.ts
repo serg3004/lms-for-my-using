@@ -24,6 +24,8 @@ export type CurrentUser = {
   roles: UserRole[];
 };
 
+export type UserPreferencesInput = Pick<CurrentUser, 'locale'>;
+
 export type LoginResponse = {
   accessToken: string;
   tokenType: 'Bearer';

@@ -1564,5 +1564,23 @@
     "commentPlaceholder": "Comment (optional)",
     "currentResult": "Current result",
     "sessionExpired": "Your session expired. Sign in again."
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Personal details and user preferences.",
+    "identityTitle": "Personal details",
+    "name": "Name",
+    "email": "Email",
+    "position": "Position",
+    "notSpecified": "Not specified",
+    "readonlyHint": "Contact an administrator to change your personal details.",
+    "preferencesTitle": "Preferences",
+    "language": "Interface language",
+    "save": "Save preferences",
+    "saving": "Saving…",
+    "saved": "Preferences saved.",
+    "saveError": "Could not save preferences. Try again.",
+    "loading": "Loading profile…",
+    "loadError": "Could not load profile."
   }
 }

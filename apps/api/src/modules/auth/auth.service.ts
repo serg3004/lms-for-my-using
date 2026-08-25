@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { type CurrentUser, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UserRole } from './auth.schemas.js';
+import { type CurrentUser, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
 import { refreshTokenLifetimeMs } from './auth.lifecycle.js';
@@ -274,6 +274,16 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+  }
+
+  async updatePreferences(userId: string, organizationId: string, input: UpdatePreferencesInput) {
+    const user = await this.prisma.user.update({
+      where: { id: userId, organizationId },
+      data: { locale: input.locale },
+      select: currentUserSelect,
+    });
+
+    return this.withRoles(user);
   }
 
   private async validateSession(jti: string) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Optional, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Optional, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 
 import {
   AuthHeaders,
@@ -19,7 +19,9 @@ import {
   loginSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
+  updatePreferencesSchema,
 } from './auth.schemas.js';
+import type { AuthenticatedRequest } from './auth.guard.js';
 
 type AuthRequest = {
   headers: AuthHeaders;
@@ -130,5 +132,11 @@ export class AuthController {
     const accessToken = resolveAccessToken(request.headers);
 
     return this.authService.getCurrentUser(accessToken.token);
+  }
+
+  @Patch('me/preferences')
+  @AuthenticatedAccess()
+  updatePreferences(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.authService.updatePreferences(request.currentUser!.id, request.currentUser!.organizationId, updatePreferencesSchema.parse(body));
   }
 }

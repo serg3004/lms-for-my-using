@@ -7,6 +7,7 @@ import type {
   PasswordResetAcceptedResponse,
   PasswordResetConfirmInput,
   PasswordResetRequestInput,
+  UserPreferencesInput,
 } from './types.js';
 
 export function login(input: LoginInput) {
@@ -18,6 +19,13 @@ export function login(input: LoginInput) {
 
 export function getCurrentUser() {
   return apiRequest<CurrentUser>('/auth/me');
+}
+
+export function updateCurrentUserPreferences(input: UserPreferencesInput) {
+  return apiRequest<CurrentUser>('/auth/me/preferences', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 export function requestPasswordReset(input: PasswordResetRequestInput) {

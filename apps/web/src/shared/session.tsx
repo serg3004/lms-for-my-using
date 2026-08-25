@@ -2,6 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 import { getCurrentUser } from './api/auth.js';
 import type { CurrentUser } from './api/types.js';
+import i18next from 'i18next';
+import { DEFAULT_LOCALE, supportedLocales } from '../i18n/index.js';
 
 type SessionStatus = 'idle' | 'loading' | 'authenticated' | 'error';
 
@@ -28,6 +30,8 @@ export function SessionProvider({ authenticated, children }: { authenticated: bo
     setError(null);
     const request = getCurrentUser()
       .then((user) => {
+        const locale = supportedLocales.includes(user.locale as (typeof supportedLocales)[number]) ? user.locale : DEFAULT_LOCALE;
+        void i18next.changeLanguage(locale);
         setCurrentUser(user);
         setStatus('authenticated');
         return user;
