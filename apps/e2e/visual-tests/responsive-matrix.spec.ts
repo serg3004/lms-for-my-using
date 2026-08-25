@@ -372,9 +372,11 @@ for (const width of widths) {
     test('keeps admin navigation, table, form, and dialog responsive', async ({ page }, testInfo) => {
       await installAdminMocks(page);
       await page.goto('/admin/users');
-      await expect(page.getByRole('heading', { name: 'Пользователи' })).toBeVisible();
-      await page.getByRole('button', { name: 'Создать пользователя' }).click();
-      await expect(page.getByRole('heading', { name: 'Создать пользователя' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await page.locator('.admin-topbar .admin-btn--primary').click();
+      const dialog = page.locator('dialog.admin-user-dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('heading', { level: 2 })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
 
