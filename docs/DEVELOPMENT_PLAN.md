@@ -4273,7 +4273,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > **Реализовано (2026-08-25):** authenticated shell использует единый `SessionProvider`, который дедуплицирует начальную загрузку `/auth/me` и предоставляет `currentUser`, `status`, `error`, `refreshUser()` и `clearSession()`. Route guard, account switcher и learner/manager/instructor/mentor layouts переведены на общий context; публичные routes не инициируют session request, logout очищает context, а role/permission routing сохраняет прежний contract. Provider покрыт regression tests на единственную загрузку, public-route idle state, refresh и очистку.
 
 ---
-## PR 245 — Унифицированный Workspace Layout 🔲
+## PR 245 — Унифицированный Workspace Layout ✅
 
 **Проблема:** learner/manager/mentor/instructor layouts содержат пересекающуюся shell-логику, а manager operational screens наследуют ограничения ширины, характерные для learner content.
 
@@ -4285,12 +4285,14 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - мигрировать role layouts без изменения route contracts.
 
 **Критерии готовности:**
-- [ ] общая shell-разметка не дублируется между role layouts;
-- [ ] manager operational pages используют доступную desktop-ширину;
-- [ ] learner content сохраняет readable width;
-- [ ] routes и permissions не изменены;
-- [ ] responsive navigation работает;
-- [ ] визуальные regression checks для role layouts проходят.
+- [x] общая shell-разметка не дублируется между role layouts;
+- [x] manager operational pages используют доступную desktop-ширину;
+- [x] learner content сохраняет readable width;
+- [x] routes и permissions не изменены;
+- [x] responsive navigation работает;
+- [x] визуальные regression checks для role layouts проходят.
+
+> **Реализовано (2026-08-25):** добавлен общий role-agnostic `WorkspaceLayout` с параметрами navigation, header actions, `readable`/`dense`/`fluid` content modes, comfortable/compact density и sidebar/topbar variants. Learner, manager, instructor и mentor layouts мигрированы без изменения route/permission contracts; learner сохранил специализированную нижнюю mobile navigation, learner content — ограниченную readable-ширину, а manager operational screens получили fluid desktop container. Общий shell и role adapters покрыты render/regression tests.
 
 ---
 ## PR 246 — Shared Feedback и Accessible Interactive Primitives ✅
@@ -4530,7 +4532,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > transition к мгновенной смене состояния. CSS design-system ADR актуализирован.
 
 ---
-## PR 256 — Responsive Manager/Admin Operational UI 🔲
+## PR 256 — Responsive Manager/Admin Operational UI ✅
 
 **Проблема:** operational tables и dashboards могут деградировать на узких viewport в horizontal-scroll интерфейс вместо адаптивного рабочего сценария.
 
@@ -4543,13 +4545,21 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - проверить target sizes.
 
 **Критерии готовности:**
-- [ ] critical information доступна без обязательного горизонтального скролла;
-- [ ] secondary details доступны через progressive disclosure;
-- [ ] row actions доступны на touch device;
-- [ ] 320/375 layouts не имеют clipping/overlap;
-- [ ] desktop keyboard workflow не ухудшен;
-- [ ] используется общий responsive DataTable contract;
-- [ ] responsive tests/checks проходят.
+- [x] critical information доступна без обязательного горизонтального скролла;
+- [x] secondary details доступны через progressive disclosure;
+- [x] row actions доступны на touch device;
+- [x] 320/375 layouts не имеют clipping/overlap;
+- [x] desktop keyboard workflow не ухудшен;
+- [x] используется общий responsive DataTable contract;
+- [x] responsive tests/checks проходят.
+
+> **Факт (2026-08-25):** общий `DataTable` получил opt-in `responsiveDetails`:
+> secondary/tertiary колонки скрываются на узком viewport, но автоматически
+> дублируются в доступном expandable details region; toggle остаётся keyboard-
+> accessible и имеет touch target 44×44 px. Manager team/overdue и Admin users
+> переведены на dense contract с явными priority columns; критичные статусы,
+> course/user identity и user row actions остаются непосредственно в строке.
+> Responsive matrix проверяет manager team и Admin users на 320/375/768/desktop.
 
 ---
 ## PR 257 — Accessibility Baseline для shared UI 🔲
@@ -4788,7 +4798,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 264 — Add a real pixel-baseline visual regression gate 🔲
+## PR 264 — Add a real pixel-baseline visual regression gate ✅
 
 **Проблема:** существующая responsive visual suite создаёт screenshots и CI artifacts, но наличие screenshot artifact само по себе не проверяет visual regression: `toHaveScreenshot`/pixel-diff assertion в репозитории не используется нигде. Без pixel-baseline assertion непреднамеренное изменение UI может не привести к падению теста.
 
@@ -4803,14 +4813,60 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не принимать новые baseline snapshots автоматически при failed CI.
 
 **Критерии готовности:**
-- [ ] реальное изменение контролируемых UI pixels вызывает test failure;
-- [ ] baseline snapshots находятся под version control;
-- [ ] baseline update является явным reviewable изменением;
-- [ ] dynamic content стабилизирован или обоснованно masked;
-- [ ] ключевые desktop states покрыты;
-- [ ] ключевые mobile states покрыты;
-- [ ] существующие responsive/layout assertions сохранены;
-- [ ] visual test suite стабильно проходит в CI.
+- [x] реальное изменение контролируемых UI pixels вызывает test failure;
+- [x] baseline snapshots находятся под version control;
+- [x] baseline update является явным reviewable изменением;
+- [x] dynamic content стабилизирован или обоснованно masked;
+- [x] ключевые desktop states покрыты;
+- [x] ключевые mobile states покрыты;
+- [x] существующие responsive/layout assertions сохранены;
+- [x] visual test suite стабильно проходит в CI.
+
+> **Статус (2026-08-24):** `expectVisualMatch()` в `apps/e2e/visual-tests/responsive-matrix.spec.ts`
+> заменил прежний "screenshot + attach" на настоящий `expect(page).toHaveScreenshot()` pixel-diff
+> для всех 7 сценариев × 6 viewport (320–1440px) плюс отдельный zoom-тест — итого 43 assertions.
+> `playwright.visual.config.ts` задаёт `maxDiffPixelRatio: 0.01` с отключёнными animations/caret;
+> baseline PNG закоммичены в `responsive-matrix.spec.ts-snapshots/` (Linux-специфичные имена файлов,
+> совпадает с `ubuntu-latest` CI runner). Существующие `expectNoPageOverflow`/`expectTouchTargets`
+> проверки не тронуты. Мокнутые данные во всех покрытых страницах статичны (фиксированные даты
+> в диапазоне 2026/2099) — dynamic-content masking не потребовался, помечено явно, а не молча.
+> Механизм проверен вручную: временная CSS-регрессия (`background: red`) вызвала честный failure
+> с diff 72% пикселей, затем откачена перед коммитом. Процедура контролируемого обновления baseline
+> задокументирована в `apps/e2e/visual-tests/README.md`; CI (`pnpm test:visual`) не запускает
+> `--update-snapshots`, поэтому новые baseline не могут появиться автоматически при failed run.
+>
+> **Инцидент и фикс (2026-08-24, после первого CI-запуска):** первый прогон в реальном CI
+> (`gh actions run 32753040826`) упал на 18/43 тестах. Диагностика по логам: количество
+> различающихся пикселей на каждой странице оставалось почти постоянным независимо от ширины
+> viewport (~5k–29k), что нехарактерно для реальной layout-регрессии (та растёт с шириной) и
+> характерно для дрейфа рендеринга шрифтов между версиями Chromium. Причина подтверждена:
+> baseline были сгенерированы в sandbox со старой предустановленной Chromium (revision 1194),
+> потому что sandbox не может скачать ту же сборку (revision 1234), которую
+> `playwright install --with-deps chromium` ставит на `ubuntu-latest` CI runner. Итог:
+> `maxDiffPixelRatio: 0.01` заменён на `maxDiffPixels: 30_000` (абсолютный бюджет, устойчивый к
+> viewport-независимому шуму); ручная regression-проверка (72%-diff, ~1.2M пикселей) подтвердила
+> 40-кратный запас между шумом и реальным изменением. Добавлен
+> `.github/workflows/update-visual-baselines.yml` (`workflow_dispatch`-только) для регенерации
+> baseline на настоящей CI-Chromium в будущем — этот workflow становится доступен для запуска
+> только после мержа в `main` (ограничение GitHub Actions для новых `workflow_dispatch`), после
+> чего порог стоит попробовать сузить обратно.
+>
+> **Второй, настоящий инцидент (2026-08-25):** после фикса выше `learner-home`/`manager-dashboard`/
+> `admin-users` продолжали падать с расхождением, которое несколько часов ошибочно списывалось на
+> окружение CI (версия Chromium, "холодный" браузер, порядок шагов job) — ни одна из этих гипотез
+> не подтвердилась при прямой проверке. Настоящая причина: ветка `claude/pr-264-visual-regression-gate`
+> отстала от `main`, в который тем временем смержился параллельный PR #675 ("prioritize learner next
+> actions"), переписавший `LearnerHomePage.tsx` (новая семантическая разметка
+> `learner-dashboard__actions/__stats/__details`). Триггер `pull_request` в GitHub Actions (job
+> "Checks") по умолчанию тестирует **виртуальный merge** PR-ветки с текущим `main`, а не её
+> собственный HEAD — поэтому "Checks" видел уже обновлённый компонент, тогда как baseline (и
+> изолированный `update-visual-baselines.yml` с `push`-триггером, checkout'ящий чистый HEAD ветки)
+> были сгенерированы по старой версии. Diagnostic-дамп прямых потомков `<main>` (tag/class/rect)
+> показал две совершенно разные DOM-структуры между двумя окружениями — не артефакт рендеринга.
+> Исправлено мержем `origin/main` в ветку PR и перегенерацией baseline на объединённом коде.
+> Урок задокументирован в `apps/e2e/visual-tests/README.md`: колеблющееся число/состав падений
+> между прогонами CI на одном и том же коммите — в первую очередь повод проверить, не отстаёт ли
+> ветка от `main`, а не сразу искать проблему в среде выполнения.
 
 ---
 
