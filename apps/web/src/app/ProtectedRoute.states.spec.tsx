@@ -3,14 +3,19 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const reactState = vi.hoisted(() => ({ value: 'loading' }));
-vi.mock('react', async () => {
-  const actual = await vi.importActual<typeof import('react')>('react');
-  return {
-    ...actual,
-    useEffect: vi.fn(),
-    useState: vi.fn(() => [reactState.value, vi.fn()]),
-  };
-});
+vi.mock('../shared/session.js', () => ({
+  useOptionalSession: () => ({ status: reactState.value }),
+  useSession: () => ({
+    status: reactState.value === 'unauthenticated' ? 'error' : reactState.value === 'forbidden' ? 'authenticated' : reactState.value,
+    currentUser: reactState.value === 'authenticated'
+      ? { id: 'user-1', organizationId: 'org-1', roles: ['admin'] }
+      : reactState.value === 'forbidden'
+        ? { id: 'user-1', organizationId: 'org-1', roles: ['learner'] }
+        : null,
+    error: reactState.value === 'unauthenticated' ? new Error('unauthenticated') : null,
+  }),
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
 
 import { ProtectedRoute } from './ProtectedRoute.js';
 
@@ -21,7 +26,7 @@ function renderState(state: string) {
       <Routes>
         <Route path="/login" element={<p>Login destination</p>} />
         <Route path="/admin/users" element={(
-          <ProtectedRoute protectedPathPrefixes={['/admin']}>
+          <ProtectedRoute protectedPathPrefixes={['/admin']} canAccess={(user) => user.roles.includes('admin')}>
             <p>Secret users</p>
           </ProtectedRoute>
         )} />

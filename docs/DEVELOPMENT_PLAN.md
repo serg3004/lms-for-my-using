@@ -4235,7 +4235,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] backend scope changes, если нужны, типизированы и протестированы.
 
 ---
-## PR 244 — Централизованный SessionProvider 🔲
+## PR 244 — Централизованный SessionProvider ✅
 
 **Проблема:** authenticated layouts и страницы независимо вызывают `getCurrentUser()`, создавая дублирующие запросы и несколько источников session state.
 
@@ -4248,12 +4248,14 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не добавлять Redux/Zustand только ради session state.
 
 **Критерии готовности:**
-- [ ] текущий пользователь загружается один раз для authenticated shell;
-- [ ] role layouts используют единый session contract;
-- [ ] `refreshUser()` обновляет UI после изменения profile/preferences;
-- [ ] logout очищает session state;
-- [ ] role/permission routing сохраняет текущее поведение;
-- [ ] regression tests проходят.
+- [x] текущий пользователь загружается один раз для authenticated shell;
+- [x] role layouts используют единый session contract;
+- [x] `refreshUser()` обновляет UI после изменения profile/preferences;
+- [x] logout очищает session state;
+- [x] role/permission routing сохраняет текущее поведение;
+- [x] regression tests проходят.
+
+> **Реализовано (2026-08-25):** authenticated shell использует единый `SessionProvider`, который дедуплицирует начальную загрузку `/auth/me` и предоставляет `currentUser`, `status`, `error`, `refreshUser()` и `clearSession()`. Route guard, account switcher и learner/manager/instructor/mentor layouts переведены на общий context; публичные routes не инициируют session request, logout очищает context, а role/permission routing сохраняет прежний contract. Provider покрыт regression tests на единственную загрузку, public-route idle state, refresh и очистку.
 
 ---
 ## PR 245 — Унифицированный Workspace Layout 🔲

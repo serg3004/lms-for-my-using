@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LearnerShell, LearnerTopNav, type LearnerNavItem } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { SkipLink } from './ui.js';
+import { useOptionalSession } from './session.js';
 
 type InstructorPageLayoutProps = {
   children: ReactNode;
@@ -13,6 +14,8 @@ type InstructorPageLayoutProps = {
 
 export function InstructorPageLayout({ children, firstName, lastName }: InstructorPageLayoutProps) {
   const { t } = useTranslation();
+  const session = useOptionalSession();
+  const currentUser = session?.currentUser;
   const path = typeof window !== 'undefined' ? window.location.pathname : '';
 
   const instructorNav = [
@@ -32,6 +35,7 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
     } catch {
       /* ignore */
     }
+    session?.clearSession();
     window.location.href = '/login';
   }
 
@@ -40,8 +44,8 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
       <SkipLink label={t('a11y.skipToContent')} />
       <LearnerTopNav
         brandLabel="LearnSpace"
-        firstName={firstName}
-        lastName={lastName}
+        firstName={firstName ?? currentUser?.firstName}
+        lastName={lastName ?? currentUser?.lastName ?? undefined}
         navItems={navItems}
         onLogout={() => { void handleLogout(); }}
         showAccountSwitcher
