@@ -99,7 +99,7 @@ export function LearnerNotificationsPage() {
                   <span className="notification-center__copy">
                     <strong>{copy.title}</strong>
                     <span>{copy.message}</span>
-                    <time dateTime={notification.createdAt}>{new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(notification.createdAt))}</time>
+                    <time dateTime={notification.createdAt}>{new Intl.DateTimeFormat(i18n.resolvedLanguage ?? i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(notification.createdAt))}</time>
                   </span>
                   <span className="notification-center__status">{notification.readAt ? t('notifications.read') : t('notifications.unread')}</span>
                 </button>

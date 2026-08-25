@@ -1,5 +1,6 @@
 import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
@@ -239,7 +240,7 @@ export function AdminAssignmentCompletionPage() {
               ? findUserLabel(loadState.data.users, a.userId, a.userId)
               : findGroupLabel(loadState.data.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
             { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
-              ? new Date(a.dueAt).toLocaleDateString()
+              ? formatDate(a.dueAt)
               : t('admin.assignments.noDueDate', '—') },
             { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (a) => (
               <select

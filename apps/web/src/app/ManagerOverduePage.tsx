@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { getManagerTeamSummary, type ManagerTeamSummary } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
@@ -36,7 +37,7 @@ export function ManagerOverduePage() {
             const name = member
               ? [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email
               : assignment.groupName ?? assignment.userId ?? t('manager.overdue.unknownTarget');
-            return <tr key={assignment.assignmentId}><td>{name}</td><td>{assignment.courseTitle}</td><td>{new Date(assignment.dueAt).toLocaleDateString()}</td><td><Badge variant="overdue">{t('manager.overdue.status')}</Badge></td></tr>;
+            return <tr key={assignment.assignmentId}><td>{name}</td><td>{assignment.courseTitle}</td><td>{formatDate(assignment.dueAt)}</td><td><Badge variant="overdue">{t('manager.overdue.status')}</Badge></td></tr>;
           })}
           {summary.overdueAssignments.length === 0 ? <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center' }}>{t('manager.overdue.empty')}</td></tr> : null}
         </tbody>

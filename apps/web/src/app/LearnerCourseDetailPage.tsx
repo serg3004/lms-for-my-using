@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { listAssignments } from '../shared/api/assignments.js';
 import { getCourse } from '../shared/api/courses.js';
@@ -17,7 +18,7 @@ type LearnerCourseDetailData = {
 };
 
 function formatDueAt(dueAt: string): string {
-  return new Date(dueAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatDate(dueAt, undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function formatDuration(minutes: number | null, h: string, m: string, none: string): string {

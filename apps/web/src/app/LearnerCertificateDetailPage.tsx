@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { getCertificate, getCertificatePdfPath } from '../shared/apiClient.js';
 import { getCurrentUser } from '../shared/api/auth.js';
@@ -9,7 +10,7 @@ import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 function formatIssuedAt(value: string): string {
-  return new Date(value).toLocaleDateString(undefined, {
+  return formatDate(value, undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

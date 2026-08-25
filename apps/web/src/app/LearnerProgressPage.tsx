@@ -290,7 +290,7 @@ export function LearnerProgressPage() {
                   <div>
                     <p style={{ margin: 0, color: COLORS.text }}>{message}</p>
                     <time style={{ display: 'block', marginTop: '5px', color: '#9ca3af', fontSize: '11px' }}>
-                      {formatActivityDate(item.date, t, i18n.language)}
+                      {formatActivityDate(item.date, t, i18n.resolvedLanguage ?? i18n.language)}
                     </time>
                   </div>
                 </div>

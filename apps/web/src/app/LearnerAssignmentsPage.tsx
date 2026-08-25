@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../shared/formatDate.js';
 
 import { listAssignments } from '../shared/api/assignments.js';
 import type { AssignmentSummary } from '../shared/api/types.js';
@@ -37,7 +38,7 @@ function isDueThisWeek(dueAt: string | null) {
 
 function formatDueDate(dueAt: string | null) {
   if (!dueAt) return null;
-  return new Date(dueAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  return formatDate(dueAt, undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function getEffectiveStatus(a: ExtendedAssignment): 'overdue' | 'completed' | 'assigned' {

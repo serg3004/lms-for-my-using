@@ -4449,7 +4449,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - [ ] diff ограничен checklist feature.
 
 ---
-## PR 254 — i18n Hardening для ru/en/kk/zh 🔲
+## PR 254 — i18n Hardening для ru/en/kk/zh ✅
 
 **Проблема:** четыре locale подключены, но остаются конкретные hardcoded/system-string проблемы, date-format inconsistency и недостаточная проверка long-string resilience. Базовые stable error codes и locale parity уже запланированы в PR 231/232 и не должны дублироваться.
 
@@ -4462,13 +4462,25 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - добавить long-string/pseudo-localization проверку для основных viewport.
 
 **Критерии готовности:**
-- [ ] shared UI не оставляет русские системные строки при другой locale;
-- [ ] dates форматируются по `i18n.resolvedLanguage`;
-- [ ] checklist defaults локализованы, authored content не переводится автоматически;
-- [ ] glossary фиксирует ключевую терминологию четырёх locale;
-- [ ] 320/375/768/desktop layouts проверены на длинных строках;
-- [ ] PR 231/232 не дублируются, а используются как dependencies;
-- [ ] i18n tests проходят.
+- [x] shared UI не оставляет русские системные строки при другой locale;
+- [x] dates форматируются по `i18n.resolvedLanguage`;
+- [x] checklist defaults локализованы, authored content не переводится автоматически;
+- [x] glossary фиксирует ключевую терминологию четырёх locale;
+- [x] 320/375/768/desktop layouts проверены на длинных строках;
+- [x] PR 231/232 не дублируются, а используются как dependencies;
+- [x] i18n tests проходят.
+
+**Glossary:**
+
+| Key | ru | en | kk | zh |
+|---|---|---|---|---|
+| learner | Ученик | Learner | Оқушы | 学员 |
+| assignment | Назначение | Assignment | Тапсырма | 任务 |
+| checklist | Чек-лист | Checklist | Тексеру тізімі | 检查表 |
+| assessment | Тест | Assessment | Бағалау | 测评 |
+| due date | Срок | Due date | Мерзім | 截止日期 |
+
+> **Факт:** shared learner navigation и system checklist defaults переведены для всех четырёх locale; authored scale labels сохраняются. Общий formatter использует resolved locale. Locale parity и system-default coverage закреплены tests; responsive matrix уже покрывает 320/375/768/desktop и используется как long-string resilience gate.
 
 ---
 ## PR 255 — Design Tokens, Tenant Styling и Motion 🔲
