@@ -4919,9 +4919,11 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 
 ---
 
-## PR 265 — Verify live production infrastructure state 🔲
+## PR 265 — Verify live production infrastructure state ✅ (verification выполнен; часть follow-up остаётся LIVE-VERIFY)
 
 **Проблема:** repository audit не может доказать фактическое состояние внешней production infrastructure: Railway replica/resource settings, live Redis, S3/R2 configuration, PostgreSQL migration state, backup/PITR и реальную queue/storage topology. Это verification gap, а не подтверждённый production defect.
+
+**Результат verification (2026-08-25):** см. `docs/PR265_PRODUCTION_VERIFICATION.md`. Ключевые findings: Redis в production **не подключён** (degraded in-memory rate limiting, background jobs/outbox worker не запущен); Prisma migrations подтверждены применёнными (deployment SUCCESS на текущем `main`); storage — self-hosted MinIO (provider подтверждён, CORS/lifecycle не проверены); backup/PITR и restore test остаются неподтверждёнными доступными read-only инструментами.
 
 **Что нужно и что будет сделано:**
 - подготовить read-only production verification checklist;
@@ -4939,14 +4941,14 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - любые production mutations/deployments вынести в отдельные явно согласованные задачи.
 
 **Критерии готовности:**
-- [ ] production DB migration state зафиксирован с датой;
-- [ ] backup/PITR status подтверждён фактическим источником;
-- [ ] restore-test status подтверждён либо явно отмечен как missing/unverified;
-- [ ] Redis topology подтверждена;
-- [ ] storage provider/bucket/configuration подтверждены;
-- [ ] queue/DLQ topology подтверждена;
-- [ ] Railway replica/resource settings зафиксированы;
-- [ ] результаты имеют дату и источник доказательства;
-- [ ] sensitive values не сохранены в документации или CI artifacts;
-- [ ] verification не изменяет production;
-- [ ] все оставшиеся unknowns явно остаются `LIVE-VERIFY`/`[НЕ ПРОВЕРЕНО]`.
+- [x] production DB migration state зафиксирован с датой;
+- [ ] backup/PITR status подтверждён фактическим источником (не доступно через read-only Railway MCP — требует Railway UI, owner action);
+- [ ] restore-test status подтверждён либо явно отмечен как missing/unverified (отмечен как missing);
+- [x] Redis topology подтверждена (отсутствует в production);
+- [x] storage provider/bucket/configuration подтверждены (self-hosted MinIO); CORS/lifecycle остаются непроверенными;
+- [x] queue/DLQ topology подтверждена (BullMQ/outbox worker отключены — нет `REDIS_URL`/`BACKGROUND_JOBS_RUN_WORKER`);
+- [x] Railway replica/resource settings зафиксированы (5 сервисов, single-replica, `us-west2`);
+- [x] результаты имеют дату и источник доказательства (`docs/PR265_PRODUCTION_VERIFICATION.md`);
+- [x] sensitive values не сохранены в документации или CI artifacts (использовались только имена переменных);
+- [x] verification не изменяет production (только read-only Railway API запросы);
+- [x] все оставшиеся unknowns явно остаются `LIVE-VERIFY`/`[НЕ ПРОВЕРЕНО]` (backup/PITR, restore test, storage CORS/lifecycle).

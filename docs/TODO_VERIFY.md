@@ -43,8 +43,8 @@
 | TV-005 | Auth: access + refresh/session lifecycle | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Refresh/session rotation/revocation уже current implementation. |
 | TV-006 | Password hashing: current `scrypt` | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Старое bcrypt/Argon2 предложение superseded current code. |
 | TV-007 | Local object storage: MinIO | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Local S3-compatible development option. |
-| TV-008 | Production object storage | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Canonical decision — S3-compatible contract. Конкретный provider (MinIO/R2/AWS S3) требует fresh evidence. |
-| TV-009 | Deployment target: Railway-first + Docker portability | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Repository config подтверждён; live topology — external state. |
+| TV-008 | Production object storage | `ACCEPTED` | `DONE` | `LIVE-VERIFY` (частично закрыт PR 265, 2026-08-25) | Canonical decision — S3-compatible contract. Provider подтверждён read-only Railway verification: self-hosted MinIO в том же Railway-проекте (не AWS S3/R2). CORS/lifecycle настройки bucket остаются `LIVE-VERIFY` — см. `docs/PR265_PRODUCTION_VERIFICATION.md`. |
+| TV-009 | Deployment target: Railway-first + Docker portability | `ACCEPTED` | `DONE` | закрыт PR 265 (2026-08-25) | Repository config подтверждён; live topology подтверждена read-only Railway API verification: 5 сервисов (`web`/`api`/`malware-scanner`/`minio`/`Postgres`), single-replica, `us-west2` — см. `docs/PR265_PRODUCTION_VERIFICATION.md`. |
 | TV-010 | Package manager: pnpm workspaces | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Root `pnpm@9.15.0`; Turbo orchestration. |
 
 ---
@@ -96,7 +96,7 @@
 |---|---|---|---|---|---|
 | TV-030 | Invite flow | `OWNER-DECISION` | `PARTIAL` | `NOT-REQUIRED` | Admin-created user flow существует; полноценный invite lifecycle требует product decision. |
 | TV-031 | Password reset delivery | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Request/confirm endpoints реализованы в PR 136: token хранится только как SHA-256 hash с TTL и одноразовым consumption, публичный ответ сохраняет anti-enumeration `{ accepted: true }`. Provider-neutral delivery настраивается через `PASSWORD_RESET_DELIVERY_URL`/`PASSWORD_RESET_DELIVERY_TOKEN` (см. `docs/PASSWORD_RESET_STATUS.md`) — устаревшее упоминание намеренного `503` из ранних PR 61/68 здесь неактуально. Readiness/degraded-mode contract закрыт в PR 263: `PasswordResetDelivery.checkReadiness()` различает "не настроен" от "настроен, но падает"; delivery failures классифицируются (`http_error`/`timeout`/`network_error`) и наблюдаемы через `lms_password_reset_delivery_errors_total` без утечки token/URL. Фактическое наличие configured delivery provider в конкретном production окружении остаётся `LIVE-VERIFY`. |
-| TV-032 | Login/sensitive-route rate limiting | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Redis/local fallback code реализован; live Redis state требует verification. |
+| TV-032 | Login/sensitive-route rate limiting | `ACCEPTED` | `DONE` | закрыт PR 265 (2026-08-25) | Redis/local fallback code реализован; live Redis state подтверждено verification: **Redis не подключён в production** (нет `REDIS_URL`, нет Redis-сервиса в prod Railway-проекте) — активен degraded in-memory fallback через `ALLOW_IN_MEMORY_RATE_LIMIT`. Как следствие, background jobs/outbox worker тоже отключены (см. `docs/PR265_PRODUCTION_VERIFICATION.md`). Требует owner-решения: включать managed Redis либо явно принять текущий degraded-режим. |
 | TV-033 | Refresh token storage | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | HttpOnly refresh cookie + server-side session/hash/rotation. |
 | TV-034 | Access token current contract | `ACCEPTED` | `DONE` | `NOT-REQUIRED` | Использовать current auth controller/session docs; не возвращаться к старому localStorage proposal без отдельной redesign задачи. |
 | TV-035 | File access via authorized signed URLs | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Code contract реализован; live provider/bucket/CORS отдельно. |
@@ -145,8 +145,8 @@
 |---|---|---|---|---|---|
 | TV-051 | Separate Railway staging | `ACCEPTED` | `NOT-REQUIRED` | `LIVE-VERIFY` | Current repository policy: отдельного Railway staging нет. Создание staging — отдельная owner/ops задача. |
 | TV-052 | Web hosting target | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | Railway Web/Docker config присутствует; live service availability отдельно. |
-| TV-053 | DB migrations on deploy | `ACCEPTED` | `DONE` | `LIVE-VERIFY` | API Railway start выполняет `prisma migrate deploy` автоматически. Live migration outcome требует deployment evidence. |
-| TV-054 | Backups/PITR/restore policy | `OWNER-DECISION` | `PARTIAL` | `LIVE-VERIFY` | Repository policy требует reconciliation; live backup/PITR/restore readiness не доказаны code. |
+| TV-053 | DB migrations on deploy | `ACCEPTED` | `DONE` | закрыт PR 265 (2026-08-25) | API Railway start выполняет `prisma migrate deploy` автоматически. Live migration outcome подтверждён: последний `api` deployment (commit `d1570ab`, текущий `main`) имеет статус `SUCCESS` в Railway, что возможно только если `migrate deploy` завершился успешно (иначе `node dist/main.js` не стартует) и healthcheck `/health/ready` прошёл — см. `docs/PR265_PRODUCTION_VERIFICATION.md`. |
+| TV-054 | Backups/PITR/restore policy | `OWNER-DECISION` | `PARTIAL` | `LIVE-VERIFY` | Repository policy требует reconciliation; live backup/PITR/restore readiness не доказаны code. PR 265 (2026-08-25) подтвердил, что доступные read-only Railway MCP-инструменты не раскрывают backup/PITR-настройки Postgres — требуется owner проверить вручную через Railway UI (Settings → Backups) и провести restore test; на текущий момент restore test явно отсутствует. |
 | TV-055 | Observability | `ACCEPTED` | `PARTIAL` | `LIVE-VERIFY` | Pino logging и optional Sentry hooks присутствуют; live Sentry/alert routing не подтверждены. |
 
 ---
