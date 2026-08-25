@@ -371,6 +371,7 @@ export type {
   CertificateSummary,
   CourseMaterialSummary,
   CourseSummary,
+  InstructorCourseSummary,
   CreateAttemptAnswerInput,
   CreateLessonCompletionInput,
   CurrentUser,
@@ -384,7 +385,7 @@ export type {
 } from './api/types.js';
 
 export { getCurrentUser, login, updateCurrentUserPreferences } from './api/auth.js';
-export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, updateCourse } from './api/courses.js';
+export { createCourse, deleteCourse, getCourse, getCoursePath, listCourses, listCourseSummaries, updateCourse } from './api/courses.js';
 export { getLesson, getLessonPath, listLessons, markLessonCompleted } from './api/lessons.js';
 export { listCourseMaterials, getMaterialDownloadUrl } from './api/materials.js';
 export { listProgress } from './api/progress.js';

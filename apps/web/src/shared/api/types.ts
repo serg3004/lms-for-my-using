@@ -55,6 +55,10 @@ export type CourseSummary = {
   _count?: { lessons: number };
 };
 
+export type InstructorCourseSummary = CourseSummary & {
+  metrics: { enrolled: number; inProgress: number; completed: number };
+};
+
 export type LessonSummary = {
   id: string;
   organizationId: string;
