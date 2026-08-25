@@ -4273,7 +4273,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > **Реализовано (2026-08-25):** authenticated shell использует единый `SessionProvider`, который дедуплицирует начальную загрузку `/auth/me` и предоставляет `currentUser`, `status`, `error`, `refreshUser()` и `clearSession()`. Route guard, account switcher и learner/manager/instructor/mentor layouts переведены на общий context; публичные routes не инициируют session request, logout очищает context, а role/permission routing сохраняет прежний contract. Provider покрыт regression tests на единственную загрузку, public-route idle state, refresh и очистку.
 
 ---
-## PR 245 — Унифицированный Workspace Layout 🔲
+## PR 245 — Унифицированный Workspace Layout ✅
 
 **Проблема:** learner/manager/mentor/instructor layouts содержат пересекающуюся shell-логику, а manager operational screens наследуют ограничения ширины, характерные для learner content.
 
@@ -4285,12 +4285,14 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - мигрировать role layouts без изменения route contracts.
 
 **Критерии готовности:**
-- [ ] общая shell-разметка не дублируется между role layouts;
-- [ ] manager operational pages используют доступную desktop-ширину;
-- [ ] learner content сохраняет readable width;
-- [ ] routes и permissions не изменены;
-- [ ] responsive navigation работает;
-- [ ] визуальные regression checks для role layouts проходят.
+- [x] общая shell-разметка не дублируется между role layouts;
+- [x] manager operational pages используют доступную desktop-ширину;
+- [x] learner content сохраняет readable width;
+- [x] routes и permissions не изменены;
+- [x] responsive navigation работает;
+- [x] визуальные regression checks для role layouts проходят.
+
+> **Реализовано (2026-08-25):** добавлен общий role-agnostic `WorkspaceLayout` с параметрами navigation, header actions, `readable`/`dense`/`fluid` content modes, comfortable/compact density и sidebar/topbar variants. Learner, manager, instructor и mentor layouts мигрированы без изменения route/permission contracts; learner сохранил специализированную нижнюю mobile navigation, learner content — ограниченную readable-ширину, а manager operational screens получили fluid desktop container. Общий shell и role adapters покрыты render/regression tests.
 
 ---
 ## PR 246 — Shared Feedback и Accessible Interactive Primitives ✅
