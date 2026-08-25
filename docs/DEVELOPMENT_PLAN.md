@@ -4504,7 +4504,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > **Факт:** shared learner navigation и system checklist defaults переведены для всех четырёх locale; authored scale labels сохраняются. Общий formatter использует resolved locale. Locale parity и system-default coverage закреплены tests; responsive matrix уже покрывает 320/375/768/desktop и используется как long-string resilience gate.
 
 ---
-## PR 255 — Design Tokens, Tenant Styling и Motion 🔲
+## PR 255 — Design Tokens, Tenant Styling и Motion ✅
 
 **Проблема:** дизайн-система существует, но отдельные screens обходят её локальными hex-цветами/visual constants; motion не имеет единого semantic contract.
 
@@ -4517,13 +4517,19 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - сохранить текущий CSS-based design-system ADR.
 
 **Критерии готовности:**
-- [ ] затронутые screens не используют локальные brand hex при наличии semantic token;
-- [ ] tenant appearance применяется к соответствующим accent states;
-- [ ] motion durations/easing централизованы;
-- [ ] reduced-motion отключает необязательные transitions;
-- [ ] новая CSS/UI framework не добавлена;
-- [ ] ADR остаётся актуальным либо обновлён;
-- [ ] visual tests/checks проходят.
+- [x] затронутые screens не используют локальные brand hex при наличии semantic token;
+- [x] tenant appearance применяется к соответствующим accent states;
+- [x] motion durations/easing централизованы;
+- [x] reduced-motion отключает необязательные transitions;
+- [x] новая CSS/UI framework не добавлена;
+- [x] ADR остаётся актуальным либо обновлён;
+- [x] visual tests/checks проходят.
+
+> **Факт:** semantic tokens расширены control-size, spacing, tenant-derived
+> accent/selected и единым motion contract. Instructor/manager screens больше не
+> фиксируют локальные brand hex; popover, feedback и раскрытие строки используют
+> productive motion, а `prefers-reduced-motion` сводит необязательные animation и
+> transition к мгновенной смене состояния. CSS design-system ADR актуализирован.
 
 ---
 ## PR 256 — Responsive Manager/Admin Operational UI 🔲
