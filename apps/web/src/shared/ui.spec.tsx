@@ -2,7 +2,7 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from 'rea
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, DataTable, Input, Pagination, ProgressBar, SearchInput, SkipLink, Spinner, Toolbar } from './ui';
+import { Avatar, Badge, Button, Card, ConfirmDialog, DataTable, InlineFeedback, Input, Menu, Pagination, ProgressBar, SearchInput, Select, SkipLink, Spinner, Textarea, Toast, Toolbar } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
 
@@ -51,6 +51,38 @@ describe('shared UI state components', () => {
     expect(html).toContain('role="status"');
     expect(html).toContain('No items');
     expect(html).toContain('Nothing to show yet');
+  });
+});
+
+describe('shared feedback and interactive primitives', () => {
+  it('uses the common live-region contract for inline and toast feedback', () => {
+    expect(renderToStaticMarkup(<InlineFeedback tone="error">Save failed</InlineFeedback>)).toContain('role="alert"');
+    const toast = renderToStaticMarkup(<Toast tone="success" title="Saved">Changes are live</Toast>);
+    expect(toast).toContain('aria-live="polite"');
+    expect(toast).toContain('ds-feedback--success');
+  });
+
+  it('connects labels, hints and errors for select and textarea fields', () => {
+    const select = renderToStaticMarkup(<Select id="role" label="Role" error="Required"><option>Admin</option></Select>);
+    expect(select).toContain('for="role"');
+    expect(select).toContain('aria-invalid="true"');
+    expect(select).toContain('aria-describedby="role-description"');
+    const textarea = renderToStaticMarkup(<Textarea id="bio" label="Bio" hint="Keep it short" />);
+    expect(textarea).toContain('aria-describedby="bio-description"');
+  });
+
+  it('renders an ARIA-labelled confirmation dialog', () => {
+    const html = renderToStaticMarkup(<ConfirmDialog message="This cannot be undone" onCancel={vi.fn()} onConfirm={vi.fn()} open={false} title="Delete course" />);
+    expect(html).toContain('<dialog');
+    expect(html).toContain('aria-labelledby=');
+    expect(html).toContain('aria-describedby=');
+  });
+
+  it('exposes menu state and ownership on the trigger', () => {
+    const html = renderToStaticMarkup(<Menu label="Actions"><button role="menuitem" type="button">Edit</button></Menu>);
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('aria-controls=');
   });
 });
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getCurrentUser, type UserRole } from './apiClient.js';
 import { useOptionalSession } from './session.js';
+import { Menu } from './ui.js';
 
 const ROLE_ORDER: readonly UserRole[] = ['admin', 'instructor', 'mentor', 'manager', 'learner'];
 
@@ -41,7 +42,6 @@ export function AccountSwitcher() {
   const session = useOptionalSession();
   const [fallbackRoles, setFallbackRoles] = useState<UserRole[] | null>(null);
   const roles = session ? session.currentUser?.roles ?? null : fallbackRoles;
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (session) return;
@@ -58,18 +58,8 @@ export function AccountSwitcher() {
   const activeRole = getActiveRole(typeof window !== 'undefined' ? window.location.pathname : '');
 
   return (
-    <div className="account-switcher">
-      <button
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="account-switcher__btn"
-        onClick={() => setOpen((value) => !value)}
-        type="button"
-      >
-        {t('accountSwitcher.button')}
-      </button>
-      {open && (
-        <div className="account-switcher__menu" role="menu">
+    <Menu buttonClassName="account-switcher__btn" className="account-switcher" label={t('accountSwitcher.button')}>
+        <div className="account-switcher__menu">
           {available.map((role) => (
             <a
               className={`account-switcher__option${role === activeRole ? ' account-switcher__option--active' : ''}`}
@@ -81,7 +71,6 @@ export function AccountSwitcher() {
             </a>
           ))}
         </div>
-      )}
-    </div>
+    </Menu>
   );
 }
