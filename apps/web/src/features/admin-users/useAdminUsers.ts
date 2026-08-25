@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { apiRequest, getCurrentUser, type CurrentUser } from '../../shared/apiClient.js';
+import { apiRequest, type CurrentUser } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
+import { useSession } from '../../shared/session.js';
 import { useAsyncData } from '../../shared/useAsyncData.js';
 import { EMPTY_USER_FILTERS, userName, userRole, type AdminUserSummary, type AdminUsersFilters } from './model.js';
 
@@ -11,7 +12,7 @@ export type AdminUsersLoadState =
   | { status: 'loaded'; users: AdminUserSummary[]; currentUser: CurrentUser; total: number; pageSize: number }
   | { status: 'unauthenticated' | 'error'; message: string };
 
-type AdminUsersData = { users: AdminUserSummary[]; currentUser: CurrentUser; total: number; pageSize: number };
+type AdminUsersData = { users: AdminUserSummary[]; total: number; pageSize: number };
 
 export function filterAdminUsers(users: AdminUserSummary[], filters: AdminUsersFilters) {
   const query = filters.query.trim().toLocaleLowerCase();
@@ -23,15 +24,14 @@ export function filterAdminUsers(users: AdminUserSummary[], filters: AdminUsersF
 
 export function useAdminUsers() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<AdminUsersFilters>(EMPTY_USER_FILTERS);
 
   const { state: asyncState, reload } = useAsyncData<AdminUsersData>(
     async () => {
-      const [result, currentUser] = await Promise.all([
-        apiRequest<PaginatedResponse<AdminUserSummary>>(`/users?page=${page}&pageSize=20`), getCurrentUser(),
-      ]);
-      return { users: result.items, currentUser, total: result.total, pageSize: result.pageSize };
+      const result = await apiRequest<PaginatedResponse<AdminUserSummary>>(`/users?page=${page}&pageSize=20`);
+      return { users: result.items, total: result.total, pageSize: result.pageSize };
     },
     [page, t],
     {
@@ -41,10 +41,10 @@ export function useAdminUsers() {
   );
 
   const state: AdminUsersLoadState = useMemo(() => {
-    if (asyncState.status === 'loaded') return { status: 'loaded', ...asyncState.data };
+    if (asyncState.status === 'loaded') return { status: 'loaded', ...asyncState.data, currentUser: currentUser! };
     if (asyncState.status === 'notFound') return { status: 'error', message: asyncState.message };
     return asyncState;
-  }, [asyncState]);
+  }, [asyncState, currentUser]);
 
   const users = useMemo(() => state.status === 'loaded' ? filterAdminUsers(state.users, filters) : [], [filters, state]);
 

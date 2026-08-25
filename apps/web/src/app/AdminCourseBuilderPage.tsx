@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { getCurrentUser, ApiClientError } from '../shared/apiClient.js';
-import type { CurrentUser } from '../shared/apiClient.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import { useSession } from '../shared/session.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { toCourseMutation, validateCourseForm, validateLessonForm } from './course-builder/model.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
@@ -18,7 +18,7 @@ import { useCourseBuilderMutations } from './course-builder/useCourseBuilderMuta
 type CourseStatus = 'draft' | 'published' | 'archived';
 type LessonStatus = 'draft' | 'published' | 'archived';
 
-type CourseBuilderData = { course: CourseSummary; lessons: LessonSummary[]; currentUser: CurrentUser };
+type CourseBuilderData = { course: CourseSummary; lessons: LessonSummary[] };
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string };
 type LessonFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
@@ -50,6 +50,7 @@ function formatDate(value: string, language: string): string {
 
 export function AdminCourseBuilderPage() {
   const { t, i18n } = useTranslation();
+  const { currentUser } = useSession();
   const { courseId } = useParams<{ courseId: string }>();
   const mutations = useCourseBuilderMutations();
 
@@ -77,12 +78,11 @@ export function AdminCourseBuilderPage() {
   const { state: pageState, reload: loadData } = useAsyncData<CourseBuilderData>(
     async () => {
       if (!courseId) throw new Error('Missing course id');
-      const [course, lessons, currentUser] = await Promise.all([
+      const [course, lessons] = await Promise.all([
         getCourse(courseId) as Promise<CourseSummary>,
         listLessons(courseId),
-        getCurrentUser(),
       ]);
-      return { course, lessons, currentUser };
+      return { course, lessons };
     },
     [courseId, t],
     {
@@ -155,7 +155,7 @@ export function AdminCourseBuilderPage() {
     setLessonFormState({ status: 'submitting' });
     try {
       await mutations.createLesson(courseId, {
-        organizationId: pageState.data.currentUser.organizationId,
+        organizationId: currentUser!.organizationId,
         title,
         slug,
         description: lessonDesc.trim() || undefined,

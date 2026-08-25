@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
-import { getCurrentUser } from '../shared/api/auth.js';
+import { useSession } from '../shared/session.js';
 import {
   ThemeSettings,
   fetchOrganizationThemeSettings,
@@ -77,6 +77,7 @@ function getSettingsJson(settings: ThemeSettings) {
 
 export function AdminThemeSettingsPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() => getStoredThemeSettings());
   const [statusMessage, setStatusMessage] = useState('');
   const [settingsJson, setSettingsJson] = useState(() => getSettingsJson(getStoredThemeSettings()));
@@ -114,8 +115,7 @@ export function AdminThemeSettingsPage() {
   useEffect(() => {
     let isActive = true;
 
-    void getCurrentUser()
-      .then(({ organizationId }) => fetchOrganizationThemeSettings(organizationId))
+    void fetchOrganizationThemeSettings(currentUser!.organizationId)
       .then((settings) => {
         if (!isActive) return;
         saveThemeSettings(settings);
@@ -135,13 +135,12 @@ export function AdminThemeSettingsPage() {
     return () => {
       isActive = false;
     };
-  }, [t]);
+  }, [currentUser, t]);
 
   async function saveTheme() {
     setIsSaving(true);
     try {
-      const { organizationId } = await getCurrentUser();
-      const saved = await saveOrganizationThemeSettings(organizationId, themeSettings);
+      const saved = await saveOrganizationThemeSettings(currentUser!.organizationId, themeSettings);
 
       syncThemeSettings(saved);
       setStatusMessage(t('admin.themeSettings.saved', 'Theme settings saved.'));
@@ -155,8 +154,7 @@ export function AdminThemeSettingsPage() {
   async function resetTheme() {
     setIsSaving(true);
     try {
-      const { organizationId } = await getCurrentUser();
-      const reset = await resetOrganizationThemeSettings(organizationId);
+      const reset = await resetOrganizationThemeSettings(currentUser!.organizationId);
 
       syncThemeSettings(reset);
       setStatusMessage(t('admin.themeSettings.resetDone', 'Theme settings reset.'));
@@ -171,8 +169,7 @@ export function AdminThemeSettingsPage() {
     setIsSaving(true);
     try {
       const importedSettings = JSON.parse(settingsJson) as ThemeSettings;
-      const { organizationId } = await getCurrentUser();
-      const saved = await saveOrganizationThemeSettings(organizationId, importedSettings);
+      const saved = await saveOrganizationThemeSettings(currentUser!.organizationId, importedSettings);
 
       syncThemeSettings(saved);
       setStatusMessage(t('admin.themeSettings.imported', 'Theme settings imported.'));
@@ -190,8 +187,7 @@ export function AdminThemeSettingsPage() {
 
     setIsUploadingLogo(true);
     try {
-      const { organizationId } = await getCurrentUser();
-      const saved = await uploadOrganizationThemeLogo(organizationId, file);
+      const saved = await uploadOrganizationThemeLogo(currentUser!.organizationId, file);
 
       syncThemeSettings(saved);
       setStatusMessage(t('admin.themeSettings.logoUploaded', 'Logo uploaded.'));

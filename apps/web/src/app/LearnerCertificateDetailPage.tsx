@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../shared/formatDate.js';
 
 import { getCertificate, getCertificatePdfPath } from '../shared/apiClient.js';
-import { getCurrentUser } from '../shared/api/auth.js';
-import type { CurrentUser } from '../shared/api/types.js';
+import { useSession } from '../shared/session.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -19,21 +17,13 @@ function formatIssuedAt(value: string): string {
 
 export function LearnerCertificateDetailPage({ certificateId }: { certificateId: string }) {
   const { t } = useTranslation();
-  const [owner, setOwner] = useState<CurrentUser | null>(null);
+  const { currentUser: owner } = useSession();
 
   const { state: loadState } = useAsyncData(
     () => getCertificate(certificateId),
     [certificateId, t],
     { unauthenticated: t('certificates.sessionExpired'), error: t('certificates.loadError') },
   );
-
-  useEffect(() => {
-    if (loadState.status === 'loaded') {
-      getCurrentUser()
-        .then(setOwner)
-        .catch(() => setOwner(null));
-    }
-  }, [loadState]);
 
   const loginAction = <a href="/login">{t('login.navLink')}</a>;
   const certificatesAction = <a href="/learn/certificates">{t('certificates.navLink')}</a>;

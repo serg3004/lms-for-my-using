@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate } from '../shared/formatDate.js';
 
-import { getCurrentUser } from '../shared/api/auth.js';
 import { getLearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
 import type { LearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
+import { useSession } from '../shared/session.js';
 import { getReadableTitle } from '../shared/displayLabels.js';
 import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { Card, PageState, ProgressBar, SectionHeader, StatCard, StatsGrid } from '../shared/ui.js';
@@ -79,13 +79,14 @@ function buildRecentActivity(summary: LearnerDashboardSummary, t: TFunction): Ac
 
 export function LearnerHomePage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
 
   const { state: loadState } = useAsyncData<DashboardData>(
     async () => {
-      const [user, summary] = await Promise.all([getCurrentUser(), getLearnerDashboardSummary()]);
+      const summary = await getLearnerDashboardSummary();
 
       return {
-        firstName: user.firstName,
+        firstName: currentUser!.firstName,
         coursesCount: summary.coursesCount,
         pendingAssignmentsCount: summary.pendingAssignmentsCount,
         availableAssessmentsCount: summary.availableAssessmentsCount,
@@ -95,7 +96,7 @@ export function LearnerHomePage() {
         recentActivity: buildRecentActivity(summary, t),
       };
     },
-    [t],
+    [currentUser, t],
     { unauthenticated: t('learner.sessionExpired'), error: t('learner.loadError') },
   );
 

@@ -8,6 +8,14 @@ const reactMocks = vi.hoisted(() => ({
   useState: vi.fn(),
 }));
 
+vi.mock('../shared/session.js', () => {
+  const session = {
+    currentUser: { id: 'learner-1', organizationId: 'org-1', email: 'learner@example.com', firstName: 'Learner', lastName: 'User', middleName: null, position: null, shift: null, phone: null, status: 'active', locale: 'ru', timezone: 'UTC', roles: ['learner'] },
+    status: 'authenticated', refreshUser: vi.fn(),
+  };
+  return { useSession: () => session, useOptionalSession: () => session };
+});
+
 vi.mock('react', async () => {
   const actual = await vi.importActual<typeof import('react')>('react');
 
@@ -766,9 +774,9 @@ describe('learner page smoke rendering', () => {
   });
 
   it('renders certificate detail happy path without crashing', () => {
-    // useState call order in LearnerCertificateDetailPage: 1 owner, 2 useAsyncData's internal state.
+    // useState call order in LearnerCertificateDetailPage: 1) useAsyncData's internal state.
     useStateAtCalls({
-      2: {
+      1: {
         status: 'loaded',
         data: {
           id: 'cert-1',

@@ -6,7 +6,7 @@ import { getCourse } from '../shared/api/courses.js';
 import { listLessons } from '../shared/api/lessons.js';
 import { listProgress } from '../shared/api/progress.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
-import { getCurrentUser } from '../shared/apiClient.js';
+import { useSession } from '../shared/session.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
@@ -32,15 +32,15 @@ function formatDuration(minutes: number | null, h: string, m: string, none: stri
 
 export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
 
   const { state: loadState } = useAsyncData<LearnerCourseDetailData>(
     async () => {
-      const [course, lessonsAll, { items: progressList }, assignmentsRes, currentUser] = await Promise.all([
+      const [course, lessonsAll, { items: progressList }, assignmentsRes] = await Promise.all([
         getCourse(courseId),
         listLessons(courseId),
         listProgress({ pageSize: 200 }),
         listAssignments({ pageSize: 50 }).catch(() => ({ items: [] as import('../shared/api/types.js').AssignmentSummary[] })),
-        getCurrentUser(),
       ]);
       const assignments = assignmentsRes.items;
 
@@ -53,7 +53,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
           .filter(
             (p) =>
               p.courseId === courseId &&
-              p.userId === currentUser.id &&
+              p.userId === currentUser!.id &&
               p.status === 'completed' &&
               p.lessonId !== null,
           )
@@ -64,7 +64,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
 
       return { course, lessons, completedLessonIds, dueAt };
     },
-    [courseId, t],
+    [courseId, currentUser, t],
     { unauthenticated: t('courseDetail.sessionExpired'), error: t('courseDetail.loadError') },
   );
 
