@@ -1332,6 +1332,31 @@
       "status": "逾期",
       "empty": "没有逾期任务。",
       "unknownTarget": "未知目标"
+    },
+    "navReports": "报告",
+    "reports": {
+      "eyebrow": "分析",
+      "title": "团队报告",
+      "subtitle": "您责任范围内的当前学习进度。",
+      "period": "当前快照",
+      "loading": "正在加载报告...",
+      "loadError": "无法加载报告，请稍后重试。",
+      "employeeFilter": "员工",
+      "allEmployees": "所有员工",
+      "statusFilter": "状态",
+      "allStatuses": "所有状态",
+      "enrollments": "活跃学习任务",
+      "completion": "完成率",
+      "overdue": "逾期",
+      "progress": "当前员工数",
+      "employee": "员工",
+      "details": "详情",
+      "openEmployee": "查看员工",
+      "drilldown": "报告详情",
+      "openTeam": "打开团队详情",
+      "openOverdue": "打开逾期任务",
+      "empty": "没有符合筛选条件的员工。",
+      "tableLabel": "员工进度详情"
     }
   },
   "instructor": {
