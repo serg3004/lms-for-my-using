@@ -1,128 +1,77 @@
 # MVP Readiness Dashboard
 
-> **Статус:** `CURRENT`
+> **Статус:** `CURRENT` summary only.
 >
-> **Назначение:** краткий status dashboard. Он не заменяет canonical scope, backlog или live smoke evidence.
+> **Назначение:** кратко показывать repository readiness и отделять её от live/owner decisions. Этот файл не является source of truth для API/module inventories.
 >
-> **Проверено по `main`:** `35e0a7df530a894585b29ebd985273d36a63f666` (2026-08-09).
+> **Reconciled against `main`:** `cbeecd860717c2b8df9c821c1cd7bad323ad3b0e` (2026-08-26).
 
-## 1. Как читать dashboard
+## Status language
 
-- `READY` — repository implementation для области подтверждён.
-- `PARTIAL` — есть конкретный implementation/operational gap.
-- `OWNER-DECISION` — требуется решение владельца.
-- `LIVE-VERIFY` — current external state не доказан repository.
-- `HISTORICAL` — старый snapshot/result, не current readiness evidence.
+- `READY` — repository implementation подтверждена.
+- `PARTIAL` — остаётся implementation/operational gap.
+- `OWNER-DECISION` — требуется product/ops решение владельца.
+- `LIVE-VERIFY` — current external state требует fresh evidence.
+- `HISTORICAL` — snapshot, не current readiness.
 
-**Важно:** `READY` в repository не означает автоматически `LIVE-VERIFIED` production.
+`READY` в repository не означает автоматически production `GO`.
 
----
-
-## 2. Repository readiness
+## Repository readiness
 
 | Область | Статус | Комментарий |
 |---|---|---|
-| Core backend MVP surface | `READY` | Auth, organizations, users, groups, courses, lessons, materials, assignments, progress, assessments, attempts, certificates и manager flows присутствуют. |
-| Core Web role surfaces | `READY` / `PARTIAL` | Admin/learner/instructor/manager surfaces существуют; отдельные UX gaps остаются в backlog. |
-| Auth/session | `READY` | Access + refresh/session rotation/revocation/logout-all реализованы. |
-| RBAC/tenant scoping | `READY` / `PARTIAL` | Core policies/scoping есть; instructor assignment role validation остаётся отдельным proven gap. |
-| API error contract | `READY` / `PARTIAL` | Canonical envelope есть; readiness 503 dependency-details HTTP boundary остаётся gap. |
-| OpenAPI | `PARTIAL` | OpenAPI infrastructure существует, но manual/static coverage не считать полным runtime contract. |
-| CI | `READY` | Lint/typecheck/tests/build/security/container checks запускаются workflow. |
-| Merge enforcement | `DEFERRED` | Branch protection/Ruleset пока не реализован; см. future-work doc. |
-| Dependency automation | `PARTIAL` | Dependabot есть; workspace coverage/grouping требует reconciliation. |
-| Storage/upload code contract | `READY` | S3-compatible buffered/multipart/private/quarantine/scanner integration реализованы. |
-| Password reset | `PARTIAL` | Skeleton endpoints существуют; delivery/provider намеренно не завершены. |
-| Notifications | `OWNER-DECISION` | Current module отсутствует; MVP disposition не выбрана владельцем. |
-| General Audit Log | `OWNER-DECISION` | Universal domain-wide audit log не подтверждён; product scope не закрыт. |
-| Basic reporting | `PARTIAL` | Reporting capability распределена по существующим surfaces, отдельный reports domain не обязателен current scope. |
+| Core backend MVP surface | `READY` | Current API содержит core learning/admin/manager flows; API surface проверять по runtime OpenAPI/controllers. |
+| Core Web role surfaces | `READY` / `PARTIAL` | Основные role surfaces существуют; отдельные UX gaps живут в backlog. |
+| Auth/session | `READY` | Server-side sessions, refresh rotation/revocation, logout/logout-all и password-reset flow реализованы. |
+| RBAC/tenant scoping | `READY` / `PARTIAL` | Role policies/guards существуют; известный manager/group object-scope security finding остаётся отдельным work item. |
+| API error semantics | `READY` | Current shared/runtime error layer является authority. |
+| Runtime OpenAPI | `READY` | `/api/v1/api-json` + controllers — authority; manual route inventories не поддерживаются как current truth. |
+| CI implementation | `READY` | Workflows существуют; required-check/ruleset enforcement всегда `LIVE-VERIFY`. |
+| Storage/upload code contract | `READY` | S3-compatible upload/download/quarantine/scanner integration реализованы; provider state отдельно. |
+| Password reset code | `READY` | Старый intentional `503` historical; live delivery provider остаётся verification concern. |
+| Notifications implementation | `READY` | `NotificationsModule`/model/API/UI существуют. MVP disposition — `OWNER-DECISION`. |
+| General Audit Log implementation | `READY` | `AuditLogModule`/model/admin API/UI существуют. MVP disposition — `OWNER-DECISION`. |
+| Basic reporting | `PARTIAL` | Core reporting surfaces есть; advanced universal reporting не является current implementation baseline. |
 
----
+## Live/operations readiness
 
-## 3. Live/operations readiness
+Всегда проверять свежими evidence/live read-back:
 
-Все строки ниже требуют fresh external evidence и **не могут быть автоматически зелёными из repository state**.
+- Railway topology/domains/deployment state;
+- Redis availability/degraded mode;
+- S3 provider/bucket/CORS/lifecycle;
+- malware scanner availability;
+- cleanup scheduling;
+- Sentry/alerts;
+- backups/PITR/restore readiness;
+- production smoke;
+- GitHub ruleset/branch protection/required checks.
 
-| Область | Статус | Что требуется для закрытия |
-|---|---|---|
-| Railway topology/domains | `LIVE-VERIFY` | Fresh deployment/service evidence. |
-| Redis production availability | `LIVE-VERIFY` | Current configured/live Redis evidence. |
-| S3-compatible provider/bucket/CORS | `LIVE-VERIFY` | Provider/bucket/CORS + smoke evidence. |
-| Malware scanner service | `LIVE-VERIFY` | Reachability + callback + clean/infected flow evidence. |
-| Cleanup scheduling | `LIVE-VERIFY` | Actual scheduler/last-run evidence. |
-| Sentry/alert routing | `LIVE-VERIFY` | Delivery/alerting evidence. |
-| Backups/PITR/restore | `OWNER-DECISION` + `LIVE-VERIFY` | Accepted policy + provider/restore evidence. |
-| Production smoke | `LIVE-VERIFY` | Fresh smoke on relevant deployment/SHA. |
+Dated production verification files сохраняют observed snapshot, но не обновляют этот dashboard автоматически.
 
-Historical Railway URLs, provider names and old smoke results must not be copied here as current facts.
+## Owner decisions
 
----
+Сводный источник open decisions до DOC-08 — `docs/TODO_VERIFY.md`.
 
-## 4. Current proven implementation gaps
+Ключевые unresolved decisions после reconciliation:
 
-### Blocking/important engineering gaps
+- Notifications MVP disposition;
+- General Audit Log MVP disposition;
+- invite lifecycle;
+- production Redis/degraded-mode acceptance;
+- email/delivery provider;
+- backup/PITR acceptance;
+- organization-structure expansion scope.
 
-1. Health readiness 503 public HTTP contract.
-2. Instructor assignment role validation/candidate filtering.
-3. Learner exact course-progress representation.
-4. Guest visual-test refresh isolation.
-5. Dependabot workspace coverage reconciliation.
+Наличие уже реализованных Notifications/Audit Log не закрывает их product disposition автоматически.
 
-`nextLesson` remains an open UX recommendation, not necessarily a release blocker until scope says so.
+## Source precedence
 
-See `docs/PRODUCTION_HARDENING_BACKLOG.md` and `docs/RECOMMENDATIONS.md`.
+1. `docs/README.md` — ownership/governance.
+2. Canonical code/config/runtime owner-source — implementation fact.
+3. `docs/MVP_SCOPE_LOCK.md` — MVP boundaries.
+4. `docs/TODO_VERIFY.md` — unresolved decision/live registry.
+5. Dated evidence — what was observed then.
+6. This dashboard — summary only.
 
----
-
-## 5. Current owner decisions
-
-The dashboard does not guess these decisions:
-
-- Notifications: `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
-- General Audit Log: `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
-- full invite lifecycle;
-- email provider;
-- backup/PITR acceptance policy;
-- future separate Railway staging topology.
-
-See `docs/TODO_VERIFY.md`.
-
----
-
-## 6. Pilot interpretation
-
-This dashboard does **not** declare “GO today”.
-
-A controlled pilot decision must be made from fresh evidence using `docs/PILOT_CHECKLIST.md`.
-
-Minimum interpretation:
-
-- relevant CI/CodeQL on pilot SHA green;
-- pilot scope/known risks accepted;
-- no unresolved blocker affecting the pilot scenario;
-- required live dependencies verified for the pilot environment;
-- fresh smoke completed where production/live use is intended.
-
----
-
-## 7. Source precedence
-
-Use:
-
-1. `docs/PROJECT_SOURCE_OF_TRUTH.md` — implementation/source rules;
-2. `docs/MVP_SCOPE_LOCK.md` — MVP boundaries;
-3. `docs/TODO_VERIFY.md` — decision/implementation/live registry;
-4. `docs/PRODUCTION_HARDENING_BACKLOG.md` — active hardening gaps;
-5. this dashboard — summary only.
-
-Historical smoke/status docs do not override these current sources.
-
----
-
-## 8. Rules for humans and AI agents
-
-1. `MUST NOT` copy historical production/live claims into this dashboard without fresh evidence.
-2. `MUST NOT` call CI `MERGE-ENFORCED` while branch protection remains deferred.
-3. `MUST` distinguish repository readiness and live readiness.
-4. `MUST` update the affected row when a current gap/owner decision changes status.
-5. `MUST NOT` infer MinIO, Redis, staging, backups or live domains from old reports.
+Historical smoke/status docs do not override current owner-sources.
