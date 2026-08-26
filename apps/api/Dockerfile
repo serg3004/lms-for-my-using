@@ -39,7 +39,10 @@ RUN echo "node-linker=hoisted" >> .npmrc && \
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN addgroup -S lms && adduser -S lms -G lms
+# Refresh runtime OpenSSL libraries so fixed Alpine security updates are
+# present even when the upstream Node image has not yet been rebuilt.
+RUN apk add --no-cache --upgrade libcrypto3 libssl3 && \
+    addgroup -S lms && adduser -S lms -G lms
 
 COPY --from=deployer /standalone/node_modules ./node_modules
 COPY --from=deployer /standalone/package.json ./package.json
