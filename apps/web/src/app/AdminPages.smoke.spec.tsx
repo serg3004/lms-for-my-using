@@ -684,7 +684,7 @@ describe('filterAssignableUsers', () => {
     { id: 'user-1', organizationId: 'org-1', email: 'a@demo.com', firstName: 'Aigerim', lastName: 'Kassirova', status: 'active' },
     { id: 'user-2', organizationId: 'org-1', email: 'b@demo.com', firstName: 'Bekzat', lastName: 'Nurov', status: 'active' },
   ];
-  const activeInstance = { id: 'i-1', organizationId: 'org-1', checklistId: 'c-1', userId: 'user-1', assignedBy: null, status: 'assigned' as const, totalScore: 0, maxScore: 0, percentage: 0, passed: false, dueAt: null, submittedAt: null, completedAt: null, createdAt: ts, updatedAt: ts, results: [] };
+  const activeInstance = { id: 'i-1', organizationId: 'org-1', checklistId: 'c-1', userId: 'user-1', assignedBy: null, reviewerId: null, reviewAssignedAt: null, reviewAssignedBy: null, status: 'assigned' as const, totalScore: 0, maxScore: 0, percentage: 0, passed: false, dueAt: null, submittedAt: null, completedAt: null, createdAt: ts, updatedAt: ts, results: [] };
 
   it('excludes a user who already has an active assignment', () => {
     expect(filterAssignableUsers(users, [activeInstance])).toEqual([users[1]]);
