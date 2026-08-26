@@ -1,0 +1,44 @@
+name: Agent blob upload staging
+
+on:
+  push:
+    branches:
+      - agent/stage-org-structure-plan-upload
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  upload-blob:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct plan and upload Git blob
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          cat .agent-upload/org-plan.xz.b64.part1 .agent-upload/org-plan.xz.b64.part2 > /tmp/org-plan.xz.b64
+          base64 -d /tmp/org-plan.xz.b64 > /tmp/org-plan.xz
+          xz -dc /tmp/org-plan.xz > /tmp/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md
+          test "$(wc -c < /tmp/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md)" -eq 65010
+          content="$(base64 -w0 /tmp/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md)"
+          response="$(curl --fail-with-body -sS \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/git/blobs" \
+            -d "$(jq -n --arg content "$content" '{content:$content,encoding:"base64"}')")"
+          blob_sha="$(jq -r '.sha' <<<"$response")"
+          test "$blob_sha" = "e4189d277de1a7cc4604cefec71224ff5960e42a"
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/statuses/${SHA}" \
+            -d "$(jq -n --arg d "blob:${blob_sha}" '{state:"success",context:"agent/blob-upload",description:$d}')"
