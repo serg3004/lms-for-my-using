@@ -4507,7 +4507,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > этот контракт и больше не запрашивает `/progress` ради счётчиков.
 
 ---
-## PR 253 — Декомпозиция AdminChecklistsPage 🔲
+## PR 253 — Декомпозиция AdminChecklistsPage ✅
 
 **Проблема:** `AdminChecklistsPage.tsx` совмещает список, builder, settings, items editing, assignments, preview и mutation orchestration, что затрудняет сопровождение и тестирование.
 
@@ -4519,13 +4519,15 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не выполнять несвязанный refactoring соседних admin features.
 
 **Критерии готовности:**
-- [ ] checklist behavior не изменён;
-- [ ] page больше не содержит реализацию всех внутренних подкомпонентов;
-- [ ] domain logic отделена от presentation JSX;
-- [ ] повторяющиеся handlers/state сгруппированы;
-- [ ] существующие tests адаптированы и проходят;
-- [ ] diff ограничен checklist feature.
+- [x] checklist behavior не изменён;
+- [x] page больше не содержит реализацию всех внутренних подкомпонентов;
+- [x] domain logic отделена от presentation JSX;
+- [x] повторяющиеся handlers/state сгруппированы;
+- [x] существующие tests адаптированы и проходят;
+- [x] diff ограничен checklist feature.
 
+
+> **Реализовано (2026-08-26):** страница оставлена orchestration layer; таблица и builder вынесены в checklist feature, presentation-секции builder разделены на settings, items, assignments и preview, а чистая domain logic собрана отдельно без изменения поведения.
 ---
 ## PR 254 — i18n Hardening для ru/en/kk/zh ✅
 
