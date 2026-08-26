@@ -98,13 +98,13 @@ function analyticsFor(status: InstanceStatus, passed: boolean) {
   };
 }
 
-async function login(page: Page, role: 'learner' | 'instructor') {
+async function login(page: Page, role: 'learner' | 'mentor') {
   await page.goto('/login');
   await page.locator('input[name="organizationId"]').fill(organization);
   await page.locator('input[name="email"]').fill(`${role}@demo.com`);
   await page.locator('input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/instructor\/dashboard$/);
+  await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/mentor$/);
 }
 
 test('full checklist review lifecycle: assignment, learner completion, reviewer routing, decisions, analytics and event history', async ({ browser }) => {
@@ -143,8 +143,8 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
     await expect.poll(() => learnerStatus).toBe('submitted');
   });
 
-  const instructorContext = await browser.newContext();
-  const instructorPage = await instructorContext.newPage();
+  const reviewerContext = await browser.newContext();
+  const reviewerPage = await reviewerContext.newPage();
   let reviewerId: string | null = null;
   let reviewAssignedAt: string | null = null;
   const events: { id: string; eventType: string; createdAt: string }[] = [
@@ -157,7 +157,7 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
     return buildInstance(results, status, reviewerId, reviewAssignedAt);
   }
 
-  await instructorPage.route('**/api/v1/checklist-instances/review-queue*', (route) => {
+  await reviewerPage.route('**/api/v1/checklist-instances/review-queue*', (route) => {
     const url = new URL(route.request().url());
     const assignment = url.searchParams.get('assignment') ?? 'mine';
     const inst = currentInstance(results[item1Id]?.reviewStatus !== 'pending' && results[item2Id]?.reviewStatus !== 'pending' ? 'completed' : 'submitted');
@@ -168,13 +168,13 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
     const items = matches && inst.status === 'submitted' ? [inst] : [];
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items, page: 1, pageSize: 20, total: items.length }) });
   });
-  await instructorPage.route('**/api/v1/checklists/analytics*', (route) => {
+  await reviewerPage.route('**/api/v1/checklists/analytics*', (route) => {
     const done = results[item1Id]?.reviewStatus !== 'pending' && results[item2Id]?.reviewStatus !== 'pending';
     const status: InstanceStatus = done ? 'completed' : 'submitted';
     const passed = done && (results[item1Id]?.reviewStatus === 'approved' ? 10 : 0) + (results[item2Id]?.reviewStatus === 'approved' ? 10 : 0) >= 10;
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(analyticsFor(status, passed)) });
   });
-  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/reviewer`, async (route) => {
+  await reviewerPage.route(`**/api/v1/checklist-instances/${instanceId}/reviewer`, async (route) => {
     const body = route.request().postDataJSON() as { reviewerId: string | null };
     reviewerId = body.reviewerId;
     reviewAssignedAt = reviewerId ? new Date().toISOString() : null;
@@ -192,11 +192,11 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
       }),
     });
   });
-  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/*/review`, async (route) => {
+  await reviewerPage.route(`**/api/v1/checklist-instances/${instanceId}/items/*/review`, async (route) => {
     const url = route.request().url();
     const itemId = url.includes(item1Id) ? item1Id : item2Id;
     const body = route.request().postDataJSON() as { status: 'approved' | 'rejected'; comment?: string };
-    results[itemId] = { ...results[itemId], reviewStatus: body.status, reviewComment: body.comment ?? null, reviewedBy: 'instructor', reviewedAt: new Date().toISOString() };
+    results[itemId] = { ...results[itemId], reviewStatus: body.status, reviewComment: body.comment ?? null, reviewedBy: 'reviewer', reviewedAt: new Date().toISOString() };
     eventSeq += 1;
     events.push({ id: `evt-${eventSeq}`, eventType: body.status === 'approved' ? 'item_approved' : 'item_rejected', createdAt: new Date().toISOString() });
     const done = results[item1Id]?.reviewStatus !== 'pending' && results[item2Id]?.reviewStatus !== 'pending';
@@ -206,31 +206,30 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
     }
     await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(currentInstance(done ? 'completed' : 'submitted')) });
   });
-  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/events`, (route) =>
+  await reviewerPage.route(`**/api/v1/checklist-instances/${instanceId}/events`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(events) }));
 
   await test.step('reviewer finds the unassigned instance and assigns it to themself', async () => {
-    await login(instructorPage, 'instructor');
-    await instructorPage.goto('/instructor/checklists');
+    await login(reviewerPage, 'mentor');
 
-    await expect(instructorPage.getByText('Сейчас нечего проверять')).toBeVisible();
+    await expect(reviewerPage.getByText('Сейчас нечего проверять')).toBeVisible();
 
-    await instructorPage.getByRole('tab', { name: 'Без назначения' }).click();
-    await instructorPage.getByText('Review workflow E2E').click();
-    await instructorPage.getByRole('button', { name: 'Назначить себе' }).click();
+    await reviewerPage.getByRole('tab', { name: 'Без назначения' }).click();
+    await reviewerPage.getByText('Review workflow E2E').click();
+    await reviewerPage.getByRole('button', { name: 'Назначить себе' }).click();
 
     await expect.poll(() => reviewerId).not.toBeNull();
-    await expect(instructorPage.getByText('Назначено мне')).toBeVisible();
+    await expect(reviewerPage.getByText('Назначено мне')).toBeVisible();
   });
 
   await test.step('event history reflects submission and reviewer assignment', async () => {
-    await expect(instructorPage.getByText('Отправлено на проверку')).toBeVisible();
-    await expect(instructorPage.getByText('Назначен проверяющий')).toBeVisible();
+    await expect(reviewerPage.getByText('Отправлено на проверку')).toBeVisible();
+    await expect(reviewerPage.getByText('Назначен проверяющий')).toBeVisible();
   });
 
   await test.step('reviewer rejects one item and approves the other, completing the instance', async () => {
-    const approveButtons = instructorPage.locator('button').filter({ hasText: '✓' });
-    const rejectButtons = instructorPage.locator('button').filter({ hasText: '✕' });
+    const approveButtons = reviewerPage.locator('button').filter({ hasText: '✓' });
+    const rejectButtons = reviewerPage.locator('button').filter({ hasText: '✕' });
 
     await rejectButtons.nth(0).click();
     await expect.poll(() => results[item1Id]?.reviewStatus).toBe('rejected');
@@ -241,14 +240,14 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
   });
 
   await test.step('event history now includes the review decisions and completion', async () => {
-    await expect(instructorPage.getByText('Пункт отклонён')).toBeVisible();
-    await expect(instructorPage.getByText('Пункт подтверждён')).toBeVisible();
-    await expect(instructorPage.getByText('Проверка завершена')).toBeVisible();
+    await expect(reviewerPage.getByText('Пункт отклонён')).toBeVisible();
+    await expect(reviewerPage.getByText('Пункт подтверждён')).toBeVisible();
+    await expect(reviewerPage.getByText('Проверка завершена')).toBeVisible();
   });
 
   await test.step('analytics reflect the completed, half-scored assignment', async () => {
-    await instructorPage.getByText('Все ожидающие проверки').click();
-    const completedCard = instructorPage.locator('.stat-card', { hasText: 'Завершено' });
+    await reviewerPage.getByText('Все ожидающие проверки').click();
+    const completedCard = reviewerPage.locator('.stat-card', { hasText: 'Завершено' });
     await expect(completedCard.locator('.stat-card__value')).toHaveText('1');
   });
 });
