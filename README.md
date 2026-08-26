@@ -125,17 +125,9 @@ POST /api/v1/certificates
 /learn/certificates/:id
 ```
 
-## MVP docs
+## Documentation
 
-- `docs/MVP_DEFINITION_OF_DONE.md`
-- `docs/PILOT_CHECKLIST.md`
-- `docs/MVP_LOCAL_RUNBOOK.md`
-- `docs/MVP_READINESS_DASHBOARD.md`
-- `docs/API_RBAC_MATRIX.md`
-- `docs/API_CONTRACTS.md` (includes API status; `API_STATUS.md` retired 2026-08-06)
-- `docs/DEVELOPMENT_PLAN.md` (project changelog — `docs/PROJECT_LOG.md` retired 2026-08-06)
-- `docs/TODO_VERIFY.md`
-- `docs/RELEASE_GATE.md`
+See [`docs/README.md`](./docs/README.md) for the canonical documentation map, ownership rules, lifecycle, and task-specific entry points.
 
 ## Current Prisma baseline
 
