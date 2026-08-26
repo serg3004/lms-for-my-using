@@ -1,11 +1,21 @@
 import { apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
+  ChecklistAnalytics,
+  ChecklistAnalyticsQuery,
+  ChecklistInstanceEvent,
   ChecklistInstanceSummary,
   ChecklistItemResultSummary,
   ChecklistItemSummary,
+  ChecklistReviewQueueQuery,
   ChecklistSummary,
+  PaginatedResponse,
 } from './types.js';
+
+function buildQueryString(params: Record<string, unknown>) {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== '');
+  return entries.length ? `?${new URLSearchParams(Object.fromEntries(entries.map(([key, value]) => [key, String(value)]))).toString()}` : '';
+}
 
 export function listChecklists() {
   return apiRequest<ChecklistSummary[]>('/checklists');
@@ -98,8 +108,23 @@ export function listMyChecklistInstances() {
   return apiRequest<ChecklistInstanceSummary[]>('/checklist-instances/mine');
 }
 
-export function listPendingChecklistReviews() {
-  return apiRequest<ChecklistInstanceSummary[]>('/checklist-instances/pending-review');
+export function searchChecklistReviewQueue(query: ChecklistReviewQueueQuery = {}) {
+  return apiRequest<PaginatedResponse<ChecklistInstanceSummary>>(`/checklist-instances/review-queue${buildQueryString(query)}`);
+}
+
+export function assignChecklistReviewer(instanceId: string, reviewerId: string | null) {
+  return apiRequest<ChecklistInstanceSummary>(`/checklist-instances/${encodeURIComponent(instanceId)}/reviewer`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewerId }),
+  });
+}
+
+export function listChecklistInstanceEvents(instanceId: string) {
+  return apiRequest<ChecklistInstanceEvent[]>(`/checklist-instances/${encodeURIComponent(instanceId)}/events`);
+}
+
+export function getChecklistAnalytics(query: ChecklistAnalyticsQuery = {}) {
+  return apiRequest<ChecklistAnalytics>(`/checklists/analytics${buildQueryString(query)}`);
 }
 
 export function getChecklistInstance(instanceId: string) {

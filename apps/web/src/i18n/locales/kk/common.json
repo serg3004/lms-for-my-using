@@ -1610,7 +1610,44 @@
     "approve": "Растау",
     "reject": "Қабылдамау",
     "commentPlaceholder": "Түсініктеме (міндетті емес)",
-    "currentResult": "Ағымдағы нәтиже"
+    "currentResult": "Ағымдағы нәтиже",
+    "tabs": {
+      "label": "Тексеру кезегі",
+      "mine": "Маған тағайындалған",
+      "unassigned": "Тағайындалмаған",
+      "all": "Барлығы"
+    },
+    "analytics": {
+      "assigned": "Тағайындалды",
+      "completed": "Аяқталды",
+      "passRate": "Сәтті аяқтау үлесі",
+      "expired": "Мерзімі өтті",
+      "awaitingReview": "Тексеруді күтуде"
+    },
+    "reviewerUnassigned": "Тағайындалмаған",
+    "reviewerMe": "Маған тағайындалған",
+    "reviewerOther": "Басқа тексерушіге тағайындалған",
+    "assignToMe": "Өзіме тағайындау",
+    "unassign": "Тағайындауды алып тастау",
+    "reviewerAssignError": "Тексерушіні өзгерту мүмкін болмады.",
+    "paginationLabel": "Тексеру кезегінің беттері",
+    "timeline": {
+      "title": "Тарих",
+      "loading": "Тарих жүктелуде...",
+      "empty": "Әзірге тарих жоқ.",
+      "events": {
+        "assigned": "Чеклист тағайындалды",
+        "started": "Қызметкер толтыруды бастады",
+        "item_answered": "Пункт толтырылды",
+        "photo_attached": "Фото тіркелді",
+        "submitted": "Тексеруге жіберілді",
+        "reviewer_assigned": "Тексеруші тағайындалды",
+        "item_approved": "Пункт расталды",
+        "item_rejected": "Пункт қабылданбады",
+        "completed": "Тексеру аяқталды",
+        "expired": "Мерзімі өтті"
+      }
+    }
   },
   "profile": {
     "title": "Профиль",
