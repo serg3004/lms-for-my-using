@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import { CreateMembershipInput } from './memberships.schemas.js';
 
@@ -15,7 +16,10 @@ const membershipSelect = {
 
 @Injectable()
 export class MembershipsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+  ) {}
 
   async listMemberships(organizationId: string) {
     return this.prisma.membership.findMany({
@@ -98,9 +102,21 @@ export class MembershipsService {
       throw new ConflictException('Membership role already assigned to user');
     }
 
-    return this.prisma.membership.create({
+    const created = await this.prisma.membership.create({
       data: input,
       select: membershipSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId: input.assignedBy ?? null,
+      action: 'membership.assigned',
+      targetType: 'user',
+      targetId: input.userId,
+      summary: `Assigned role ${input.role} to user`,
+      metadata: { role: input.role },
+    });
+
+    return created;
   }
 }

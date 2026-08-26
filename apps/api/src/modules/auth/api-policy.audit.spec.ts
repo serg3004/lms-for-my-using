@@ -10,6 +10,7 @@ import { AssessmentAttemptsController } from '../assessment-attempts/assessment-
 import { AssessmentQuestionsController } from '../assessment-questions/assessment-questions.controller.js';
 import { AssessmentsController } from '../assessments/assessments.controller.js';
 import { AssignmentsController } from '../assignments/assignments.controller.js';
+import { AuditLogController } from '../audit-log/audit-log.controller.js';
 import { CertificatesController } from '../certificates/certificates.controller.js';
 import { ChecklistsController } from '../checklists/checklists.controller.js';
 import { CourseMaterialsController } from '../course-materials/course-materials.controller.js';
@@ -40,6 +41,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
   { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
   { file: 'assignments/assignments.controller.ts', Controller: AssignmentsController },
+  { file: 'audit-log/audit-log.controller.ts', Controller: AuditLogController },
   { file: 'auth/auth.controller.ts', Controller: AuthController },
   { file: 'certificates/certificates.controller.ts', Controller: CertificatesController },
   { file: 'checklists/checklists.controller.ts', Controller: ChecklistsController },

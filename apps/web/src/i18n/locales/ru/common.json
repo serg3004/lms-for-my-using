@@ -27,7 +27,8 @@
       "orgStructure": "Структура орг.",
       "roles": "Роли",
       "themeSettings": "Оформление",
-      "checklists": "Чек-листы"
+      "checklists": "Чек-листы",
+      "auditLog": "Журнал аудита"
     },
     "title": "Панель управления",
     "subtitle": "С возвращением, {{name}}.",
@@ -501,6 +502,52 @@
         "mentor": "Проверяет чек-листы.",
         "manager": "Команда и результаты.",
         "learner": "Обучение и сертификаты."
+      }
+    },
+    "auditLog": {
+      "eyebrow": "Безопасность",
+      "title": "Журнал аудита",
+      "subtitle": "Доступная только для чтения запись того, кто и что изменил, и когда.",
+      "loading": "Загрузка журнала аудита...",
+      "sessionExpired": "Сессия истекла. Войдите снова.",
+      "loadError": "Не удалось загрузить журнал аудита. Попробуйте позже.",
+      "empty": "Нет событий аудита, соответствующих этим фильтрам.",
+      "systemActor": "Система",
+      "paginationLabel": "Страницы журнала аудита",
+      "columns": {
+        "timestamp": "Время",
+        "actor": "Инициатор",
+        "action": "Действие",
+        "summary": "Подробности"
+      },
+      "filters": {
+        "action": "Действие",
+        "allActions": "Все действия",
+        "targetType": "Тип объекта",
+        "allTargetTypes": "Все типы объектов"
+      },
+      "actions": {
+        "user.created": "Пользователь создан",
+        "user.updated": "Пользователь изменён",
+        "user.status_changed": "Статус пользователя изменён",
+        "membership.assigned": "Роль назначена",
+        "organization.theme_updated": "Оформление организации изменено",
+        "organization.theme_reset": "Оформление организации сброшено",
+        "course.created": "Курс создан",
+        "course.updated": "Курс изменён",
+        "course.deleted": "Курс удалён",
+        "lesson.created": "Урок создан",
+        "lesson.updated": "Урок изменён",
+        "lesson.deleted": "Урок удалён",
+        "group.created": "Группа создана",
+        "group.updated": "Группа изменена",
+        "assignment.created": "Назначение создано",
+        "checklist.created": "Чек-лист создан",
+        "checklist.updated": "Чек-лист изменён",
+        "checklist.deleted": "Чек-лист удалён",
+        "checklist_instance.assigned": "Чек-лист назначен",
+        "checklist_item_result.reviewed": "Пункт чек-листа проверен",
+        "certificate.issued": "Сертификат выдан"
       }
     },
     "themeSettings": {

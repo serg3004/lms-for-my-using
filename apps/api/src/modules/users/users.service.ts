@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { hashPassword } from '../auth/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -54,7 +55,11 @@ type ImportRow = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+  ) {}
 
   async listUsers(actor: TeamScopeActor, page: number, pageSize: number) {
     const skip = (page - 1) * pageSize;
@@ -110,6 +115,7 @@ export class UsersService {
     }
 
     const { role, ...userData } = input;
+    const changedFields = [...Object.keys(userData), ...(role !== undefined ? ['role'] : [])];
 
     if (role !== undefined && role !== 'admin') {
       const holdsAdmin = await this.prisma.membership.findFirst({
@@ -128,7 +134,7 @@ export class UsersService {
       }
     }
 
-    return this.prisma.$transaction(async (transaction) => {
+    const updated = await this.prisma.$transaction(async (transaction) => {
       await transaction.user.update({
         where: { id: userId, organizationId },
         data: userData,
@@ -159,9 +165,21 @@ export class UsersService {
         select: userSelect,
       });
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'user.updated',
+      targetType: 'user',
+      targetId: userId,
+      summary: `Updated user ${updated.email}`,
+      metadata: { fields: changedFields },
+    });
+
+    return updated;
   }
 
-  async createUser(input: CreateUserInput) {
+  async createUser(input: CreateUserInput, actorId: string | null = null) {
     await this.ensureOrganizationExists(input.organizationId);
     const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
 
@@ -172,13 +190,24 @@ export class UsersService {
     const { password, ...userData } = input;
     const passwordHash = await hashPassword(password);
 
-    return this.prisma.user.create({
+    const created = await this.prisma.user.create({
       data: {
         ...userData,
         passwordHash,
       },
       select: userSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId,
+      action: 'user.created',
+      targetType: 'user',
+      targetId: created.id,
+      summary: `Created user ${created.email}`,
+    });
+
+    return created;
   }
 
   async createBulkUsers(input: CreateBulkUsersInput) {
@@ -346,6 +375,16 @@ export class UsersService {
     });
 
     const orphanedCourses = status !== 'active' ? await this.findSoleInstructorCourses(userId, organizationId) : [];
+
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'user.status_changed',
+      targetType: 'user',
+      targetId: userId,
+      summary: `Set user ${updatedUser.email} status to ${status}`,
+      metadata: { status },
+    });
 
     return { ...updatedUser, orphanedCourses };
   }

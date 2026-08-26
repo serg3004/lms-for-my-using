@@ -103,7 +103,7 @@ describe('OrganizationsController', () => {
       },
     } as unknown as OrganizationsService);
 
-    const result = controller.updateThemeSettings('organization-id', themeSettings);
+    const result = controller.updateThemeSettings('organization-id', themeSettings, { currentUser: { id: 'actor-id' } } as never);
 
     expect(calls).toEqual([{ organizationId: 'organization-id', themeSettings }]);
     expect(result).toEqual({ themeSettings });

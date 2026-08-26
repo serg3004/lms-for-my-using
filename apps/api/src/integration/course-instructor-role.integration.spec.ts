@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { AuditLogService } from '../modules/audit-log/public.js';
 import { AuthGuard, RolesGuard } from '../modules/auth/public.js';
 import { CourseAccessPolicy } from '../modules/course-access/public.js';
 import { CoursesController } from '../modules/courses/courses.controller.js';
@@ -80,6 +81,7 @@ describe('Course instructor role HTTP contract', () => {
       providers: [
         CoursesService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AuditLogService, useValue: { record: jest.fn(async () => undefined) } },
         {
           provide: CourseAccessPolicy,
           useValue: { assertCourseAccess: jest.fn(async () => undefined) },

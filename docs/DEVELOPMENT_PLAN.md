@@ -4652,7 +4652,7 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 > tests, а общий browser axe gate по-прежнему принадлежит PR 234.
 
 ---
-## PR 258 — Admin Audit Log 🔲
+## PR 258 — Admin Audit Log ✅
 
 **Проблема:** исходная продуктовая концепция предусматривает admin audit workflow, но отдельный frontend audit-log screen отсутствует; наличие полного read API нужно подтвердить перед реализацией.
 
@@ -4666,13 +4666,32 @@ P2: PR 233 → PR 234 → PR 235 → PR 237
 - не раскрывать secrets или чувствительные payload fields.
 
 **Критерии готовности:**
-- [ ] audit events доступны только разрешённым ролям;
-- [ ] список paginated;
-- [ ] фильтры работают по поддержанным backend dimensions;
-- [ ] event detail содержит достаточный безопасный контекст;
-- [ ] audit UI read-only;
-- [ ] empty/loading/error states реализованы;
-- [ ] authorization/API/UI tests проходят.
+- [x] audit events доступны только разрешённым ролям;
+- [x] список paginated;
+- [x] фильтры работают по поддержанным backend dimensions;
+- [x] event detail содержит достаточный безопасный контекст;
+- [x] audit UI read-only;
+- [x] empty/loading/error states реализованы;
+- [x] authorization/API/UI tests проходят.
+
+> **Реализовано (2026-08-26):** backend audit log отсутствовал полностью — добавлен с нуля.
+> Новая таблица `audit_logs` (Prisma-модель + hand-written migration, по образцу
+> `MaterialFileDeletionAudit`), `AuditLogModule` (`@Global()`, best-effort `record()` —
+> ошибка записи никогда не ломает саму мутацию), read-only `GET /audit-log` +
+> `GET /audit-log/filter-options`, доступ ограничен ролью `admin` через `rolePolicies.auditLogRead`.
+> По решению пользователя (широкий scope) инструментированы significant-мутации по всему
+> приложению: users (create/update/status), memberships (assign), organization theme
+> (update/reset), courses (create/update/status/delete), lessons (create/update/status/delete),
+> groups (create/update), assignments (create), checklists (create/update/delete/assign),
+> certificates (issue). Осознанно НЕ инструментированы: bulk user import,
+> `checklist.bulkAssignChecklist`/`assignReviewer`/`submitItemResult`/`reviewItemResult`
+> (у последнего уже есть свой domain-specific `checklistInstanceEvent` лог)/`attachItemPhoto`.
+> Frontend: `AdminAuditLogPage` (actor/action/target summary/timestamp, dropdown-фильтры по
+> action и targetType из backend `filter-options`, paginated `DataTable`, read-only —
+> нет мутирующих действий в UI), добавлен в admin sidebar nav и роуты, переведён на 4 языка
+> (ru/en/kk/zh, проверено locale-sync/hardening тестами). Тесты: 102/1467 API (jest) +
+> 83/552 web (vitest) зелёные, typecheck/eslint чистые на обоих пакетах,
+> `check-module-boundaries.mjs` чистый.
 
 ---
 ## PR 259 — Frontend Performance Verification ✅

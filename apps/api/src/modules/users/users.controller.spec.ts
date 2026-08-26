@@ -41,7 +41,7 @@ describe('UsersController', () => {
     };
     const controller = new UsersController({ createUser } as unknown as UsersService);
 
-    const result = controller.createUser(createUserInput);
+    const result = controller.createUser(createUserInput, mockRequest);
 
     expect(calls).toEqual([{
       ...createUserInput,

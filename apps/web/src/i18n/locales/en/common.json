@@ -27,7 +27,8 @@
       "orgStructure": "Org structure",
       "roles": "Roles",
       "themeSettings": "Theme settings",
-      "checklists": "Checklists"
+      "checklists": "Checklists",
+      "auditLog": "Audit log"
     },
     "title": "Dashboard",
     "subtitle": "Welcome back, {{name}}.",
@@ -501,6 +502,52 @@
         "mentor": "Reviews checklist submissions.",
         "manager": "Team and results.",
         "learner": "Learning and certificates."
+      }
+    },
+    "auditLog": {
+      "eyebrow": "Security",
+      "title": "Audit log",
+      "subtitle": "A read-only record of who changed what, and when.",
+      "loading": "Loading audit log...",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "loadError": "Unable to load the audit log. Try again later.",
+      "empty": "No audit events match these filters.",
+      "systemActor": "System",
+      "paginationLabel": "Audit log pages",
+      "columns": {
+        "timestamp": "Time",
+        "actor": "Actor",
+        "action": "Action",
+        "summary": "Details"
+      },
+      "filters": {
+        "action": "Action",
+        "allActions": "All actions",
+        "targetType": "Target type",
+        "allTargetTypes": "All target types"
+      },
+      "actions": {
+        "user.created": "User created",
+        "user.updated": "User updated",
+        "user.status_changed": "User status changed",
+        "membership.assigned": "Role assigned",
+        "organization.theme_updated": "Organization theme updated",
+        "organization.theme_reset": "Organization theme reset",
+        "course.created": "Course created",
+        "course.updated": "Course updated",
+        "course.deleted": "Course deleted",
+        "lesson.created": "Lesson created",
+        "lesson.updated": "Lesson updated",
+        "lesson.deleted": "Lesson deleted",
+        "group.created": "Group created",
+        "group.updated": "Group updated",
+        "assignment.created": "Assignment created",
+        "checklist.created": "Checklist created",
+        "checklist.updated": "Checklist updated",
+        "checklist.deleted": "Checklist deleted",
+        "checklist_instance.assigned": "Checklist assigned",
+        "checklist_item_result.reviewed": "Checklist item reviewed",
+        "certificate.issued": "Certificate issued"
       }
     },
     "themeSettings": {

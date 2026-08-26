@@ -27,7 +27,8 @@
       "orgStructure": "组织结构",
       "roles": "角色",
       "themeSettings": "外观设置",
-      "checklists": "检查清单"
+      "checklists": "检查清单",
+      "auditLog": "审计日志"
     },
     "title": "管理面板",
     "subtitle": "欢迎回来，{{name}}。",
@@ -501,6 +502,52 @@
         "mentor": "审核检查清单。",
         "manager": "团队与结果。",
         "learner": "学习与证书。"
+      }
+    },
+    "auditLog": {
+      "eyebrow": "安全",
+      "title": "审计日志",
+      "subtitle": "谁在何时更改了什么的只读记录。",
+      "loading": "正在加载审计日志...",
+      "sessionExpired": "会话已过期,请重新登录。",
+      "loadError": "无法加载审计日志,请稍后再试。",
+      "empty": "没有符合这些筛选条件的审计事件。",
+      "systemActor": "系统",
+      "paginationLabel": "审计日志分页",
+      "columns": {
+        "timestamp": "时间",
+        "actor": "操作人",
+        "action": "操作",
+        "summary": "详情"
+      },
+      "filters": {
+        "action": "操作",
+        "allActions": "所有操作",
+        "targetType": "对象类型",
+        "allTargetTypes": "所有对象类型"
+      },
+      "actions": {
+        "user.created": "创建了用户",
+        "user.updated": "更新了用户",
+        "user.status_changed": "更改了用户状态",
+        "membership.assigned": "分配了角色",
+        "organization.theme_updated": "更新了组织外观设置",
+        "organization.theme_reset": "重置了组织外观设置",
+        "course.created": "创建了课程",
+        "course.updated": "更新了课程",
+        "course.deleted": "删除了课程",
+        "lesson.created": "创建了课时",
+        "lesson.updated": "更新了课时",
+        "lesson.deleted": "删除了课时",
+        "group.created": "创建了小组",
+        "group.updated": "更新了小组",
+        "assignment.created": "创建了任务",
+        "checklist.created": "创建了检查清单",
+        "checklist.updated": "更新了检查清单",
+        "checklist.deleted": "删除了检查清单",
+        "checklist_instance.assigned": "分配了检查清单",
+        "checklist_item_result.reviewed": "审核了检查清单项",
+        "certificate.issued": "颁发了证书"
       }
     },
     "themeSettings": {

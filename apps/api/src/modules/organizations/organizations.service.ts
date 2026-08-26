@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
 import { CreateOrganizationInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
@@ -40,6 +41,7 @@ export class OrganizationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
   async listOrganizations(organizationId: string) {
@@ -125,7 +127,7 @@ export class OrganizationsService {
     return { themeSettings: await this.withResolvedLogoUrl(themeSettings) };
   }
 
-  async updateThemeSettings(organizationId: string, themeSettings: ThemeSettingsInput) {
+  async updateThemeSettings(organizationId: string, themeSettings: ThemeSettingsInput, actorId: string | null = null) {
     const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
 
     const updated = await this.prisma.organizationTheme.upsert({
@@ -137,6 +139,15 @@ export class OrganizationsService {
         logoMimeType: existing?.logoMimeType,
       },
       update: { settings: themeSettings },
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'organization.theme_updated',
+      targetType: 'organization',
+      targetId: organizationId,
+      summary: 'Updated organization theme settings',
     });
 
     return { themeSettings: await this.withResolvedLogoUrl(this.toStoredThemeSettings(updated)) };
@@ -166,7 +177,7 @@ export class OrganizationsService {
     return { themeSettings: await this.withResolvedLogoUrl(this.toStoredThemeSettings(updated)) };
   }
 
-  async resetThemeSettings(organizationId: string) {
+  async resetThemeSettings(organizationId: string, actorId: string | null = null) {
     const existing = (await this.findRawThemeSettings(organizationId)) as StoredThemeSettings | null;
 
     if (existing?.logoObjectKey) {
@@ -174,6 +185,15 @@ export class OrganizationsService {
     }
 
     await this.prisma.organizationTheme.deleteMany({ where: { organizationId } });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'organization.theme_reset',
+      targetType: 'organization',
+      targetId: organizationId,
+      summary: 'Reset organization theme settings to defaults',
+    });
 
     return { themeSettings: null };
   }

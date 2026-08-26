@@ -126,6 +126,7 @@ describe('rolePolicies', () => {
     managerTeamSummaryRead: ['admin', 'manager'],
     reportsRead: ['admin', 'manager'],
     learnerDashboardRead: ['admin', 'manager', 'instructor', 'learner'],
+    auditLogRead: ['admin'],
     notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
     notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
     checklistsRead: ['admin', 'manager', 'instructor'],

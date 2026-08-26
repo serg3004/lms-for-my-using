@@ -63,10 +63,10 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.usersCreate)
   @OrganizationScope('body', 'organizationId')
-  createUser(@Body() body: unknown) {
+  createUser(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateUserInput = createUserSchema.parse(body);
 
-    return this.usersService.createUser(input);
+    return this.usersService.createUser(input, request.currentUser?.id ?? null);
   }
 
   @Patch(':id')

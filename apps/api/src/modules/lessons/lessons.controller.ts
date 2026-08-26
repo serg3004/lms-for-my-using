@@ -49,13 +49,13 @@ export class LessonsController {
   @Roles(...rolePolicies.lessonsCreate)
   @OrganizationScope('body', 'organizationId')
   @CourseScope('param', 'courseId')
-  createLesson(@Param('courseId') courseId: string, @Body() body: unknown) {
+  createLesson(@Param('courseId') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateLessonInput = createLessonSchema.parse({
       ...(typeof body === 'object' && body !== null ? body : {}),
       courseId,
     });
 
-    return this.lessonsService.createLesson(input);
+    return this.lessonsService.createLesson(input, request.currentUser?.id ?? null);
   }
 
   @Patch('courses/:courseId/lessons/order')
@@ -72,7 +72,7 @@ export class LessonsController {
   @CourseScope('param', 'id', 'lesson')
   updateLessonStatus(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateLessonStatusSchema.parse(body);
-    return this.lessonsService.updateLessonStatus(lessonId, request.currentUser!.organizationId, input.status);
+    return this.lessonsService.updateLessonStatus(lessonId, request.currentUser!.organizationId, input.status, request.currentUser!.id);
   }
 
   @Patch('lessons/:id')
@@ -80,13 +80,13 @@ export class LessonsController {
   @CourseScope('param', 'id', 'lesson')
   updateLesson(@Param('id') lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateLessonSchema.parse(body);
-    return this.lessonsService.updateLesson(lessonId, request.currentUser!.organizationId, input);
+    return this.lessonsService.updateLesson(lessonId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
 
   @Delete('lessons/:id')
   @Roles(...rolePolicies.lessonsCreate)
   @CourseScope('param', 'id', 'lesson')
   deleteLesson(@Param('id') lessonId: string, @Req() request: AuthenticatedRequest) {
-    return this.lessonsService.deleteLesson(lessonId, request.currentUser!.organizationId);
+    return this.lessonsService.deleteLesson(lessonId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 }

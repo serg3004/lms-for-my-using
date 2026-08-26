@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   AssignGroupManagerInput,
@@ -38,7 +39,10 @@ const userSummarySelect = {
 
 @Injectable()
 export class GroupsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+  ) {}
 
   async listGroups(organizationId: string, filter: ListGroupsFilter = 'active') {
     const where =
@@ -71,7 +75,7 @@ export class GroupsService {
     return group;
   }
 
-  async createGroup(input: CreateGroupInput) {
+  async createGroup(input: CreateGroupInput, actorId: string | null = null) {
     const organization = await this.prisma.organization.findFirst({
       where: {
         id: input.organizationId,
@@ -98,13 +102,24 @@ export class GroupsService {
       throw new ConflictException('Group slug already exists in organization');
     }
 
-    return this.prisma.group.create({
+    const created = await this.prisma.group.create({
       data: input,
       select: groupSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId,
+      action: 'group.created',
+      targetType: 'group',
+      targetId: created.id,
+      summary: `Created group ${created.name}`,
+    });
+
+    return created;
   }
 
-  async updateGroup(groupId: string, organizationId: string, input: UpdateGroupInput) {
+  async updateGroup(groupId: string, organizationId: string, input: UpdateGroupInput, actorId: string | null = null) {
     const group = await this.prisma.group.findFirst({
       where: { id: groupId, organizationId, deletedAt: null },
       select: { id: true },
@@ -114,11 +129,23 @@ export class GroupsService {
       throw new NotFoundException('Group not found');
     }
 
-    return this.prisma.group.update({
+    const updated = await this.prisma.group.update({
       where: { id: groupId, organizationId },
       data: input,
       select: groupSelect,
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'group.updated',
+      targetType: 'group',
+      targetId: groupId,
+      summary: `Updated group ${updated.name}`,
+      metadata: { fields: Object.keys(input) },
+    });
+
+    return updated;
   }
 
   async listMembers(groupId: string, organizationId: string) {

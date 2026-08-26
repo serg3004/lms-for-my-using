@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 
 import { ApiExceptionFilter } from '../common/filters/api-exception.filter.js';
 import { PrismaService } from '../database/prisma.service.js';
+import { AuditLogService } from '../modules/audit-log/public.js';
 import { AuthGuard, RolesGuard } from '../modules/auth/public.js';
 import { ChecklistReviewAccessService } from '../modules/checklists/checklist-review-access.service.js';
 import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
@@ -169,6 +170,7 @@ describe('Checklist completion HTTP contract', () => {
         ChecklistsService,
         { provide: PrismaService, useValue: prisma },
         { provide: UploadService, useValue: {} },
+        { provide: AuditLogService, useValue: { record: jest.fn(async () => undefined) } },
         {
           provide: ChecklistReviewAccessService,
           useValue: { filterPending: jest.fn(), assertReviewerCanAccess: jest.fn() },

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { CourseAccessPolicy } from '../course-access/public.js';
 import type { CourseScopedUser } from '../course-access/public.js';
 import { AssignCourseInstructorInput, CreateCourseInput, UpdateCourseInput, UpdateCourseStatusInput } from './courses.schemas.js';
@@ -37,6 +38,7 @@ export class CoursesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly courseAccess: CourseAccessPolicy,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
   async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string, hideDrafts = false) {
@@ -193,7 +195,7 @@ export class CoursesService {
     // Course creation and instructor ownership assignment must succeed or fail together —
     // otherwise a failed assignInstructor leaves an orphaned course the creator can't see
     // (CourseAccessGuard filters instructors by CourseInstructor rows).
-    return this.prisma.$transaction(async (tx) => {
+    const course = await this.prisma.$transaction(async (tx) => {
       const course = await tx.course.create({
         data: input,
         select: courseSelect,
@@ -203,9 +205,20 @@ export class CoursesService {
 
       return course;
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId: user.id,
+      action: 'course.created',
+      targetType: 'course',
+      targetId: course.id,
+      summary: `Created course ${course.title}`,
+    });
+
+    return course;
   }
 
-  async updateCourse(courseId: string, organizationId: string, input: UpdateCourseInput) {
+  async updateCourse(courseId: string, organizationId: string, input: UpdateCourseInput, actorId: string | null = null) {
     const course = await this.prisma.course.findFirst({
       where: {
         id: courseId,
@@ -235,14 +248,26 @@ export class CoursesService {
       }
     }
 
-    return this.prisma.course.update({
+    const updated = await this.prisma.course.update({
       where: { id: courseId, organizationId },
       data: input,
       select: courseSelect,
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'course.updated',
+      targetType: 'course',
+      targetId: courseId,
+      summary: `Updated course ${updated.title}`,
+      metadata: { fields: Object.keys(input) },
+    });
+
+    return updated;
   }
 
-  async updateCourseStatus(courseId: string, organizationId: string, status: UpdateCourseStatusInput['status']) {
+  async updateCourseStatus(courseId: string, organizationId: string, status: UpdateCourseStatusInput['status'], actorId: string | null = null) {
     const course = await this.prisma.course.findFirst({
       where: { id: courseId, organizationId, deletedAt: null },
       select: { id: true },
@@ -252,14 +277,26 @@ export class CoursesService {
       throw new NotFoundException('Course not found');
     }
 
-    return this.prisma.course.update({
+    const updated = await this.prisma.course.update({
       where: { id: courseId, organizationId },
       data: { status },
       select: courseSelect,
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'course.updated',
+      targetType: 'course',
+      targetId: courseId,
+      summary: `Set course ${updated.title} status to ${status}`,
+      metadata: { status },
+    });
+
+    return updated;
   }
 
-  async deleteCourse(courseId: string, organizationId: string) {
+  async deleteCourse(courseId: string, organizationId: string, actorId: string | null = null) {
     const course = await this.prisma.course.findFirst({
       where: { id: courseId, organizationId, deletedAt: null },
       select: { id: true, slug: true },
@@ -273,6 +310,15 @@ export class CoursesService {
       where: { id: courseId, organizationId },
       data: { deletedAt: new Date(), slug: releaseSlugOnDelete(course.slug, course.id) },
       select: { id: true },
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'course.deleted',
+      targetType: 'course',
+      targetId: courseId,
+      summary: `Deleted course ${course.slug}`,
     });
   }
 

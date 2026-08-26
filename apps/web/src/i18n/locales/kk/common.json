@@ -27,7 +27,8 @@
       "orgStructure": "Ұйым құрылымы",
       "roles": "Рөлдер",
       "themeSettings": "Безендіру",
-      "checklists": "Чеклистер"
+      "checklists": "Чеклистер",
+      "auditLog": "Аудит журналы"
     },
     "title": "Басқару панелі",
     "subtitle": "Қайта қош келдіңіз, {{name}}.",
@@ -501,6 +502,52 @@
         "mentor": "Чеклистерді тексереді.",
         "manager": "Команда және нәтижелер.",
         "learner": "Оқу және сертификаттар."
+      }
+    },
+    "auditLog": {
+      "eyebrow": "Қауіпсіздік",
+      "title": "Аудит журналы",
+      "subtitle": "Кім, нені және қашан өзгерткені туралы тек оқуға арналған жазба.",
+      "loading": "Аудит журналы жүктелуде...",
+      "sessionExpired": "Сессия аяқталды. Қайта кіріңіз.",
+      "loadError": "Аудит журналын жүктеу мүмкін болмады. Кейінірек қайталап көріңіз.",
+      "empty": "Осы сүзгілерге сәйкес аудит оқиғалары жоқ.",
+      "systemActor": "Жүйе",
+      "paginationLabel": "Аудит журналының беттері",
+      "columns": {
+        "timestamp": "Уақыты",
+        "actor": "Орындаушы",
+        "action": "Әрекет",
+        "summary": "Толығырақ"
+      },
+      "filters": {
+        "action": "Әрекет",
+        "allActions": "Барлық әрекеттер",
+        "targetType": "Нысан түрі",
+        "allTargetTypes": "Барлық нысан түрлері"
+      },
+      "actions": {
+        "user.created": "Пайдаланушы құрылды",
+        "user.updated": "Пайдаланушы өзгертілді",
+        "user.status_changed": "Пайдаланушы мәртебесі өзгертілді",
+        "membership.assigned": "Рөл тағайындалды",
+        "organization.theme_updated": "Ұйым безендіруі өзгертілді",
+        "organization.theme_reset": "Ұйым безендіруі бастапқы күйіне қайтарылды",
+        "course.created": "Курс құрылды",
+        "course.updated": "Курс өзгертілді",
+        "course.deleted": "Курс жойылды",
+        "lesson.created": "Сабақ құрылды",
+        "lesson.updated": "Сабақ өзгертілді",
+        "lesson.deleted": "Сабақ жойылды",
+        "group.created": "Топ құрылды",
+        "group.updated": "Топ өзгертілді",
+        "assignment.created": "Тапсырма құрылды",
+        "checklist.created": "Чеклист құрылды",
+        "checklist.updated": "Чеклист өзгертілді",
+        "checklist.deleted": "Чеклист жойылды",
+        "checklist_instance.assigned": "Чеклист тағайындалды",
+        "checklist_item_result.reviewed": "Чеклист тармағы тексерілді",
+        "certificate.issued": "Сертификат берілді"
       }
     },
     "themeSettings": {

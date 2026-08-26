@@ -75,7 +75,7 @@ export class CoursesController {
   async updateCourse(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: UpdateCourseInput = updateCourseSchema.parse(body);
     await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
-    return this.coursesService.updateCourse(courseId, request.currentUser!.organizationId, input);
+    return this.coursesService.updateCourse(courseId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
 
   @Patch(':id/status')
@@ -83,14 +83,14 @@ export class CoursesController {
   async updateCourseStatus(@Param('id') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateCourseStatusSchema.parse(body);
     await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
-    return this.coursesService.updateCourseStatus(courseId, request.currentUser!.organizationId, input.status);
+    return this.coursesService.updateCourseStatus(courseId, request.currentUser!.organizationId, input.status, request.currentUser!.id);
   }
 
   @Delete(':id')
   @Roles(...rolePolicies.coursesCreate)
   async deleteCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
     await this.courseAccess.assertCourseAccess(courseId, request.currentUser!);
-    return this.coursesService.deleteCourse(courseId, request.currentUser!.organizationId);
+    return this.coursesService.deleteCourse(courseId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
   @Get(':id/instructors')
