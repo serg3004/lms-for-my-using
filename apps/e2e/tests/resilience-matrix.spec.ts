@@ -15,6 +15,14 @@ const password = 'Demo1234!';
 // window and get a 429 that leaves the login form on /login. A short retry
 // backoff isn't reliable against a fixed window of unknown start time — only
 // waiting longer than the window itself (60s) guarantees landing outside it.
+//
+// This only covers the 5-per-60s rule. The same account policy also has
+// 10-per-15min and 20-per-hour rules; those aren't retried here (a 15-minute
+// wait isn't worth it) and won't reset within a single CI run — the API
+// process is fresh per job, so its in-memory rate-limit store starts empty.
+// A developer re-running this suite repeatedly against the same local API
+// server within 15 minutes can still exhaust those and needs to restart the
+// server (or wait) rather than expect the retry to save them.
 async function loginAs(page: Page, role: 'learner' | 'manager') {
   const destination = role === 'learner' ? /\/learn$/ : /\/manager\/dashboard$/;
   for (let attempt = 1; attempt <= 2; attempt++) {
@@ -44,8 +52,11 @@ test.describe('critical frontend resilience matrix', () => {
   // backend's account-level login rate limit is 5 requests/60s
   // (DEFAULT_SENSITIVE_RATE_LIMIT_POLICY.account in api-hardening.ts), and this
   // file's six learner scenarios logging in independently reliably tripped it in CI.
-  test('learner dashboard: empty state, HTTP error states, offline recovery, transport timeout', async ({ page }) => {
-    test.setTimeout(100_000); // loginAs() may wait out the account rate-limit's fixed 60s window
+  test('learner dashboard: empty state, HTTP error states, offline recovery, transport timeout', async ({ page, context }) => {
+    // loginAs() may wait out the account rate-limit's fixed 60s window, and the
+    // transport-timeout step below waits up to 35s for the client's own 30s
+    // request timeout — budget for both in the worst case.
+    test.setTimeout(150_000);
     const pageErrors = collectPageErrors(page);
     await loginAs(page, 'learner');
 
@@ -104,12 +115,40 @@ test.describe('critical frontend resilience matrix', () => {
     });
 
     await test.step('exposes a safe state for a transport timeout', async () => {
-      await page.route('**/api/v1/learner-dashboard', (route) => route.abort('timedout'));
+      // Never resolve the route so the client's own REQUEST_TIMEOUT_MS
+      // AbortController (apiClient.ts, 30s) fires and converts to
+      // ApiClientError(408) — a browser-level route.abort() would instead
+      // exercise Chromium's own network-error handling and never touch that
+      // client timeout path, so a regression there could stay undetected.
+      await page.route('**/api/v1/learner-dashboard', () => new Promise(() => undefined));
 
       await page.reload();
-      await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
+      await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.', { timeout: 35_000 });
       expect(pageErrors).toEqual([]);
       await page.unroute('**/api/v1/learner-dashboard');
+    });
+
+    // Must run last: it permanently invalidates this page's session, so no
+    // further authenticated steps can follow it in this test.
+    await test.step('redirects to re-authentication when the refresh session itself is invalid', async () => {
+      const refreshCookie = (await context.cookies()).find(({ name }) => name === 'lms_refresh_token');
+      expect(refreshCookie).toBeDefined();
+
+      // Same trick as login-role-redirect.spec.ts's expired-access-cookie test:
+      // stop the mounted app before replacing the cookie so no background
+      // request can slip through and refresh it before the navigation below.
+      await page.goto('about:blank');
+      await context.addCookies([{ ...refreshCookie!, value: 'expired.e2e.refresh-token' }]);
+
+      const refreshRejected = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/v1/auth/refresh' && response.status() === 401,
+      );
+
+      await page.goto('/learn');
+
+      await refreshRejected;
+      await expect(page.getByRole('alert')).toContainText('Сессия истекла');
+      await expect(page.locator('a[href="/login"]')).toBeVisible();
     });
   });
 
