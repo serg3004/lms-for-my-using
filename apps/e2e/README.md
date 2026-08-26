@@ -17,7 +17,7 @@ The visual suite runs independently from the database-backed functional suite. I
 
 ## Accessibility baseline
 
-Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on serious or critical WCAG 2.1 AA violations, and checks core keyboard/focus flows. The exception policy is documented in `docs/ACCESSIBILITY.md`.
+Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. The exception policy is documented in `docs/ACCESSIBILITY.md`.
 
 Playwright builds the API, runs the guarded `admin:demo-seed` task with confirmations derived from the non-production `NODE_ENV` and parsed `DATABASE_URL`, and then starts the API and Vite development servers. A local PostgreSQL database matching `DATABASE_URL` must be available and migrated. Existing local servers are reused; when reusing them, apply the guarded seed as documented in `docs/ADMIN_DEMO_SEED.md` first. CI always starts clean server processes.
 

@@ -321,6 +321,15 @@ jobs:
       - name: Accessibility baseline
         run: pnpm test:a11y
 
+      - name: Upload axe findings by severity
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: axe-accessibility-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/**/accessibility-reports/axe-findings.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload safe Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
