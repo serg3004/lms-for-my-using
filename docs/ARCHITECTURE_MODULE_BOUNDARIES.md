@@ -52,6 +52,8 @@ Current production `AppModule` imports are listed below. This table is the check
 | `MembershipsModule` | `apps/api/src/modules/memberships` | Organization membership reads and creation. |
 | `ManagerTeamScopeModule` | `apps/api/src/modules/manager-team-scope` | Global query-scope helper limiting managers to their teams. |
 | `NotificationsModule` | `apps/api/src/modules/notifications` | In-app notification listing and read-state updates. |
+| `AuditLogModule` | `apps/api/src/modules/audit-log` | Organization-scoped audit-log listing and filter options for authorized readers. |
+| `LearnerDashboardModule` | `apps/api/src/modules/learner-dashboard` | Learner dashboard aggregate read endpoint for authorized learners. |
 | `OpenApiModule` | `apps/api/src/modules/openapi` | Static OpenAPI document endpoint. |
 | `OutboxModule` | `apps/api/src/modules/outbox` | Global transactional-outbox enqueue service. |
 | `OrganizationsModule` | `apps/api/src/modules/organizations` | Organization registration, reads, and creation. |
