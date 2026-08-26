@@ -4007,8 +4007,10 @@ frontend quality и observability.
 > **Реализовано (2026-08-26):** единая Playwright resilience-матрица закрепляет
 > learner empty state, безопасные UI-состояния для 404/429/5xx, transport timeout и offline failure,
 > восстановление после возврата сети и отсутствие необработанных browser errors.
-> Существующие role/refresh E2E покрывают 401, 403 и истечение access session.
-> Для критичной manager mutation добавлена синхронная in-flight защита и E2E-проверка,
+> Существующие role/refresh E2E покрывают 401, 403 и истечение access session (успешный silent
+> refresh); resilience-матрица дополнительно покрывает случай, когда сама refresh-сессия
+> невалидна — оба cookie (access и refresh) инвалидируются, `POST /auth/refresh` возвращает 401,
+> и проверяется редирект на `/login`. Для критичной manager mutation добавлена синхронная in-flight защита и E2E-проверка,
 > что два submit event в одном render cycle создают ровно один assignment. Loading
 > и rapid navigation остаются покрыты существующими workspace E2E tests.
 > Локальная компиляция/обнаружение новой матрицы проходит; полный browser run должен
