@@ -1,5 +1,8 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
+
 import { AxeBuilder } from '@axe-core/playwright';
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
 
@@ -16,23 +19,45 @@ async function loginAs(page: Page, role: DemoRole) {
   await page.locator('button[type="submit"]').click();
 }
 
-async function expectNoHighImpactViolations(page: Page) {
+const severityOrder = ['critical', 'serious', 'moderate', 'minor', 'unknown'] as const;
+
+async function auditAccessibility(page: Page, testInfo: TestInfo) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
-  const violations = results.violations.filter(({ impact }) => impact === 'critical' || impact === 'serious');
+  const findings = Object.fromEntries(severityOrder.map((severity) => [
+    severity,
+    results.violations.filter(({ impact }) => (impact ?? 'unknown') === severity),
+  ]));
+  const report = {
+    url: page.url(),
+    counts: Object.fromEntries(severityOrder.map((severity) => [severity, findings[severity].length])),
+    findings,
+  };
+  const reportBody = JSON.stringify(report, null, 2);
+  const reportPath = testInfo.outputPath('accessibility-reports', 'axe-findings.json');
+  await mkdir(dirname(reportPath), { recursive: true });
+  await writeFile(reportPath, reportBody);
+  await testInfo.attach('axe-findings-by-severity', { body: reportBody, contentType: 'application/json' });
 
-  expect(violations, violations.map(({ id, impact, help, nodes }) =>
+  console.log(`[axe] ${page.url()} ${severityOrder.map((severity) => `${severity}=${findings[severity].length}`).join(' ')}`);
+
+  // Moderate findings have a zero baseline. Critical, serious, and moderate
+  // violations therefore block CI; minor findings remain visible in the report.
+  const blocking = results.violations.filter(({ impact }) =>
+    impact === 'critical' || impact === 'serious' || impact === 'moderate');
+
+  expect(blocking, blocking.map(({ id, impact, help, nodes }) =>
     `${impact}: ${id} — ${help}\n${nodes.map(({ target }) => `  ${target.join(' ')}`).join('\n')}`,
   ).join('\n')).toEqual([]);
 }
 
 test.describe('WCAG AA browser baseline', () => {
   for (const path of ['/', '/login']) {
-    test(`${path} has no serious or critical axe violations`, async ({ page }) => {
+    test(`${path} has no blocking axe violations`, async ({ page }, testInfo) => {
       await page.goto(path);
       await expect(page.locator('main')).toBeVisible();
-      await expectNoHighImpactViolations(page);
+      await auditAccessibility(page, testInfo);
     });
   }
 
@@ -45,13 +70,22 @@ test.describe('WCAG AA browser baseline', () => {
   ];
 
   for (const { role, destination } of workspaces) {
-    test(`${role} workspace has an accessible rendered state`, async ({ page }) => {
+    test(`${role} workspace has an accessible rendered state`, async ({ page }, testInfo) => {
       await loginAs(page, role);
       await expect(page).toHaveURL(new RegExp(`${destination.replaceAll('/', '\\/')}$`));
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await expectNoHighImpactViolations(page);
+      await auditAccessibility(page, testInfo);
     });
   }
+
+  test('login remains accessible at 320px and 200% browser zoom', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 320, height: 812 });
+    await page.goto('/login');
+    const client = await page.context().newCDPSession(page);
+    await client.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+    await expect(page.locator('main')).toBeVisible();
+    await auditAccessibility(page, testInfo);
+  });
 });
 
 test.describe('keyboard and focus baseline', () => {

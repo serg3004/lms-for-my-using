@@ -3916,7 +3916,7 @@ frontend quality и observability.
 
 ---
 
-## PR 234 — Strengthen accessibility quality gate 🔲
+## PR 234 — Strengthen accessibility quality gate ✅
 
 **Проблема:** axe E2E блокирует `critical`/`serious`, но `moderate`/`minor` findings не образуют контролируемого quality backlog и могут накапливаться незаметно.
 
@@ -3928,12 +3928,14 @@ frontend quality и observability.
 - сохранить keyboard/focus и responsive accessibility checks.
 
 **Критерии готовности:**
-- [ ] CI показывает все axe findings по severity;
-- [ ] `critical`/`serious` продолжают блокировать CI;
-- [ ] для `moderate` определён baseline или blocking policy;
-- [ ] новые workspaces подключаются к a11y matrix;
-- [ ] keyboard/focus tests сохранены;
-- [ ] responsive/zoom accessibility tests проходят.
+- [x] CI показывает все axe findings по severity;
+- [x] `critical`/`serious` продолжают блокировать CI;
+- [x] для `moderate` определён baseline или blocking policy;
+- [x] новые workspaces подключаются к a11y matrix;
+- [x] keyboard/focus tests сохранены;
+- [x] responsive/zoom accessibility tests проходят.
+
+> **Статус (2026-08-26):** реализовано. Каждый axe-аудит печатает counts и сохраняет JSON findings, сгруппированные по severity; CI публикует эти артефакты при любом результате job. `critical`, `serious` и `moderate` блокируют gate (baseline для `moderate` равен нулю), а `minor` остаются видимым неблокирующим backlog. Матрица охватывает public routes и все пять role workspaces; keyboard/focus проверки сохранены и добавлен axe-сценарий для 320 px при 200% browser zoom.
 
 ---
 
