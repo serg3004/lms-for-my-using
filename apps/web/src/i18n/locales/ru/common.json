@@ -1610,7 +1610,44 @@
     "approve": "Подтвердить",
     "reject": "Отклонить",
     "commentPlaceholder": "Комментарий (необязательно)",
-    "currentResult": "Текущий итог"
+    "currentResult": "Текущий итог",
+    "tabs": {
+      "label": "Очередь проверки",
+      "mine": "Назначено мне",
+      "unassigned": "Без назначения",
+      "all": "Все"
+    },
+    "analytics": {
+      "assigned": "Назначено",
+      "completed": "Завершено",
+      "passRate": "Доля успешных",
+      "expired": "Просрочено",
+      "awaitingReview": "Ожидает проверки"
+    },
+    "reviewerUnassigned": "Без назначения",
+    "reviewerMe": "Назначено мне",
+    "reviewerOther": "Назначено другому проверяющему",
+    "assignToMe": "Назначить себе",
+    "unassign": "Снять назначение",
+    "reviewerAssignError": "Не удалось изменить проверяющего.",
+    "paginationLabel": "Страницы очереди проверки",
+    "timeline": {
+      "title": "История",
+      "loading": "Загрузка истории...",
+      "empty": "Истории пока нет.",
+      "events": {
+        "assigned": "Чек-лист назначен",
+        "started": "Сотрудник начал заполнение",
+        "item_answered": "Пункт заполнен",
+        "photo_attached": "Прикреплено фото",
+        "submitted": "Отправлено на проверку",
+        "reviewer_assigned": "Назначен проверяющий",
+        "item_approved": "Пункт подтверждён",
+        "item_rejected": "Пункт отклонён",
+        "completed": "Проверка завершена",
+        "expired": "Срок истёк"
+      }
+    }
   },
   "profile": {
     "title": "Профиль",

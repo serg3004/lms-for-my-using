@@ -32,6 +32,9 @@ function instance(result: Result | null, status: 'assigned' | 'in_progress' | 's
     checklistId,
     userId: learnerId,
     assignedBy: null,
+    reviewerId: null,
+    reviewAssignedAt: null,
+    reviewAssignedBy: null,
     status,
     totalScore: result?.points ?? 0,
     maxScore: 10,
@@ -127,8 +130,21 @@ test('learner evidence is detected and opened by instructor before approval', as
   const submitted = instance(learnerResult, 'submitted');
   let reviewed = false;
 
-  await instructorPage.route('**/api/v1/checklist-instances/pending-review', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([submitted]) }));
+  await instructorPage.route('**/api/v1/checklist-instances/review-queue*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [submitted], page: 1, pageSize: 20, total: 1 }) }));
+  await instructorPage.route('**/api/v1/checklists/analytics*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        assignmentsTotal: 1,
+        counts: { assigned: 0, in_progress: 0, submitted: 1, completed: 0, expired: 0 },
+        completionRate: 0, passRate: 0, averagePercentage: 0, expiredRate: 0,
+        pendingReview: 1, averageCompletionTimeMs: 0, averageReviewTimeMs: 0,
+      }),
+    }));
+  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/events`, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }));
   await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ url: photoDataUrl, expiresIn: 300 }) }));
   await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/review`, async (route) => {

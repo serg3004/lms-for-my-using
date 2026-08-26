@@ -1610,7 +1610,44 @@
     "reject": "Reject",
     "commentPlaceholder": "Comment (optional)",
     "currentResult": "Current result",
-    "sessionExpired": "Your session expired. Sign in again."
+    "sessionExpired": "Your session expired. Sign in again.",
+    "tabs": {
+      "label": "Review queue",
+      "mine": "Assigned to me",
+      "unassigned": "Unassigned",
+      "all": "All"
+    },
+    "analytics": {
+      "assigned": "Assigned",
+      "completed": "Completed",
+      "passRate": "Pass rate",
+      "expired": "Expired",
+      "awaitingReview": "Awaiting review"
+    },
+    "reviewerUnassigned": "Unassigned",
+    "reviewerMe": "Assigned to me",
+    "reviewerOther": "Assigned to another reviewer",
+    "assignToMe": "Assign to me",
+    "unassign": "Unassign",
+    "reviewerAssignError": "Unable to update the reviewer.",
+    "paginationLabel": "Review queue pages",
+    "timeline": {
+      "title": "History",
+      "loading": "Loading history...",
+      "empty": "No history yet.",
+      "events": {
+        "assigned": "Checklist assigned",
+        "started": "Learner started filling it out",
+        "item_answered": "Item answered",
+        "photo_attached": "Photo attached",
+        "submitted": "Submitted for review",
+        "reviewer_assigned": "Reviewer assigned",
+        "item_approved": "Item approved",
+        "item_rejected": "Item rejected",
+        "completed": "Review completed",
+        "expired": "Expired"
+      }
+    }
   },
   "profile": {
     "title": "Profile",

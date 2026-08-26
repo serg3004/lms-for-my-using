@@ -3445,7 +3445,7 @@ Prod-readiness backend PR 162        1 PR  ✅ СДЕЛАНО (graceful shutdown
 
 ---
 
-## PR 222 — Checklist analytics and review workflow 🟡
+## PR 222 — Checklist analytics and review workflow ✅
 
 **Проблема:** submitted instances образуют преимущественно organization-wide queue без явного owner; filters/operational visibility ограничены; нет checklist-specific durable истории state transitions и агрегированной аналитики. General Audit Log проекта остаётся `OWNER-DECISION` и не должен неявно реализовываться этим PR.
 
@@ -3498,12 +3498,56 @@ Prod-readiness backend PR 162        1 PR  ✅ СДЕЛАНО (graceful shutdown
 **Не входит:** глобальный audit framework, внешняя BI-платформа, notifications/escalations без отдельного scope.
 
 **Критерии готовности:**
-- Однозначный reviewer routing либо controlled unassigned queue.
-- Filters/pagination server-side с tenant/team scope.
-- Aggregates воспроизводимы DB-тестами.
-- Значимые transitions имеют immutable durable history в одной transaction.
-- General Audit Log scope не расширен неявно.
-- Full review lifecycle E2E и CI проходят.
+- [x] Однозначный reviewer routing либо controlled unassigned queue.
+- [x] Filters/pagination server-side с tenant/team scope.
+- [x] Aggregates воспроизводимы DB-тестами.
+- [x] Значимые transitions имеют immutable durable history в одной transaction.
+- [x] General Audit Log scope не расширен неявно.
+- [x] Full review lifecycle E2E и CI проходят.
+
+> **Статус (2026-08-24):** backend был реализован и смёржен первым (GH PR #651) — модель данных,
+> `PATCH /checklist-instances/:id/reviewer`, `GET /checklists/analytics`,
+> `GET /checklist-instances/:id/events`, `GET /checklist-instances/review-queue`
+> (`assignment=mine|unassigned|all` + checklist/learner/status/passed/date filters + pagination),
+> backend-тесты (`checklists.review-workflow.spec.ts`). Frontend оставался нереализован —
+> `InstructorChecklistReviewsPage`/`MentorChecklistReviewsPage` продолжали звать старый
+> `GET /checklist-instances/pending-review` без routing/analytics/timeline UI.
+
+> **Реализовано (2026-08-26):** frontend-часть закрыта поверх уже смёрженного backend.
+> `InstructorChecklistReviewsPage` (переиспользуется `MentorChecklistReviewsPage`) переведена
+> с `listPendingChecklistReviews`/`pending-review` на `searchChecklistReviewQueue`/`review-queue`
+> с тремя вкладками (`Assigned to me` / `Unassigned` / `All`) и paginated `DataTable`-подобным
+> списком; добавлены KPI-карточки (`Assigned`/`Completed`/`Pass rate`/`Expired`/`Awaiting review`)
+> из `GET /checklists/analytics`; в detail-view — reviewer assignment (`Assign to me`/`Unassign`,
+> учитывает non-admin запрет менять чужого reviewer per `ChecklistReviewAccessService`) и
+> read-only event timeline из `GET /checklist-instances/:id/events`. Открытая карточка
+> инстанса больше не привязана к отфильтрованному списку (раньше выпадала бы из вида сразу
+> после смены reviewer/фильтра) — реализовано через локальный `openInstance` state,
+> напрямую обновляемый ответом мутации, а не производный от списка. Учтено, что
+> `assignReviewer()` на backend возвращает более узкую форму без `checklist`/`results` —
+> смёрджено только с reviewer-полями, а не заменяет весь instance целиком (иначе список item'ов
+> пропадал бы после назначения reviewer). Переведено на 4 языка (ru/en/kk/zh, locale-sync/hardening
+> проверены). Тесты: `checklists.spec.ts` (+8 на новые API-функции), `InstructorPages.smoke.spec.tsx`
+> (+6 на tabs/analytics/reviewer-контролы), новый `MentorChecklistReviewsPage.spec.tsx` (ранее
+> вообще не имел покрытия). Новый Playwright E2E `checklist-review-workflow.spec.ts`:
+> assignment → learner completes 2-item checklist → reviewer находит его во вкладке Unassigned →
+> assign to me → event timeline показывает submitted/reviewer_assigned → reviewer reject
+> одного item и approve другого → event timeline показывает item_rejected/item_approved/completed →
+> instance auto-completes → analytics KPI обновляется. Пройден локально против реального API +
+> Postgres + Chromium (не моки). Существующий `checklist-photo-review.spec.ts` обновлён под
+> новый endpoint contract.
+>
+> **Осознанно не покрыто:** буквальный "reject → resubmit → approve" сценарий из тест-плана этого
+> PR не реализован — обнаружено, что backend (унаследовано от PR 217–221, не введено этим PR)
+> не поддерживает resubmission: `assertWritableInstance` окончательно блокирует редактирование
+> инстанса в статусе `submitted`/`completed` (`checklists.deadline.spec.ts:71`), а
+> `recomputeInstance()` переводит инстанс в `completed` сразу как только у всех answered items
+> `reviewStatus !== 'pending'` — то есть reject не возвращает инстанс в редактируемое состояние,
+> он просто исключает баллы item'а из итогового score. E2E-тест поэтому покрывает реальный
+> поддерживаемый lifecycle (reject + approve → auto-complete с частичным score), а не
+> несуществующий resubmit-flow. Если resubmission нужен как продуктовое требование — это
+> отдельное architectural decision (что происходit с submitted-инстансом при reject: возврат
+> в `in_progress`, новый инстанс, или что-то ещё) вне scope этого PR.
 
 > **Статус (2026-08-24):** backend реализован и уже смёржен (PR #651): `ChecklistInstance.reviewerId/reviewAssignedAt/reviewAssignedBy`,
 > `ChecklistInstanceEvent` durable timeline, `assignReviewer`/`getAnalytics`/`listEvents` в `ChecklistsService`,
