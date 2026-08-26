@@ -157,8 +157,12 @@ test.describe('critical frontend resilience matrix', () => {
       await page.goto('/learn');
 
       await refreshRejected;
-      await expect(page.getByRole('alert')).toContainText('Сессия истекла');
-      await expect(page.locator('a[href="/login"]')).toBeVisible();
+      // ProtectedRoute navigates straight to /login on an unauthenticated
+      // session (no session-expired alert is rendered) — see
+      // ProtectedRouteContent in ProtectedRoute.tsx and the guest-redirect
+      // assertions in login-role-redirect.spec.ts.
+      await expect(page).toHaveURL(/\/login$/);
+      await expect(page.locator('form input[name="organizationId"]')).toBeVisible();
     });
   });
 
