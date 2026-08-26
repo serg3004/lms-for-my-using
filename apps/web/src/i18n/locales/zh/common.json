@@ -1610,7 +1610,44 @@
     "reject": "驳回",
     "commentPlaceholder": "备注（可选）",
     "currentResult": "当前结果",
-    "sessionExpired": "会话已过期。请重新登录。"
+    "sessionExpired": "会话已过期。请重新登录。",
+    "tabs": {
+      "label": "审核队列",
+      "mine": "分配给我",
+      "unassigned": "未分配",
+      "all": "全部"
+    },
+    "analytics": {
+      "assigned": "已分配",
+      "completed": "已完成",
+      "passRate": "通过率",
+      "expired": "已过期",
+      "awaitingReview": "待审核"
+    },
+    "reviewerUnassigned": "未分配",
+    "reviewerMe": "分配给我",
+    "reviewerOther": "已分配给其他审核人",
+    "assignToMe": "分配给我",
+    "unassign": "取消分配",
+    "reviewerAssignError": "无法更新审核人。",
+    "paginationLabel": "审核队列分页",
+    "timeline": {
+      "title": "历史记录",
+      "loading": "正在加载历史记录...",
+      "empty": "暂无历史记录。",
+      "events": {
+        "assigned": "检查清单已分配",
+        "started": "学员已开始填写",
+        "item_answered": "项目已填写",
+        "photo_attached": "已附加照片",
+        "submitted": "已提交审核",
+        "reviewer_assigned": "已分配审核人",
+        "item_approved": "项目已通过",
+        "item_rejected": "项目已驳回",
+        "completed": "审核已完成",
+        "expired": "已过期"
+      }
+    }
   },
   "profile": {
     "title": "个人资料",

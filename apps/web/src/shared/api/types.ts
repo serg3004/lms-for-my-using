@@ -371,6 +371,9 @@ export type ChecklistInstanceSummary = {
   checklistId: string;
   userId: string;
   assignedBy: string | null;
+  reviewerId: string | null;
+  reviewAssignedAt: string | null;
+  reviewAssignedBy: string | null;
   status: ChecklistInstanceStatus;
   totalScore: number;
   maxScore: number;
@@ -383,4 +386,65 @@ export type ChecklistInstanceSummary = {
   updatedAt: string;
   checklist?: ChecklistSummary;
   results: ChecklistItemResultSummary[];
+};
+
+export type ChecklistInstanceEventType =
+  | 'assigned'
+  | 'started'
+  | 'item_answered'
+  | 'photo_attached'
+  | 'submitted'
+  | 'reviewer_assigned'
+  | 'item_approved'
+  | 'item_rejected'
+  | 'completed'
+  | 'expired';
+
+export type ChecklistInstanceEvent = {
+  id: string;
+  organizationId: string;
+  instanceId: string;
+  eventType: ChecklistInstanceEventType;
+  actorUserId: string | null;
+  itemId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ChecklistReviewQueueQuery = {
+  assignment?: 'mine' | 'unassigned' | 'all';
+  checklistId?: string;
+  learnerId?: string;
+  status?: ChecklistInstanceStatus;
+  passed?: 'true' | 'false';
+  from?: string;
+  to?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ChecklistAnalyticsQuery = {
+  checklistId?: string;
+  from?: string;
+  to?: string;
+};
+
+export type ChecklistAnalyticsCounts = {
+  assigned: number;
+  in_progress: number;
+  submitted: number;
+  completed: number;
+  expired: number;
+};
+
+export type ChecklistAnalytics = {
+  assignmentsTotal: number;
+  counts: ChecklistAnalyticsCounts;
+  completionRate: number;
+  passRate: number;
+  averagePercentage: number;
+  expiredRate: number;
+  pendingReview: number;
+  averageCompletionTimeMs: number;
+  averageReviewTimeMs: number;
 };

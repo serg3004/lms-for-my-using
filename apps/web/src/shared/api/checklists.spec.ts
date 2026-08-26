@@ -6,18 +6,21 @@ vi.mock('../apiClient.js', () => mocks);
 
 import {
   assignChecklist,
+  assignChecklistReviewer,
   createChecklist,
   createChecklistItem,
   deleteChecklist,
   deleteChecklistItem,
   getChecklist,
+  getChecklistAnalytics,
   getChecklistInstance,
   getChecklistItemPhotoUrl,
+  listChecklistInstanceEvents,
   listChecklists,
   listInstancesForChecklist,
   listMyChecklistInstances,
-  listPendingChecklistReviews,
   reviewChecklistItemResult,
+  searchChecklistReviewQueue,
   submitChecklistItemResult,
   updateChecklist,
   updateChecklistItem,
@@ -105,9 +108,45 @@ describe('checklists api requests', () => {
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/mine');
   });
 
-  it('lists checklist instances pending review', () => {
-    listPendingChecklistReviews();
-    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/pending-review');
+  it('searches the review queue with no query when no filters are given', () => {
+    searchChecklistReviewQueue();
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/review-queue');
+  });
+
+  it('encodes only the provided, non-empty review queue filters', () => {
+    searchChecklistReviewQueue({ assignment: 'unassigned', page: 2, pageSize: 10, checklistId: '' });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/review-queue?assignment=unassigned&page=2&pageSize=10');
+  });
+
+  it('assigns a reviewer to a checklist instance', () => {
+    assignChecklistReviewer('instance-1', 'user-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/reviewer', {
+      method: 'PATCH',
+      body: JSON.stringify({ reviewerId: 'user-1' }),
+    });
+  });
+
+  it('unassigns a reviewer by passing null', () => {
+    assignChecklistReviewer('instance-1', null);
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/reviewer', {
+      method: 'PATCH',
+      body: JSON.stringify({ reviewerId: null }),
+    });
+  });
+
+  it('lists checklist instance events', () => {
+    listChecklistInstanceEvents('instance-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/events');
+  });
+
+  it('fetches checklist analytics with no query when no filters are given', () => {
+    getChecklistAnalytics();
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/analytics');
+  });
+
+  it('fetches checklist analytics scoped to a checklist and date range', () => {
+    getChecklistAnalytics({ checklistId: 'checklist-1', from: '2026-08-01T00:00:00.000Z' });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/analytics?checklistId=checklist-1&from=2026-08-01T00%3A00%3A00.000Z');
   });
 
   it('fetches a single checklist instance', () => {
