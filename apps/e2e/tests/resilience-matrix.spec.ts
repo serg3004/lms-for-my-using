@@ -53,10 +53,10 @@ test.describe('critical frontend resilience matrix', () => {
   // (DEFAULT_SENSITIVE_RATE_LIMIT_POLICY.account in api-hardening.ts), and this
   // file's six learner scenarios logging in independently reliably tripped it in CI.
   test('learner dashboard: empty state, HTTP error states, offline recovery, transport timeout', async ({ page, context }) => {
-    // loginAs() may wait out the account rate-limit's fixed 60s window, and the
-    // transport-timeout step below waits up to 35s for the client's own 30s
-    // request timeout — budget for both in the worst case.
-    test.setTimeout(150_000);
+    // loginAs() may wait out the account rate-limit's fixed 60s window (up to 65s),
+    // and the transport-timeout step waits up to 35s for the client's own 30s
+    // request timeout — budget for both plus the remaining steps in the worst case.
+    test.setTimeout(220_000);
     const pageErrors = collectPageErrors(page);
     await loginAs(page, 'learner');
 
