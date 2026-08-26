@@ -21,72 +21,76 @@ function collectPageErrors(page: Page) {
 }
 
 test.describe('critical frontend resilience matrix', () => {
-  test('learner dashboard distinguishes an empty result from a failed request', async ({ page }) => {
+  // All learner scenarios share a single login (rather than one per test) — the
+  // backend's account-level login rate limit is 5 requests/60s
+  // (DEFAULT_SENSITIVE_RATE_LIMIT_POLICY.account in api-hardening.ts), and this
+  // file's six learner scenarios logging in independently reliably tripped it in CI.
+  test('learner dashboard: empty state, HTTP error states, offline recovery, transport timeout', async ({ page }) => {
     const pageErrors = collectPageErrors(page);
     await loginAs(page, 'learner');
-    await page.route('**/api/v1/learner-dashboard', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          coursesCount: 0,
-          pendingAssignmentsCount: 0,
-          availableAssessmentsCount: 0,
-          certificatesCount: 0,
-          continueLearning: [],
-          upcomingDeadlines: [],
-          recentActivity: [],
-        }),
-      });
-    });
 
-    await page.reload();
-    await expect(page.getByText('Пока нет начатых курсов.')).toBeVisible();
-    await expect(page.getByText('Нет предстоящих дедлайнов.')).toBeVisible();
-    await expect(page.getByText('Активности пока нет.')).toBeVisible();
-    expect(pageErrors).toEqual([]);
-  });
-
-  for (const status of [404, 429, 500]) {
-    test(`learner dashboard exposes a safe state for HTTP ${status}`, async ({ page }) => {
-      const pageErrors = collectPageErrors(page);
-      await loginAs(page, 'learner');
+    await test.step('distinguishes an empty result from a failed request', async () => {
       await page.route('**/api/v1/learner-dashboard', async (route) => {
         await route.fulfill({
-          status,
+          status: 200,
           contentType: 'application/json',
-          body: JSON.stringify({ statusCode: status, error: { code: `SYNTHETIC_${status}` } }),
+          body: JSON.stringify({
+            coursesCount: 0,
+            pendingAssignmentsCount: 0,
+            availableAssessmentsCount: 0,
+            certificatesCount: 0,
+            continueLearning: [],
+            upcomingDeadlines: [],
+            recentActivity: [],
+          }),
         });
       });
 
       await page.reload();
+      await expect(page.getByText('Пока нет начатых курсов.')).toBeVisible();
+      await expect(page.getByText('Нет предстоящих дедлайнов.')).toBeVisible();
+      await expect(page.getByText('Активности пока нет.')).toBeVisible();
+      expect(pageErrors).toEqual([]);
+      await page.unroute('**/api/v1/learner-dashboard');
+    });
+
+    for (const status of [404, 429, 500]) {
+      await test.step(`exposes a safe state for HTTP ${status}`, async () => {
+        await page.route('**/api/v1/learner-dashboard', async (route) => {
+          await route.fulfill({
+            status,
+            contentType: 'application/json',
+            body: JSON.stringify({ statusCode: status, error: { code: `SYNTHETIC_${status}` } }),
+          });
+        });
+
+        await page.reload();
+        await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
+        expect(pageErrors).toEqual([]);
+        await page.unroute('**/api/v1/learner-dashboard');
+      });
+    }
+
+    await test.step('exposes a safe state while offline and recovers after reload', async () => {
+      await page.route('**/api/v1/learner-dashboard', (route) => route.abort('internetdisconnected'));
+
+      await page.reload();
       await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
+
+      await page.unroute('**/api/v1/learner-dashboard');
+      await page.reload();
+      await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
       expect(pageErrors).toEqual([]);
     });
-  }
 
-  test('learner dashboard exposes a safe state while offline and recovers after reload', async ({ page }) => {
-    const pageErrors = collectPageErrors(page);
-    await loginAs(page, 'learner');
-    await page.route('**/api/v1/learner-dashboard', (route) => route.abort('internetdisconnected'));
+    await test.step('exposes a safe state for a transport timeout', async () => {
+      await page.route('**/api/v1/learner-dashboard', (route) => route.abort('timedout'));
 
-    await page.reload();
-    await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
-
-    await page.unroute('**/api/v1/learner-dashboard');
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'Главная' })).toBeVisible();
-    expect(pageErrors).toEqual([]);
-  });
-
-  test('learner dashboard exposes a safe state for a transport timeout', async ({ page }) => {
-    const pageErrors = collectPageErrors(page);
-    await loginAs(page, 'learner');
-    await page.route('**/api/v1/learner-dashboard', (route) => route.abort('timedout'));
-
-    await page.reload();
-    await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
-    expect(pageErrors).toEqual([]);
+      await page.reload();
+      await expect(page.getByRole('alert')).toContainText('Unable to load learner profile. Try again later.');
+      expect(pageErrors).toEqual([]);
+      await page.unroute('**/api/v1/learner-dashboard');
+    });
   });
 
   test('manager assignment accepts only one rapid duplicate submit', async ({ page }) => {
