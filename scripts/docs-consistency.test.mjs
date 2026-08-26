@@ -1,14 +1,36 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { test } from 'node:test';
-import { URL } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 
+const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const appModule = readFileSync(new URL('../apps/api/src/app.module.ts', import.meta.url), 'utf8');
 const architecture = readFileSync(new URL('../docs/ARCHITECTURE_MODULE_BOUNDARIES.md', import.meta.url), 'utf8');
 const rbac = readFileSync(new URL('../docs/API_RBAC_MATRIX.md', import.meta.url), 'utf8');
+const rootReadmePath = fileURLToPath(new URL('../README.md', import.meta.url));
+const docsReadmePath = fileURLToPath(new URL('../docs/README.md', import.meta.url));
+const rootReadme = readFileSync(rootReadmePath, 'utf8');
+const docsReadme = readFileSync(docsReadmePath, 'utf8');
 
 function sorted(values) {
   return [...values].sort();
+}
+
+function localMarkdownLinks(markdown) {
+  return [...markdown.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)]
+    .map(([, target]) => target.trim())
+    .filter((target) => target && !target.startsWith('#'))
+    .filter((target) => !/^[a-z][a-z0-9+.-]*:/i.test(target))
+    .map((target) => target.split('#', 1)[0])
+    .filter(Boolean);
+}
+
+function assertRelativeTargetsExist(markdown, sourcePath) {
+  for (const target of localMarkdownLinks(markdown)) {
+    const resolved = resolve(dirname(sourcePath), decodeURIComponent(target));
+    assert.ok(existsSync(resolved), `broken local documentation link: ${target} from ${sourcePath}`);
+  }
 }
 
 test('architecture inventory contains every production AppModule import exactly once', () => {
@@ -42,4 +64,36 @@ test('RBAC course-scope controller count and list match CourseAccessGuard usage'
 
   assert.equal(documentedControllers.length, documentedCount);
   assert.deepEqual(sorted(documentedControllers), sorted(guardedControllers));
+});
+
+test('documentation governance entry points exist', () => {
+  const requiredPaths = [
+    'AGENTS.md',
+    'README.md',
+    'docs/README.md',
+    'docs/documentation_full_remediation_plan_pdca_v3.md',
+  ];
+
+  for (const path of requiredPaths) {
+    assert.ok(existsSync(resolve(repoRoot, path)), `required documentation entry point is missing: ${path}`);
+  }
+});
+
+test('root README local links resolve', () => {
+  assertRelativeTargetsExist(rootReadme, rootReadmePath);
+});
+
+test('docs README current entry-point paths resolve without scanning history', () => {
+  const section = docsReadme.match(/## Current entry points[^\n]*\n([\s\S]*?)(?=\n## |$)/)?.[1];
+  assert.ok(section, 'docs README current entry-points section was not found');
+
+  const entryPoints = [...section.matchAll(/`([^`]+\.md)`/g)].map(([, target]) => target);
+  assert.ok(entryPoints.length > 0, 'docs README current entry-points section has no document paths');
+
+  for (const target of entryPoints) {
+    assert.ok(
+      existsSync(resolve(dirname(docsReadmePath), target)),
+      `docs README current entry point is missing: ${target}`,
+    );
+  }
 });

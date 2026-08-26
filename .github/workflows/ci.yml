@@ -88,6 +88,9 @@ jobs:
       - name: Security artifact tests
         run: pnpm security:artifacts:test
 
+      - name: Documentation consistency
+        run: pnpm docs:consistency:test
+
       - name: Lint
         run: pnpm --recursive lint
 
