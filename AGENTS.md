@@ -2,6 +2,17 @@
 
 Этот файл задаёт общий процесс для Codex, Claude и других ИИ-агентов, работающих с репозиторием. Специализированные инструкции могут дополнять эти правила, но не должны ослаблять проверки ниже.
 
+## Documentation Rules
+
+1. Карта документации и правила ownership находятся в `docs/README.md`.
+2. Читать только task-relevant docs; не обходить весь `docs/` без необходимости.
+3. Current implementation fact проверять по canonical owner-source, указанному в `docs/README.md`.
+4. Archive, historical и evidence не использовать как authority для current поведения без повторной проверки.
+5. При изменении behaviour, API, schema, RBAC, config, env, deploy/migration procedure или user workflow проверить связанную документацию в том же PR.
+6. Не создавать ручной inventory, если факт надёжно выводится из code/runtime source.
+7. Snapshot/live facts привязывать к дате, SHA или environment; не выдавать их за вечную current truth.
+8. Не копировать сюда roles, endpoints, module topology и другие domain inventories; хранить здесь только процесс.
+
 ## Перед началом задачи
 
 1. Начинать работу только от актуального `origin/main` в отдельной ветке.
