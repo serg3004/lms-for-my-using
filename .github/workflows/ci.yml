@@ -54,7 +54,6 @@ jobs:
         run: |
           mkdir -p security-audit-artifacts
           pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json
-
       - name: Collect code-hygiene report
         id: code-hygiene
         continue-on-error: true
@@ -68,7 +67,6 @@ jobs:
           path: security-audit-artifacts/
           if-no-files-found: error
           retention-days: 30
-
       - name: Enforce dependency and static-security gates
         if: always()
         run: |
@@ -78,7 +76,6 @@ jobs:
 
       - name: Validate security waivers
         run: node scripts/validate-security-waivers.mjs security-waivers.json "$RUNNER_TEMP/trivyignore"
-
       - name: Validate repository governance policy
         run: pnpm security:branch-protection:test
 
@@ -87,6 +84,9 @@ jobs:
 
       - name: Security artifact tests
         run: pnpm security:artifacts:test
+
+      - name: Documentation consistency
+        run: pnpm docs:consistency:test
 
       - name: Lint
         run: pnpm --recursive lint
@@ -143,7 +143,6 @@ jobs:
 
       - name: Tests
         run: pnpm --recursive test:coverage
-
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v7
@@ -158,7 +157,6 @@ jobs:
 
       - name: Staging smoke script tests
         run: bash scripts/smoke-staging.test.sh
-
       - name: Production migration check tests
         run: pnpm migration:production:check:test
 
@@ -196,7 +194,6 @@ jobs:
 
       - name: Generate Prisma Client
         run: pnpm --filter @lms/api prisma:generate
-
       - name: Build
         run: pnpm --recursive build
 
@@ -204,7 +201,6 @@ jobs:
     name: Browser E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     services:
       postgres:
         image: postgres:16-alpine
@@ -219,7 +215,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
       NODE_ENV: test
@@ -254,7 +249,6 @@ jobs:
 
       - name: Browser E2E
         run: pnpm test:e2e
-
       - name: Upload safe Playwright failure artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -320,7 +314,6 @@ jobs:
 
       - name: Accessibility baseline
         run: pnpm test:a11y
-
       - name: Upload axe findings by severity
         if: always()
         uses: actions/upload-artifact@v7
@@ -366,7 +359,6 @@ jobs:
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
-
       - name: Responsive visual matrix
         run: pnpm test:visual
 
