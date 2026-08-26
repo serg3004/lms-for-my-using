@@ -5,13 +5,32 @@ import { expect, test } from '../fixtures/isolated-test.js';
 const organization = 'demo-company';
 const password = 'Demo1234!';
 
+// The backend's account-level login rate limit is a FIXED 60s window: the first
+// login request for an account starts the window, and it does not slide or
+// extend on subsequent requests (see entry.resetAt in
+// createInMemoryRateLimitStore(), api-hardening.ts) — it simply expires 60s
+// after that first request, however many logins landed inside it. Other E2E
+// files log in as the same demo accounts (manager-workspace.spec.ts alone logs
+// in as manager 4 times), so this file's login can be the 6th in someone else's
+// window and get a 429 that leaves the login form on /login. A short retry
+// backoff isn't reliable against a fixed window of unknown start time — only
+// waiting longer than the window itself (60s) guarantees landing outside it.
 async function loginAs(page: Page, role: 'learner' | 'manager') {
-  await page.goto('/login');
-  await page.locator('input[name="organizationId"]').fill(organization);
-  await page.locator('input[name="email"]').fill(`${role}@demo.com`);
-  await page.locator('input[name="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/manager\/dashboard$/);
+  const destination = role === 'learner' ? /\/learn$/ : /\/manager\/dashboard$/;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await page.goto('/login');
+    await page.locator('input[name="organizationId"]').fill(organization);
+    await page.locator('input[name="email"]').fill(`${role}@demo.com`);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('button[type="submit"]').click();
+    try {
+      await expect(page).toHaveURL(destination, { timeout: 5000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(65_000);
+    }
+  }
 }
 
 function collectPageErrors(page: Page) {
@@ -26,6 +45,7 @@ test.describe('critical frontend resilience matrix', () => {
   // (DEFAULT_SENSITIVE_RATE_LIMIT_POLICY.account in api-hardening.ts), and this
   // file's six learner scenarios logging in independently reliably tripped it in CI.
   test('learner dashboard: empty state, HTTP error states, offline recovery, transport timeout', async ({ page }) => {
+    test.setTimeout(100_000); // loginAs() may wait out the account rate-limit's fixed 60s window
     const pageErrors = collectPageErrors(page);
     await loginAs(page, 'learner');
 
@@ -94,6 +114,7 @@ test.describe('critical frontend resilience matrix', () => {
   });
 
   test('manager assignment accepts only one rapid duplicate submit', async ({ page }) => {
+    test.setTimeout(100_000); // loginAs() may wait out the account rate-limit's fixed 60s window
     const pageErrors = collectPageErrors(page);
     await loginAs(page, 'manager');
     let requests = 0;
