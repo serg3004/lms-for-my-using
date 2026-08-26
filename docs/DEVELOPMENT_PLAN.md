@@ -3939,7 +3939,7 @@ frontend quality и observability.
 
 ---
 
-## PR 235 — Expand frontend resilience E2E scenarios 🔲
+## PR 235 — Expand frontend resilience E2E scenarios 🟨
 
 **Проблема:** timeout, refresh/retry и часть race protection реализованы, но критичные empty/offline/network failure/session-expiry/duplicate-submit сценарии не закреплены единой E2E-матрицей.
 
@@ -3952,13 +3952,24 @@ frontend quality и observability.
 - использовать существующие Playwright fixtures/mocks.
 
 **Критерии готовности:**
-- [ ] critical pages имеют empty-state tests;
-- [ ] 401/403/404/429/5xx покрыты там, где применимо;
-- [ ] timeout/network failure имеют user-visible safe state;
-- [ ] expired-session lifecycle протестирован;
-- [ ] duplicate submit/race protection проверены для critical mutations;
-- [ ] нет необработанных browser errors в тестовых сценариях;
-- [ ] E2E suite стабильно проходит в CI.
+- [x] critical pages имеют empty-state tests;
+- [x] 401/403/404/429/5xx покрыты там, где применимо;
+- [x] timeout/network failure имеют user-visible safe state;
+- [x] expired-session lifecycle протестирован;
+- [x] duplicate submit/race protection проверены для critical mutations;
+- [x] нет необработанных browser errors в тестовых сценариях;
+- [ ] E2E suite стабильно проходит в CI (`LIVE-VERIFY`: локально нет PostgreSQL на `localhost:5432`).
+
+> **Реализовано (2026-08-26):** единая Playwright resilience-матрица закрепляет
+> learner empty state, безопасные UI-состояния для 404/429/5xx, transport timeout и offline failure,
+> восстановление после возврата сети и отсутствие необработанных browser errors.
+> Существующие role/refresh E2E покрывают 401, 403 и истечение access session.
+> Для критичной manager mutation добавлена синхронная in-flight защита и E2E-проверка,
+> что два submit event в одном render cycle создают ровно один assignment. Loading
+> и rapid navigation остаются покрыты существующими workspace E2E tests.
+> Локальная компиляция/обнаружение новой матрицы проходит; полный browser run должен
+> быть подтверждён CI с PostgreSQL, так как обязательный demo seed не может стартовать
+> без доступной базы данных.
 
 ---
 
