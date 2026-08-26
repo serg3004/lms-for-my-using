@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../shared/formatDate.js';
 
@@ -28,6 +28,7 @@ function AssignTrainingModal({
   const [courseId, setCourseId] = useState('');
   const [dueAt, setDueAt] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
+  const submitInFlight = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -44,8 +45,9 @@ function AssignTrainingModal({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!userId || !courseId) return;
+    if (!userId || !courseId || submitInFlight.current) return;
 
+    submitInFlight.current = true;
     setStatus('submitting');
     try {
       await createAssignment({
@@ -56,6 +58,7 @@ function AssignTrainingModal({
       });
       onAssigned();
     } catch {
+      submitInFlight.current = false;
       setStatus('error');
     }
   }
