@@ -42,6 +42,7 @@ function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
         { label: t('admin.nav.orgStructure', 'Org structure'), href: '/admin/org-structure' },
         { label: t('admin.nav.roles', 'Roles'), href: '/admin/roles' },
         { label: t('admin.nav.themeSettings', 'Theme settings'), href: '/admin/appearance' },
+        { label: t('admin.nav.auditLog', 'Audit log'), href: '/admin/audit-log' },
       ],
     },
   ];

@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import type { UserRole } from '../auth/public.js';
 import { isManagerTeamScoped, ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -80,7 +81,11 @@ type CertificatePrisma = PrismaService & {
 
 @Injectable()
 export class CertificatesService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+  ) {}
 
   async listCertificates(actorOrId: TeamScopeActor | string, organizationOrPage: string | number, pageOrSize: number, legacyPageSize?: number) {
     const actor = typeof actorOrId === 'string'
@@ -161,7 +166,7 @@ export class CertificatesService {
       throw new ForbiddenException('Certificate is not available before course completion or passed assessment');
     }
 
-    return this.certificatesPrisma.certificate.create({
+    const created = await this.certificatesPrisma.certificate.create({
       data: {
         organizationId: input.organizationId,
         courseId: input.courseId,
@@ -170,6 +175,18 @@ export class CertificatesService {
       },
       select: certificateSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId: actor.id || null,
+      action: 'certificate.issued',
+      targetType: 'certificate',
+      targetId: created.id,
+      summary: 'Issued certificate',
+      metadata: { courseId: input.courseId, userId: input.userId },
+    });
+
+    return created;
   }
 
   private get certificatesPrisma() {

@@ -32,6 +32,7 @@ vi.mock('react', async () => {
 
 import { AdminAssessmentBuilderPage } from './AdminAssessmentBuilderPage';
 import { AdminAssignmentCompletionPage } from './AdminAssignmentCompletionPage';
+import { AdminAuditLogPage } from './AdminAuditLogPage';
 import {
   AdminChecklistsPage,
   applyItemPatch,
@@ -546,6 +547,47 @@ describe('admin page smoke rendering', () => {
     const html = renderToStaticMarkup(<AdminResultsCertificatesPage />);
 
     expect(html).toContain('Learner User');
+  });
+
+  it('renders audit log loading state without crashing', () => {
+    useLoadingState();
+
+    const html = renderToStaticMarkup(<AdminAuditLogPage />);
+
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders audit log happy path without crashing', () => {
+    // useState call order in AdminAuditLogPage: 1 page, 2 actionFilter, 3 targetTypeFilter,
+    // then useAsyncData's internal loadState is call 4.
+    useStateAtCalls({
+      4: {
+        status: 'loaded',
+        data: {
+          entries: [
+            {
+              id: 'audit-1',
+              organizationId: 'org-1',
+              action: 'course.created',
+              actorId: 'user-1',
+              actor: { id: 'user-1', firstName: 'Admin', lastName: 'User', email: 'admin@demo.com' },
+              targetType: 'course',
+              targetId: 'course-1',
+              summary: 'Created course',
+              metadata: null,
+              createdAt: ts,
+            },
+          ],
+          total: 1,
+          pageSize: 20,
+          filterOptions: { actions: ['course.created'], targetTypes: ['course'] },
+        },
+      },
+    });
+
+    const html = renderToStaticMarkup(<AdminAuditLogPage />);
+
+    expect(html).toContain('Created course');
   });
 
   it('renders assignment completion loading state without crashing', () => {

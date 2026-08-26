@@ -63,12 +63,12 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   updateChecklist(@Param('id') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateChecklistSchema.parse(body);
-    return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input);
+    return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
   @Delete('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)
   deleteChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
-    return this.checklistsService.deleteChecklist(checklistId, request.currentUser!.organizationId);
+    return this.checklistsService.deleteChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
   // ---- Items ----

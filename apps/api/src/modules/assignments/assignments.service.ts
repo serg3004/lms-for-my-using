@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { ManagerTeamScope, normalizeActor, unrestrictedActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { CreateAssignmentInput, UpdateAssignmentStatusInput } from './assignments.schemas.js';
@@ -20,7 +21,11 @@ const assignmentSelect = {
 
 @Injectable()
 export class AssignmentsService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+  ) {}
 
   async listAssignments(actorInput: TeamScopeActor | string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
     const actor = normalizeActor(actorInput);
@@ -70,10 +75,22 @@ export class AssignmentsService {
       await this.ensureGroupExists(input.groupId, input.organizationId, actor);
     }
 
-    return this.prisma.assignment.create({
+    const created = await this.prisma.assignment.create({
       data: input,
       select: assignmentSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId: actor.id || null,
+      action: 'assignment.created',
+      targetType: 'assignment',
+      targetId: created.id,
+      summary: 'Created assignment',
+      metadata: { courseId: input.courseId, userId: input.userId ?? null, groupId: input.groupId ?? null },
+    });
+
+    return created;
   }
 
   async updateAssignmentStatus(

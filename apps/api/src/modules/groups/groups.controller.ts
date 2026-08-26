@@ -38,17 +38,17 @@ export class GroupsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.groupsCreate)
   @OrganizationScope('body', 'organizationId')
-  createGroup(@Body() body: unknown) {
+  createGroup(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateGroupInput = createGroupSchema.parse(body);
 
-    return this.groupsService.createGroup(input);
+    return this.groupsService.createGroup(input, request.currentUser?.id ?? null);
   }
 
   @Patch(':id')
   @Roles(...rolePolicies.groupsCreate)
   updateGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateGroupSchema.parse(body);
-    return this.groupsService.updateGroup(groupId, request.currentUser!.organizationId, input);
+    return this.groupsService.updateGroup(groupId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
 
   @Get(':id/members')

@@ -67,18 +67,18 @@ export class OrganizationsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.themeSettingsWrite)
   @OrganizationScope('param', 'id')
-  updateThemeSettings(@Param('id') organizationId: string, @Body() body: unknown) {
+  updateThemeSettings(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: ThemeSettingsInput = themeSettingsSchema.parse(body);
 
-    return this.organizationsService.updateThemeSettings(organizationId, input);
+    return this.organizationsService.updateThemeSettings(organizationId, input, request.currentUser?.id ?? null);
   }
 
   @Delete(':id/theme')
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.themeSettingsWrite)
   @OrganizationScope('param', 'id')
-  resetThemeSettings(@Param('id') organizationId: string) {
-    return this.organizationsService.resetThemeSettings(organizationId);
+  resetThemeSettings(@Param('id') organizationId: string, @Req() request: AuthenticatedRequest) {
+    return this.organizationsService.resetThemeSettings(organizationId, request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

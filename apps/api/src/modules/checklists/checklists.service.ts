@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
 import {
   AssignChecklistInput,
@@ -154,7 +155,11 @@ type WritableInstance = {
 
 @Injectable()
 export class ChecklistsService {
-  constructor(private readonly prisma: PrismaService, private readonly uploadService: UploadService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadService: UploadService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+  ) {}
 
   // ---- Templates ----
 
@@ -179,14 +184,25 @@ export class ChecklistsService {
     return checklist;
   }
 
-  createChecklist(input: CreateChecklistInput, createdBy: string) {
-    return this.prisma.checklist.create({
+  async createChecklist(input: CreateChecklistInput, createdBy: string) {
+    const created = await this.prisma.checklist.create({
       data: { ...input, createdBy },
       select: checklistWithItemsSelect,
     });
+
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId: createdBy,
+      action: 'checklist.created',
+      targetType: 'checklist',
+      targetId: created.id,
+      summary: `Created checklist ${created.title}`,
+    });
+
+    return created;
   }
 
-  async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput) {
+  async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
       select: { id: true, scoringMode: true, scaleLevels: true },
@@ -207,7 +223,7 @@ export class ChecklistsService {
 
     const { scaleLevels, ...rest } = input;
 
-    return this.prisma.checklist.update({
+    const updated = await this.prisma.checklist.update({
       where: { id: checklistId, organizationId },
       data: {
         ...rest,
@@ -217,9 +233,21 @@ export class ChecklistsService {
       },
       select: checklistWithItemsSelect,
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.updated',
+      targetType: 'checklist',
+      targetId: checklistId,
+      summary: `Updated checklist ${updated.title}`,
+      metadata: { fields: Object.keys(input) },
+    });
+
+    return updated;
   }
 
-  async deleteChecklist(checklistId: string, organizationId: string) {
+  async deleteChecklist(checklistId: string, organizationId: string, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
       select: { id: true },
@@ -241,6 +269,15 @@ export class ChecklistsService {
     await this.prisma.checklist.update({
       where: { id: checklistId, organizationId },
       data: { deletedAt: new Date() },
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.deleted',
+      targetType: 'checklist',
+      targetId: checklistId,
+      summary: 'Deleted checklist',
     });
   }
 
@@ -360,7 +397,7 @@ export class ChecklistsService {
     const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
-    return this.prisma.$transaction(async (transaction) => {
+    const instance = await this.prisma.$transaction(async (transaction) => {
       if (input.reviewerId) await this.assertValidReviewer(transaction, input.reviewerId, organizationId);
       const instance = await transaction.checklistInstance.create({ data: {
         organizationId,
@@ -382,6 +419,18 @@ export class ChecklistsService {
       }});
       return instance;
     });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId: assignedBy,
+      action: 'checklist_instance.assigned',
+      targetType: 'checklist_instance',
+      targetId: instance.id,
+      summary: `Assigned checklist ${checklist.title} to user`,
+      metadata: { checklistId, userId: input.userId },
+    });
+
+    return instance;
   }
 
   async bulkAssignChecklist(

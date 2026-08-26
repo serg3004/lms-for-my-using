@@ -176,6 +176,7 @@ model Organization {
   groupMembers                    GroupMember[]
   managerGroups                   ManagerGroup[]
   materialFileDeletionAudits      MaterialFileDeletionAudit[]
+  auditLogs                       AuditLog[]
   notifications                   Notification[]
   checklists                      Checklist[]
   checklistItems                  ChecklistItem[]
@@ -792,6 +793,24 @@ model MaterialFileDeletionAudit {
 
   @@index([organizationId, materialId, createdAt])
   @@map("material_file_deletion_audits")
+}
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  actorId        String?      @map("actor_id") @db.Uuid
+  action         String
+  targetType     String       @map("target_type")
+  targetId       String?      @map("target_id") @db.Uuid
+  summary        String
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, action])
+  @@index([organizationId, targetType, targetId])
+  @@index([organizationId, actorId])
+  @@map("audit_logs")
 }
 model Notification {
   id             String    @id @default(uuid()) @db.Uuid
