@@ -4011,8 +4011,9 @@ frontend quality и observability.
 > refresh); resilience-матрица дополнительно покрывает случай, когда сама refresh-сессия
 > невалидна — оба cookie (access и refresh) инвалидируются, `POST /auth/refresh` возвращает 401,
 > и проверяется редирект на `/login`. Для критичной manager mutation добавлена синхронная in-flight защита и E2E-проверка,
-> что два submit event в одном render cycle создают ровно один assignment. Loading
-> и rapid navigation остаются покрыты существующими workspace E2E tests.
+> что два submit event в одном render cycle создают ровно один assignment. Rapid-navigation/stale-request
+> cancellation E2E-сценария нет — есть только unit-level проверка в `useAsyncData.spec.ts`; критерий
+> race protection закрыт именно для duplicate-submit мутаций, не для навигации между страницами.
 > Локальная компиляция/обнаружение новой матрицы проходит; полный browser run должен
 > быть подтверждён CI с PostgreSQL, так как обязательный demo seed не может стартовать
 > без доступной базы данных.
