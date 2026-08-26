@@ -131,14 +131,24 @@ test.describe('critical frontend resilience matrix', () => {
     // Must run last: it permanently invalidates this page's session, so no
     // further authenticated steps can follow it in this test.
     await test.step('redirects to re-authentication when the refresh session itself is invalid', async () => {
-      const refreshCookie = (await context.cookies()).find(({ name }) => name === 'lms_refresh_token');
+      const cookies = await context.cookies();
+      const accessCookie = cookies.find(({ name }) => name === 'lms_access_token');
+      const refreshCookie = cookies.find(({ name }) => name === 'lms_refresh_token');
+      expect(accessCookie).toBeDefined();
       expect(refreshCookie).toBeDefined();
 
       // Same trick as login-role-redirect.spec.ts's expired-access-cookie test:
-      // stop the mounted app before replacing the cookie so no background
-      // request can slip through and refresh it before the navigation below.
+      // stop the mounted app before replacing the cookies so no background
+      // request can slip through and refresh them before the navigation below.
+      // Both cookies must be invalidated: the client only calls /auth/refresh
+      // reactively in response to a 401 from another request, so leaving the
+      // access token valid would mean GET /auth/me succeeds and refresh is
+      // never triggered at all.
       await page.goto('about:blank');
-      await context.addCookies([{ ...refreshCookie!, value: 'expired.e2e.refresh-token' }]);
+      await context.addCookies([
+        { ...accessCookie!, value: 'expired.e2e.access-token' },
+        { ...refreshCookie!, value: 'expired.e2e.refresh-token' },
+      ]);
 
       const refreshRejected = page.waitForResponse(
         (response) => new URL(response.url()).pathname === '/api/v1/auth/refresh' && response.status() === 401,
