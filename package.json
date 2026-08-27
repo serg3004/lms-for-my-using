@@ -29,7 +29,9 @@
     "compose:resources:test": "bash scripts/docker-compose-resources.test.sh",
     "release:gate": "node scripts/verify-release-gate.mjs",
     "release:gate:test": "node --test scripts/verify-release-gate.test.mjs",
-    "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs"
+    "docs:generate": "pnpm --filter @lms/shared build && pnpm --filter @lms/api build && node apps/api/dist/scripts/generate-docs.js",
+    "docs:generate:check": "node scripts/check-generated-docs.mjs",
+    "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs && pnpm docs:generate:check"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
