@@ -21,6 +21,29 @@ function workflowCommandEscape(value) {
   return value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
 }
 
+function meaningfulLines(content) {
+  return content.split('\n').filter((line) => line.trim().length > 0);
+}
+
+function compactDrift(committed, generated) {
+  const sections = [];
+  for (const file of generatedFiles) {
+    const committedLines = new Set(meaningfulLines(committed[file]));
+    const generatedLines = new Set(meaningfulLines(generated[file]));
+    const generatedOnly = [...generatedLines].filter((line) => !committedLines.has(line));
+    const committedOnly = [...committedLines].filter((line) => !generatedLines.has(line));
+    if (generatedOnly.length === 0 && committedOnly.length === 0) continue;
+
+    sections.push([
+      file,
+      ...generatedOnly.map((line) => `generated-only: ${line}`),
+      ...committedOnly.map((line) => `committed-only: ${line}`),
+    ].join('\n'));
+  }
+  return sections.join('\n\n');
+}
+
+const committed = snapshot();
 run('pnpm', ['docs:generate']);
 const first = snapshot();
 
@@ -34,19 +57,21 @@ const diff = spawnSync('git', ['diff', '--exit-code', '--', 'docs/generated'], {
 });
 if (diff.status !== 0) {
   const patch = `${diff.stdout ?? ''}${diff.stderr ?? ''}`;
+  const concise = compactDrift(committed, first);
   process.stderr.write(patch);
+  process.stderr.write(`\nGenerated line drift:\n${concise}\n`);
 
   const summaryPath = process.env.GITHUB_STEP_SUMMARY;
   if (summaryPath) {
     appendFileSync(
       summaryPath,
-      `\n## Generated documentation drift\n\nThe committed files differ from \`pnpm docs:generate\`.\n\n\`\`\`diff\n${patch}\n\`\`\`\n`,
+      `\n## Generated documentation drift\n\nThe committed files differ from \`pnpm docs:generate\`.\n\n\`\`\`text\n${concise}\n\`\`\`\n`,
       'utf8',
     );
   }
 
   if (process.env.GITHUB_ACTIONS === 'true') {
-    const diagnostic = patch.length > 12000 ? `${patch.slice(0, 12000)}\n... diff truncated ...` : patch;
+    const diagnostic = concise.length > 12000 ? `${concise.slice(0, 12000)}\n... diagnostic truncated ...` : concise;
     process.stderr.write(`::error title=Generated documentation drift::${workflowCommandEscape(diagnostic)}\n`);
   }
 
