@@ -17,6 +17,10 @@ function snapshot() {
   );
 }
 
+function workflowCommandEscape(value) {
+  return value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+}
+
 run('pnpm', ['docs:generate']);
 const first = snapshot();
 
@@ -39,6 +43,11 @@ if (diff.status !== 0) {
       `\n## Generated documentation drift\n\nThe committed files differ from \`pnpm docs:generate\`.\n\n\`\`\`diff\n${patch}\n\`\`\`\n`,
       'utf8',
     );
+  }
+
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const diagnostic = patch.length > 12000 ? `${patch.slice(0, 12000)}\n... diff truncated ...` : patch;
+    process.stderr.write(`::error title=Generated documentation drift::${workflowCommandEscape(diagnostic)}\n`);
   }
 
   process.stderr.write('\nGenerated documentation is stale. Run `pnpm docs:generate` and commit the result.\n');
