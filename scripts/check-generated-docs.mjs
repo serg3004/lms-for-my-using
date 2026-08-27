@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -29,8 +29,18 @@ const diff = spawnSync('git', ['diff', '--exit-code', '--', 'docs/generated'], {
   encoding: 'utf8',
 });
 if (diff.status !== 0) {
-  process.stderr.write(diff.stdout ?? '');
-  process.stderr.write(diff.stderr ?? '');
+  const patch = `${diff.stdout ?? ''}${diff.stderr ?? ''}`;
+  process.stderr.write(patch);
+
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) {
+    appendFileSync(
+      summaryPath,
+      `\n## Generated documentation drift\n\nThe committed files differ from \`pnpm docs:generate\`.\n\n\`\`\`diff\n${patch}\n\`\`\`\n`,
+      'utf8',
+    );
+  }
+
   process.stderr.write('\nGenerated documentation is stale. Run `pnpm docs:generate` and commit the result.\n');
   process.exit(diff.status ?? 1);
 }
