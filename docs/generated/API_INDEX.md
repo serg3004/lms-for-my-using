@@ -117,6 +117,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/memberships` | `Memberships` | `bearer` |
 | `POST` | `/api/v1/memberships` | `Memberships` | `bearer` |
 | `GET` | `/api/v1/memberships/{id}` | `Memberships` | `bearer` |
+| `GET` | `/api/v1/metrics` | `Metrics` | `bearer` |
 | `GET` | `/api/v1/notifications` | `Notifications` | `bearer` |
 | `PATCH` | `/api/v1/notifications/read-all` | `Notifications` | `bearer` |
 | `GET` | `/api/v1/notifications/unread-count` | `Notifications` | `bearer` |

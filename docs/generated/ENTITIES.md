@@ -44,26 +44,26 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 
 | Enum | Values |
 |---|---|
-| `AssessmentAttemptStatus` | `in_progress`, `submitted`, `graded` |
-| `AssessmentQuestionScoringMode` | `all_or_nothing`, `partial` |
-| `AssessmentQuestionType` | `single_choice`, `multiple_choice`, `short_text` |
+| `AssessmentAttemptStatus` | `in_progress`, `completed` |
+| `AssessmentQuestionScoringMode` | `all_or_nothing`, `proportional`, `proportional_with_penalty`, `per_option` |
+| `AssessmentQuestionType` | `single_choice`, `multiple_choice`, `true_false` |
 | `AssessmentStatus` | `draft`, `published`, `archived` |
-| `AssignmentStatus` | `draft`, `published`, `archived` |
-| `CertificateStatus` | `active`, `revoked` |
-| `ChecklistInstanceEventType` | `assigned`, `started`, `item_updated`, `submitted`, `reviewed`, `completed`, `expired` |
+| `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
+| `CertificateStatus` | `issued`, `revoked` |
+| `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
-| `ChecklistScoringMode` | `all_or_nothing`, `weighted` |
+| `ChecklistScoringMode` | `sum_points`, `all_required`, `scale` |
 | `ChecklistStatus` | `draft`, `published`, `archived` |
 | `CourseMaterialKind` | `file`, `link` |
-| `CourseMaterialStatus` | `draft`, `active`, `archived` |
+| `CourseMaterialStatus` | `active`, `archived` |
 | `CourseStatus` | `draft`, `published`, `archived` |
 | `GroupStatus` | `active`, `archived` |
 | `LessonStatus` | `draft`, `published`, `archived` |
-| `MalwareScanStatus` | `not_required`, `pending`, `available`, `rejected` |
+| `MalwareScanStatus` | `pending`, `scanning`, `available`, `rejected` |
 | `MultipartUploadStatus` | `pending`, `completed`, `aborted` |
-| `OrganizationPlan` | `free`, `standard`, `enterprise` |
+| `OrganizationPlan` | `trial`, `standard`, `enterprise` |
 | `OrganizationStatus` | `active`, `suspended`, `archived` |
 | `ProgressStatus` | `not_started`, `in_progress`, `completed` |
 | `UserRole` | `learner`, `instructor`, `mentor`, `manager`, `admin` |
-| `UserStatus` | `active`, `invited`, `blocked` |
+| `UserStatus` | `active`, `invited`, `suspended`, `archived` |
