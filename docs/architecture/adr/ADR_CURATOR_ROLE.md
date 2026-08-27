@@ -6,10 +6,10 @@
 
 ## Context
 
-The roadmap (`docs/DEVELOPMENT_PLAN.md`, PR 146) flagged that `curator` was never implemented: `Prisma.UserRole`
+The historical roadmap (`docs/archive/development-ledger/DEVELOPMENT_PLAN.md`, PR 146) flagged that `curator` was never implemented: `Prisma.UserRole`
 only has `learner | instructor | manager | admin`, and no code, API, or UI referenced `curator` anywhere.
 
-Auditing where the term came from: `docs/master-context/01_LMS_Master_Product_Specification.md` is internally
+Auditing where the term came from: the archived pre-implementation master spec (`docs/archive/pre-implementation-master-context/01_LMS_Master_Product_Specification.md`) is internally
 inconsistent about it. Section 2 lists "куратор" as a role separate from instructor in one general enumeration,
 but every workflow section (5.2, 11.2, 13) instead writes **"Instructor/Инструктор или куратор"** — treating it
 as a synonym for instructor, not a distinct role with its own permissions. There is no description anywhere of
@@ -98,7 +98,7 @@ own translation.
 
 - Mentor gets no course-scoped access (`CourseAccessGuard` doesn't apply to the checklist controllers at all,
   so this isn't a gap — it's the same as instructor's checklist access today).
-- No standalone `docs/ENTITY_TECHSPEC_*` rewrite beyond `docs/API_RBAC_MATRIX.md`'s role table (which also
+- No standalone `docs/ENTITY_TECHSPEC_*` rewrite beyond `docs/contracts/API_RBAC_MATRIX.md`'s role table (which also
   picked up the previously-undocumented checklist policy rows while it was being edited for the mentor column
   — a pre-existing gap, fixed as a side effect of touching this table, not a separate audit).
 - Full browser-driven Playwright e2e was not re-run end-to-end in this session due to a local Playwright
@@ -110,7 +110,7 @@ own translation.
 
 ## Consequences
 
-- `Prisma.UserRole` and `docs/API_RBAC_MATRIX.md` are back in sync — no more gap between the schema and the
+- `Prisma.UserRole` and `docs/contracts/API_RBAC_MATRIX.md` are back in sync — no more gap between the schema and the
   documented role model, closing PR 146's stated readiness criterion.
 - Any future hardcoded role enumeration (a `Record<UserRole, X>`, a literal role-string array, a role-count
   assumption in a test) will now either be caught by TypeScript (`Record<UserRole, ...>` forces every key) or

@@ -22,7 +22,7 @@ This codebase already has (2): `apps/api/src/common/middleware/api-hardening.ts`
 The custom implementation already provides everything a from-scratch `ThrottlerModule` adoption would need to be re-built to match, and is already running in production:
 
 - **Multi-tier limiting per request**: IP-scoped, per-account (SHA-256 hash of normalized `organizationId`+`email`, so raw credentials never sit in Redis keys), and a global ceiling — evaluated together via `Promise.all`, all three tiers enforced atomically per request (`api-hardening.ts:206-231`).
-- **Redis-primary with fail-closed runtime behavior**: a Lua script (`ATOMIC_INCREMENT_WITH_TTL_SCRIPT`) does an atomic `INCR` + `PEXPIRE` in Redis; on a configured Redis error, security-critical routes return retryable `503` on every replica and retry Redis on the next request. Explicit startup without Redis remains a separately opted-in in-memory emergency mode. The operational modes (`REDIS-PRIMARY`, `RUNTIME-FAIL-CLOSED`, `STARTUP-IN-MEMORY`) are documented in `docs/RATE_LIMIT_FAILURE_POLICY.md`.
+- **Redis-primary with fail-closed runtime behavior**: a Lua script (`ATOMIC_INCREMENT_WITH_TTL_SCRIPT`) does an atomic `INCR` + `PEXPIRE` in Redis; on a configured Redis error, security-critical routes return retryable `503` on every replica and retry Redis on the next request. Explicit startup without Redis remains a separately opted-in in-memory emergency mode. The operational modes (`REDIS-PRIMARY`, `RUNTIME-FAIL-CLOSED`, `STARTUP-IN-MEMORY`) are documented in `docs/contracts/RATE_LIMIT_FAILURE_POLICY.md`.
 - **Observability hooks**: structured logs and Prometheus counters (`rateLimitRejects`, `redisErrors`) on every request, rejection, and mode change, wired in `main.ts`.
 - **Already tested against the exact routes PR 139 asks for**: `apps/api/src/common/middleware/api-hardening.spec.ts` has `it.each(['/api/v1/auth/login', '/api/v1/auth/password-reset/request', '/api/v1/auth/password-reset/confirm', '/api/v1/organizations/register'])(...)` asserting 429 after the configured threshold, plus dedicated Redis failure, multi-instance fail-closed, and recovery tests.
 
@@ -39,6 +39,6 @@ While reviewing the custom implementation for this ADR, the in-memory store (`cr
 ## Consequences
 
 - No migration to `@nestjs/throttler`; `api-hardening.ts` remains the source of truth for sensitive-route rate limiting.
-- `docs/RATE_LIMIT_FAILURE_POLICY.md` remains the source of truth for degradation/fallback behavior and operational interpretation; this ADR does not duplicate it.
+- `docs/contracts/RATE_LIMIT_FAILURE_POLICY.md` remains the source of truth for degradation/fallback behavior and operational interpretation; this ADR does not duplicate it.
 - The in-memory store now bounds its own memory usage under sustained load, in both of the modes where it can run for a process's entire lifetime.
 - Any future proposal to adopt `@nestjs/throttler` must show it preserves atomic multi-tier limiting and Redis-outage degradation without a regression, not just route-policy ergonomics.
