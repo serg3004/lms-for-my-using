@@ -43,6 +43,8 @@ test('DOC-12 closes transitional artifacts while preserving migration history', 
     'docs/archive/remediation/MVP_DEFINITION_OF_DONE_PRE_DOC12.md',
     'docs/archive/remediation/MVP_READINESS_DASHBOARD_PRE_DOC12.md',
     'docs/archive/remediation/RELEASE_GATE_PRE_DOC12.md',
+    'docs/archive/remediation/ENTITY_TECHSPEC_IMPLEMENTED_PRE_DOC12.md',
+    'docs/archive/remediation/ENTITY_TECHSPEC_UNIMPLEMENTED_PRE_DOC12.md',
   ]) {
     assert.ok(existsSync(resolve(repoRoot, path)), `DOC-12 remediation archive is missing: ${path}`);
   }
@@ -51,6 +53,8 @@ test('DOC-12 closes transitional artifacts while preserving migration history', 
   assert.match(read('docs/documentation_full_remediation_plan_pdca_v3.md'), /COMPLETED \/ SUPERSEDED/);
   assert.match(read('docs/product/MVP_DEFINITION_OF_DONE.md'), /SUPERSEDED/);
   assert.match(read('docs/status/MVP_READINESS_DASHBOARD.md'), /SUPERSEDED/);
+  assert.match(read('docs/contracts/ENTITY_TECHSPEC_IMPLEMENTED.md'), /SUPERSEDED/);
+  assert.match(read('docs/product/future/ENTITY_TECHSPEC_UNIMPLEMENTED.md'), /SUPERSEDED/);
 });
 
 test('current documentation map no longer exposes transitionals as current entry points', () => {
@@ -64,15 +68,21 @@ test('current documentation map no longer exposes transitionals as current entry
   assert.doesNotMatch(entryPoints, /MVP_READINESS_DASHBOARD/);
 });
 
-test('volatile module and RBAC inventories are derived instead of hand-maintained', () => {
+test('volatile inventories are derived or explicitly retired instead of hand-maintained', () => {
   const architecture = read('docs/architecture/ARCHITECTURE_MODULE_BOUNDARIES.md');
   const rbac = read('docs/contracts/API_RBAC_MATRIX.md');
+  const implementedEntities = read('docs/contracts/ENTITY_TECHSPEC_IMPLEMENTED.md');
+  const futureEntities = read('docs/product/future/ENTITY_TECHSPEC_UNIMPLEMENTED.md');
 
   assert.match(architecture, /generated\/MODULES\.md/);
   assert.doesNotMatch(architecture, /Current production `AppModule` imports/);
   assert.match(rbac, /generated\/RBAC\.md/);
   assert.doesNotMatch(rbac, /^\| Resource\/action \|/m);
   assert.doesNotMatch(rbac, /on \d+ controllers:/);
+  assert.match(implementedEntities, /generated\/ENTITIES\.md/);
+  assert.match(implementedEntities, /generated\/RBAC\.md/);
+  assert.match(futureEntities, /non-authoritative/);
+  assert.match(futureEntities, /GitHub Issue\/Project/);
 });
 
 test('repository-local Markdown path literals in current docs point to existing files', () => {
