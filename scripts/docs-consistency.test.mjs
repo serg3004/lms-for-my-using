@@ -15,10 +15,28 @@ const aiStarterPath = fileURLToPath(new URL('../docs/AI_AGENT_STARTER_PROMPT.md'
 const archiveReadmePath = fileURLToPath(new URL('../docs/archive/README.md', import.meta.url));
 const archivedMasterContextPath = fileURLToPath(new URL('../docs/archive/pre-implementation-master-context/', import.meta.url));
 const legacyMasterContextPath = fileURLToPath(new URL('../docs/master-context/', import.meta.url));
+const evidenceReadmePath = fileURLToPath(new URL('../docs/evidence/README.md', import.meta.url));
 const rootReadme = readFileSync(rootReadmePath, 'utf8');
 const docsReadme = readFileSync(docsReadmePath, 'utf8');
 const claude = readFileSync(claudePath, 'utf8');
 const aiStarter = readFileSync(aiStarterPath, 'utf8');
+
+const evidenceMoves = [
+  ['CI_AUDIT_BASELINE.md', 'audits/CI_AUDIT_BASELINE.md'],
+  ['DOCUMENTATION_AUDIT.md', 'audits/DOCUMENTATION_AUDIT.md'],
+  ['DEAD_CODE_AUDIT.md', 'audits/DEAD_CODE_AUDIT.md'],
+  ['FRONTEND_MVP_MAINTAINABILITY_AUDIT.md', 'audits/FRONTEND_MVP_MAINTAINABILITY_AUDIT.md'],
+  ['PR_89_102_VERIFICATION.md', 'audits/PR_89_102_VERIFICATION.md'],
+  ['PAGINATION_QUERY_PERFORMANCE_AUDIT.md', 'performance/PAGINATION_QUERY_PERFORMANCE_AUDIT.md'],
+  ['PR259_FRONTEND_PERFORMANCE_VERIFICATION.md', 'performance/PR259_FRONTEND_PERFORMANCE_VERIFICATION.md'],
+  ['PR265_PRODUCTION_VERIFICATION.md', 'production/PR265_PRODUCTION_VERIFICATION.md'],
+  ['PR_130_PRODUCTION_OBSERVABILITY_VERIFICATION.md', 'observability/PR_130_PRODUCTION_OBSERVABILITY_VERIFICATION.md'],
+  ['PR_161_OBSERVABILITY_VERIFICATION.md', 'observability/PR_161_OBSERVABILITY_VERIFICATION.md'],
+  ['SECURITY_AUDIT_PR_153.md', 'security/SECURITY_AUDIT_PR_153.md'],
+  ['RAILWAY_PRODUCTION_SMOKE_STATUS.md', 'smoke/RAILWAY_PRODUCTION_SMOKE_STATUS.md'],
+  ['STAGING_SMOKE_REPORT.md', 'smoke/STAGING_SMOKE_REPORT.md'],
+  ['runbooks/INCIDENT_RESPONSE_TABLETOP_2026-08-22.md', 'incidents/INCIDENT_RESPONSE_TABLETOP_2026-08-22.md'],
+];
 
 function sorted(values) {
   return [...values].sort();
@@ -102,6 +120,8 @@ test('documentation governance entry points exist', () => {
     'README.md',
     'docs/README.md',
     'docs/AI_AGENT_STARTER_PROMPT.md',
+    'docs/archive/README.md',
+    'docs/evidence/README.md',
     'docs/documentation_full_remediation_plan_pdca_v3.md',
   ];
 
@@ -135,6 +155,20 @@ test('pre-implementation master context is archived completely', () => {
     archivedFiles.includes('AI_AGENT_STARTER_PROMPT.md'),
     'historical AI agent starter must remain in the pre-implementation archive',
   );
+});
+
+test('verification snapshots are separated into evidence without broken local links', () => {
+  assert.ok(existsSync(evidenceReadmePath), 'docs/evidence/README.md is missing');
+  assertRelativeTargetsExist(readFileSync(evidenceReadmePath, 'utf8'), evidenceReadmePath);
+
+  for (const [legacyRelativePath, evidenceRelativePath] of evidenceMoves) {
+    const legacyPath = resolve(repoRoot, 'docs', legacyRelativePath);
+    const evidencePath = resolve(repoRoot, 'docs/evidence', evidenceRelativePath);
+
+    assert.ok(!existsSync(legacyPath), `evidence snapshot still exists in current documentation: docs/${legacyRelativePath}`);
+    assert.ok(existsSync(evidencePath), `moved evidence snapshot is missing: docs/evidence/${evidenceRelativePath}`);
+    assertRelativeTargetsExist(readFileSync(evidencePath, 'utf8'), evidencePath);
+  }
 });
 
 test('docs README current entry-point paths resolve without scanning history', () => {

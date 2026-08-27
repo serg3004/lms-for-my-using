@@ -92,7 +92,7 @@ docs/
 
 ## Evidence и history
 
-Audit, smoke, production verification, performance verification и аналогичные отчёты описывают то, что наблюдалось в конкретный момент. Они не доказывают текущее состояние без повторной проверки.
+Audit, smoke, production verification, performance verification и аналогичные отчёты описывают то, что наблюдалось в конкретный момент. Они не доказывают текущее состояние без повторной проверки. Evidence отделён в `docs/evidence/`; lifecycle, metadata и текущий index находятся в `docs/evidence/README.md`.
 
 Pre-implementation context физически отделён от current knowledge и хранится в `docs/archive/pre-implementation-master-context/`. Это historical material и не является authority для current implementation; правила и index архива находятся в `docs/archive/README.md`.
 
