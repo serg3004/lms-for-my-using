@@ -17,6 +17,11 @@ const archivedMasterContextPath = fileURLToPath(new URL('../docs/archive/pre-imp
 const legacyMasterContextPath = fileURLToPath(new URL('../docs/master-context/', import.meta.url));
 const evidenceReadmePath = fileURLToPath(new URL('../docs/evidence/README.md', import.meta.url));
 const pathMapPath = fileURLToPath(new URL('../docs/_meta/path-map.json', import.meta.url));
+const activeWorkMigrationPath = fileURLToPath(new URL('../docs/_meta/active-work-migration.json', import.meta.url));
+const openDecisionsPath = fileURLToPath(new URL('../docs/status/OPEN_DECISIONS.md', import.meta.url));
+const pullRequestTemplatePath = fileURLToPath(new URL('../.github/pull_request_template.md', import.meta.url));
+const issueTemplatePath = fileURLToPath(new URL('../.github/ISSUE_TEMPLATE/work-item.md', import.meta.url));
+const workflowsPath = fileURLToPath(new URL('../.github/workflows/', import.meta.url));
 const rootReadme = readFileSync(rootReadmePath, 'utf8');
 const docsReadme = readFileSync(docsReadmePath, 'utf8');
 const claude = readFileSync(claudePath, 'utf8');
@@ -46,6 +51,19 @@ const taxonomyDirectories = [
   'docs/runbooks',
   'docs/quality',
   'docs/status',
+];
+
+const retiredTrackerMoves = [
+  ['docs/DEVELOPMENT_PLAN.md', 'docs/archive/development-ledger/DEVELOPMENT_PLAN.md'],
+  ['docs/TODO_VERIFY.md', 'docs/archive/old-trackers/TODO_VERIFY.md'],
+  ['docs/CONCERNS.md', 'docs/archive/old-trackers/CONCERNS.md'],
+  ['docs/RECOMMENDATIONS.md', 'docs/archive/old-trackers/RECOMMENDATIONS.md'],
+  ['docs/PRODUCTION_HARDENING_BACKLOG.md', 'docs/archive/old-trackers/PRODUCTION_HARDENING_BACKLOG.md'],
+  ['docs/FRONTEND_COVERAGE_ROADMAP.md', 'docs/archive/old-trackers/FRONTEND_COVERAGE_ROADMAP.md'],
+  ['docs/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md', 'docs/archive/old-trackers/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md'],
+  ['docs/ORG_STRUCTURE_PR_PLAN.md', 'docs/archive/old-trackers/ORG_STRUCTURE_PR_PLAN.md'],
+  ['docs/BRANCH_PROTECTION_FUTURE_WORK.md', 'docs/archive/old-trackers/BRANCH_PROTECTION_FUTURE_WORK.md'],
+  ['docs/PROJECT_LOG.md', 'docs/archive/old-trackers/PROJECT_LOG.md'],
 ];
 
 function sorted(values) {
@@ -142,7 +160,11 @@ test('documentation governance entry points exist', () => {
     'docs/AI_AGENT_STARTER_PROMPT.md',
     'docs/archive/README.md',
     'docs/evidence/README.md',
+    'docs/status/OPEN_DECISIONS.md',
     'docs/_meta/path-map.json',
+    'docs/_meta/active-work-migration.json',
+    '.github/ISSUE_TEMPLATE/work-item.md',
+    '.github/pull_request_template.md',
     'docs/documentation_full_remediation_plan_pdca_v3.md',
   ];
 
@@ -204,6 +226,46 @@ test('DOC-07 path map matches the current taxonomy migration', () => {
   for (const [oldPath, newPath] of moves) {
     assert.ok(!existsSync(resolve(repoRoot, oldPath)), `legacy current-document path still exists: ${oldPath}`);
     assert.ok(existsSync(resolve(repoRoot, newPath)), `mapped current-document target is missing: ${newPath}`);
+  }
+});
+
+test('DOC-08 retires writable Markdown trackers without losing migration provenance', () => {
+  const migration = JSON.parse(readFileSync(activeWorkMigrationPath, 'utf8'));
+  assert.equal(migration.canonicalOwners.implementation, 'GitHub Issues/Project');
+  assert.equal(migration.canonicalOwners.ownerDecisions, 'docs/status/OPEN_DECISIONS.md');
+  assert.ok(Array.isArray(migration.implementationWorkItems));
+  assert.ok(migration.implementationWorkItems.length > 0, 'DOC-08 must preserve confirmed implementation work items');
+
+  const stableIds = migration.implementationWorkItems.map((item) => item.stableId);
+  assert.equal(new Set(stableIds).size, stableIds.length, 'DOC-08 work-item stable IDs must be unique');
+
+  for (const [legacyPath, archivedPath] of retiredTrackerMoves) {
+    assert.ok(!existsSync(resolve(repoRoot, legacyPath)), `legacy writable tracker still exists: ${legacyPath}`);
+    assert.ok(existsSync(resolve(repoRoot, archivedPath)), `archived tracker is missing: ${archivedPath}`);
+  }
+
+  const decisions = readFileSync(openDecisionsPath, 'utf8');
+  assert.match(decisions, /единственный writable Markdown-регистр только для owner\/business decisions/);
+});
+
+test('GitHub templates use work-item ownership instead of development-ledger planning', () => {
+  const pullRequestTemplate = readFileSync(pullRequestTemplatePath, 'utf8');
+  const issueTemplate = readFileSync(issueTemplatePath, 'utf8');
+
+  assert.doesNotMatch(pullRequestTemplate, /DEVELOPMENT_PLAN|Plan PR:/);
+  assert.match(pullRequestTemplate, /Work item:/);
+  assert.match(issueTemplate, /## Цель/);
+  assert.match(issueTemplate, /## Scope/);
+  assert.match(issueTemplate, /## Критерии готовности/);
+  assert.match(issueTemplate, /## Риск \/ rollback/);
+  assert.match(issueTemplate, /## Docs impact/);
+});
+
+test('current GitHub workflows do not append or depend on the archived development ledger', () => {
+  const workflowFiles = readdirSync(workflowsPath).filter((entry) => /\.ya?ml$/.test(entry));
+  for (const workflowFile of workflowFiles) {
+    const content = readFileSync(resolve(workflowsPath, workflowFile), 'utf8');
+    assert.doesNotMatch(content, /DEVELOPMENT_PLAN\.md/, `workflow still depends on archived ledger: ${workflowFile}`);
   }
 });
 

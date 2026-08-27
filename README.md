@@ -61,8 +61,10 @@ Key current documents:
 
 - [`docs/product/MVP_SCOPE_LOCK.md`](./docs/product/MVP_SCOPE_LOCK.md) — MVP product boundaries;
 - [`docs/contracts/API_CONTRACTS.md`](./docs/contracts/API_CONTRACTS.md) — human API semantics/invariants;
-- [`docs/TODO_VERIFY.md`](./docs/TODO_VERIFY.md) — transitional registry of unresolved owner/live questions;
+- [`docs/status/OPEN_DECISIONS.md`](./docs/status/OPEN_DECISIONS.md) — unresolved owner/business decisions only;
 - [`docs/runbooks/RELEASE_GATE.md`](./docs/runbooks/RELEASE_GATE.md) — release gate.
+
+Active implementation work belongs in GitHub Issues/Project, not in Markdown backlog files.
 
 ## Repository structure
 

@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "purpose": "DOC-08 migration from writable Markdown trackers to canonical GitHub work items and owner decisions",
+  "canonicalOwners": {
+    "implementation": "GitHub Issues/Project",
+    "ownerDecisions": "docs/status/OPEN_DECISIONS.md",
+    "liveState": "fresh live read-back + dated evidence",
+    "history": "docs/archive/"
+  },
+  "implementationWorkItems": [
+    {
+      "stableId": "SEC-GROUP-001",
+      "title": "Enforce manager object scope for group membership management",
+      "sources": ["TODO_VERIFY:TV-020/TV-056", "ORG_STRUCTURE_IMPLEMENTATION_PLAN", "ORG_STRUCTURE_PR_PLAN"],
+      "currentEvidence": ["apps/api/src/modules/groups/groups.controller.ts", "apps/api/src/modules/groups/groups.service.ts", "apps/api/src/modules/auth/roles.ts"],
+      "issue": 725,
+      "status": "CANONICAL_GITHUB_ISSUE"
+    },
+    {
+      "stableId": "TEST-RBAC-001",
+      "title": "Expand behavioral RBAC coverage beyond the currently dedicated controllers",
+      "sources": ["CONCERNS:2026-07-31-rbac-tests"],
+      "currentEvidence": ["apps/api/src/modules/assignments", "apps/api/src/modules/progress", "apps/api/src/modules/auth/roles.spec.ts"],
+      "issue": 726,
+      "status": "CANONICAL_GITHUB_ISSUE"
+    },
+    {
+      "stableId": "UX-PROGRESS-001",
+      "title": "Render exact learner course progress from canonical completion data",
+      "sources": ["RECOMMENDATIONS:R2.2", "PRODUCTION_HARDENING_BACKLOG:H-003"],
+      "currentEvidence": ["apps/web/src/app/LearnerCoursesPage.tsx"],
+      "issue": 727,
+      "status": "CANONICAL_GITHUB_ISSUE"
+    },
+    {
+      "stableId": "TEST-WEB-001",
+      "title": "Raise frontend coverage in staged increments without broad exclusions",
+      "sources": ["FRONTEND_COVERAGE_ROADMAP", "CONCERNS:2026-07-31-coverage"],
+      "currentEvidence": ["apps/web/vitest.config.ts"],
+      "issue": 728,
+      "status": "CANONICAL_GITHUB_ISSUE"
+    },
+    {
+      "stableId": "UX-ADMIN-ZOOM-001",
+      "title": "Investigate and fix admin sidebar two-column rendering at high browser zoom",
+      "sources": ["CONCERNS:2026-08-05-admin-sidebar-zoom"],
+      "currentEvidence": ["apps/web/src/styles/admin.css", "apps/web/src/shared/adminPage.tsx"],
+      "issue": 729,
+      "status": "CANONICAL_GITHUB_ISSUE"
+    }
+  ],
+  "decisionMappings": {
+    "TODO_VERIFY:TV-020/TV-056": "DEC-ORG-001",
+    "TODO_VERIFY:TV-024": "DEC-MVP-001",
+    "TODO_VERIFY:TV-030": "DEC-AUTH-001",
+    "TODO_VERIFY:TV-032": "DEC-INFRA-001",
+    "TODO_VERIFY:TV-047": "DEC-MVP-002",
+    "TODO_VERIFY:TV-048": "DEC-MAIL-001",
+    "TODO_VERIFY:TV-054": "DEC-OPS-001",
+    "RECOMMENDATIONS:R2.1": "DEC-UX-001",
+    "RECOMMENDATIONS:R2.3": "DEC-UX-002",
+    "RECOMMENDATIONS:R3": "DEC-MSG-001",
+    "CONCERNS:admin-roles-custom-role": "DEC-RBAC-001",
+    "CONCERNS:admin-roles-badge-variant": "DEC-DS-001",
+    "PRODUCTION_HARDENING_BACKLOG:H-008": "DEC-SEC-001"
+  },
+  "liveVerificationMappings": {
+    "TODO_VERIFY:TV-008": "storage provider/bucket/CORS/lifecycle live read-back",
+    "TODO_VERIFY:TV-032": "Redis live topology/availability",
+    "TODO_VERIFY:TV-048": "delivery provider/live delivery evidence",
+    "TODO_VERIFY:TV-054": "backup/PITR/restore live evidence",
+    "TODO_VERIFY:TV-055": "observability delivery/alert routing live evidence",
+    "PRODUCTION_HARDENING_BACKLOG:H-009": "Redis live topology/availability",
+    "PRODUCTION_HARDENING_BACKLOG:H-010": "malware scanner live integration",
+    "PRODUCTION_HARDENING_BACKLOG:H-011": "storage provider/CORS/cleanup scheduling",
+    "PRODUCTION_HARDENING_BACKLOG:H-012": "observability delivery/alert routing",
+    "PRODUCTION_HARDENING_BACKLOG:H-013": "backup/PITR/restore evidence"
+  },
+  "retiredOrNoLongerApplicable": [
+    "CONCERNS:password-reset-stub — current password reset is implemented",
+    "CONCERNS:audit-log-and-notifications-missing — both capabilities are implemented; only MVP disposition remains",
+    "CONCERNS:e2e-watch-server-investigation — current E2E uses production build and recent required CI is green",
+    "RECOMMENDATIONS:R1-dependabot-directories — current pnpm root scan covers workspace packages; no extra directory required",
+    "RECOMMENDATIONS:R4-refresh-mock — responsive guest refresh mock is implemented",
+    "PRODUCTION_HARDENING_BACKLOG:H-005 — implemented",
+    "PRODUCTION_HARDENING_BACKLOG:H-006 — current root pnpm Dependabot configuration covers workspace inventory",
+    "PRODUCTION_HARDENING_BACKLOG:H-007 — branch protection/ruleset implemented",
+    "BRANCH_PROTECTION_FUTURE_WORK — historical planning only",
+    "PRODUCTION_HARDENING_BACKLOG:H-014 — deferred, not an active implementation obligation"
+  ],
+  "archivedSources": [
+    "docs/DEVELOPMENT_PLAN.md",
+    "docs/TODO_VERIFY.md",
+    "docs/CONCERNS.md",
+    "docs/RECOMMENDATIONS.md",
+    "docs/PRODUCTION_HARDENING_BACKLOG.md",
+    "docs/FRONTEND_COVERAGE_ROADMAP.md",
+    "docs/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md",
+    "docs/ORG_STRUCTURE_PR_PLAN.md",
+    "docs/BRANCH_PROTECTION_FUTURE_WORK.md",
+    "docs/PROJECT_LOG.md"
+  ]
+}

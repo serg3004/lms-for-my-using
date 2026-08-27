@@ -64,6 +64,8 @@ Current repository содержит `AuditLogModule`, `AuditLog` model и admin 
 
 Владелец должен выбрать: `REQUIRED_FOR_MVP` / `POST_MVP` / `REMOVED_FROM_MVP`.
 
+Canonical registry unresolved owner/business decisions — `docs/status/OPEN_DECISIONS.md`.
+
 ## 5. Storage / deployment
 
 MVP требует S3-compatible storage capability, но конкретный live provider — `LIVE-VERIFY`.
@@ -97,4 +99,4 @@ Notifications и General Audit Log уже реализованы, но их MVP 
 
 - `docs/README.md`
 - `docs/PROJECT_SOURCE_OF_TRUTH.md`
-- `docs/TODO_VERIFY.md`
+- `docs/status/OPEN_DECISIONS.md`

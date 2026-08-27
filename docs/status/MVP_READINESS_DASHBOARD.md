@@ -21,9 +21,9 @@
 | Область | Статус | Комментарий |
 |---|---|---|
 | Core backend MVP surface | `READY` | Current API содержит core learning/admin/manager flows; API surface проверять по runtime OpenAPI/controllers. |
-| Core Web role surfaces | `READY` / `PARTIAL` | Основные role surfaces существуют; отдельные UX gaps живут в backlog. |
+| Core Web role surfaces | `READY` / `PARTIAL` | Основные role surfaces существуют; отдельные UX gaps ведутся как GitHub Issues. |
 | Auth/session | `READY` | Server-side sessions, refresh rotation/revocation, logout/logout-all и password-reset flow реализованы. |
-| RBAC/tenant scoping | `READY` / `PARTIAL` | Role policies/guards существуют; известный manager/group object-scope security finding остаётся отдельным work item. |
+| RBAC/tenant scoping | `READY` / `PARTIAL` | Role policies/guards существуют; manager/group object-scope security finding ведётся как GitHub Issue #725. |
 | API error semantics | `READY` | Current shared/runtime error layer является authority. |
 | Runtime OpenAPI | `READY` | `/api/v1/api-json` + controllers — authority; manual route inventories не поддерживаются как current truth. |
 | CI implementation | `READY` | Workflows существуют; required-check/ruleset enforcement всегда `LIVE-VERIFY`. |
@@ -51,7 +51,7 @@ Dated production verification files сохраняют observed snapshot, но �
 
 ## Owner decisions
 
-Сводный источник open decisions до DOC-08 — `docs/TODO_VERIFY.md`.
+Canonical source unresolved owner/business decisions — `docs/status/OPEN_DECISIONS.md`.
 
 Ключевые unresolved decisions после reconciliation:
 
@@ -69,9 +69,10 @@ Dated production verification files сохраняют observed snapshot, но �
 
 1. `docs/README.md` — ownership/governance.
 2. Canonical code/config/runtime owner-source — implementation fact.
-3. `docs/MVP_SCOPE_LOCK.md` — MVP boundaries.
-4. `docs/TODO_VERIFY.md` — unresolved decision/live registry.
-5. Dated evidence — what was observed then.
-6. This dashboard — summary only.
+3. `docs/product/MVP_SCOPE_LOCK.md` — MVP boundaries.
+4. `docs/status/OPEN_DECISIONS.md` — unresolved owner/business decisions.
+5. GitHub Issues/Project — active implementation work.
+6. Dated evidence — what was observed then.
+7. This dashboard — summary only.
 
 Historical smoke/status docs do not override current owner-sources.
