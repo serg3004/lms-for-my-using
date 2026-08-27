@@ -107,6 +107,22 @@
       "reason": "Deployment/migration procedures are operational contracts and must stay synchronized with executable configuration."
     },
     {
+      "id": "storage-upload",
+      "sourceGlobs": [
+        "apps/api/src/modules/upload/upload.service.ts",
+        "apps/api/src/modules/upload/upload.validation.ts",
+        "apps/api/src/modules/course-materials/material-multipart-upload.service.ts",
+        "apps/api/src/modules/course-materials/material-malware-scan.service.ts",
+        "apps/api/src/modules/course-materials/material-storage-lifecycle.service.ts"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/contracts/STORAGE_UPLOAD_STATUS.md"
+      ],
+      "scope": "Object-storage operations, upload validation, multipart lifecycle, malware quarantine and storage cleanup semantics.",
+      "reason": "Storage/upload behaviour is a manual operational contract; changes to its primary implementation owners must trigger documentation review even though provider live state remains external evidence."
+    },
+    {
       "id": "security-release",
       "sourceGlobs": [
         ".github/workflows/ci.yml",
