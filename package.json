@@ -32,7 +32,8 @@
     "docs:generate": "pnpm --filter @lms/shared build && pnpm --filter @lms/api build && node apps/api/dist/scripts/generate-docs.js",
     "docs:generate:check:test": "node --test scripts/check-generated-docs.test.mjs",
     "docs:generate:check": "pnpm docs:generate:check:test && node scripts/check-generated-docs.mjs",
-    "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs && pnpm docs:generate:check"
+    "docs:impact:test": "node --test scripts/docs-impact.test.mjs && pnpm docs:generate:check && node scripts/docs-impact.mjs",
+    "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs && pnpm docs:impact:test"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
