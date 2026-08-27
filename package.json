@@ -30,7 +30,8 @@
     "release:gate": "node scripts/verify-release-gate.mjs",
     "release:gate:test": "node --test scripts/verify-release-gate.test.mjs",
     "docs:generate": "pnpm --filter @lms/shared build && pnpm --filter @lms/api build && node apps/api/dist/scripts/generate-docs.js",
-    "docs:generate:check": "node scripts/check-generated-docs.mjs",
+    "docs:generate:check:test": "node --test scripts/check-generated-docs.test.mjs",
+    "docs:generate:check": "pnpm docs:generate:check:test && node scripts/check-generated-docs.mjs",
     "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs && pnpm docs:generate:check"
   },
   "devDependencies": {
