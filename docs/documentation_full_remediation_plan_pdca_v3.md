@@ -353,6 +353,27 @@ oldPath → purpose → lifecycle → newPath → inbound references → scripts
 
 ---
 
+# DOC-09.1 — [P1] Stale generated artifacts remediation
+
+### Цель
+Зафиксировать единый способ устранения stale generated artifacts без ручного редактирования generated outputs и без ослабления strict CI gate.
+
+### Что необходимо сделать
+- В `AGENTS.md` закрепить алгоритм работы со stale generated artifacts: запустить `pnpm docs:generate:check`; при drift выполнить `pnpm docs:generate`, просмотреть фактический diff generated files и сверить его с authoritative sources; generated files вручную не редактировать; затем повторно запустить `pnpm docs:generate:check`.
+- В `docs/generated/README.md` добавить troubleshooting: команда восстановления, как читать diff, что делать при неожиданном/пустом/частичном output и когда исправлять generator/authoritative source вместо generated Markdown.
+- В `scripts/check-generated-docs.mjs` сохранить полезную диагностику с фактическим `git diff` и GitHub annotation/summary; stale state MUST по-прежнему завершаться non-zero.
+- Проверить, что `pnpm docs:generate:check` остаётся строгим: stale artifacts ломают check, clean generated state проходит; после remediation check зелёный.
+- DOC-09.1 реализовать как один work item → одна branch → один PR; unrelated changes не включать.
+
+### Критерии готовности
+- [ ] `AGENTS.md` содержит воспроизводимый алгоритм recovery для stale generated artifacts.
+- [ ] `docs/generated/README.md` содержит troubleshooting для generated drift.
+- [ ] `scripts/check-generated-docs.mjs` показывает фактический diff/annotation и не скрывает drift.
+- [ ] Stale generated state даёт non-zero; clean generated state даёт zero; финальный `pnpm docs:generate:check` зелёный.
+- [ ] Весь DOC-09.1 выполнен одной задачей → одной веткой → одним PR.
+
+---
+
 # DOC-10 — [P1] Source→docs impact enforcement
 
 ### Цель
@@ -529,7 +550,7 @@ docs/
 ```text
 DOC-01 → DOC-02 → DOC-03 → CHECKPOINT
        → DOC-04 → DOC-05 → DOC-06 → CHECKPOINT
-       → DOC-07 → DOC-08 → DOC-09 → DOC-10 → CHECKPOINT
+       → DOC-07 → DOC-08 → DOC-09 → DOC-09.1 → DOC-10 → CHECKPOINT
        → DOC-11 → DOC-12
 ```
 
