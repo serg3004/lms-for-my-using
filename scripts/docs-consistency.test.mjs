@@ -6,8 +6,8 @@ import { fileURLToPath, URL } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const appModule = readFileSync(new URL('../apps/api/src/app.module.ts', import.meta.url), 'utf8');
-const architecture = readFileSync(new URL('../docs/ARCHITECTURE_MODULE_BOUNDARIES.md', import.meta.url), 'utf8');
-const rbac = readFileSync(new URL('../docs/API_RBAC_MATRIX.md', import.meta.url), 'utf8');
+const architecture = readFileSync(new URL('../docs/architecture/ARCHITECTURE_MODULE_BOUNDARIES.md', import.meta.url), 'utf8');
+const rbac = readFileSync(new URL('../docs/contracts/API_RBAC_MATRIX.md', import.meta.url), 'utf8');
 const rootReadmePath = fileURLToPath(new URL('../README.md', import.meta.url));
 const docsReadmePath = fileURLToPath(new URL('../docs/README.md', import.meta.url));
 const claudePath = fileURLToPath(new URL('../CLAUDE.md', import.meta.url));
@@ -16,6 +16,7 @@ const archiveReadmePath = fileURLToPath(new URL('../docs/archive/README.md', imp
 const archivedMasterContextPath = fileURLToPath(new URL('../docs/archive/pre-implementation-master-context/', import.meta.url));
 const legacyMasterContextPath = fileURLToPath(new URL('../docs/master-context/', import.meta.url));
 const evidenceReadmePath = fileURLToPath(new URL('../docs/evidence/README.md', import.meta.url));
+const pathMapPath = fileURLToPath(new URL('../docs/_meta/path-map.json', import.meta.url));
 const rootReadme = readFileSync(rootReadmePath, 'utf8');
 const docsReadme = readFileSync(docsReadmePath, 'utf8');
 const claude = readFileSync(claudePath, 'utf8');
@@ -38,6 +39,15 @@ const evidenceMoves = [
   ['runbooks/INCIDENT_RESPONSE_TABLETOP_2026-08-22.md', 'incidents/INCIDENT_RESPONSE_TABLETOP_2026-08-22.md'],
 ];
 
+const taxonomyDirectories = [
+  'docs/product',
+  'docs/architecture',
+  'docs/contracts',
+  'docs/runbooks',
+  'docs/quality',
+  'docs/status',
+];
+
 function sorted(values) {
   return [...values].sort();
 }
@@ -56,6 +66,16 @@ function assertRelativeTargetsExist(markdown, sourcePath) {
     const resolved = resolve(dirname(sourcePath), decodeURIComponent(target));
     assert.ok(existsSync(resolved), `broken local documentation link: ${target} from ${sourcePath}`);
   }
+}
+
+function markdownFilesRecursively(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const entryPath = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      return markdownFilesRecursively(entryPath);
+    }
+    return entry.isFile() && entry.name.endsWith('.md') ? [entryPath] : [];
+  });
 }
 
 function globPatternToRegExp(pattern) {
@@ -122,6 +142,7 @@ test('documentation governance entry points exist', () => {
     'docs/AI_AGENT_STARTER_PROMPT.md',
     'docs/archive/README.md',
     'docs/evidence/README.md',
+    'docs/_meta/path-map.json',
     'docs/documentation_full_remediation_plan_pdca_v3.md',
   ];
 
@@ -168,6 +189,32 @@ test('verification snapshots are separated into evidence without broken local li
     assert.ok(!existsSync(legacyPath), `evidence snapshot still exists in current documentation: docs/${legacyRelativePath}`);
     assert.ok(existsSync(evidencePath), `moved evidence snapshot is missing: docs/evidence/${evidenceRelativePath}`);
     assertRelativeTargetsExist(readFileSync(evidencePath, 'utf8'), evidencePath);
+  }
+});
+
+test('DOC-07 path map matches the current taxonomy migration', () => {
+  const pathMap = JSON.parse(readFileSync(pathMapPath, 'utf8'));
+  assert.equal(pathMap.lifecycle, 'TEMPORARY');
+  assert.match(pathMap.exitCondition, /DOC-12/);
+
+  const moves = Object.entries(pathMap.moves ?? {});
+  assert.equal(moves.length, 43, 'DOC-07 path map must contain exactly 43 current-document moves');
+  assert.equal(new Set(moves.map(([, newPath]) => newPath)).size, moves.length, 'DOC-07 path-map targets must be unique');
+
+  for (const [oldPath, newPath] of moves) {
+    assert.ok(!existsSync(resolve(repoRoot, oldPath)), `legacy current-document path still exists: ${oldPath}`);
+    assert.ok(existsSync(resolve(repoRoot, newPath)), `mapped current-document target is missing: ${newPath}`);
+  }
+});
+
+test('current taxonomy local Markdown links resolve', () => {
+  for (const relativeDirectory of taxonomyDirectories) {
+    const directory = resolve(repoRoot, relativeDirectory);
+    assert.ok(existsSync(directory), `current taxonomy directory is missing: ${relativeDirectory}`);
+
+    for (const markdownPath of markdownFilesRecursively(directory)) {
+      assertRelativeTargetsExist(readFileSync(markdownPath, 'utf8'), markdownPath);
+    }
   }
 });
 

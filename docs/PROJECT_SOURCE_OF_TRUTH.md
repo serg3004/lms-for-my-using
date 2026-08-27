@@ -60,7 +60,7 @@
 - drag-and-drop course builder;
 - custom role builder.
 
-Подробный scope и unresolved scope decisions находятся в `docs/MVP_SCOPE_LOCK.md`.
+Подробный scope и unresolved scope decisions находятся в `docs/product/MVP_SCOPE_LOCK.md`.
 
 ## 3. Current implementation guidance
 
@@ -82,7 +82,7 @@
 
 Наличие реализации не означает автоматического решения «обязательно для MVP».
 
-В частности, Notifications и General Audit Log уже присутствуют в current implementation, но их product/MVP disposition остаётся отдельным scope decision, пока владелец не закроет соответствующие пункты в `MVP_SCOPE_LOCK.md` / `TODO_VERIFY.md`.
+В частности, Notifications и General Audit Log уже присутствуют в current implementation, но их product/MVP disposition остаётся отдельным scope decision, пока владелец не закроет соответствующие пункты в `product/MVP_SCOPE_LOCK.md` / `TODO_VERIFY.md`.
 
 ИИ-агент не должен удалять существующую capability или объявлять её обязательным MVP gate только из-за факта реализации.
 
@@ -105,8 +105,8 @@ Pre-implementation master context хранится в `docs/archive/pre-implemen
 ## 7. Связанные current документы
 
 - `docs/README.md` — documentation map и ownership.
-- `docs/MVP_SCOPE_LOCK.md` — product/MVP boundaries.
+- `docs/product/MVP_SCOPE_LOCK.md` — product/MVP boundaries.
 - `docs/TODO_VERIFY.md` — decision / implementation / live verification registry до его последующей миграции.
-- `docs/API_CONTRACTS.md` — human API semantics; API surface authority остаётся runtime OpenAPI + controllers.
+- `docs/contracts/API_CONTRACTS.md` — human API semantics; API surface authority остаётся runtime OpenAPI + controllers.
 
 Этот файл будет superseded/archive на DOC-12 после распределения уникального decision content по целевой taxonomy.

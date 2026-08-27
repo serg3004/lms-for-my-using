@@ -21,13 +21,13 @@
 | Permissions / RBAC | `apps/api/src/modules/auth/roles.ts` + guards/access decorators |
 | HTTP API surface | runtime OpenAPI + controllers |
 | Nest modules | `apps/api/src/app.module.ts` |
-| Product/MVP scope | product/scope documents; до DOC-07 — существующие MVP scope docs |
-| Architecture rationale | ADR |
-| Behaviour semantics / invariants | contracts |
-| Operations | runbooks |
+| Product/MVP scope | `docs/product/` |
+| Architecture rationale | `docs/architecture/adr/` |
+| Behaviour semantics / invariants | `docs/contracts/` |
+| Operations | `docs/runbooks/` |
 | Live environment/platform state | live read-back + dated evidence |
 | Active implementation work | GitHub Issue |
-| Business/owner decisions | decision/status documents; после DOC-07 — `docs/status/OPEN_DECISIONS.md` |
+| Business/owner decisions | transitional decision/status docs; after DOC-08 — `docs/status/OPEN_DECISIONS.md` |
 | UI design reference | prototypes + manifest |
 | Historical knowledge | archive/history; не current authority |
 
@@ -56,14 +56,16 @@
 
 ADR, contract или runbook могут быть CURRENT или SUPERSEDED. Evidence — immutable snapshot: его не «осовременивают» вслед за изменением кода.
 
-## Куда помещать новый документ
+## Current taxonomy
 
-Целевая taxonomy проекта:
+Current normative documentation организована по назначению:
 
 ```text
 docs/
 ├── product/
-├── architecture/adr/
+│   └── future/
+├── architecture/
+│   └── adr/
 ├── contracts/
 ├── runbooks/
 ├── quality/
@@ -75,20 +77,22 @@ docs/
 └── lms-ui-prototypes-complete/
 ```
 
-Реорганизация существующих файлов выполняется отдельными этапами DOC-05…DOC-07. До их завершения существующий путь не означает, что документ автоматически CURRENT или canonical. Новые документы следует размещать по целевой taxonomy только когда нужный каталог уже введён соответствующим этапом; до этого не создавайте частичную параллельную структуру без необходимости.
+Planning/tracker/transitional документы, которые ещё должны быть разобраны на DOC-08/DOC-12, могут временно оставаться в root `docs/`. Их нахождение в root не делает их canonical current authority.
 
-## Current entry points до завершения реорганизации
+`docs/_meta/path-map.json` — временная карта old→new путей DOC-07 для migration/link audit. Она не является source of truth и должна быть удалена либо архивирована на DOC-12 после финального link audit.
 
-Пока DOC-02…DOC-08 не завершены, используйте существующие документы только после проверки их claims по owner-source. Для типичных задач начальные точки такие:
+## Current entry points
 
-- MVP/product scope: `MVP_SCOPE_LOCK.md`, `MVP_DEFINITION_OF_DONE.md`;
-- API/RBAC semantics: `API_CONTRACTS.md`, `API_RBAC_MATRIX.md`;
-- local operation: `MVP_LOCAL_RUNBOOK.md` и `runbooks/`;
-- release/readiness: `RELEASE_GATE.md`, `READINESS_AND_SECURITY_GATES.md`;
-- architecture decisions: `ADR_*.md`, `ARCHITECTURE_MODULE_BOUNDARIES.md`;
+Для типичных задач начальные точки такие:
+
+- MVP/product scope: `product/MVP_SCOPE_LOCK.md`, `product/MVP_DEFINITION_OF_DONE.md`;
+- API/RBAC semantics: `contracts/API_CONTRACTS.md`, `contracts/API_RBAC_MATRIX.md`;
+- local operation: `runbooks/MVP_LOCAL_RUNBOOK.md` и `runbooks/`;
+- release/readiness: `runbooks/RELEASE_GATE.md`, `quality/READINESS_AND_SECURITY_GATES.md`;
+- architecture decisions: `architecture/adr/ADR_*.md`, `architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`;
 - current documentation remediation plan: `documentation_full_remediation_plan_pdca_v3.md`.
 
-Этот список — навигация, а не подтверждение фактической актуальности каждого claim внутри перечисленных файлов. Factual reconciliation выполняет DOC-02.
+Этот список — навигация, а не подтверждение фактической актуальности каждого claim внутри перечисленных файлов. Current implementation facts по-прежнему проверяются по canonical owner-source.
 
 ## Evidence и history
 

@@ -75,7 +75,7 @@ Current storage architecture — S3-compatible и provider-neutral.
 | Automatic cleanup scheduling | `missing` | Команды существуют, но repository не создаёт cron/scheduler. Это deployment task. |
 | Live provider/CORS/scanner verification | `missing` | Не может быть реализовано repository code: требуется deployment evidence. |
 
-Детальный план закрытия deployment-зависимых пунктов, inventory env и оценка приведены в [`STORAGE_PLAN.md`](./STORAGE_PLAN.md).
+Детальный план закрытия deployment-зависимых пунктов, inventory env и оценка приведены в [`STORAGE_PLAN.md`](../runbooks/STORAGE_PLAN.md).
 
 ---
 

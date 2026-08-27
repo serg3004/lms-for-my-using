@@ -4,7 +4,7 @@ Learning management system.
 
 ## Project status
 
-Current stage: MVP release candidate with a fail-closed, environment-specific release gate. A production `GO` requires fresh CI, CodeQL, smoke, dependency and rollback evidence; see `docs/RELEASE_GATE.md`.
+Current stage: MVP release candidate with a fail-closed, environment-specific release gate. A production `GO` requires fresh CI, CodeQL, smoke, dependency and rollback evidence; see `docs/runbooks/RELEASE_GATE.md`.
 
 Current repository implementation includes:
 
@@ -39,7 +39,7 @@ The current HTTP API surface is defined by runtime OpenAPI plus controllers:
 - Swagger UI: `/api/v1/docs`;
 - legacy `/api/v1/openapi` is deprecated.
 
-Do not use a hand-maintained route list in this README as the API inventory. Human API semantics are documented in `docs/API_CONTRACTS.md`.
+Do not use a hand-maintained route list in this README as the API inventory. Human API semantics are documented in `docs/contracts/API_CONTRACTS.md`.
 
 ## Storage/upload status
 
@@ -59,10 +59,10 @@ See [`docs/README.md`](./docs/README.md) for the canonical documentation map, ow
 
 Key current documents:
 
-- [`docs/MVP_SCOPE_LOCK.md`](./docs/MVP_SCOPE_LOCK.md) — MVP product boundaries;
-- [`docs/API_CONTRACTS.md`](./docs/API_CONTRACTS.md) — human API semantics/invariants;
+- [`docs/product/MVP_SCOPE_LOCK.md`](./docs/product/MVP_SCOPE_LOCK.md) — MVP product boundaries;
+- [`docs/contracts/API_CONTRACTS.md`](./docs/contracts/API_CONTRACTS.md) — human API semantics/invariants;
 - [`docs/TODO_VERIFY.md`](./docs/TODO_VERIFY.md) — transitional registry of unresolved owner/live questions;
-- [`docs/RELEASE_GATE.md`](./docs/RELEASE_GATE.md) — release gate.
+- [`docs/runbooks/RELEASE_GATE.md`](./docs/runbooks/RELEASE_GATE.md) — release gate.
 
 ## Repository structure
 
