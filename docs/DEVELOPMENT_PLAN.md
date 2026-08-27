@@ -1145,9 +1145,11 @@ Assessments, certificates и upload являются критичными для
 > Require a pull request before merging (0 required approvals), Require status checks
 > to pass с `Require branches to be up to date before merging` — все включены;
 > required checks заданы точно `Checks` + `Analyze (javascript-typescript)` (GitHub
-> Actions), без лишних/недостающих контекстов. Единственное отклонение от скрипта:
-> `Require conversation resolution before merging` выключен — осознанное решение
-> владельца, не пробел в реализации.
+> Actions), без лишних/недостающих контекстов. `Require conversation resolution
+> before merging` выключен — осознанное решение владельца; policy-as-code
+> (`scripts/configure-branch-protection.mjs`) приведён в соответствие с этим
+> решением (`required_review_thread_resolution: false`), это не отклонение
+> скрипта от live-состояния, а согласованная baseline-политика.
 
 ---
 
@@ -4157,11 +4159,11 @@ target major и ссылкой на upstream guide. Этапы выполняю�
 > Administration credential). Required status checks — точно `Checks` и
 > `Analyze (javascript-typescript)`, без drift. Deletion/force-push запрещены,
 > pull request обязателен (0 required approvals), branches must be up to date
-> before merging — включено. Отклонение от исходной policy-as-code: `Require
-> conversation resolution before merging` выключен — осознанное решение
-> владельца; review-thread resolution не enforced на уровне GitHub, хотя
-> policy-as-code в `scripts/configure-branch-protection.mjs` по умолчанию
-> включает это правило.
+> before merging — включено. `Require conversation resolution before merging`
+> выключен — осознанное решение владельца; policy-as-code
+> (`scripts/configure-branch-protection.mjs`) приведён в соответствие
+> (`required_review_thread_resolution: false`), поэтому это согласованная
+> baseline-политика, а не расхождение между документом и исполняемым скриптом.
 
 **Критерии готовности:**
 - [x] required checks перечислены и имеют стабильные имена;
