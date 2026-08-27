@@ -133,11 +133,11 @@ Required outcome:
 
 ### H-007 — Branch protection / GitHub Ruleset
 
-**Статус:** `DEFERRED` / `NOT-IMPLEMENTED`
+**Статус:** `IMPLEMENTED` (confirmed by owner 2026-08-26)
 
-The future configuration is documented in `docs/BRANCH_PROTECTION_FUTURE_WORK.md`.
-
-Current repository setting must not be assumed protected until GitHub settings are verified after activation.
+The `Protect main` ruleset is active on GitHub — see `docs/READINESS_AND_SECURITY_GATES.md` §7
+and `docs/BRANCH_PROTECTION_FUTURE_WORK.md` (original planning rationale, kept as
+historical context). `docs/DEVELOPMENT_PLAN.md` PR 129/PR 238 have the full detail.
 
 ### H-008 — Security waiver validation hardening
 

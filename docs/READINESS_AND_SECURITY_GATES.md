@@ -161,18 +161,22 @@ Generated waiver IDs используются для Trivy ignorefile. Этот 
 
 ## 7. Merge enforcement
 
-**Статус:** `NOT-ENFORCED`
+**Статус:** `MERGE-ENFORCED`
 
-На момент проверки `main` имеет:
+**Подтверждено владельцем (2026-08-26):** ruleset `Protect main` активен на GitHub
+(Rulesets → Protect main → Active), применяется к `main`. `main` защищена:
+deletion и force-push запрещены, pull request обязателен (0 required approvals),
+required status checks — ровно `Checks` и `Analyze (javascript-typescript)` —
+должны быть green, `Require branches to be up to date before merging` включено.
 
-- `protected: false`;
-- required status checks enforcement выключен.
+Следовательно merge в `main` технически невозможен без green required checks.
 
-Следовательно CI/CodeQL являются выполняемыми quality/security checks, но GitHub repository settings не гарантируют, что merge технически невозможен без green checks.
+Единственное отклонение от исходной policy-as-code (`scripts/configure-branch-protection.mjs`):
+`Require conversation resolution before merging` выключен осознанным решением владельца.
+Это не влияет на merge enforcement CI/CodeQL — только снимает требование закрывать все
+review-треды перед merge.
 
-**Правило для ИИ:** green CI можно называть `EXECUTED/PASSED`, но не `MERGE-ENFORCED`, пока branch protection/ruleset явно не изменён.
-
-Изменение branch protection — repository-setting action и не входит в этот implementation PR.
+Подробности и история решения: `docs/DEVELOPMENT_PLAN.md`, PR 129 / PR 238.
 
 ---
 
