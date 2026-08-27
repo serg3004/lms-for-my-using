@@ -13,40 +13,40 @@
       "title": "Enforce manager object scope for group membership management",
       "sources": ["TODO_VERIFY:TV-020/TV-056", "ORG_STRUCTURE_IMPLEMENTATION_PLAN", "ORG_STRUCTURE_PR_PLAN"],
       "currentEvidence": ["apps/api/src/modules/groups/groups.controller.ts", "apps/api/src/modules/groups/groups.service.ts", "apps/api/src/modules/auth/roles.ts"],
-      "issue": null,
-      "status": "PENDING_GITHUB_ISSUE"
+      "issue": 725,
+      "status": "CANONICAL_GITHUB_ISSUE"
     },
     {
       "stableId": "TEST-RBAC-001",
       "title": "Expand behavioral RBAC coverage beyond the currently dedicated controllers",
       "sources": ["CONCERNS:2026-07-31-rbac-tests"],
       "currentEvidence": ["apps/api/src/modules/assignments", "apps/api/src/modules/progress", "apps/api/src/modules/auth/roles.spec.ts"],
-      "issue": null,
-      "status": "PENDING_GITHUB_ISSUE"
+      "issue": 726,
+      "status": "CANONICAL_GITHUB_ISSUE"
     },
     {
       "stableId": "UX-PROGRESS-001",
       "title": "Render exact learner course progress from canonical completion data",
       "sources": ["RECOMMENDATIONS:R2.2", "PRODUCTION_HARDENING_BACKLOG:H-003"],
       "currentEvidence": ["apps/web/src/app/LearnerCoursesPage.tsx"],
-      "issue": null,
-      "status": "PENDING_GITHUB_ISSUE"
+      "issue": 727,
+      "status": "CANONICAL_GITHUB_ISSUE"
     },
     {
       "stableId": "TEST-WEB-001",
       "title": "Raise frontend coverage in staged increments without broad exclusions",
       "sources": ["FRONTEND_COVERAGE_ROADMAP", "CONCERNS:2026-07-31-coverage"],
       "currentEvidence": ["apps/web/vitest.config.ts"],
-      "issue": null,
-      "status": "PENDING_GITHUB_ISSUE"
+      "issue": 728,
+      "status": "CANONICAL_GITHUB_ISSUE"
     },
     {
       "stableId": "UX-ADMIN-ZOOM-001",
       "title": "Investigate and fix admin sidebar two-column rendering at high browser zoom",
       "sources": ["CONCERNS:2026-08-05-admin-sidebar-zoom"],
       "currentEvidence": ["apps/web/src/styles/admin.css", "apps/web/src/shared/adminPage.tsx"],
-      "issue": null,
-      "status": "PENDING_GITHUB_ISSUE"
+      "issue": 729,
+      "status": "CANONICAL_GITHUB_ISSUE"
     }
   ],
   "decisionMappings": {
