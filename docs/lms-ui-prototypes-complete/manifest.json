@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "source": "LearnSpace standalone UI prototypes",
   "languages": [
     "ru",
@@ -13,468 +13,504 @@
       "role": "admin",
       "route": "/admin/assessments",
       "prototype": "admin/lms-admin-assessments-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-assignments",
       "role": "admin",
       "route": "/admin/assignments",
       "prototype": "admin/lms-admin-assignments-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-course-builder",
       "role": "admin",
       "route": "/admin/course-builder",
       "prototype": "admin/lms-admin-course-builder-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-courses",
       "role": "admin",
       "route": "/admin/courses",
       "prototype": "admin/lms-admin-courses-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-dashboard",
       "role": "admin",
       "route": "/admin/dashboard",
       "prototype": "admin/lms-admin-dashboard-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-lessons",
       "role": "admin",
       "route": "/admin/lessons",
       "prototype": "admin/lms-admin-lessons-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-materials",
       "role": "admin",
       "route": "/admin/materials",
       "prototype": "admin/lms-admin-materials-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-organization",
       "role": "admin",
       "route": "/admin/organization",
       "prototype": "admin/lms-admin-organization-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-results",
       "role": "admin",
       "route": "/admin/results",
       "prototype": "admin/lms-admin-results-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-roles",
       "role": "admin",
       "route": "/admin/roles",
       "prototype": "admin/lms-admin-roles-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-theme-settings",
       "role": "admin",
       "route": "/admin/theme-settings",
       "prototype": "admin/lms-admin-theme-settings-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "admin-users",
       "role": "admin",
       "route": "/admin/users",
       "prototype": "admin/lms-admin-users-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "assessment-details",
       "role": "learner",
       "route": "/learner/assessment-details",
       "prototype": "learner/lms-assessment-details-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "assessment-taking",
       "role": "learner",
       "route": "/learner/assessment-taking",
       "prototype": "learner/lms-assessment-taking-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "assessments-list",
       "role": "learner",
       "route": "/learner/assessments",
       "prototype": "learner/lms-assessments-list-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "assignment-details",
       "role": "learner",
       "route": "/learner/assignment-details",
       "prototype": "learner/lms-assignment-details-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "assignments-list",
       "role": "learner",
       "route": "/learner/assignments",
       "prototype": "learner/lms-assignments-list-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "certificate-details",
       "role": "learner",
       "route": "/learner/certificate-details",
       "prototype": "learner/lms-certificate-details-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "certificates-list",
       "role": "learner",
       "route": "/learner/certificates",
       "prototype": "learner/lms-certificates-list-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "course-details",
       "role": "learner",
       "route": "/learner/course-details",
       "prototype": "learner/lms-course-details-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "course-lessons",
       "role": "learner",
       "route": "/learner/course-lessons",
       "prototype": "learner/lms-course-lessons-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "courses-list",
       "role": "learner",
       "route": "/learner/courses",
       "prototype": "learner/lms-courses-list-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "forbidden",
       "role": "public",
       "route": "/403",
       "prototype": "public/lms-forbidden-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "instructor-course-create",
       "role": "instructor",
       "route": "/instructor/course-create",
       "prototype": "instructor/lms-instructor-course-create-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "instructor-course-edit",
       "role": "instructor",
       "route": "/instructor/course-edit",
       "prototype": "instructor/lms-instructor-course-edit-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "instructor-course-students",
       "role": "instructor",
       "route": "/instructor/course-students",
       "prototype": "instructor/lms-instructor-course-students-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "instructor-courses",
       "role": "instructor",
       "route": "/instructor/courses",
       "prototype": "instructor/lms-instructor-courses-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "instructor-dashboard",
       "role": "instructor",
       "route": "/instructor/dashboard",
       "prototype": "instructor/lms-instructor-dashboard-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "lesson-details",
       "role": "learner",
       "route": "/learner/lesson-details",
       "prototype": "learner/lms-lesson-details-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "lesson-materials",
       "role": "learner",
       "route": "/learner/lesson-materials",
       "prototype": "learner/lms-lesson-materials-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "login",
       "role": "public",
       "route": "/login",
       "prototype": "public/lms-login-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "manager-dashboard",
       "role": "manager",
       "route": "/manager/dashboard",
       "prototype": "manager/lms-manager-dashboard-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "manager-team",
       "role": "manager",
       "route": "/manager/team",
       "prototype": "manager/lms-manager-team-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "not-found",
       "role": "public",
       "route": "/404",
       "prototype": "public/lms-not-found-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "progress",
       "role": "learner",
       "route": "/learner/progress",
       "prototype": "learner/lms-progress-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     },
     {
       "id": "public-home",
       "role": "public",
       "route": "/",
       "prototype": "public/lms-public-home-verified.html",
-      "status": "approved",
-      "languages": [
-        "ru",
-        "en",
-        "kk",
-        "zh"
-      ]
+      "designStatus": "approved",
+      "implementationStatus": "unknown",
+      "productionRoute": null,
+      "parityStatus": "unknown",
+      "lastComparedAt": null,
+      "lastComparedSha": null,
+      "knownDifferences": [],
+      "languages": ["ru", "en", "kk", "zh"]
     }
   ]
 }

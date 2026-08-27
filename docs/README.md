@@ -28,7 +28,7 @@
 | Live environment/platform state | live read-back + dated evidence |
 | Active implementation work | GitHub Issues/Project |
 | Business/owner decisions | `docs/status/OPEN_DECISIONS.md` |
-| UI design reference | prototypes + manifest |
+| UI design reference | `docs/lms-ui-prototypes-complete/` + manifest v2 (`designStatus` only; implementation/parity are separate evidence fields) |
 | Historical knowledge | archive/history; не current authority |
 
 Если owner-source и Markdown противоречат друг другу, current implementation fact берётся из owner-source, а расхождение документации исправляется в том же PR либо фиксируется как отдельная документационная задача, если это выходит за scope.
@@ -97,6 +97,8 @@ Active implementation work имеет один writable owner: GitHub Issues/Pro
 
 - MVP/product scope: `product/MVP_SCOPE_LOCK.md`, `product/MVP_DEFINITION_OF_DONE.md`;
 - API/RBAC semantics: `contracts/API_CONTRACTS.md`, `contracts/API_RBAC_MATRIX.md`;
+- terminology conflicts: `contracts/GLOSSARY.md`;
+- UI prototype governance: `lms-ui-prototypes-complete/README.md`, `lms-ui-prototypes-complete/manifest.json`;
 - local operation: `runbooks/MVP_LOCAL_RUNBOOK.md` и `runbooks/`;
 - release/readiness: `runbooks/RELEASE_GATE.md`, `quality/READINESS_AND_SECURITY_GATES.md`;
 - architecture decisions: `architecture/adr/ADR_*.md`, `architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`;
@@ -104,6 +106,12 @@ Active implementation work имеет один writable owner: GitHub Issues/Pro
 - current documentation remediation plan: `documentation_full_remediation_plan_pdca_v3.md`.
 
 Этот список — навигация, а не подтверждение фактической актуальности каждого claim внутри перечисленных файлов. Current implementation facts по-прежнему проверяются по canonical owner-source.
+
+## Prototype governance
+
+Prototype design approval, production implementation и parity — независимые состояния. `designStatus: approved` в `lms-ui-prototypes-complete/manifest.json` означает только approved design reference и не доказывает production implementation. Непроверенные implementation/parity остаются `unknown`; verified `implemented` требует `productionRoute`, а `aligned` — дату и Git SHA сравнения. Integrity manifest проверяется `pnpm docs:prototype:test` внутри `docs:consistency:test`.
+
+Короткий [`contracts/GLOSSARY.md`](contracts/GLOSSARY.md) используется только для повторяющихся терминологических конфликтов и не заменяет canonical owner-source или полный domain contract.
 
 ## Evidence и history
 
