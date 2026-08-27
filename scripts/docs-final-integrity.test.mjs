@@ -91,6 +91,16 @@ test('volatile inventories are derived or explicitly retired instead of hand-mai
   assert.match(futureEntities, /GitHub Issue\/Project/);
 });
 
+test('archived development ledger is provenance, never the current writable work owner', () => {
+  const dependencyPolicy = read('docs/quality/DEPENDENCY_UPDATE_POLICY.md');
+  const docsReadme = read('docs/README.md');
+
+  assert.match(dependencyPolicy, /GitHub Issues\/Project/);
+  assert.match(dependencyPolicy, /docs\/archive\/development-ledger\/DEVELOPMENT_PLAN\.md/);
+  assert.doesNotMatch(dependencyPolicy, /authoritative stage status is maintained in `docs\/(?:archive\/development-ledger\/)?DEVELOPMENT_PLAN\.md`/i);
+  assert.match(docsReadme, /Active implementation work \| GitHub Issues\/Project/);
+});
+
 test('repository-local documentation paths in current text/config point to existing files', () => {
   const staleReferences = [];
 
