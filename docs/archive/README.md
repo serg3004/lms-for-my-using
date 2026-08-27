@@ -24,7 +24,9 @@
 - `path-map-doc07.json` — закрытая temporary migration map DOC-07;
 - `MVP_DEFINITION_OF_DONE_PRE_DOC12.md` — historical minimum-bar checklist;
 - `MVP_READINESS_DASHBOARD_PRE_DOC12.md` — hand-maintained readiness snapshot;
-- `RELEASE_GATE_PRE_DOC12.md` — pre-DOC-12 runbook including its old PR-specific verification section.
+- `RELEASE_GATE_PRE_DOC12.md` — pre-DOC-12 runbook including its old PR-specific verification section;
+- `ENTITY_TECHSPEC_IMPLEMENTED_PRE_DOC12.md` — retired manual snapshot of implemented entity/schema/RBAC facts;
+- `ENTITY_TECHSPEC_UNIMPLEMENTED_PRE_DOC12.md` — frozen 2026-08-07 future entity concept snapshot with historical role/schema assumptions.
 
 Эти файлы сохраняются для traceability и не должны становиться dependency current authority/CI semantics. Current redirects/procedures указывают на актуальных owners.
 
