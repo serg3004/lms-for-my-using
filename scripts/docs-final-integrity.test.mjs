@@ -33,6 +33,12 @@ const currentMarkdown = [
     .flatMap(markdownFilesRecursively),
 ];
 
+const currentTextWithDocPaths = [
+  ...currentMarkdown,
+  '.env.production.example',
+  'infra/docker/.env.example',
+];
+
 test('DOC-12 closes transitional artifacts while preserving migration history', () => {
   assert.ok(!existsSync(resolve(repoRoot, 'docs/_meta/path-map.json')), 'DOC-07 temporary path map must be closed');
 
@@ -85,12 +91,12 @@ test('volatile inventories are derived or explicitly retired instead of hand-mai
   assert.match(futureEntities, /GitHub Issue\/Project/);
 });
 
-test('repository-local Markdown path literals in current docs point to existing files', () => {
+test('repository-local documentation paths in current text/config point to existing files', () => {
   const staleReferences = [];
 
-  for (const relativePath of new Set(currentMarkdown)) {
+  for (const relativePath of new Set(currentTextWithDocPaths)) {
     const content = read(relativePath);
-    const referencedPaths = [...content.matchAll(/`(docs\/[A-Za-z0-9_.\/-]+\.md)`/g)].map((match) => match[1]);
+    const referencedPaths = [...content.matchAll(/\b(docs\/[A-Za-z0-9_.\/-]+\.md)\b/g)].map((match) => match[1]);
     for (const referencedPath of referencedPaths) {
       if (!existsSync(resolve(repoRoot, referencedPath))) {
         staleReferences.push(`${referencedPath} <- ${relativePath}`);
