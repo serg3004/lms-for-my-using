@@ -100,7 +100,7 @@
 
 ## 6. Historical/reference material
 
-`docs/master-context/`, PR verification snapshots, project logs, old smoke/readiness reports и старые design docs не являются current authority. Они используются только для history/rationale/evidence, пока DOC-05…DOC-07 не отделят их физически.
+Pre-implementation master context хранится в `docs/archive/pre-implementation-master-context/`; PR verification snapshots, project logs, old smoke/readiness reports и старые design docs также являются history/evidence, а не current authority. Архив используется только для history/rationale/evidence и не определяет current implementation state.
 
 ## 7. Связанные current документы
 
