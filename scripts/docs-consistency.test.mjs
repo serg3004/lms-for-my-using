@@ -10,8 +10,12 @@ const architecture = readFileSync(new URL('../docs/ARCHITECTURE_MODULE_BOUNDARIE
 const rbac = readFileSync(new URL('../docs/API_RBAC_MATRIX.md', import.meta.url), 'utf8');
 const rootReadmePath = fileURLToPath(new URL('../README.md', import.meta.url));
 const docsReadmePath = fileURLToPath(new URL('../docs/README.md', import.meta.url));
+const claudePath = fileURLToPath(new URL('../CLAUDE.md', import.meta.url));
+const aiStarterPath = fileURLToPath(new URL('../docs/AI_AGENT_STARTER_PROMPT.md', import.meta.url));
 const rootReadme = readFileSync(rootReadmePath, 'utf8');
 const docsReadme = readFileSync(docsReadmePath, 'utf8');
+const claude = readFileSync(claudePath, 'utf8');
+const aiStarter = readFileSync(aiStarterPath, 'utf8');
 
 function sorted(values) {
   return [...values].sort();
@@ -91,8 +95,10 @@ test('RBAC course-scope controller count and list match CourseAccessGuard usage'
 test('documentation governance entry points exist', () => {
   const requiredPaths = [
     'AGENTS.md',
+    'CLAUDE.md',
     'README.md',
     'docs/README.md',
+    'docs/AI_AGENT_STARTER_PROMPT.md',
     'docs/documentation_full_remediation_plan_pdca_v3.md',
   ];
 
@@ -103,6 +109,11 @@ test('documentation governance entry points exist', () => {
 
 test('root README local links resolve', () => {
   assertRelativeTargetsExist(rootReadme, rootReadmePath);
+});
+
+test('active AI entry-point local links resolve', () => {
+  assertRelativeTargetsExist(claude, claudePath);
+  assertRelativeTargetsExist(aiStarter, aiStarterPath);
 });
 
 test('docs README current entry-point paths resolve without scanning history', () => {
