@@ -200,6 +200,7 @@ Repository не подтверждает настроенный pager/on-call ro
 
 ## Связанные документы
 
-- `docs/READINESS_AND_SECURITY_GATES.md`
-- `docs/CI_AUDIT_BASELINE.md`
-- `docs/PROJECT_SOURCE_OF_TRUTH.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`
+- `docs/evidence/audits/CI_AUDIT_BASELINE.md`
+- `docs/README.md`
+- `docs/_meta/ownership.json`

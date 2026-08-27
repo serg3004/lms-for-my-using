@@ -17,11 +17,10 @@
         "docs/generated/ENTITIES.md"
       ],
       "manualTargets": [
-        "docs/contracts/ENTITY_TECHSPEC_IMPLEMENTED.md",
         "docs/runbooks/MIGRATION_BACKUP_POLICY.md"
       ],
       "scope": "Database entities, enums and migration-visible data model semantics.",
-      "reason": "Prisma is the canonical owner of the persisted data model; generated entities and human data/migration semantics must be reviewed together."
+      "reason": "Prisma is the canonical owner of the persisted data model; volatile entity inventory is generated, while human migration semantics remain impact-reviewed."
     },
     {
       "id": "auth-rbac",

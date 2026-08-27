@@ -193,7 +193,7 @@ A successful application healthcheck alone does not prove all data migration inv
 
 ## Связанные документы
 
-- `docs/RAILWAY_DEPLOY_GUIDE.md`
-- `docs/DEPLOY_FOUNDATION.md`
-- `docs/READINESS_AND_SECURITY_GATES.md`
-- `docs/TODO_VERIFY.md`
+- `docs/runbooks/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/runbooks/DEPLOY_FOUNDATION.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`
+- `docs/status/OPEN_DECISIONS.md` — current owner for unresolved decisions; retired mixed tracker history is under `docs/archive/old-trackers/`

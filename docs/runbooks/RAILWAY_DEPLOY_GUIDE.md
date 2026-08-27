@@ -135,7 +135,7 @@ node dist/scripts/seed.js
 
 Current repository предоставляет guarded admin demo-seed workflow через package scripts/documentation.
 
-Перед любым apply использовать `docs/ADMIN_DEMO_SEED.md` как current source и соблюдать его dry-run/apply guards.
+Перед любым apply использовать `docs/runbooks/ADMIN_DEMO_SEED.md` как current source и соблюдать его dry-run/apply guards.
 
 **Правило:** production seed никогда не запускать только потому, что старый deploy guide его предлагал.
 
@@ -178,7 +178,7 @@ Database schema/data rollback — отдельная задача.
 - backup/restore plan;
 - explicit rollback/forward-fix strategy.
 
-См. `docs/MIGRATION_BACKUP_POLICY.md`.
+См. `docs/runbooks/MIGRATION_BACKUP_POLICY.md`.
 
 ---
 
@@ -222,7 +222,7 @@ GitHub Actions environment/workflow с названием `staging` не явл�
 ## Связанные документы
 
 - `infra/railway/README.md`
-- `docs/DEPLOY_FOUNDATION.md`
-- `docs/MIGRATION_BACKUP_POLICY.md`
-- `docs/STORAGE_UPLOAD_STATUS.md`
-- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/runbooks/DEPLOY_FOUNDATION.md`
+- `docs/runbooks/MIGRATION_BACKUP_POLICY.md`
+- `docs/contracts/STORAGE_UPLOAD_STATUS.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`
