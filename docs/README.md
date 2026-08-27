@@ -26,8 +26,8 @@
 | Behaviour semantics / invariants | `docs/contracts/` |
 | Operations | `docs/runbooks/` |
 | Live environment/platform state | live read-back + dated evidence |
-| Active implementation work | GitHub Issue |
-| Business/owner decisions | transitional decision/status docs; after DOC-08 — `docs/status/OPEN_DECISIONS.md` |
+| Active implementation work | GitHub Issues/Project |
+| Business/owner decisions | `docs/status/OPEN_DECISIONS.md` |
 | UI design reference | prototypes + manifest |
 | Historical knowledge | archive/history; не current authority |
 
@@ -77,9 +77,17 @@ docs/
 └── lms-ui-prototypes-complete/
 ```
 
-Planning/tracker/transitional документы, которые ещё должны быть разобраны на DOC-08/DOC-12, могут временно оставаться в root `docs/`. Их нахождение в root не делает их canonical current authority.
+Root `docs/` больше не является writable backlog. Frozen development ledger и старые trackers находятся в `docs/archive/`; их нельзя обновлять feature PR.
 
 `docs/_meta/path-map.json` — временная карта old→new путей DOC-07 для migration/link audit. Она не является source of truth и должна быть удалена либо архивирована на DOC-12 после финального link audit.
+
+`docs/_meta/active-work-migration.json` — migration/provenance map DOC-08. Она связывает старые tracker IDs с GitHub work items, owner decisions, live verification или historical disposition и не является новым writable backlog.
+
+## Active work и decisions
+
+Active implementation work имеет один writable owner: GitHub Issues/Project. Новый implementation work item создаётся через `.github/ISSUE_TEMPLATE/work-item.md` и должен содержать цель, scope, критерии готовности, risk/rollback и docs impact.
+
+`docs/status/OPEN_DECISIONS.md` содержит только owner/business decisions. Implementation gap нельзя вести там как task status. Live infrastructure state нельзя закрывать решением в Markdown — требуется fresh read-back и при необходимости dated evidence.
 
 ## Current entry points
 
@@ -90,6 +98,7 @@ Planning/tracker/transitional документы, которые ещё долж
 - local operation: `runbooks/MVP_LOCAL_RUNBOOK.md` и `runbooks/`;
 - release/readiness: `runbooks/RELEASE_GATE.md`, `quality/READINESS_AND_SECURITY_GATES.md`;
 - architecture decisions: `architecture/adr/ADR_*.md`, `architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`;
+- owner/business decisions: `status/OPEN_DECISIONS.md`;
 - current documentation remediation plan: `documentation_full_remediation_plan_pdca_v3.md`.
 
 Этот список — навигация, а не подтверждение фактической актуальности каждого claim внутри перечисленных файлов. Current implementation facts по-прежнему проверяются по canonical owner-source.
@@ -98,7 +107,7 @@ Planning/tracker/transitional документы, которые ещё долж
 
 Audit, smoke, production verification, performance verification и аналогичные отчёты описывают то, что наблюдалось в конкретный момент. Они не доказывают текущее состояние без повторной проверки. Evidence отделён в `docs/evidence/`; lifecycle, metadata и текущий index находятся в `docs/evidence/README.md`.
 
-Pre-implementation context физически отделён от current knowledge и хранится в `docs/archive/pre-implementation-master-context/`. Это historical material и не является authority для current implementation; правила и index архива находятся в `docs/archive/README.md`.
+Pre-implementation context, frozen development ledger и старые trackers физически отделены от current knowledge в `docs/archive/`. Это historical material и не является authority для current implementation или active work.
 
 ## Documentation review при изменениях
 

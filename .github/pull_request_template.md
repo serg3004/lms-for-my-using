@@ -11,10 +11,10 @@
 - [ ] Security / dependencies
 - [ ] CI / инфраструктура
 
-## План
+## Work item
 
-<!-- Номер PR из DEVELOPMENT_PLAN.md, если применимо -->
-Plan PR:
+<!-- Canonical work item: #issue | stable-id | N/A -->
+Work item:
 
 ## Scope
 
@@ -39,6 +39,11 @@ Risk:
 ## Rollback plan
 
 <!-- Как безопасно откатить изменение -->
+
+## Docs impact
+
+<!-- Какие current docs проверены/изменены; поле будет усилено DOC-10 -->
+Docs-Impact:
 
 ## Что проверить вручную
 

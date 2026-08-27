@@ -15,6 +15,8 @@
 - permissions/RBAC → `apps/api/src/modules/auth/roles.ts` + guards/access decorators;
 - HTTP API surface → runtime OpenAPI + controllers;
 - Nest modules → `apps/api/src/app.module.ts`;
+- active implementation work → GitHub Issues/Project;
+- owner/business decisions → `docs/status/OPEN_DECISIONS.md`;
 - live GitHub/deployment/environment state → fresh live read-back + dated evidence.
 
 Если Markdown противоречит owner-source, implementation fact берётся из owner-source. Нормативное product/architecture decision при этом не меняется автоматически: сначала нужно отделить factual drift от изменения решения.
@@ -60,7 +62,7 @@
 - drag-and-drop course builder;
 - custom role builder.
 
-Подробный scope и unresolved scope decisions находятся в `docs/product/MVP_SCOPE_LOCK.md`.
+Подробный scope находится в `docs/product/MVP_SCOPE_LOCK.md`; unresolved owner/business decisions — в `docs/status/OPEN_DECISIONS.md`.
 
 ## 3. Current implementation guidance
 
@@ -82,11 +84,13 @@
 
 Наличие реализации не означает автоматического решения «обязательно для MVP».
 
-В частности, Notifications и General Audit Log уже присутствуют в current implementation, но их product/MVP disposition остаётся отдельным scope decision, пока владелец не закроет соответствующие пункты в `product/MVP_SCOPE_LOCK.md` / `TODO_VERIFY.md`.
+В частности, Notifications и General Audit Log уже присутствуют в current implementation, но их product/MVP disposition остаётся отдельным owner decision до закрытия соответствующих записей в `docs/status/OPEN_DECISIONS.md`.
 
 ИИ-агент не должен удалять существующую capability или объявлять её обязательным MVP gate только из-за факта реализации.
 
-## 5. Live state
+## 5. Active work и live state
+
+Implementation task не ведётся в Markdown tracker. Canonical writable owner active implementation work — GitHub Issues/Project. Frozen ledger и старые trackers находятся в archive и используются только как history/provenance.
 
 Следующие утверждения всегда требуют fresh evidence:
 
@@ -100,13 +104,13 @@
 
 ## 6. Historical/reference material
 
-Pre-implementation master context хранится в `docs/archive/pre-implementation-master-context/`; PR verification snapshots, project logs, old smoke/readiness reports и старые design docs также являются history/evidence, а не current authority. Архив используется только для history/rationale/evidence и не определяет current implementation state.
+Pre-implementation master context, frozen development ledger, old trackers, project logs, PR verification snapshots, old smoke/readiness reports и старые design docs являются history/evidence, а не current authority. Архив используется только для history/rationale/evidence и не определяет current implementation state или active backlog.
 
 ## 7. Связанные current документы
 
 - `docs/README.md` — documentation map и ownership.
 - `docs/product/MVP_SCOPE_LOCK.md` — product/MVP boundaries.
-- `docs/TODO_VERIFY.md` — decision / implementation / live verification registry до его последующей миграции.
+- `docs/status/OPEN_DECISIONS.md` — только unresolved owner/business decisions.
 - `docs/contracts/API_CONTRACTS.md` — human API semantics; API surface authority остаётся runtime OpenAPI + controllers.
 
 Этот файл будет superseded/archive на DOC-12 после распределения уникального decision content по целевой taxonomy.

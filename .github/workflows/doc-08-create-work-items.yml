@@ -1,0 +1,64 @@
+name: DOC-08 create canonical work items
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-work-items:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create missing canonical issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const items = [
+              {
+                id: 'SEC-GROUP-001',
+                title: 'Enforce manager object scope for group membership management',
+                body: `## Цель\n\nManager должен изменять membership только для Group, которой он имеет право управлять; tenant match сам по себе недостаточен.\n\n## Scope\n\n- В scope: group member/manager add/remove object-scope authorization и negative tests.\n- Вне scope: future Department/HRIS product model.\n\n## Критерии готовности\n\n- [ ] manager не может изменять чужую Group в той же organization;\n- [ ] разрешённый manager flow сохранён;\n- [ ] admin behavior сохранён;\n- [ ] добавлены behavioral authorization tests;\n- [ ] RBAC/contract docs reviewed.\n\n## Риск / rollback\n\nMedium: authorization tightening. Rollback — revert the authorization change and tests.\n\n## Docs impact\n\nReview RBAC/group contracts.\n\nMigrated by DOC-08 from TV-020/TV-056 and historical org-structure plans.`
+              },
+              {
+                id: 'TEST-RBAC-001',
+                title: 'Expand behavioral RBAC coverage beyond dedicated controllers',
+                body: `## Цель\n\nДобавить behavioral RBAC tests для критичных controller paths, которые сейчас защищены policy/decorators, но не имеют dedicated behavior coverage.\n\n## Scope\n\n- В scope: risk-based controller coverage, negative/positive authorization behavior.\n- Вне scope: переписывание role policy model.\n\n## Критерии готовности\n\n- [ ] выбран и задокументирован risk-based set controller paths;\n- [ ] negative authorization behavior покрыт;\n- [ ] positive allowed behavior сохранён;\n- [ ] CI проходит.\n\n## Риск / rollback\n\nLow: tests only unless a proven authorization defect is split into a separate fix.\n\n## Docs impact\n\nReview API/RBAC semantics if tests expose a mismatch.\n\nMigrated by DOC-08 from CONCERNS.`
+              },
+              {
+                id: 'UX-PROGRESS-001',
+                title: 'Render exact learner course progress from canonical completion data',
+                body: `## Цель\n\nLearner course cards должны показывать реальный completion percentage, а не lifecycle-derived 0/100 approximation.\n\n## Scope\n\n- В scope: reuse canonical completion source or minimally extend summary contract, UI rendering, tests.\n- Вне scope: unrelated learner dashboard redesign.\n\n## Критерии готовности\n\n- [ ] canonical completion source определён;\n- [ ] percentage соответствует completed/total semantics;\n- [ ] zero/empty/completed cases покрыты;\n- [ ] API/UI tests проходят.\n\n## Риск / rollback\n\nMedium: API/UI semantics. Rollback — revert summary/UI change.\n\n## Docs impact\n\nReview learner/API contracts.\n\nMigrated by DOC-08 from RECOMMENDATIONS R2.2 / H-003.`
+              },
+              {
+                id: 'TEST-WEB-001',
+                title: 'Raise frontend coverage in staged increments without broad exclusions',
+                body: `## Цель\n\nПродолжить staged frontend coverage roadmap от current global 40% gate к более высокому meaningful coverage без broad exclusions/ignore comments.\n\n## Scope\n\n- В scope: tests for assessment submission/certificate flows, admin mutations, auth interactions, route loaders, learner error/retry states, затем remaining branches.\n- Вне scope: lowering thresholds or excluding production source to inflate metrics.\n\n## Критерии готовности\n\n- [ ] first stage reaches an evidence-backed higher global gate;\n- [ ] no broad exclusions added;\n- [ ] critical new domain models keep strong per-domain thresholds;\n- [ ] CI coverage gate passes.\n\n## Риск / rollback\n\nLow: test/quality work. Rollback threshold increase if introduced tests themselves are invalid, not to hide regressions.\n\n## Docs impact\n\nUpdate quality guidance only if policy changes.\n\nMigrated by DOC-08 from FRONTEND_COVERAGE_ROADMAP.`
+              },
+              {
+                id: 'UX-ADMIN-ZOOM-001',
+                title: 'Investigate admin sidebar two-column rendering at high browser zoom',
+                body: `## Цель\n\nНайти воспроизводимую причину и исправить раскладку admin sidebar, которая при high browser zoom может визуально раскладываться в две колонки.\n\n## Scope\n\n- В scope: real browser computed styles/reproduction, sidebar/nav CSS and related switchers, regression test if reproducible.\n- Вне scope: speculative CSS hacks без подтверждённой причины.\n\n## Критерии готовности\n\n- [ ] причина воспроизведена или подтверждена browser evidence;\n- [ ] fix не ломает normal/mobile layout;\n- [ ] relevant visual/accessibility tests проходят;\n- [ ] known browser-specific limitation documented if fix is not portable.\n\n## Риск / rollback\n\nMedium: shared admin layout CSS. Rollback — revert isolated layout fix.\n\n## Docs impact\n\nReview UI/quality docs only if documented behavior changes.\n\nMigrated by DOC-08 from CONCERNS 2026-08-05.`
+              },
+            ];
+
+            const { owner, repo } = context.repo;
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100,
+            });
+
+            for (const item of items) {
+              const title = `[${item.id}] ${item.title}`;
+              const found = existing.find((issue) => !issue.pull_request && issue.title === title);
+              if (found) {
+                core.info(`${item.id}=#${found.number} existing`);
+                continue;
+              }
+
+              const created = await github.rest.issues.create({ owner, repo, title, body: item.body });
+              core.info(`${item.id}=#${created.data.number} created`);
+            }
