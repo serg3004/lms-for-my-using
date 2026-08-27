@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "generatedArtifacts": [
+    "docs/generated/API_INDEX.md",
+    "docs/generated/ENTITIES.md",
+    "docs/generated/MODULES.md",
+    "docs/generated/RBAC.md"
+  ],
+  "mappings": [
+    {
+      "id": "data-model",
+      "sourceGlobs": [
+        "apps/api/prisma/schema.prisma",
+        "apps/api/prisma/migrations/**"
+      ],
+      "generatedTargets": [
+        "docs/generated/ENTITIES.md"
+      ],
+      "manualTargets": [
+        "docs/contracts/ENTITY_TECHSPEC_IMPLEMENTED.md",
+        "docs/runbooks/MIGRATION_BACKUP_POLICY.md"
+      ],
+      "scope": "Database entities, enums and migration-visible data model semantics.",
+      "reason": "Prisma is the canonical owner of the persisted data model; generated entities and human data/migration semantics must be reviewed together."
+    },
+    {
+      "id": "auth-rbac",
+      "sourceGlobs": [
+        "apps/api/src/modules/auth/roles.ts",
+        "apps/api/src/modules/**/*.guard.ts",
+        "packages/shared/src/constants/roles.ts"
+      ],
+      "generatedTargets": [
+        "docs/generated/RBAC.md"
+      ],
+      "manualTargets": [
+        "docs/contracts/API_RBAC_MATRIX.md"
+      ],
+      "scope": "Role set, permission policy and authorization guard semantics.",
+      "reason": "RBAC inventory is generated, while object/role access semantics remain a human contract."
+    },
+    {
+      "id": "auth-session",
+      "sourceGlobs": [
+        "apps/api/src/modules/auth/auth.service.ts",
+        "apps/api/src/modules/auth/auth.session-store.ts",
+        "apps/api/src/modules/auth/auth.cookies.ts",
+        "apps/api/src/modules/auth/auth.lifecycle.ts",
+        "apps/api/src/modules/auth/password-reset.ts"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/contracts/API_CONTRACTS.md",
+        "docs/contracts/AUTH_SESSION_STORE_DESIGN.md",
+        "docs/contracts/AUTH_TOKEN_REVOCATION.md"
+      ],
+      "scope": "Authentication, session, cookie, token lifecycle and password-reset behaviour.",
+      "reason": "These behaviours are public/security-sensitive semantics that cannot be reconstructed from the compact generated API index."
+    },
+    {
+      "id": "api-surface",
+      "sourceGlobs": [
+        "apps/api/src/modules/**/*.controller.ts",
+        "apps/api/src/openapi/**/*.ts"
+      ],
+      "generatedTargets": [
+        "docs/generated/API_INDEX.md"
+      ],
+      "manualTargets": [
+        "docs/contracts/API_CONTRACTS.md",
+        "docs/contracts/API_RBAC_MATRIX.md"
+      ],
+      "scope": "HTTP method/path/auth metadata and manually documented API semantics.",
+      "reason": "Runtime OpenAPI/controllers own the surface; compact generated inventory and human contracts must not drift."
+    },
+    {
+      "id": "environment-config",
+      "sourceGlobs": [
+        "apps/api/src/config/env.ts",
+        ".env.example",
+        ".env.production.example",
+        "infra/docker/.env.example",
+        "infra/docker/docker-compose*.yml"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/runbooks/DEPLOY_FOUNDATION.md",
+        "docs/runbooks/MVP_LOCAL_RUNBOOK.md",
+        "docs/runbooks/RAILWAY_DEPLOY_GUIDE.md"
+      ],
+      "scope": "Supported environment variables and deploy/local configuration contract.",
+      "reason": "Configuration changes can break startup or deployment even when application API code is unchanged."
+    },
+    {
+      "id": "migration-deploy",
+      "sourceGlobs": [
+        "apps/api/Dockerfile",
+        "apps/api/railway.json",
+        "scripts/check-production-migrations.sh"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/runbooks/DEPLOY_FOUNDATION.md",
+        "docs/runbooks/MIGRATION_BACKUP_POLICY.md",
+        "docs/runbooks/RAILWAY_DEPLOY_GUIDE.md"
+      ],
+      "scope": "Production image startup, Railway deployment and production migration gate procedures.",
+      "reason": "Deployment/migration procedures are operational contracts and must stay synchronized with executable configuration."
+    },
+    {
+      "id": "security-release",
+      "sourceGlobs": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/codeql.yml",
+        ".github/workflows/staging-smoke.yml",
+        "scripts/verify-release-gate.mjs",
+        "scripts/validate-security-waivers.mjs",
+        "security-waivers.json"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/quality/READINESS_AND_SECURITY_GATES.md",
+        "docs/runbooks/RELEASE_GATE.md"
+      ],
+      "scope": "Required quality/security/release gates and their executable CI policy.",
+      "reason": "Changes to required checks, waivers or release enforcement must be reviewed against current quality/release documentation."
+    },
+    {
+      "id": "module-topology",
+      "sourceGlobs": [
+        "apps/api/src/app.module.ts"
+      ],
+      "generatedTargets": [
+        "docs/generated/MODULES.md"
+      ],
+      "manualTargets": [
+        "docs/architecture/ARCHITECTURE_MODULE_BOUNDARIES.md"
+      ],
+      "scope": "Production Nest module composition and documented module boundaries.",
+      "reason": "AppModule owns runtime module composition; generated inventory and human boundary rationale must remain aligned."
+    }
+  ]
+}

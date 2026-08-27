@@ -83,6 +83,8 @@ Root `docs/` больше не является writable backlog. Frozen develop
 
 `docs/_meta/active-work-migration.json` — migration/provenance map DOC-08. Она связывает старые tracker IDs с GitHub work items, owner decisions, live verification или historical disposition и не является новым writable backlog.
 
+`docs/_meta/ownership.json` — CI enforcement map DOC-10. Она связывает публично значимые `sourceGlobs` с `generatedTargets` и current `manualTargets`; это конфигурация проверки impact, а не новый canonical owner implementation facts.
+
 ## Active work и decisions
 
 Active implementation work имеет один writable owner: GitHub Issues/Project. Новый implementation work item создаётся через `.github/ISSUE_TEMPLATE/work-item.md` и должен содержать цель, scope, критерии готовности, risk/rollback и docs impact.
@@ -123,9 +125,13 @@ Pre-implementation context, frozen development ledger и старые trackers �
 
 Если изменение внутреннее и документируемое поведение не меняется, фиктивный Markdown diff не нужен.
 
+`pnpm docs:impact:test` валидирует `docs/_meta/ownership.json` fail-closed: source globs должны иметь tracked matches, generated/manual targets должны существовать, а конфликтующие mappings считаются ошибкой. В Pull Request changed mapped sources вычисляются локальным `git diff` по base/head SHA из `GITHUB_EVENT_PATH`, без GitHub API.
+
+Для mapped source change PR должен либо изменить хотя бы один соответствующий `manualTargets`, либо содержать строку `Docs-Impact: reviewed-no-change — <конкретная причина>`. Пустые/N/A/TBD причины не принимаются. `generatedTargets` защищаются `docs:generate:check`; на `push`/локальном запуске без PR metadata body не требуется, но schema/paths и generation всё равно проверяются в always-running docs chain.
+
 ## Volatile facts
 
-Не создавайте вручную поддерживаемые inventories ролей, endpoints, modules, entities, workflow records или другого состояния, которое надёжно выводится из кода/runtime source. До появления generated docs на DOC-09 current fact читается непосредственно из canonical owner-source.
+Не создавайте вручную поддерживаемые inventories ролей, endpoints, modules, entities, workflow records или другого состояния, которое надёжно выводится из кода/runtime source. Derived inventories в `docs/generated/` не являются canonical owners и проверяются через deterministic generation + clean diff.
 
 Live GitHub state, deployment state и environment observations должны проверяться в момент использования. Dated evidence сохраняет только snapshot и не заменяет live read-back.
 
