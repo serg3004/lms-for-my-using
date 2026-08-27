@@ -94,7 +94,7 @@ docs/
 
 Audit, smoke, production verification, performance verification и аналогичные отчёты описывают то, что наблюдалось в конкретный момент. Они не доказывают текущее состояние без повторной проверки.
 
-`docs/master-context/` содержит pre-implementation context и будет физически перенесён в archive на DOC-05. Уже сейчас его нельзя использовать как authority для current implementation.
+Pre-implementation context физически отделён от current knowledge и хранится в `docs/archive/pre-implementation-master-context/`. Это historical material и не является authority для current implementation; правила и index архива находятся в `docs/archive/README.md`.
 
 ## Documentation review при изменениях
 

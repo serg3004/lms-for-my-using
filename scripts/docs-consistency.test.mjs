@@ -12,6 +12,9 @@ const rootReadmePath = fileURLToPath(new URL('../README.md', import.meta.url));
 const docsReadmePath = fileURLToPath(new URL('../docs/README.md', import.meta.url));
 const claudePath = fileURLToPath(new URL('../CLAUDE.md', import.meta.url));
 const aiStarterPath = fileURLToPath(new URL('../docs/AI_AGENT_STARTER_PROMPT.md', import.meta.url));
+const archiveReadmePath = fileURLToPath(new URL('../docs/archive/README.md', import.meta.url));
+const archivedMasterContextPath = fileURLToPath(new URL('../docs/archive/pre-implementation-master-context/', import.meta.url));
+const legacyMasterContextPath = fileURLToPath(new URL('../docs/master-context/', import.meta.url));
 const rootReadme = readFileSync(rootReadmePath, 'utf8');
 const docsReadme = readFileSync(docsReadmePath, 'utf8');
 const claude = readFileSync(claudePath, 'utf8');
@@ -114,6 +117,24 @@ test('root README local links resolve', () => {
 test('active AI entry-point local links resolve', () => {
   assertRelativeTargetsExist(claude, claudePath);
   assertRelativeTargetsExist(aiStarter, aiStarterPath);
+});
+
+test('pre-implementation master context is archived completely', () => {
+  assert.ok(!existsSync(legacyMasterContextPath), 'legacy docs/master-context directory must not exist');
+  assert.ok(existsSync(archiveReadmePath), 'docs/archive/README.md is missing');
+  assert.ok(existsSync(archivedMasterContextPath), 'archived pre-implementation master context is missing');
+
+  const archivedFiles = readdirSync(archivedMasterContextPath);
+  const numberedFiles = archivedFiles.filter((entry) => /^\d{2}_.*\.md$/.test(entry));
+  const expectedNumbers = Array.from({ length: 23 }, (_, index) => String(index + 1).padStart(2, '0'));
+  const actualNumbers = numberedFiles.map((entry) => entry.slice(0, 2));
+
+  assert.equal(numberedFiles.length, 23, 'archive must preserve exactly 23 numbered master-context files');
+  assert.deepEqual(sorted(actualNumbers), expectedNumbers, 'archive must preserve numbered master-context files 01 through 23');
+  assert.ok(
+    archivedFiles.includes('AI_AGENT_STARTER_PROMPT.md'),
+    'historical AI agent starter must remain in the pre-implementation archive',
+  );
 });
 
 test('docs README current entry-point paths resolve without scanning history', () => {
