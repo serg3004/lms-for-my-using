@@ -55,7 +55,7 @@ async function generate(): Promise<void> {
 
   const prismaRole = Prisma.dmmf.datamodel.enums.find((item) => item.name === 'UserRole');
   assert.ok(prismaRole, 'Prisma UserRole enum was not found');
-  const prismaRoles = [...prismaRole.values].sort();
+  const prismaRoles = prismaRole.values.map((value) => value.name).sort();
   const sharedRoles = [...USER_ROLES].sort();
   assert.deepEqual(prismaRoles, sharedRoles, 'Prisma UserRole and shared USER_ROLES must contain the same roles');
 
@@ -153,7 +153,7 @@ ${markdownTable(['Module'], moduleNames.map((name) => [quoted(name)]))}
 
   const entityModels = Prisma.dmmf.datamodel.models.map((model) => model.name).sort();
   const entityEnums = Prisma.dmmf.datamodel.enums
-    .map((item) => ({ name: item.name, values: [...item.values] }))
+    .map((item) => ({ name: item.name, values: item.values.map((value) => value.name) }))
     .sort((left, right) => left.name.localeCompare(right.name));
 
   const entitiesIndex = `${GENERATED_NOTICE}# Generated Prisma entity index
