@@ -76,16 +76,19 @@ test('volatile module and RBAC inventories are derived instead of hand-maintaine
 });
 
 test('repository-local Markdown path literals in current docs point to existing files', () => {
+  const staleReferences = [];
+
   for (const relativePath of new Set(currentMarkdown)) {
     const content = read(relativePath);
     const referencedPaths = [...content.matchAll(/`(docs\/[A-Za-z0-9_.\/-]+\.md)`/g)].map((match) => match[1]);
     for (const referencedPath of referencedPaths) {
-      assert.ok(
-        existsSync(resolve(repoRoot, referencedPath)),
-        `stale repository documentation path ${referencedPath} referenced from ${relativePath}`,
-      );
+      if (!existsSync(resolve(repoRoot, referencedPath))) {
+        staleReferences.push(`${referencedPath} <- ${relativePath}`);
+      }
     }
   }
+
+  assert.deepEqual(staleReferences, [], `stale repository documentation paths:\n${staleReferences.join('\n')}`);
 });
 
 test('root navigation points to the single documentation map', () => {
