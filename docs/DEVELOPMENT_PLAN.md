@@ -1132,11 +1132,24 @@ Assessments, certificates и upload являются критичными для
 
 ---
 
-## PR 129 — branch protection 🔲
+## PR 129 — branch protection ✅
 
 - Проверить и настроить: required CI, required CodeQL, no direct push, PR required
 - Зафиксировать статус — подтверждается пользователем
-- Добавлен воспроизводимый audit/apply script с безопасным read-only режимом и обязательной read-back verification; фактическая активация ожидает repository Administration credential владельца
+- Добавлен воспроизводимый audit/apply script с безопасным read-only режимом и обязательной read-back verification
+
+> **Подтверждено владельцем (2026-08-26):** ruleset `Protect main` активен на GitHub
+> (Rulesets → Protect main → Active), применяется к `main`, bypass list пуст.
+> Проверено по скриншотам владельца против `desiredRuleset()` из
+> `scripts/configure-branch-protection.mjs`: Restrict deletions, Block force pushes,
+> Require a pull request before merging (0 required approvals), Require status checks
+> to pass с `Require branches to be up to date before merging` — все включены;
+> required checks заданы точно `Checks` + `Analyze (javascript-typescript)` (GitHub
+> Actions), без лишних/недостающих контекстов. `Require conversation resolution
+> before merging` выключен — осознанное решение владельца; policy-as-code
+> (`scripts/configure-branch-protection.mjs`) приведён в соответствие с этим
+> решением (`required_review_thread_resolution: false`), это не отклонение
+> скрипта от live-состояния, а согласованная baseline-политика.
 
 ---
 
@@ -1176,7 +1189,7 @@ Assessments, certificates и upload являются критичными для
 ```
 БЛОК 6: CI и безопасность        PR 104–109   6 PR  ✅ СДЕЛАНО
 БЛОК 7: Staging                  PR 110–117   8 PR  ✅ 111–113✅ 115–117✅ 110⚠️ 114⚠️ 116✅
-БЛОК 8: Production hardening     PR 118–131  14 PR  118✅ 119✅ 120✅ 121✅ 122✅ 123✅ 124✅ 125✅ 126✅ 127✅ 128✅ 130✅ 131✅ 129🔲
+БЛОК 8: Production hardening     PR 118–131  14 PR  ✅ ВСЕ СДЕЛАНО
 ──────────────────────────────────────────────────────────────
 ИТОГО ЧАСТЬ 3:                               28 PR
 ```
@@ -4111,7 +4124,7 @@ target major и ссылкой на upstream guide. Этапы выполняю�
 
 ---
 
-## PR 238 — Protect `main` and require repository quality gates 🟡
+## PR 238 — Protect `main` and require repository quality gates ✅
 
 **Проблема:** на момент аудита `main` не имела branch protection/required status checks, поэтому наличие CI не гарантировало его обязательное прохождение перед изменением основной ветки.
 
@@ -4139,9 +4152,18 @@ target major и ссылкой на upstream guide. Этапы выполняю�
   После записи скрипт обязательно перечитывает ruleset и состояние ветки через
   GitHub API. Audit возвращает ненулевой код при любом drift.
 
-**Статус:** реализация и локальная проверка policy завершены; фактическое
-применение и read-back для hosted repository ожидают Administration credential
-владельца. До подтверждения API пункт не переводится в ✅.
+**Статус:** реализация и локальная проверка policy завершены.
+
+> **Подтверждено владельцем (2026-08-26):** ruleset `Protect main` активен на
+> hosted repository (проверено по скриншотам владельца, не через API с
+> Administration credential). Required status checks — точно `Checks` и
+> `Analyze (javascript-typescript)`, без drift. Deletion/force-push запрещены,
+> pull request обязателен (0 required approvals), branches must be up to date
+> before merging — включено. `Require conversation resolution before merging`
+> выключен — осознанное решение владельца; policy-as-code
+> (`scripts/configure-branch-protection.mjs`) приведён в соответствие
+> (`required_review_thread_resolution: false`), поэтому это согласованная
+> baseline-политика, а не расхождение между документом и исполняемым скриптом.
 
 **Критерии готовности:**
 - [x] required checks перечислены и имеют стабильные имена;
@@ -4150,7 +4172,7 @@ target major и ссылкой на upstream guide. Этапы выполняю�
 - [x] основной CI задан как required check;
 - [x] CodeQL задан как required security check;
 - [x] целевая политика блокирует merge при failed required check;
-- [ ] фактическая protection state повторно подтверждена через GitHub API с credential владельца.
+- [x] фактическая protection state подтверждена владельцем визуально на GitHub UI (не через API с Administration credential — токен владельцу не передавался).
 
 ---
 

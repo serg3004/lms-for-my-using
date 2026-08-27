@@ -1,27 +1,37 @@
 # Branch Protection / Ruleset — Future Work
 
-> **Статус:** `DEFERRED`
+> **Статус:** `IMPLEMENTED`
 >
-> **Implementation status:** `NOT-IMPLEMENTED`
+> **Implementation status:** `IMPLEMENTED` — ruleset `Protect main` активен на GitHub,
+> подтверждено владельцем визуально (Rulesets → Protect main → Active) 2026-08-26.
+> Актуальный статус и авторитетный источник: `docs/READINESS_AND_SECURITY_GATES.md` §7,
+> `docs/DEVELOPMENT_PLAN.md` PR 129/238. Этот документ сохраняется как historical
+> rationale исходного планирования, а не как current source of truth по live-состоянию.
 >
-> **Назначение:** зафиксировать рекомендуемую будущую конфигурацию GitHub Ruleset для `main`, не создавая ложного впечатления, что защита ветки уже включена.
+> **Назначение (исторически):** зафиксировать рекомендуемую конфигурацию GitHub Ruleset
+> для `main`, когда защита ветки ещё не была включена.
 >
-> **Проверено по `main`:** `50e27a1491828cd0776a5cab2592ed5e784899ed` (2026-08-22).
+> **Проверено по `main`:** `50e27a1491828cd0776a5cab2592ed5e784899ed` (2026-08-22, до реализации).
 
-## 1. Текущее состояние
+## 1. Состояние на момент планирования (историческое, 2026-08-22)
 
-На момент проверки:
+На тот момент:
 
-- `main` имеет `protected: false`;
-- required status checks не являются repository-enforced merge gates;
+- `main` имела `protected: false`;
+- required status checks не являлись repository-enforced merge gates;
 - текущие стабильные check names:
   - `Checks` — основной `CI / Checks` job;
   - `Analyze (javascript-typescript)` — CodeQL analysis job;
-- PR-based workflow уже используется как рабочий процесс проекта, но GitHub settings пока не запрещают обход через прямое изменение `main`.
+- PR-based workflow уже использовался как рабочий процесс проекта, но GitHub settings пока не запрещали обход через прямое изменение `main`.
 
-Fresh read-only GitHub API audit также вернул пустой список repository rulesets. Поэтому защита действительно требует включения, а не только обновления документации.
+Read-only GitHub API audit на тот момент также вернул пустой список repository rulesets.
 
-**Правило для ИИ-агента:** этот документ описывает **будущую** настройку. `MUST NOT` утверждать, что branch protection активна, пока repository settings не перепроверены и не подтверждают это.
+**Итог:** к 2026-08-26 защита реализована (см. header выше). Рекомендация раздела 4
+ниже (`Require branches to be up to date before merging: OFF`) не была принята —
+владелец включил этот флаг (`ON`) при фактической настройке. Раздел 3
+(rules/required checks) и раздел 6 (bypass policy) реализованы как рекомендовано.
+Требование `Require conversation resolution before merging` в исходную рекомендацию
+не входило и в live-конфигурации осталось выключенным.
 
 ---
 

@@ -26,7 +26,12 @@ export function desiredRuleset() {
           dismiss_stale_reviews_on_push: false,
           require_code_owner_review: false,
           require_last_push_approval: false,
-          required_review_thread_resolution: true,
+          // Deliberately false: the repository owner reviewed this option live
+          // on GitHub (Rulesets → Protect main → Require a pull request before
+          // merging → Require conversation resolution before merging) and chose
+          // to leave it off, so the policy-as-code baseline matches the accepted
+          // configuration instead of drifting from it.
+          required_review_thread_resolution: false,
         },
       },
       {
@@ -62,8 +67,8 @@ export function verifyRuleset(ruleset) {
 
   const pullRequest = ruleByType(ruleset, 'pull_request')?.parameters;
   if (pullRequest?.required_approving_review_count !== 0) failures.push('required approvals must be 0');
-  if (pullRequest?.required_review_thread_resolution !== true) {
-    failures.push('review threads must be resolved');
+  if (pullRequest?.required_review_thread_resolution !== false) {
+    failures.push('review thread resolution must match the accepted policy (off)');
   }
 
   const statusParameters = ruleByType(ruleset, 'required_status_checks')?.parameters;

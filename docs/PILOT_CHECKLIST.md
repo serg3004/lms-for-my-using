@@ -111,7 +111,7 @@ Historical seed counts из старых pilot docs не являются обя
 - [ ] Tenant isolation negative scenario проверен.
 - [ ] RBAC relevant to pilot scenario проверен.
 - [ ] Required GitHub CI/CodeQL run for pilot SHA green.
-- [ ] Не утверждать, что checks merge-enforced: branch protection сейчас `DEFERRED / NOT-IMPLEMENTED`.
+- [ ] Branch protection подтверждена как `MERGE-ENFORCED` (см. `docs/READINESS_AND_SECURITY_GATES.md` §7) — перепроверить актуальность перед конкретным pilot SHA, а не полагаться на этот пункт как на вечный факт.
 - [ ] Known implementation gaps оценены относительно pilot scenario.
 
 See `docs/READINESS_AND_SECURITY_GATES.md`.
