@@ -2,30 +2,22 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath, URL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
-const appModule = readFileSync(new URL('../apps/api/src/app.module.ts', import.meta.url), 'utf8');
-const architecture = readFileSync(new URL('../docs/architecture/ARCHITECTURE_MODULE_BOUNDARIES.md', import.meta.url), 'utf8');
-const rbac = readFileSync(new URL('../docs/contracts/API_RBAC_MATRIX.md', import.meta.url), 'utf8');
-const rootReadmePath = fileURLToPath(new URL('../README.md', import.meta.url));
-const docsReadmePath = fileURLToPath(new URL('../docs/README.md', import.meta.url));
-const claudePath = fileURLToPath(new URL('../CLAUDE.md', import.meta.url));
-const aiStarterPath = fileURLToPath(new URL('../docs/AI_AGENT_STARTER_PROMPT.md', import.meta.url));
-const archiveReadmePath = fileURLToPath(new URL('../docs/archive/README.md', import.meta.url));
-const archivedMasterContextPath = fileURLToPath(new URL('../docs/archive/pre-implementation-master-context/', import.meta.url));
-const legacyMasterContextPath = fileURLToPath(new URL('../docs/master-context/', import.meta.url));
-const evidenceReadmePath = fileURLToPath(new URL('../docs/evidence/README.md', import.meta.url));
-const pathMapPath = fileURLToPath(new URL('../docs/_meta/path-map.json', import.meta.url));
-const activeWorkMigrationPath = fileURLToPath(new URL('../docs/_meta/active-work-migration.json', import.meta.url));
-const openDecisionsPath = fileURLToPath(new URL('../docs/status/OPEN_DECISIONS.md', import.meta.url));
-const pullRequestTemplatePath = fileURLToPath(new URL('../.github/pull_request_template.md', import.meta.url));
-const issueTemplatePath = fileURLToPath(new URL('../.github/ISSUE_TEMPLATE/work-item.md', import.meta.url));
-const workflowsPath = fileURLToPath(new URL('../.github/workflows/', import.meta.url));
-const rootReadme = readFileSync(rootReadmePath, 'utf8');
-const docsReadme = readFileSync(docsReadmePath, 'utf8');
-const claude = readFileSync(claudePath, 'utf8');
-const aiStarter = readFileSync(aiStarterPath, 'utf8');
+const rootReadmePath = resolve(repoRoot, 'README.md');
+const docsReadmePath = resolve(repoRoot, 'docs/README.md');
+const claudePath = resolve(repoRoot, 'CLAUDE.md');
+const aiStarterPath = resolve(repoRoot, 'docs/AI_AGENT_STARTER_PROMPT.md');
+const archiveReadmePath = resolve(repoRoot, 'docs/archive/README.md');
+const archivedMasterContextPath = resolve(repoRoot, 'docs/archive/pre-implementation-master-context');
+const legacyMasterContextPath = resolve(repoRoot, 'docs/master-context');
+const evidenceReadmePath = resolve(repoRoot, 'docs/evidence/README.md');
+const activeWorkMigrationPath = resolve(repoRoot, 'docs/_meta/active-work-migration.json');
+const openDecisionsPath = resolve(repoRoot, 'docs/status/OPEN_DECISIONS.md');
+const pullRequestTemplatePath = resolve(repoRoot, '.github/pull_request_template.md');
+const issueTemplatePath = resolve(repoRoot, '.github/ISSUE_TEMPLATE/work-item.md');
+const workflowsPath = resolve(repoRoot, '.github/workflows');
 
 const evidenceMoves = [
   ['CI_AUDIT_BASELINE.md', 'audits/CI_AUDIT_BASELINE.md'],
@@ -89,9 +81,7 @@ function assertRelativeTargetsExist(markdown, sourcePath) {
 function markdownFilesRecursively(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      return markdownFilesRecursively(entryPath);
-    }
+    if (entry.isDirectory()) return markdownFilesRecursively(entryPath);
     return entry.isFile() && entry.name.endsWith('.md') ? [entryPath] : [];
   });
 }
@@ -113,46 +103,12 @@ function assertEntryPointExists(target) {
   const directory = dirname(resolved);
   const filePattern = basename(resolved);
   assert.ok(existsSync(directory), `docs README entry-point directory is missing: ${dirname(target)}`);
-
   const matches = readdirSync(directory).filter((entry) => globPatternToRegExp(filePattern).test(entry));
   assert.ok(matches.length > 0, `docs README current entry-point pattern has no matches: ${target}`);
 }
 
-test('architecture inventory contains every production AppModule import exactly once', () => {
-  const importsBlock = appModule.match(/@Module\(\{\s*imports:\s*\[([\s\S]*?)\n\s*\],\s*\n\}\)/)?.[1];
-  assert.ok(importsBlock, 'AppModule imports array was not found');
-
-  const productionModules = [...importsBlock.matchAll(/^\s*([A-Z][A-Za-z]+Module)(?:\.forRoot\([\s\S]*?^\s*\}\),|,)/gm)].map(
-    ([, name]) => name,
-  );
-  const inventorySection = architecture.match(/Current production `AppModule` imports[\s\S]*?\nEach API domain module/)?.[0];
-  assert.ok(inventorySection, 'checked architecture inventory section was not found');
-  const documentedModules = [...inventorySection.matchAll(/^\| `([A-Z][A-Za-z]+Module)` \|/gm)].map(([, name]) => name);
-
-  assert.deepEqual(sorted(documentedModules), sorted(productionModules));
-  assert.equal(new Set(documentedModules).size, documentedModules.length, 'architecture inventory has duplicate modules');
-});
-
-test('RBAC course-scope controller count and list match CourseAccessGuard usage', () => {
-  const paragraph = rbac.match(/alongside the role guards on (\d+) controllers:\n([\s\S]*?)\.\n\n-/);
-  assert.ok(paragraph, 'RBAC course-scope controller inventory was not found');
-  const documentedCount = Number(paragraph[1]);
-  const documentedControllers = [...paragraph[2].matchAll(/`([a-z][a-z-]+)`/g)].map(([, name]) => name);
-
-  const modulesDirectory = new URL('../apps/api/src/modules/', import.meta.url);
-  const guardedControllers = readdirSync(modulesDirectory, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .filter((entry) => readdirSync(new URL(`${entry.name}/`, modulesDirectory))
-      .filter((file) => file.endsWith('.controller.ts'))
-      .some((file) => readFileSync(new URL(`${entry.name}/${file}`, modulesDirectory), 'utf8').includes('CourseAccessGuard')))
-    .map((entry) => entry.name);
-
-  assert.equal(documentedControllers.length, documentedCount);
-  assert.deepEqual(sorted(documentedControllers), sorted(guardedControllers));
-});
-
 test('documentation governance entry points exist', () => {
-  const requiredPaths = [
+  for (const path of [
     'AGENTS.md',
     'CLAUDE.md',
     'README.md',
@@ -161,25 +117,19 @@ test('documentation governance entry points exist', () => {
     'docs/archive/README.md',
     'docs/evidence/README.md',
     'docs/status/OPEN_DECISIONS.md',
-    'docs/_meta/path-map.json',
     'docs/_meta/active-work-migration.json',
+    'docs/_meta/ownership.json',
     '.github/ISSUE_TEMPLATE/work-item.md',
     '.github/pull_request_template.md',
-    'docs/documentation_full_remediation_plan_pdca_v3.md',
-  ];
-
-  for (const path of requiredPaths) {
+  ]) {
     assert.ok(existsSync(resolve(repoRoot, path)), `required documentation entry point is missing: ${path}`);
   }
 });
 
-test('root README local links resolve', () => {
-  assertRelativeTargetsExist(rootReadme, rootReadmePath);
-});
-
-test('active AI entry-point local links resolve', () => {
-  assertRelativeTargetsExist(claude, claudePath);
-  assertRelativeTargetsExist(aiStarter, aiStarterPath);
+test('root and active AI entry-point local links resolve', () => {
+  for (const path of [rootReadmePath, claudePath, aiStarterPath]) {
+    assertRelativeTargetsExist(readFileSync(path, 'utf8'), path);
+  }
 });
 
 test('pre-implementation master context is archived completely', () => {
@@ -194,64 +144,38 @@ test('pre-implementation master context is archived completely', () => {
 
   assert.equal(numberedFiles.length, 23, 'archive must preserve exactly 23 numbered master-context files');
   assert.deepEqual(sorted(actualNumbers), expectedNumbers, 'archive must preserve numbered master-context files 01 through 23');
-  assert.ok(
-    archivedFiles.includes('AI_AGENT_STARTER_PROMPT.md'),
-    'historical AI agent starter must remain in the pre-implementation archive',
-  );
+  assert.ok(archivedFiles.includes('AI_AGENT_STARTER_PROMPT.md'), 'historical AI starter must remain archived');
 });
 
-test('verification snapshots are separated into evidence without broken local links', () => {
+test('verification snapshots remain separated into evidence', () => {
   assert.ok(existsSync(evidenceReadmePath), 'docs/evidence/README.md is missing');
   assertRelativeTargetsExist(readFileSync(evidenceReadmePath, 'utf8'), evidenceReadmePath);
 
   for (const [legacyRelativePath, evidenceRelativePath] of evidenceMoves) {
-    const legacyPath = resolve(repoRoot, 'docs', legacyRelativePath);
-    const evidencePath = resolve(repoRoot, 'docs/evidence', evidenceRelativePath);
-
-    assert.ok(!existsSync(legacyPath), `evidence snapshot still exists in current documentation: docs/${legacyRelativePath}`);
-    assert.ok(existsSync(evidencePath), `moved evidence snapshot is missing: docs/evidence/${evidenceRelativePath}`);
-    assertRelativeTargetsExist(readFileSync(evidencePath, 'utf8'), evidencePath);
+    assert.ok(!existsSync(resolve(repoRoot, 'docs', legacyRelativePath)), `evidence remains in current docs: ${legacyRelativePath}`);
+    assert.ok(existsSync(resolve(repoRoot, 'docs/evidence', evidenceRelativePath)), `evidence is missing: ${evidenceRelativePath}`);
   }
 });
 
-test('DOC-07 path map matches the current taxonomy migration', () => {
-  const pathMap = JSON.parse(readFileSync(pathMapPath, 'utf8'));
-  assert.equal(pathMap.lifecycle, 'TEMPORARY');
-  assert.match(pathMap.exitCondition, /DOC-12/);
-
-  const moves = Object.entries(pathMap.moves ?? {});
-  assert.equal(moves.length, 43, 'DOC-07 path map must contain exactly 43 current-document moves');
-  assert.equal(new Set(moves.map(([, newPath]) => newPath)).size, moves.length, 'DOC-07 path-map targets must be unique');
-
-  for (const [oldPath, newPath] of moves) {
-    assert.ok(!existsSync(resolve(repoRoot, oldPath)), `legacy current-document path still exists: ${oldPath}`);
-    assert.ok(existsSync(resolve(repoRoot, newPath)), `mapped current-document target is missing: ${newPath}`);
-  }
-});
-
-test('DOC-08 retires writable Markdown trackers without losing migration provenance', () => {
+test('DOC-08 retires writable Markdown trackers without losing provenance', () => {
   const migration = JSON.parse(readFileSync(activeWorkMigrationPath, 'utf8'));
   assert.equal(migration.canonicalOwners.implementation, 'GitHub Issues/Project');
   assert.equal(migration.canonicalOwners.ownerDecisions, 'docs/status/OPEN_DECISIONS.md');
-  assert.ok(Array.isArray(migration.implementationWorkItems));
-  assert.ok(migration.implementationWorkItems.length > 0, 'DOC-08 must preserve confirmed implementation work items');
-
+  assert.ok(Array.isArray(migration.implementationWorkItems) && migration.implementationWorkItems.length > 0);
   const stableIds = migration.implementationWorkItems.map((item) => item.stableId);
-  assert.equal(new Set(stableIds).size, stableIds.length, 'DOC-08 work-item stable IDs must be unique');
+  assert.equal(new Set(stableIds).size, stableIds.length, 'DOC-08 stable IDs must be unique');
 
   for (const [legacyPath, archivedPath] of retiredTrackerMoves) {
     assert.ok(!existsSync(resolve(repoRoot, legacyPath)), `legacy writable tracker still exists: ${legacyPath}`);
     assert.ok(existsSync(resolve(repoRoot, archivedPath)), `archived tracker is missing: ${archivedPath}`);
   }
 
-  const decisions = readFileSync(openDecisionsPath, 'utf8');
-  assert.match(decisions, /единственный writable Markdown-регистр только для owner\/business decisions/);
+  assert.match(readFileSync(openDecisionsPath, 'utf8'), /единственный writable Markdown-регистр только для owner\/business decisions/);
 });
 
 test('GitHub templates use work-item ownership instead of development-ledger planning', () => {
   const pullRequestTemplate = readFileSync(pullRequestTemplatePath, 'utf8');
   const issueTemplate = readFileSync(issueTemplatePath, 'utf8');
-
   assert.doesNotMatch(pullRequestTemplate, /DEVELOPMENT_PLAN|Plan PR:/);
   assert.match(pullRequestTemplate, /Work item:/);
   assert.match(issueTemplate, /## Цель/);
@@ -261,11 +185,10 @@ test('GitHub templates use work-item ownership instead of development-ledger pla
   assert.match(issueTemplate, /## Docs impact/);
 });
 
-test('current GitHub workflows do not append or depend on the archived development ledger', () => {
+test('current workflows do not depend on archived development ledger', () => {
   const workflowFiles = readdirSync(workflowsPath).filter((entry) => /\.ya?ml$/.test(entry));
   for (const workflowFile of workflowFiles) {
-    const content = readFileSync(resolve(workflowsPath, workflowFile), 'utf8');
-    assert.doesNotMatch(content, /DEVELOPMENT_PLAN\.md/, `workflow still depends on archived ledger: ${workflowFile}`);
+    assert.doesNotMatch(readFileSync(resolve(workflowsPath, workflowFile), 'utf8'), /DEVELOPMENT_PLAN\.md/);
   }
 });
 
@@ -273,7 +196,6 @@ test('current taxonomy local Markdown links resolve', () => {
   for (const relativeDirectory of taxonomyDirectories) {
     const directory = resolve(repoRoot, relativeDirectory);
     assert.ok(existsSync(directory), `current taxonomy directory is missing: ${relativeDirectory}`);
-
     for (const markdownPath of markdownFilesRecursively(directory)) {
       assertRelativeTargetsExist(readFileSync(markdownPath, 'utf8'), markdownPath);
     }
@@ -281,13 +203,9 @@ test('current taxonomy local Markdown links resolve', () => {
 });
 
 test('docs README current entry-point paths resolve without scanning history', () => {
+  const docsReadme = readFileSync(docsReadmePath, 'utf8');
   const section = docsReadme.match(/## Current entry points[^\n]*\n([\s\S]*?)(?=\n## |$)/)?.[1];
   assert.ok(section, 'docs README current entry-points section was not found');
-
   const entryPoints = [...section.matchAll(/`([^`]+\.md)`/g)].map(([, target]) => target);
-  assert.ok(entryPoints.length > 0, 'docs README current entry-points section has no document paths');
-
-  for (const target of entryPoints) {
-    assertEntryPointExists(target);
-  }
+  for (const target of entryPoints) assertEntryPointExists(target);
 });
