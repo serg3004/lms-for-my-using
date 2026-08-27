@@ -201,21 +201,15 @@ CodeQL не использует Trivy waiver file как bypass mechanism.
 
 ## 12. Branch protection / merge enforcement
 
-**Статус:** `NOT-ENFORCED`
+**Статус:** `MERGE-ENFORCED`
 
-На момент проверки GitHub `main`:
+**Подтверждено владельцем (2026-08-26):** ruleset `Protect main` активен на GitHub,
+`main` защищена (`protected: true`), required status checks — `Checks` и
+`Analyze (javascript-typescript)` — обязательны для merge. Подробности:
+`docs/READINESS_AND_SECURITY_GATES.md` §7, `docs/DEVELOPMENT_PLAN.md` PR 129/238.
 
-- `protected: false`;
-- required status checks enforcement выключен.
-
-Это означает:
-
-- CI/CodeQL можно запускать и получать green/red results;
-- repository settings не гарантируют обязательность green result для merge.
-
-**Правило для ИИ:** `EXECUTED/PASSED` и `MERGE-ENFORCED` — разные факты.
-
-Branch protection/ruleset должен проверяться заново перед любым утверждением, что checks стали required.
+**Правило для ИИ:** `EXECUTED/PASSED` и `MERGE-ENFORCED` — разные факты; не путать их
+и в будущем — перепроверять live state перед любым новым утверждением о ruleset.
 
 ---
 
