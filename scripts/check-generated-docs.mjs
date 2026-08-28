@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import { appendFileSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+const repoRoot = resolve(import.meta.dirname, '..');
+const generatedFiles = ['API_INDEX.md', 'RBAC.md', 'MODULES.md', 'ENTITIES.md'];
+
+function run(command, args) {
+  const result = spawnSync(command, args, { cwd: repoRoot, encoding: 'utf8', stdio: 'inherit' });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+function snapshot() {
+  return Object.fromEntries(
+    generatedFiles.map((file) => [file, readFileSync(resolve(repoRoot, 'docs/generated', file), 'utf8')]),
+  );
+}
+
+function workflowCommandEscape(value) {
+  return value.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+}
+
+run('pnpm', ['docs:generate']);
+const first = snapshot();
+
+run('node', ['apps/api/dist/scripts/generate-docs.js']);
+const second = snapshot();
+assert.deepEqual(second, first, 'docs generation must be idempotent');
+
+const diff = spawnSync('git', ['diff', '--exit-code', '--', 'docs/generated'], {
+  cwd: repoRoot,
+  encoding: 'utf8',
+});
+if (diff.status !== 0) {
+  const patch = `${diff.stdout ?? ''}${diff.stderr ?? ''}`;
+  process.stderr.write(patch);
+
+  const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+  if (summaryPath) {
+    appendFileSync(
+      summaryPath,
+      `\n## Generated documentation drift\n\nThe committed files differ from \`pnpm docs:generate\`.\n\n\`\`\`diff\n${patch}\n\`\`\`\n`,
+      'utf8',
+    );
+  }
+
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    const diagnostic = patch.length > 12000 ? `${patch.slice(0, 12000)}\n... diff truncated ...` : patch;
+    process.stderr.write(`::error title=Generated documentation drift::${workflowCommandEscape(diagnostic)}\n`);
+  }
+
+  process.stderr.write('\nGenerated documentation is stale. Run `pnpm docs:generate` and commit the result.\n');
+  process.exit(diff.status ?? 1);
+}

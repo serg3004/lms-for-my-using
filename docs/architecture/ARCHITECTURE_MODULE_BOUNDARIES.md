@@ -1,88 +1,44 @@
 # Architecture and Module Boundaries
 
-Document status: docs-only  
-Scope: current MVP architecture boundaries for API, Web, shared frontend code, contracts, and future module growth
+> **Status:** `CURRENT` decision/explanation.
+>
+> **Implementation authority:** current code/config. This document defines stable boundaries and extension rules; it does not maintain a hand-written inventory of modules, routes, roles, or entities.
 
-This document records the current LMS module boundaries and the rules for extending them. It does not move files, refactor modules, change imports, change runtime behavior, update Prisma schema, or change API contracts.
+## Architecture baseline
 
-## Current high-level structure
+The project uses a modular-monolith-first architecture:
 
-| Area | Path | Responsibility |
-|---|---|---|
-| API app bootstrap | `apps/api/src/main.ts`, `apps/api/src/app.module.ts` | NestJS startup, app-level module wiring, global API concerns. |
-| API common utilities | `apps/api/src/common` | Shared API-only guards, decorators, filters, schemas, policies, and helpers. |
-| API config | `apps/api/src/config` | Environment/config loading and validation. |
-| API database | `apps/api/src/database` | Prisma access and database module wiring. |
-| API domain modules | `apps/api/src/modules/*` | Domain-specific controllers, services, schemas, and tests. |
-| API Prisma schema | `apps/api/prisma/schema.prisma` | Database model source of truth. |
-| Web app shell/pages | `apps/web/src/app` | Routes, page components, protected route behavior, and top-level app composition. |
-| Web shared code | `apps/web/src/shared` | Reusable UI, API client helpers, form validation, display labels, theme, logout helpers. |
-| Web typed API modules | `apps/web/src/shared/api` | Frontend API domain wrappers and frontend-side API response/request types. |
-| Web i18n | `apps/web/src/i18n` | Translation resources and i18n setup. |
-| Web styles | `apps/web/src/styles` | Global styles and styling primitives. |
-| Docs | `docs` | Planning, contracts, policies, status, and operational documentation. |
-| Infra | `infra` | Deployment support files such as Railway and nginx docs/config. |
+- API: NestJS + TypeScript;
+- Web: React + Vite + TypeScript;
+- database: PostgreSQL with Prisma schema/migrations;
+- workspace/package manager: pnpm workspaces;
+- tenant boundary: organization scope;
+- reusable UI foundation: the repository's custom CSS/tokens/shared React primitives, per [`ADR_DESIGN_SYSTEM.md`](./adr/ADR_DESIGN_SYSTEM.md).
 
-## API module boundaries
+These are architecture decisions. Current versions, wiring and implementation details must be read from package manifests and code.
 
-API domain modules live under `apps/api/src/modules`.
+## Canonical implementation owners
 
-Current production `AppModule` imports are listed below. This table is the checked inventory: every module wired in `apps/api/src/app.module.ts` must appear here, including infrastructure modules that do not expose controllers.
+| Concern | Canonical owner / derived view |
+| --- | --- |
+| API bootstrap and module wiring | `apps/api/src/main.ts`, `apps/api/src/app.module.ts` |
+| Derived AppModule inventory | [`../generated/MODULES.md`](../generated/MODULES.md) |
+| API domain code | `apps/api/src/modules/*` |
+| API common concerns | `apps/api/src/common/` |
+| API config | `apps/api/src/config/` |
+| Database model | `apps/api/prisma/schema.prisma` |
+| Web route/page composition | `apps/web/src/app/` |
+| Web shared code/API wrappers | `apps/web/src/shared/` |
+| Web localization | `apps/web/src/i18n/` |
+| Web styling | `apps/web/src/styles/` |
 
-| Module | Path | Actual responsibility |
-|---|---|---|
-| `LoggerModule` | `nestjs-pino` (configured in `apps/api/src/app.module.ts`) | Structured HTTP/application logging, request IDs, and redaction. |
-| `DatabaseModule` | `apps/api/src/database` | Global Prisma database access. |
-| `ObservabilityModule` | `apps/api/src/common/observability` | Metrics, telemetry context, and API observability middleware. |
-| `CourseAccessModule` | `apps/api/src/modules/course-access` | Global course ownership policy and guard for course-scoped instructor access. |
-| `AssessmentAttemptsModule` | `apps/api/src/modules/assessment-attempts` | Assessment attempt creation, retrieval, submission, and results. |
-| `AssessmentQuestionsModule` | `apps/api/src/modules/assessment-questions` | Assessment question and option management. |
-| `AssessmentsModule` | `apps/api/src/modules/assessments` | Assessment CRUD and reads. |
-| `AssignmentsModule` | `apps/api/src/modules/assignments` | Assignment CRUD and reads. |
-| `BackgroundJobsModule` | `apps/api/src/modules/background-jobs` | Global background-job dispatch, using BullMQ when Redis is configured and a disabled backend otherwise. |
-| `AuthModule` | `apps/api/src/modules/auth` | Authentication/session flows, authorization guards, and role policies. |
-| `CertificatesModule` | `apps/api/src/modules/certificates` | Certificate issuance and retrieval. |
-| `ChecklistsModule` | `apps/api/src/modules/checklists` | Checklist definitions, assigned instances, learner results, reviews, and deadline processing. |
-| `CourseMaterialsModule` | `apps/api/src/modules/course-materials` | Course material metadata, upload lifecycle, lesson assignment, and malware-scan callback. |
-| `CoursesModule` | `apps/api/src/modules/courses` | Course CRUD and reads. |
-| `GroupsModule` | `apps/api/src/modules/groups` | Organization group management. |
-| `HealthModule` | `apps/api/src/modules/health` | Liveness and readiness endpoints. |
-| `LessonsModule` | `apps/api/src/modules/lessons` | Lesson CRUD and reads. |
-| `ManagerModule` | `apps/api/src/modules/manager` | Manager team-summary endpoint. |
-| `MembershipsModule` | `apps/api/src/modules/memberships` | Organization membership reads and creation. |
-| `ManagerTeamScopeModule` | `apps/api/src/modules/manager-team-scope` | Global query-scope helper limiting managers to their teams. |
-| `NotificationsModule` | `apps/api/src/modules/notifications` | In-app notification listing and read-state updates. |
-| `AuditLogModule` | `apps/api/src/modules/audit-log` | Organization-scoped audit-log listing and filter options for authorized readers. |
-| `LearnerDashboardModule` | `apps/api/src/modules/learner-dashboard` | Learner dashboard aggregate read endpoint for authorized learners. |
-| `OpenApiModule` | `apps/api/src/modules/openapi` | Static OpenAPI document endpoint. |
-| `OutboxModule` | `apps/api/src/modules/outbox` | Global transactional-outbox enqueue service. |
-| `OrganizationsModule` | `apps/api/src/modules/organizations` | Organization registration, reads, and creation. |
-| `ProgressModule` | `apps/api/src/modules/progress` | Learner course-progress reads and updates. |
-| `ReportsModule` | `apps/api/src/modules/reports` | Report generation, export retrieval, and report-file downloads. |
-| `UploadModule` | `apps/api/src/modules/upload` | Shared object-storage upload operations and validation; it exposes no controller. |
-| `UsersModule` | `apps/api/src/modules/users` | Organization user reads and creation. |
+The generated module inventory is deterministic and CI-checked; it is not a new authority over `AppModule`.
 
-Each API domain module should own its own:
+## API boundaries
 
-- controller routes;
-- service logic;
-- request validation schemas;
-- module wiring;
-- module-specific tests.
+A domain module should own its controllers, services, request validation and module-specific tests. Create a new module only when a distinct lifecycle/responsibility does not fit an existing owner.
 
-Cross-cutting concerns should stay outside domain modules:
-
-| Concern | Preferred location |
-|---|---|
-| Prisma client/module | `apps/api/src/database` |
-| Auth guards, role policies, shared decorators | `apps/api/src/common` or `apps/api/src/modules/auth` when auth-specific |
-| Env/config | `apps/api/src/config` |
-| API-wide response/error utilities | `apps/api/src/common` |
-| OpenAPI static document serving | `apps/api/src/modules/openapi` |
-
-### API dependency direction
-
-Preferred direction:
+Preferred dependency direction:
 
 ```text
 controller -> service -> Prisma/database
@@ -90,230 +46,46 @@ controller -> request schema validation
 guard/decorator -> common/auth policy
 ```
 
-Avoid:
+Avoid business/database logic in controllers, private-service coupling across unrelated domains, duplicated role checks and unreviewed raw SQL. New API modules must be wired explicitly in `AppModule`.
 
-- controllers directly implementing business/database logic;
-- unrelated modules importing each other's private service internals;
-- duplicate role checks split across unrelated files;
-- raw SQL unless explicitly reviewed and safely parameterized;
-- request validation without Zod/runtime validation for new API inputs.
+## Database boundary
 
-### API module creation rule
+`apps/api/prisma/schema.prisma` and migrations are the repository authority for database structure. Runtime database access should go through Prisma. Schema/migration changes require explicit migration scope and review with affected services, validation, tests and docs.
 
-Create a new API module only when the domain has a clear lifecycle or responsibility that does not fit an existing module.
+Operational migration/backup procedure: [`../runbooks/MIGRATION_BACKUP_POLICY.md`](../runbooks/MIGRATION_BACKUP_POLICY.md).
 
-Before creating a new API module, check:
+## Web boundary
 
-1. whether an existing module already owns the entity or workflow;
-2. whether the new module would duplicate routes or service logic;
-3. whether Prisma schema changes are required;
-4. whether API contracts/OpenAPI/docs need to change;
-5. whether RBAC policies need tests.
-
-New API modules should be added to `AppModule` explicitly.
-
-## Prisma and database boundaries
-
-Prisma schema is the database source of truth:
-
-```text
-apps/api/prisma/schema.prisma
-```
-
-Rules:
-
-- Runtime database access should go through Prisma.
-- Prisma schema and migrations require explicit migration scope and must not be hidden inside docs-only, UI-only, dependency-only, or refactor PRs.
-- Migration/backup rules are documented in `docs/MIGRATION_BACKUP_POLICY.md`.
-- Seed changes should stay in `apps/api/prisma/seed.mjs` and should be idempotent.
-- Database model changes must be reviewed together with API services, validation, tests, and docs impacted by the model.
-
-## Web module boundaries
-
-The current Web app is page-oriented.
-
-`apps/web/src/app` owns:
-
-- route composition;
-- protected routes;
-- page-level loading/error/empty states;
-- admin pages;
-- learner pages;
-- login/logout page-level behavior;
-- page smoke/render tests.
-
-`apps/web/src/shared` owns reusable frontend utilities and components:
-
-- API client primitives;
-- typed API modules under `shared/api`;
-- shared UI primitives;
-- admin page layout primitives;
-- form validation helpers;
-- error feedback helpers;
-- display labels;
-- theme helpers;
-- logout helper.
-
-`apps/web/src/i18n` owns translations and language setup.
-
-`apps/web/src/styles` owns global styling.
-
-### Web dependency direction
+`apps/web/src/app/` owns top-level routes/pages and page-level behavior. `apps/web/src/shared/` owns reusable UI, API client primitives/domain wrappers and cross-page helpers. `apps/web/src/i18n/` owns translations; `apps/web/src/styles/` owns styling primitives and global styles.
 
 Preferred direction:
 
 ```text
 app page -> shared/api domain wrapper
-app page -> shared/ui/adminPage/formValidation helpers
-shared/api domain wrapper -> shared/apiClient
-shared/api types -> page/domain usage
+app page -> shared UI/helpers
+shared/api domain wrapper -> shared api client
 ```
 
-Avoid:
+Do not move one-off page state into shared code prematurely or introduce a new UI framework without a separate architectural/dependency decision.
 
-- API request logic duplicated directly inside multiple pages;
-- page-specific state or JSX moved into `shared` too early;
-- `shared` importing from `app`;
-- page files becoming the long-term home for reusable domain API contracts;
-- adding new UI framework dependencies without a separate dependency/update review.
+## API contract boundary
 
-## Frontend API boundary
+Runtime OpenAPI plus controllers are the HTTP surface authority. Human semantics/invariants live in [`../contracts/API_CONTRACTS.md`](../contracts/API_CONTRACTS.md); generated API navigation lives in [`../generated/API_INDEX.md`](../generated/API_INDEX.md).
 
-The frontend API boundary is split between:
+Public path/method/request/response changes must update affected runtime metadata/tests/client/docs review in the same logical PR.
 
-- `apps/web/src/shared/apiClient.ts` — low-level request/error/CSRF behavior and backward-compatible exports;
-- `apps/web/src/shared/api/*` — domain API wrappers and frontend API types.
+## RBAC boundary
 
-Rules:
+Backend policy/guard enforcement is security authority. Frontend route visibility is UX, not authorization. Current policy inventory is derived in [`../generated/RBAC.md`](../generated/RBAC.md); human semantics are in [`../contracts/API_RBAC_MATRIX.md`](../contracts/API_RBAC_MATRIX.md).
 
-- New frontend API calls should prefer `apps/web/src/shared/api/<domain>.ts`.
-- Shared response/request types should prefer `apps/web/src/shared/api/types.ts` or a domain-specific API file when the type is not broadly shared.
-- Do not remove backward-compatible exports from `apiClient.ts` unless the PR is explicitly scoped as API client cleanup.
-- API response shape changes must update backend controller/service, frontend API wrapper/types, tests, and API docs in the same logical PR.
+Authorization changes require negative and positive tests at the owning layer.
 
-## Shared code boundary
+## Testing and change placement
 
-A helper belongs in `shared` only when it is used by more than one page or is clearly infrastructure-level.
+Use the narrowest meaningful test for the changed layer. Cross-layer contract changes may legitimately touch API + Web + Prisma, but unrelated refactors should remain separate.
 
-Good candidates for `shared`:
+Refactor when duplication causes a concrete defect/test gap or a boundary actively blocks safe implementation. Do not move files solely for aesthetics, introduce a new architecture pattern without project-wide need, or use docs-only work to change runtime behavior.
 
-- repeated UI primitives;
-- form validation helpers;
-- API error mapping;
-- common display labels;
-- typed API wrappers;
-- route/protection helpers used by multiple pages.
+## Documentation rule
 
-Poor candidates for `shared`:
-
-- one-off page layout decisions;
-- page-specific form state;
-- page-specific copy;
-- temporary compatibility code without a cleanup plan;
-- business workflow logic that should live in backend services.
-
-## API contract and OpenAPI boundary
-
-Runtime API source of truth remains backend controllers, schemas, and services under `apps/api/src`.
-
-Docs and OpenAPI must follow runtime code.
-
-Related docs:
-
-- `docs/API_CONTRACTS.md`
-- API OpenAPI module under `apps/api/src/modules/openapi`
-
-Rules:
-
-- Do not change a public endpoint path, method, request shape, or response shape silently.
-- Any public API contract change must update frontend API wrappers and docs in the same PR or explicitly document why not.
-- New API input must use runtime validation.
-- Frontend guesses about backend response shape should be replaced with typed wrappers and tests.
-
-## RBAC and permission boundary
-
-Backend API RBAC is the source of truth.
-
-Frontend route visibility and navigation checks are UX helpers, not security controls.
-
-Rules:
-
-- Backend authorization must be enforced in guards/policies/services.
-- Frontend `/admin` visibility must not be treated as permission enforcement.
-- Role policy changes require tests.
-- Product permission and workflow matrix work should be tracked separately from runtime RBAC changes unless the PR explicitly includes both.
-
-## Testing boundary
-
-Use the narrowest meaningful tests for the changed layer.
-
-| Change type | Expected tests |
-|---|---|
-| API service/controller behavior | API unit/integration tests for happy and negative paths |
-| API validation | validation failure tests |
-| RBAC change | allowed and forbidden role tests |
-| Web page behavior | render/smoke tests and interaction tests when practical |
-| Shared frontend helper | unit tests |
-| API wrapper/type behavior | API wrapper tests |
-| Docs-only policy | code checks not required unless docs linting is enforced |
-
-Do not claim checks passed unless they were run locally or confirmed by CI/user status.
-
-## Import and file placement rules
-
-Use real existing paths only.
-
-Preferred rules:
-
-- Keep imports local and explicit.
-- Use type-only imports where only types are needed.
-- Keep API-only code out of Web.
-- Keep Web-only code out of API.
-- Keep Prisma types and database access inside API/backend boundaries.
-- Keep docs as docs; do not use docs-only PRs to change runtime behavior.
-
-## When to refactor
-
-Refactor only when it is directly needed for the task or explicitly requested.
-
-Acceptable refactor triggers:
-
-- duplicated logic causes a concrete bug or test gap;
-- a page or service cannot be safely extended without extraction;
-- a compatibility facade has a dedicated cleanup PR;
-- a module boundary is actively blocking implementation.
-
-Avoid:
-
-- moving files only for aesthetics;
-- broad cleanup mixed with feature work;
-- introducing a new architecture pattern without project-wide need;
-- deleting compatibility exports without a dedicated cleanup plan.
-
-## PR scope rules
-
-A PR should usually change one layer at a time.
-
-| PR type | Should include | Should not include |
-|---|---|---|
-| Docs-only architecture policy | docs file only | runtime code, imports, tests, dependency changes |
-| API feature | controller/service/schema/tests/docs | frontend refactor unrelated to the endpoint |
-| Web feature | page/shared frontend code/tests | backend contract change unless explicitly required |
-| Prisma migration | schema/migration/service/tests/docs | unrelated UI cleanup |
-| Dependency update | manifests/lockfile/check notes | feature work |
-
-If a change crosses API + Web + Prisma, document it as an integrated contract change and keep the diff minimal.
-
-## Non-goals
-
-This document does not:
-
-- create a new frontend architecture;
-- move pages into feature folders;
-- introduce a shared package;
-- change API module wiring;
-- change RBAC implementation;
-- change OpenAPI generation strategy;
-- change Prisma schema or migrations;
-- remove `apiClient.ts` compatibility exports;
-- introduce E2E tests.
+This document intentionally contains no hand-maintained module inventory. Any fact that can be deterministically derived from code belongs in `docs/generated/` and remains protected by generation + clean-diff CI.

@@ -13,6 +13,25 @@
 7. Snapshot/live facts привязывать к дате, SHA или environment; не выдавать их за вечную current truth.
 8. Не копировать сюда roles, endpoints, module topology и другие domain inventories; хранить здесь только процесс.
 
+## Generated artifacts и CI drift
+
+Если CI сообщает, что generated artifact устарел:
+
+1. MUST NOT исправлять generated-файл по памяти, вручную подгонять его под CI или ослаблять consistency/check gate.
+2. MUST сначала получить фактический generated diff:
+   - локально через `pnpm docs:generate` + `git diff -- docs/generated`;
+   - либо из CI diagnostic/annotation.
+3. MUST проверить соответствующий canonical owner-source:
+   - API → runtime OpenAPI + controllers;
+   - DB entities/enums → Prisma schema;
+   - RBAC → `rolePolicies`/guards/access metadata;
+   - modules → `AppModule`.
+4. Если owner-source корректен, а generated artifact stale, MUST перегенерировать artifact и коммитить результат генератора, а не ручную реконструкцию.
+5. После regeneration MUST выполнить `pnpm docs:generate:check` и подтвердить idempotency, zero diff и успешный CI.
+6. Если точный diff недоступен, MUST улучшить диагностику существующей проверки в той же branch/PR, а не угадывать исправление.
+7. MUST NOT менять generator только ради совпадения с устаревшим generated output.
+8. Любые corrective fixes выполнять в той же task branch и том же PR.
+
 ## Перед началом задачи
 
 1. Начинать работу только от актуального `origin/main` в отдельной ветке.

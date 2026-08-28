@@ -100,5 +100,5 @@ Two minor, deliberate behavior simplifications made during the second pass, both
 
 - New pages that fetch data should use `useAsyncData` rather than hand-rolling the `idle|loading|loaded|unauthenticated|error` pattern again. Use `mutate()` for in-place patches after a mutation, and pass `messages.notFound` when a page needs to distinguish 404 from a generic error.
 - If a page needs to force an error state from outside the normal load cycle (the way `LearnerAssessmentTakingPage.tsx`'s timer used to), don't grow `useAsyncData`'s API for it — keep that as page-local state and treat it as one more terminal branch in the render logic (see "Resolved holdout" above for the pattern).
-- `docs/RATE_LIMIT_FAILURE_POLICY.md`-style "source of truth" documents aren't needed here; this ADR plus `useAsyncData.ts`/`asyncData.ts` themselves are the reference.
+- `docs/contracts/RATE_LIMIT_FAILURE_POLICY.md`-style "source of truth" documents aren't needed here; this ADR plus `useAsyncData.ts`/`asyncData.ts` themselves are the reference.
 - No remaining candidates: every page identified in the PR 141 audit is now on `useAsyncData` (36 total), aside from the two intentionally-out-of-scope nested fetches noted above.

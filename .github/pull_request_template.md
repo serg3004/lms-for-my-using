@@ -42,7 +42,12 @@ Risk:
 
 ## Docs impact
 
-<!-- Какие current docs проверены/изменены; поле будет усилено DOC-10 -->
+<!--
+Для mapped source change перечислите изменённые current owner-docs.
+Если manual owner-doc не требует изменения, используйте точный формат:
+Docs-Impact: reviewed-no-change — <конкретная причина>
+Пустая причина, N/A/TBD или ослабление docs gate не принимаются DOC-10.
+-->
 Docs-Impact:
 
 ## Что проверить вручную

@@ -91,5 +91,5 @@ Database integration test также проверяет наличие `snapshot
 
 ## 8. Связанные документы
 
-- `docs/CHECKLIST_COMPLETION_CONTRACT.md`
-- `docs/DEVELOPMENT_PLAN.md` — PR 218
+- `docs/contracts/CHECKLIST_COMPLETION_CONTRACT.md`
+- исторический development ledger: `docs/archive/development-ledger/DEVELOPMENT_PLAN.md` (PR 218)

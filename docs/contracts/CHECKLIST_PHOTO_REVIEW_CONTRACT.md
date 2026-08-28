@@ -81,4 +81,4 @@ Regression coverage должна подтверждать:
 
 PR 219 не меняет storage provider, upload pipeline, schema БД, legacy `photoUrl` field, deadline lifecycle, bulk assignments или analytics workflow.
 
-Связанный completion contract: `docs/CHECKLIST_COMPLETION_CONTRACT.md`.
+Связанный completion contract: `docs/contracts/CHECKLIST_COMPLETION_CONTRACT.md`.

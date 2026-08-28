@@ -1,228 +1,77 @@
 # Readiness and Security Gates
 
-> **Статус:** `CURRENT`
+> **Статус:** `CURRENT` semantics / verification procedure.
 >
-> **Назначение:** описать фактические runtime readiness checks и security checks репозитория без смешивания четырёх разных уровней: `CONFIGURED`, `EXECUTED`, `MERGE-ENFORCED`, `LIVE-VERIFIED`.
->
-> **Проверено по `main`:** `4f4ae9fc941ec52b51aaeffef994162d256dd8fa` (2026-08-10).
+> **Rule:** repository configuration, executed checks, merge enforcement and live environment state are distinct evidence levels. Current workflow/ruleset names must be re-read when they matter; this document does not freeze them as eternal inventory.
 
-## 1. Термины
+## Evidence levels
 
-- `CONFIGURED` — check или health probe определён в code/config.
-- `EXECUTED` — check реально запускается текущим GitHub Actions workflow.
-- `MERGE-ENFORCED` — GitHub branch protection/ruleset делает check обязательным перед merge.
-- `LIVE-VERIFIED` — external runtime/provider state подтверждён свежим deployment/smoke evidence.
-- `NOT-ENFORCED` — check существует, но repository settings не блокируют merge при его отсутствии/провале.
-- `LIVE-VERIFY` — repository сам по себе не доказывает фактическое production состояние.
+- `CONFIGURED` — a check/probe exists in current code/config.
+- `EXECUTED` — the relevant check actually ran for a specific SHA.
+- `PASSED` — that run completed successfully.
+- `MERGE-ENFORCED` — fresh repository settings show that merge requires the relevant checks.
+- `LIVE-VERIFIED` — external runtime/provider state was freshly verified for the target environment.
+- `LIVE-VERIFY` — repository state alone cannot prove the claim.
 
-**Правило для ИИ-агента:** `MUST NOT` называть check «blocking gate», если подтверждено только `CONFIGURED`/`EXECUTED`, но не `MERGE-ENFORCED`.
+Do not call a check blocking based only on configuration or execution.
 
----
+## Runtime health/readiness
 
-## 2. Runtime health/readiness
+The API exposes liveness and readiness endpoints. Current controller/service code owns their exact paths/payloads.
 
-### `/api/v1/health/live`
+Readiness evaluates configured dependencies such as database, Redis and S3-compatible storage. A dependency may be intentionally disabled by configuration; technical readiness in such a mode does not prove production/security compliance.
 
-**Статус:** `IMPLEMENTED`
+On failed required dependency, the public readiness contract uses the canonical API error layer. Internal dependency exception messages must not be treated as public API fields.
 
-Liveness endpoint не проверяет внешние зависимости и предназначен для ответа на вопрос «процесс API жив».
+## Repository CI/security
 
-### `/api/v1/health/ready`
+Workflow implementation is owned by `.github/workflows/ci.yml` and `.github/workflows/codeql.yml`. The current CI chain includes documentation consistency together with security, lint/typecheck/tests/build and other configured repository gates; exact job topology must be read from the workflow when making a current claim.
 
-**Статус:** `IMPLEMENTED`
+Documentation consistency is invoked through `pnpm docs:consistency:test`; generated drift and docs-impact enforcement remain inside that chain.
 
-Readiness проверяет:
+### Trivy semantics
 
-- database;
-- Redis, если Redis configured;
-- S3-compatible storage, если storage configured.
+When the current workflow uses `--ignore-unfixed`, unfixed findings are excluded from its blocking result. Security-waiver behavior must be described according to the current validator/workflow and must not be generalized to unrelated scanners.
 
-`apps/api/railway.json` использует `/api/v1/health/ready` как Railway healthcheck path.
+## Merge enforcement
 
-### `/api/v1/health`
+`MERGE-ENFORCED` is always a live GitHub setting. Before asserting it:
 
-**Статус:** `IMPLEMENTED`
+1. read the active ruleset/branch policy applying to `main`;
+2. record the required check contexts and strict/up-to-date behavior;
+3. bind the observation to date/time and, when relevant, the repository SHA;
+4. keep that observation in dated evidence rather than turning the current names into a permanent Markdown contract.
 
-Current controller использует тот же readiness path/logic как compatibility alias.
+The DOC-12 final audit records the fresh ruleset read-back used to close the documentation remediation series.
 
-### Disabled dependencies
+## Production readiness
 
-Redis/storage могут иметь status `disabled`, если соответствующая dependency намеренно не configured. Это может позволить technical readiness оставаться green.
+The following remain `LIVE-VERIFY` unless fresh external evidence exists:
 
-**Важно:** technical readiness `200` не равен production/security compliance. Например `storage: disabled` подтверждает только то, что API не считает storage обязательным для текущей конфигурации; это не доказывает, что upload capability production-ready.
-
----
-
-## 3. Health readiness 503 HTTP contract
-
-**Статус:** `IMPLEMENTED`
-
-При failed dependency `HealthController` формирует `ServiceUnavailableException` сразу в canonical API error shape. Глобальный `ApiExceptionFilter` сохраняет этот payload на public HTTP boundary.
-
-Гарантированный HTTP contract для `/api/v1/health/ready` и compatibility `/api/v1/health`:
-
-- HTTP status `503`;
-- `error.code = HEALTH_CHECK_FAILED`;
-- `error.message = Readiness check failed`;
-- `error.details` содержит безопасные dependency statuses для `db`, `redis`, `storage` с `code = DEPENDENCY_STATUS`;
-- внутренние сообщения ошибок dependency не включаются в public response.
-
-HTTP-level integration test проходит через global exception filter и проверяет оба readiness endpoint. `/api/v1/health/live` остаётся независимым от состояния dependencies.
-
-**Правило для ИИ:** dependency statuses в readiness `503` можно документировать как public HTTP contract только в canonical `error.details`; сырые internal exception messages `MUST NOT` считаться частью контракта.
-
----
-
-## 4. CI security checks
-
-### Current `CI / Checks` job
-
-**Статус:** `CONFIGURED` + `EXECUTED`
-
-Current CI workflow выполняет в одном последовательном job, среди прочего:
-
-- Gitleaks secret scan;
-- `pnpm audit --audit-level high`;
-- security-waiver validation;
-- lint;
-- typecheck;
-- tests;
-- migrations/integration/build/browser checks;
-- Docker builds;
-- Trivy image scans.
-
-Это **один job с последовательными steps**, а не набор независимых GitHub required checks. Если ранний step падает, более поздние steps этого job могут не выполниться.
-
-### CodeQL
-
-**Статус:** `CONFIGURED` + `EXECUTED`
-
-CodeQL находится в отдельном `.github/workflows/codeql.yml` и анализирует `javascript-typescript` с `security-extended` queries.
-
-### Semgrep
-
-**Статус:** `NOT-CONFIGURED`
-
-Отдельного Semgrep workflow в текущем `.github/workflows/` нет.
-
----
-
-## 5. Trivy semantics
-
-**Статус:** `CONFIGURED` + `EXECUTED`
-
-Current Trivy command использует:
-
-- `--severity HIGH,CRITICAL`;
-- `--exit-code 1`;
-- `--ignore-unfixed`;
-- generated ignorefile from security waivers.
-
-Следовательно:
-
-- fixed/processable HIGH/CRITICAL findings могут сделать scan red;
-- unfixed HIGH/CRITICAL findings исключаются из blocking result из-за `--ignore-unfixed`;
-- утверждение «любая HIGH/CRITICAL vulnerability блокирует CI» неверно.
-
-**Правило для ИИ:** всегда учитывать `--ignore-unfixed` при описании security gate.
-
----
-
-## 6. Security waivers
-
-### Source
-
-**Статус:** `IMPLEMENTED`
-
-`security-waivers.json` — repository-controlled список waivers. На момент проверки массив waivers пуст.
-
-### Validator
-
-`validate-security-waivers.mjs` проверяет:
-
-- `version === 1`;
-- `waivers` — array;
-- non-empty `id`, `owner`, `reason`, `expires`;
-- uniqueness `id`;
-- syntactic date pattern `YYYY-MM-DD`;
-- lexical non-expiry against current ISO date.
-
-Validator **не подтверждает**:
-
-- что `id` имеет CVE format;
-- что дата является реальной календарной датой (например month/day range semantic validation отсутствует);
-- что PR содержит human rationale/approval beyond file contents.
-
-Generated waiver IDs используются для Trivy ignorefile. Этот механизм не является waiver для Gitleaks, `pnpm audit` или CodeQL.
-
-**Правило для ИИ:** `MUST NOT` писать, что security waiver автоматически исключает finding из всех security tools.
-
----
-
-## 7. Merge enforcement
-
-**Статус:** `MERGE-ENFORCED`
-
-**Подтверждено владельцем (2026-08-26):** ruleset `Protect main` активен на GitHub
-(Rulesets → Protect main → Active), применяется к `main`. `main` защищена:
-deletion и force-push запрещены, pull request обязателен (0 required approvals),
-required status checks — ровно `Checks` и `Analyze (javascript-typescript)` —
-должны быть green, `Require branches to be up to date before merging` включено.
-
-Следовательно merge в `main` технически невозможен без green required checks.
-
-Единственное отклонение от исходной policy-as-code (`scripts/configure-branch-protection.mjs`):
-`Require conversation resolution before merging` выключен осознанным решением владельца.
-Это не влияет на merge enforcement CI/CodeQL — только снимает требование закрывать все
-review-треды перед merge.
-
-Подробности и история решения: `docs/DEVELOPMENT_PLAN.md`, PR 129 / PR 238.
-
----
-
-## 8. Production readiness vs repository readiness
-
-Следующие вещи имеют статус `LIVE-VERIFY`:
-
-- фактический Redis availability;
-- фактический S3-compatible provider/bucket/CORS;
+- Redis availability/topology;
+- S3-compatible provider/bucket/CORS/lifecycle;
 - malware scanner availability;
-- Railway environment/service topology;
-- alert routing/Sentry delivery;
-- backup/PITR/restore readiness;
-- fresh production smoke.
+- Railway services/domains/deployment state;
+- alert/Sentry delivery;
+- backups/PITR/restore readiness;
+- production smoke and rollback evidence.
 
-Repository code/config доказывает intended/implemented behavior, но не current production state.
+Repository code/config proves intended/implemented behavior, not current production state.
 
----
+## Release interpretation
 
-## 9. Release interpretation
+A production/pilot decision must bind evidence to an exact SHA and target environment. Use [`../runbooks/RELEASE_GATE.md`](../runbooks/RELEASE_GATE.md) and [`../runbooks/PILOT_CHECKLIST.md`](../runbooks/PILOT_CHECKLIST.md). Old GO/smoke records cannot be reused for a newer SHA/environment.
 
-Для release/go-no-go нужно различать:
+## AI rules
 
-1. `CONFIGURED` — check/probe существует;
-2. `EXECUTED` — check реально запущен на relevant SHA;
-3. `PASSED` — relevant run green;
-4. `MERGE-ENFORCED` — repository settings не позволяют обойти check;
-5. `LIVE-VERIFIED` — external runtime state подтверждён fresh evidence.
+1. Distinguish configured, executed, passed, merge-enforced and live-verified.
+2. Do not assert protected/required-check state without fresh GitHub read-back.
+3. Do not infer live provider state from repository config.
+4. Do not extend one tool's waiver semantics to another security tool.
+5. Bind volatile claims to fresh evidence instead of maintaining a manual inventory here.
 
-Один уровень не подразумевает автоматически следующий.
+## Related docs
 
----
-
-## 10. Правила для ИИ-агента
-
-1. `MUST` указывать, о каком уровне gate идёт речь.
-2. `MUST NOT` называть `main` protected/required-check-enforced без fresh repository-setting evidence.
-3. `MUST` описывать readiness dependency statuses только в canonical 503 `error.details` contract.
-4. `MUST` учитывать `--ignore-unfixed` в Trivy semantics.
-5. `MUST NOT` распространять Trivy waiver на audit/Gitleaks/CodeQL.
-6. `MUST NOT` считать `storage: disabled` или emergency Redis fallback доказательством production compliance.
-7. `LIVE-VERIFY` assertions должны иметь fresh external evidence.
-
-## Связанные документы
-
-- `docs/RATE_LIMIT_FAILURE_POLICY.md`
-- `docs/CI_AUDIT_BASELINE.md`
-- `docs/PROJECT_SOURCE_OF_TRUTH.md`
-- `docs/TODO_VERIFY.md`
+- [`../contracts/RATE_LIMIT_FAILURE_POLICY.md`](../contracts/RATE_LIMIT_FAILURE_POLICY.md)
+- [`../evidence/audits/CI_AUDIT_BASELINE.md`](../evidence/audits/CI_AUDIT_BASELINE.md)
+- [`../evidence/audits/DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md`](../evidence/audits/DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md)

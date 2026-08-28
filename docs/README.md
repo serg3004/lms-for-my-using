@@ -1,69 +1,51 @@
 # Документация LMS
 
-Этот файл — единственная карта документации репозитория. Он определяет, что читать, чему доверять и куда помещать новые документы. Карта описывает правила и владельцев информации, но не дублирует изменчивые факты из кода.
+Этот файл — единственная current карта документации репозитория. Он определяет, что читать, чему доверять и куда помещать новый документ, не дублируя volatile facts из code/runtime/platform state.
 
-## Как читать документацию
+## Как читать
 
-1. Начните с `AGENTS.md` для общих правил работы с репозиторием.
-2. Используйте этот файл, чтобы определить тип документа и canonical owner нужного факта.
-3. Читайте только документы, относящиеся к текущей задаче.
-4. Любой current implementation fact перепроверяйте по canonical owner-source до изменения кода или документации.
-5. Evidence и historical материалы не являются authority для текущего поведения.
+1. Начните с `AGENTS.md` для repository workflow.
+2. Определите canonical owner нужного факта по таблице ниже.
+3. Читайте только task-relevant current docs.
+4. Current implementation fact перепроверяйте по owner-source перед изменением.
+5. Evidence/archive не являются authority текущего поведения.
 
-## Приоритет источников
-
-Для текущего поведения приоритет имеет canonical owner-source. Документ объясняет семантику, решение или процедуру только в пределах своей ответственности.
+## Canonical owners
 
 | Информация | Canonical owner |
-|---|---|
-| DB entities и enums | `apps/api/prisma/schema.prisma` |
-| Допустимый набор ролей | Prisma `Role` + shared role constants/types |
-| Permissions / RBAC | `apps/api/src/modules/auth/roles.ts` + guards/access decorators |
+| --- | --- |
+| DB entities/enums | `apps/api/prisma/schema.prisma` |
+| Допустимый role set | Prisma role enum + shared role constants/types |
+| Permissions/RBAC | `apps/api/src/modules/auth/roles.ts` + guards/access policies |
 | HTTP API surface | runtime OpenAPI + controllers |
-| Nest modules | `apps/api/src/app.module.ts` |
+| Nest module wiring | `apps/api/src/app.module.ts` |
 | Product/MVP scope | `docs/product/` |
 | Architecture rationale | `docs/architecture/adr/` |
-| Behaviour semantics / invariants | `docs/contracts/` |
+| Architecture boundaries | `docs/architecture/ARCHITECTURE_MODULE_BOUNDARIES.md` |
+| Behaviour semantics/invariants | `docs/contracts/` |
 | Operations | `docs/runbooks/` |
-| Live environment/platform state | live read-back + dated evidence |
+| Repository readiness semantics | `docs/quality/` + exact-SHA CI/CodeQL evidence |
 | Active implementation work | GitHub Issues/Project |
-| Business/owner decisions | `docs/status/OPEN_DECISIONS.md` |
-| UI design reference | prototypes + manifest |
-| Historical knowledge | archive/history; не current authority |
+| Owner/business decisions | `docs/status/OPEN_DECISIONS.md` |
+| UI design reference | prototypes + manifest v2 |
+| Live environment/platform state | fresh read-back + dated evidence |
+| Historical knowledge | `docs/archive/` / evidence snapshots; not current authority |
 
-Если owner-source и Markdown противоречат друг другу, current implementation fact берётся из owner-source, а расхождение документации исправляется в том же PR либо фиксируется как отдельная документационная задача, если это выходит за scope.
+If Markdown contradicts an implementation owner-source, the owner-source wins for the implementation fact. Product/architecture decisions do not change automatically; first distinguish factual drift from an intentional decision change.
 
-## Две независимые оси классификации
+## Purpose and lifecycle
 
-### Назначение
+Purpose and lifecycle are independent.
 
-Документ классифицируется по тому, зачем он нужен:
+**Purpose:** decision/explanation; contract/reference; runbook/how-to; tutorial/onboarding only when needed.
 
-- **decision / explanation** — почему принято решение, архитектурный контекст и trade-offs;
-- **contract / reference** — семантика, инварианты, публичные правила и справочная информация;
-- **runbook / how-to** — воспроизводимая операционная процедура;
-- **tutorial / onboarding** — пошаговое обучение, только если такой документ действительно нужен.
-
-### Lifecycle
-
-Назначение не определяет актуальность. Отдельно используется lifecycle:
-
-- **DRAFT** — ещё не утверждён как current guidance;
-- **CURRENT** — актуальный нормативный документ в своей области;
-- **SUPERSEDED** — заменён более новым документом или решением;
-- **EVIDENCE** — снимок наблюдения/проверки на дату, SHA и/или environment;
-- **HISTORICAL** — сохранён для истории и не является current authority.
-
-ADR, contract или runbook могут быть CURRENT или SUPERSEDED. Evidence — immutable snapshot: его не «осовременивают» вслед за изменением кода.
+**Lifecycle:** `DRAFT` → `CURRENT` → `SUPERSEDED` → archive; evidence is an immutable observed snapshot. A superseded/current stub may remain only to redirect old navigation and must say it is not authority.
 
 ## Current taxonomy
-
-Current normative documentation организована по назначению:
 
 ```text
 docs/
 ├── product/
-│   └── future/
 ├── architecture/
 │   └── adr/
 ├── contracts/
@@ -77,64 +59,52 @@ docs/
 └── lms-ui-prototypes-complete/
 ```
 
-Root `docs/` больше не является writable backlog. Frozen development ledger и старые trackers находятся в `docs/archive/`; их нельзя обновлять feature PR.
+Root `docs/` is not a writable backlog. Old trackers and the frozen development ledger are historical. The DOC-07 temporary path map was closed on DOC-12 and is preserved only as migration evidence in `docs/archive/remediation/`.
 
-`docs/_meta/path-map.json` — временная карта old→new путей DOC-07 для migration/link audit. Она не является source of truth и должна быть удалена либо архивирована на DOC-12 после финального link audit.
-
-`docs/_meta/active-work-migration.json` — migration/provenance map DOC-08. Она связывает старые tracker IDs с GitHub work items, owner decisions, live verification или historical disposition и не является новым writable backlog.
-
-## Active work и decisions
-
-Active implementation work имеет один writable owner: GitHub Issues/Project. Новый implementation work item создаётся через `.github/ISSUE_TEMPLATE/work-item.md` и должен содержать цель, scope, критерии готовности, risk/rollback и docs impact.
-
-`docs/status/OPEN_DECISIONS.md` содержит только owner/business decisions. Implementation gap нельзя вести там как task status. Live infrastructure state нельзя закрывать решением в Markdown — требуется fresh read-back и при необходимости dated evidence.
+`docs/_meta/active-work-migration.json` is DOC-08 provenance linking retired tracker items to their disposition; it is not a writable backlog. `docs/_meta/ownership.json` is DOC-10 CI impact configuration, not an implementation source of truth.
 
 ## Current entry points
 
-Для типичных задач начальные точки такие:
+- MVP/product scope: [`product/MVP_SCOPE_LOCK.md`](./product/MVP_SCOPE_LOCK.md)
+- API semantics: [`contracts/API_CONTRACTS.md`](./contracts/API_CONTRACTS.md)
+- RBAC semantics: [`contracts/API_RBAC_MATRIX.md`](./contracts/API_RBAC_MATRIX.md)
+- terminology conflicts: [`contracts/GLOSSARY.md`](./contracts/GLOSSARY.md)
+- architecture boundaries/decisions: [`architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`](./architecture/ARCHITECTURE_MODULE_BOUNDARIES.md), [`architecture/adr/`](./architecture/adr/)
+- local/operational procedures: [`runbooks/`](./runbooks/)
+- release/pilot: [`runbooks/RELEASE_GATE.md`](./runbooks/RELEASE_GATE.md), [`runbooks/PILOT_CHECKLIST.md`](./runbooks/PILOT_CHECKLIST.md)
+- readiness/security semantics: [`quality/READINESS_AND_SECURITY_GATES.md`](./quality/READINESS_AND_SECURITY_GATES.md)
+- owner/business decisions: [`status/OPEN_DECISIONS.md`](./status/OPEN_DECISIONS.md)
+- generated current inventories: [`generated/`](./generated/)
+- UI prototype governance: [`lms-ui-prototypes-complete/README.md`](./lms-ui-prototypes-complete/README.md), [`lms-ui-prototypes-complete/manifest.json`](./lms-ui-prototypes-complete/manifest.json)
+- evidence index: [`evidence/README.md`](./evidence/README.md)
+- historical/archive map: [`archive/README.md`](./archive/README.md)
 
-- MVP/product scope: `product/MVP_SCOPE_LOCK.md`, `product/MVP_DEFINITION_OF_DONE.md`;
-- API/RBAC semantics: `contracts/API_CONTRACTS.md`, `contracts/API_RBAC_MATRIX.md`;
-- local operation: `runbooks/MVP_LOCAL_RUNBOOK.md` и `runbooks/`;
-- release/readiness: `runbooks/RELEASE_GATE.md`, `quality/READINESS_AND_SECURITY_GATES.md`;
-- architecture decisions: `architecture/adr/ADR_*.md`, `architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`;
-- owner/business decisions: `status/OPEN_DECISIONS.md`;
-- current documentation remediation plan: `documentation_full_remediation_plan_pdca_v3.md`.
+The completed documentation-remediation plan and transitional source-of-truth index remain only as superseded redirect stubs/history; they are not current entry points.
 
-Этот список — навигация, а не подтверждение фактической актуальности каждого claim внутри перечисленных файлов. Current implementation facts по-прежнему проверяются по canonical owner-source.
+## Active work and decisions
 
-## Evidence и history
+Implementation work has one writable owner: GitHub Issues/Project. New work items use `.github/ISSUE_TEMPLATE/work-item.md`. `docs/status/OPEN_DECISIONS.md` is the only writable Markdown register for owner/business decisions; implementation gaps and live infrastructure state do not belong there as status trackers.
 
-Audit, smoke, production verification, performance verification и аналогичные отчёты описывают то, что наблюдалось в конкретный момент. Они не доказывают текущее состояние без повторной проверки. Evidence отделён в `docs/evidence/`; lifecycle, metadata и текущий index находятся в `docs/evidence/README.md`.
+## Generated docs and volatile facts
 
-Pre-implementation context, frozen development ledger и старые trackers физически отделены от current knowledge в `docs/archive/`. Это historical material и не является authority для current implementation или active work.
+Do not hand-maintain inventories that are reliably derivable from code/runtime. `docs/generated/` contains derived views and remains CI-enforced through deterministic generation + clean diff.
 
-## Documentation review при изменениях
+Live GitHub/deployment/environment facts must be checked when used. Required check names, provider state, deployment state and similar values belong in dated evidence if they need to be recorded.
 
-В том же PR необходимо проверить документацию, если меняются:
+## Prototype governance
 
-- публичное поведение или API;
-- schema/data model;
-- RBAC/authorization semantics;
-- конфигурация или environment variables;
-- команды запуска, deploy или migration procedure;
-- архитектурные границы;
-- пользовательский workflow или documented limitation/error behaviour.
+Prototype `designStatus`, implementation state and parity are independent. `designStatus: approved` is design approval only. Unverified implementation/parity remains `unknown`; `implemented` requires `productionRoute`, and `aligned` requires comparison date + SHA. Manifest integrity runs inside documentation consistency CI.
 
-Если изменение внутреннее и документируемое поведение не меняется, фиктивный Markdown diff не нужен.
+## Documentation review and CI
 
-## Volatile facts
+Review docs in the same PR when public behavior/API/schema/RBAC/config/operations/architecture/user workflow changes. Internal refactors do not require fake Markdown churn.
 
-Не создавайте вручную поддерживаемые inventories ролей, endpoints, modules, entities, workflow records или другого состояния, которое надёжно выводится из кода/runtime source. До появления generated docs на DOC-09 current fact читается непосредственно из canonical owner-source.
+`docs/_meta/ownership.json` drives fail-closed DOC-10 impact review. `pnpm docs:consistency:test` is the aggregate documentation chain and includes final integrity, prototype governance, impact enforcement and generated drift checks.
 
-Live GitHub state, deployment state и environment observations должны проверяться в момент использования. Dated evidence сохраняет только snapshot и не заменяет live read-back.
-
-## Правило для ИИ-агента
-
-Базовый маршрут чтения:
+## AI route
 
 ```text
 AGENTS.md → docs/README.md → 1–3 task-specific sources → canonical owner-source
 ```
 
-Не читать весь `docs/` по умолчанию. Archive/evidence открывать только когда задача требует истории или доказательства конкретной проверки.
+Do not read all docs by default. Open archive/evidence only for history or specific verification evidence.

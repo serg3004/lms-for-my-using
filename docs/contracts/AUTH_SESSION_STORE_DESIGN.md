@@ -11,7 +11,7 @@
 - тесты создания и истечения сессии;
 - staging migration verification.
 
-Полноценный refresh token flow, rotation и endpoint `/auth/refresh` не входят в PR 120. Это отдельная задача PR 137 согласно `docs/DEVELOPMENT_PLAN.md`.
+Полноценный refresh token flow, rotation и endpoint `/auth/refresh` не входят в PR 120. Это была отдельная задача PR 137 в историческом development ledger (`docs/archive/development-ledger/DEVELOPMENT_PLAN.md`).
 
 ## Модель данных
 
@@ -50,7 +50,7 @@
 - В базе не хранится нехэшированный refresh token.
 - Текущий объект `Session` хранит информацию для проверки и отзыва.
 
-**[2026-08-06] Обновление:** refresh flow (тогда описанный как будущая работа) с тех пор реализован — не отдельной моделью, а полями `refreshTokenHash` (хеш, не сырой токен) и `refreshExpiresAt` прямо на той же модели `Session`. Логика хранения/ротации: `apps/api/src/modules/auth/auth.session-store.ts`, `auth.refresh-tokens.ts`. Подробности — `docs/AUTH_TOKEN_REVOCATION.md`.
+**[2026-08-06] Обновление:** refresh flow (тогда описанный как будущая работа) с тех пор реализован — не отдельной моделью, а полями `refreshTokenHash` (хеш, не сырой токен) и `refreshExpiresAt` прямо на той же модели `Session`. Логика хранения/ротации: `apps/api/src/modules/auth/auth.session-store.ts`, `auth.refresh-tokens.ts`. Подробности — `docs/contracts/AUTH_TOKEN_REVOCATION.md`.
 
 ## Критерии готовности PR 120
 
