@@ -1,13 +1,12 @@
 # Production release gate
 
-> **Status:** `CURRENT PROCEDURE`  
-> **Repository baseline:** `ff41214` (2026-08-23; the current `main` snapshot available for PR 162).
-
-This is a fail-closed gate for a **specific SHA and target environment**. Repository checks do not prove live production readiness, and an old GO record must never be reused.
+> **Status:** `CURRENT PROCEDURE`.
+>
+> This is a fail-closed gate for a specific SHA and target environment. Repository checks do not prove live production readiness, and an old GO record must never be reused.
 
 ## Required evidence
 
-Create a JSON record outside the repository with these fields:
+Create a release record outside the repository containing at least:
 
 ```json
 {
@@ -15,63 +14,60 @@ Create a JSON record outside the repository with these fields:
   "sha": "FULL_40_CHARACTER_GIT_SHA",
   "environment": "production",
   "owner": "named release owner",
-  "verifiedAt": "2026-08-23T12:00:00Z",
+  "verifiedAt": "ISO-8601 timestamp",
   "checks": {
     "ci": { "status": "PASS", "evidence": "GitHub Actions run URL/id" },
     "codeql": { "status": "PASS", "evidence": "CodeQL run URL/id" },
-    "prismaGenerate": { "status": "PASS", "evidence": "command/run URL and clean diff" },
-    "apiSmoke": { "status": "PASS", "evidence": "fresh health/login/RBAC/results/certificate evidence" },
-    "webSmoke": { "status": "PASS", "evidence": "fresh login/learner/admin/manager/certificate evidence" },
-    "environment": { "status": "PASS", "evidence": "env/dependency verification record" },
+    "generatedDocs": { "status": "PASS", "evidence": "generation/check + clean diff" },
+    "apiSmoke": { "status": "PASS", "evidence": "fresh runtime evidence" },
+    "webSmoke": { "status": "PASS", "evidence": "fresh Web evidence" },
+    "environment": { "status": "PASS", "evidence": "dependency/environment verification" },
     "rollback": { "status": "PASS", "evidence": "tested or approved rollback reference" }
   },
   "blockers": [],
-  "acceptedRisks": [
-    { "id": "H-004", "reason": "explicit scope rationale", "owner": "risk owner" }
-  ],
+  "acceptedRisks": [],
   "verdict": "GO"
 }
 ```
 
-Run `pnpm release:gate -- /secure/path/release-evidence.json`. The command exits non-zero unless every mandatory check is `PASS`, every check has traceable evidence, the blocker list is empty, and the verdict is `GO`. Accepted risks require an id, reason, and owner; the tool never accepts risk on the owner's behalf.
+Run `pnpm release:gate -- /secure/path/release-evidence.json`. The command is fail-closed: every mandatory check needs `PASS` plus traceable evidence, blockers must be empty, and accepted risks require explicit owner/rationale.
 
 ## Repository verification
 
-Before creating the evidence record, the exact release SHA must pass:
+For the exact release SHA, use the current workflow and package scripts as authority. At minimum verify:
 
-1. frozen dependency install and dependency/security checks;
-2. lint and architecture checks for every workspace;
-3. Prisma Client generation with no resulting tracked diff;
-4. typecheck, coverage tests, migration replay, and database integration tests;
-5. API/Web production builds;
-6. browser E2E, accessibility, responsive visual checks, and staging-smoke script tests;
-7. API and Web container builds and configured Trivy scans;
-8. the separate CodeQL workflow.
+- required CI aggregate is green;
+- required CodeQL analysis is green;
+- `pnpm docs:consistency:test` is green;
+- generated documentation check/generation ends with a clean tracked diff;
+- current lint/typecheck/tests/build and security/container gates required by CI are green.
 
-The current CI workflow executes these repository checks, but it is not proof of branch protection or of the live environment. Record the actual CI and CodeQL run identifiers for the release SHA.
+Do not copy the current CI job topology into this runbook as a permanent inventory. Record actual run IDs for the release SHA.
+
+## Merge enforcement
+
+If branch/ruleset enforcement is part of release evidence, perform a fresh GitHub settings read-back. Required check names and strictness are live platform state, not a stable contract in this file. See [`../quality/READINESS_AND_SECURITY_GATES.md`](../quality/READINESS_AND_SECURITY_GATES.md).
 
 ## Mandatory live smoke scope
 
-- liveness and dependency readiness;
-- login plus unauthenticated rejection;
-- learner navigation and a representative learning/result flow;
-- admin navigation and a tenant/RBAC negative case;
-- manager-route denial for every non-manager role;
-- certificate list/detail/download behavior;
-- storage/scanner flows only when included in release scope;
-- Sentry/alert delivery, Redis, backups, and rollback where required by the target environment.
+Select the flows required by release scope, including where relevant:
 
-Use `docs/PILOT_CHECKLIST.md` for the detailed operator procedure. Any failed required flow, missing live dependency evidence, unaccepted P0/P1 risk, or missing rollback path is `NO_GO`.
+- liveness/readiness;
+- login and unauthenticated rejection;
+- representative learner flow;
+- role/RBAC/tenant negative path;
+- required admin/manager/instructor/mentor surface;
+- certificate behavior;
+- storage/scanner only when in release scope;
+- Redis, observability delivery, backups and rollback when required by target policy.
 
-## PR 162 verification result
+Use [`PILOT_CHECKLIST.md`](./PILOT_CHECKLIST.md) as the detailed operator checklist. Any failed required flow, missing required live evidence, unaccepted blocker, or missing recovery path is `NO_GO`.
 
-Repository review found no open P0 implementation item. Remaining P1 items are not silently green:
+## Evidence discipline
 
-- exact learner course progress remains open (`H-003`);
-- next-lesson guidance remains a product-scope decision (`H-004`);
-- Dependabot workspace reconciliation remains partial (`H-006`);
-- waiver semantic hardening remains conditional on policy (`H-008`).
+- Repository CI proves repository state only.
+- Live provider/deployment state requires fresh external evidence.
+- Historical audit/smoke records remain evidence of their own snapshot and do not become a new release GO.
+- Owner risk acceptance cannot be inferred or performed by an agent.
 
-They require explicit scope disposition and owner acceptance when relevant. Live Redis, storage/scanner, observability routing, backups, deployment smoke, and rollback evidence were not available in the repository. Therefore PR 162 establishes the gate but **does not declare a production GO**.
-
-The verification also found that `@axe-core/playwright@4.13.0` was published without its runtime/type artifacts, which made the E2E workspace typecheck fail after a frozen install. The dependency is pinned to the complete `4.12.1` release so the accessibility gate is executable again.
+The pre-DOC-12 version of this runbook, including its PR-specific verification snapshot, is preserved in `docs/archive/remediation/RELEASE_GATE_PRE_DOC12.md` as history and is not current release authority.

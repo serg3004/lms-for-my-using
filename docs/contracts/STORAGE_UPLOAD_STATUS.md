@@ -261,7 +261,7 @@ Storage recovery требует согласования database metadata и ob
 
 Repository не доказывает actual production backup/restore state для DB+bucket.
 
-Fresh backup/PITR/object recovery evidence относится к `LIVE-VERIFY` и `docs/MIGRATION_BACKUP_POLICY.md`.
+Fresh backup/PITR/object recovery evidence относится к `LIVE-VERIFY` и `docs/runbooks/MIGRATION_BACKUP_POLICY.md`.
 
 ---
 
@@ -296,8 +296,8 @@ Repository implementation закрывает code contract, но не автом
 
 ## Связанные документы
 
-- `docs/RAILWAY_DEPLOY_GUIDE.md`
-- `docs/DEPLOY_FOUNDATION.md`
-- `docs/MIGRATION_BACKUP_POLICY.md`
-- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/runbooks/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/runbooks/DEPLOY_FOUNDATION.md`
+- `docs/runbooks/MIGRATION_BACKUP_POLICY.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`
 - `.env.production.example`

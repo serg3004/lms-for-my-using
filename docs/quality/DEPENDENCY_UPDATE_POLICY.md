@@ -58,7 +58,7 @@ lanes, even when Dependabot proposes a wider set of changes.
 
 - One compatibility domain per pull request (for example Prisma CLI and Client
   are one domain, but Prisma and Zod are not).
-- Start from an approved backlog entry and record the current/target major,
+- Start from an approved GitHub work item and record the current/target major,
   upstream migration guide, breaking surfaces, rollout and rollback strategy.
 - Run the old-version baseline before changing the manifest. After the update,
   run all repository checks plus the domain-specific gates listed below.
@@ -72,11 +72,12 @@ Dependabot is an input to this process, not approval to merge. Its workspace
 groups are limited to patch/minor updates. Major-version proposals must remain
 outside those groups and may be implemented only through a planned stage.
 
-## Staged major-upgrade backlog
+## Staged major-upgrade sequence
 
-The authoritative stage status is maintained in `docs/DEVELOPMENT_PLAN.md`.
+The table below is **sequencing policy, not an active-work/status tracker**. Canonical writable ownership for implementation state is GitHub Issues/Project. The retired pre-DOC-08 ledger is preserved only as historical provenance in `docs/archive/development-ledger/DEVELOPMENT_PLAN.md` and MUST NOT be updated for new work.
+
 Stages are intentionally ordered by compatibility risk, not by newest-version
-availability. Before implementation, the stage owner must confirm the actual
+availability. Before implementation, the GitHub work-item owner must confirm the actual
 target version from upstream release notes; this policy does not pin speculative
 future versions.
 
@@ -89,10 +90,7 @@ future versions.
 | 5 | React + React DOM + router/i18n adapters | peer ranges, rendering and routing behavior, browser E2E/accessibility tests and production web build |
 | 6 | Vite + Vitest and TypeScript/ESLint toolchain | Node compatibility, config/plugin changes, test transforms/coverage, lint, typecheck, tests and builds for every workspace |
 
-A stage can be marked ready only when its target major and migration issue/PR
-are identified. A stage can be marked complete only after its dedicated PR has
-passed the required checks and merged. “No major currently available” is a valid
-review result; record it in the plan and do not manufacture an update.
+A stage is actionable only when its target major and canonical GitHub work item are identified. Completion state is recorded on that GitHub work item after its dedicated PR passes the required checks and merges. “No major currently available” is a valid review result; record it on the work item and do not manufacture an update.
 
 ## PR scoping rules
 
@@ -262,7 +260,7 @@ A dependency PR should include:
 - rollback plan;
 - known risks.
 
-For a major stage, also include the backlog stage, upstream migration guide,
+For a major stage, also include the canonical GitHub work item, upstream migration guide,
 compatibility findings, rollout/rollback decision, and before/after verification.
 
 ## Non-goals

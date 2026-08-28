@@ -2,56 +2,40 @@
 
 > **Статус:** `CURRENT` human semantics / invariants.
 >
-> **API surface authority:** runtime OpenAPI + controllers. This file MUST NOT be treated as a complete route inventory.
->
-> **Reconciled against `main`:** `cbeecd860717c2b8df9c821c1cd7bad323ad3b0e` (2026-08-26).
+> **API surface authority:** runtime OpenAPI + controllers. This file is not a complete route inventory.
 
 ## Current API authority
 
 - Base path: `/api/v1`.
 - Runtime OpenAPI JSON: `/api/v1/api-json`.
 - Swagger UI: `/api/v1/docs`.
-- Legacy `/api/v1/openapi` is deprecated and is not the current authority.
-- Controller metadata + runtime OpenAPI define the current HTTP surface. Manual route lists are intentionally not duplicated here.
+- Legacy `/api/v1/openapi` is deprecated and is not current authority.
+- Generated API navigation: [`../generated/API_INDEX.md`](../generated/API_INDEX.md).
 
-For a concrete endpoint, verify runtime OpenAPI/controller metadata at the current SHA.
-
-## Current implementation baseline
-
-Confirmed on the reconciled snapshot:
-
-- auth login, refresh, logout, logout-all, current user and password reset request/confirm;
-- organizations, users, memberships and groups;
-- courses/lessons/materials, including `GET /courses/summary`;
-- assignments/submissions, progress, assessments/questions/options/attempts/results/report;
-- certificates, manager flows and theme settings;
-- Notifications API/module;
-- Admin Audit Log API/module;
-- runtime environment validation and centralized API error handling.
-
-These bullets are navigation only, not a generated inventory.
+For a concrete endpoint, verify current runtime OpenAPI/controller metadata. Do not add a manually maintained route list here.
 
 ## Authentication/session semantics
 
-- Access token is a JWT and may be supplied through supported cookie/bearer flows.
-- Refresh tokens are backed by server-side `Session` state and rotate.
-- `POST /auth/logout` revokes the current session; `POST /auth/logout-all` revokes all sessions for the current user.
-- Password-reset request/confirm is implemented; delivery/provider availability is a separate live/config concern.
+- Access tokens are JWTs and may be supplied through supported cookie/bearer flows.
+- Refresh tokens are backed by server-side session state and rotate.
+- Logout revokes the current session; logout-all revokes all sessions for the current user.
+- Password-reset request/confirm is implemented; delivery-provider availability is a separate live/config concern.
 
-Old docs describing logout as purely stateless or password reset as an intentional `503` are historical and do not override current auth code.
+Historical descriptions of stateless-only logout or an intentional password-reset `503` do not override current auth code.
 
 ## Tenant and authorization semantics
 
 - Authenticated requests operate within current organization context.
-- Role policies are owned by `apps/api/src/modules/auth/roles.ts`; object-level guards/access rules are additional enforcement.
-- The current role set is owned by Prisma/shared role types, not duplicated in this file.
-- Detailed human RBAC semantics are in `docs/API_RBAC_MATRIX.md`; code/guards remain authoritative for current enforcement.
+- Role policies are owned by `apps/api/src/modules/auth/roles.ts`; object-level guards/access policies provide additional enforcement.
+- The current role set is owned by Prisma/shared role definitions, not this document.
+- Human RBAC semantics: [`API_RBAC_MATRIX.md`](./API_RBAC_MATRIX.md).
+- Generated current policy view: [`../generated/RBAC.md`](../generated/RBAC.md).
 
 ## Error contract
 
-Canonical API errors use the shared API response/error layer. Current stable code/type definitions are authoritative for fields and codes.
+Canonical API errors use the shared runtime response/error layer. Current stable code/types are authoritative for fields and codes.
 
-A representative shape is:
+Representative shape:
 
 ```json
 {
@@ -65,11 +49,11 @@ A representative shape is:
 }
 ```
 
-Do not add a field such as `requestId` to docs unless current shared/runtime contract contains it.
+Do not document additional fields as guaranteed unless the current shared/runtime contract contains them.
 
 ## List-query evolution
 
-Pagination/filter/sort behavior is endpoint-specific until current code proves a shared runtime response contract. Existing unpaginated response shapes MUST NOT change silently.
+Pagination/filter/sort behavior is endpoint-specific until code proves a shared runtime response contract. Existing response shapes must not change silently.
 
 When changing a list endpoint:
 
@@ -77,32 +61,30 @@ When changing a list endpoint:
 - keep queries organization-scoped;
 - allowlist sortable/filterable fields;
 - update backend tests, runtime OpenAPI and affected frontend client in the same PR;
-- update this document only for human semantics/invariants, not by maintaining another full endpoint inventory.
+- update this document only for human semantics/invariants.
 
-## Notifications and Audit Log
+## Product scope vs implementation
 
-Old claim: “No dedicated audit-log or notifications module.”
+Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
 
-**Reconciled status:** stale. Current repository contains both `NotificationsModule` and `AuditLogModule`, corresponding Prisma models and UI/API surfaces.
-
-Whether either capability is required for MVP is a product/scope decision in `MVP_SCOPE_LOCK.md` / `TODO_VERIFY.md`; that is separate from implementation existence.
+Do not use retired mixed trackers as a current source for implementation or scope.
 
 ## Live/deployment statements
 
-Production Redis/provider/deployment/protection status MUST be treated as live evidence, not API contract. Dated evidence may explain what was observed at a SHA/environment but does not become a permanent current claim here.
+Production provider/deployment/protection state is live evidence, not API contract. Dated evidence explains what was observed at a specific time/SHA/environment and must not be promoted to permanent current truth.
 
 ## Contract change rules
 
-- Public path/request/response changes require runtime OpenAPI/tests/client/docs review in the same PR.
+- Public path/request/response changes require runtime OpenAPI/tests/client/docs review in the same logical PR.
 - New request bodies use the repository's current runtime validation approach.
 - Database-backed contract changes follow Prisma/migration compatibility rules.
-- Authorization changes update relevant policy/guard tests and human RBAC semantics.
-- Do not manually copy the complete runtime route surface into this document.
+- Authorization changes update policy/guard tests and human RBAC semantics.
+- Never manually copy the complete runtime route surface into this file.
 
 ## Related docs
 
-- `docs/README.md`
-- `docs/API_RBAC_MATRIX.md`
-- `docs/MVP_SCOPE_LOCK.md`
-- `docs/MVP_READINESS_DASHBOARD.md`
-- `docs/AUTH_SESSION_STORE_DESIGN.md`
+- [`../README.md`](../README.md)
+- [`API_RBAC_MATRIX.md`](./API_RBAC_MATRIX.md)
+- [`AUTH_SESSION_STORE_DESIGN.md`](./AUTH_SESSION_STORE_DESIGN.md)
+- [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md)
+- [`../runbooks/RELEASE_GATE.md`](../runbooks/RELEASE_GATE.md)

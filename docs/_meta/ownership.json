@@ -17,11 +17,10 @@
         "docs/generated/ENTITIES.md"
       ],
       "manualTargets": [
-        "docs/contracts/ENTITY_TECHSPEC_IMPLEMENTED.md",
         "docs/runbooks/MIGRATION_BACKUP_POLICY.md"
       ],
       "scope": "Database entities, enums and migration-visible data model semantics.",
-      "reason": "Prisma is the canonical owner of the persisted data model; generated entities and human data/migration semantics must be reviewed together."
+      "reason": "Prisma is the canonical owner of the persisted data model; volatile entity inventory is generated, while human migration semantics remain impact-reviewed."
     },
     {
       "id": "auth-rbac",
@@ -106,6 +105,22 @@
       ],
       "scope": "Production image startup, Railway deployment and production migration gate procedures.",
       "reason": "Deployment/migration procedures are operational contracts and must stay synchronized with executable configuration."
+    },
+    {
+      "id": "storage-upload",
+      "sourceGlobs": [
+        "apps/api/src/modules/upload/upload.service.ts",
+        "apps/api/src/modules/upload/upload.validation.ts",
+        "apps/api/src/modules/course-materials/material-multipart-upload.service.ts",
+        "apps/api/src/modules/course-materials/material-malware-scan.service.ts",
+        "apps/api/src/modules/course-materials/material-storage-lifecycle.service.ts"
+      ],
+      "generatedTargets": [],
+      "manualTargets": [
+        "docs/contracts/STORAGE_UPLOAD_STATUS.md"
+      ],
+      "scope": "Object-storage operations, upload validation, multipart lifecycle, malware quarantine and storage cleanup semantics.",
+      "reason": "Storage/upload behaviour is a manual operational contract; changes to its primary implementation owners must trigger documentation review even though provider live state remains external evidence."
     },
     {
       "id": "security-release",

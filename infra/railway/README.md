@@ -1,98 +1,48 @@
 # Railway deployment notes
 
-> **Статус:** `CURRENT`
+> **Статус:** `CURRENT` operational reference.
 >
-> Краткая operational reference для текущей Railway topology. Подробности и policy — в `docs/RAILWAY_DEPLOY_GUIDE.md`.
->
-> **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
+> Current repository config owns deploy commands/env contracts. Live Railway topology/provider state always requires fresh external read-back.
 
-## Topology
+## Repository topology contract
 
-- Web service — public entrypoint.
-- API service — private Railway service.
-- Nginx проксирует `/api/` на `api.railway.internal:3000`.
-- Не включать Public Networking для API без отдельной owner/ops задачи.
-- Malware scanner (`services/malware-scanner/`) — опциональный private-сервис для malware scanning материалов (`MALWARE_SCANNER_URL`/`MALWARE_SCANNER_CALLBACK_SECRET`). Без него `POST /materials/:id/file` возвращает `503`. Инструкция по деплою: `services/malware-scanner/README.md`.
+- Web is the intended public entrypoint.
+- API is intended to be reached through the Web/Nginx private-service path unless an explicit ops decision changes the topology.
+- Malware scanner is an optional private service whose current contract is owned by `services/malware-scanner/` and API upload code.
 
-## Ports
+Do not treat this repository description as proof that the live Railway project currently matches it.
 
-Railway runtime `PORT` используется current API env loader как `API_PORT`, если `API_PORT` не задан явно.
+## API startup and ports
 
-Не нужно вручную фиксировать public API port 3000 для нормальной topology.
-
-## API startup
-
-Current Railway start command:
-
-```text
-prisma migrate deploy
-node dist/main.js
-```
-
-Фактическая команда задаётся `apps/api/railway.json`; этот файл является source of truth для Railway API startup.
+Current Railway API startup is owned by `apps/api/railway.json`; do not copy its exact command into another authority. Runtime port handling is owned by current API env/config code.
 
 ## Health
 
-Canonical API readiness endpoint:
+Current health/readiness paths and payloads are owned by health controller/service code and runtime OpenAPI. Operational readiness semantics are documented in `docs/quality/READINESS_AND_SECURITY_GATES.md`.
 
-```text
-/api/v1/health/ready
-```
+## Production environment
 
-Liveness:
-
-```text
-/api/v1/health/live
-```
-
-## Production env
-
-Использовать `.env.production.example` и current env validation как canonical inventory.
-
-Особенно учитывать:
-
-- `TRUST_PROXY` required in production;
-- Redis preferred/required unless explicit `ALLOW_IN_MEMORY_RATE_LIMIT=true` emergency fallback;
-- storage provider-neutral S3-compatible;
-- `S3_FILE_ORIGIN` optional.
-
-Не считать комментарии env-файла доказательством фактического live provider state.
+Use `.env.production.example` plus current env validation as the repository inventory. Important policy topics include proxy trust, Redis/degraded-mode choice, S3-compatible storage and scanner integration; actual live values/providers are not proven by repository examples.
 
 ## Demo seed
 
-Historical command `node dist/scripts/seed.js` не использовать.
+Use the guarded procedure in `docs/runbooks/ADMIN_DEMO_SEED.md`. Historical unguarded seed commands are not current operational guidance.
 
-Current guarded demo seed описан в:
+## Staging and live verification
 
-```text
-docs/ADMIN_DEMO_SEED.md
-```
-
-Перед apply соблюдать dry-run/environment/database safeguards из этого документа.
-
-## Staging
-
-Current repository policy не определяет отдельный Railway staging environment.
-
-GitHub Actions environment/workflow с названием `staging` не является доказательством отдельного Railway deployment.
-
-## Live verification
-
-Repository config не подтверждает фактические:
+A workflow/environment name in GitHub does not prove that a matching Railway environment exists. Fresh external evidence is required for:
 
 - Railway service topology/domains;
-- Redis state;
-- storage provider/bucket/CORS;
+- Redis availability/topology;
+- storage provider/bucket/CORS/lifecycle;
 - scanner availability;
-- backup/PITR;
-- fresh production smoke.
-
-Для этих утверждений требуется fresh external evidence (`LIVE-VERIFY`).
+- backup/PITR/restore readiness;
+- production smoke/rollback state.
 
 ## Related docs
 
-- `docs/RAILWAY_DEPLOY_GUIDE.md`
-- `docs/DEPLOY_FOUNDATION.md`
-- `docs/MIGRATION_BACKUP_POLICY.md`
-- `docs/STORAGE_UPLOAD_STATUS.md`
-- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/runbooks/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/runbooks/DEPLOY_FOUNDATION.md`
+- `docs/runbooks/MIGRATION_BACKUP_POLICY.md`
+- `docs/contracts/STORAGE_UPLOAD_STATUS.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`

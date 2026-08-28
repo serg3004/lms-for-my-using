@@ -112,7 +112,7 @@ No canonical document should claim a specific production provider without fresh 
 
 Preferred production state: Redis-backed distributed limiting.
 
-Explicit emergency fallback:
+Explicit emergency startup fallback:
 
 ```text
 ALLOW_IN_MEMORY_RATE_LIMIT=true
@@ -120,7 +120,7 @@ ALLOW_IN_MEMORY_RATE_LIMIT=true
 
 This permits startup without Redis but degrades protection to per-process in-memory limiting.
 
-Configured-but-down Redis should make readiness fail even while sensitive routes may continue under local fallback.
+If Redis was configured and later becomes unavailable at runtime, sensitive routes fail closed with retryable `503 RATE_LIMIT_UNAVAILABLE`; they do not switch to the local fallback. Configured Redis failure also makes readiness fail. See `docs/contracts/RATE_LIMIT_FAILURE_POLICY.md`.
 
 ---
 
@@ -187,8 +187,8 @@ All such statements require `LIVE-VERIFY` evidence.
 
 ## Связанные документы
 
-- `docs/RAILWAY_DEPLOY_GUIDE.md`
-- `docs/MIGRATION_BACKUP_POLICY.md`
-- `docs/STORAGE_UPLOAD_STATUS.md`
+- `docs/runbooks/RAILWAY_DEPLOY_GUIDE.md`
+- `docs/runbooks/MIGRATION_BACKUP_POLICY.md`
+- `docs/contracts/STORAGE_UPLOAD_STATUS.md`
 - `infra/railway/README.md`
-- `docs/READINESS_AND_SECURITY_GATES.md`
+- `docs/quality/READINESS_AND_SECURITY_GATES.md`
