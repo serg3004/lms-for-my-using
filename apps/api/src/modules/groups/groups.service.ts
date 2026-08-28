@@ -3,6 +3,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
+import { ManagerTeamScope } from '../manager-team-scope/public.js';
+import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
   AssignGroupManagerInput,
   AssignGroupMemberInput,
@@ -42,6 +44,7 @@ export class GroupsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
   ) {}
 
   async listGroups(organizationId: string, filter: ListGroupsFilter = 'active') {
@@ -154,8 +157,8 @@ export class GroupsService {
     return this.fetchMembers(groupId, organizationId);
   }
 
-  async addMember(groupId: string, organizationId: string, input: AssignGroupMemberInput) {
-    await this.ensureGroupExists(groupId, organizationId);
+  async addMember(groupId: string, organizationId: string, input: AssignGroupMemberInput, actor: TeamScopeActor) {
+    await this.ensureManagedGroupExists(groupId, organizationId, actor);
     await this.ensureUserExists(input.userId, organizationId);
 
     await this.prisma.groupMember.upsert({
@@ -167,7 +170,9 @@ export class GroupsService {
     return this.fetchMembers(groupId, organizationId);
   }
 
-  async removeMember(groupId: string, organizationId: string, userId: string) {
+  async removeMember(groupId: string, organizationId: string, userId: string, actor: TeamScopeActor) {
+    await this.ensureManagedGroupExists(groupId, organizationId, actor);
+
     const member = await this.prisma.groupMember.findFirst({
       where: { groupId, userId, organizationId, deletedAt: null },
       select: { groupId: true, userId: true },
@@ -191,8 +196,8 @@ export class GroupsService {
     return this.fetchManagers(groupId, organizationId);
   }
 
-  async addManager(groupId: string, organizationId: string, input: AssignGroupManagerInput) {
-    await this.ensureGroupExists(groupId, organizationId);
+  async addManager(groupId: string, organizationId: string, input: AssignGroupManagerInput, actor: TeamScopeActor) {
+    await this.ensureManagedGroupExists(groupId, organizationId, actor);
     await this.ensureUserExists(input.managerId, organizationId);
 
     await this.prisma.managerGroup.upsert({
@@ -204,7 +209,9 @@ export class GroupsService {
     return this.fetchManagers(groupId, organizationId);
   }
 
-  async removeManager(groupId: string, organizationId: string, managerId: string) {
+  async removeManager(groupId: string, organizationId: string, managerId: string, actor: TeamScopeActor) {
+    await this.ensureManagedGroupExists(groupId, organizationId, actor);
+
     const manager = await this.prisma.managerGroup.findFirst({
       where: { groupId, managerId, organizationId, deletedAt: null },
       select: { groupId: true, managerId: true },
@@ -247,6 +254,17 @@ export class GroupsService {
   private async ensureGroupExists(groupId: string, organizationId: string) {
     const group = await this.prisma.group.findFirst({
       where: { id: groupId, organizationId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+  }
+
+  private async ensureManagedGroupExists(groupId: string, organizationId: string, actor: TeamScopeActor) {
+    const group = await this.prisma.group.findFirst({
+      where: { id: groupId, organizationId, ...this.teamScope.group(actor), deletedAt: null },
       select: { id: true },
     });
 
