@@ -117,9 +117,13 @@ describe('learner page smoke rendering', () => {
             title: 'MVP Onboarding Course',
             slug: 'mvp-onboarding-course',
             description: 'Pilot course description',
-            status: 'published',
+            status: 'archived',
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
+            totalLessons: 5,
+            completedLessons: 2,
+            percentage: 40,
+            isCompleted: false,
           },
         ],
         total: 1,
@@ -131,7 +135,14 @@ describe('learner page smoke rendering', () => {
 
     expect(html).toContain('MVP Onboarding Course');
     expect(html).toContain('href="/learn/courses/course-1"');
+    // Progress reflects the learner's own completed/total lessons (40%), not the
+    // course's own lifecycle status — this course is archived but the learner is
+    // still "В процессе" (in progress) with real lessons left to finish.
     expect(html).toContain('В процессе');
+    // Progress bar and remaining-lessons count reflect the learner's own 2-of-5
+    // completed lessons (40%, 3 remaining) — not a lifecycle-derived 0/100 guess.
+    expect(html).toContain('<strong style="color:#172033">40%</strong>');
+    expect(html).toContain('<strong style="font-size:14px;color:#172033">3 уроков</strong>');
   });
 
   it('renders assignments loading state without crashing', () => {

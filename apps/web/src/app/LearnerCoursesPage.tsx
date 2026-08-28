@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { listCourses } from '../shared/api/courses.js';
-import type { CourseSummary } from '../shared/api/types.js';
+import { getCourseCompletion, listCourses } from '../shared/api/courses.js';
+import type { CourseCompletion, CourseSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+
+const EMPTY_COMPLETION: Pick<CourseCompletion, 'totalLessons' | 'completedLessons' | 'percentage' | 'isCompleted'> = {
+  totalLessons: 0,
+  completedLessons: 0,
+  percentage: 0,
+  isCompleted: false,
+};
 
 const COVER_GRADIENTS = [
   'linear-gradient(135deg, #4338ca 0%, #0ea5e9 100%)',
@@ -22,7 +29,27 @@ function coverGradient(index: number) {
 type StatusFilter = 'all' | 'active' | 'completed';
 type SortMode = 'recent' | 'progress' | 'title';
 
-type CoursesData = { courses: CourseSummary[]; total: number; pageSize: number };
+type CourseWithProgress = CourseSummary & {
+  totalLessons: number;
+  completedLessons: number;
+  percentage: number;
+  isCompleted: boolean;
+};
+
+type CoursesData = { courses: CourseWithProgress[]; total: number; pageSize: number };
+
+export function mergeCourseProgress(
+  courses: CourseSummary[],
+  completions: ReadonlyArray<Pick<CourseCompletion, 'totalLessons' | 'completedLessons' | 'percentage' | 'isCompleted'>>,
+): CourseWithProgress[] {
+  return courses.map((course, index) => ({
+    ...course,
+    totalLessons: completions[index]!.totalLessons,
+    completedLessons: completions[index]!.completedLessons,
+    percentage: completions[index]!.percentage,
+    isCompleted: completions[index]!.isCompleted,
+  }));
+}
 
 const SEL_STYLE: React.CSSProperties = {
   border: '1px solid #e3e8ef',
@@ -39,7 +66,13 @@ export function LearnerCoursesPage() {
   const { state: loadState } = useAsyncData<CoursesData>(
     async () => {
       const result = await listCourses({ page: 1, pageSize: 100 });
-      return { courses: result.items, total: result.total, pageSize: result.pageSize };
+      const completions = await Promise.all(
+        result.items.map((course) =>
+          getCourseCompletion(course.id).catch(() => EMPTY_COMPLETION),
+        ),
+      );
+      const courses = mergeCourseProgress(result.items, completions);
+      return { courses, total: result.total, pageSize: result.pageSize };
     },
     [t],
     { unauthenticated: t('courses.sessionExpired'), error: t('courses.loadError') },
@@ -67,24 +100,21 @@ export function LearnerCoursesPage() {
   }
 
   const { courses } = loadState.data;
-  const activeCount = courses.filter((c) => c.status === 'published').length;
-  const completedCount = courses.filter((c) => c.status === 'archived').length;
-  const avgProgress = courses.length > 0 ? Math.round((completedCount / courses.length) * 100) : 0;
+  const activeCount = courses.filter((c) => !c.isCompleted).length;
+  const completedCount = courses.filter((c) => c.isCompleted).length;
+  const avgProgress =
+    courses.length > 0 ? Math.round(courses.reduce((sum, c) => sum + c.percentage, 0) / courses.length) : 0;
 
   let filtered = courses.filter((c) => {
-    if (statusFilter === 'active') return c.status === 'published';
-    if (statusFilter === 'completed') return c.status === 'archived';
+    if (statusFilter === 'active') return !c.isCompleted;
+    if (statusFilter === 'completed') return c.isCompleted;
     return true;
   });
 
   if (sortMode === 'title') {
     filtered = [...filtered].sort((a, b) => a.title.localeCompare(b.title, 'ru'));
   } else if (sortMode === 'progress') {
-    filtered = [...filtered].sort((a, b) => {
-      const pa = a.status === 'archived' ? 100 : 0;
-      const pb = b.status === 'archived' ? 100 : 0;
-      return pb - pa;
-    });
+    filtered = [...filtered].sort((a, b) => b.percentage - a.percentage);
   }
 
   return (
@@ -200,9 +230,10 @@ export function LearnerCoursesPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
           {filtered.map((course, index) => {
-            const isCompleted = course.status === 'archived';
-            const pct = isCompleted ? 100 : 0;
-            const lessonsCount = course._count?.lessons ?? 0;
+            const isCompleted = course.isCompleted;
+            const pct = course.percentage;
+            const lessonsCount = course.totalLessons;
+            const remainingLessons = Math.max(lessonsCount - course.completedLessons, 0);
 
             const badgeBg = isCompleted ? '#e9f8f2' : '#eef2ff';
             const badgeColor = isCompleted ? '#0f9f6e' : '#4f46e5';
@@ -315,7 +346,7 @@ export function LearnerCoursesPage() {
                           {t('courses.remaining')}
                         </span>
                         <strong style={{ fontSize: '14px', color: '#172033' }}>
-                          {isCompleted ? 0 : lessonsCount} {t('courses.lessons')}
+                          {remainingLessons} {t('courses.lessons')}
                         </strong>
                       </div>
                     </div>
