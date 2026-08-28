@@ -59,6 +59,16 @@ export type InstructorCourseSummary = CourseSummary & {
   metrics: { enrolled: number; inProgress: number; completed: number };
 };
 
+export type CourseCompletion = {
+  courseId: string;
+  userId: string;
+  organizationId: string;
+  totalLessons: number;
+  completedLessons: number;
+  isCompleted: boolean;
+  percentage: number;
+};
+
 export type LessonSummary = {
   id: string;
   organizationId: string;
