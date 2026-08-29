@@ -63,9 +63,11 @@ test('admin creates a department tree, edits, moves, archives and restores a dep
   await expect(tree.getByRole('treeitem', { name: new RegExp(updatedChildName) })).toBeVisible();
 
   // Archive it, then restore it from the detail panel.
+  const detail = page.getByRole('article');
   await page.getByRole('button', { name: 'В архив' }).click();
   await page.getByRole('dialog', { name: 'Архивировать подразделение' }).getByRole('button', { name: 'В архив' }).click();
-  await expect(page.getByText('В архиве')).toBeVisible();
+  // Scoped to the detail panel -- the tree also shows an "В архиве" badge on the archived node.
+  await expect(detail.getByText('В архиве')).toBeVisible();
   await page.getByRole('button', { name: 'Восстановить' }).click();
   await expect(page.getByRole('button', { name: 'В архив' })).toBeVisible();
 });
@@ -85,7 +87,9 @@ test('admin manages department types', async ({ page }) => {
   await dialog.getByPlaceholder('Название').fill('E2E Type');
   await dialog.getByRole('button', { name: 'Добавить' }).click();
 
-  const row = dialog.getByRole('listitem').filter({ hasText: 'E2E Type' });
+  // Filtered by the run-unique code, not the shared "E2E Type" name, so this can't collide
+  // with a leftover row from another run of this same test against a long-lived database.
+  const row = dialog.getByRole('listitem').filter({ hasText: code });
   await expect(row).toBeVisible();
   await row.getByRole('button', { name: 'В архив' }).click();
   await expect(row.getByText('В архиве')).toBeVisible();

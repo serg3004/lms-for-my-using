@@ -84,6 +84,10 @@ test.describe('WCAG AA browser baseline', () => {
     // beyond the 30s default so CI load doesn't turn real latency into a false failure.
     test.setTimeout(60_000);
     await loginAs(page, 'admin');
+    // loginAs() only submits the form; it does not wait for the post-login redirect (unlike
+    // the workspace tests above, which assert the destination URL right after calling it). Without
+    // this wait, goto() below can race the in-flight login and land back on /login.
+    await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/departments');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 

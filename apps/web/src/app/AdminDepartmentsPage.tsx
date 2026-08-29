@@ -303,7 +303,11 @@ export function AdminDepartmentsPage() {
     const department = archiveTarget;
     setStatusActionState({ status: 'saving' });
     try {
-      await archiveDepartment(department.id);
+      const updated = await archiveDepartment(department.id);
+      // The parent's refreshed children list stops including this node (active-only by default),
+      // but the still-selected node's own cached copy would otherwise keep showing stale "active"
+      // data in the detail panel -- upsert it with the server's fresh (archived) copy.
+      dispatchTree({ type: 'upsertNode', node: updated });
       setArchiveTarget(null);
       setStatusActionState({ status: 'idle' });
       await refreshChildrenOf(department.parentId);
@@ -315,7 +319,8 @@ export function AdminDepartmentsPage() {
   async function handleRestore(department: Department) {
     setStatusActionState({ status: 'saving' });
     try {
-      await restoreDepartment(department.id);
+      const updated = await restoreDepartment(department.id);
+      dispatchTree({ type: 'upsertNode', node: updated });
       setStatusActionState({ status: 'idle' });
       await refreshChildrenOf(department.parentId);
     } catch {
@@ -508,7 +513,13 @@ export function AdminDepartmentsPage() {
               </div>
             </article>
           ) : (
-            <p className="admin-form__hint">{t('admin.departments.selectHint', 'Select a department to see its details.')}</p>
+            // Plain paragraph, not admin-form__hint: this is the primary (only) content of this
+            // panel, not a de-emphasized hint, and admin-form__hint's dimmed color fails WCAG AA
+            // color-contrast at this text size regardless of background (2.6-2.8:1 measured
+            // against both the page background and a white admin-card, both need 4.5:1).
+            <article className="admin-card">
+              <p>{t('admin.departments.selectHint', 'Select a department to see its details.')}</p>
+            </article>
           )}
         </div>
       </div>
