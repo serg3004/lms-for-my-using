@@ -67,6 +67,18 @@ CI выполняет migration/integration checks на clean/test PostgreSQL in
 
 Если migration зависит от существующих данных, нужен отдельный data-specific validation plan.
 
+### Org structure foundation migration
+
+Migration `20260829120000_add_org_structure_foundation` классифицирована как additive и backward-compatible:
+
+- создаёт новые enum types и таблицы `department_types`, `departments`, `org_structure_events` без backfill существующих данных;
+- не переименовывает и не изменяет данные `Group`, `GroupMember` или `ManagerGroup`;
+- добавляет к `users` только составной unique index `(id, organization_id)`, необходимый для tenant-safe actor relation;
+- допускает overlap с предыдущей версией приложения: старый application revision не использует новые таблицы;
+- при application rollback новые неиспользуемые объекты остаются в БД, а дальнейшее исправление выполняется forward-fix вместо destructive rollback.
+
+Перед production deploy нужно учитывать, что обычный `CREATE UNIQUE INDEX` может временно конкурировать с записью в `users`. После deploy следует проверить статус Prisma migration и наличие новых constraints/indexes; отдельный data backfill или специальный backup сверх общей policy для этой additive migration не требуется. Live backup/PITR state по-прежнему остаётся `LIVE-VERIFY`.
+
 ---
 
 ## 5. Drift handling
