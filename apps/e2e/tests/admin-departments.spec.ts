@@ -46,7 +46,9 @@ test('admin creates a department tree, edits, moves, archives and restores a dep
   await childItem.click();
   await page.getByRole('button', { name: 'Редактировать' }).click();
   const editDialog = page.getByRole('dialog').filter({ hasText: 'Редактировать подразделение' });
-  const updatedChildName = `${childName} (updated)`;
+  // No parentheses -- `new RegExp(updatedChildName)` below treats them as a capture group,
+  // not literal characters, and would then fail to match the literal rendered text.
+  const updatedChildName = `${childName} updated`;
   await editDialog.getByLabel('Название').fill(updatedChildName);
   await editDialog.getByRole('button', { name: 'Сохранить' }).click();
   await expect(editDialog).not.toBeVisible();
@@ -73,7 +75,9 @@ test('admin manages department types', async ({ page }) => {
   await page.goto('/admin/departments');
 
   await page.getByRole('button', { name: 'Типы подразделений' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Типы подразделений' });
+  // Plain `.filter({ hasText })`, not `getByRole('dialog', { name })` -- this dialog has no
+  // `aria-labelledby` (unlike AdminUserDialog), so it exposes no accessible name to match on.
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Типы подразделений' });
   await expect(dialog).toBeVisible();
 
   const code = `e2e-type-${Date.now()}`;
