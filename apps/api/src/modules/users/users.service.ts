@@ -61,9 +61,22 @@ export class UsersService {
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
   ) {}
 
-  async listUsers(actor: TeamScopeActor, page: number, pageSize: number) {
+  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string) {
     const skip = (page - 1) * pageSize;
-    const where = { organizationId: actor.organizationId, ...this.teamScope.user(actor), deletedAt: null };
+    const where = {
+      organizationId: actor.organizationId,
+      ...this.teamScope.user(actor),
+      deletedAt: null,
+      ...(search
+        ? {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' as const } },
+              { lastName: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    };
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: userSelect }),
       this.prisma.user.count({ where }),

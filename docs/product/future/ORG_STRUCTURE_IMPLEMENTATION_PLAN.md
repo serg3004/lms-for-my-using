@@ -130,6 +130,8 @@ Existing `ManagerTeamScope`/эквивалентный механизм необ
 
 ## PR 267 — Разделить Group и Department
 
+**Статус: реализовано.** Admin-страница `/admin/org-structure`, которая была UI-обёрткой над `Group`/`GroupMember`/`ManagerGroup`, но подписывалась как "Department"/"Organization structure" во всех локалях, переименована в `AdminGroupsPage` (`/admin/groups`); label'ы, i18n-ключи (`admin.groups.*`, `admin.nav.groups`) и модель (`admin-groups/model.ts`) приведены к терминологии `Group`. Group data/assignments/`GroupMember`/`ManagerGroup` не изменены — правился только UI-слой. Пикер пользователей для добавления member/manager заменён с client-side списка, молча обрезанного на первых 200 сотрудниках (`GET /users?pageSize=200`), на server-side поиск (`GET /users?search=`, добавлен в `UsersService.listUsers`) без ограничения по размеру организации. Полная пагинация самого списка Group (`GET /groups`, сейчас legacy-массив с `LEGACY_LIST_LIMIT=200`) сознательно вынесена за скобки этого PR как отдельная, более широкая миграция ответа API, затрагивающая других потребителей эндпоинта (`AdminAssignmentCompletionPage`).
+
 ### Задача
 
 Устранить смешение понятий `Group` и `Department` в продукте и подготовить отдельный домен оргструктуры.

@@ -2,12 +2,13 @@ import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { listUsers } from '../shared/api/users.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   buildCreateGroupPayload,
   buildUpdateGroupPayload,
-  computeOrgStats,
+  computeGroupStats,
   formatManagerCell,
   formatUserName,
   initialCreateFormState,
@@ -15,12 +16,15 @@ import {
   resolveGroupSaveErrorMessage,
   usersAvailableToAdd,
   validateGroupName,
-} from './admin-org-structure/model.js';
+} from './admin-groups/model.js';
 import { slugify } from '../shared/slugify.js';
 import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
-import type { PaginatedResponse, UserSummary } from '../shared/api/types.js';
+import type { UserSummary } from '../shared/api/types.js';
+
+const USER_SEARCH_DEBOUNCE_MS = 300;
+const USER_SEARCH_PAGE_SIZE = 20;
 
 type GroupStatus = 'active' | 'archived';
 
@@ -36,9 +40,49 @@ type Group = {
   managers: Array<{ manager: { id: string; firstName: string; lastName: string } }>;
 };
 
-type AdminOrgStructureData = { organizationId: string; groups: Group[]; employeeCount: number };
+type AdminGroupsData = { organizationId: string; groups: Group[]; employeeCount: number };
 
-export function AdminOrgStructurePage() {
+type UserSearchState = { term: string; status: 'idle' | 'loading' | 'error'; results: UserSummary[] };
+
+const IDLE_USER_SEARCH: UserSearchState = { term: '', status: 'idle', results: [] };
+
+/** Debounced server-side user search — replaces prefetching the whole org's users into one dropdown. */
+function useUserSearch(): [UserSearchState, (term: string) => void] {
+  const [search, setSearch] = useState<UserSearchState>(IDLE_USER_SEARCH);
+
+  useEffect(() => {
+    const term = search.term.trim();
+    if (!term) {
+      setSearch((prev) => (prev.status === 'idle' && prev.results.length === 0 ? prev : { ...prev, status: 'idle', results: [] }));
+      return;
+    }
+
+    let cancelled = false;
+    setSearch((prev) => ({ ...prev, status: 'loading' }));
+    const timer = setTimeout(() => {
+      listUsers({ search: term, pageSize: USER_SEARCH_PAGE_SIZE })
+        .then((res) => {
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items }));
+        })
+        .catch(() => {
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] }));
+        });
+    }, USER_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search.term]);
+
+  function setTerm(term: string) {
+    setSearch((prev) => ({ ...prev, term }));
+  }
+
+  return [search, setTerm];
+}
+
+export function AdminGroupsPage() {
   const { t } = useTranslation();
   const { currentUser } = useSession();
 
@@ -65,7 +109,6 @@ export function AdminOrgStructurePage() {
 
   const membersDialogRef = useRef<HTMLDialogElement>(null);
   const [membersGroup, setMembersGroup] = useState<Group | null>(null);
-  const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
   const [groupMembers, setGroupMembers] = useState<UserSummary[]>([]);
   const [groupManagers, setGroupManagers] = useState<UserSummary[]>([]);
   const [membersState, setMembersState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({
@@ -73,19 +116,21 @@ export function AdminOrgStructurePage() {
   });
   const [addMemberUserId, setAddMemberUserId] = useState('');
   const [addManagerUserId, setAddManagerUserId] = useState('');
+  const [memberSearch, setMemberSearchTerm] = useUserSearch();
+  const [managerSearch, setManagerSearchTerm] = useUserSearch();
 
-  const { state: loadState, reload: load } = useAsyncData<AdminOrgStructureData>(
+  const { state: loadState, reload: load } = useAsyncData<AdminGroupsData>(
     async () => {
       const [groups, { total }] = await Promise.all([
         apiRequest<Group[]>('/groups'),
-        apiRequest<PaginatedResponse<unknown>>('/users?pageSize=1'),
+        apiRequest<{ total: number }>('/users?pageSize=1'),
       ]);
       return { organizationId: currentUser!.organizationId, groups, employeeCount: total };
     },
     [currentUser, t],
     {
-      unauthenticated: t('admin.orgStructure.sessionExpired', 'Your session expired. Sign in again.'),
-      error: t('admin.orgStructure.loadError', 'Unable to load organization structure.'),
+      unauthenticated: t('admin.groups.sessionExpired', 'Your session expired. Sign in again.'),
+      error: t('admin.groups.loadError', 'Unable to load groups.'),
     },
   );
 
@@ -109,7 +154,7 @@ export function AdminOrgStructurePage() {
     if (loadState.status !== 'loaded') return;
 
     const groupName = name.trim();
-    const errors = validateGroupName(groupName, t('admin.orgStructure.nameRequired', 'Name is required.'));
+    const errors = validateGroupName(groupName, t('admin.groups.nameRequired', 'Name is required.'));
     if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
     setCreateErrors({});
 
@@ -126,8 +171,8 @@ export function AdminOrgStructurePage() {
       const status = error instanceof ApiClientError ? error.status : undefined;
       const message = resolveGroupSaveErrorMessage(
         status,
-        t('admin.orgStructure.groupExists', 'A department with this slug already exists.'),
-        t('admin.orgStructure.saveError', 'Unable to save the department.'),
+        t('admin.groups.groupExists', 'A group with this slug already exists.'),
+        t('admin.groups.saveError', 'Unable to save the group.'),
       );
       setSubmitState({ status: 'error', message });
     }
@@ -150,7 +195,7 @@ export function AdminOrgStructurePage() {
     if (!editGroup) return;
 
     const groupName = editName.trim();
-    const errors = validateGroupName(groupName, t('admin.orgStructure.nameRequired', 'Name is required.'));
+    const errors = validateGroupName(groupName, t('admin.groups.nameRequired', 'Name is required.'));
     if (hasValidationErrors(errors)) { setEditErrors(errors); return; }
     setEditErrors({});
 
@@ -165,7 +210,7 @@ export function AdminOrgStructurePage() {
       setEditGroup(null);
       await load();
     } catch {
-      setEditState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+      setEditState({ status: 'error', message: t('admin.groups.saveError', 'Unable to save the group.') });
     }
   }
 
@@ -173,23 +218,23 @@ export function AdminOrgStructurePage() {
     setMembersGroup(group);
     setAddMemberUserId('');
     setAddManagerUserId('');
+    setMemberSearchTerm('');
+    setManagerSearchTerm('');
     setMembersState({ status: 'loading' });
     membersDialogRef.current?.showModal();
 
     try {
-      const [users, members, managers] = await Promise.all([
-        orgUsers.length > 0 ? orgUsers : apiRequest<PaginatedResponse<UserSummary>>('/users?pageSize=200').then((res) => res.items),
+      const [members, managers] = await Promise.all([
         apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(group.id)}/members`),
         apiRequest<UserSummary[]>(`/groups/${encodeURIComponent(group.id)}/managers`),
       ]);
-      setOrgUsers(users);
       setGroupMembers(members);
       setGroupManagers(managers);
       setMembersState({ status: 'idle' });
     } catch {
       setMembersState({
         status: 'error',
-        message: t('admin.orgStructure.membersLoadError', 'Unable to load department members.'),
+        message: t('admin.groups.membersLoadError', 'Unable to load group members.'),
       });
     }
   }
@@ -208,9 +253,10 @@ export function AdminOrgStructurePage() {
       });
       setGroupMembers(members);
       setAddMemberUserId('');
+      setMemberSearchTerm('');
       await load();
     } catch {
-      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+      setMembersState({ status: 'error', message: t('admin.groups.saveError', 'Unable to save the group.') });
     }
   }
 
@@ -224,7 +270,7 @@ export function AdminOrgStructurePage() {
       setGroupMembers(members);
       await load();
     } catch {
-      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+      setMembersState({ status: 'error', message: t('admin.groups.saveError', 'Unable to save the group.') });
     }
   }
 
@@ -237,9 +283,10 @@ export function AdminOrgStructurePage() {
       });
       setGroupManagers(managers);
       setAddManagerUserId('');
+      setManagerSearchTerm('');
       await load();
     } catch {
-      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+      setMembersState({ status: 'error', message: t('admin.groups.saveError', 'Unable to save the group.') });
     }
   }
 
@@ -253,14 +300,14 @@ export function AdminOrgStructurePage() {
       setGroupManagers(managers);
       await load();
     } catch {
-      setMembersState({ status: 'error', message: t('admin.orgStructure.saveError', 'Unable to save the department.') });
+      setMembersState({ status: 'error', message: t('admin.groups.saveError', 'Unable to save the group.') });
     }
   }
 
   if (loadState.status === 'loading') {
     return (
       <main className="admin-state">
-        <PageState message={t('admin.orgStructure.loading', 'Loading organization structure...')} variant="loading" />
+        <PageState message={t('admin.groups.loading', 'Loading groups...')} variant="loading" />
       </main>
     );
   }
@@ -269,7 +316,7 @@ export function AdminOrgStructurePage() {
     return (
       <main className="admin-state">
         <PageState
-          title={t('admin.orgStructure.title', 'Organization')}
+          title={t('admin.groups.title', 'Groups')}
           message={loadState.message}
           variant="error"
           action={<a href="/login">{t('login.navLink')}</a>}
@@ -281,17 +328,20 @@ export function AdminOrgStructurePage() {
   if (loadState.status === 'error' || loadState.status === 'notFound') {
     return (
       <main className="admin-state">
-        <PageState title={t('admin.orgStructure.title', 'Organization')} message={loadState.message} variant="error" />
+        <PageState title={t('admin.groups.title', 'Groups')} message={loadState.message} variant="error" />
       </main>
     );
   }
 
   const { groups, employeeCount } = loadState.data;
-  const stats = computeOrgStats(groups, employeeCount);
+  const stats = computeGroupStats(groups, employeeCount);
 
   const navItems: AdminNavItem[] = [
-    { label: t('admin.orgStructure.title', 'Organization'), href: '/admin/org-structure', isCurrent: true },
+    { label: t('admin.groups.title', 'Groups'), href: '/admin/groups', isCurrent: true },
   ];
+
+  const memberCandidates = usersAvailableToAdd(memberSearch.results, groupMembers.map((m) => m.id));
+  const managerCandidates = usersAvailableToAdd(managerSearch.results, groupManagers.map((m) => m.id));
 
   return (
     <AdminPageLayout
@@ -300,58 +350,58 @@ export function AdminOrgStructurePage() {
       navItems={navItems}
     >
       <AdminPageHeader
-        eyebrow={t('admin.orgStructure.eyebrow', 'Company structure')}
-        title={t('admin.orgStructure.title', 'Organization')}
-        subtitle={t('admin.orgStructure.subtitle', 'Departments, managers and headcount.')}
+        eyebrow={t('admin.groups.eyebrow', 'Groups')}
+        title={t('admin.groups.title', 'Groups')}
+        subtitle={t('admin.groups.subtitle', 'Learning and operational groups, managers and members.')}
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
-            + {t('admin.orgStructure.add', 'Add department')}
+            + {t('admin.groups.add', 'Add group')}
           </Button>
         }
       />
 
       <StatsGrid>
-        <StatCard label={t('admin.orgStructure.statUnits', 'Departments')} value={stats.departments} />
-        <StatCard label={t('admin.orgStructure.statEmployees', 'Employees')} value={stats.employees} />
-        <StatCard label={t('admin.orgStructure.statManagers', 'Managers')} value={stats.managers} />
-        <StatCard label={t('admin.orgStructure.statLocations', 'Locations')} value={stats.locations} />
+        <StatCard label={t('admin.groups.statUnits', 'Groups')} value={stats.groups} />
+        <StatCard label={t('admin.groups.statEmployees', 'Members')} value={stats.employees} />
+        <StatCard label={t('admin.groups.statManagers', 'Managers')} value={stats.managers} />
+        <StatCard label={t('admin.groups.statLocations', 'Locations')} value={stats.locations} />
       </StatsGrid>
 
       {groups.length === 0 ? (
-        <EmptyState message={t('admin.orgStructure.empty', 'No departments found.')} />
+        <EmptyState message={t('admin.groups.empty', 'No groups found.')} />
       ) : (
         <DataTable<Group>
-          label={t('admin.orgStructure.title', 'Organization structure')}
+          label={t('admin.groups.title', 'Groups')}
           columns={[
-            { key: 'name', label: t('admin.orgStructure.colUnit', 'Department'), render: (g) => g.name },
-            { key: 'manager', label: t('admin.orgStructure.colHead', 'Manager'), render: (g) => formatManagerCell(g) },
-            { key: 'members', label: t('admin.orgStructure.colPeople', 'Employees'), render: (g) => g._count.members },
+            { key: 'name', label: t('admin.groups.colUnit', 'Group'), render: (g) => g.name },
+            { key: 'manager', label: t('admin.groups.colHead', 'Manager'), render: (g) => formatManagerCell(g) },
+            { key: 'members', label: t('admin.groups.colPeople', 'Members'), render: (g) => g._count.members },
             { key: 'actions', label: '', render: (g) => (
               <span className="admin-table-actions">
                 <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openMembersDialog(g)}>
-                  {t('admin.orgStructure.members', 'Members')}
+                  {t('admin.groups.members', 'Members')}
                 </button>
                 <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(g)}>
-                  {t('admin.orgStructure.edit', 'Edit')}
+                  {t('admin.groups.edit', 'Edit')}
                 </button>
               </span>
             )},
           ] satisfies Column<Group>[]}
           rows={groups}
           keyExtractor={(g) => g.id}
-          emptyMessage={t('admin.orgStructure.empty', 'No departments found.')}
+          emptyMessage={t('admin.groups.empty', 'No groups found.')}
         />
       )}
 
       <dialog ref={createDialogRef} className="admin-dialog" onClose={() => setShowCreate(false)}>
         <header className="admin-dialog__header">
-          <h2>{t('admin.orgStructure.createDialogTitle', 'Add department')}</h2>
-          <button className="admin-dialog__close" type="button" aria-label={t('admin.orgStructure.close', 'Close')} onClick={() => setShowCreate(false)}>
+          <h2>{t('admin.groups.createDialogTitle', 'Add group')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.groups.close', 'Close')} onClick={() => setShowCreate(false)}>
             ×
           </button>
         </header>
         <form className="admin-form" onSubmit={handleCreateGroup}>
-          <FormField id="group-create-name" label={t('admin.orgStructure.fieldName', 'Name')} required error={createErrors.name}>
+          <FormField id="group-create-name" label={t('admin.groups.fieldName', 'Name')} required error={createErrors.name}>
             <input
               id="group-create-name"
               value={name}
@@ -361,10 +411,10 @@ export function AdminOrgStructurePage() {
               onChange={(e) => { setName(e.target.value); setCreateErrors((prev) => clearFieldError(prev, 'name')); }}
             />
           </FormField>
-          <FormField id="group-create-location" label={t('admin.orgStructure.fieldLocation', 'Location')}>
+          <FormField id="group-create-location" label={t('admin.groups.fieldLocation', 'Location')}>
             <input id="group-create-location" value={location} maxLength={120} onChange={(e) => setLocation(e.target.value)} />
           </FormField>
-          <FormField id="group-create-description" label={t('admin.orgStructure.fieldDescription', 'Description')}>
+          <FormField id="group-create-description" label={t('admin.groups.fieldDescription', 'Description')}>
             <textarea id="group-create-description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} />
           </FormField>
           {submitState.status === 'error' ? (
@@ -372,10 +422,10 @@ export function AdminOrgStructurePage() {
           ) : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setShowCreate(false)}>
-              {t('admin.orgStructure.cancel', 'Cancel')}
+              {t('admin.groups.cancel', 'Cancel')}
             </button>
             <button className="admin-btn admin-btn--primary" type="submit" disabled={submitState.status === 'saving'}>
-              {submitState.status === 'saving' ? t('admin.orgStructure.saving', 'Saving...') : t('admin.orgStructure.create', 'Create')}
+              {submitState.status === 'saving' ? t('admin.groups.saving', 'Saving...') : t('admin.groups.create', 'Create')}
             </button>
           </div>
         </form>
@@ -383,13 +433,13 @@ export function AdminOrgStructurePage() {
 
       <dialog ref={editDialogRef} className="admin-dialog" onClose={() => setEditGroup(null)}>
         <header className="admin-dialog__header">
-          <h2>{t('admin.orgStructure.editDialogTitle', 'Edit department')}</h2>
-          <button className="admin-dialog__close" type="button" aria-label={t('admin.orgStructure.close', 'Close')} onClick={() => editDialogRef.current?.close()}>
+          <h2>{t('admin.groups.editDialogTitle', 'Edit group')}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.groups.close', 'Close')} onClick={() => editDialogRef.current?.close()}>
             ×
           </button>
         </header>
         <form className="admin-form" onSubmit={handleUpdateGroup}>
-          <FormField id="group-edit-name" label={t('admin.orgStructure.fieldName', 'Name')} required error={editErrors.name}>
+          <FormField id="group-edit-name" label={t('admin.groups.fieldName', 'Name')} required error={editErrors.name}>
             <input
               id="group-edit-name"
               value={editName}
@@ -399,16 +449,16 @@ export function AdminOrgStructurePage() {
               onChange={(e) => { setEditName(e.target.value); setEditErrors((prev) => clearFieldError(prev, 'name')); }}
             />
           </FormField>
-          <FormField id="group-edit-location" label={t('admin.orgStructure.fieldLocation', 'Location')}>
+          <FormField id="group-edit-location" label={t('admin.groups.fieldLocation', 'Location')}>
             <input id="group-edit-location" value={editLocation} maxLength={120} onChange={(e) => setEditLocation(e.target.value)} />
           </FormField>
-          <FormField id="group-edit-description" label={t('admin.orgStructure.fieldDescription', 'Description')}>
+          <FormField id="group-edit-description" label={t('admin.groups.fieldDescription', 'Description')}>
             <textarea id="group-edit-description" value={editDescription} maxLength={500} onChange={(e) => setEditDescription(e.target.value)} />
           </FormField>
-          <FormField id="group-edit-status" label={t('admin.orgStructure.fieldStatus', 'Status')}>
+          <FormField id="group-edit-status" label={t('admin.groups.fieldStatus', 'Status')}>
             <select id="group-edit-status" value={editStatus} onChange={(e) => setEditStatus(e.target.value as GroupStatus)}>
-              <option value="active">{t('admin.orgStructure.statusActive', 'Active')}</option>
-              <option value="archived">{t('admin.orgStructure.statusArchived', 'Archived')}</option>
+              <option value="active">{t('admin.groups.statusActive', 'Active')}</option>
+              <option value="archived">{t('admin.groups.statusArchived', 'Archived')}</option>
             </select>
           </FormField>
           {editState.status === 'error' ? (
@@ -416,10 +466,10 @@ export function AdminOrgStructurePage() {
           ) : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={() => editDialogRef.current?.close()}>
-              {t('admin.orgStructure.cancel', 'Cancel')}
+              {t('admin.groups.cancel', 'Cancel')}
             </button>
             <button className="admin-btn admin-btn--primary" type="submit" disabled={editState.status === 'saving'}>
-              {editState.status === 'saving' ? t('admin.orgStructure.saving', 'Saving...') : t('admin.orgStructure.save', 'Save')}
+              {editState.status === 'saving' ? t('admin.groups.saving', 'Saving...') : t('admin.groups.save', 'Save')}
             </button>
           </div>
         </form>
@@ -427,8 +477,8 @@ export function AdminOrgStructurePage() {
 
       <dialog ref={membersDialogRef} className="admin-dialog" onClose={closeMembersDialog}>
         <header className="admin-dialog__header">
-          <h2>{membersGroup ? t('admin.orgStructure.membersDialogTitle', 'Manage {{name}}', { name: membersGroup.name }) : ''}</h2>
-          <button className="admin-dialog__close" type="button" aria-label={t('admin.orgStructure.close', 'Close')} onClick={closeMembersDialog}>
+          <h2>{membersGroup ? t('admin.groups.membersDialogTitle', 'Manage {{name}}', { name: membersGroup.name }) : ''}</h2>
+          <button className="admin-dialog__close" type="button" aria-label={t('admin.groups.close', 'Close')} onClick={closeMembersDialog}>
             ×
           </button>
         </header>
@@ -438,10 +488,10 @@ export function AdminOrgStructurePage() {
           ) : null}
 
           <section className="admin-membership-section">
-            <h3>{t('admin.orgStructure.managersTitle', 'Managers')}</h3>
+            <h3>{t('admin.groups.managersTitle', 'Managers')}</h3>
             <ul className="admin-membership-list">
               {groupManagers.length === 0 ? (
-                <li className="admin-membership-list__empty">{t('admin.orgStructure.noManagers', 'No managers assigned.')}</li>
+                <li className="admin-membership-list__empty">{t('admin.groups.noManagers', 'No managers assigned.')}</li>
               ) : (
                 groupManagers.map((manager) => (
                   <li key={manager.id}>
@@ -451,30 +501,41 @@ export function AdminOrgStructurePage() {
                       type="button"
                       onClick={() => void handleRemoveManager(manager.id)}
                     >
-                      {t('admin.orgStructure.remove', 'Remove')}
+                      {t('admin.groups.remove', 'Remove')}
                     </button>
                   </li>
                 ))
               )}
             </ul>
             <div className="admin-membership-add">
+              <input
+                type="search"
+                value={managerSearch.term}
+                placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+                onChange={(e) => { setManagerSearchTerm(e.target.value); setAddManagerUserId(''); }}
+              />
               <select value={addManagerUserId} onChange={(e) => setAddManagerUserId(e.target.value)}>
-                <option value="">{t('admin.orgStructure.selectUser', 'Select a user…')}</option>
-                {usersAvailableToAdd(orgUsers, groupManagers.map((m) => m.id)).map((u) => (
+                <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
+                {managerCandidates.map((u) => (
                   <option value={u.id} key={u.id}>{formatUserName(u)}</option>
                 ))}
               </select>
               <button className="admin-btn admin-btn--sm admin-btn--primary" type="button" disabled={!addManagerUserId} onClick={() => void handleAddManager()}>
-                {t('admin.orgStructure.add', 'Add')}
+                {t('admin.groups.add', 'Add')}
               </button>
             </div>
+            {managerSearch.status === 'error' ? (
+              <p className="admin-form__hint">{t('admin.groups.searchError', 'Unable to search users.')}</p>
+            ) : managerSearch.term.trim() && managerSearch.status === 'idle' && managerCandidates.length === 0 ? (
+              <p className="admin-form__hint">{t('admin.groups.noSearchResults', 'No matching users.')}</p>
+            ) : null}
           </section>
 
           <section className="admin-membership-section">
-            <h3>{t('admin.orgStructure.membersTitle', 'Members')}</h3>
+            <h3>{t('admin.groups.membersTitle', 'Members')}</h3>
             <ul className="admin-membership-list">
               {groupMembers.length === 0 ? (
-                <li className="admin-membership-list__empty">{t('admin.orgStructure.noMembers', 'No members yet.')}</li>
+                <li className="admin-membership-list__empty">{t('admin.groups.noMembers', 'No members yet.')}</li>
               ) : (
                 groupMembers.map((member) => (
                   <li key={member.id}>
@@ -484,28 +545,39 @@ export function AdminOrgStructurePage() {
                       type="button"
                       onClick={() => void handleRemoveMember(member.id)}
                     >
-                      {t('admin.orgStructure.remove', 'Remove')}
+                      {t('admin.groups.remove', 'Remove')}
                     </button>
                   </li>
                 ))
               )}
             </ul>
             <div className="admin-membership-add">
+              <input
+                type="search"
+                value={memberSearch.term}
+                placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+                onChange={(e) => { setMemberSearchTerm(e.target.value); setAddMemberUserId(''); }}
+              />
               <select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)}>
-                <option value="">{t('admin.orgStructure.selectUser', 'Select a user…')}</option>
-                {usersAvailableToAdd(orgUsers, groupMembers.map((m) => m.id)).map((u) => (
+                <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
+                {memberCandidates.map((u) => (
                   <option value={u.id} key={u.id}>{formatUserName(u)}</option>
                 ))}
               </select>
               <button className="admin-btn admin-btn--sm admin-btn--primary" type="button" disabled={!addMemberUserId} onClick={() => void handleAddMember()}>
-                {t('admin.orgStructure.add', 'Add')}
+                {t('admin.groups.add', 'Add')}
               </button>
             </div>
+            {memberSearch.status === 'error' ? (
+              <p className="admin-form__hint">{t('admin.groups.searchError', 'Unable to search users.')}</p>
+            ) : memberSearch.term.trim() && memberSearch.status === 'idle' && memberCandidates.length === 0 ? (
+              <p className="admin-form__hint">{t('admin.groups.noSearchResults', 'No matching users.')}</p>
+            ) : null}
           </section>
 
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={closeMembersDialog}>
-              {t('admin.orgStructure.close', 'Close')}
+              {t('admin.groups.close', 'Close')}
             </button>
           </div>
         </div>

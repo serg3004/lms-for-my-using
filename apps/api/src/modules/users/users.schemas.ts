@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
+
 export const userStatusSchema = z.enum(['active', 'invited', 'suspended', 'archived']);
+
+export const listUsersQuerySchema = paginationQuerySchema.extend({
+  search: z.string().trim().min(1).max(120).optional(),
+});
+export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export const createUserSchema = z.object({
   organizationId: z.string().uuid(),
