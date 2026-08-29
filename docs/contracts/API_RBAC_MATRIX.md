@@ -30,6 +30,8 @@ Manager team/object scope is enforced by its dedicated query/policy layer. Front
 
 Group mutations use separate role and object-scope checks. Administrators may create and update groups and change their manager set tenant-wide. Managers may only add or remove members of an active group that they already managed before the mutation starts; they cannot change any group's manager set. Every group, membership, manager relation, and target-user lookup remains constrained to the authenticated tenant. A denied mutation occurs before any write and therefore cannot expand the manager's downstream user, assignment, progress, or report scope.
 
+Department and department-type mutations (tree CRUD, move/reparent, archive/restore) are admin-only role policies with no manager object scope yet; a manager-scope layer for departments, if introduced, will be a future documented change here. Reparenting a department is additionally guarded at the data layer: the move runs in a Serializable transaction with bounded retry on serialization failure, and rejects a move that would create a cycle or exceed the maximum tree depth before any write, so two concurrent conflicting moves can never both commit.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

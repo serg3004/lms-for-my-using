@@ -11,6 +11,7 @@ module.exports = {
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
     '/src/integration/reports-summary\\.database\\.spec\\.ts$',
     '/src/integration/org-structure-foundation\\.database\\.spec\\.ts$',
+    '/src/integration/departments-tree\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [
