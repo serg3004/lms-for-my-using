@@ -39,6 +39,15 @@ enum GroupStatus {
   active
   archived
 }
+enum DepartmentStatus {
+  active
+  archived
+}
+enum DepartmentManagerMode {
+  LOCAL
+  INHERIT
+  MERGE
+}
 enum CourseStatus {
   draft
   published
@@ -175,6 +184,9 @@ model Organization {
   courseInstructors               CourseInstructor[]
   groupMembers                    GroupMember[]
   managerGroups                   ManagerGroup[]
+  departmentTypes                DepartmentType[]
+  departments                    Department[]
+  orgStructureEvents             OrgStructureEvent[]
   materialFileDeletionAudits      MaterialFileDeletionAudit[]
   auditLogs                       AuditLog[]
   notifications                   Notification[]
@@ -237,7 +249,9 @@ model User {
   checklistInstancesReviewed ChecklistInstance[]   @relation("ChecklistInstanceReviewer")
   checklistReviewsAssigned   ChecklistInstance[]   @relation("ChecklistInstanceReviewAssignedBy")
   checklistInstanceEvents    ChecklistInstanceEvent[] @relation("ChecklistInstanceEventActor")
+  orgStructureEvents         OrgStructureEvent[]       @relation("OrgStructureEventActor")
   @@unique([organizationId, email])
+  @@unique([id, organizationId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@index([lastLoginAt])
@@ -304,6 +318,67 @@ model ManagerGroup {
   @@id([groupId, managerId])
   @@index([organizationId, managerId])
   @@map("manager_groups")
+}
+model DepartmentType {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  sortOrder      Int          @default(0) @map("sort_order")
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departments    Department[]
+
+  @@unique([organizationId, code])
+  @@unique([id, organizationId])
+  @@index([organizationId, isActive, sortOrder])
+  @@map("department_types")
+}
+model Department {
+  id                    String                @id @default(uuid()) @db.Uuid
+  organizationId        String                @map("organization_id") @db.Uuid
+  parentId              String?               @map("parent_id") @db.Uuid
+  departmentTypeId      String?               @map("department_type_id") @db.Uuid
+  name                  String
+  code                  String?
+  description           String?
+  sortOrder             Int                   @default(0) @map("sort_order")
+  status                DepartmentStatus      @default(active)
+  directManagerMode     DepartmentManagerMode @default(LOCAL) @map("direct_manager_mode")
+  functionalManagerMode DepartmentManagerMode @default(LOCAL) @map("functional_manager_mode")
+  archivedAt            DateTime?             @map("archived_at") @db.Timestamptz
+  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent                Department?           @relation("DepartmentHierarchy", fields: [parentId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  children              Department[]          @relation("DepartmentHierarchy")
+  departmentType        DepartmentType?       @relation(fields: [departmentTypeId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, parentId, status, sortOrder])
+  @@index([organizationId, departmentTypeId])
+  @@map("departments")
+}
+model OrgStructureEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  actorId        String?      @map("actor_id") @db.Uuid
+  entityType     String       @map("entity_type")
+  entityId       String?      @map("entity_id") @db.Uuid
+  eventType      String       @map("event_type")
+  operationId    String       @map("operation_id") @db.Uuid
+  metadata       Json         @default("{}")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor          User?        @relation("OrgStructureEventActor", fields: [actorId, organizationId], references: [id, organizationId], onDelete: NoAction)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@index([organizationId, operationId])
+  @@index([organizationId, actorId])
+  @@map("org_structure_events")
 }
 model Course {
   id             String           @id @default(uuid()) @db.Uuid
