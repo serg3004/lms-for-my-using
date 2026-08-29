@@ -8,6 +8,7 @@ const AdminChecklistsPage = lazy(() => import('../AdminChecklistsPage.js').then(
 const AdminCourseBuilderPage = lazy(() => import('../AdminCourseBuilderPage.js').then((m) => ({ default: m.AdminCourseBuilderPage })));
 const AdminCoursesPage = lazy(() => import('../AdminCoursesPage.js').then((m) => ({ default: m.AdminCoursesPage })));
 const AdminDashboardPage = lazy(() => import('../AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })));
+const AdminDepartmentsPage = lazy(() => import('../AdminDepartmentsPage.js').then((m) => ({ default: m.AdminDepartmentsPage })));
 const AdminGroupsPage = lazy(() => import('../AdminGroupsPage.js').then((m) => ({ default: m.AdminGroupsPage })));
 const AdminLessonsPage = lazy(() => import('../AdminLessonsPage.js').then((m) => ({ default: m.AdminLessonsPage })));
 const AdminMaterialsPage = lazy(() => import('../AdminMaterialsPage.js').then((m) => ({ default: m.AdminMaterialsPage })));
@@ -22,6 +23,7 @@ export function AdminRoutes() {
     <Route path="/admin/users" element={<AdminUsersPage />} />
     <Route path="/admin/roles" element={<AdminRolesPage />} />
     <Route path="/admin/groups" element={<AdminGroupsPage />} />
+    <Route path="/admin/departments" element={<AdminDepartmentsPage />} />
     <Route path="/admin/appearance" element={<AdminThemeSettingsPage />} />
     <Route path="/admin/audit-log" element={<AdminAuditLogPage />} />
     <Route path="/admin/courses" element={<AdminCoursesPage />} />

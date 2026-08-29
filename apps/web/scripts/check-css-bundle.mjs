@@ -1,7 +1,11 @@
 import { readdir, stat } from 'node:fs/promises';
 
 const assetDirectory = new URL('../dist/assets/', import.meta.url);
-const maximumCssBytes = 80 * 1024;
+// Bumped 80 KiB -> 84 KiB for PR 270 (Department Tree UI): the prior budget had only ~19 B of
+// headroom left on main, not enough for any new page's CSS. The department tree/detail layout
+// added here was kept lean (reusing existing admin-card/Badge/admin-form__hint/admin-membership-list
+// rules instead of introducing parallel ones) before resorting to this bump.
+const maximumCssBytes = 84 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 
