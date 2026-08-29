@@ -79,6 +79,10 @@ test.describe('WCAG AA browser baseline', () => {
   }
 
   test('admin department tree page has an accessible rendered state', async ({ page }, testInfo) => {
+    // This test does more round trips than the read-only workspace checks above (two extra
+    // GETs on load, then a write to create a department before auditing) -- give it headroom
+    // beyond the 30s default so CI load doesn't turn real latency into a false failure.
+    test.setTimeout(60_000);
     await loginAs(page, 'admin');
     await page.goto('/admin/departments');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
