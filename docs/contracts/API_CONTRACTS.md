@@ -63,6 +63,12 @@ When changing a list endpoint:
 - update backend tests, runtime OpenAPI and affected frontend client in the same PR;
 - update this document only for human semantics/invariants.
 
+Adding an optional query filter (e.g. a `search` term) to an existing paginated list
+endpoint's own allowlisted fields is not itself a human-semantics/invariant change and
+does not require an edit here, as long as authorization/tenant-scoping is unchanged.
+Runtime OpenAPI and [`../generated/API_INDEX.md`](../generated/API_INDEX.md) remain the
+route-shape authority.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
