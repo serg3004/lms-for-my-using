@@ -16,6 +16,7 @@ import { ChecklistsModule } from './modules/checklists/checklists.module.js';
 import { CourseMaterialsModule } from './modules/course-materials/course-materials.module.js';
 import { CourseAccessModule } from './modules/course-access/course-access.module.js';
 import { CoursesModule } from './modules/courses/courses.module.js';
+import { DepartmentMembershipsModule } from './modules/department-memberships/department-memberships.module.js';
 import { DepartmentsModule } from './modules/departments/departments.module.js';
 import { GroupsModule } from './modules/groups/groups.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -71,6 +72,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ChecklistsModule,
     CourseMaterialsModule,
     CoursesModule,
+    DepartmentMembershipsModule,
     DepartmentsModule,
     GroupsModule,
     HealthModule,

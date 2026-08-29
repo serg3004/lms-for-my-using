@@ -9,6 +9,7 @@ module.exports = {
     '<rootDir>/src/integration/reports-summary.database.spec.ts',
     '<rootDir>/src/integration/org-structure-foundation.database.spec.ts',
     '<rootDir>/src/integration/departments-tree.database.spec.ts',
+    '<rootDir>/src/integration/department-memberships.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,

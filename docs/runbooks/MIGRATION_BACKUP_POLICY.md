@@ -79,6 +79,17 @@ Migration `20260829120000_add_org_structure_foundation` классифициро
 
 Перед production deploy нужно учитывать, что обычный `CREATE UNIQUE INDEX` может временно конкурировать с записью в `users`. После deploy следует проверить статус Prisma migration и наличие новых constraints/indexes; отдельный data backfill или специальный backup сверх общей policy для этой additive migration не требуется. Live backup/PITR state по-прежнему остаётся `LIVE-VERIFY`.
 
+### Department membership migration
+
+Migration `20260829130000_add_department_membership` также additive и backward-compatible:
+
+- создаёт только новую таблицу `department_memberships` (историческая user↔department relation, PR 271) без изменения существующих таблиц `departments`, `users` или `org_structure_events`;
+- не выполняет backfill: существующие `User` не получают ни одной строки membership автоматически (per plan invariant "existing Users автоматически не распределяются");
+- два partial unique index (`department_memberships_current_primary_user_key`, `department_memberships_current_user_department_key`) заданы вручную raw SQL в migration.sql — как и `departments_org_code_key` из предыдущей миграции, Prisma schema DSL не поддерживает `WHERE`-условие в `@@unique`, поэтому эти constraints намеренно отсутствуют в `schema.prisma` (задокументированное расхождение, не drift);
+- допускает overlap со старой версией приложения аналогично org-structure-foundation migration.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

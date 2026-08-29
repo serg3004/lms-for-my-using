@@ -39,15 +39,18 @@ enum GroupStatus {
   active
   archived
 }
+
 enum DepartmentStatus {
   active
   archived
 }
+
 enum DepartmentManagerMode {
   LOCAL
   INHERIT
   MERGE
 }
+
 enum CourseStatus {
   draft
   published
@@ -94,6 +97,7 @@ enum ProgressStatus {
   in_progress
   completed
 }
+
 enum AssessmentStatus {
   draft
   published
@@ -134,6 +138,7 @@ enum ChecklistScoringMode {
   all_required
   scale
 }
+
 enum ChecklistInstanceStatus {
   assigned
   in_progress
@@ -147,6 +152,7 @@ enum ChecklistReviewStatus {
   approved
   rejected
 }
+
 enum ChecklistInstanceEventType {
   assigned
   started
@@ -159,97 +165,103 @@ enum ChecklistInstanceEventType {
   completed
   expired
 }
+
 model Organization {
-  id                              String                         @id @default(uuid()) @db.Uuid
-  name                            String
-  slug                            String                         @unique
-  status                          OrganizationStatus             @default(active)
-  plan                            OrganizationPlan               @default(trial)
-  createdAt                       DateTime                       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                       DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt                       DateTime?                      @map("deleted_at") @db.Timestamptz
-  users                           User[]
-  groups                          Group[]
-  courses                         Course[]
-  assignments                     Assignment[]
-  progress                        Progress[]
-  assessments                     Assessment[]
-  assessmentQuestions             AssessmentQuestion[]
-  assessmentAnswerOptions         AssessmentAnswerOption[]
-  assessmentAttempts              AssessmentAttempt[]
-  assessmentAttemptAnswers        AssessmentAttemptAnswer[]
-  certificates                    Certificate[]
-  memberships                     Membership[]
-  sessions                        Session[]
-  courseInstructors               CourseInstructor[]
-  groupMembers                    GroupMember[]
-  managerGroups                   ManagerGroup[]
-  departmentTypes                DepartmentType[]
-  departments                    Department[]
-  orgStructureEvents             OrgStructureEvent[]
-  materialFileDeletionAudits      MaterialFileDeletionAudit[]
-  auditLogs                       AuditLog[]
-  notifications                   Notification[]
-  checklists                      Checklist[]
-  checklistItems                  ChecklistItem[]
-  checklistInstances              ChecklistInstance[]
-  checklistItemResults            ChecklistItemResult[]
-  checklistInstanceEvents         ChecklistInstanceEvent[]
-  theme                           OrganizationTheme?
+  id                         String                      @id @default(uuid()) @db.Uuid
+  name                       String
+  slug                       String                      @unique
+  status                     OrganizationStatus          @default(active)
+  plan                       OrganizationPlan            @default(trial)
+  createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
+  users                      User[]
+  groups                     Group[]
+  courses                    Course[]
+  assignments                Assignment[]
+  progress                   Progress[]
+  assessments                Assessment[]
+  assessmentQuestions        AssessmentQuestion[]
+  assessmentAnswerOptions    AssessmentAnswerOption[]
+  assessmentAttempts         AssessmentAttempt[]
+  assessmentAttemptAnswers   AssessmentAttemptAnswer[]
+  certificates               Certificate[]
+  memberships                Membership[]
+  sessions                   Session[]
+  courseInstructors          CourseInstructor[]
+  groupMembers               GroupMember[]
+  managerGroups              ManagerGroup[]
+  departmentTypes            DepartmentType[]
+  departments                Department[]
+  departmentMemberships      DepartmentMembership[]
+  orgStructureEvents         OrgStructureEvent[]
+  materialFileDeletionAudits MaterialFileDeletionAudit[]
+  auditLogs                  AuditLog[]
+  notifications              Notification[]
+  checklists                 Checklist[]
+  checklistItems             ChecklistItem[]
+  checklistInstances         ChecklistInstance[]
+  checklistItemResults       ChecklistItemResult[]
+  checklistInstanceEvents    ChecklistInstanceEvent[]
+  theme                      OrganizationTheme?
+
   @@map("organizations")
 }
 
 model OrganizationTheme {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @unique @map("organization_id") @db.Uuid
-  settings       Json     @default("{}")
-  logoObjectKey  String?  @map("logo_object_key")
-  logoMimeType   String?  @map("logo_mime_type")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @unique @map("organization_id") @db.Uuid
+  settings       Json         @default("{}")
+  logoObjectKey  String?      @map("logo_object_key")
+  logoMimeType   String?      @map("logo_mime_type")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("organization_themes")
 }
+
 model User {
-  id                  String              @id @default(uuid()) @db.Uuid
-  organizationId      String              @map("organization_id") @db.Uuid
-  email               String
-  passwordHash        String              @map("password_hash")
-  firstName           String              @map("first_name")
-  lastName            String              @map("last_name")
-  middleName          String?             @map("middle_name")
-  position            String?
-  shift               String?
-  phone                String?
-  status              UserStatus          @default(active)
-  locale              String              @default("ru")
-  timezone            String              @default("Asia/Almaty")
-  lastLoginAt         DateTime?           @map("last_login_at") @db.Timestamptz
-  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz
-  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  memberships         Membership[]        @relation("UserMemberships")
-  assignedMemberships Membership[]        @relation("MembershipAssignedBy")
-  assignments         Assignment[]
-  progress            Progress[]
-  assessmentAttempts  AssessmentAttempt[]
-  certificates        Certificate[]
-  sessions            Session[]
-  passwordResetTokens PasswordResetToken[]
-  instructedCourses   CourseInstructor[]
-  groupMemberships    GroupMember[]
-  managedGroups       ManagerGroup[]
-  notifications       Notification[]
-  checklistsCreated          Checklist[]           @relation("ChecklistCreatedBy")
-  checklistInstances         ChecklistInstance[]   @relation("ChecklistInstanceUser")
-  checklistInstancesAssigned ChecklistInstance[]   @relation("ChecklistInstanceAssignedBy")
-  checklistItemReviews       ChecklistItemResult[] @relation("ChecklistItemResultReviewedBy")
-  checklistInstancesReviewed ChecklistInstance[]   @relation("ChecklistInstanceReviewer")
-  checklistReviewsAssigned   ChecklistInstance[]   @relation("ChecklistInstanceReviewAssignedBy")
+  id                         String                   @id @default(uuid()) @db.Uuid
+  organizationId             String                   @map("organization_id") @db.Uuid
+  email                      String
+  passwordHash               String                   @map("password_hash")
+  firstName                  String                   @map("first_name")
+  lastName                   String                   @map("last_name")
+  middleName                 String?                  @map("middle_name")
+  position                   String?
+  shift                      String?
+  phone                      String?
+  status                     UserStatus               @default(active)
+  locale                     String                   @default("ru")
+  timezone                   String                   @default("Asia/Almaty")
+  lastLoginAt                DateTime?                @map("last_login_at") @db.Timestamptz
+  createdAt                  DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                  DateTime?                @map("deleted_at") @db.Timestamptz
+  organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships                Membership[]             @relation("UserMemberships")
+  assignedMemberships        Membership[]             @relation("MembershipAssignedBy")
+  assignments                Assignment[]
+  progress                   Progress[]
+  assessmentAttempts         AssessmentAttempt[]
+  certificates               Certificate[]
+  sessions                   Session[]
+  passwordResetTokens        PasswordResetToken[]
+  instructedCourses          CourseInstructor[]
+  groupMemberships           GroupMember[]
+  managedGroups              ManagerGroup[]
+  departmentMemberships      DepartmentMembership[]
+  notifications              Notification[]
+  checklistsCreated          Checklist[]              @relation("ChecklistCreatedBy")
+  checklistInstances         ChecklistInstance[]      @relation("ChecklistInstanceUser")
+  checklistInstancesAssigned ChecklistInstance[]      @relation("ChecklistInstanceAssignedBy")
+  checklistItemReviews       ChecklistItemResult[]    @relation("ChecklistItemResultReviewedBy")
+  checklistInstancesReviewed ChecklistInstance[]      @relation("ChecklistInstanceReviewer")
+  checklistReviewsAssigned   ChecklistInstance[]      @relation("ChecklistInstanceReviewAssignedBy")
   checklistInstanceEvents    ChecklistInstanceEvent[] @relation("ChecklistInstanceEventActor")
-  orgStructureEvents         OrgStructureEvent[]       @relation("OrgStructureEventActor")
+  orgStructureEvents         OrgStructureEvent[]      @relation("OrgStructureEventActor")
+
   @@unique([organizationId, email])
   @@unique([id, organizationId])
   @@index([organizationId, status])
@@ -257,6 +269,7 @@ model User {
   @@index([lastLoginAt])
   @@map("users")
 }
+
 model PasswordResetToken {
   id             String    @id @default(uuid()) @db.Uuid
   userId         String    @map("user_id") @db.Uuid
@@ -265,24 +278,25 @@ model PasswordResetToken {
   expiresAt      DateTime  @map("expires_at") @db.Timestamptz
   usedAt         DateTime? @map("used_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, organizationId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
 }
+
 model Group {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
   name           String
   slug           String
   description    String?
   location       String?
-  status         GroupStatus  @default(active)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status         GroupStatus    @default(active)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assignments    Assignment[]
   members        GroupMember[]
   managers       ManagerGroup[]
@@ -291,34 +305,37 @@ model Group {
   @@index([organizationId, status])
   @@map("groups")
 }
+
 model GroupMember {
-  groupId        String    @map("group_id") @db.Uuid
-  userId         String    @map("user_id") @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId        String       @map("group_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
   @@index([organizationId, userId])
   @@map("group_members")
 }
+
 model ManagerGroup {
-  groupId        String    @map("group_id") @db.Uuid
-  managerId      String    @map("manager_id") @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  manager      User         @relation(fields: [managerId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupId        String       @map("group_id") @db.Uuid
+  managerId      String       @map("manager_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  manager        User         @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@id([groupId, managerId])
   @@index([organizationId, managerId])
   @@map("manager_groups")
 }
+
 model DepartmentType {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
@@ -336,31 +353,59 @@ model DepartmentType {
   @@index([organizationId, isActive, sortOrder])
   @@map("department_types")
 }
+
 model Department {
-  id                    String                @id @default(uuid()) @db.Uuid
-  organizationId        String                @map("organization_id") @db.Uuid
-  parentId              String?               @map("parent_id") @db.Uuid
-  departmentTypeId      String?               @map("department_type_id") @db.Uuid
+  id                    String                 @id @default(uuid()) @db.Uuid
+  organizationId        String                 @map("organization_id") @db.Uuid
+  parentId              String?                @map("parent_id") @db.Uuid
+  departmentTypeId      String?                @map("department_type_id") @db.Uuid
   name                  String
   code                  String?
   description           String?
-  sortOrder             Int                   @default(0) @map("sort_order")
-  status                DepartmentStatus      @default(active)
-  directManagerMode     DepartmentManagerMode @default(LOCAL) @map("direct_manager_mode")
-  functionalManagerMode DepartmentManagerMode @default(LOCAL) @map("functional_manager_mode")
-  archivedAt            DateTime?             @map("archived_at") @db.Timestamptz
-  createdAt             DateTime              @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime              @updatedAt @map("updated_at") @db.Timestamptz
-  organization          Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parent                Department?           @relation("DepartmentHierarchy", fields: [parentId, organizationId], references: [id, organizationId], onDelete: NoAction)
-  children              Department[]          @relation("DepartmentHierarchy")
-  departmentType        DepartmentType?       @relation(fields: [departmentTypeId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  sortOrder             Int                    @default(0) @map("sort_order")
+  status                DepartmentStatus       @default(active)
+  directManagerMode     DepartmentManagerMode  @default(LOCAL) @map("direct_manager_mode")
+  functionalManagerMode DepartmentManagerMode  @default(LOCAL) @map("functional_manager_mode")
+  archivedAt            DateTime?              @map("archived_at") @db.Timestamptz
+  createdAt             DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent                Department?            @relation("DepartmentHierarchy", fields: [parentId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  children              Department[]           @relation("DepartmentHierarchy")
+  departmentType        DepartmentType?        @relation(fields: [departmentTypeId, organizationId], references: [id, organizationId], onDelete: NoAction)
+  memberships           DepartmentMembership[]
 
   @@unique([id, organizationId])
   @@index([organizationId, parentId, status, sortOrder])
   @@index([organizationId, departmentTypeId])
   @@map("departments")
 }
+
+/// Historical user<->department relation (PR 271). "Current" means effectiveTo IS NULL.
+/// A user may hold at most one current primary membership and at most one current
+/// membership per department -- both enforced by partial unique indexes added via raw SQL
+/// in this model's migration (Prisma's schema DSL has no WHERE-clause index syntax), the
+/// same pattern already used for departments_org_code_key.
+model DepartmentMembership {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  departmentId   String       @map("department_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  isPrimary      Boolean      @default(false) @map("is_primary")
+  effectiveFrom  DateTime     @default(now()) @map("effective_from") @db.Timestamptz
+  effectiveTo    DateTime?    @map("effective_to") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department     Department   @relation(fields: [departmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user           User         @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, departmentId, effectiveTo])
+  @@index([organizationId, userId, effectiveTo])
+  @@map("department_memberships")
+}
+
 model OrgStructureEvent {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
@@ -380,96 +425,100 @@ model OrgStructureEvent {
   @@index([organizationId, actorId])
   @@map("org_structure_events")
 }
+
 model Course {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  title          String
-  slug           String
-  description    String?
-  category       String?
-  durationMinutes Int?            @map("duration_minutes")
-  status         CourseStatus     @default(draft)
-  selfEnrollmentEnabled Boolean    @default(false) @map("self_enrollment_enabled")
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  lessons        Lesson[]
-  materials      CourseMaterial[]
-  assignments    Assignment[]
-  progress       Progress[]
-  assessments    Assessment[]
-  certificates   Certificate[]
-  instructors    CourseInstructor[]
+  id                    String             @id @default(uuid()) @db.Uuid
+  organizationId        String             @map("organization_id") @db.Uuid
+  title                 String
+  slug                  String
+  description           String?
+  category              String?
+  durationMinutes       Int?               @map("duration_minutes")
+  status                CourseStatus       @default(draft)
+  selfEnrollmentEnabled Boolean            @default(false) @map("self_enrollment_enabled")
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt             DateTime?          @map("deleted_at") @db.Timestamptz
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lessons               Lesson[]
+  materials             CourseMaterial[]
+  assignments           Assignment[]
+  progress              Progress[]
+  assessments           Assessment[]
+  certificates          Certificate[]
+  instructors           CourseInstructor[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@map("courses")
 }
+
 model CourseInstructor {
-  courseId       String    @map("course_id") @db.Uuid
-  instructorId   String    @map("instructor_id") @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  assignedAt     DateTime  @default(now()) @map("assigned_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  instructor   User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  courseId       String       @map("course_id") @db.Uuid
+  instructorId   String       @map("instructor_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  assignedAt     DateTime     @default(now()) @map("assigned_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+  course         Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  instructor     User         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@id([courseId, instructorId])
   @@index([organizationId, instructorId])
   @@index([organizationId, courseId])
   @@map("course_instructors")
 }
+
 model Lesson {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  courseId       String       @map("course_id") @db.Uuid
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  courseId       String           @map("course_id") @db.Uuid
   title          String
   slug           String
   description    String?
-  type           String       @default("text")
-  order          Int          @default(0)
-  status         LessonStatus @default(draft)
-  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime?    @map("deleted_at") @db.Timestamptz
-  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  materials   CourseMaterial[]
-  progress    Progress[]
-  assessments Assessment[]
+  type           String           @default("text")
+  order          Int              @default(0)
+  status         LessonStatus     @default(draft)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materials      CourseMaterial[]
+  progress       Progress[]
+  assessments    Assessment[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
   @@index([organizationId, createdAt, id])
   @@map("lessons")
 }
+
 model CourseMaterial {
-  id             String              @id @default(uuid()) @db.Uuid
-  organizationId String             @map("organization_id") @db.Uuid
-  courseId       String             @map("course_id") @db.Uuid
-  lessonId       String?            @map("lesson_id") @db.Uuid
-  title          String
-  slug           String
-  description    String?
-  kind           CourseMaterialKind   @default(file)
-  fileName       String?             @map("file_name")
-  fileUrl        String?            @map("file_url")
-  objectKey      String?            @unique(map: "course_materials_object_key_key") @map("object_key")
-  quarantineKey String?            @unique(map: "course_materials_quarantine_key_key") @map("quarantine_key")
-  mimeType       String?             @map("mime_type")
-  sizeBytes      Int?              @map("size_bytes")
-  scanStatus     MalwareScanStatus? @map("scan_status")
-  scanReason     String?            @map("scan_reason")
-  scanExpiresAt  DateTime?          @map("scan_expires_at") @db.Timestamptz
-  scannedAt      DateTime?          @map("scanned_at") @db.Timestamptz
-  status         CourseMaterialStatus @default(active)
-  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime?          @map("deleted_at") @db.Timestamptz
-  course Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  id               String               @id @default(uuid()) @db.Uuid
+  organizationId   String               @map("organization_id") @db.Uuid
+  courseId         String               @map("course_id") @db.Uuid
+  lessonId         String?              @map("lesson_id") @db.Uuid
+  title            String
+  slug             String
+  description      String?
+  kind             CourseMaterialKind   @default(file)
+  fileName         String?              @map("file_name")
+  fileUrl          String?              @map("file_url")
+  objectKey        String?              @unique(map: "course_materials_object_key_key") @map("object_key")
+  quarantineKey    String?              @unique(map: "course_materials_quarantine_key_key") @map("quarantine_key")
+  mimeType         String?              @map("mime_type")
+  sizeBytes        Int?                 @map("size_bytes")
+  scanStatus       MalwareScanStatus?   @map("scan_status")
+  scanReason       String?              @map("scan_reason")
+  scanExpiresAt    DateTime?            @map("scan_expires_at") @db.Timestamptz
+  scannedAt        DateTime?            @map("scanned_at") @db.Timestamptz
+  status           CourseMaterialStatus @default(active)
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime?            @map("deleted_at") @db.Timestamptz
+  course           Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson           Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   multipartUploads MultipartUpload[]
 
   @@unique([courseId, slug])
@@ -477,6 +526,7 @@ model CourseMaterial {
   @@index([lessonId])
   @@map("course_materials")
 }
+
 model MultipartUpload {
   id             String                @id @default(uuid()) @db.Uuid
   uploadId       String                @unique @map("upload_id")
@@ -492,13 +542,14 @@ model MultipartUpload {
   completedAt    DateTime?             @map("completed_at") @db.Timestamptz
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
-  material CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  material       CourseMaterial        @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, status, expiresAt])
   @@index([status, expiresAt, id])
   @@index([materialId, status])
   @@map("multipart_uploads")
 }
+
 model Assignment {
   id             String           @id @default(uuid()) @db.Uuid
   organizationId String           @map("organization_id") @db.Uuid
@@ -509,11 +560,12 @@ model Assignment {
   dueAt          DateTime?        @map("due_at") @db.Timestamptz
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime?        @map("deleted_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
-  group        Group?       @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user           User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  group          Group?           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@index([organizationId, status, dueAt])
@@ -523,22 +575,24 @@ model Assignment {
   @@index([dueAt])
   @@map("assignments")
 }
+
 model Progress {
   id             String         @id @default(uuid()) @db.Uuid
   organizationId String         @map("organization_id") @db.Uuid
-  courseId       String        @map("course_id") @db.Uuid
+  courseId       String         @map("course_id") @db.Uuid
   lessonId       String?        @map("lesson_id") @db.Uuid
-  userId         String        @map("user_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
   status         ProgressStatus @default(in_progress)
   score          Int?
   completedAt    DateTime?      @map("completed_at") @db.Timestamptz
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime?      @map("deleted_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course       Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson       Lesson?      @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson         Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
   @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -549,31 +603,33 @@ model Progress {
   @@index([completedAt])
   @@map("progress")
 }
+
 model Assessment {
-  id                                 String          @id @default(uuid()) @db.Uuid
-  organizationId                   String          @map("organization_id") @db.Uuid
-  courseId                       String          @map("course_id") @db.Uuid
-  lessonId                      String?         @map("lesson_id") @db.Uuid
-  title                         String
-  slug                         String
-  description                  String?
-  status                       AssessmentStatus @default(draft)
-  passingScore                 Int             @default(70) @map("passing_score")
-  maxAttempts                  Int?            @map("max_attempts")
-  timeLimitMinutes              Int?            @map("time_limit_minutes")
-  availableAfterCourseCompletion Boolean         @default(true) @map("available_after_course_completion")
-  passMessage                  String?         @map("pass_message")
-  failMessage                  String?         @map("fail_message")
-  showCorrectAnswers           Boolean         @default(false) @map("show_correct_answers")
-  randomizeOrder                Boolean         @default(false) @map("randomize_order")
-  createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt                  DateTime?        @map("deleted_at") @db.Timestamptz
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course       Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson       Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  questions    AssessmentQuestion[]
-  attempts     AssessmentAttempt[]
+  id                             String               @id @default(uuid()) @db.Uuid
+  organizationId                 String               @map("organization_id") @db.Uuid
+  courseId                       String               @map("course_id") @db.Uuid
+  lessonId                       String?              @map("lesson_id") @db.Uuid
+  title                          String
+  slug                           String
+  description                    String?
+  status                         AssessmentStatus     @default(draft)
+  passingScore                   Int                  @default(70) @map("passing_score")
+  maxAttempts                    Int?                 @map("max_attempts")
+  timeLimitMinutes               Int?                 @map("time_limit_minutes")
+  availableAfterCourseCompletion Boolean              @default(true) @map("available_after_course_completion")
+  passMessage                    String?              @map("pass_message")
+  failMessage                    String?              @map("fail_message")
+  showCorrectAnswers             Boolean              @default(false) @map("show_correct_answers")
+  randomizeOrder                 Boolean              @default(false) @map("randomize_order")
+  createdAt                      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                      DateTime?            @map("deleted_at") @db.Timestamptz
+  organization                   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course                         Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson                         Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  questions                      AssessmentQuestion[]
+  attempts                       AssessmentAttempt[]
+
   @@unique([courseId, slug])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -581,22 +637,23 @@ model Assessment {
   @@index([lessonId])
   @@map("assessments")
 }
+
 model AssessmentQuestion {
-  id             String                 @id @default(uuid()) @db.Uuid
-  organizationId String                @map("organization_id") @db.Uuid
-  assessmentId   String                @map("assessment_id") @db.Uuid
-  type           AssessmentQuestionType @default(single_choice)
+  id             String                        @id @default(uuid()) @db.Uuid
+  organizationId String                        @map("organization_id") @db.Uuid
+  assessmentId   String                        @map("assessment_id") @db.Uuid
+  type           AssessmentQuestionType        @default(single_choice)
   title          String
   text           String?
-  imageUrl       String?               @map("image_url")
-  points         Int                   @default(1)
-  order          Int                   @default(0)
+  imageUrl       String?                       @map("image_url")
+  points         Int                           @default(1)
+  order          Int                           @default(0)
   scoringMode    AssessmentQuestionScoringMode @default(all_or_nothing) @map("scoring_mode")
-  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt     DateTime?             @map("deleted_at") @db.Timestamptz
-  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assessment     Assessment              @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  createdAt      DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?                     @map("deleted_at") @db.Timestamptz
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessment     Assessment                    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   options        AssessmentAnswerOption[]
   attemptAnswers AssessmentAttemptAnswer[]
 
@@ -604,89 +661,96 @@ model AssessmentQuestion {
   @@index([assessmentId, order])
   @@map("assessment_questions")
 }
+
 model AssessmentAnswerOption {
-  id            String   @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  questionId     String    @map("question_id") @db.Uuid
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  questionId     String                    @map("question_id") @db.Uuid
   text           String?
-  imageUrl      String?    @map("image_url")
-  isCorrect      Boolean   @default(false) @map("is_correct")
-  order          Int       @default(0)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
-  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  question       AssessmentQuestion      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  imageUrl       String?                   @map("image_url")
+  isCorrect      Boolean                   @default(false) @map("is_correct")
+  order          Int                       @default(0)
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?                 @map("deleted_at") @db.Timestamptz
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  question       AssessmentQuestion        @relation(fields: [questionId], references: [id], onDelete: Cascade)
   attemptAnswers AssessmentAttemptAnswer[]
 
   @@index([organizationId])
   @@index([questionId, order])
   @@map("assessment_answer_options")
 }
+
 model AssessmentAttempt {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String               @map("organization_id") @db.Uuid
-  assessmentId   String                @map("assessment_id") @db.Uuid
-  userId         String                @map("user_id") @db.Uuid
-  status         AssessmentAttemptStatus @default(completed)
-  score          Int                   @default(0)
-  maxScore      Int                   @default(0) @map("max_score")
-  percentage    Int                   @default(0)
-  passed        Boolean             @default(false)
-  startedAt     DateTime             @default(now()) @map("started_at") @db.Timestamptz
-  completedAt   DateTime?            @map("completed_at") @db.Timestamptz
-  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt    DateTime?            @map("deleted_at") @db.Timestamptz
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assessment   Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  user         User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
-  answers      AssessmentAttemptAnswer[]
-  certificates Certificate[]
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  assessmentId   String                    @map("assessment_id") @db.Uuid
+  userId         String                    @map("user_id") @db.Uuid
+  status         AssessmentAttemptStatus   @default(completed)
+  score          Int                       @default(0)
+  maxScore       Int                       @default(0) @map("max_score")
+  percentage     Int                       @default(0)
+  passed         Boolean                   @default(false)
+  startedAt      DateTime                  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt    DateTime?                 @map("completed_at") @db.Timestamptz
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?                 @map("deleted_at") @db.Timestamptz
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessment     Assessment                @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  answers        AssessmentAttemptAnswer[]
+  certificates   Certificate[]
+
   @@index([organizationId, status])
   @@index([assessmentId, status])
   @@index([userId])
   @@index([completedAt])
   @@map("assessment_attempts")
 }
+
 model AssessmentAttemptAnswer {
-  id                String    @id @default(uuid()) @db.Uuid
-  organizationId    String    @map("organization_id") @db.Uuid
-  attemptId        String    @map("attempt_id") @db.Uuid
-  questionId        String    @map("question_id") @db.Uuid
-  selectedOptionId String?   @map("selected_option_id") @db.Uuid
-  selectedOptionIds Json?     @map("selected_option_ids")
-  isCorrect        Boolean   @default(false) @map("is_correct")
-  score            Int       @default(0)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz
-  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  attempt       AssessmentAttempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  question      AssessmentQuestion      @relation(fields: [questionId], references: [id], onDelete: Restrict)
-  selectedOption AssessmentAnswerOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+  id                String                  @id @default(uuid()) @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  attemptId         String                  @map("attempt_id") @db.Uuid
+  questionId        String                  @map("question_id") @db.Uuid
+  selectedOptionId  String?                 @map("selected_option_id") @db.Uuid
+  selectedOptionIds Json?                   @map("selected_option_ids")
+  isCorrect         Boolean                 @default(false) @map("is_correct")
+  score             Int                     @default(0)
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime                @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt         DateTime?               @map("deleted_at") @db.Timestamptz
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  attempt           AssessmentAttempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question          AssessmentQuestion      @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOption    AssessmentAnswerOption? @relation(fields: [selectedOptionId], references: [id], onDelete: SetNull)
+
   @@index([organizationId])
   @@index([attemptId])
   @@index([questionId])
   @@index([selectedOptionId])
   @@map("assessment_attempt_answers")
 }
+
 model Certificate {
-  id                  String            @id @default(uuid()) @db.Uuid
-  organizationId     String            @map("organization_id") @db.Uuid
-  courseId           String            @map("course_id") @db.Uuid
-  userId             String            @map("user_id") @db.Uuid
-  assessmentAttemptId String?           @map("assessment_attempt_id") @db.Uuid
-  status            CertificateStatus @default(issued)
-  issuedAt          DateTime         @default(now()) @map("issued_at") @db.Timestamptz
-  revokedAt         DateTime?        @map("revoked_at") @db.Timestamptz
-  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt         DateTime?        @map("deleted_at") @db.Timestamptz
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course            Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  assessmentAttempt AssessmentAttempt? @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  courseId            String             @map("course_id") @db.Uuid
+  userId              String             @map("user_id") @db.Uuid
+  assessmentAttemptId String?            @map("assessment_attempt_id") @db.Uuid
+  status              CertificateStatus  @default(issued)
+  issuedAt            DateTime           @default(now()) @map("issued_at") @db.Timestamptz
+  revokedAt           DateTime?          @map("revoked_at") @db.Timestamptz
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime?          @map("deleted_at") @db.Timestamptz
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course              Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user                User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  assessmentAttempt   AssessmentAttempt? @relation(fields: [assessmentAttemptId], references: [id], onDelete: SetNull)
+
   @@unique([organizationId, courseId, userId])
   @@index([organizationId, status])
   @@index([organizationId, issuedAt, id])
@@ -696,6 +760,7 @@ model Certificate {
   @@index([issuedAt])
   @@map("certificates")
 }
+
 model Checklist {
   id             String               @id @default(uuid()) @db.Uuid
   organizationId String               @map("organization_id") @db.Uuid
@@ -710,70 +775,74 @@ model Checklist {
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator      User?               @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  items        ChecklistItem[]
-  instances    ChecklistInstance[]
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator        User?                @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  items          ChecklistItem[]
+  instances      ChecklistInstance[]
 
   @@index([organizationId, status])
   @@map("checklists")
 }
+
 model ChecklistItem {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  checklistId    String   @map("checklist_id") @db.Uuid
-  order          Int      @default(0)
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  checklistId    String                @map("checklist_id") @db.Uuid
+  order          Int                   @default(0)
   text           String
-  points         Int      @default(0)
-  isRequired     Boolean  @default(true) @map("is_required")
-  photoRequired  Boolean  @default(false) @map("photo_required")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
-  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checklist    Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  results      ChecklistItemResult[]
+  points         Int                   @default(0)
+  isRequired     Boolean               @default(true) @map("is_required")
+  photoRequired  Boolean               @default(false) @map("photo_required")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist      Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  results        ChecklistItemResult[]
 
   @@index([organizationId])
   @@index([checklistId, order])
   @@map("checklist_items")
 }
+
 model ChecklistInstance {
-  id               String                  @id @default(uuid()) @db.Uuid
-  organizationId   String                  @map("organization_id") @db.Uuid
-  checklistId      String                  @map("checklist_id") @db.Uuid
-  userId           String                  @map("user_id") @db.Uuid
-  assignedBy       String?                 @map("assigned_by") @db.Uuid
-  reviewerId       String?                 @map("reviewer_id") @db.Uuid
-  reviewAssignedAt DateTime?               @map("review_assigned_at") @db.Timestamptz
-  reviewAssignedBy String?                 @map("review_assigned_by") @db.Uuid
-  status           ChecklistInstanceStatus @default(assigned)
-  totalScore       Int                     @default(0) @map("total_score")
-  maxScore         Int                     @default(0) @map("max_score")
-  percentage       Int                     @default(0)
-  passed           Boolean                 @default(false)
-  templateSnapshot Json?                   @map("template_snapshot")
-  snapshotVersion  Int?                    @default(1) @map("snapshot_version")
-  dueAt            DateTime?               @map("due_at") @db.Timestamptz
-  submittedAt      DateTime?               @map("submitted_at") @db.Timestamptz
-  completedAt      DateTime?               @map("completed_at") @db.Timestamptz
-  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime                @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt        DateTime?               @map("deleted_at") @db.Timestamptz
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checklist      Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  user           User                  @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
-  assignedByUser User?                 @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
-  reviewer       User?                 @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  reviewAssigner User?                 @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
-  results        ChecklistItemResult[]
-  events         ChecklistInstanceEvent[]
+  id               String                   @id @default(uuid()) @db.Uuid
+  organizationId   String                   @map("organization_id") @db.Uuid
+  checklistId      String                   @map("checklist_id") @db.Uuid
+  userId           String                   @map("user_id") @db.Uuid
+  assignedBy       String?                  @map("assigned_by") @db.Uuid
+  reviewerId       String?                  @map("reviewer_id") @db.Uuid
+  reviewAssignedAt DateTime?                @map("review_assigned_at") @db.Timestamptz
+  reviewAssignedBy String?                  @map("review_assigned_by") @db.Uuid
+  status           ChecklistInstanceStatus  @default(assigned)
+  totalScore       Int                      @default(0) @map("total_score")
+  maxScore         Int                      @default(0) @map("max_score")
+  percentage       Int                      @default(0)
+  passed           Boolean                  @default(false)
+  templateSnapshot Json?                    @map("template_snapshot")
+  snapshotVersion  Int?                     @default(1) @map("snapshot_version")
+  dueAt            DateTime?                @map("due_at") @db.Timestamptz
+  submittedAt      DateTime?                @map("submitted_at") @db.Timestamptz
+  completedAt      DateTime?                @map("completed_at") @db.Timestamptz
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist        Checklist                @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user             User                     @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedByUser   User?                    @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+  reviewer         User?                    @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewAssigner   User?                    @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
+  results          ChecklistItemResult[]
+  events           ChecklistInstanceEvent[]
+
   @@index([organizationId, status])
   @@index([organizationId, reviewerId, status])
   @@index([checklistId, status])
   @@index([userId])
   @@map("checklist_instances")
 }
+
 model ChecklistInstanceEvent {
   id             String                     @id @default(uuid()) @db.Uuid
   organizationId String                     @map("organization_id") @db.Uuid
@@ -783,13 +852,15 @@ model ChecklistInstanceEvent {
   itemId         String?                    @map("item_id") @db.Uuid
   metadata       Json?
   createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  instance     ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  actor        User?             @relation("ChecklistInstanceEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance       ChecklistInstance          @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor          User?                      @relation("ChecklistInstanceEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
   @@index([instanceId, createdAt, id])
   @@index([organizationId, createdAt])
   @@map("checklist_instance_events")
 }
+
 model ChecklistItemResult {
   id             String                @id @default(uuid()) @db.Uuid
   organizationId String                @map("organization_id") @db.Uuid
@@ -810,10 +881,11 @@ model ChecklistItemResult {
   reviewedAt     DateTime?             @map("reviewed_at") @db.Timestamptz
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
-  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  instance     ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  item         ChecklistItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  reviewer     User?             @relation("ChecklistItemResultReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance       ChecklistInstance     @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  item           ChecklistItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  reviewer       User?                 @relation("ChecklistItemResultReviewedBy", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
   @@unique([instanceId, itemId])
   @@index([organizationId])
   @@index([instanceId])
@@ -822,12 +894,12 @@ model ChecklistItemResult {
 }
 
 model Membership {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
   role           UserRole
-  assignedBy     String?  @map("assigned_by") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  assignedBy     String?      @map("assigned_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user           User         @relation("UserMemberships", fields: [userId], references: [id], onDelete: Cascade)
   assignedByUser User?        @relation("MembershipAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
@@ -838,24 +910,26 @@ model Membership {
   @@index([assignedBy])
   @@map("memberships")
 }
+
 model Session {
-  id                 String    @id @default(uuid()) @db.Uuid
-  jti                String    @unique
-  userId             String    @map("user_id") @db.Uuid
-  organizationId     String    @map("organization_id") @db.Uuid
-  refreshTokenHash   String?   @unique @map("refresh_token_hash")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  expiresAt          DateTime  @map("expires_at") @db.Timestamptz
-  refreshExpiresAt   DateTime? @map("refresh_expires_at") @db.Timestamptz
-  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id               String       @id @default(uuid()) @db.Uuid
+  jti              String       @unique
+  userId           String       @map("user_id") @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  refreshTokenHash String?      @unique @map("refresh_token_hash")
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt        DateTime     @map("expires_at") @db.Timestamptz
+  refreshExpiresAt DateTime?    @map("refresh_expires_at") @db.Timestamptz
+  revokedAt        DateTime?    @map("revoked_at") @db.Timestamptz
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([userId, organizationId])
   @@index([expiresAt])
   @@index([refreshExpiresAt])
   @@map("sessions")
 }
+
 model MaterialFileDeletionAudit {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
@@ -864,11 +938,12 @@ model MaterialFileDeletionAudit {
   objectKeys     String[]     @map("object_keys")
   result         String
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, materialId, createdAt])
   @@map("material_file_deletion_audits")
 }
+
 model AuditLog {
   id             String       @id @default(uuid()) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
@@ -879,7 +954,7 @@ model AuditLog {
   summary        String
   metadata       Json?
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, createdAt])
   @@index([organizationId, action])
@@ -887,28 +962,30 @@ model AuditLog {
   @@index([organizationId, actorId])
   @@map("audit_logs")
 }
+
 model Notification {
-  id             String    @id @default(uuid()) @db.Uuid
-  organizationId String    @map("organization_id") @db.Uuid
-  userId         String    @map("user_id") @db.Uuid
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
   type           String
   data           Json
   link           String?
-  readAt         DateTime? @map("read_at") @db.Timestamptz
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime?    @map("read_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, userId, createdAt, id])
   @@index([userId, readAt])
   @@map("notifications")
 }
+
 model OutboxEvent {
-  id            String    @id @default(uuid()) @db.Uuid
-  topic         String
-  payload       Json
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  publishedAt   DateTime? @map("published_at") @db.Timestamptz
+  id          String    @id @default(uuid()) @db.Uuid
+  topic       String
+  payload     Json
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  publishedAt DateTime? @map("published_at") @db.Timestamptz
 
   @@index([publishedAt, createdAt])
   @@map("outbox_events")
