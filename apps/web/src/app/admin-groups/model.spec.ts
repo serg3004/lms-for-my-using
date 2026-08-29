@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCreateGroupPayload,
   buildUpdateGroupPayload,
-  computeOrgStats,
+  computeGroupStats,
   countUniqueLocations,
   countUniqueManagers,
   formatManagerCell,
@@ -19,7 +19,7 @@ import {
 const managerA = { id: 'user-1', firstName: 'Alex', lastName: 'Ivanov' };
 const managerB = { id: 'user-2', firstName: 'Maria', lastName: 'Petrova' };
 
-describe('admin org structure model', () => {
+describe('admin groups model', () => {
   it('joins manager names, comma-separated', () => {
     expect(managerNames({ managers: [] })).toBe('');
     expect(managerNames({ managers: [{ manager: managerA }] })).toBe('Alex Ivanov');
@@ -37,7 +37,7 @@ describe('admin org structure model', () => {
     expect(resolveGroupSaveErrorMessage(undefined, 'Duplicate slug', 'Save failed')).toBe('Save failed');
   });
 
-  it('counts unique managers across departments, deduplicating shared managers', () => {
+  it('counts unique managers across groups, deduplicating shared managers', () => {
     const groups = [
       { location: 'Almaty', managers: [{ manager: managerA }] },
       { location: 'Astana', managers: [{ manager: managerA }, { manager: managerB }] },
@@ -57,12 +57,12 @@ describe('admin org structure model', () => {
     expect(countUniqueLocations(groups)).toBe(2);
   });
 
-  it('computes all four org stats from the group list', () => {
+  it('computes all four group stats from the group list', () => {
     const groups = [
       { location: 'Almaty', managers: [{ manager: managerA }] },
       { location: 'Astana', managers: [{ manager: managerA }, { manager: managerB }] },
     ];
-    expect(computeOrgStats(groups, 250)).toEqual({ departments: 2, employees: 250, managers: 2, locations: 2 });
+    expect(computeGroupStats(groups, 250)).toEqual({ groups: 2, employees: 250, managers: 2, locations: 2 });
   });
 
   it('builds the create payload, trimming blank optional fields to undefined', () => {
@@ -94,7 +94,7 @@ describe('admin org structure model', () => {
     });
   });
 
-  it('validates the department name is non-blank', () => {
+  it('validates the group name is non-blank', () => {
     expect(validateGroupName('', 'Name is required.')).toEqual({ name: 'Name is required.' });
     expect(validateGroupName('   ', 'Name is required.')).toEqual({ name: 'Name is required.' });
     expect(validateGroupName('Sales Team', 'Name is required.')).toEqual({});

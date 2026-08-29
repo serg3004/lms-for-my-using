@@ -51,9 +51,9 @@ import {
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
 import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
+import { AdminGroupsPage } from './AdminGroupsPage';
 import { AdminLessonsPage } from './AdminLessonsPage';
 import { AdminMaterialsPage } from './AdminMaterialsPage';
-import { AdminOrgStructurePage } from './AdminOrgStructurePage';
 import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage';
 import { AdminRolesPage } from './AdminRolesPage';
 import { AdminThemeSettingsPage } from './AdminThemeSettingsPage';
@@ -129,14 +129,15 @@ describe('admin page smoke rendering', () => {
     expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('Workplace Safety');
   });
 
-  it('renders organization structure loading and populated states', () => {
+  it('renders groups loading and populated states', () => {
     useLoadingState();
-    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('role="status"');
+    expect(renderToStaticMarkup(<AdminGroupsPage />)).toContain('role="status"');
 
-    // useState call order in AdminOrgStructurePage: 20 form/dialog states, then
-    // useAsyncData's internal state as call #21.
+    // useState call order in AdminGroupsPage: 21 form/dialog states (19 declared directly,
+    // plus the memberSearch/managerSearch useUserSearch() internal states), then
+    // useAsyncData's internal state as call #22.
     useStateAtCalls({
-      21: {
+      22: {
         status: 'loaded',
         data: {
           organizationId: 'org-1',
@@ -155,7 +156,7 @@ describe('admin page smoke rendering', () => {
         },
       },
     });
-    expect(renderToStaticMarkup(<AdminOrgStructurePage />)).toContain('Safety');
+    expect(renderToStaticMarkup(<AdminGroupsPage />)).toContain('Safety');
   });
 
   it('renders roles loading and populated states', () => {

@@ -21,9 +21,9 @@ export function countUniqueLocations(groups: GroupWithManagers[]) {
   return new Set(groups.map((group) => group.location).filter((value): value is string => Boolean(value))).size;
 }
 
-export function computeOrgStats(groups: GroupWithManagers[], employeeCount: number) {
+export function computeGroupStats(groups: GroupWithManagers[], employeeCount: number) {
   return {
-    departments: groups.length,
+    groups: groups.length,
     employees: employeeCount,
     managers: countUniqueManagers(groups),
     locations: countUniqueLocations(groups),

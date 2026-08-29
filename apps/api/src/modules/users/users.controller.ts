@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
-import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { OrganizationScope } from '../auth/public.js';
@@ -14,6 +13,7 @@ import {
   CreateUserInput,
   importUsersSchema,
   ImportUsersInput,
+  listUsersQuerySchema,
   updateUserSchema,
   UpdateUserInput,
   updateUserStatusSchema,
@@ -28,8 +28,8 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)
   listUsers(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
-    const { page, pageSize } = paginationQuerySchema.parse(query);
-    return this.usersService.listUsers(request.currentUser!, page, pageSize);
+    const { page, pageSize, search } = listUsersQuerySchema.parse(query);
+    return this.usersService.listUsers(request.currentUser!, page, pageSize, search);
   }
 
   @Get(':id')
