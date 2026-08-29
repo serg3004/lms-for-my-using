@@ -24,6 +24,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Course` |
 | `CourseInstructor` |
 | `CourseMaterial` |
+| `Department` |
+| `DepartmentType` |
 | `Group` |
 | `GroupMember` |
 | `Lesson` |
@@ -32,6 +34,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Membership` |
 | `MultipartUpload` |
 | `Notification` |
+| `OrgStructureEvent` |
 | `Organization` |
 | `OrganizationTheme` |
 | `OutboxEvent` |
@@ -58,6 +61,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `CourseMaterialKind` | `file`, `link` |
 | `CourseMaterialStatus` | `active`, `archived` |
 | `CourseStatus` | `draft`, `published`, `archived` |
+| `DepartmentManagerMode` | `LOCAL`, `INHERIT`, `MERGE` |
+| `DepartmentStatus` | `active`, `archived` |
 | `GroupStatus` | `active`, `archived` |
 | `LessonStatus` | `draft`, `published`, `archived` |
 | `MalwareScanStatus` | `pending`, `scanning`, `available`, `rejected` |

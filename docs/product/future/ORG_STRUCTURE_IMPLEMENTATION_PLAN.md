@@ -184,6 +184,8 @@ Department
 
 ## PR 268 — Создать фундамент Department, DepartmentType и OrgStructureEvent
 
+**Статус: реализовано.** Добавлены additive-first Prisma-модели и миграция с tenant-safe составными внешними ключами, уникальностью кодов и DB-level запретом self-parent; ограничения покрыты database integration tests.
+
 ### Задача
 
 Создать базовую tenant-safe модель данных оргструктуры, на которой будут строиться все следующие PR.
