@@ -36,7 +36,7 @@ export class GroupsController {
 
   @Post()
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupsWrite)
   @OrganizationScope('body', 'organizationId')
   createGroup(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateGroupInput = createGroupSchema.parse(body);
@@ -45,7 +45,7 @@ export class GroupsController {
   }
 
   @Patch(':id')
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupsWrite)
   updateGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateGroupSchema.parse(body);
     return this.groupsService.updateGroup(groupId, request.currentUser!.organizationId, input, request.currentUser!.id);
@@ -58,14 +58,14 @@ export class GroupsController {
   }
 
   @Post(':id/members')
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupMembersWrite)
   addMember(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = assignGroupMemberSchema.parse(body);
     return this.groupsService.addMember(groupId, request.currentUser!.organizationId, input, request.currentUser!);
   }
 
   @Delete(':id/members/:userId')
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupMembersWrite)
   removeMember(@Param('id') groupId: string, @Param('userId') userId: string, @Req() request: AuthenticatedRequest) {
     return this.groupsService.removeMember(groupId, request.currentUser!.organizationId, userId, request.currentUser!);
   }
@@ -77,14 +77,14 @@ export class GroupsController {
   }
 
   @Post(':id/managers')
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupManagersWrite)
   addManager(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = assignGroupManagerSchema.parse(body);
     return this.groupsService.addManager(groupId, request.currentUser!.organizationId, input, request.currentUser!);
   }
 
   @Delete(':id/managers/:managerId')
-  @Roles(...rolePolicies.groupsCreate)
+  @Roles(...rolePolicies.groupManagersWrite)
   removeManager(@Param('id') groupId: string, @Param('managerId') managerId: string, @Req() request: AuthenticatedRequest) {
     return this.groupsService.removeManager(groupId, request.currentUser!.organizationId, managerId, request.currentUser!);
   }
