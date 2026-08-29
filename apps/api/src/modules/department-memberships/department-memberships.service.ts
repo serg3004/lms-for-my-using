@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/org-structure-event.js';
+import { newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/public.js';
 import { BulkTransferInput, CreateDepartmentMembershipInput, DepartmentTransferInput } from './department-memberships.schemas.js';
 
 type TransactionClient = Prisma.TransactionClient;
