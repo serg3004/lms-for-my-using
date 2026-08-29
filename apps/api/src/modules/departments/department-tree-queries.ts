@@ -21,11 +21,11 @@ export async function getDepartmentDepth(
     WITH RECURSIVE chain AS (
       SELECT id, parent_id, 0 AS lvl
       FROM departments
-      WHERE id = ${departmentId} AND organization_id = ${organizationId}
+      WHERE id = ${departmentId}::uuid AND organization_id = ${organizationId}::uuid
       UNION ALL
       SELECT p.id, p.parent_id, c.lvl + 1
       FROM departments p
-      JOIN chain c ON p.id = c.parent_id AND p.organization_id = ${organizationId}
+      JOIN chain c ON p.id = c.parent_id AND p.organization_id = ${organizationId}::uuid
       WHERE c.lvl < ${CTE_DEPTH_GUARD}
     )
     SELECT max(lvl) AS lvl FROM chain
@@ -44,11 +44,11 @@ export async function getSubtreeHeight(
     WITH RECURSIVE subtree AS (
       SELECT id, 0 AS lvl
       FROM departments
-      WHERE id = ${departmentId} AND organization_id = ${organizationId}
+      WHERE id = ${departmentId}::uuid AND organization_id = ${organizationId}::uuid
       UNION ALL
       SELECT c.id, s.lvl + 1
       FROM departments c
-      JOIN subtree s ON c.parent_id = s.id AND c.organization_id = ${organizationId}
+      JOIN subtree s ON c.parent_id = s.id AND c.organization_id = ${organizationId}::uuid
       WHERE s.lvl < ${CTE_DEPTH_GUARD}
     )
     SELECT max(lvl) AS lvl FROM subtree
@@ -70,14 +70,14 @@ export async function isSelfOrDescendant(
     WITH RECURSIVE subtree AS (
       SELECT id, 0 AS lvl
       FROM departments
-      WHERE id = ${departmentId} AND organization_id = ${organizationId}
+      WHERE id = ${departmentId}::uuid AND organization_id = ${organizationId}::uuid
       UNION ALL
       SELECT c.id, s.lvl + 1
       FROM departments c
-      JOIN subtree s ON c.parent_id = s.id AND c.organization_id = ${organizationId}
+      JOIN subtree s ON c.parent_id = s.id AND c.organization_id = ${organizationId}::uuid
       WHERE s.lvl < ${CTE_DEPTH_GUARD}
     )
-    SELECT id FROM subtree WHERE id = ${candidateId} LIMIT 1
+    SELECT id FROM subtree WHERE id = ${candidateId}::uuid LIMIT 1
   `;
   return rows.length > 0;
 }
@@ -92,11 +92,11 @@ export async function getAncestorIdChain(
     WITH RECURSIVE chain AS (
       SELECT id, parent_id, 0 AS lvl
       FROM departments
-      WHERE id = ${departmentId} AND organization_id = ${organizationId}
+      WHERE id = ${departmentId}::uuid AND organization_id = ${organizationId}::uuid
       UNION ALL
       SELECT p.id, p.parent_id, c.lvl + 1
       FROM departments p
-      JOIN chain c ON p.id = c.parent_id AND p.organization_id = ${organizationId}
+      JOIN chain c ON p.id = c.parent_id AND p.organization_id = ${organizationId}::uuid
       WHERE c.lvl < ${CTE_DEPTH_GUARD}
     )
     SELECT id, lvl FROM chain ORDER BY lvl DESC
