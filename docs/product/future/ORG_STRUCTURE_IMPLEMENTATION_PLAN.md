@@ -339,6 +339,8 @@ Event должен создаваться в той же transaction, что и 
 
 ## PR 269 — Реализовать Department Tree API и безопасный reparent
 
+**Статус: реализовано.** Добавлен backend-модуль `departments` с указанным API дерева/поиска/пути/move/archive/restore для `Department` и CRUD/archive/restore для `DepartmentType`; все endpoints admin-only (manager object-scope для Department не входит в этот PR и остаётся будущей задачей). Depth/cycle-проверки и построение пути реализованы через bounded `WITH RECURSIVE` CTE (guard-глубина 40, бизнес-лимит `MAX_DEPARTMENT_DEPTH=32`). Reparent (`move`) выполняется в Serializable-транзакции с bounded retry на serialization failure и до записи отклоняет self-move, cross-tenant/архивного родителя, цикл и превышение глубины — так что два одновременных встречных move (A→B и B→A) не могут оба закоммититься. Каждая мутация пишет `OrgStructureEvent` в той же транзакции (не best-effort, в отличие от `AuditLogService`). Юнит-тесты (моканый Prisma) покрывают все ветки валидации/отказа; добавлен также `apps/api/src/integration/departments-tree.database.spec.ts` с реальными Postgres recursive-CTE и обязательным конкурентным тестом двух встречных move — этот файл не мог быть выполнен локально в sandbox без доступного Postgres/Docker и будет запущен в CI job "Tests & database".
+
 ### Задача
 
 Реализовать backend API для дерева подразделений, поиска, пути, перемещения, archive и restore.
