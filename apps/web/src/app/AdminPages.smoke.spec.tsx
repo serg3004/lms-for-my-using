@@ -51,6 +51,7 @@ import {
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
 import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
+import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminGroupsPage } from './AdminGroupsPage';
 import { AdminLessonsPage } from './AdminLessonsPage';
 import { AdminMaterialsPage } from './AdminMaterialsPage';
@@ -157,6 +158,44 @@ describe('admin page smoke rendering', () => {
       },
     });
     expect(renderToStaticMarkup(<AdminGroupsPage />)).toContain('Safety');
+  });
+
+  it('renders departments loading and populated states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminDepartmentsPage />)).toContain('role="status"');
+
+    // useState call order in AdminDepartmentsPage: 20 form/dialog states (18 declared directly,
+    // plus the search/moveSearch useDepartmentSearch() internal states), then useAsyncData's
+    // internal state as call #21. Roots/types themselves are read straight from loadState.data,
+    // not seeded into a separate reducer via an effect, so this page renders loaded data on the
+    // very first pass even though this test file mocks useEffect to a no-op.
+    useStateAtCalls({
+      21: {
+        status: 'loaded',
+        data: {
+          organizationId: 'org-1',
+          roots: [{
+            id: 'dept-1',
+            organizationId: 'org-1',
+            parentId: null,
+            departmentTypeId: null,
+            name: 'Engineering',
+            code: null,
+            description: null,
+            sortOrder: 0,
+            status: 'active',
+            directManagerMode: 'LOCAL',
+            functionalManagerMode: 'LOCAL',
+            archivedAt: null,
+            createdAt: ts,
+            updatedAt: ts,
+            _count: { children: 0 },
+          }],
+          types: [],
+        },
+      },
+    });
+    expect(renderToStaticMarkup(<AdminDepartmentsPage />)).toContain('Engineering');
   });
 
   it('renders roles loading and populated states', () => {

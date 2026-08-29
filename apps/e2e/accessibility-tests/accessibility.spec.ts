@@ -78,6 +78,23 @@ test.describe('WCAG AA browser baseline', () => {
     });
   }
 
+  test('admin department tree page has an accessible rendered state', async ({ page }, testInfo) => {
+    await loginAs(page, 'admin');
+    await page.goto('/admin/departments');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    // The demo org has no seeded departments, so create one first -- axe should cover the
+    // populated tree's role="tree"/"treeitem" ARIA semantics, not just the empty-state shell.
+    await page.getByRole('button', { name: /Добавить корневое подразделение/ }).click();
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Добавить корневое подразделение' });
+    await dialog.getByLabel('Название').fill(`A11y department ${Date.now()}`);
+    await dialog.getByRole('button', { name: 'Создать' }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(page.getByRole('tree')).toBeVisible();
+
+    await auditAccessibility(page, testInfo);
+  });
+
   test('login remains accessible at 320px and 200% browser zoom', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 812 });
     await page.goto('/login');
