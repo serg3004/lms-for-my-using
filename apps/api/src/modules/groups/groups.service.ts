@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -197,7 +197,8 @@ export class GroupsService {
   }
 
   async addManager(groupId: string, organizationId: string, input: AssignGroupManagerInput, actor: TeamScopeActor) {
-    await this.ensureManagedGroupExists(groupId, organizationId, actor);
+    this.ensureAdmin(actor);
+    await this.ensureGroupExists(groupId, organizationId);
     await this.ensureUserExists(input.managerId, organizationId);
 
     await this.prisma.managerGroup.upsert({
@@ -210,7 +211,8 @@ export class GroupsService {
   }
 
   async removeManager(groupId: string, organizationId: string, managerId: string, actor: TeamScopeActor) {
-    await this.ensureManagedGroupExists(groupId, organizationId, actor);
+    this.ensureAdmin(actor);
+    await this.ensureGroupExists(groupId, organizationId);
 
     const manager = await this.prisma.managerGroup.findFirst({
       where: { groupId, managerId, organizationId, deletedAt: null },
@@ -270,6 +272,12 @@ export class GroupsService {
 
     if (!group) {
       throw new NotFoundException('Group not found');
+    }
+  }
+
+  private ensureAdmin(actor: TeamScopeActor) {
+    if (!actor.roles.includes('admin')) {
+      throw new ForbiddenException('Only administrators can manage group managers');
     }
   }
 

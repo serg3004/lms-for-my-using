@@ -62,6 +62,8 @@
 
 ## PR 266 — Закрыть privilege escalation через ManagerGroup
 
+**Статус: реализовано.** Mutation manager-set и общие изменения Group доступны только admin; manager может изменять members только уже управляемой активной Group, с tenant-scoped проверкой до записи.
+
 ### Задача
 
 Исправить существующую возможность пользователя с ролью `manager` самостоятельно расширять свой доступ через изменение `ManagerGroup`, состава чужих групп или manager membership.

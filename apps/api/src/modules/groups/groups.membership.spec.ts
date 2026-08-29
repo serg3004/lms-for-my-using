@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -156,32 +156,40 @@ describe('GroupsService membership', () => {
       expect(memberUpdate).not.toHaveBeenCalled();
     });
 
-    it('rejects a manager adding a manager to a group they do not manage', async () => {
+    it('rejects a manager assigning themselves to any group before reading or writing scope data', async () => {
+      const groupFindFirst = jest.fn(async () => ({ id: groupId }));
+      const userFindFirst = jest.fn(async () => ({ id: managerId }));
       const upsert = jest.fn(async () => ({}));
       const prisma = {
-        group: { findFirst: async () => null },
-        user: { findFirst: async () => ({ id: userId }) },
+        group: { findFirst: groupFindFirst },
+        user: { findFirst: userFindFirst },
         managerGroup: { upsert },
       } as unknown as PrismaService;
       const service = new GroupsService(prisma);
 
       await expect(
-        service.addManager(groupId, organizationId, { managerId: userId }, managerActor),
-      ).rejects.toThrow(NotFoundException);
+        service.addManager(groupId, organizationId, { managerId }, managerActor),
+      ).rejects.toThrow(ForbiddenException);
+      expect(groupFindFirst).not.toHaveBeenCalled();
+      expect(userFindFirst).not.toHaveBeenCalled();
       expect(upsert).not.toHaveBeenCalled();
     });
 
-    it('rejects a manager removing a manager from a group they do not manage', async () => {
+    it('rejects a manager changing the manager set of a group they already manage', async () => {
+      const groupFindFirst = jest.fn(async () => ({ id: groupId }));
+      const managerFindFirst = jest.fn(async () => ({ groupId, managerId: userId }));
       const update = jest.fn(async () => ({}));
       const prisma = {
-        group: { findFirst: async () => null },
-        managerGroup: { findFirst: async () => ({ groupId, managerId: userId }), update },
+        group: { findFirst: groupFindFirst },
+        managerGroup: { findFirst: managerFindFirst, update },
       } as unknown as PrismaService;
       const service = new GroupsService(prisma);
 
       await expect(service.removeManager(groupId, organizationId, userId, managerActor)).rejects.toThrow(
-        NotFoundException,
+        ForbiddenException,
       );
+      expect(groupFindFirst).not.toHaveBeenCalled();
+      expect(managerFindFirst).not.toHaveBeenCalled();
       expect(update).not.toHaveBeenCalled();
     });
 

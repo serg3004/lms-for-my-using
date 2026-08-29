@@ -28,6 +28,8 @@ Course-scoped authorization is enforced separately by `CourseAccessGuard` and it
 
 Manager team/object scope is enforced by its dedicated query/policy layer. Frontend navigation visibility is never a security control.
 
+Group mutations use separate role and object-scope checks. Administrators may create and update groups and change their manager set tenant-wide. Managers may only add or remove members of an active group that they already managed before the mutation starts; they cannot change any group's manager set. Every group, membership, manager relation, and target-user lookup remains constrained to the authenticated tenant. A denied mutation occurs before any write and therefore cannot expand the manager's downstream user, assignment, progress, or report scope.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology
