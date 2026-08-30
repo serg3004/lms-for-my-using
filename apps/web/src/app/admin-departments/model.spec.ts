@@ -1,15 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Department } from '../../shared/api/departments.js';
+import type { EffectiveDepartmentManager } from '../../shared/api/department-managers.js';
 import {
   ancestorIdsToExpand,
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
+  formatManagerUserName,
   initialTreeState,
+  managerCandidatesAvailableToAdd,
+  managersOfType,
   nextVisibleId,
   previousVisibleId,
   resolveDepartmentMoveErrorMessage,
   resolveDepartmentSaveErrorMessage,
+  resolveManagerModeErrorMessage,
+  resolveManagerSaveErrorMessage,
+  sortManagersForDisplay,
+  summarizeDirectManagers,
   treeReducer,
   validateDepartmentName,
   validateDepartmentTypeFields,
@@ -84,6 +92,17 @@ describe('treeReducer', () => {
     let state = treeReducer(initialTreeState(), { type: 'mergeNodes', nodes: [department({ id: 'a', name: 'Old' })] });
     state = treeReducer(state, { type: 'upsertNode', node: department({ id: 'a', name: 'New' }) });
     expect(state.nodesById.a?.name).toBe('New');
+  });
+
+  it('managerSummaryLoaded stores the summary (or null) for a single node', () => {
+    let state = treeReducer(initialTreeState(), {
+      type: 'managerSummaryLoaded',
+      id: 'a',
+      summary: { primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false },
+    });
+    expect(state.managerSummaryById.a).toEqual({ primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false });
+    state = treeReducer(state, { type: 'managerSummaryLoaded', id: 'a', summary: null });
+    expect(state.managerSummaryById.a).toBeNull();
   });
 });
 
@@ -186,5 +205,70 @@ describe('form helpers', () => {
     expect(validateDepartmentTypeFields('', '', messages)).toEqual({ code: 'code required', name: 'name required' });
     expect(validateDepartmentTypeFields('team', '', messages)).toEqual({ name: 'name required' });
     expect(validateDepartmentTypeFields('team', 'Team', messages)).toEqual({});
+  });
+});
+
+describe('manager helpers', () => {
+  function manager(overrides: Partial<EffectiveDepartmentManager> & { userId: string }): EffectiveDepartmentManager {
+    return {
+      id: `manager-${overrides.userId}`,
+      type: 'DIRECT',
+      isPrimary: false,
+      source: 'LOCAL',
+      sourceDepartmentId: 'dept-1',
+      effectiveFrom: '2026-01-01T00:00:00.000Z',
+      user: { id: overrides.userId, firstName: 'First', lastName: 'Last', email: `${overrides.userId}@example.test`, status: 'active' },
+      ...overrides,
+    };
+  }
+
+  it('formatManagerUserName joins first/last, falling back to email', () => {
+    expect(formatManagerUserName({ id: 'u1', firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.test' })).toBe('Ada Lovelace');
+    expect(formatManagerUserName({ id: 'u1', firstName: 'Ada', lastName: null, email: 'ada@example.test' })).toBe('Ada');
+    expect(formatManagerUserName({ id: 'u1', firstName: '', lastName: null, email: 'ada@example.test' })).toBe('ada@example.test');
+  });
+
+  it('managerCandidatesAvailableToAdd excludes already-assigned users', () => {
+    const users = [{ id: 'u1', firstName: 'A', lastName: null, email: 'a@x.test' }, { id: 'u2', firstName: 'B', lastName: null, email: 'b@x.test' }];
+    expect(managerCandidatesAvailableToAdd(users, ['u1']).map((u) => u.id)).toEqual(['u2']);
+  });
+
+  it('managersOfType filters by DIRECT/FUNCTIONAL', () => {
+    const managers = [manager({ userId: 'u1', type: 'DIRECT' }), manager({ userId: 'u2', type: 'FUNCTIONAL' })];
+    expect(managersOfType(managers, 'DIRECT').map((m) => m.userId)).toEqual(['u1']);
+    expect(managersOfType(managers, 'FUNCTIONAL').map((m) => m.userId)).toEqual(['u2']);
+  });
+
+  it('sortManagersForDisplay puts the primary manager first', () => {
+    const managers = [manager({ userId: 'u1', isPrimary: false }), manager({ userId: 'u2', isPrimary: true })];
+    expect(sortManagersForDisplay(managers).map((m) => m.userId)).toEqual(['u2', 'u1']);
+  });
+
+  it('summarizeDirectManagers returns null when there are no DIRECT managers', () => {
+    expect(summarizeDirectManagers([manager({ userId: 'u1', type: 'FUNCTIONAL' })])).toBeNull();
+  });
+
+  it('summarizeDirectManagers prefers the primary manager and counts the rest', () => {
+    const managers = [
+      manager({ userId: 'u1', type: 'DIRECT', isPrimary: false }),
+      manager({ userId: 'u2', type: 'DIRECT', isPrimary: true }),
+      manager({ userId: 'u3', type: 'DIRECT', isPrimary: false }),
+    ];
+    const summary = summarizeDirectManagers(managers);
+    expect(summary?.primaryName).toBe('First Last');
+    expect(summary?.additionalCount).toBe(2);
+    expect(summary?.isInherited).toBe(false);
+  });
+
+  it('summarizeDirectManagers marks the badge inherited when the primary source is INHERITED', () => {
+    const managers = [manager({ userId: 'u1', type: 'DIRECT', isPrimary: true, source: 'INHERITED', sourceDepartmentId: 'ancestor-1' })];
+    expect(summarizeDirectManagers(managers)?.isInherited).toBe(true);
+  });
+
+  it('resolveManagerSaveErrorMessage and resolveManagerModeErrorMessage map 409 to conflict', () => {
+    expect(resolveManagerSaveErrorMessage(409, 'conflict', 'generic')).toBe('conflict');
+    expect(resolveManagerSaveErrorMessage(500, 'conflict', 'generic')).toBe('generic');
+    expect(resolveManagerModeErrorMessage(409, 'conflict', 'generic')).toBe('conflict');
+    expect(resolveManagerModeErrorMessage(undefined, 'conflict', 'generic')).toBe('generic');
   });
 });

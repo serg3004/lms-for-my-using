@@ -52,8 +52,6 @@ export type UpdateDepartmentPayload = Partial<{
   code: string | null;
   description: string | null;
   sortOrder: number;
-  directManagerMode: DepartmentManagerMode;
-  functionalManagerMode: DepartmentManagerMode;
 }>;
 
 export type CreateDepartmentTypePayload = { organizationId: string; code: string; name: string; sortOrder?: number };

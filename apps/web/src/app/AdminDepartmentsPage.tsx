@@ -17,23 +17,41 @@ import {
   restoreDepartmentType,
   updateDepartment,
   type Department,
+  type DepartmentManagerMode,
   type DepartmentType,
 } from '../shared/api/departments.js';
+import {
+  closeDepartmentManager,
+  createDepartmentManager,
+  getEffectiveDepartmentManagers,
+  updateDepartmentManagerModes,
+  type DepartmentManagerType,
+  type EffectiveDepartmentManager,
+} from '../shared/api/department-managers.js';
+import { listUsers } from '../shared/api/users.js';
+import type { UserSummary } from '../shared/api/types.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
-import { Button, EmptyState, PageState } from '../shared/ui.js';
+import { Badge, Button, EmptyState, PageState } from '../shared/ui.js';
 import { DepartmentTree } from './admin-departments/DepartmentTree.js';
 import {
   ancestorIdsToExpand,
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
   editDepartmentFormState,
+  formatManagerUserName,
   initialDepartmentFormState,
   initialTreeState,
+  managerCandidatesAvailableToAdd,
+  managersOfType,
   resolveDepartmentMoveErrorMessage,
   resolveDepartmentSaveErrorMessage,
+  resolveManagerModeErrorMessage,
+  resolveManagerSaveErrorMessage,
+  sortManagersForDisplay,
+  summarizeDirectManagers,
   treeReducer,
   validateDepartmentName,
   validateDepartmentTypeFields,
@@ -80,6 +98,47 @@ function useDepartmentSearch(): [SearchState, (term: string) => void] {
   return [search, setTerm];
 }
 
+type UserSearchState = { term: string; status: 'idle' | 'loading' | 'error'; results: UserSummary[] };
+const IDLE_USER_SEARCH: UserSearchState = { term: '', status: 'idle', results: [] };
+
+/** Debounced server-side user search for the manager-candidate pickers, same pattern as admin groups. */
+function useUserSearch(): [UserSearchState, (term: string) => void] {
+  const [search, setSearch] = useState<UserSearchState>(IDLE_USER_SEARCH);
+
+  useEffect(() => {
+    const term = search.term.trim();
+    if (!term) {
+      setSearch((prev) => (prev.status === 'idle' && prev.results.length === 0 ? prev : { ...prev, status: 'idle', results: [] }));
+      return;
+    }
+
+    let cancelled = false;
+    setSearch((prev) => ({ ...prev, status: 'loading' }));
+    const timer = setTimeout(() => {
+      listUsers({ search: term, pageSize: 20 })
+        .then((res) => {
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items }));
+        })
+        .catch(() => {
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] }));
+        });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [search.term]);
+
+  function setTerm(term: string) {
+    setSearch((prev) => ({ ...prev, term }));
+  }
+
+  return [search, setTerm];
+}
+
+type SavingState = { status: 'idle' | 'saving' | 'error'; message?: string };
+
 export function AdminDepartmentsPage() {
   const { t } = useTranslation();
   const { currentUser } = useSession();
@@ -115,6 +174,19 @@ export function AdminDepartmentsPage() {
   const [typeErrors, setTypeErrors] = useState<FormValidationErrors<'code' | 'name'>>({});
   const [typeState, setTypeState] = useState<{ status: 'idle' | 'saving' | 'error'; message?: string }>({ status: 'idle' });
 
+  // Managers section of the detail panel (PR 273): loaded fresh whenever the selection changes.
+  const [managers, setManagers] = useState<EffectiveDepartmentManager[]>([]);
+  const [managersState, setManagersState] = useState<SavingState>({ status: 'idle' });
+  const [ancestorNamesById, setAncestorNamesById] = useState<Record<string, string>>({});
+  const [directMode, setDirectMode] = useState<DepartmentManagerMode>('LOCAL');
+  const [functionalMode, setFunctionalMode] = useState<DepartmentManagerMode>('LOCAL');
+  const [modeState, setModeState] = useState<SavingState>({ status: 'idle' });
+  const [managerActionState, setManagerActionState] = useState<SavingState>({ status: 'idle' });
+  const [directAddUserId, setDirectAddUserId] = useState('');
+  const [directSearch, setDirectSearchTerm] = useUserSearch();
+  const [functionalAddUserId, setFunctionalAddUserId] = useState('');
+  const [functionalSearch, setFunctionalSearchTerm] = useUserSearch();
+
   const { state: loadState, reload } = useAsyncData<{ organizationId: string; roots: Department[]; types: DepartmentType[] }>(
     async () => {
       const [roots, departmentTypes] = await Promise.all([getDepartmentTree(), listDepartmentTypes()]);
@@ -132,6 +204,134 @@ export function AdminDepartmentsPage() {
   const roots = loadState.status === 'loaded' ? loadState.data.roots : [];
   const rootIds = roots.map((department) => department.id);
   const types = typesOverride ?? (loadState.status === 'loaded' ? loadState.data.types : []);
+
+  // Computed here (rather than after the loading/error early-returns below) so the manager-load
+  // effect right after can depend on `selected`.
+  const mergedNodesById = { ...Object.fromEntries(roots.map((department) => [department.id, department])), ...tree.nodesById };
+  const mergedTreeState = { ...tree, nodesById: mergedNodesById };
+  const selected = mergedTreeState.selectedId ? mergedNodesById[mergedTreeState.selectedId] : null;
+
+  useEffect(() => {
+    if (!selected) {
+      setManagers([]);
+      setAncestorNamesById({});
+      return;
+    }
+    setDirectMode(selected.directManagerMode);
+    setFunctionalMode(selected.functionalManagerMode);
+    setDirectAddUserId('');
+    setFunctionalAddUserId('');
+    setManagerActionState({ status: 'idle' });
+    setModeState({ status: 'idle' });
+    setManagersState({ status: 'saving' }); // reuses 'saving' as the loading flag for this section
+    let cancelled = false;
+    Promise.all([getEffectiveDepartmentManagers(selected.id), getDepartmentPath(selected.id)])
+      .then(([effective, path]) => {
+        if (cancelled) return;
+        setManagers(effective);
+        setAncestorNamesById(Object.fromEntries(path.map((department) => [department.id, department.name])));
+        setManagersState({ status: 'idle' });
+      })
+      .catch(() => {
+        if (!cancelled) setManagersState({ status: 'error', message: t('admin.departments.managersLoadError', 'Unable to load managers.') });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the selected department's id should retrigger this load
+  }, [selected?.id]);
+
+  async function reloadManagers() {
+    if (!selected) return;
+    const effective = await getEffectiveDepartmentManagers(selected.id);
+    setManagers(effective);
+  }
+
+  async function handleAddManager(type: DepartmentManagerType) {
+    if (!selected) return;
+    const userId = type === 'DIRECT' ? directAddUserId : functionalAddUserId;
+    if (!userId) return;
+    setManagerActionState({ status: 'saving' });
+    try {
+      await createDepartmentManager({ organizationId: selected.organizationId, departmentId: selected.id, userId, type, isPrimary: false });
+      if (type === 'DIRECT') { setDirectAddUserId(''); setDirectSearchTerm(''); } else { setFunctionalAddUserId(''); setFunctionalSearchTerm(''); }
+      await reloadManagers();
+      setManagerActionState({ status: 'idle' });
+    } catch (error) {
+      const status = error instanceof ApiClientError ? error.status : undefined;
+      setManagerActionState({
+        status: 'error',
+        message: resolveManagerSaveErrorMessage(
+          status,
+          t('admin.departments.managerConflict', 'This user is already a manager of this type, or a primary manager already exists.'),
+          t('admin.departments.managerSaveError', 'Unable to save the manager.'),
+        ),
+      });
+    }
+  }
+
+  async function handleCloseManager(managerId: string) {
+    setManagerActionState({ status: 'saving' });
+    try {
+      await closeDepartmentManager(managerId);
+      await reloadManagers();
+      setManagerActionState({ status: 'idle' });
+    } catch {
+      setManagerActionState({ status: 'error', message: t('admin.departments.managerCloseError', 'Unable to close the manager.') });
+    }
+  }
+
+  async function handleSaveManagerModes() {
+    if (!selected) return;
+    setModeState({ status: 'saving' });
+    try {
+      const updated = await updateDepartmentManagerModes(selected.id, { directManagerMode: directMode, functionalManagerMode: functionalMode });
+      dispatchTree({
+        type: 'upsertNode',
+        node: { ...selected, directManagerMode: updated.directManagerMode as DepartmentManagerMode, functionalManagerMode: updated.functionalManagerMode as DepartmentManagerMode },
+      });
+      await reloadManagers();
+      setModeState({ status: 'idle' });
+    } catch (error) {
+      const status = error instanceof ApiClientError ? error.status : undefined;
+      setModeState({
+        status: 'error',
+        message: resolveManagerModeErrorMessage(
+          status,
+          t('admin.departments.managerModeConflict', 'Close current local managers of this type before switching to Inherit.'),
+          t('admin.departments.managerSaveError', 'Unable to save the manager.'),
+        ),
+      });
+    }
+  }
+
+  async function handleRequestManagerDetails(department: Department) {
+    if (tree.managerDetailsById[department.id] !== undefined) return;
+    try {
+      const effective = await getEffectiveDepartmentManagers(department.id);
+      dispatchTree({ type: 'managerDetailsLoaded', id: department.id, managers: effective });
+    } catch {
+      dispatchTree({ type: 'managerDetailsLoaded', id: department.id, managers: [] });
+    }
+  }
+
+  async function loadManagerSummaries(nodes: Department[]) {
+    await Promise.all(
+      nodes.map(async (node) => {
+        try {
+          const effective = await getEffectiveDepartmentManagers(node.id);
+          dispatchTree({ type: 'managerSummaryLoaded', id: node.id, summary: summarizeDirectManagers(effective) });
+        } catch {
+          dispatchTree({ type: 'managerSummaryLoaded', id: node.id, summary: null });
+        }
+      }),
+    );
+  }
+
+  useEffect(() => {
+    if (roots.length > 0) void loadManagerSummaries(roots);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when the root id set actually changes
+  }, [rootIds.join(',')]);
 
   useEffect(() => {
     if (createParentId !== undefined) createDialogRef.current?.showModal();
@@ -153,6 +353,7 @@ export function AdminDepartmentsPage() {
     try {
       const children = await getDepartmentChildren(department.id);
       dispatchTree({ type: 'childrenLoaded', id: department.id, children });
+      void loadManagerSummaries(children);
     } catch {
       dispatchTree({ type: 'childrenLoaded', id: department.id, children: [] });
     }
@@ -177,6 +378,7 @@ export function AdminDepartmentsPage() {
     }
     const children = await getDepartmentChildren(parentId);
     dispatchTree({ type: 'childrenLoaded', id: parentId, children });
+    void loadManagerSummaries(children);
   }
 
   async function revealDepartment(id: string) {
@@ -187,6 +389,7 @@ export function AdminDepartmentsPage() {
       if (tree.childrenByParentId[ancestor.id] === undefined) {
         const children = await getDepartmentChildren(ancestor.id);
         dispatchTree({ type: 'childrenLoaded', id: ancestor.id, children });
+        void loadManagerSummaries(children);
       }
     }
     dispatchTree({ type: 'expandIds', ids: ancestorIdsToExpand(path, id) });
@@ -413,9 +616,6 @@ export function AdminDepartmentsPage() {
     { label: t('admin.departments.title', 'Departments'), href: '/admin/departments', isCurrent: true },
   ];
 
-  const mergedNodesById = { ...Object.fromEntries(roots.map((department) => [department.id, department])), ...tree.nodesById };
-  const mergedTreeState = { ...tree, nodesById: mergedNodesById };
-  const selected = mergedTreeState.selectedId ? mergedNodesById[mergedTreeState.selectedId] : null;
   const activeTypes = types.filter((type) => type.isActive);
   const moveCandidates = moveSearch.results.filter((d) => d.id !== moveTarget?.id);
 
@@ -473,6 +673,7 @@ export function AdminDepartmentsPage() {
               state={mergedTreeState}
               onToggleExpand={handleToggleExpand}
               onSelect={(id) => dispatchTree({ type: 'select', id })}
+              onRequestManagerDetails={(department) => void handleRequestManagerDetails(department)}
               typeLabel={typeLabel}
               t={t}
             />
@@ -487,9 +688,7 @@ export function AdminDepartmentsPage() {
               {selected.code ? <p>{t('admin.departments.fieldCode', 'Code')}: {selected.code}</p> : null}
               <p>{t('admin.departments.fieldType', 'Type')}: {typeLabel(selected.departmentTypeId) ?? t('admin.departments.noType', 'Not set')}</p>
               {selected.description ? <p>{selected.description}</p> : null}
-              <p className="admin-form__hint">
-                {t('admin.departments.managersPlaceholder', 'Managers — coming soon')} · {t('admin.departments.headcountPlaceholder', 'Headcount — coming soon')}
-              </p>
+              <p className="admin-form__hint">{t('admin.departments.headcountPlaceholder', 'Headcount — coming soon')}</p>
               {statusActionState.status === 'error' ? <p className="admin-form__error" role="alert">{statusActionState.message}</p> : null}
               <div className="admin-table-actions">
                 <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openCreateDialog(selected.id)}>
@@ -510,7 +709,113 @@ export function AdminDepartmentsPage() {
                     {t('admin.departments.restoreAction', 'Restore')}
                   </button>
                 )}
+                <a className="admin-btn admin-btn--sm admin-btn--secondary" href={`/admin/departments/${encodeURIComponent(selected.id)}/users`}>
+                  {t('admin.departments.viewUsers', 'Users')}
+                </a>
               </div>
+
+              <section className="admin-membership-section">
+                <h3>{t('admin.departments.managersTitle', 'Managers')}</h3>
+                {managersState.status === 'saving' ? (
+                  <p className="admin-form__hint" role="status">{t('admin.departments.childrenLoading', 'Loading…')}</p>
+                ) : managersState.status === 'error' ? (
+                  <p className="admin-form__error" role="alert">{managersState.message}</p>
+                ) : (
+                  <>
+                    {(['DIRECT', 'FUNCTIONAL'] as const).map((type) => {
+                      const typeManagers = sortManagersForDisplay(managersOfType(managers, type));
+                      const search = type === 'DIRECT' ? directSearch : functionalSearch;
+                      const setSearchTermForType = type === 'DIRECT' ? setDirectSearchTerm : setFunctionalSearchTerm;
+                      const addUserId = type === 'DIRECT' ? directAddUserId : functionalAddUserId;
+                      const setAddUserId = type === 'DIRECT' ? setDirectAddUserId : setFunctionalAddUserId;
+                      const candidates = managerCandidatesAvailableToAdd(search.results, typeManagers.map((m) => m.userId));
+                      const typeTitle = type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional');
+                      return (
+                        <div className="admin-membership-section" key={type}>
+                          <h4>{typeTitle}</h4>
+                          <ul className="admin-membership-list">
+                            {typeManagers.length === 0 ? (
+                              <li className="admin-membership-list__empty">{t('admin.departments.noManagers', 'No managers assigned.')}</li>
+                            ) : (
+                              typeManagers.map((manager) => (
+                                <li key={manager.id}>
+                                  <span>
+                                    {manager.user ? formatManagerUserName(manager.user) : t('admin.departments.managerUnknown', 'Unknown')}
+                                    {manager.isPrimary ? <> {' '}<Badge variant="neutral">{t('admin.departments.managerPrimary', 'Primary')}</Badge></> : null}
+                                    {manager.source === 'INHERITED' ? (
+                                      <>
+                                        {' '}
+                                        <Badge variant="neutral">
+                                          {t('admin.departments.managerInheritedFrom', 'Inherited from {{name}}', {
+                                            name: ancestorNamesById[manager.sourceDepartmentId] ?? manager.sourceDepartmentId,
+                                          })}
+                                        </Badge>{' '}
+                                        <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void revealDepartment(manager.sourceDepartmentId)}>
+                                          {t('admin.departments.managerGoToSource', 'Go to department')}
+                                        </button>
+                                      </>
+                                    ) : null}
+                                  </span>
+                                  {manager.source === 'LOCAL' ? (
+                                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleCloseManager(manager.id)}>
+                                      {t('admin.departments.close', 'Close')}
+                                    </button>
+                                  ) : null}
+                                </li>
+                              ))
+                            )}
+                          </ul>
+                          <div className="admin-membership-add">
+                            <input
+                              type="search"
+                              value={search.term}
+                              placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+                              onChange={(e) => { setSearchTermForType(e.target.value); setAddUserId(''); }}
+                            />
+                            <select value={addUserId} onChange={(e) => setAddUserId(e.target.value)}>
+                              <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
+                              {candidates.map((u) => <option key={u.id} value={u.id}>{formatManagerUserName(u)}</option>)}
+                            </select>
+                            <button
+                              className="admin-btn admin-btn--sm admin-btn--primary"
+                              type="button"
+                              disabled={!addUserId || managerActionState.status === 'saving'}
+                              onClick={() => void handleAddManager(type)}
+                            >
+                              {t('admin.departments.add', 'Add')}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {managerActionState.status === 'error' ? <p className="admin-form__error" role="alert">{managerActionState.message}</p> : null}
+
+                    <div className="admin-membership-section">
+                      <h4>{t('admin.departments.managerModesTitle', 'Manager inheritance')}</h4>
+                      <div className="admin-form__field">
+                        <label htmlFor="department-direct-mode">{t('admin.departments.managerTypeDirect', 'Direct')}</label>
+                        <select id="department-direct-mode" value={directMode} onChange={(e) => setDirectMode(e.target.value as DepartmentManagerMode)}>
+                          <option value="LOCAL">{t('admin.departments.managerModeLocal', 'Local')}</option>
+                          <option value="INHERIT">{t('admin.departments.managerModeInherit', 'Inherit')}</option>
+                          <option value="MERGE">{t('admin.departments.managerModeMerge', 'Merge')}</option>
+                        </select>
+                      </div>
+                      <div className="admin-form__field">
+                        <label htmlFor="department-functional-mode">{t('admin.departments.managerTypeFunctional', 'Functional')}</label>
+                        <select id="department-functional-mode" value={functionalMode} onChange={(e) => setFunctionalMode(e.target.value as DepartmentManagerMode)}>
+                          <option value="LOCAL">{t('admin.departments.managerModeLocal', 'Local')}</option>
+                          <option value="INHERIT">{t('admin.departments.managerModeInherit', 'Inherit')}</option>
+                          <option value="MERGE">{t('admin.departments.managerModeMerge', 'Merge')}</option>
+                        </select>
+                      </div>
+                      {modeState.status === 'error' ? <p className="admin-form__error" role="alert">{modeState.message}</p> : null}
+                      <button className="admin-btn admin-btn--sm admin-btn--primary" type="button" disabled={modeState.status === 'saving'} onClick={() => void handleSaveManagerModes()}>
+                        {modeState.status === 'saving' ? t('admin.departments.saving', 'Saving...') : t('admin.departments.save', 'Save')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
             </article>
           ) : (
             // Plain paragraph, not admin-form__hint: this is the primary (only) content of this

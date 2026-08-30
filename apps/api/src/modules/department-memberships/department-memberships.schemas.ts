@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
+
 /** Plan invariant: bulk transfer is atomic and bounded at 500 users per request. */
 export const MAX_BULK_TRANSFER_USERS = 500;
+
+export const listDepartmentUsersQuerySchema = paginationQuerySchema.extend({
+  search: z.string().trim().min(1).max(120).optional(),
+});
+export type ListDepartmentUsersQuery = z.infer<typeof listDepartmentUsersQuerySchema>;
 
 export const createDepartmentMembershipSchema = z.object({
   organizationId: z.string().uuid(),

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/public.js';
-import { BulkTransferInput, CreateDepartmentMembershipInput, DepartmentTransferInput } from './department-memberships.schemas.js';
+import { BulkTransferInput, CreateDepartmentMembershipInput, DepartmentTransferInput, ListDepartmentUsersQuery } from './department-memberships.schemas.js';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -46,18 +46,43 @@ async function ensureAssignable(client: TransactionClient, organizationId: strin
 export class DepartmentMembershipsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listDepartmentUsers(departmentId: string, organizationId: string) {
+  async listDepartmentUsers(departmentId: string, organizationId: string, query: ListDepartmentUsersQuery) {
     const department = await this.prisma.department.findFirst({ where: { id: departmentId, organizationId }, select: { id: true } });
     if (!department) throw new NotFoundException('Department not found');
 
-    return this.prisma.departmentMembership.findMany({
-      where: { departmentId, organizationId, effectiveTo: null },
-      orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }],
-      select: {
-        ...membershipSelect,
-        user: { select: { id: true, firstName: true, lastName: true, email: true, status: true } },
-      },
-    });
+    const { page, pageSize, search } = query;
+    const where: Prisma.DepartmentMembershipWhereInput = {
+      departmentId,
+      organizationId,
+      effectiveTo: null,
+      ...(search
+        ? {
+            user: {
+              OR: [
+                { firstName: { contains: search, mode: 'insensitive' as const } },
+                { lastName: { contains: search, mode: 'insensitive' as const } },
+                { email: { contains: search, mode: 'insensitive' as const } },
+              ],
+            },
+          }
+        : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.departmentMembership.findMany({
+        where,
+        orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          ...membershipSelect,
+          user: { select: { id: true, firstName: true, lastName: true, email: true, status: true } },
+        },
+      }),
+      this.prisma.departmentMembership.count({ where }),
+    ]);
+
+    return { items, page, pageSize, total };
   }
 
   async listUserMemberships(userId: string, organizationId: string) {
