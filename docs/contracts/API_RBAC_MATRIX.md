@@ -34,6 +34,8 @@ Department and department-type mutations (tree CRUD, move/reparent, archive/rest
 
 Department membership (create/close/transfer/bulk-transfer, and reading a department's current users or a user's full membership history) is likewise admin-only for now. Two data-layer invariants back the role check regardless of caller: a partial unique index allows at most one current (`effectiveTo IS NULL`) primary membership per user, and another allows at most one current membership per user/department pair, so a race between two concurrent transfers for the same user can never leave more than one current primary — the losing request gets a conflict, not a corrupted state. A transfer or bulk transfer additionally rejects assigning an inactive user or an archived department before any write.
 
+Department manager (create/close a DIRECT or FUNCTIONAL manager assignment, switch a department's manager inheritance mode, and reading a department's effective manager set) is admin-only. A manager relation never grants the `manager` RBAC role by itself and does not require the user to hold a Department membership. Two data-layer invariants mirror the membership ones: a partial unique index allows at most one current manager per (department, user, type), and another allows at most one current primary manager per (department, type). Switching a department's `directManagerMode`/`functionalManagerMode` to `INHERIT` is rejected while current local managers of that type still exist, so a mode switch can never silently hide them; the caller must close them first.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

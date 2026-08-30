@@ -33,8 +33,6 @@ export const updateDepartmentSchema = z
     code: departmentCodeSchema.nullable(),
     description: departmentDescriptionSchema.nullable(),
     sortOrder: sortOrderSchema,
-    directManagerMode: departmentManagerModeSchema,
-    functionalManagerMode: departmentManagerModeSchema,
   })
   .partial();
 export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;

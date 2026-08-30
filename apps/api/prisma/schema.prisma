@@ -51,6 +51,11 @@ enum DepartmentManagerMode {
   MERGE
 }
 
+enum DepartmentManagerType {
+  DIRECT
+  FUNCTIONAL
+}
+
 enum CourseStatus {
   draft
   published
@@ -194,6 +199,7 @@ model Organization {
   departmentTypes            DepartmentType[]
   departments                Department[]
   departmentMemberships      DepartmentMembership[]
+  departmentManagers         DepartmentManager[]
   orgStructureEvents         OrgStructureEvent[]
   materialFileDeletionAudits MaterialFileDeletionAudit[]
   auditLogs                  AuditLog[]
@@ -252,6 +258,7 @@ model User {
   groupMemberships           GroupMember[]
   managedGroups              ManagerGroup[]
   departmentMemberships      DepartmentMembership[]
+  departmentManagers         DepartmentManager[]
   notifications              Notification[]
   checklistsCreated          Checklist[]              @relation("ChecklistCreatedBy")
   checklistInstances         ChecklistInstance[]      @relation("ChecklistInstanceUser")
@@ -374,6 +381,7 @@ model Department {
   children              Department[]           @relation("DepartmentHierarchy")
   departmentType        DepartmentType?        @relation(fields: [departmentTypeId, organizationId], references: [id, organizationId], onDelete: NoAction)
   memberships           DepartmentMembership[]
+  managers              DepartmentManager[]
 
   @@unique([id, organizationId])
   @@index([organizationId, parentId, status, sortOrder])
@@ -404,6 +412,32 @@ model DepartmentMembership {
   @@index([organizationId, departmentId, effectiveTo])
   @@index([organizationId, userId, effectiveTo])
   @@map("department_memberships")
+}
+
+/// Structural/functional department manager assignment with computed tree inheritance (PR 272).
+/// "Current" means effectiveTo IS NULL. At most one current manager per (department, user, type)
+/// and at most one current primary manager per (department, type) -- both enforced by partial
+/// unique indexes added via raw SQL in this model's migration, the same pattern already used by
+/// DepartmentMembership. A manager relation never grants the `manager` RBAC role by itself.
+model DepartmentManager {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  departmentId   String                @map("department_id") @db.Uuid
+  userId         String                @map("user_id") @db.Uuid
+  type           DepartmentManagerType
+  isPrimary      Boolean               @default(false) @map("is_primary")
+  effectiveFrom  DateTime              @default(now()) @map("effective_from") @db.Timestamptz
+  effectiveTo    DateTime?             @map("effective_to") @db.Timestamptz
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  department     Department            @relation(fields: [departmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  user           User                  @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, departmentId, type, effectiveTo])
+  @@index([organizationId, userId, effectiveTo])
+  @@map("department_managers")
 }
 
 model OrgStructureEvent {

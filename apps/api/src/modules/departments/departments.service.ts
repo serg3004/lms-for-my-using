@@ -187,8 +187,6 @@ export class DepartmentsService {
             ...(input.code !== undefined ? { code: input.code } : {}),
             ...(input.description !== undefined ? { description: input.description } : {}),
             ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
-            ...(input.directManagerMode !== undefined ? { directManagerMode: input.directManagerMode } : {}),
-            ...(input.functionalManagerMode !== undefined ? { functionalManagerMode: input.functionalManagerMode } : {}),
           },
           select: departmentSelect,
         })

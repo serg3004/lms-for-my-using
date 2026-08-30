@@ -16,6 +16,7 @@ import { ChecklistsController } from '../checklists/checklists.controller.js';
 import { CourseMaterialsController } from '../course-materials/course-materials.controller.js';
 import { MaterialMalwareScanController } from '../course-materials/material-malware-scan.controller.js';
 import { CoursesController } from '../courses/courses.controller.js';
+import { DepartmentManagersController } from '../department-managers/department-managers.controller.js';
 import { DepartmentMembershipsController } from '../department-memberships/department-memberships.controller.js';
 import { DepartmentsController } from '../departments/departments.controller.js';
 import { GroupsController } from '../groups/groups.controller.js';
@@ -50,6 +51,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
   { file: 'course-materials/material-malware-scan.controller.ts', Controller: MaterialMalwareScanController },
   { file: 'courses/courses.controller.ts', Controller: CoursesController },
+  { file: 'department-managers/department-managers.controller.ts', Controller: DepartmentManagersController },
   { file: 'department-memberships/department-memberships.controller.ts', Controller: DepartmentMembershipsController },
   { file: 'departments/departments.controller.ts', Controller: DepartmentsController },
   { file: 'groups/groups.controller.ts', Controller: GroupsController },

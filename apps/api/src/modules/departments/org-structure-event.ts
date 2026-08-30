@@ -11,6 +11,7 @@ export type OrgStructureEventType =
   | 'department.moved'
   | 'department.archived'
   | 'department.restored'
+  | 'department.manager_modes_updated'
   | 'department_type.created'
   | 'department_type.updated'
   | 'department_type.archived'
@@ -18,12 +19,14 @@ export type OrgStructureEventType =
   | 'department_membership.created'
   | 'department_membership.closed'
   | 'department_membership.transferred'
-  | 'department_membership.bulk_transferred';
+  | 'department_membership.bulk_transferred'
+  | 'department_manager.created'
+  | 'department_manager.closed';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type' | 'department_membership';
+  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;
