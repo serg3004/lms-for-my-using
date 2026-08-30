@@ -385,7 +385,10 @@ export function AdminDepartmentUsersPage() {
           <FormField id="department-transfer-search" label={t('admin.departments.searchPlaceholder', 'Search by name or code…')}>
             <input id="department-transfer-search" onChange={(e) => setTransferSearchTerm(e.target.value)} type="search" value={transferSearch.term} />
           </FormField>
-          <div className="admin-membership-add">
+          {/* Distinct class from the page's own "Add additional membership" toolbar below --
+              both used to share admin-membership-add, and since a <dialog> stays in the DOM
+              even while closed, an unscoped selector for either one would match both. */}
+          <div className="admin-transfer-target">
             <select onChange={(e) => setTransferTargetId(e.target.value || null)} value={transferTargetId ?? ''}>
               <option value="">{t('admin.departmentUsers.selectTarget', 'Select target department…')}</option>
               {transferCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}

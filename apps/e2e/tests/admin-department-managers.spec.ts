@@ -44,7 +44,9 @@ test('admin assigns a primary DIRECT manager, sees it in the tree and editor, th
   await item.click();
 
   const detail = page.getByRole('article').filter({ hasText: deptName });
-  const directSection = detail.locator('.admin-membership-section').filter({ hasText: 'Прямой' });
+  // Scoped by its own <h4>, not hasText -- the "Manager inheritance" subsection also contains
+  // the word "Прямой" as a <label>, so a substring filter would match both subsections.
+  const directSection = detail.locator('.admin-manager-subsection').filter({ has: page.getByRole('heading', { name: 'Прямой', level: 4 }) });
   await directSection.locator('input[type="search"]').fill(email);
   await directSection.locator('select').selectOption({ label: 'Candidate Manager' });
   await directSection.getByRole('button', { name: 'Добавить' }).click();

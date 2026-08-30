@@ -731,7 +731,10 @@ export function AdminDepartmentsPage() {
                       const candidates = managerCandidatesAvailableToAdd(search.results, typeManagers.map((m) => m.userId));
                       const typeTitle = type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional');
                       return (
-                        <div className="admin-membership-section" key={type}>
+                        // Distinct class (not admin-membership-section) so it never nests inside
+                        // the outer "Managers" section's own matches -- both used to share the
+                        // class, making DIRECT vs FUNCTIONAL ambiguous to any selector.
+                        <div className="admin-manager-subsection" key={type}>
                           <h4>{typeTitle}</h4>
                           <ul className="admin-membership-list">
                             {typeManagers.length === 0 ? (
@@ -790,7 +793,7 @@ export function AdminDepartmentsPage() {
                     })}
                     {managerActionState.status === 'error' ? <p className="admin-form__error" role="alert">{managerActionState.message}</p> : null}
 
-                    <div className="admin-membership-section">
+                    <div className="admin-manager-subsection">
                       <h4>{t('admin.departments.managerModesTitle', 'Manager inheritance')}</h4>
                       <div className="admin-form__field">
                         <label htmlFor="department-direct-mode">{t('admin.departments.managerTypeDirect', 'Direct')}</label>
