@@ -12,12 +12,15 @@ const membershipSelect = {
   organizationId: true,
   departmentId: true,
   userId: true,
+  positionId: true,
   isPrimary: true,
   effectiveFrom: true,
   effectiveTo: true,
   createdAt: true,
   updatedAt: true,
 } as const;
+
+const positionSummarySelect = { id: true, code: true, title: true, status: true } as const;
 
 /** Distinguishes which partial unique index a P2002 hit, per the plan's two membership invariants. */
 function rethrowMembershipConflict(error: unknown): never {
@@ -40,6 +43,14 @@ async function ensureAssignable(client: TransactionClient, organizationId: strin
   if (department.status !== 'active') throw new ConflictException('Cannot assign to an archived department');
   if (!user) throw new NotFoundException('User not found');
   if (user.status !== 'active') throw new ConflictException('Cannot assign an inactive user to a department');
+}
+
+/** Plan invariant: an archived Position remains valid in history but cannot be assigned to a new current relation. */
+async function ensurePositionAssignable(client: TransactionClient, organizationId: string, positionId: string | undefined) {
+  if (!positionId) return;
+  const position = await client.position.findFirst({ where: { id: positionId, organizationId }, select: { id: true, status: true } });
+  if (!position) throw new NotFoundException('Position not found');
+  if (position.status !== 'active') throw new ConflictException('Cannot assign an archived position');
 }
 
 @Injectable()
@@ -81,6 +92,7 @@ export class DepartmentMembershipsService {
         select: {
           ...membershipSelect,
           user: { select: { id: true, firstName: true, lastName: true, email: true, status: true } },
+          position: { select: positionSummarySelect },
         },
       }),
       this.prisma.departmentMembership.count({ where }),
@@ -99,6 +111,7 @@ export class DepartmentMembershipsService {
       select: {
         ...membershipSelect,
         department: { select: { id: true, name: true, status: true } },
+        position: { select: positionSummarySelect },
       },
     });
   }
@@ -106,6 +119,7 @@ export class DepartmentMembershipsService {
   async createMembership(input: CreateDepartmentMembershipInput, actorId: string | null) {
     return this.prisma.$transaction(async (tx) => {
       await ensureAssignable(tx, input.organizationId, input.departmentId, input.userId);
+      await ensurePositionAssignable(tx, input.organizationId, input.positionId);
 
       const created = await tx.departmentMembership
         .create({
@@ -114,6 +128,7 @@ export class DepartmentMembershipsService {
             departmentId: input.departmentId,
             userId: input.userId,
             isPrimary: input.isPrimary,
+            positionId: input.positionId ?? null,
           },
           select: membershipSelect,
         })
@@ -126,7 +141,7 @@ export class DepartmentMembershipsService {
         entityId: created.id,
         eventType: 'department_membership.created',
         operationId: newOperationId(),
-        metadata: { departmentId: input.departmentId, userId: input.userId, isPrimary: input.isPrimary },
+        metadata: { departmentId: input.departmentId, userId: input.userId, isPrimary: input.isPrimary, positionId: input.positionId ?? null },
       });
 
       return created;
@@ -166,6 +181,7 @@ export class DepartmentMembershipsService {
   async transferPrimaryDepartment(userId: string, organizationId: string, input: DepartmentTransferInput, actorId: string | null) {
     return runSerializableWithRetry(this.prisma, async (tx) => {
       await ensureAssignable(tx, organizationId, input.departmentId, userId);
+      await ensurePositionAssignable(tx, organizationId, input.positionId);
 
       const currentPrimary = await tx.departmentMembership.findFirst({
         where: { organizationId, userId, isPrimary: true, effectiveTo: null },
@@ -182,7 +198,14 @@ export class DepartmentMembershipsService {
 
       const created = await tx.departmentMembership
         .create({
-          data: { organizationId, departmentId: input.departmentId, userId, isPrimary: true, effectiveFrom: now },
+          data: {
+            organizationId,
+            departmentId: input.departmentId,
+            userId,
+            isPrimary: true,
+            effectiveFrom: now,
+            positionId: input.positionId ?? null,
+          },
           select: membershipSelect,
         })
         .catch(rethrowMembershipConflict);
@@ -194,7 +217,12 @@ export class DepartmentMembershipsService {
         entityId: created.id,
         eventType: 'department_membership.transferred',
         operationId: newOperationId(),
-        metadata: { userId, fromDepartmentId: currentPrimary?.departmentId ?? null, toDepartmentId: input.departmentId },
+        metadata: {
+          userId,
+          fromDepartmentId: currentPrimary?.departmentId ?? null,
+          toDepartmentId: input.departmentId,
+          positionId: input.positionId ?? null,
+        },
       });
 
       return created;
@@ -207,6 +235,7 @@ export class DepartmentMembershipsService {
       const department = await tx.department.findFirst({ where: { id: departmentId, organizationId }, select: { id: true, status: true } });
       if (!department) throw new NotFoundException('Department not found');
       if (department.status !== 'active') throw new ConflictException('Cannot assign to an archived department');
+      await ensurePositionAssignable(tx, organizationId, input.positionId);
 
       const uniqueUserIds = [...new Set(input.userIds)];
       const users = await tx.user.findMany({ where: { id: { in: uniqueUserIds }, organizationId }, select: { id: true, status: true } });
@@ -231,7 +260,14 @@ export class DepartmentMembershipsService {
 
         const membership = await tx.departmentMembership
           .create({
-            data: { organizationId, departmentId, userId, isPrimary: true, effectiveFrom: now },
+            data: {
+              organizationId,
+              departmentId,
+              userId,
+              isPrimary: true,
+              effectiveFrom: now,
+              positionId: input.positionId ?? null,
+            },
             select: membershipSelect,
           })
           .catch(rethrowMembershipConflict);
@@ -243,7 +279,12 @@ export class DepartmentMembershipsService {
           entityId: membership.id,
           eventType: 'department_membership.bulk_transferred',
           operationId,
-          metadata: { userId, fromDepartmentId: currentPrimary?.departmentId ?? null, toDepartmentId: departmentId },
+          metadata: {
+            userId,
+            fromDepartmentId: currentPrimary?.departmentId ?? null,
+            toDepartmentId: departmentId,
+            positionId: input.positionId ?? null,
+          },
         });
 
         created.push(membership);

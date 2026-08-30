@@ -21,12 +21,16 @@ export type OrgStructureEventType =
   | 'department_membership.transferred'
   | 'department_membership.bulk_transferred'
   | 'department_manager.created'
-  | 'department_manager.closed';
+  | 'department_manager.closed'
+  | 'position.created'
+  | 'position.updated'
+  | 'position.archived'
+  | 'position.restored';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager';
+  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;

@@ -15,15 +15,18 @@ export const createDepartmentMembershipSchema = z.object({
   departmentId: z.string().uuid(),
   userId: z.string().uuid(),
   isPrimary: z.boolean().default(false),
+  positionId: z.string().uuid().optional(),
 });
 export type CreateDepartmentMembershipInput = z.infer<typeof createDepartmentMembershipSchema>;
 
 export const departmentTransferSchema = z.object({
   departmentId: z.string().uuid(),
+  positionId: z.string().uuid().optional(),
 });
 export type DepartmentTransferInput = z.infer<typeof departmentTransferSchema>;
 
 export const bulkTransferSchema = z.object({
   userIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_TRANSFER_USERS),
+  positionId: z.string().uuid().optional(),
 });
 export type BulkTransferInput = z.infer<typeof bulkTransferSchema>;

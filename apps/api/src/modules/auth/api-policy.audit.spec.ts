@@ -28,6 +28,7 @@ import { MembershipsController } from '../memberships/memberships.controller.js'
 import { NotificationsController } from '../notifications/notifications.controller.js';
 import { OpenApiController } from '../openapi/openapi.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
+import { PositionsController } from '../positions/positions.controller.js';
 import { ProgressController } from '../progress/progress.controller.js';
 import { ReportsController } from '../reports/reports.controller.js';
 import { UsersController } from '../users/users.controller.js';
@@ -63,6 +64,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'notifications/notifications.controller.ts', Controller: NotificationsController },
   { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
   { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
+  { file: 'positions/positions.controller.ts', Controller: PositionsController },
   { file: 'progress/progress.controller.ts', Controller: ProgressController },
   { file: 'reports/reports.controller.ts', Controller: ReportsController },
   { file: 'users/users.controller.ts', Controller: UsersController },

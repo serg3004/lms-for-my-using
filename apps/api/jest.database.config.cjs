@@ -12,6 +12,7 @@ module.exports = {
     '<rootDir>/src/integration/department-memberships.database.spec.ts',
     '<rootDir>/src/integration/department-managers.database.spec.ts',
     '<rootDir>/src/integration/department-headcounts.database.spec.ts',
+    '<rootDir>/src/integration/positions.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,

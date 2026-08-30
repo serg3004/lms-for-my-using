@@ -36,6 +36,8 @@ Department membership (create/close/transfer/bulk-transfer, and reading a depart
 
 Department manager (create/close a DIRECT or FUNCTIONAL manager assignment, switch a department's manager inheritance mode, and reading a department's effective manager set) is admin-only. A manager relation never grants the `manager` RBAC role by itself and does not require the user to hold a Department membership. Two data-layer invariants mirror the membership ones: a partial unique index allows at most one current manager per (department, user, type), and another allows at most one current primary manager per (department, type). Switching a department's `directManagerMode`/`functionalManagerMode` to `INHERIT` is rejected while current local managers of that type still exist, so a mode switch can never silently hide them; the caller must close them first.
 
+Position (the tenant-scoped job-title catalog, and reading/creating/updating/archiving/restoring positions) is admin-only, mirroring the department-type role policy. `UNIQUE(organizationId, code)` rejects a duplicate code within the same tenant before any write. A Position is never hard-deleted, only archived: an archived Position remains valid on historical and existing Department memberships, but the membership create/transfer/bulk-transfer endpoints reject assigning an archived (or cross-tenant) Position to a new current relation. Legacy `User.position` is unaffected by this catalog for now.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

@@ -41,6 +41,7 @@ function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
       items: [
         { label: t('admin.nav.groups', 'Groups'), href: '/admin/groups' },
         { label: t('admin.nav.departments', 'Departments'), href: '/admin/departments' },
+        { label: t('admin.nav.positions', 'Positions'), href: '/admin/positions' },
         { label: t('admin.nav.roles', 'Roles'), href: '/admin/roles' },
         { label: t('admin.nav.themeSettings', 'Theme settings'), href: '/admin/appearance' },
         { label: t('admin.nav.auditLog', 'Audit log'), href: '/admin/audit-log' },

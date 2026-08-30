@@ -32,20 +32,43 @@ async function createRootDepartment(page: Page, name: string) {
   await expect(dialog).not.toBeVisible();
 }
 
-// One test, one admin login: department managers and the department users page share the same
-// account-level login rate limit as every other admin-flow spec in this suite (5 logins/minute),
-// so this covers both PR 273 surfaces without adding a second admin login to the shared budget.
-test('admin manages department managers and department users', async ({ page }, testInfo) => {
+// One test, one admin login: department managers, the department users page, and Position CRUD
+// share the same account-level login rate limit as every other admin-flow spec in this suite
+// (5 logins/minute), so this covers PR 273 and PR 275 surfaces without adding a second admin
+// login to the shared budget -- a dedicated admin-positions.spec.ts previously pushed the login
+// count for this window over the limit and made the instructor-workspace suite flake.
+test('admin manages department managers, department users, and positions', async ({ page }, testInfo) => {
   const suffix = `${testInfo.workerIndex}-${Date.now()}`;
   const managerEmail = `e2e-manager-${suffix}@example.invalid`;
   const memberEmail = `e2e-member-${suffix}@example.invalid`;
   const deptName = `E2E Managed Dept ${suffix}`;
   const fromName = `E2E From ${suffix}`;
   const toName = `E2E To ${suffix}`;
+  const positionCode = `e2e-lead-${suffix}`;
+  const positionTitle = `E2E Team Lead ${suffix}`;
 
   await loginAsAdmin(page);
   await createLearner(page, managerEmail);
   await createLearner(page, memberEmail);
+
+  // ── Position CRUD: create, edit, archive, restore (PR 275) ──
+  await page.goto('/admin/positions');
+  await page.getByRole('button', { name: 'Добавить должность' }).click();
+  const createPositionDialog = page.getByRole('dialog').filter({ hasText: 'Добавить должность' });
+  await createPositionDialog.getByLabel('Код').fill(positionCode);
+  await createPositionDialog.getByLabel('Название').fill(positionTitle);
+  await createPositionDialog.getByRole('button', { name: 'Создать' }).click();
+  await expect(createPositionDialog).not.toBeVisible();
+
+  const positionRow = page.getByRole('row').filter({ hasText: positionTitle });
+  await expect(positionRow).toBeVisible();
+  await expect(positionRow.getByText('Активна')).toBeVisible();
+
+  await positionRow.getByRole('button', { name: 'В архив' }).click();
+  await expect(positionRow.getByText('В архиве')).toBeVisible();
+  // Restored before use below -- an archived Position cannot be assigned to a new membership.
+  await positionRow.getByRole('button', { name: 'Восстановить' }).click();
+  await expect(positionRow.getByText('Активна')).toBeVisible();
 
   // ── Department managers: assign a primary DIRECT manager, see it in the tree, close it ──
   await page.goto('/admin/departments');
@@ -80,7 +103,10 @@ test('admin manages department managers and department users', async ({ page }, 
   await expect(page.getByRole('heading', { name: fromName })).toBeVisible();
 
   await page.locator('.admin-membership-add input[type="search"]').fill(memberEmail);
-  await page.locator('.admin-membership-add select').selectOption({ label: 'Candidate Manager' });
+  // Two <select> elements now live in .admin-membership-add (user picker, then the PR 275
+  // Position picker) -- targeted by aria-label to avoid a Playwright strict-mode violation.
+  await page.locator('.admin-membership-add').getByLabel('Выберите пользователя…').selectOption({ label: 'Candidate Manager' });
+  await page.locator('.admin-membership-add').getByLabel('Выберите должность (необязательно)…').selectOption({ label: positionTitle });
   // Checked so the row is a PRIMARY membership -- Transfer only appears on primary rows (it moves
   // a user's primary department, which would be misleading to offer on an additional membership).
   await page.locator('.admin-membership-add input[type="checkbox"]').check();
@@ -93,7 +119,10 @@ test('admin manages department managers and department users', async ({ page }, 
   await row.getByRole('button', { name: 'Перевести' }).click();
   const transferDialog = page.getByRole('dialog').filter({ hasText: 'Перевести' });
   await transferDialog.getByLabel('Поиск по названию или коду…').fill(toName);
-  await transferDialog.locator('select').selectOption({ label: toName });
+  // Two <select> elements now live in the dialog (target department, then the PR 275 Position
+  // picker) -- targeted by aria-label to avoid a Playwright strict-mode violation.
+  await transferDialog.getByLabel('Выберите целевое подразделение…').selectOption({ label: toName });
+  await transferDialog.getByLabel('Выберите должность (необязательно)…').selectOption({ label: positionTitle });
   await transferDialog.getByRole('button', { name: 'Перевести' }).click();
   await expect(transferDialog).not.toBeVisible();
 

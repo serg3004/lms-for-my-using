@@ -15,6 +15,7 @@ module.exports = {
     '/src/integration/department-memberships\\.database\\.spec\\.ts$',
     '/src/integration/department-managers\\.database\\.spec\\.ts$',
     '/src/integration/department-headcounts\\.database\\.spec\\.ts$',
+    '/src/integration/positions\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

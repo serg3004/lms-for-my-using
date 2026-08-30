@@ -12,6 +12,7 @@ const userId = '44444444-4444-4444-4444-444444444444';
 const actorId = '55555555-5555-5555-5555-555555555555';
 const membershipId = '66666666-6666-6666-6666-666666666666';
 const missingUserId = '88888888-8888-8888-8888-888888888888';
+const positionId = '99999999-9999-9999-9999-999999999999';
 
 function primaryConflictError() {
   return new Prisma.PrismaClientKnownRequestError('duplicate', {
@@ -38,6 +39,7 @@ function createPrisma(overrides: {
   department?: Partial<Record<'findFirst', jest.Mock>>;
   user?: Partial<Record<'findFirst' | 'findMany', jest.Mock>>;
   departmentMembership?: Partial<Record<'findFirst' | 'findMany' | 'count' | 'create' | 'update', jest.Mock>>;
+  position?: Partial<Record<'findFirst', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     department: {
@@ -56,6 +58,10 @@ function createPrisma(overrides: {
       create: jest.fn(async () => ({ id: membershipId })),
       update: jest.fn(async () => ({ id: membershipId })),
       ...overrides.departmentMembership,
+    },
+    position: {
+      findFirst: jest.fn(async () => ({ id: positionId, status: 'active' })),
+      ...overrides.position,
     },
     orgStructureEvent: { create: jest.fn(async () => ({})) },
   };
@@ -196,10 +202,40 @@ describe('DepartmentMembershipsService', () => {
       await service.createMembership({ organizationId, departmentId, userId, isPrimary: false }, actorId);
 
       expect(create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { organizationId, departmentId, userId, isPrimary: false } }),
+        expect.objectContaining({ data: { organizationId, departmentId, userId, isPrimary: false, positionId: null } }),
       );
       expect(eventCreate).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ eventType: 'department_membership.created' }) }),
+      );
+    });
+
+    it('rejects a cross-tenant or missing position', async () => {
+      const prisma = createPrisma({ position: { findFirst: jest.fn(async () => null) } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await expect(
+        service.createMembership({ organizationId, departmentId, userId, isPrimary: true, positionId }, actorId),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('rejects assigning an archived position', async () => {
+      const prisma = createPrisma({ position: { findFirst: jest.fn(async () => ({ id: positionId, status: 'archived' })) } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await expect(
+        service.createMembership({ organizationId, departmentId, userId, isPrimary: true, positionId }, actorId),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('persists an active position on the created membership', async () => {
+      const create = jest.fn(async () => ({ id: membershipId, isPrimary: true, positionId }));
+      const prisma = createPrisma({ departmentMembership: { create } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await service.createMembership({ organizationId, departmentId, userId, isPrimary: true, positionId }, actorId);
+
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ positionId }) }),
       );
     });
   });
@@ -296,7 +332,7 @@ describe('DepartmentMembershipsService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             eventType: 'department_membership.transferred',
-            metadata: { fromDepartmentId: otherDepartmentId, toDepartmentId: departmentId, userId },
+            metadata: { fromDepartmentId: otherDepartmentId, toDepartmentId: departmentId, userId, positionId: null },
           }),
         }),
       );
@@ -312,6 +348,25 @@ describe('DepartmentMembershipsService', () => {
 
       expect(update).not.toHaveBeenCalled();
       expect(create).toHaveBeenCalled();
+    });
+
+    it('rejects transferring with an archived position', async () => {
+      const prisma = createPrisma({ position: { findFirst: jest.fn(async () => ({ id: positionId, status: 'archived' })) } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await expect(
+        service.transferPrimaryDepartment(userId, organizationId, { departmentId, positionId }, actorId),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('persists the given position on the newly created primary membership', async () => {
+      const create = jest.fn(async () => ({ id: membershipId, departmentId, isPrimary: true, positionId }));
+      const prisma = createPrisma({ departmentMembership: { create } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await service.transferPrimaryDepartment(userId, organizationId, { departmentId, positionId }, actorId);
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ positionId }) }));
     });
   });
 
@@ -382,6 +437,25 @@ describe('DepartmentMembershipsService', () => {
       const [[eventArgs]] = eventCreate.mock.calls;
       const operationId = (eventArgs as { data: { operationId: string } }).data.operationId;
       expect(typeof operationId).toBe('string');
+    });
+
+    it('rejects a bulk transfer with an archived position', async () => {
+      const prisma = createPrisma({ position: { findFirst: jest.fn(async () => ({ id: positionId, status: 'archived' })) } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await expect(
+        service.bulkTransfer(departmentId, organizationId, { userIds: [userId], positionId }, actorId),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('applies the given position to every transferred membership', async () => {
+      const create = jest.fn(async () => ({ id: membershipId, isPrimary: true, positionId }));
+      const prisma = createPrisma({ departmentMembership: { create } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await service.bulkTransfer(departmentId, organizationId, { userIds: [userId], positionId }, actorId);
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ positionId }) }));
     });
   });
 });
