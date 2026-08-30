@@ -117,8 +117,10 @@ function useUserSearch(): [UserSearchState, (term: string) => void] {
     setSearch((prev) => ({ ...prev, status: 'loading' }));
     const timer = setTimeout(() => {
       listUsers({ search: term, pageSize: 20 })
+        // listUsers has no server-side status filter; a suspended/invited/archived user would
+        // otherwise appear pickable here but always get rejected by ensureAssignable on submit.
         .then((res) => {
-          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items }));
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items.filter((u) => u.status === 'active') }));
         })
         .catch(() => {
           if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] }));

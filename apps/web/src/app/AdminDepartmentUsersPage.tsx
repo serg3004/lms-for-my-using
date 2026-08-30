@@ -44,7 +44,9 @@ function useUserSearch(): [UserSearchState, (term: string) => void] {
     setSearch((prev) => ({ ...prev, status: 'loading' }));
     const timer = setTimeout(() => {
       listUsers({ search: term, pageSize: 20 })
-        .then((res) => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items })); })
+        // listUsers has no server-side status filter; a suspended/invited/archived user would
+        // otherwise appear pickable here but always get rejected by ensureAssignable on submit.
+        .then((res) => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items.filter((u) => u.status === 'active') })); })
         .catch(() => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] })); });
     }, SEARCH_DEBOUNCE_MS);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -147,6 +149,16 @@ export function AdminDepartmentUsersPage() {
     },
   );
 
+  // Unpaginated (up to the API's own pageSize cap), unfiltered-by-search fetch used only to
+  // exclude every current member from the add-membership picker -- `rows` is just the current
+  // page of the (possibly search-filtered) table above, so using it alone would let an admin
+  // pick an existing member who simply isn't on the visible page, always ending in a 409.
+  const { state: allMembersState, reload: reloadAllMembers } = useAsyncData(
+    () => listDepartmentUsers(departmentId, { pageSize: 200 }),
+    [departmentId],
+    { unauthenticated: '', error: '' },
+  );
+
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
@@ -179,7 +191,7 @@ export function AdminDepartmentUsersPage() {
       setAddUserId('');
       setAddPrimary(false);
       setAddSearchTerm('');
-      await reload();
+      await Promise.all([reload(), reloadAllMembers()]);
       setAddState({ status: 'idle' });
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;
@@ -198,7 +210,7 @@ export function AdminDepartmentUsersPage() {
     setCloseState({ status: 'saving' });
     try {
       await closeDepartmentMembership(membershipId);
-      await reload();
+      await Promise.all([reload(), reloadAllMembers()]);
       setCloseState({ status: 'idle' });
     } catch {
       setCloseState({ status: 'error', message: t('admin.departmentUsers.closeError', 'Unable to close the membership.') });
@@ -223,7 +235,7 @@ export function AdminDepartmentUsersPage() {
       }
       setTransferUserIds(null);
       setSelectedKeys(new Set());
-      await reload();
+      await Promise.all([reload(), reloadAllMembers()]);
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;
       setTransferState({
@@ -261,7 +273,8 @@ export function AdminDepartmentUsersPage() {
   }
 
   const department = departmentState.data;
-  const addCandidates = membershipCandidatesAvailableToAdd(addSearch.results, rows.map((row) => row.userId));
+  const currentMemberIds = allMembersState.status === 'loaded' ? allMembersState.data.items.map((row) => row.userId) : rows.map((row) => row.userId);
+  const addCandidates = membershipCandidatesAvailableToAdd(addSearch.results, currentMemberIds);
   const transferCandidates = transferSearch.results.filter((candidate) => candidate.id !== departmentId);
 
   const navItems: AdminNavItem[] = [
