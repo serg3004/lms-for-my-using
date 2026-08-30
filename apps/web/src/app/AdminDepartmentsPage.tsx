@@ -275,7 +275,11 @@ export function AdminDepartmentsPage() {
           dispatchTree({ type: 'managerSummaryLoaded', id: descendantId, summary: summarizeDirectManagers(descendantEffective) });
           dispatchTree({ type: 'managerDetailsLoaded', id: descendantId, managers: descendantEffective });
         } catch {
-          // Leave the previous cached value; reselecting the node or reopening its popover retries.
+          // Invalidate rather than leave the previous cache entry: managerDetailsById is
+          // treated as "already fetched" once defined (handleRequestManagerDetails skips
+          // refetching it), so a stale success value here would never be retried by reselecting
+          // or reopening the popover -- only clearing it lets the next request try again.
+          dispatchTree({ type: 'managerCacheInvalidated', id: descendantId });
         }
       }),
     );
@@ -563,8 +567,13 @@ export function AdminDepartmentsPage() {
         // INHERIT/MERGE managers, but its id doesn't change -- the detail-panel-loading effect
         // (keyed on selected?.id) won't refire on its own, so refresh explicitly.
         const [effective, path] = await Promise.all([refreshManagerCachesFor(movedId), getDepartmentPath(movedId)]);
-        setManagers(effective);
-        setAncestorNamesById(Object.fromEntries(path.map((department) => [department.id, department.name])));
+        // Same guard as reloadManagers(): these requests are async and the admin may have
+        // since selected a different department, so only apply the result if `movedId` is
+        // still selected -- otherwise this would write A's managers/path into B's panel.
+        if (selectedIdRef.current === movedId) {
+          setManagers(effective);
+          setAncestorNamesById(Object.fromEntries(path.map((department) => [department.id, department.name])));
+        }
       }
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;

@@ -105,6 +105,21 @@ describe('treeReducer', () => {
     state = treeReducer(state, { type: 'managerSummaryLoaded', id: 'a', summary: null });
     expect(state.managerSummaryById.a).toBeNull();
   });
+
+  it('managerCacheInvalidated clears both caches for a node so a later request retries', () => {
+    let state = treeReducer(initialTreeState(), {
+      type: 'managerSummaryLoaded',
+      id: 'a',
+      summary: { primaryName: 'Ada Lovelace', additionalCount: 0, isInherited: false },
+    });
+    state = treeReducer(state, { type: 'managerDetailsLoaded', id: 'a', managers: [] });
+    expect(state.managerSummaryById.a).not.toBeUndefined();
+    expect(state.managerDetailsById.a).not.toBeUndefined();
+
+    state = treeReducer(state, { type: 'managerCacheInvalidated', id: 'a' });
+    expect(state.managerSummaryById.a).toBeUndefined();
+    expect(state.managerDetailsById.a).toBeUndefined();
+  });
 });
 
 describe('visibleOrder / nextVisibleId / previousVisibleId', () => {

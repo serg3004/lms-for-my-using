@@ -41,7 +41,8 @@ export type TreeAction =
   | { type: 'select'; id: string | null }
   | { type: 'upsertNode'; node: Department }
   | { type: 'managerSummaryLoaded'; id: string; summary: ManagerTreeSummary | null }
-  | { type: 'managerDetailsLoaded'; id: string; managers: EffectiveDepartmentManager[] };
+  | { type: 'managerDetailsLoaded'; id: string; managers: EffectiveDepartmentManager[] }
+  | { type: 'managerCacheInvalidated'; id: string };
 
 function withNodes(state: TreeState, nodes: Department[]): Record<string, Department> {
   const next = { ...state.nodesById };
@@ -107,6 +108,12 @@ export function treeReducer(state: TreeState, action: TreeAction): TreeState {
       return { ...state, managerSummaryById: { ...state.managerSummaryById, [action.id]: action.summary } };
     case 'managerDetailsLoaded':
       return { ...state, managerDetailsById: { ...state.managerDetailsById, [action.id]: action.managers } };
+    case 'managerCacheInvalidated':
+      return {
+        ...state,
+        managerSummaryById: withoutKey(state.managerSummaryById, action.id),
+        managerDetailsById: withoutKey(state.managerDetailsById, action.id),
+      };
     default:
       return state;
   }
