@@ -33,6 +33,11 @@ test('admin creates a department tree, edits, moves, archives and restores a dep
 
   // Select the root and add a child department.
   await rootItem.click();
+  // A freshly created department has no memberships yet -- both real (PR 274) headcounts
+  // should read 0, not the old "coming soon" placeholder.
+  const rootDetail = page.getByRole('article').filter({ hasText: rootName });
+  await expect(rootDetail.getByText('Прямая численность: 0')).toBeVisible();
+  await expect(rootDetail.getByText('Численность с подчинёнными: 0')).toBeVisible();
   await page.getByRole('button', { name: 'Добавить дочернее' }).click();
   const createChildDialog = page.getByRole('dialog').filter({ hasText: 'Добавить дочернее подразделение' });
   await createChildDialog.getByLabel('Название').fill(childName);

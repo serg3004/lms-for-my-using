@@ -42,6 +42,8 @@ function department(overrides: Partial<Department> & { id: string }): Department
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     _count: { children: 0 },
+    directUserCount: 0,
+    subtreeUserCount: 0,
     ...overrides,
   };
 }

@@ -93,6 +93,25 @@ describe('DepartmentsService', () => {
         expect.objectContaining({ where: { organizationId, parentId: null, status: 'archived' } }),
       );
     });
+
+    it('batches headcounts for every root in one raw query each, not one per department', async () => {
+      const secondId = '55555555-5555-5555-5555-555555555555';
+      const findMany = jest.fn(async () => [{ id: departmentId }, { id: secondId }]);
+      const queryRaw = jest
+        .fn()
+        .mockResolvedValueOnce([{ id: departmentId, count: 2n }])
+        .mockResolvedValueOnce([{ id: departmentId, count: 5n }, { id: secondId, count: 1n }]);
+      const prisma = createPrisma({ department: { findMany }, queryRaw });
+      const service = new DepartmentsService(prisma);
+
+      const roots = await service.getTree(organizationId);
+
+      expect(queryRaw).toHaveBeenCalledTimes(2);
+      expect(roots).toMatchObject([
+        { id: departmentId, directUserCount: 2, subtreeUserCount: 5 },
+        { id: secondId, directUserCount: 0, subtreeUserCount: 1 },
+      ]);
+    });
   });
 
   describe('getDepartment', () => {
@@ -101,6 +120,20 @@ describe('DepartmentsService', () => {
       const service = new DepartmentsService(prisma);
 
       await expect(service.getDepartment(departmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('attaches direct and subtree headcounts from the batched raw queries, defaulting to 0 when absent', async () => {
+      const findFirst = jest.fn(async () => ({ id: departmentId }));
+      const queryRaw = jest
+        .fn()
+        .mockResolvedValueOnce([{ id: departmentId, count: 3n }])
+        .mockResolvedValueOnce([]);
+      const prisma = createPrisma({ department: { findFirst }, queryRaw });
+      const service = new DepartmentsService(prisma);
+
+      const result = await service.getDepartment(departmentId, organizationId);
+
+      expect(result).toMatchObject({ id: departmentId, directUserCount: 3, subtreeUserCount: 0 });
     });
   });
 
