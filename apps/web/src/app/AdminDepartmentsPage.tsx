@@ -216,6 +216,12 @@ export function AdminDepartmentsPage() {
   const mergedTreeState = { ...tree, nodesById: mergedNodesById };
   const selected = mergedTreeState.selectedId ? mergedNodesById[mergedTreeState.selectedId] : null;
 
+  // reloadManagers() below is async and can resolve after the admin has since selected a
+  // different department; a ref (not the `selected` this closure captured at call time) is
+  // needed to check the *current* selection when the fetch actually completes.
+  const selectedIdRef = useRef<string | null>(null);
+  selectedIdRef.current = selected?.id ?? null;
+
   useEffect(() => {
     if (!selected) {
       setManagers([]);
@@ -278,8 +284,12 @@ export function AdminDepartmentsPage() {
 
   async function reloadManagers() {
     if (!selected) return;
-    const effective = await refreshManagerCachesFor(selected.id);
-    setManagers(effective);
+    const departmentId = selected.id;
+    const effective = await refreshManagerCachesFor(departmentId);
+    // The refetch is async and can resolve after the admin has since selected a different
+    // department -- only apply it to the detail panel's own `managers` state if that
+    // department is still the one selected, so a slow refresh for A can't overwrite B's panel.
+    if (selectedIdRef.current === departmentId) setManagers(effective);
   }
 
   async function handleAddManager(type: DepartmentManagerType) {
@@ -290,9 +300,6 @@ export function AdminDepartmentsPage() {
     setManagerActionState({ status: 'saving' });
     try {
       await createDepartmentManager({ organizationId: selected.organizationId, departmentId: selected.id, userId, type, isPrimary });
-      if (type === 'DIRECT') { setDirectAddUserId(''); setDirectAddIsPrimary(false); setDirectSearchTerm(''); } else { setFunctionalAddUserId(''); setFunctionalAddIsPrimary(false); setFunctionalSearchTerm(''); }
-      await reloadManagers();
-      setManagerActionState({ status: 'idle' });
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;
       setManagerActionState({
@@ -303,6 +310,16 @@ export function AdminDepartmentsPage() {
           t('admin.departments.managerSaveError', 'Unable to save the manager.'),
         ),
       });
+      return;
+    }
+    if (type === 'DIRECT') { setDirectAddUserId(''); setDirectAddIsPrimary(false); setDirectSearchTerm(''); } else { setFunctionalAddUserId(''); setFunctionalAddIsPrimary(false); setFunctionalSearchTerm(''); }
+    try {
+      await reloadManagers();
+      setManagerActionState({ status: 'idle' });
+    } catch {
+      // The manager was already saved successfully -- only the list refresh failed. Reporting
+      // this as a save failure would be wrong and could prompt a retry that then 409s.
+      setManagerActionState({ status: 'error', message: t('admin.departments.managerRefreshError', 'Saved, but the list could not be refreshed. Reselect the department to see the latest managers.') });
     }
   }
 
@@ -310,24 +327,24 @@ export function AdminDepartmentsPage() {
     setManagerActionState({ status: 'saving' });
     try {
       await closeDepartmentManager(managerId);
+    } catch {
+      setManagerActionState({ status: 'error', message: t('admin.departments.managerCloseError', 'Unable to close the manager.') });
+      return;
+    }
+    try {
       await reloadManagers();
       setManagerActionState({ status: 'idle' });
     } catch {
-      setManagerActionState({ status: 'error', message: t('admin.departments.managerCloseError', 'Unable to close the manager.') });
+      setManagerActionState({ status: 'error', message: t('admin.departments.managerRefreshError', 'Saved, but the list could not be refreshed. Reselect the department to see the latest managers.') });
     }
   }
 
   async function handleSaveManagerModes() {
     if (!selected) return;
     setModeState({ status: 'saving' });
+    let updated: { directManagerMode: string; functionalManagerMode: string };
     try {
-      const updated = await updateDepartmentManagerModes(selected.id, { directManagerMode: directMode, functionalManagerMode: functionalMode });
-      dispatchTree({
-        type: 'upsertNode',
-        node: { ...selected, directManagerMode: updated.directManagerMode as DepartmentManagerMode, functionalManagerMode: updated.functionalManagerMode as DepartmentManagerMode },
-      });
-      await reloadManagers();
-      setModeState({ status: 'idle' });
+      updated = await updateDepartmentManagerModes(selected.id, { directManagerMode: directMode, functionalManagerMode: functionalMode });
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;
       setModeState({
@@ -338,6 +355,17 @@ export function AdminDepartmentsPage() {
           t('admin.departments.managerSaveError', 'Unable to save the manager.'),
         ),
       });
+      return;
+    }
+    dispatchTree({
+      type: 'upsertNode',
+      node: { ...selected, directManagerMode: updated.directManagerMode as DepartmentManagerMode, functionalManagerMode: updated.functionalManagerMode as DepartmentManagerMode },
+    });
+    try {
+      await reloadManagers();
+      setModeState({ status: 'idle' });
+    } catch {
+      setModeState({ status: 'error', message: t('admin.departments.managerRefreshError', 'Saved, but the list could not be refreshed. Reselect the department to see the latest managers.') });
     }
   }
 

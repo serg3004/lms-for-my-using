@@ -728,6 +728,7 @@
       "managersLoadError": "Unable to load managers.",
       "managerConflict": "This user is already a manager of this type, or a primary manager already exists.",
       "managerSaveError": "Unable to save the manager.",
+      "managerRefreshError": "Saved, but the list could not be refreshed. Reselect the department to see the latest managers.",
       "managerCloseError": "Unable to close the manager.",
       "managerModesTitle": "Manager inheritance",
       "managerModeLocal": "Local",

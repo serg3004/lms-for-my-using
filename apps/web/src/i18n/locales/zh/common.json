@@ -728,6 +728,7 @@
       "managersLoadError": "无法加载负责人。",
       "managerConflict": "该用户已是此类型的负责人，或已存在主要负责人。",
       "managerSaveError": "无法保存负责人。",
+      "managerRefreshError": "已保存，但无法刷新列表。请重新选择部门以查看最新的负责人。",
       "managerCloseError": "无法关闭该负责人指派。",
       "managerModesTitle": "负责人继承方式",
       "managerModeLocal": "本部门",
