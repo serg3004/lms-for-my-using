@@ -718,6 +718,7 @@
       "managerTypeDirect": "直线",
       "managerTypeFunctional": "职能",
       "managerPrimary": "主要",
+      "managerAddDisabledByInherit": "在此添加负责人之前，请先将该类型切换为“本部门”。",
       "managerUnknown": "未知",
       "managerLocal": "本部门",
       "managerInherited": "继承",

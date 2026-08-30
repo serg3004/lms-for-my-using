@@ -183,8 +183,10 @@ export function AdminDepartmentsPage() {
   const [modeState, setModeState] = useState<SavingState>({ status: 'idle' });
   const [managerActionState, setManagerActionState] = useState<SavingState>({ status: 'idle' });
   const [directAddUserId, setDirectAddUserId] = useState('');
+  const [directAddIsPrimary, setDirectAddIsPrimary] = useState(false);
   const [directSearch, setDirectSearchTerm] = useUserSearch();
   const [functionalAddUserId, setFunctionalAddUserId] = useState('');
+  const [functionalAddIsPrimary, setFunctionalAddIsPrimary] = useState(false);
   const [functionalSearch, setFunctionalSearchTerm] = useUserSearch();
 
   const { state: loadState, reload } = useAsyncData<{ organizationId: string; roots: Department[]; types: DepartmentType[] }>(
@@ -220,7 +222,9 @@ export function AdminDepartmentsPage() {
     setDirectMode(selected.directManagerMode);
     setFunctionalMode(selected.functionalManagerMode);
     setDirectAddUserId('');
+    setDirectAddIsPrimary(false);
     setFunctionalAddUserId('');
+    setFunctionalAddIsPrimary(false);
     setManagerActionState({ status: 'idle' });
     setModeState({ status: 'idle' });
     setManagersState({ status: 'saving' }); // reuses 'saving' as the loading flag for this section
@@ -254,11 +258,12 @@ export function AdminDepartmentsPage() {
   async function handleAddManager(type: DepartmentManagerType) {
     if (!selected) return;
     const userId = type === 'DIRECT' ? directAddUserId : functionalAddUserId;
+    const isPrimary = type === 'DIRECT' ? directAddIsPrimary : functionalAddIsPrimary;
     if (!userId) return;
     setManagerActionState({ status: 'saving' });
     try {
-      await createDepartmentManager({ organizationId: selected.organizationId, departmentId: selected.id, userId, type, isPrimary: false });
-      if (type === 'DIRECT') { setDirectAddUserId(''); setDirectSearchTerm(''); } else { setFunctionalAddUserId(''); setFunctionalSearchTerm(''); }
+      await createDepartmentManager({ organizationId: selected.organizationId, departmentId: selected.id, userId, type, isPrimary });
+      if (type === 'DIRECT') { setDirectAddUserId(''); setDirectAddIsPrimary(false); setDirectSearchTerm(''); } else { setFunctionalAddUserId(''); setFunctionalAddIsPrimary(false); setFunctionalSearchTerm(''); }
       await reloadManagers();
       setManagerActionState({ status: 'idle' });
     } catch (error) {
@@ -732,8 +737,16 @@ export function AdminDepartmentsPage() {
                       const setSearchTermForType = type === 'DIRECT' ? setDirectSearchTerm : setFunctionalSearchTerm;
                       const addUserId = type === 'DIRECT' ? directAddUserId : functionalAddUserId;
                       const setAddUserId = type === 'DIRECT' ? setDirectAddUserId : setFunctionalAddUserId;
+                      const addIsPrimary = type === 'DIRECT' ? directAddIsPrimary : functionalAddIsPrimary;
+                      const setAddIsPrimary = type === 'DIRECT' ? setDirectAddIsPrimary : setFunctionalAddIsPrimary;
                       const candidates = managerCandidatesAvailableToAdd(search.results, typeManagers.map((m) => m.userId));
                       const typeTitle = type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional');
+                      const typeMode = type === 'DIRECT' ? directMode : functionalMode;
+                      // A local manager assigned while this type is INHERIT is silently excluded
+                      // from the effective set (computeEffectiveDepartmentManagers ignores local
+                      // rows in INHERIT mode), so it would vanish from this list on reload and
+                      // later conflict with switching back to INHERIT. Switch to Local first.
+                      const addDisabledByMode = typeMode === 'INHERIT';
                       return (
                         // Distinct class (not admin-membership-section) so it never nests inside
                         // the outer "Managers" section's own matches -- both used to share the
@@ -772,21 +785,34 @@ export function AdminDepartmentsPage() {
                               ))
                             )}
                           </ul>
+                          {addDisabledByMode ? (
+                            <p className="admin-form__hint">{t('admin.departments.managerAddDisabledByInherit', 'Switch this type to Local before adding a manager here.')}</p>
+                          ) : null}
                           <div className="admin-membership-add">
                             <input
                               type="search"
                               value={search.term}
                               placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+                              disabled={addDisabledByMode}
                               onChange={(e) => { setSearchTermForType(e.target.value); setAddUserId(''); }}
                             />
-                            <select value={addUserId} onChange={(e) => setAddUserId(e.target.value)}>
+                            <select value={addUserId} disabled={addDisabledByMode} onChange={(e) => setAddUserId(e.target.value)}>
                               <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
                               {candidates.map((u) => <option key={u.id} value={u.id}>{formatManagerUserName(u)}</option>)}
                             </select>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={addIsPrimary}
+                                disabled={addDisabledByMode}
+                                onChange={(e) => setAddIsPrimary(e.target.checked)}
+                              />
+                              {' '}{t('admin.departments.managerPrimary', 'Primary')}
+                            </label>
                             <button
                               className="admin-btn admin-btn--sm admin-btn--primary"
                               type="button"
-                              disabled={!addUserId || managerActionState.status === 'saving'}
+                              disabled={!addUserId || addDisabledByMode || managerActionState.status === 'saving'}
                               onClick={() => void handleAddManager(type)}
                             >
                               {t('admin.departments.add', 'Add')}

@@ -718,6 +718,7 @@
       "managerTypeDirect": "Тікелей",
       "managerTypeFunctional": "Функционалды",
       "managerPrimary": "Негізгі",
+      "managerAddDisabledByInherit": "Мұнда басшы қосудың алдында бұл түрді «Жергілікті» етіп ауыстырыңыз.",
       "managerUnknown": "Белгісіз",
       "managerLocal": "Жергілікті",
       "managerInherited": "Мұраланған",

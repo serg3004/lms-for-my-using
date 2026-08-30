@@ -718,6 +718,7 @@
       "managerTypeDirect": "Прямой",
       "managerTypeFunctional": "Функциональный",
       "managerPrimary": "Основной",
+      "managerAddDisabledByInherit": "Переключите этот тип на «Локальный», прежде чем добавлять руководителя здесь.",
       "managerUnknown": "Неизвестно",
       "managerLocal": "Локальный",
       "managerInherited": "Унаследован",

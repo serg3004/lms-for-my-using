@@ -718,6 +718,7 @@
       "managerTypeDirect": "Direct",
       "managerTypeFunctional": "Functional",
       "managerPrimary": "Primary",
+      "managerAddDisabledByInherit": "Switch this type to Local before adding a manager here.",
       "managerUnknown": "Unknown",
       "managerLocal": "Local",
       "managerInherited": "Inherited",
