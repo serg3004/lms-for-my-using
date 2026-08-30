@@ -246,33 +246,38 @@ export function AdminDepartmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the selected department's id should retrigger this load
   }, [selected?.id]);
 
-  async function reloadManagers() {
-    if (!selected) return;
-    const effective = await getEffectiveDepartmentManagers(selected.id);
-    setManagers(effective);
-    // Keep the tree's manager-summary badge for this node in sync -- it's fetched lazily and
-    // otherwise wouldn't reflect a manager just added/closed from this detail panel.
-    dispatchTree({ type: 'managerSummaryLoaded', id: selected.id, summary: summarizeDirectManagers(effective) });
-    dispatchTree({ type: 'managerDetailsLoaded', id: selected.id, managers: effective });
+  // Refetches the effective manager set for `id` and every already-loaded descendant of it
+  // (whose cached badge/popover data would otherwise go stale -- moving a subtree or changing
+  // an ancestor's managers/mode can change any INHERIT/MERGE descendant's effective set).
+  // Shared by reloadManagers() (mutations on the selected department) and handleMoveDepartment()
+  // (the moved department's ancestor chain, and therefore its own effective set, changes even
+  // though its own id does not).
+  async function refreshManagerCachesFor(id: string): Promise<EffectiveDepartmentManager[]> {
+    const effective = await getEffectiveDepartmentManagers(id);
+    dispatchTree({ type: 'managerSummaryLoaded', id, summary: summarizeDirectManagers(effective) });
+    dispatchTree({ type: 'managerDetailsLoaded', id, managers: effective });
 
-    // A manager or mode change here can change the effective set for any already-loaded
-    // descendant using INHERIT/MERGE, whose cached badge/popover data would otherwise stay
-    // stale until a full page reload. Only descendants with cached data (visible, or a
-    // popover opened at least once) are worth refetching here.
-    const descendantIds = collectLoadedDescendantIds(tree.childrenByParentId, selected.id).filter(
-      (id) => tree.managerSummaryById[id] !== undefined || tree.managerDetailsById[id] !== undefined,
+    const descendantIds = collectLoadedDescendantIds(tree.childrenByParentId, id).filter(
+      (descendantId) => tree.managerSummaryById[descendantId] !== undefined || tree.managerDetailsById[descendantId] !== undefined,
     );
     await Promise.all(
-      descendantIds.map(async (id) => {
+      descendantIds.map(async (descendantId) => {
         try {
-          const descendantEffective = await getEffectiveDepartmentManagers(id);
-          dispatchTree({ type: 'managerSummaryLoaded', id, summary: summarizeDirectManagers(descendantEffective) });
-          dispatchTree({ type: 'managerDetailsLoaded', id, managers: descendantEffective });
+          const descendantEffective = await getEffectiveDepartmentManagers(descendantId);
+          dispatchTree({ type: 'managerSummaryLoaded', id: descendantId, summary: summarizeDirectManagers(descendantEffective) });
+          dispatchTree({ type: 'managerDetailsLoaded', id: descendantId, managers: descendantEffective });
         } catch {
           // Leave the previous cached value; reselecting the node or reopening its popover retries.
         }
       }),
     );
+    return effective;
+  }
+
+  async function reloadManagers() {
+    if (!selected) return;
+    const effective = await refreshManagerCachesFor(selected.id);
+    setManagers(effective);
   }
 
   async function handleAddManager(type: DepartmentManagerType) {
@@ -340,7 +345,10 @@ export function AdminDepartmentsPage() {
       const effective = await getEffectiveDepartmentManagers(department.id);
       dispatchTree({ type: 'managerDetailsLoaded', id: department.id, managers: effective });
     } catch {
-      dispatchTree({ type: 'managerDetailsLoaded', id: department.id, managers: [] });
+      // Leave managerDetailsById[id] undefined (not []) on a transient failure -- the guard
+      // above treats any defined value, including an empty array, as "fetched and empty", so
+      // caching [] here would make a real error look like "no managers" and block the popover
+      // from ever retrying on a later open.
     }
   }
 
@@ -509,13 +517,23 @@ export function AdminDepartmentsPage() {
     setMoveState({ status: 'saving' });
 
     try {
-      await moveDepartment(moveTarget.id, moveParentId);
+      const movedId = moveTarget.id;
+      const wasAlreadySelected = selected?.id === movedId;
+      await moveDepartment(movedId, moveParentId);
       moveDialogRef.current?.close();
       setMoveTarget(null);
       await refreshChildrenOf(previousParentId);
       await refreshChildrenOf(moveParentId);
       if (moveParentId) dispatchTree({ type: 'expandIds', ids: [moveParentId] });
-      dispatchTree({ type: 'select', id: moveTarget.id });
+      dispatchTree({ type: 'select', id: movedId });
+      if (wasAlreadySelected) {
+        // Moving a department changes its ancestor chain and therefore its own effective
+        // INHERIT/MERGE managers, but its id doesn't change -- the detail-panel-loading effect
+        // (keyed on selected?.id) won't refire on its own, so refresh explicitly.
+        const [effective, path] = await Promise.all([refreshManagerCachesFor(movedId), getDepartmentPath(movedId)]);
+        setManagers(effective);
+        setAncestorNamesById(Object.fromEntries(path.map((department) => [department.id, department.name])));
+      }
     } catch (error) {
       const status = error instanceof ApiClientError ? error.status : undefined;
       setMoveState({
@@ -759,7 +777,11 @@ export function AdminDepartmentsPage() {
                       const setAddUserId = type === 'DIRECT' ? setDirectAddUserId : setFunctionalAddUserId;
                       const addIsPrimary = type === 'DIRECT' ? directAddIsPrimary : functionalAddIsPrimary;
                       const setAddIsPrimary = type === 'DIRECT' ? setDirectAddIsPrimary : setFunctionalAddIsPrimary;
-                      const candidates = managerCandidatesAvailableToAdd(search.results, typeManagers.map((m) => m.userId));
+                      // Exclude only already-LOCAL users, not every effective (incl. inherited) one:
+                      // in MERGE mode an inherited manager can validly also be assigned locally --
+                      // effective-managers.ts's dedup lets the local assignment win for that user.
+                      const localTypeUserIds = typeManagers.filter((m) => m.source === 'LOCAL').map((m) => m.userId);
+                      const candidates = managerCandidatesAvailableToAdd(search.results, localTypeUserIds);
                       const typeTitle = type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional');
                       // Gate on the *persisted* mode (selected.*ManagerMode), not the draft
                       // directMode/functionalMode selector state: an admin can flip that selector

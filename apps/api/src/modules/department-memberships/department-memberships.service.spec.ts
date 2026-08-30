@@ -84,7 +84,7 @@ describe('DepartmentMembershipsService', () => {
       expect(findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { departmentId, organizationId, effectiveTo: null },
-          orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }],
+          orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }, { id: 'asc' }],
           skip: 0,
           take: 20,
         }),

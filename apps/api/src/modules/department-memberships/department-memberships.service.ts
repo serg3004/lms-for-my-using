@@ -71,7 +71,11 @@ export class DepartmentMembershipsService {
     const [items, total] = await Promise.all([
       this.prisma.departmentMembership.findMany({
         where,
-        orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }],
+        // `id` is a required tie-breaker: a bulk transfer gives every transferred row the same
+        // isPrimary=true and the same effectiveFrom timestamp, so without it offset pagination
+        // has no deterministic order across those rows and separate page requests can duplicate
+        // or skip users.
+        orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }, { id: 'asc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
         select: {
