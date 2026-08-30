@@ -375,3 +375,41 @@ describe('UsersService updateUserStatus', () => {
     await expect(service.updateUserStatus(userId, actor, 'suspended')).rejects.toThrow(NotFoundException);
   });
 });
+
+describe('UsersService listUsers', () => {
+  it('applies an optional status filter to the where clause', async () => {
+    let capturedWhere: Record<string, unknown> | undefined;
+    const prisma = {
+      user: {
+        findMany: async ({ where }: { where: Record<string, unknown> }) => {
+          capturedWhere = where;
+          return [];
+        },
+        count: async () => 0,
+      },
+    } as unknown as PrismaService;
+
+    const service = new UsersService(prisma);
+    await service.listUsers(unrestrictedActor(organizationId), 1, 20, undefined, 'active');
+
+    expect(capturedWhere).toMatchObject({ organizationId, deletedAt: null, status: 'active' });
+  });
+
+  it('omits the status filter when none is given', async () => {
+    let capturedWhere: Record<string, unknown> | undefined;
+    const prisma = {
+      user: {
+        findMany: async ({ where }: { where: Record<string, unknown> }) => {
+          capturedWhere = where;
+          return [];
+        },
+        count: async () => 0,
+      },
+    } as unknown as PrismaService;
+
+    const service = new UsersService(prisma);
+    await service.listUsers(unrestrictedActor(organizationId), 1, 20);
+
+    expect(capturedWhere).not.toHaveProperty('status');
+  });
+});

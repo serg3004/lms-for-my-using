@@ -43,10 +43,11 @@ function useUserSearch(): [UserSearchState, (term: string) => void] {
     let cancelled = false;
     setSearch((prev) => ({ ...prev, status: 'loading' }));
     const timer = setTimeout(() => {
-      listUsers({ search: term, pageSize: 20 })
-        // listUsers has no server-side status filter; a suspended/invited/archived user would
-        // otherwise appear pickable here but always get rejected by ensureAssignable on submit.
-        .then((res) => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items.filter((u) => u.status === 'active') })); })
+      // status: 'active' is applied server-side (not by filtering the page afterwards) --
+      // filtering after the fact could silently drop valid active candidates whenever an
+      // inactive user's row happens to land inside the first pageSize results.
+      listUsers({ search: term, pageSize: 20, status: 'active' })
+        .then((res) => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items })); })
         .catch(() => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] })); });
     }, SEARCH_DEBOUNCE_MS);
     return () => { cancelled = true; clearTimeout(timer); };
@@ -369,23 +370,37 @@ export function AdminDepartmentUsersPage() {
 
         <section className="admin-membership-section">
           <h3>{t('admin.departmentUsers.addTitle', 'Add additional membership')}</h3>
+          {department.status !== 'active' ? (
+            <p className="admin-form__hint">{t('admin.departmentUsers.addDisabledArchived', 'This department is archived; restore it before adding members.')}</p>
+          ) : null}
           <div className="admin-membership-add">
             <input
               type="search"
               value={addSearch.term}
               placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
               aria-label={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+              disabled={department.status !== 'active'}
               onChange={(e) => { setAddSearchTerm(e.target.value); setAddUserId(''); }}
             />
-            <select value={addUserId} aria-label={t('admin.groups.selectUser', 'Select a user…')} onChange={(e) => setAddUserId(e.target.value)}>
+            <select
+              value={addUserId}
+              aria-label={t('admin.groups.selectUser', 'Select a user…')}
+              disabled={department.status !== 'active'}
+              onChange={(e) => setAddUserId(e.target.value)}
+            >
               <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
               {addCandidates.map((user) => <option key={user.id} value={user.id}>{formatMembershipUserName(user)}</option>)}
             </select>
             <label>
-              <input checked={addPrimary} onChange={(e) => setAddPrimary(e.target.checked)} type="checkbox" />
+              <input checked={addPrimary} disabled={department.status !== 'active'} onChange={(e) => setAddPrimary(e.target.checked)} type="checkbox" />
               {' '}{t('admin.departmentUsers.primary', 'Primary')}
             </label>
-            <button className="admin-btn admin-btn--sm admin-btn--primary" disabled={!addUserId || addState.status === 'saving'} onClick={() => void handleAddMembership()} type="button">
+            <button
+              className="admin-btn admin-btn--sm admin-btn--primary"
+              disabled={!addUserId || department.status !== 'active' || addState.status === 'saving'}
+              onClick={() => void handleAddMembership()}
+              type="button"
+            >
               {t('admin.departments.add', 'Add')}
             </button>
           </div>

@@ -116,11 +116,12 @@ function useUserSearch(): [UserSearchState, (term: string) => void] {
     let cancelled = false;
     setSearch((prev) => ({ ...prev, status: 'loading' }));
     const timer = setTimeout(() => {
-      listUsers({ search: term, pageSize: 20 })
-        // listUsers has no server-side status filter; a suspended/invited/archived user would
-        // otherwise appear pickable here but always get rejected by ensureAssignable on submit.
+      // status: 'active' is applied server-side (not by filtering the page afterwards) --
+      // filtering after the fact could silently drop valid active candidates whenever an
+      // inactive user's row happens to land inside the first pageSize results.
+      listUsers({ search: term, pageSize: 20, status: 'active' })
         .then((res) => {
-          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items.filter((u) => u.status === 'active') }));
+          if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items }));
         })
         .catch(() => {
           if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] }));
@@ -833,6 +834,10 @@ export function AdminDepartmentsPage() {
                       // reload and later conflict with switching back to INHERIT.
                       const persistedTypeMode = type === 'DIRECT' ? selected.directManagerMode : selected.functionalManagerMode;
                       const addDisabledByMode = persistedTypeMode === 'INHERIT';
+                      // ensureAssignable also rejects any assignment on an archived department;
+                      // don't offer a control that always ends in a 409.
+                      const isArchived = selected.status !== 'active';
+                      const addDisabled = addDisabledByMode || isArchived;
                       return (
                         // Distinct class (not admin-membership-section) so it never nests inside
                         // the outer "Managers" section's own matches -- both used to share the
@@ -871,7 +876,9 @@ export function AdminDepartmentsPage() {
                               ))
                             )}
                           </ul>
-                          {addDisabledByMode ? (
+                          {isArchived ? (
+                            <p className="admin-form__hint">{t('admin.departments.managerAddDisabledArchived', 'This department is archived; restore it before adding managers.')}</p>
+                          ) : addDisabledByMode ? (
                             <p className="admin-form__hint">{t('admin.departments.managerAddDisabledByInherit', 'Switch this type to Local before adding a manager here.')}</p>
                           ) : null}
                           <div className="admin-membership-add">
@@ -880,13 +887,13 @@ export function AdminDepartmentsPage() {
                               value={search.term}
                               placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
                               aria-label={`${typeTitle}: ${t('admin.groups.searchPlaceholder', 'Search by name or email…')}`}
-                              disabled={addDisabledByMode}
+                              disabled={addDisabled}
                               onChange={(e) => { setSearchTermForType(e.target.value); setAddUserId(''); }}
                             />
                             <select
                               value={addUserId}
                               aria-label={`${typeTitle}: ${t('admin.groups.selectUser', 'Select a user…')}`}
-                              disabled={addDisabledByMode}
+                              disabled={addDisabled}
                               onChange={(e) => setAddUserId(e.target.value)}
                             >
                               <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
@@ -896,7 +903,7 @@ export function AdminDepartmentsPage() {
                               <input
                                 type="checkbox"
                                 checked={addIsPrimary}
-                                disabled={addDisabledByMode}
+                                disabled={addDisabled}
                                 onChange={(e) => setAddIsPrimary(e.target.checked)}
                               />
                               {' '}{t('admin.departments.managerPrimary', 'Primary')}
@@ -904,7 +911,7 @@ export function AdminDepartmentsPage() {
                             <button
                               className="admin-btn admin-btn--sm admin-btn--primary"
                               type="button"
-                              disabled={!addUserId || addDisabledByMode || managerActionState.status === 'saving'}
+                              disabled={!addUserId || addDisabled || managerActionState.status === 'saving'}
                               onClick={() => void handleAddManager(type)}
                             >
                               {t('admin.departments.add', 'Add')}
