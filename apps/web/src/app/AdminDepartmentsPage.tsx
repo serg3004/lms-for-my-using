@@ -245,6 +245,10 @@ export function AdminDepartmentsPage() {
     if (!selected) return;
     const effective = await getEffectiveDepartmentManagers(selected.id);
     setManagers(effective);
+    // Keep the tree's manager-summary badge for this node in sync -- it's fetched lazily and
+    // otherwise wouldn't reflect a manager just added/closed from this detail panel.
+    dispatchTree({ type: 'managerSummaryLoaded', id: selected.id, summary: summarizeDirectManagers(effective) });
+    dispatchTree({ type: 'managerDetailsLoaded', id: selected.id, managers: effective });
   }
 
   async function handleAddManager(type: DepartmentManagerType) {

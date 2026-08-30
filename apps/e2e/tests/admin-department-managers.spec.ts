@@ -24,20 +24,32 @@ async function createLearner(page: Page, email: string) {
   await expect(dialog).not.toBeVisible();
 }
 
-test('admin assigns a primary DIRECT manager, sees it in the tree and editor, then closes it', async ({ page }, testInfo) => {
+async function createRootDepartment(page: Page, name: string) {
+  await page.getByRole('button', { name: /Добавить корневое подразделение/ }).click();
+  const dialog = page.getByRole('dialog').filter({ hasText: 'Добавить корневое подразделение' });
+  await dialog.getByLabel('Название').fill(name);
+  await dialog.getByRole('button', { name: 'Создать' }).click();
+  await expect(dialog).not.toBeVisible();
+}
+
+// One test, one admin login: department managers and the department users page share the same
+// account-level login rate limit as every other admin-flow spec in this suite (5 logins/minute),
+// so this covers both PR 273 surfaces without adding a second admin login to the shared budget.
+test('admin manages department managers and department users', async ({ page }, testInfo) => {
   const suffix = `${testInfo.workerIndex}-${Date.now()}`;
-  const email = `e2e-manager-${suffix}@example.invalid`;
+  const managerEmail = `e2e-manager-${suffix}@example.invalid`;
+  const memberEmail = `e2e-member-${suffix}@example.invalid`;
   const deptName = `E2E Managed Dept ${suffix}`;
+  const fromName = `E2E From ${suffix}`;
+  const toName = `E2E To ${suffix}`;
 
   await loginAsAdmin(page);
-  await createLearner(page, email);
+  await createLearner(page, managerEmail);
+  await createLearner(page, memberEmail);
 
+  // ── Department managers: assign a primary DIRECT manager, see it in the tree, close it ──
   await page.goto('/admin/departments');
-  await page.getByRole('button', { name: /Добавить корневое подразделение/ }).click();
-  const createDialog = page.getByRole('dialog').filter({ hasText: 'Добавить корневое подразделение' });
-  await createDialog.getByLabel('Название').fill(deptName);
-  await createDialog.getByRole('button', { name: 'Создать' }).click();
-  await expect(createDialog).not.toBeVisible();
+  await createRootDepartment(page, deptName);
 
   const tree = page.getByRole('tree', { name: 'Дерево подразделений' });
   const item = tree.getByRole('treeitem', { name: new RegExp(deptName) });
@@ -47,10 +59,9 @@ test('admin assigns a primary DIRECT manager, sees it in the tree and editor, th
   // Scoped by its own <h4>, not hasText -- the "Manager inheritance" subsection also contains
   // the word "Прямой" as a <label>, so a substring filter would match both subsections.
   const directSection = detail.locator('.admin-manager-subsection').filter({ has: page.getByRole('heading', { name: 'Прямой', level: 4 }) });
-  await directSection.locator('input[type="search"]').fill(email);
+  await directSection.locator('input[type="search"]').fill(managerEmail);
   await directSection.locator('select').selectOption({ label: 'Candidate Manager' });
   await directSection.getByRole('button', { name: 'Добавить' }).click();
-
   await expect(directSection.getByText('Candidate Manager')).toBeVisible();
 
   // The tree badge shows the primary manager's name once the effective set is fetched.
@@ -58,33 +69,17 @@ test('admin assigns a primary DIRECT manager, sees it in the tree and editor, th
 
   await directSection.getByRole('button', { name: 'Закрыть' }).click();
   await expect(directSection.getByText('Руководители не назначены.')).toBeVisible();
-});
 
-test('admin manages department users: adds an additional membership and transfers it', async ({ page }, testInfo) => {
-  const suffix = `${testInfo.workerIndex}-${Date.now()}`;
-  const email = `e2e-member-${suffix}@example.invalid`;
-  const fromName = `E2E From ${suffix}`;
-  const toName = `E2E To ${suffix}`;
+  // ── Department users: add an additional membership as primary and transfer it ──
+  await createRootDepartment(page, fromName);
+  await createRootDepartment(page, toName);
 
-  await loginAsAdmin(page);
-  await createLearner(page, email);
-
-  await page.goto('/admin/departments');
-  for (const name of [fromName, toName]) {
-    await page.getByRole('button', { name: /Добавить корневое подразделение/ }).click();
-    const dialog = page.getByRole('dialog').filter({ hasText: 'Добавить корневое подразделение' });
-    await dialog.getByLabel('Название').fill(name);
-    await dialog.getByRole('button', { name: 'Создать' }).click();
-    await expect(dialog).not.toBeVisible();
-  }
-
-  const tree = page.getByRole('tree', { name: 'Дерево подразделений' });
   await tree.getByRole('treeitem', { name: new RegExp(fromName) }).click();
   await page.getByRole('link', { name: 'Сотрудники' }).click();
   await expect(page).toHaveURL(/\/admin\/departments\/.+\/users$/);
   await expect(page.getByRole('heading', { name: fromName })).toBeVisible();
 
-  await page.locator('.admin-membership-add input[type="search"]').fill(email);
+  await page.locator('.admin-membership-add input[type="search"]').fill(memberEmail);
   await page.locator('.admin-membership-add select').selectOption({ label: 'Candidate Manager' });
   // Checked so the row is a PRIMARY membership -- Transfer only appears on primary rows (it moves
   // a user's primary department, which would be misleading to offer on an additional membership).
