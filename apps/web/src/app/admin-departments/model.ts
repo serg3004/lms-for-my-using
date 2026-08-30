@@ -1,4 +1,5 @@
 import type { Department } from '../../shared/api/departments.js';
+import type { DepartmentManagerType, EffectiveDepartmentManager } from '../../shared/api/department-managers.js';
 
 /**
  * Owns only client-side tree UI state (lazy children, expand/collapse, selection). The root
@@ -11,6 +12,11 @@ export type TreeState = {
   expandedIds: Record<string, true>;
   loadingIds: Record<string, true>;
   selectedId: string | null;
+  /** Effective DIRECT-manager summary per node, fetched lazily for currently-visible nodes only
+   *  (same lazy-per-visible-node cost as children/type data already paid by this tree). */
+  managerSummaryById: Record<string, ManagerTreeSummary | null | undefined>;
+  /** Full effective manager list per node, fetched on demand only when its badge popover opens. */
+  managerDetailsById: Record<string, EffectiveDepartmentManager[] | undefined>;
 };
 
 export function initialTreeState(): TreeState {
@@ -20,6 +26,8 @@ export function initialTreeState(): TreeState {
     expandedIds: {},
     loadingIds: {},
     selectedId: null,
+    managerSummaryById: {},
+    managerDetailsById: {},
   };
 }
 
@@ -31,7 +39,10 @@ export type TreeAction =
   | { type: 'expandIds'; ids: string[] }
   | { type: 'collapse'; id: string }
   | { type: 'select'; id: string | null }
-  | { type: 'upsertNode'; node: Department };
+  | { type: 'upsertNode'; node: Department }
+  | { type: 'managerSummaryLoaded'; id: string; summary: ManagerTreeSummary | null }
+  | { type: 'managerDetailsLoaded'; id: string; managers: EffectiveDepartmentManager[] }
+  | { type: 'managerCacheInvalidated'; id: string };
 
 function withNodes(state: TreeState, nodes: Department[]): Record<string, Department> {
   const next = { ...state.nodesById };
@@ -43,6 +54,21 @@ function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T
   const next = { ...record };
   delete next[key];
   return next;
+}
+
+/** All department ids currently loaded as descendants of `rootId` via childrenByParentId.
+ *  Only walks branches that have actually been fetched -- a lazy child not yet expanded is
+ *  not descended into, since it holds no cached manager data to invalidate. */
+export function collectLoadedDescendantIds(childrenByParentId: TreeState['childrenByParentId'], rootId: string): string[] {
+  const result: string[] = [];
+  const stack = [...(childrenByParentId[rootId] ?? [])];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    result.push(id);
+    const children = childrenByParentId[id];
+    if (children) stack.push(...children);
+  }
+  return result;
 }
 
 export function treeReducer(state: TreeState, action: TreeAction): TreeState {
@@ -78,6 +104,16 @@ export function treeReducer(state: TreeState, action: TreeAction): TreeState {
       return { ...state, selectedId: action.id };
     case 'upsertNode':
       return { ...state, nodesById: { ...state.nodesById, [action.node.id]: action.node } };
+    case 'managerSummaryLoaded':
+      return { ...state, managerSummaryById: { ...state.managerSummaryById, [action.id]: action.summary } };
+    case 'managerDetailsLoaded':
+      return { ...state, managerDetailsById: { ...state.managerDetailsById, [action.id]: action.managers } };
+    case 'managerCacheInvalidated':
+      return {
+        ...state,
+        managerSummaryById: withoutKey(state.managerSummaryById, action.id),
+        managerDetailsById: withoutKey(state.managerDetailsById, action.id),
+      };
     default:
       return state;
   }
@@ -185,4 +221,59 @@ export function validateDepartmentTypeFields(
   if (!code.trim()) errors.code = messages.codeRequired;
   if (!name.trim()) errors.name = messages.nameRequired;
   return errors;
+}
+
+// ── Manager helpers (PR 273) ────────────────────────────────────────────────
+//
+// A `DepartmentManager` relation is deliberately never rendered with the RBAC-role badge or
+// wording used for `admin.roles.options.*` (see AdminRolesPage) -- it is a department-scoped
+// assignment, not the org-wide RBAC `manager` role, and the two must stay visually distinct.
+
+export type ManagerCandidate = { id: string; firstName: string; lastName: string | null; email: string };
+
+export function formatManagerUserName(user: ManagerCandidate): string {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+}
+
+export function managerCandidatesAvailableToAdd(allUsers: ManagerCandidate[], excludeIds: string[]): ManagerCandidate[] {
+  const excluded = new Set(excludeIds);
+  return allUsers.filter((user) => !excluded.has(user.id));
+}
+
+export function managersOfType(managers: EffectiveDepartmentManager[], type: DepartmentManagerType): EffectiveDepartmentManager[] {
+  return managers.filter((manager) => manager.type === type);
+}
+
+/** Primary first, for both the editor's per-type list and the tree badge summary. */
+export function sortManagersForDisplay(managers: EffectiveDepartmentManager[]): EffectiveDepartmentManager[] {
+  return [...managers].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary));
+}
+
+export type ManagerTreeSummary = {
+  primaryName: string | null;
+  additionalCount: number;
+  isInherited: boolean;
+};
+
+/** Tree badge summary for DIRECT managers, per plan: primary name + "N more", local/inherited marker. */
+export function summarizeDirectManagers(managers: EffectiveDepartmentManager[]): ManagerTreeSummary | null {
+  const direct = managersOfType(managers, 'DIRECT');
+  if (direct.length === 0) return null;
+
+  const [primary] = sortManagersForDisplay(direct);
+  if (!primary) return null;
+
+  return {
+    primaryName: primary.user ? formatManagerUserName(primary.user) : null,
+    additionalCount: direct.length - 1,
+    isInherited: primary.source === 'INHERITED',
+  };
+}
+
+export function resolveManagerSaveErrorMessage(status: number | undefined, conflictMessage: string, genericMessage: string): string {
+  return status === 409 ? conflictMessage : genericMessage;
+}
+
+export function resolveManagerModeErrorMessage(status: number | undefined, conflictMessage: string, genericMessage: string): string {
+  return status === 409 ? conflictMessage : genericMessage;
 }

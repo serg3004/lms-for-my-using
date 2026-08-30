@@ -144,8 +144,31 @@ describe('department memberships (database)', () => {
 
     await service.bulkTransfer(toDept.id, organization.id, { userIds: [userA.id, userB.id] }, null);
 
-    const usersInTarget = await service.listDepartmentUsers(toDept.id, organization.id);
-    expect(usersInTarget.map((m) => m.userId).sort()).toEqual([userA.id, userB.id].sort());
+    const usersInTarget = await service.listDepartmentUsers(toDept.id, organization.id, { page: 1, pageSize: 20 });
+    expect(usersInTarget.items.map((m) => m.userId).sort()).toEqual([userA.id, userB.id].sort());
+    expect(usersInTarget.total).toBe(2);
+  });
+
+  it('server-side search and pagination narrow and page current department users', async () => {
+    const organization = await createOrganization();
+    const department = await createDepartment(organization.id, 'Big dept');
+    const alice = await createUser(organization.id, 'Alice');
+    const bob = await createUser(organization.id, 'Bob');
+    await Promise.all([
+      service.createMembership({ organizationId: organization.id, departmentId: department.id, userId: alice.id, isPrimary: true }, null),
+      service.createMembership({ organizationId: organization.id, departmentId: department.id, userId: bob.id, isPrimary: false }, null),
+    ]);
+
+    const searched = await service.listDepartmentUsers(department.id, organization.id, { page: 1, pageSize: 20, search: 'alice' });
+    expect(searched.items.map((m) => m.userId)).toEqual([alice.id]);
+    expect(searched.total).toBe(1);
+
+    const firstPage = await service.listDepartmentUsers(department.id, organization.id, { page: 1, pageSize: 1 });
+    const secondPage = await service.listDepartmentUsers(department.id, organization.id, { page: 2, pageSize: 1 });
+    expect(firstPage.items).toHaveLength(1);
+    expect(secondPage.items).toHaveLength(1);
+    expect(firstPage.items[0]?.userId).not.toBe(secondPage.items[0]?.userId);
+    expect(firstPage.total).toBe(2);
   });
 
   it('never lets two concurrent transfers for the same user create two current primaries', async () => {

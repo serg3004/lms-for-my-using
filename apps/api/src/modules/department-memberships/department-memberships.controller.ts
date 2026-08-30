@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import {
   AuthGuard,
@@ -10,7 +10,12 @@ import {
 } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { DepartmentMembershipsService } from './department-memberships.service.js';
-import { bulkTransferSchema, createDepartmentMembershipSchema, departmentTransferSchema } from './department-memberships.schemas.js';
+import {
+  bulkTransferSchema,
+  createDepartmentMembershipSchema,
+  departmentTransferSchema,
+  listDepartmentUsersQuerySchema,
+} from './department-memberships.schemas.js';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
@@ -19,8 +24,9 @@ export class DepartmentMembershipsController {
 
   @Get('departments/:id/users')
   @Roles(...rolePolicies.departmentMembershipsRead)
-  listDepartmentUsers(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
-    return this.departmentMembershipsService.listDepartmentUsers(id, request.currentUser!.organizationId);
+  listDepartmentUsers(@Param('id') id: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = listDepartmentUsersQuerySchema.parse(query);
+    return this.departmentMembershipsService.listDepartmentUsers(id, request.currentUser!.organizationId, parsed);
   }
 
   @Get('users/:id/department-memberships')

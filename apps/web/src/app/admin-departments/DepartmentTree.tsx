@@ -1,20 +1,21 @@
-import { useEffect, useRef, type KeyboardEvent, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject } from 'react';
 import type { TFunction } from 'i18next';
 
 import type { Department } from '../../shared/api/departments.js';
 import { Badge } from '../../shared/ui.js';
-import { nextVisibleId, previousVisibleId, visibleOrder, type TreeState } from './model.js';
+import { formatManagerUserName, managersOfType, nextVisibleId, previousVisibleId, visibleOrder, type TreeState } from './model.js';
 
 type DepartmentTreeProps = {
   rootIds: string[];
   state: TreeState;
   onToggleExpand: (department: Department) => void;
   onSelect: (id: string) => void;
+  onRequestManagerDetails: (department: Department) => void;
   typeLabel: (typeId: string | null) => string | null;
   t: TFunction;
 };
 
-export function DepartmentTree({ rootIds, state, onToggleExpand, onSelect, typeLabel, t }: DepartmentTreeProps) {
+export function DepartmentTree({ rootIds, state, onToggleExpand, onSelect, onRequestManagerDetails, typeLabel, t }: DepartmentTreeProps) {
   const nodeRefs = useRef(new Map<string, HTMLDivElement>());
 
   useEffect(() => {
@@ -26,6 +27,12 @@ export function DepartmentTree({ rootIds, state, onToggleExpand, onSelect, typeL
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // A keydown on an interactive descendant (the expand twisty, the manager-popover button)
+    // bubbles up here too. Without this guard the Enter/Space branch below calls
+    // preventDefault() on it and blocks the button's own native keyboard activation --
+    // a keyboard-only user could never open the popover or toggle expand with Enter/Space.
+    if (event.target instanceof HTMLElement && event.target.closest('button, input, select, a, textarea')) return;
+
     const order = visibleOrder(rootIds, state);
     const current = state.selectedId;
 
@@ -83,6 +90,7 @@ export function DepartmentTree({ rootIds, state, onToggleExpand, onSelect, typeL
           id={id}
           level={1}
           nodeRefs={nodeRefs}
+          onRequestManagerDetails={onRequestManagerDetails}
           onSelect={onSelect}
           onToggleExpand={onToggleExpand}
           state={state}
@@ -101,11 +109,31 @@ type DepartmentTreeItemProps = {
   nodeRefs: MutableRefObject<Map<string, HTMLDivElement>>;
   onToggleExpand: (department: Department) => void;
   onSelect: (id: string) => void;
+  onRequestManagerDetails: (department: Department) => void;
   typeLabel: (typeId: string | null) => string | null;
   t: TFunction;
 };
 
-function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSelect, typeLabel, t }: DepartmentTreeItemProps) {
+function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSelect, onRequestManagerDetails, typeLabel, t }: DepartmentTreeItemProps) {
+  const [managerPopoverOpen, setManagerPopoverOpen] = useState(false);
+  const managerRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!managerPopoverOpen) return;
+    function handlePointerDown(event: PointerEvent) {
+      if (managerRef.current && !managerRef.current.contains(event.target as Node)) setManagerPopoverOpen(false);
+    }
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') setManagerPopoverOpen(false);
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [managerPopoverOpen]);
+
   const node = state.nodesById[id];
   if (!node) return null;
 
@@ -115,6 +143,8 @@ function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSele
   const hasChildren = node._count.children > 0;
   const children = state.childrenByParentId[id];
   const type = typeLabel(node.departmentTypeId);
+  const managerSummary = state.managerSummaryById[id];
+  const managerDetails = state.managerDetailsById[id];
 
   return (
     <div
@@ -153,6 +183,53 @@ function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSele
           <Badge variant="neutral">{t('admin.departments.archived', 'Archived')}</Badge>
         ) : null}
         {type ? <span className="admin-departments-tree__type">{type}</span> : null}
+        {managerSummary ? (
+          <span className="admin-departments-tree__manager" ref={managerRef}>
+            {/* This badge represents the DepartmentManager relation, not the RBAC "manager" role
+                (see admin.roles.options.manager) -- plain neutral Badge, never StatusBadge. */}
+            <button
+              aria-expanded={managerPopoverOpen}
+              className="admin-btn admin-btn--sm admin-btn--secondary"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!managerPopoverOpen) onRequestManagerDetails(node);
+                setManagerPopoverOpen((open) => !open);
+              }}
+              type="button"
+            >
+              {managerSummary.primaryName ?? t('admin.departments.managerUnknown', 'Unknown')}
+              {managerSummary.additionalCount > 0 ? ` +${managerSummary.additionalCount}` : ''}
+            </button>
+            <Badge variant="neutral">
+              {managerSummary.isInherited
+                ? t('admin.departments.managerInherited', 'Inherited')
+                : t('admin.departments.managerLocal', 'Local')}
+            </Badge>
+            {managerPopoverOpen ? (
+              <div className="admin-departments-tree__manager-popover" onClick={(event) => event.stopPropagation()} role="group">
+                {managerDetails === undefined ? (
+                  <p className="admin-form__hint" role="status">{t('admin.departments.childrenLoading', 'Loading…')}</p>
+                ) : managerDetails.length === 0 ? (
+                  <p className="admin-form__hint">{t('admin.departments.noManagers', 'No managers assigned.')}</p>
+                ) : (
+                  <ul className="admin-membership-list">
+                    {[...managersOfType(managerDetails, 'DIRECT'), ...managersOfType(managerDetails, 'FUNCTIONAL')].map((m) => (
+                      <li key={m.id}>
+                        <span>
+                          {m.user ? formatManagerUserName(m.user) : t('admin.departments.managerUnknown', 'Unknown')}
+                          {' — '}
+                          {m.type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional')}
+                          {m.isPrimary ? ` (${t('admin.departments.managerPrimary', 'Primary')})` : ''}
+                          {m.source === 'INHERITED' ? ` — ${t('admin.departments.managerInherited', 'Inherited')}` : ''}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+          </span>
+        ) : null}
       </div>
       {isExpanded && (
         <div role="group">
@@ -167,6 +244,7 @@ function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSele
                 key={childId}
                 level={level + 1}
                 nodeRefs={nodeRefs}
+                onRequestManagerDetails={onRequestManagerDetails}
                 onSelect={onSelect}
                 onToggleExpand={onToggleExpand}
                 state={state}

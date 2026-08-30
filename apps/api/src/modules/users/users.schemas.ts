@@ -6,6 +6,7 @@ export const userStatusSchema = z.enum(['active', 'invited', 'suspended', 'archi
 
 export const listUsersQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(120).optional(),
+  status: userStatusSchema.optional(),
 });
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 

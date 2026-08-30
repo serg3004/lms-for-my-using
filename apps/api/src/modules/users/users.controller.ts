@@ -28,8 +28,8 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)
   listUsers(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
-    const { page, pageSize, search } = listUsersQuerySchema.parse(query);
-    return this.usersService.listUsers(request.currentUser!, page, pageSize, search);
+    const { page, pageSize, search, status } = listUsersQuerySchema.parse(query);
+    return this.usersService.listUsers(request.currentUser!, page, pageSize, search, status);
   }
 
   @Get(':id')

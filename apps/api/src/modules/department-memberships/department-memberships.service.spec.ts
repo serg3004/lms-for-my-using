@@ -37,7 +37,7 @@ function departmentConflictError() {
 function createPrisma(overrides: {
   department?: Partial<Record<'findFirst', jest.Mock>>;
   user?: Partial<Record<'findFirst' | 'findMany', jest.Mock>>;
-  departmentMembership?: Partial<Record<'findFirst' | 'findMany' | 'create' | 'update', jest.Mock>>;
+  departmentMembership?: Partial<Record<'findFirst' | 'findMany' | 'count' | 'create' | 'update', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     department: {
@@ -52,6 +52,7 @@ function createPrisma(overrides: {
     departmentMembership: {
       findFirst: jest.fn(async () => null),
       findMany: jest.fn(async () => []),
+      count: jest.fn(async () => 0),
       create: jest.fn(async () => ({ id: membershipId })),
       update: jest.fn(async () => ({ id: membershipId })),
       ...overrides.departmentMembership,
@@ -68,7 +69,9 @@ describe('DepartmentMembershipsService', () => {
       const prisma = createPrisma({ department: { findFirst: jest.fn(async () => null) } });
       const service = new DepartmentMembershipsService(prisma);
 
-      await expect(service.listDepartmentUsers(departmentId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.listDepartmentUsers(departmentId, organizationId, { page: 1, pageSize: 20 }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
     it('lists only current memberships, primary first', async () => {
@@ -76,14 +79,41 @@ describe('DepartmentMembershipsService', () => {
       const prisma = createPrisma({ departmentMembership: { findMany } });
       const service = new DepartmentMembershipsService(prisma);
 
-      await service.listDepartmentUsers(departmentId, organizationId);
+      const result = await service.listDepartmentUsers(departmentId, organizationId, { page: 1, pageSize: 20 });
 
       expect(findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { departmentId, organizationId, effectiveTo: null },
-          orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }],
+          orderBy: [{ isPrimary: 'desc' }, { effectiveFrom: 'asc' }, { id: 'asc' }],
+          skip: 0,
+          take: 20,
         }),
       );
+      expect(result).toEqual({ items: [], page: 1, pageSize: 20, total: 0 });
+    });
+
+    it('filters by search across first name, last name, and email', async () => {
+      const findMany = jest.fn(async () => []);
+      const count = jest.fn(async () => 0);
+      const prisma = createPrisma({ departmentMembership: { findMany, count } });
+      const service = new DepartmentMembershipsService(prisma);
+
+      await service.listDepartmentUsers(departmentId, organizationId, { page: 2, pageSize: 10, search: 'ann' });
+
+      const expectedWhere = {
+        departmentId,
+        organizationId,
+        effectiveTo: null,
+        user: {
+          OR: [
+            { firstName: { contains: 'ann', mode: 'insensitive' } },
+            { lastName: { contains: 'ann', mode: 'insensitive' } },
+            { email: { contains: 'ann', mode: 'insensitive' } },
+          ],
+        },
+      };
+      expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expectedWhere, skip: 10, take: 10 }));
+      expect(count).toHaveBeenCalledWith({ where: expectedWhere });
     });
   });
 

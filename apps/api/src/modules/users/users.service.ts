@@ -10,6 +10,7 @@ import {
   CreateBulkUsersInput,
   CreateUserInput,
   ImportUsersInput,
+  ListUsersQuery,
   UpdateUserInput,
   UpdateUserStatusInput,
 } from './users.schemas.js';
@@ -61,12 +62,13 @@ export class UsersService {
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
   ) {}
 
-  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string) {
+  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
     const skip = (page - 1) * pageSize;
     const where = {
       organizationId: actor.organizationId,
       ...this.teamScope.user(actor),
       deletedAt: null,
+      ...(status ? { status } : {}),
       ...(search
         ? {
             OR: [
