@@ -359,7 +359,9 @@ export function AdminDepartmentsPage() {
           const effective = await getEffectiveDepartmentManagers(node.id);
           dispatchTree({ type: 'managerSummaryLoaded', id: node.id, summary: summarizeDirectManagers(effective) });
         } catch {
-          dispatchTree({ type: 'managerSummaryLoaded', id: node.id, summary: null });
+          // Leave managerSummaryById[id] as-is (undefined, if never loaded) on a transient
+          // failure -- dispatching null here would be indistinguishable from a genuine "no
+          // DIRECT managers" result and permanently hide a real badge with no retry path.
         }
       }),
     );

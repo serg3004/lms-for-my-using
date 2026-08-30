@@ -69,7 +69,10 @@ function useDepartmentSearch(): [DeptSearchState, (term: string) => void] {
     let cancelled = false;
     setSearch((prev) => ({ ...prev, status: 'loading' }));
     const timer = setTimeout(() => {
-      listDepartments({ search: term, pageSize: 20 })
+      // Both single and bulk transfer reject an archived target department with a 409, so
+      // offering one here (DepartmentsService.listDepartments applies no default status
+      // filter) would let a user pick an option that always fails to confirm.
+      listDepartments({ search: term, pageSize: 20, status: 'active' })
         .then((res) => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'idle', results: res.items })); })
         .catch(() => { if (!cancelled) setSearch((prev) => ({ ...prev, status: 'error', results: [] })); });
     }, SEARCH_DEBOUNCE_MS);

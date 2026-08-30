@@ -27,6 +27,12 @@ export function DepartmentTree({ rootIds, state, onToggleExpand, onSelect, onReq
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    // A keydown on an interactive descendant (the expand twisty, the manager-popover button)
+    // bubbles up here too. Without this guard the Enter/Space branch below calls
+    // preventDefault() on it and blocks the button's own native keyboard activation --
+    // a keyboard-only user could never open the popover or toggle expand with Enter/Space.
+    if (event.target instanceof HTMLElement && event.target.closest('button, input, select, a, textarea')) return;
+
     const order = visibleOrder(rootIds, state);
     const current = state.selectedId;
 
