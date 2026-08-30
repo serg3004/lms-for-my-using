@@ -51,6 +51,11 @@ enum DepartmentManagerMode {
   MERGE
 }
 
+enum PositionStatus {
+  active
+  archived
+}
+
 enum DepartmentManagerType {
   DIRECT
   FUNCTIONAL
@@ -200,6 +205,7 @@ model Organization {
   departments                Department[]
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
+  positions                  Position[]
   orgStructureEvents         OrgStructureEvent[]
   materialFileDeletionAudits MaterialFileDeletionAudit[]
   auditLogs                  AuditLog[]
@@ -399,6 +405,7 @@ model DepartmentMembership {
   organizationId String       @map("organization_id") @db.Uuid
   departmentId   String       @map("department_id") @db.Uuid
   userId         String       @map("user_id") @db.Uuid
+  positionId     String?      @map("position_id") @db.Uuid
   isPrimary      Boolean      @default(false) @map("is_primary")
   effectiveFrom  DateTime     @default(now()) @map("effective_from") @db.Timestamptz
   effectiveTo    DateTime?    @map("effective_to") @db.Timestamptz
@@ -407,11 +414,39 @@ model DepartmentMembership {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   department     Department   @relation(fields: [departmentId, organizationId], references: [id, organizationId], onDelete: Cascade)
   user           User         @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  // Never hard-deleted (only archived, per plan invariant), so NoAction mirrors
+  // Department.departmentType's optional-relation pattern rather than a cascade/null-on-delete.
+  position       Position?    @relation(fields: [positionId, organizationId], references: [id, organizationId], onDelete: NoAction)
 
   @@unique([id, organizationId])
   @@index([organizationId, departmentId, effectiveTo])
   @@index([organizationId, userId, effectiveTo])
+  @@index([organizationId, positionId])
   @@map("department_memberships")
+}
+
+/// Tenant-scoped position/job-title catalog (PR 275). A DepartmentMembership optionally
+/// references one -- current position is read off the user's current primary membership;
+/// a closed (historical) membership keeps whatever Position it had at the time, and an
+/// additional (non-primary) membership may carry its own, independent Position. Legacy
+/// free-text User.position is untouched and not backfilled by this model (see plan PR 276).
+model Position {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organizationId String                 @map("organization_id") @db.Uuid
+  code           String
+  title          String
+  description    String?
+  status         PositionStatus         @default(active)
+  archivedAt     DateTime?              @map("archived_at") @db.Timestamptz
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships    DepartmentMembership[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@map("positions")
 }
 
 /// Structural/functional department manager assignment with computed tree inheritance (PR 272).

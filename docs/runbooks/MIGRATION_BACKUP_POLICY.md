@@ -101,6 +101,17 @@ Migration `20260830090000_add_department_manager` также additive и backwar
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Position migration
+
+Migration `20260830160000_add_position` также additive и backward-compatible:
+
+- создаёт новый enum `PositionStatus` и новую таблицу `positions` (tenant-scoped каталог должностей, PR 275) с `UNIQUE(organizationId, code)` и индексом по `(organizationId, status)`;
+- добавляет nullable колонку `position_id` в существующую таблицу `department_memberships` с FK `ON DELETE NO ACTION` на `positions` (та же схема, что и `Department.departmentType` — Position архивируется, а не удаляется, поэтому hard delete недостижим и `NO ACTION` не может сработать) и индекс `(organizationId, positionId)`; существующие строки `department_memberships` получают `position_id = NULL`, backfill не выполняется;
+- не трогает `User.position` (legacy текстовое поле остаётся нетронутым, вынесено в отдельный PR 276);
+- допускает overlap со старой версией приложения аналогично предыдущим org-structure миграциям.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

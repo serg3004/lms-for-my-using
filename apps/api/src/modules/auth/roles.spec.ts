@@ -111,6 +111,8 @@ describe('rolePolicies', () => {
     departmentMembershipsWrite: ['admin'],
     departmentManagersRead: ['admin'],
     departmentManagersWrite: ['admin'],
+    positionsRead: ['admin'],
+    positionsWrite: ['admin'],
     coursesRead: ['admin', 'manager', 'instructor', 'learner'],
     coursesCreate: ['admin', 'instructor'],
     lessonsRead: ['admin', 'manager', 'instructor', 'learner'],

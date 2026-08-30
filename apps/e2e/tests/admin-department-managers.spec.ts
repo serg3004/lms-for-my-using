@@ -80,7 +80,9 @@ test('admin manages department managers and department users', async ({ page }, 
   await expect(page.getByRole('heading', { name: fromName })).toBeVisible();
 
   await page.locator('.admin-membership-add input[type="search"]').fill(memberEmail);
-  await page.locator('.admin-membership-add select').selectOption({ label: 'Candidate Manager' });
+  // Two <select> elements now live in .admin-membership-add (user picker, then the PR 275
+  // Position picker) -- targeted by aria-label to avoid a Playwright strict-mode violation.
+  await page.locator('.admin-membership-add').getByLabel('Выберите пользователя…').selectOption({ label: 'Candidate Manager' });
   // Checked so the row is a PRIMARY membership -- Transfer only appears on primary rows (it moves
   // a user's primary department, which would be misleading to offer on an additional membership).
   await page.locator('.admin-membership-add input[type="checkbox"]').check();
@@ -93,7 +95,9 @@ test('admin manages department managers and department users', async ({ page }, 
   await row.getByRole('button', { name: 'Перевести' }).click();
   const transferDialog = page.getByRole('dialog').filter({ hasText: 'Перевести' });
   await transferDialog.getByLabel('Поиск по названию или коду…').fill(toName);
-  await transferDialog.locator('select').selectOption({ label: toName });
+  // Two <select> elements now live in the dialog (target department, then the PR 275 Position
+  // picker) -- targeted by aria-label to avoid a Playwright strict-mode violation.
+  await transferDialog.getByLabel('Выберите целевое подразделение…').selectOption({ label: toName });
   await transferDialog.getByRole('button', { name: 'Перевести' }).click();
   await expect(transferDialog).not.toBeVisible();
 

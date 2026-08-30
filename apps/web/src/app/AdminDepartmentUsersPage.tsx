@@ -15,6 +15,7 @@ import {
   type DepartmentUserRow,
   type UserMembershipRow,
 } from '../shared/api/department-memberships.js';
+import { listPositions, type Position } from '../shared/api/positions.js';
 import { listUsers } from '../shared/api/users.js';
 import type { UserSummary } from '../shared/api/types.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -163,14 +164,25 @@ export function AdminDepartmentUsersPage() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
+  // Capped at the API's own pageSize; only active positions are offered, since assigning an
+  // archived one is rejected server-side for any new current relation.
+  const { state: positionsState } = useAsyncData<Position[]>(
+    () => listPositions({ status: 'active', pageSize: 200 }).then((res) => res.items),
+    [],
+    { unauthenticated: '', error: '' },
+  );
+  const availablePositions = positionsState.status === 'loaded' ? positionsState.data : [];
+
   const [addUserId, setAddUserId] = useState('');
   const [addPrimary, setAddPrimary] = useState(false);
+  const [addPositionId, setAddPositionId] = useState('');
   const [addSearch, setAddSearchTerm] = useUserSearch();
   const [addState, setAddState] = useState<SavingState>({ status: 'idle' });
 
   const transferDialogRef = useRef<HTMLDialogElement>(null);
   const [transferUserIds, setTransferUserIds] = useState<string[] | null>(null);
   const [transferTargetId, setTransferTargetId] = useState<string | null>(null);
+  const [transferPositionId, setTransferPositionId] = useState('');
   const [transferSearch, setTransferSearchTerm] = useDepartmentSearch();
   const [transferState, setTransferState] = useState<SavingState>({ status: 'idle' });
 
@@ -188,9 +200,16 @@ export function AdminDepartmentUsersPage() {
     if (!addUserId || departmentState.status !== 'loaded') return;
     setAddState({ status: 'saving' });
     try {
-      await createDepartmentMembership({ organizationId: departmentState.data.organizationId, departmentId, userId: addUserId, isPrimary: addPrimary });
+      await createDepartmentMembership({
+        organizationId: departmentState.data.organizationId,
+        departmentId,
+        userId: addUserId,
+        isPrimary: addPrimary,
+        positionId: addPositionId || undefined,
+      });
       setAddUserId('');
       setAddPrimary(false);
+      setAddPositionId('');
       setAddSearchTerm('');
       await Promise.all([reload(), reloadAllMembers()]);
       setAddState({ status: 'idle' });
@@ -221,6 +240,7 @@ export function AdminDepartmentUsersPage() {
   function openTransfer(userIds: string[]) {
     setTransferUserIds(userIds);
     setTransferTargetId(null);
+    setTransferPositionId('');
     setTransferSearchTerm('');
     setTransferState({ status: 'idle' });
   }
@@ -230,9 +250,9 @@ export function AdminDepartmentUsersPage() {
     setTransferState({ status: 'saving' });
     try {
       if (transferUserIds.length === 1) {
-        await transferUserDepartment(transferUserIds[0]!, transferTargetId);
+        await transferUserDepartment(transferUserIds[0]!, transferTargetId, transferPositionId || undefined);
       } else {
-        await bulkTransferDepartmentUsers(transferTargetId, transferUserIds);
+        await bulkTransferDepartmentUsers(transferTargetId, transferUserIds, transferPositionId || undefined);
       }
       setTransferUserIds(null);
       setSelectedKeys(new Set());
@@ -395,6 +415,15 @@ export function AdminDepartmentUsersPage() {
               <input checked={addPrimary} disabled={department.status !== 'active'} onChange={(e) => setAddPrimary(e.target.checked)} type="checkbox" />
               {' '}{t('admin.departmentUsers.primary', 'Primary')}
             </label>
+            <select
+              aria-label={t('admin.departmentUsers.selectPosition', 'Select a position (optional)…')}
+              disabled={department.status !== 'active'}
+              onChange={(e) => setAddPositionId(e.target.value)}
+              value={addPositionId}
+            >
+              <option value="">{t('admin.departmentUsers.selectPosition', 'Select a position (optional)…')}</option>
+              {availablePositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}
+            </select>
             <button
               className="admin-btn admin-btn--sm admin-btn--primary"
               disabled={!addUserId || department.status !== 'active' || addState.status === 'saving'}
@@ -430,6 +459,16 @@ export function AdminDepartmentUsersPage() {
               {transferCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
             </select>
           </div>
+          <FormField id="department-transfer-position" label={t('admin.departmentUsers.selectPosition', 'Select a position (optional)…')}>
+            <select
+              id="department-transfer-position"
+              onChange={(e) => setTransferPositionId(e.target.value)}
+              value={transferPositionId}
+            >
+              <option value="">{t('admin.departmentUsers.selectPosition', 'Select a position (optional)…')}</option>
+              {availablePositions.map((position) => <option key={position.id} value={position.id}>{position.title}</option>)}
+            </select>
+          </FormField>
           {transferState.status === 'error' ? <p className="admin-form__error" role="alert">{transferState.message}</p> : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" onClick={() => transferDialogRef.current?.close()} type="button">{t('admin.departments.cancel', 'Cancel')}</button>

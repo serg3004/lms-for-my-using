@@ -35,6 +35,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `OpenApiModule` |
 | `OrganizationsModule` |
 | `OutboxModule` |
+| `PositionsModule` |
 | `ProgressModule` |
 | `ReportsModule` |
 | `UploadModule` |

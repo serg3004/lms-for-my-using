@@ -55,6 +55,7 @@ import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminGroupsPage } from './AdminGroupsPage';
 import { AdminLessonsPage } from './AdminLessonsPage';
 import { AdminMaterialsPage } from './AdminMaterialsPage';
+import { AdminPositionsPage } from './AdminPositionsPage';
 import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage';
 import { AdminRolesPage } from './AdminRolesPage';
 import { AdminThemeSettingsPage } from './AdminThemeSettingsPage';
@@ -199,6 +200,37 @@ describe('admin page smoke rendering', () => {
       },
     });
     expect(renderToStaticMarkup(<AdminDepartmentsPage />)).toContain('Engineering');
+  });
+
+  it('renders positions loading and populated states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminPositionsPage />)).toContain('role="status"');
+
+    // useState call order in AdminPositionsPage: 11 form/dialog states (page, search, status,
+    // showCreate, createForm, createErrors, createState, editPosition, editForm, editErrors,
+    // editState), then useAsyncData's internal state as call #12.
+    useStateAtCalls({
+      12: {
+        status: 'loaded',
+        data: {
+          items: [{
+            id: 'position-1',
+            organizationId: 'org-1',
+            code: 'eng-lead',
+            title: 'Engineering Lead',
+            description: null,
+            status: 'active',
+            archivedAt: null,
+            createdAt: ts,
+            updatedAt: ts,
+          }],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        },
+      },
+    });
+    expect(renderToStaticMarkup(<AdminPositionsPage />)).toContain('Engineering Lead');
   });
 
   it('renders roles loading and populated states', () => {

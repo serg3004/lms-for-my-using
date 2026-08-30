@@ -5,11 +5,14 @@ import type { PaginatedResponse } from './types.js';
 export type DepartmentMembershipUser = { id: string; firstName: string; lastName: string | null; email: string; status: string };
 export type DepartmentMembershipDepartment = { id: string; name: string; status: string };
 
+export type DepartmentMembershipPosition = { id: string; code: string; title: string; status: string };
+
 export type DepartmentMembership = {
   id: string;
   organizationId: string;
   departmentId: string;
   userId: string;
+  positionId: string | null;
   isPrimary: boolean;
   effectiveFrom: string;
   effectiveTo: string | null;
@@ -17,14 +20,15 @@ export type DepartmentMembership = {
   updatedAt: string;
 };
 
-export type DepartmentUserRow = DepartmentMembership & { user: DepartmentMembershipUser };
-export type UserMembershipRow = DepartmentMembership & { department: DepartmentMembershipDepartment };
+export type DepartmentUserRow = DepartmentMembership & { user: DepartmentMembershipUser; position: DepartmentMembershipPosition | null };
+export type UserMembershipRow = DepartmentMembership & { department: DepartmentMembershipDepartment; position: DepartmentMembershipPosition | null };
 
 export type CreateDepartmentMembershipPayload = {
   organizationId: string;
   departmentId: string;
   userId: string;
   isPrimary?: boolean;
+  positionId?: string;
 };
 
 function paginationQuery(params: { page?: number; pageSize?: number; search?: string }) {
@@ -52,16 +56,16 @@ export function closeDepartmentMembership(id: string) {
   return apiRequest<DepartmentMembership>(`/department-memberships/${encodeURIComponent(id)}/close`, { method: 'POST' });
 }
 
-export function transferUserDepartment(userId: string, departmentId: string) {
+export function transferUserDepartment(userId: string, departmentId: string, positionId?: string) {
   return apiRequest<DepartmentMembership>(`/users/${encodeURIComponent(userId)}/department-transfer`, {
     method: 'POST',
-    body: JSON.stringify({ departmentId }),
+    body: JSON.stringify({ departmentId, ...(positionId ? { positionId } : {}) }),
   });
 }
 
-export function bulkTransferDepartmentUsers(departmentId: string, userIds: string[]) {
+export function bulkTransferDepartmentUsers(departmentId: string, userIds: string[], positionId?: string) {
   return apiRequest<DepartmentMembership[]>(`/departments/${encodeURIComponent(departmentId)}/users/bulk-transfer`, {
     method: 'POST',
-    body: JSON.stringify({ userIds }),
+    body: JSON.stringify({ userIds, ...(positionId ? { positionId } : {}) }),
   });
 }
