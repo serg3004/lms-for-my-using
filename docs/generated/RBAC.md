@@ -42,6 +42,8 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `courseMaterialsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `coursesCreate` | `admin`, `instructor` |
 | `coursesRead` | `admin`, `manager`, `instructor`, `learner` |
+| `departmentManagersRead` | `admin` |
+| `departmentManagersWrite` | `admin` |
 | `departmentMembershipsRead` | `admin` |
 | `departmentMembershipsWrite` | `admin` |
 | `departmentTypesRead` | `admin` |

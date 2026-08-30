@@ -27,6 +27,8 @@ export const rolePolicies = {
   departmentTypesWrite: ['admin'],
   departmentMembershipsRead: ['admin'],
   departmentMembershipsWrite: ['admin'],
+  departmentManagersRead: ['admin'],
+  departmentManagersWrite: ['admin'],
   coursesRead: ['admin', 'manager', 'instructor', 'learner'],
   coursesCreate: ['admin', 'instructor'],
   lessonsRead: ['admin', 'manager', 'instructor', 'learner'],

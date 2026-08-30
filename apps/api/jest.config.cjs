@@ -13,6 +13,7 @@ module.exports = {
     '/src/integration/org-structure-foundation\\.database\\.spec\\.ts$',
     '/src/integration/departments-tree\\.database\\.spec\\.ts$',
     '/src/integration/department-memberships\\.database\\.spec\\.ts$',
+    '/src/integration/department-managers\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

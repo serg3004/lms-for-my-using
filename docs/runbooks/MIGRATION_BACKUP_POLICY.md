@@ -90,6 +90,17 @@ Migration `20260829130000_add_department_membership` также additive и back
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Department manager migration
+
+Migration `20260830090000_add_department_manager` также additive и backward-compatible:
+
+- создаёт новый enum `DepartmentManagerType` и новую таблицу `department_managers` (структурные/функциональные руководители подразделения с вычисляемым наследованием, PR 272) без изменения существующих таблиц `departments`, `department_memberships`, `users` или `org_structure_events`; поля `direct_manager_mode`/`functional_manager_mode` на `departments` уже существовали с миграции org-structure-foundation, эта миграция их не трогает;
+- не выполняет backfill: ни один Department не получает менеджеров автоматически;
+- два partial unique index (`department_managers_current_department_user_type_key`, `department_managers_current_primary_type_key`) заданы вручную raw SQL в migration.sql по той же причине, что и для `department_memberships` и `departments_org_code_key` — Prisma schema DSL не поддерживает `WHERE`-условие в `@@unique`, поэтому эти constraints намеренно отсутствуют в `schema.prisma`;
+- допускает overlap со старой версией приложения аналогично предыдущим org-structure миграциям.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

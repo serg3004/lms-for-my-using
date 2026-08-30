@@ -25,6 +25,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `CourseInstructor` |
 | `CourseMaterial` |
 | `Department` |
+| `DepartmentManager` |
 | `DepartmentMembership` |
 | `DepartmentType` |
 | `Group` |
@@ -63,6 +64,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `CourseMaterialStatus` | `active`, `archived` |
 | `CourseStatus` | `draft`, `published`, `archived` |
 | `DepartmentManagerMode` | `LOCAL`, `INHERIT`, `MERGE` |
+| `DepartmentManagerType` | `DIRECT`, `FUNCTIONAL` |
 | `DepartmentStatus` | `active`, `archived` |
 | `GroupStatus` | `active`, `archived` |
 | `LessonStatus` | `draft`, `published`, `archived` |
