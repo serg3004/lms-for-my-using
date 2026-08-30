@@ -20,6 +20,7 @@ export type OrgStructureEventType =
   | 'department_membership.closed'
   | 'department_membership.transferred'
   | 'department_membership.bulk_transferred'
+  | 'department_membership.legacy_position_migrated'
   | 'department_manager.created'
   | 'department_manager.closed'
   | 'position.created'
