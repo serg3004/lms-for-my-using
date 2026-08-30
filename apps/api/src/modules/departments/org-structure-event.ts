@@ -14,12 +14,16 @@ export type OrgStructureEventType =
   | 'department_type.created'
   | 'department_type.updated'
   | 'department_type.archived'
-  | 'department_type.restored';
+  | 'department_type.restored'
+  | 'department_membership.created'
+  | 'department_membership.closed'
+  | 'department_membership.transferred'
+  | 'department_membership.bulk_transferred';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type';
+  entityType: 'department' | 'department_type' | 'department_membership';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;

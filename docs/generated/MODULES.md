@@ -19,6 +19,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `CourseMaterialsModule` |
 | `CoursesModule` |
 | `DatabaseModule` |
+| `DepartmentMembershipsModule` |
 | `DepartmentsModule` |
 | `GroupsModule` |
 | `HealthModule` |

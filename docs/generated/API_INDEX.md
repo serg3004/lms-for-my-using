@@ -82,6 +82,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/courses/{id}/instructors` | `Courses` | `bearer` |
 | `DELETE` | `/api/v1/courses/{id}/instructors/{instructorId}` | `Courses` | `bearer` |
 | `PATCH` | `/api/v1/courses/{id}/status` | `Courses` | `bearer` |
+| `POST` | `/api/v1/department-memberships` | `DepartmentMemberships` | `bearer` |
+| `POST` | `/api/v1/department-memberships/{id}/close` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/department-types` | `Departments` | `bearer` |
 | `POST` | `/api/v1/department-types` | `Departments` | `bearer` |
 | `PATCH` | `/api/v1/department-types/{id}` | `Departments` | `bearer` |
@@ -97,6 +99,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/departments/{id}/move` | `Departments` | `bearer` |
 | `GET` | `/api/v1/departments/{id}/path` | `Departments` | `bearer` |
 | `POST` | `/api/v1/departments/{id}/restore` | `Departments` | `bearer` |
+| `GET` | `/api/v1/departments/{id}/users` | `DepartmentMemberships` | `bearer` |
+| `POST` | `/api/v1/departments/{id}/users/bulk-transfer` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/groups` | `Groups` | `bearer` |
 | `POST` | `/api/v1/groups` | `Groups` | `bearer` |
 | `GET` | `/api/v1/groups/{id}` | `Groups` | `bearer` |
@@ -165,4 +169,6 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users/import` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
+| `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |

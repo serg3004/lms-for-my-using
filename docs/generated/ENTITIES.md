@@ -25,6 +25,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `CourseInstructor` |
 | `CourseMaterial` |
 | `Department` |
+| `DepartmentMembership` |
 | `DepartmentType` |
 | `Group` |
 | `GroupMember` |

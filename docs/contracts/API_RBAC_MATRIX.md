@@ -32,6 +32,8 @@ Group mutations use separate role and object-scope checks. Administrators may cr
 
 Department and department-type mutations (tree CRUD, move/reparent, archive/restore) are admin-only role policies with no manager object scope yet; a manager-scope layer for departments, if introduced, will be a future documented change here. Reparenting a department is additionally guarded at the data layer: the move runs in a Serializable transaction with bounded retry on serialization failure, and rejects a move that would create a cycle or exceed the maximum tree depth before any write, so two concurrent conflicting moves can never both commit.
 
+Department membership (create/close/transfer/bulk-transfer, and reading a department's current users or a user's full membership history) is likewise admin-only for now. Two data-layer invariants back the role check regardless of caller: a partial unique index allows at most one current (`effectiveTo IS NULL`) primary membership per user, and another allows at most one current membership per user/department pair, so a race between two concurrent transfers for the same user can never leave more than one current primary — the losing request gets a conflict, not a corrupted state. A transfer or bulk transfer additionally rejects assigning an inactive user or an archived department before any write.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology
