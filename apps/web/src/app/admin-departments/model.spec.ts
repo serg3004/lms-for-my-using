@@ -6,6 +6,7 @@ import {
   ancestorIdsToExpand,
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
+  collectLoadedDescendantIds,
   formatManagerUserName,
   initialTreeState,
   managerCandidatesAvailableToAdd,
@@ -270,5 +271,16 @@ describe('manager helpers', () => {
     expect(resolveManagerSaveErrorMessage(500, 'conflict', 'generic')).toBe('generic');
     expect(resolveManagerModeErrorMessage(409, 'conflict', 'generic')).toBe('conflict');
     expect(resolveManagerModeErrorMessage(undefined, 'conflict', 'generic')).toBe('generic');
+  });
+
+  it('collectLoadedDescendantIds walks only already-loaded branches', () => {
+    const childrenByParentId = {
+      root: ['child-a', 'child-b'],
+      'child-a': ['grandchild-a1'],
+      // child-b's children were never fetched, so it has no entry here.
+    };
+    expect(collectLoadedDescendantIds(childrenByParentId, 'root').sort()).toEqual(['child-a', 'child-b', 'grandchild-a1'].sort());
+    expect(collectLoadedDescendantIds(childrenByParentId, 'child-b')).toEqual([]);
+    expect(collectLoadedDescendantIds(childrenByParentId, 'unknown')).toEqual([]);
   });
 });

@@ -358,9 +358,10 @@ export function AdminDepartmentUsersPage() {
               type="search"
               value={addSearch.term}
               placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+              aria-label={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
               onChange={(e) => { setAddSearchTerm(e.target.value); setAddUserId(''); }}
             />
-            <select value={addUserId} onChange={(e) => setAddUserId(e.target.value)}>
+            <select value={addUserId} aria-label={t('admin.groups.selectUser', 'Select a user…')} onChange={(e) => setAddUserId(e.target.value)}>
               <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
               {addCandidates.map((user) => <option key={user.id} value={user.id}>{formatMembershipUserName(user)}</option>)}
             </select>
@@ -389,7 +390,11 @@ export function AdminDepartmentUsersPage() {
               both used to share admin-membership-add, and since a <dialog> stays in the DOM
               even while closed, an unscoped selector for either one would match both. */}
           <div className="admin-transfer-target">
-            <select onChange={(e) => setTransferTargetId(e.target.value || null)} value={transferTargetId ?? ''}>
+            <select
+              aria-label={t('admin.departmentUsers.selectTarget', 'Select target department…')}
+              onChange={(e) => setTransferTargetId(e.target.value || null)}
+              value={transferTargetId ?? ''}
+            >
               <option value="">{t('admin.departmentUsers.selectTarget', 'Select target department…')}</option>
               {transferCandidates.map((candidate) => <option key={candidate.id} value={candidate.id}>{candidate.name}</option>)}
             </select>

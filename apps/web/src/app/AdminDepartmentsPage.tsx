@@ -40,6 +40,7 @@ import {
   ancestorIdsToExpand,
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
+  collectLoadedDescendantIds,
   editDepartmentFormState,
   formatManagerUserName,
   initialDepartmentFormState,
@@ -253,6 +254,25 @@ export function AdminDepartmentsPage() {
     // otherwise wouldn't reflect a manager just added/closed from this detail panel.
     dispatchTree({ type: 'managerSummaryLoaded', id: selected.id, summary: summarizeDirectManagers(effective) });
     dispatchTree({ type: 'managerDetailsLoaded', id: selected.id, managers: effective });
+
+    // A manager or mode change here can change the effective set for any already-loaded
+    // descendant using INHERIT/MERGE, whose cached badge/popover data would otherwise stay
+    // stale until a full page reload. Only descendants with cached data (visible, or a
+    // popover opened at least once) are worth refetching here.
+    const descendantIds = collectLoadedDescendantIds(tree.childrenByParentId, selected.id).filter(
+      (id) => tree.managerSummaryById[id] !== undefined || tree.managerDetailsById[id] !== undefined,
+    );
+    await Promise.all(
+      descendantIds.map(async (id) => {
+        try {
+          const descendantEffective = await getEffectiveDepartmentManagers(id);
+          dispatchTree({ type: 'managerSummaryLoaded', id, summary: summarizeDirectManagers(descendantEffective) });
+          dispatchTree({ type: 'managerDetailsLoaded', id, managers: descendantEffective });
+        } catch {
+          // Leave the previous cached value; reselecting the node or reopening its popover retries.
+        }
+      }),
+    );
   }
 
   async function handleAddManager(type: DepartmentManagerType) {
@@ -741,12 +761,15 @@ export function AdminDepartmentsPage() {
                       const setAddIsPrimary = type === 'DIRECT' ? setDirectAddIsPrimary : setFunctionalAddIsPrimary;
                       const candidates = managerCandidatesAvailableToAdd(search.results, typeManagers.map((m) => m.userId));
                       const typeTitle = type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional');
-                      const typeMode = type === 'DIRECT' ? directMode : functionalMode;
-                      // A local manager assigned while this type is INHERIT is silently excluded
-                      // from the effective set (computeEffectiveDepartmentManagers ignores local
-                      // rows in INHERIT mode), so it would vanish from this list on reload and
-                      // later conflict with switching back to INHERIT. Switch to Local first.
-                      const addDisabledByMode = typeMode === 'INHERIT';
+                      // Gate on the *persisted* mode (selected.*ManagerMode), not the draft
+                      // directMode/functionalMode selector state: an admin can flip that selector
+                      // to Local without pressing Save, and the server is still INHERIT until it
+                      // is. A local manager assigned while the server-side mode is INHERIT is
+                      // silently excluded from the effective set (computeEffectiveDepartmentManagers
+                      // ignores local rows in INHERIT mode), so it would vanish from this list on
+                      // reload and later conflict with switching back to INHERIT.
+                      const persistedTypeMode = type === 'DIRECT' ? selected.directManagerMode : selected.functionalManagerMode;
+                      const addDisabledByMode = persistedTypeMode === 'INHERIT';
                       return (
                         // Distinct class (not admin-membership-section) so it never nests inside
                         // the outer "Managers" section's own matches -- both used to share the
@@ -793,10 +816,16 @@ export function AdminDepartmentsPage() {
                               type="search"
                               value={search.term}
                               placeholder={t('admin.groups.searchPlaceholder', 'Search by name or email…')}
+                              aria-label={`${typeTitle}: ${t('admin.groups.searchPlaceholder', 'Search by name or email…')}`}
                               disabled={addDisabledByMode}
                               onChange={(e) => { setSearchTermForType(e.target.value); setAddUserId(''); }}
                             />
-                            <select value={addUserId} disabled={addDisabledByMode} onChange={(e) => setAddUserId(e.target.value)}>
+                            <select
+                              value={addUserId}
+                              aria-label={`${typeTitle}: ${t('admin.groups.selectUser', 'Select a user…')}`}
+                              disabled={addDisabledByMode}
+                              onChange={(e) => setAddUserId(e.target.value)}
+                            >
                               <option value="">{t('admin.groups.selectUser', 'Select a user…')}</option>
                               {candidates.map((u) => <option key={u.id} value={u.id}>{formatManagerUserName(u)}</option>)}
                             </select>

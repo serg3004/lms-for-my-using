@@ -55,6 +55,21 @@ function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T
   return next;
 }
 
+/** All department ids currently loaded as descendants of `rootId` via childrenByParentId.
+ *  Only walks branches that have actually been fetched -- a lazy child not yet expanded is
+ *  not descended into, since it holds no cached manager data to invalidate. */
+export function collectLoadedDescendantIds(childrenByParentId: TreeState['childrenByParentId'], rootId: string): string[] {
+  const result: string[] = [];
+  const stack = [...(childrenByParentId[rootId] ?? [])];
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    result.push(id);
+    const children = childrenByParentId[id];
+    if (children) stack.push(...children);
+  }
+  return result;
+}
+
 export function treeReducer(state: TreeState, action: TreeAction): TreeState {
   switch (action.type) {
     case 'mergeNodes':
