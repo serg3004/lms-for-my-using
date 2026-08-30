@@ -24,6 +24,12 @@ async function loginAs(page: Page, role: DemoRole) {
 }
 
 test.describe('login and role redirects', () => {
+  // This spec logs in as every demo role and shares the admin/manager/etc. accounts' login
+  // rate limit (5/minute) with every other admin- or role-flow spec in the suite. A late-running
+  // spec can tip that shared budget over and get a real login rejected here through no fault of
+  // this spec's own code -- retry once so that shared-resource contention doesn't fail CI outright.
+  test.describe.configure({ retries: 1 });
+
   for (const { role, destination } of roleDestinations) {
     test(`${role} signs in to the correct workspace without a redirect loop`, async ({ page }) => {
       await loginAs(page, role);
