@@ -5,6 +5,8 @@ import { PrismaService } from '../../database/prisma.service.js';
 import {
   getAncestorIdChain,
   getDepartmentDepth,
+  getDirectHeadcounts,
+  getSubtreeHeadcounts,
   getSubtreeHeight,
   isSelfOrDescendant,
 } from './department-tree-queries.js';
@@ -45,6 +47,9 @@ const DEPARTMENT_SORT: Prisma.DepartmentOrderByWithRelationInput[] = [
   { id: 'asc' },
 ];
 
+type DepartmentRow = Prisma.DepartmentGetPayload<{ select: typeof departmentSelect }>;
+type DepartmentWithHeadcounts = DepartmentRow & { directUserCount: number; subtreeUserCount: number };
+
 function rethrowAsConflictOnDuplicateCode(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
     throw new ConflictException('A department with this code already exists in the organization');
@@ -55,6 +60,25 @@ function rethrowAsConflictOnDuplicateCode(error: unknown): never {
 @Injectable()
 export class DepartmentsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Batches both headcount queries once for the whole given array, never per department --
+   * every tree/read response attaches counts through this single entry point so a future edit
+   * to one call site can't accidentally reintroduce an N+1.
+   */
+  private async withHeadcounts(departments: DepartmentRow[], organizationId: string): Promise<DepartmentWithHeadcounts[]> {
+    if (departments.length === 0) return [];
+    const ids = departments.map((department) => department.id);
+    const [direct, subtree] = await Promise.all([
+      getDirectHeadcounts(this.prisma, ids, organizationId),
+      getSubtreeHeadcounts(this.prisma, ids, organizationId),
+    ]);
+    return departments.map((department) => ({
+      ...department,
+      directUserCount: direct.get(department.id) ?? 0,
+      subtreeUserCount: subtree.get(department.id) ?? 0,
+    }));
+  }
 
   async listDepartments(organizationId: string, query: ListDepartmentsQuery) {
     const { page, pageSize, search, departmentTypeId, status } = query;
@@ -73,44 +97,49 @@ export class DepartmentsService {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
+    const [rawItems, total] = await Promise.all([
       this.prisma.department.findMany({ where, orderBy: DEPARTMENT_SORT, skip, take: pageSize, select: departmentSelect }),
       this.prisma.department.count({ where }),
     ]);
+    const items = await this.withHeadcounts(rawItems, organizationId);
 
     return { items, page, pageSize, total };
   }
 
   /** Roots only — callers load children lazily via getChildren. */
   async getTree(organizationId: string, status?: 'active' | 'archived') {
-    return this.prisma.department.findMany({
+    const roots = await this.prisma.department.findMany({
       where: { organizationId, parentId: null, status: status ?? 'active' },
       orderBy: DEPARTMENT_SORT,
       select: departmentSelect,
     });
+    return this.withHeadcounts(roots, organizationId);
   }
 
   async getDepartment(id: string, organizationId: string) {
     const department = await this.prisma.department.findFirst({ where: { id, organizationId }, select: departmentSelect });
     if (!department) throw new NotFoundException('Department not found');
-    return department;
+    const [withCounts] = await this.withHeadcounts([department], organizationId);
+    return withCounts!;
   }
 
   async getChildren(id: string, organizationId: string, status?: 'active' | 'archived') {
     await this.ensureDepartmentExists(id, organizationId);
 
-    return this.prisma.department.findMany({
+    const children = await this.prisma.department.findMany({
       where: { organizationId, parentId: id, status: status ?? 'active' },
       orderBy: DEPARTMENT_SORT,
       select: departmentSelect,
     });
+    return this.withHeadcounts(children, organizationId);
   }
 
   async getPath(id: string, organizationId: string) {
     await this.ensureDepartmentExists(id, organizationId);
 
     const ids = await getAncestorIdChain(this.prisma, id, organizationId);
-    const rows = await this.prisma.department.findMany({ where: { id: { in: ids }, organizationId }, select: departmentSelect });
+    const rawRows = await this.prisma.department.findMany({ where: { id: { in: ids }, organizationId }, select: departmentSelect });
+    const rows = await this.withHeadcounts(rawRows, organizationId);
     const byId = new Map(rows.map((row) => [row.id, row]));
 
     return ids.map((ancestorId) => byId.get(ancestorId)).filter((row): row is NonNullable<typeof row> => Boolean(row));

@@ -82,6 +82,70 @@ export async function isSelfOrDescendant(
   return rows.length > 0;
 }
 
+/**
+ * Direct headcount (plan invariant): current (effectiveTo IS NULL), active User, primary
+ * membership, exactly this Department. Additional (non-primary) memberships and
+ * inactive/historical rows are excluded. Batched over `departmentIds` in one GROUP BY query
+ * regardless of how many departments are asked for -- callers must never loop this per node.
+ */
+export async function getDirectHeadcounts(
+  client: TransactionClient,
+  departmentIds: string[],
+  organizationId: string,
+): Promise<Map<string, number>> {
+  if (departmentIds.length === 0) return new Map();
+
+  const rows = await client.$queryRaw<{ id: string; count: bigint }[]>`
+    SELECT dm.department_id AS id, COUNT(DISTINCT dm.user_id) AS count
+    FROM department_memberships dm
+    JOIN users u ON u.id = dm.user_id
+    WHERE dm.organization_id = ${organizationId}::uuid
+      AND dm.department_id = ANY(${departmentIds}::uuid[])
+      AND dm.effective_to IS NULL
+      AND dm.is_primary = true
+      AND u.status = 'active'
+    GROUP BY dm.department_id
+  `;
+  return new Map(rows.map((row) => [row.id, Number(row.count)]));
+}
+
+/**
+ * Subtree headcount (plan invariant): unique Users with a current, active, primary membership
+ * in the Department or any of its descendants. One recursive CTE covers every requested root
+ * in a single query -- the roots need not be disjoint (an ancestor and its own descendant can
+ * both appear in `departmentIds`), each still gets its own correct total.
+ */
+export async function getSubtreeHeadcounts(
+  client: TransactionClient,
+  departmentIds: string[],
+  organizationId: string,
+): Promise<Map<string, number>> {
+  if (departmentIds.length === 0) return new Map();
+
+  const rows = await client.$queryRaw<{ id: string; count: bigint }[]>`
+    WITH RECURSIVE subtree AS (
+      SELECT id AS root_id, id AS node_id, 0 AS lvl
+      FROM departments
+      WHERE organization_id = ${organizationId}::uuid AND id = ANY(${departmentIds}::uuid[])
+      UNION ALL
+      SELECT s.root_id, d.id, s.lvl + 1
+      FROM departments d
+      JOIN subtree s ON d.parent_id = s.node_id AND d.organization_id = ${organizationId}::uuid
+      WHERE s.lvl < ${CTE_DEPTH_GUARD}
+    )
+    SELECT s.root_id AS id, COUNT(DISTINCT dm.user_id) AS count
+    FROM subtree s
+    JOIN department_memberships dm
+      ON dm.department_id = s.node_id
+      AND dm.organization_id = ${organizationId}::uuid
+      AND dm.effective_to IS NULL
+      AND dm.is_primary = true
+    JOIN users u ON u.id = dm.user_id AND u.status = 'active'
+    GROUP BY s.root_id
+  `;
+  return new Map(rows.map((row) => [row.id, Number(row.count)]));
+}
+
 /** Ancestor chain root-first, including the department itself as the last entry. */
 export async function getAncestorIdChain(
   client: TransactionClient,

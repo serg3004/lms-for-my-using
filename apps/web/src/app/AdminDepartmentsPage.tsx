@@ -777,7 +777,11 @@ export function AdminDepartmentsPage() {
               {selected.code ? <p>{t('admin.departments.fieldCode', 'Code')}: {selected.code}</p> : null}
               <p>{t('admin.departments.fieldType', 'Type')}: {typeLabel(selected.departmentTypeId) ?? t('admin.departments.noType', 'Not set')}</p>
               {selected.description ? <p>{selected.description}</p> : null}
-              <p className="admin-form__hint">{t('admin.departments.headcountPlaceholder', 'Headcount — coming soon')}</p>
+              <p>
+                {t('admin.departments.headcountDirect', 'Direct headcount: {{count}}', { count: selected.directUserCount })}
+                {' · '}
+                {t('admin.departments.headcountSubtree', 'Subtree headcount: {{count}}', { count: selected.subtreeUserCount })}
+              </p>
               {statusActionState.status === 'error' ? <p className="admin-form__error" role="alert">{statusActionState.message}</p> : null}
               <div className="admin-table-actions">
                 <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openCreateDialog(selected.id)}>

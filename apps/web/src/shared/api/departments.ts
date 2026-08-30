@@ -21,6 +21,10 @@ export type Department = {
   createdAt: string;
   updatedAt: string;
   _count: { children: number };
+  /** Current, active, primary memberships directly in this department (PR 274). */
+  directUserCount: number;
+  /** Unique users with a current, active, primary membership in this department or any descendant (PR 274). */
+  subtreeUserCount: number;
 };
 
 export type DepartmentType = {
