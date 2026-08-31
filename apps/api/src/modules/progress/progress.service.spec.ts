@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -256,6 +256,40 @@ describe('ProgressService createProgress — learner access without an admin/man
 
     await expect(service.createProgress(baseInput, instructorActor)).resolves.toMatchObject({ id: 'progress-1' });
     expect(assignmentFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('ProgressService createProgress — course and lesson validation', () => {
+  const instructorActor = { id: 'instructor-1', organizationId, roles: ['instructor'] as const };
+  const baseInput = {
+    organizationId,
+    courseId: courseAId,
+    userId,
+    status: 'in_progress' as const,
+  };
+
+  it('rejects when the course does not exist', async () => {
+    const prisma = {
+      course: { findFirst: async () => null },
+      user: { findFirst: async () => ({ id: userId }) },
+    } as unknown as PrismaService;
+    const service = new ProgressService(prisma);
+
+    await expect(service.createProgress(baseInput, instructorActor)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects when the lesson does not belong to the course', async () => {
+    const lessonId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const prisma = {
+      course: { findFirst: async () => ({ id: courseAId, selfEnrollmentEnabled: false }) },
+      user: { findFirst: async () => ({ id: userId }) },
+      lesson: { findFirst: async () => null },
+    } as unknown as PrismaService;
+    const service = new ProgressService(prisma);
+
+    await expect(
+      service.createProgress({ ...baseInput, lessonId }, instructorActor),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 
