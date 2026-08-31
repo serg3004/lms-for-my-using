@@ -55,6 +55,7 @@ import { AdminDepartmentsPage } from './AdminDepartmentsPage';
 import { AdminGroupsPage } from './AdminGroupsPage';
 import { AdminLessonsPage } from './AdminLessonsPage';
 import { AdminMaterialsPage } from './AdminMaterialsPage';
+import { AdminPositionCoursesPage } from './AdminPositionCoursesPage';
 import { AdminPositionsPage } from './AdminPositionsPage';
 import { AdminResultsCertificatesPage } from './AdminResultsCertificatesPage';
 import { AdminRolesPage } from './AdminRolesPage';
@@ -231,6 +232,48 @@ describe('admin page smoke rendering', () => {
       },
     });
     expect(renderToStaticMarkup(<AdminPositionsPage />)).toContain('Engineering Lead');
+  });
+
+  it('renders position courses loading and populated states', () => {
+    useLoadingState();
+    expect(renderToStaticMarkup(<AdminPositionCoursesPage />)).toContain('role="status"');
+
+    // useState call order in AdminPositionCoursesPage: 2 form/dialog states (createForm,
+    // createState), then useAsyncData's internal state as call #3.
+    useStateAtCalls({
+      3: {
+        status: 'loaded',
+        data: {
+          positionCourses: [{
+            id: 'pc-1',
+            organizationId: 'org-1',
+            positionId: 'position-1',
+            courseId: 'course-1',
+            requirement: 'REQUIRED',
+            dueDays: 30,
+            status: 'active',
+            archivedAt: null,
+            createdAt: ts,
+            updatedAt: ts,
+          }],
+          positions: [{
+            id: 'position-1',
+            organizationId: 'org-1',
+            code: 'eng-lead',
+            title: 'Engineering Lead',
+            description: null,
+            status: 'active',
+            archivedAt: null,
+            createdAt: ts,
+            updatedAt: ts,
+          }],
+          courses: [{ ...course, createdAt: ts, updatedAt: ts }],
+        },
+      },
+    });
+    const html = renderToStaticMarkup(<AdminPositionCoursesPage />);
+    expect(html).toContain('Engineering Lead');
+    expect(html).toContain('Workplace Safety');
   });
 
   it('renders roles loading and populated states', () => {
@@ -674,10 +717,10 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders assignment completion happy path without crashing', () => {
-    // useState call order in AdminAssignmentCompletionPage: 9 form/dialog states, then
-    // useAsyncData's internal loadState useState is call 10.
+    // useState call order in AdminAssignmentCompletionPage: 11 form/dialog states (PR 277 added
+    // departmentId/includeDescendants), then useAsyncData's internal loadState useState is call 12.
     useStateAtCalls({
-      10: {
+      12: {
         status: 'loaded',
         data: {
           courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
@@ -692,6 +735,7 @@ describe('admin page smoke rendering', () => {
             },
           ],
           groups: [],
+          departments: [],
           assignments: [
             {
               id: 'assignment-1',

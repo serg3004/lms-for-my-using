@@ -8,12 +8,15 @@ export type User = {
   status: string;
 };
 export type Group = { id: string; organizationId: string; name: string; status: string };
+export type Department = { id: string; organizationId: string; name: string; status: string };
 export type AssignmentStatus = 'assigned' | 'completed' | 'cancelled';
 export type Assignment = {
   id: string;
   courseId: string;
   userId: string | null;
   groupId: string | null;
+  departmentId?: string | null;
+  includeDescendants?: boolean;
   status: string;
   dueAt: string | null;
 };
@@ -48,6 +51,12 @@ export function findGroupLabel(groups: Group[], groupId: string | null, fallback
   if (!groupId) return fallback;
   const group = groups.find((g) => g.id === groupId);
   return group ? group.name : groupId;
+}
+
+export function findDepartmentLabel(departments: Department[], departmentId: string | null, fallback: string): string {
+  if (!departmentId) return fallback;
+  const department = departments.find((d) => d.id === departmentId);
+  return department ? department.name : departmentId;
 }
 
 export type AssignmentStats = { active: number; dueThisWeek: number; overdue: number; completed: number };

@@ -17,6 +17,7 @@ module.exports = {
     '/src/integration/department-headcounts\\.database\\.spec\\.ts$',
     '/src/integration/positions\\.database\\.spec\\.ts$',
     '/src/integration/legacy-position-migration\\.database\\.spec\\.ts$',
+    '/src/integration/learning-targets\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

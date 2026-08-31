@@ -14,6 +14,7 @@ module.exports = {
     '<rootDir>/src/integration/department-headcounts.database.spec.ts',
     '<rootDir>/src/integration/positions.database.spec.ts',
     '<rootDir>/src/integration/legacy-position-migration.database.spec.ts',
+    '<rootDir>/src/integration/learning-targets.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,
