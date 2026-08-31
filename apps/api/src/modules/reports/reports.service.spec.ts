@@ -1,3 +1,5 @@
+import { NotFoundException } from '@nestjs/common';
+
 import { PrismaService } from '../../database/prisma.service.js';
 import { ReportsService } from './reports.service.js';
 
@@ -181,5 +183,76 @@ describe('ReportsService', () => {
     const result = await new ReportsService(prisma).getSummary({ id: 'admin-1', organizationId, roles: ['admin'] });
 
     expect(result.counts.progressAvgScore).toBeNull();
+  });
+});
+
+describe('ReportsService getSummary — department filter', () => {
+  const departmentId = '22222222-2222-4222-8222-222222222222';
+  const childDepartmentId = '33333333-3333-4333-8333-333333333333';
+
+  function buildPrisma(overrides: { department?: unknown; subtreeIds?: string[]; managedDepartments?: { departmentId: string }[] } = {}) {
+    const record = (result: unknown) => async () => result;
+    const calls: Call[] = [];
+    const track = (resource: string, method: string, result: unknown) => async (args: Record<string, unknown>) => {
+      calls.push({ resource, method, args });
+      return result;
+    };
+
+    const prisma = {
+      department: { findFirst: record(overrides.department === undefined ? { id: departmentId } : overrides.department) },
+      departmentManager: { findMany: record(overrides.managedDepartments ?? []) },
+      $queryRaw: record((overrides.subtreeIds ?? [departmentId]).map((id) => ({ id }))),
+      progress: { findMany: track('progress', 'findMany', []), count: track('progress', 'count', 0), aggregate: record({ _avg: { score: null } }) },
+      certificate: { findMany: track('certificate', 'findMany', []), count: track('certificate', 'count', 0) },
+      assignment: { findMany: track('assignment', 'findMany', []), count: track('assignment', 'count', 0) },
+    } as unknown as PrismaService;
+
+    return { prisma, calls };
+  }
+
+  it('rejects a departmentId that does not belong to the tenant', async () => {
+    const { prisma } = buildPrisma({ department: null });
+
+    await expect(
+      new ReportsService(prisma).getSummary(
+        { id: 'admin-1', organizationId, roles: ['admin'] },
+        { departmentId, includeDescendants: false },
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('scopes the population to the department alone when includeDescendants is false', async () => {
+    const { prisma, calls } = buildPrisma();
+
+    await new ReportsService(prisma).getSummary({ id: 'admin-1', organizationId, roles: ['admin'] }, { departmentId, includeDescendants: false });
+
+    const progressWhere = calls.find((call) => call.resource === 'progress' && call.method === 'findMany')?.args.where as {
+      user: { AND: [{ departmentMemberships: { some: { departmentId: { in: string[] } } } }, unknown] };
+    };
+    expect(progressWhere.user.AND[0].departmentMemberships.some.departmentId.in).toEqual([departmentId]);
+  });
+
+  it('expands the population to the subtree when includeDescendants is true', async () => {
+    const { prisma, calls } = buildPrisma({ subtreeIds: [departmentId, childDepartmentId] });
+
+    await new ReportsService(prisma).getSummary({ id: 'admin-1', organizationId, roles: ['admin'] }, { departmentId, includeDescendants: true });
+
+    const progressWhere = calls.find((call) => call.resource === 'progress' && call.method === 'findMany')?.args.where as {
+      user: { AND: [{ departmentMemberships: { some: { departmentId: { in: string[] } } } }, unknown] };
+    };
+    expect(progressWhere.user.AND[0].departmentMemberships.some.departmentId.in).toEqual([departmentId, childDepartmentId]);
+  });
+
+  it('intersects the requested population with the manager access scope', async () => {
+    const { prisma, calls } = buildPrisma();
+
+    await new ReportsService(prisma).getSummary({ id: 'manager-1', organizationId, roles: ['manager'] }, { departmentId, includeDescendants: false });
+
+    const progressWhere = calls.find((call) => call.resource === 'progress' && call.method === 'findMany')?.args.where as {
+      user: { AND: [unknown, { groupMemberships?: { some: { organizationId: string } } }] };
+    };
+    // Second AND branch is the manager's OrganizationAccessScope (group scope, since this
+    // manager directly manages no departments in this test) -- not the unrestricted {}.
+    expect(progressWhere.user.AND[1]).toMatchObject({ groupMemberships: { some: { organizationId } } });
   });
 });

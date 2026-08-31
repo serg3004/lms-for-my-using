@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
+import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const RISK_COMPLETION_THRESHOLD = 50;
@@ -11,8 +12,14 @@ const UPCOMING_DEADLINES_LIMIT = 5;
 
 @Injectable()
 export class ManagerService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+    private readonly orgAccessScope: OrganizationAccessScopeService = new OrganizationAccessScopeService(prisma, teamScope),
+  ) {}
 
+  // "My team" unifies every relation that currently grants manager scope (ManagerGroup +
+  // DepartmentManager DIRECT, see OrganizationAccessScopeService) -- not just Group, per PR 278.
   async getTeamSummary(actorInput: TeamScopeActor | string) {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
@@ -20,7 +27,7 @@ export class ManagerService {
     const dueSoonAt = new Date(now.getTime() + DUE_SOON_WINDOW_DAYS * MS_PER_DAY);
 
     const teamUsers = await this.prisma.user.findMany({
-      where: { organizationId, ...this.teamScope.user(actor), deletedAt: null },
+      where: { organizationId, ...(await this.orgAccessScope.user(actor)), deletedAt: null },
       select: { id: true, firstName: true, lastName: true, email: true },
       orderBy: { firstName: 'asc' },
     });
@@ -42,7 +49,7 @@ export class ManagerService {
         select: { percentage: true },
       }),
       this.prisma.assignment.findMany({
-        where: { organizationId, ...this.teamScope.assignment(actor), deletedAt: null },
+        where: { organizationId, ...(await this.orgAccessScope.assignment(actor)), deletedAt: null },
         select: {
           id: true,
           userId: true,
@@ -172,7 +179,7 @@ export class ManagerService {
       where: {
         id: { in: assignmentIds },
         organizationId: actor.organizationId,
-        ...this.teamScope.assignment(actor),
+        ...(await this.orgAccessScope.assignment(actor)),
         deletedAt: null,
         status: 'assigned',
         dueAt: { lt: now },

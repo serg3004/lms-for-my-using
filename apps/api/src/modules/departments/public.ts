@@ -7,5 +7,5 @@ export type {
   OrgStructureEventType,
   RecordOrgStructureEventInput,
 } from './org-structure-event.js';
-export { getAncestorIdChain, isSelfOrDescendant } from './department-tree-queries.js';
+export { getAncestorIdChain, getSubtreeDepartmentIds, isSelfOrDescendant } from './department-tree-queries.js';
 export { departmentManagerModeSchema } from './departments.schemas.js';

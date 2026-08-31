@@ -1,28 +1,66 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { getSubtreeDepartmentIds } from '../departments/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
+import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
 
 // Recent-activity lists are bounded to a top-N, not paginated: summary counts (below)
 // are computed database-side over the full dataset so stat cards stay correct even
 // when a tenant has more rows than this limit.
 const REPORTS_LIST_LIMIT = 100;
 
+export type ReportsDepartmentFilter = { departmentId: string; includeDescendants: boolean };
+
 @Injectable()
 export class ReportsService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+    private readonly orgAccessScope: OrganizationAccessScopeService = new OrganizationAccessScopeService(prisma, teamScope),
+  ) {}
 
-  async getSummary(actor: TeamScopeActor) {
+  /**
+   * Without a department filter, scope stays exactly what it was before PR 278 (Group-only,
+   * via ManagerTeamScope) -- the plan explicitly requires filterless reports to be unchanged.
+   * With a filter, the requested department population is INTERSECTed with the unified
+   * OrganizationAccessScope (Group UNION DepartmentManager DIRECT), so a manager can pull a
+   * department-scoped view of their own managed subtree, while a sibling/foreign department
+   * request naturally resolves to an empty population instead of an error.
+   */
+  async getSummary(actor: TeamScopeActor, filter?: ReportsDepartmentFilter) {
     const baseWhere = { organizationId: actor.organizationId, deletedAt: null } as const;
-    const progressWhere = { ...baseWhere, ...this.teamScope.userOwnedResource(actor) };
-    const certificateWhere = { ...baseWhere, ...this.teamScope.userOwnedResource(actor) };
-    const overdueWhere = {
-      ...baseWhere,
-      status: 'assigned' as const,
-      dueAt: { lt: new Date() },
-      ...this.teamScope.assignment(actor),
-    };
+
+    let progressWhere: Prisma.ProgressWhereInput;
+    let certificateWhere: Prisma.CertificateWhereInput;
+    let overdueWhere: Prisma.AssignmentWhereInput;
+
+    if (filter) {
+      const populationUserWhere = await this.buildDepartmentPopulationWhere(actor.organizationId, filter);
+      const scopedUserWhere = await this.orgAccessScope.user(actor);
+      const scopedAssignmentWhere = await this.orgAccessScope.assignment(actor);
+      const userWhere = { AND: [populationUserWhere, scopedUserWhere] };
+
+      progressWhere = { ...baseWhere, user: userWhere };
+      certificateWhere = { ...baseWhere, user: userWhere };
+      overdueWhere = {
+        ...baseWhere,
+        status: 'assigned' as const,
+        dueAt: { lt: new Date() },
+        AND: [{ user: populationUserWhere }, scopedAssignmentWhere],
+      };
+    } else {
+      progressWhere = { ...baseWhere, ...this.teamScope.userOwnedResource(actor) };
+      certificateWhere = { ...baseWhere, ...this.teamScope.userOwnedResource(actor) };
+      overdueWhere = {
+        ...baseWhere,
+        status: 'assigned' as const,
+        dueAt: { lt: new Date() },
+        ...this.teamScope.assignment(actor),
+      };
+    }
 
     const [progress, certificates, overdueAssignments, progressTotal, progressCompletedTotal, progressAvgScore, certificatesIssuedTotal, overdueTotal] =
       await Promise.all([
@@ -136,6 +174,27 @@ export class ReportsService {
       certificatesTotal,
       pendingActivationCount,
       activity,
+    };
+  }
+
+  private async buildDepartmentPopulationWhere(
+    organizationId: string,
+    filter: ReportsDepartmentFilter,
+  ): Promise<Prisma.UserWhereInput> {
+    const department = await this.prisma.department.findFirst({
+      where: { id: filter.departmentId, organizationId },
+      select: { id: true },
+    });
+    if (!department) throw new NotFoundException('Department not found');
+
+    const departmentIds = filter.includeDescendants
+      ? await getSubtreeDepartmentIds(this.prisma, [filter.departmentId], organizationId)
+      : [filter.departmentId];
+
+    return {
+      departmentMemberships: {
+        some: { organizationId, departmentId: { in: departmentIds }, isPrimary: true, effectiveTo: null },
+      },
     };
   }
 }

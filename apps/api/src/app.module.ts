@@ -31,6 +31,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { OpenApiModule } from './modules/openapi/openapi.module.js';
 import { OutboxModule } from './modules/outbox/public.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
+import { OrganizationAccessScopeModule } from './modules/organization-access-scope/organization-access-scope.module.js';
 import { PositionCoursesModule } from './modules/position-courses/position-courses.module.js';
 import { PositionsModule } from './modules/positions/positions.module.js';
 import { LearningTargetsModule } from './modules/learning-targets/learning-targets.module.js';
@@ -94,6 +95,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OpenApiModule,
     OutboxModule,
     OrganizationsModule,
+    OrganizationAccessScopeModule,
     ProgressModule,
     ReportsModule,
     UploadModule,

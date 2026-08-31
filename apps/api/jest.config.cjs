@@ -18,6 +18,7 @@ module.exports = {
     '/src/integration/positions\\.database\\.spec\\.ts$',
     '/src/integration/legacy-position-migration\\.database\\.spec\\.ts$',
     '/src/integration/learning-targets\\.database\\.spec\\.ts$',
+    '/src/integration/organization-access-scope\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [
