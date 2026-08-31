@@ -206,6 +206,7 @@ model Organization {
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
   positions                  Position[]
+  positionCourses            PositionCourse[]
   orgStructureEvents         OrgStructureEvent[]
   materialFileDeletionAudits MaterialFileDeletionAudit[]
   auditLogs                  AuditLog[]
@@ -388,6 +389,7 @@ model Department {
   departmentType        DepartmentType?        @relation(fields: [departmentTypeId, organizationId], references: [id, organizationId], onDelete: NoAction)
   memberships           DepartmentMembership[]
   managers              DepartmentManager[]
+  assignments           Assignment[]
 
   @@unique([id, organizationId])
   @@index([organizationId, parentId, status, sortOrder])
@@ -431,22 +433,55 @@ model DepartmentMembership {
 /// additional (non-primary) membership may carry its own, independent Position. Legacy
 /// free-text User.position is untouched and not backfilled by this model (see plan PR 276).
 model Position {
-  id             String                 @id @default(uuid()) @db.Uuid
-  organizationId String                 @map("organization_id") @db.Uuid
-  code           String
-  title          String
-  description    String?
-  status         PositionStatus         @default(active)
-  archivedAt     DateTime?              @map("archived_at") @db.Timestamptz
-  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz
-  organization   Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  memberships    DepartmentMembership[]
+  id              String                 @id @default(uuid()) @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  code            String
+  title           String
+  description     String?
+  status          PositionStatus         @default(active)
+  archivedAt      DateTime?              @map("archived_at") @db.Timestamptz
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+  organization    Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships     DepartmentMembership[]
+  positionCourses PositionCourse[]
 
   @@unique([id, organizationId])
   @@unique([organizationId, code])
   @@index([organizationId, status])
   @@map("positions")
+}
+
+enum PositionCourseRequirement {
+  REQUIRED
+  OPTIONAL
+}
+
+/// Course requirement attached to a Position catalog entry (PR 277): every user whose current
+/// primary DepartmentMembership carries this Position is a LearningTargetResolver POSITION
+/// source for `course`. `dueDays` (0..3650, DB CHECK in this model's migration) is relative to
+/// the day the user's current primary membership took this Position (effectiveFrom), not to
+/// this row's own createdAt. Reuses PositionStatus (active/archived) -- same archive-only,
+/// never-hard-deleted semantics as Position itself.
+model PositionCourse {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  positionId     String                    @map("position_id") @db.Uuid
+  courseId       String                    @map("course_id") @db.Uuid
+  requirement    PositionCourseRequirement @default(REQUIRED)
+  dueDays        Int?                      @map("due_days")
+  status         PositionStatus            @default(active)
+  archivedAt     DateTime?                 @map("archived_at") @db.Timestamptz
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  position       Position                  @relation(fields: [positionId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  course         Course                    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, positionId, courseId])
+  @@index([organizationId, status])
+  @@index([courseId])
+  @@map("position_courses")
 }
 
 /// Structural/functional department manager assignment with computed tree inheritance (PR 272).
@@ -516,6 +551,7 @@ model Course {
   assessments           Assessment[]
   certificates          Certificate[]
   instructors           CourseInstructor[]
+  positionCourses       PositionCourse[]
 
   @@unique([organizationId, slug])
   @@index([organizationId, status])
@@ -619,21 +655,30 @@ model MultipartUpload {
   @@map("multipart_uploads")
 }
 
+/// Exactly one of userId/groupId/departmentId is the assignment target (DB CHECK
+/// num_nonnulls(...)=1, raw SQL in this model's migration -- Prisma DSL has no CHECK syntax).
+/// includeDescendants is meaningless without departmentId (CHECK enforces departmentId IS NOT
+/// NULL whenever includeDescendants is true). Department target resolution is current+active
+/// primary DepartmentMembership only; an additional (non-primary) membership never qualifies
+/// (PR 277 plan invariant).
 model Assignment {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  courseId       String           @map("course_id") @db.Uuid
-  userId         String?          @map("user_id") @db.Uuid
-  groupId        String?          @map("group_id") @db.Uuid
-  status         AssignmentStatus @default(assigned)
-  dueAt          DateTime?        @map("due_at") @db.Timestamptz
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user           User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
-  group          Group?           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  id                 String           @id @default(uuid()) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  courseId           String           @map("course_id") @db.Uuid
+  userId             String?          @map("user_id") @db.Uuid
+  groupId            String?          @map("group_id") @db.Uuid
+  departmentId       String?          @map("department_id") @db.Uuid
+  includeDescendants Boolean          @default(false) @map("include_descendants")
+  status             AssignmentStatus @default(assigned)
+  dueAt              DateTime?        @map("due_at") @db.Timestamptz
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?        @map("deleted_at") @db.Timestamptz
+  organization       Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course             Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user               User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  group              Group?           @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  department         Department?      @relation(fields: [departmentId, organizationId], references: [id, organizationId], onDelete: NoAction)
 
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -641,6 +686,7 @@ model Assignment {
   @@index([courseId, status])
   @@index([userId])
   @@index([groupId])
+  @@index([organizationId, departmentId])
   @@index([dueAt])
   @@map("assignments")
 }

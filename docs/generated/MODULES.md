@@ -25,6 +25,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `GroupsModule` |
 | `HealthModule` |
 | `LearnerDashboardModule` |
+| `LearningTargetsModule` |
 | `LessonsModule` |
 | `LoggerModule` |
 | `ManagerModule` |
@@ -35,6 +36,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `OpenApiModule` |
 | `OrganizationsModule` |
 | `OutboxModule` |
+| `PositionCoursesModule` |
 | `PositionsModule` |
 | `ProgressModule` |
 | `ReportsModule` |

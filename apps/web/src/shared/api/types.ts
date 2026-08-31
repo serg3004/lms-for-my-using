@@ -163,6 +163,8 @@ export type AssignmentSummary = {
   courseId: string;
   userId: string | null;
   groupId: string | null;
+  departmentId: string | null;
+  includeDescendants: boolean;
   status: string;
   dueAt: string | null;
   createdAt: string;

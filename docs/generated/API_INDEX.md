@@ -154,6 +154,12 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `DELETE` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
+| `GET` | `/api/v1/position-courses` | `PositionCourses` | `bearer` |
+| `POST` | `/api/v1/position-courses` | `PositionCourses` | `bearer` |
+| `GET` | `/api/v1/position-courses/{id}` | `PositionCourses` | `bearer` |
+| `PATCH` | `/api/v1/position-courses/{id}` | `PositionCourses` | `bearer` |
+| `POST` | `/api/v1/position-courses/{id}/archive` | `PositionCourses` | `bearer` |
+| `POST` | `/api/v1/position-courses/{id}/restore` | `PositionCourses` | `bearer` |
 | `GET` | `/api/v1/positions` | `Positions` | `bearer` |
 | `POST` | `/api/v1/positions` | `Positions` | `bearer` |
 | `GET` | `/api/v1/positions/{id}` | `Positions` | `bearer` |

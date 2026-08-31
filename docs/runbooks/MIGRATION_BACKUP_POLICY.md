@@ -112,6 +112,18 @@ Migration `20260830160000_add_position` также additive и backward-compatib
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Learning targets migration
+
+Migration `20260831090000_add_learning_targets` также additive и backward-compatible, с одним важным нюансом — она **удаляет и заменяет** старый CHECK constraint:
+
+- добавляет nullable колонку `department_id` и `include_descendants BOOLEAN NOT NULL DEFAULT false` в существующую таблицу `assignments` (PR 277), с FK `(department_id, organization_id) -> departments(id, organization_id) ON DELETE NO ACTION` и индексом `(organization_id, department_id)`; существующие строки получают `department_id = NULL`, `include_descendants = false` — backfill не требуется, семантика не меняется для уже существующих user/group-назначений;
+- **удаляет** constraint `assignments_single_target_check` (создан ещё в исходной `20260526090000_add_assignments`, требовал ровно одного из `user_id`/`group_id` и отклонил бы любую department-only строку) и заменяет его на `assignments_exactly_one_target_check` (`num_nonnulls(user_id, group_id, department_id) = 1`) — эквивалентен старому для всех существующих строк (department_id у них NULL), но дополнительно разрешает department-only target; добавляет также `assignments_include_descendants_requires_department_check` (`department_id IS NOT NULL OR include_descendants = false`);
+- создаёт новый enum `PositionCourseRequirement` (`REQUIRED`/`OPTIONAL`) и новую таблицу `position_courses` (position-to-course requirement каталог, PR 277) с `UNIQUE(organizationId, positionId, courseId)`, CHECK на `due_days` (0..3650) и индексами по `(organizationId, status)`/`courseId`; переиспользует существующий `PositionStatus` enum вместо нового;
+- не создаёт и не удаляет ни одной `Position`/`Course`/`Assignment` строки — чисто additive DDL;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых колонках/таблице и продолжает работать с user/group-таргетингом как раньше; после отката приложения (без отката миграции) новые колонки остаются неиспользуемыми, но безвредными.
+
+Отдельный data backfill не требуется. Backup сверх общей policy не требуется, но перед применением в production рекомендуется подтвердить через `SELECT count(*) FROM assignments WHERE num_nonnulls(user_id, group_id) != 1` (должно быть 0), что constraint drop+recreate безопасен для текущих данных.
+
 ---
 
 ## 5. Drift handling

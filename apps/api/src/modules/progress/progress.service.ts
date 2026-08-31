@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { isLearnerOnly } from '../auth/public.js';
+import { LearningTargetResolverService } from '../learning-targets/public.js';
 import { ManagerTeamScope, normalizeActor, unrestrictedActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { CreateProgressInput } from './progress.schemas.js';
@@ -28,7 +29,11 @@ const progressSelect = {
 
 @Injectable()
 export class ProgressService {
-  constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+    private readonly learningTargets: LearningTargetResolverService = new LearningTargetResolverService(prisma),
+  ) {}
 
   async listProgress(actorInput: TeamScopeActor | string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
     const actor = normalizeActor(actorInput);
@@ -141,30 +146,23 @@ export class ProgressService {
     return course;
   }
 
-  // A learner may only record progress on a course they're actually assigned to (directly, or
-  // via a group they belong to) — unless the course is explicitly opened up for self-paced access.
-  // Without this, any learner could fabricate progress on any course in their org just by knowing
-  // its id, including courses never assigned to them (see docs/CONCERNS.md).
+  // A learner may only record progress on a course they have a current LearningTargetResolver
+  // entitlement for (direct assignment, group, department, or position -- or the course allows
+  // self-enrollment). Without this, any learner could fabricate progress on any course in their
+  // org just by knowing its id, including courses never assigned to them (see docs/CONCERNS.md).
+  // Any entitlement counts, regardless of REQUIRED/OPTIONAL -- a self-enrolled (OPTIONAL) course
+  // must remain as accessible as it is today.
   private async ensureLearnerCanRecordProgress(
     courseId: string,
     userId: string,
     organizationId: string,
     selfEnrollmentEnabled: boolean,
   ) {
-    if (selfEnrollmentEnabled) return;
-
-    const assignment = await this.prisma.assignment.findFirst({
-      where: {
-        organizationId,
-        courseId,
-        deletedAt: null,
-        status: { not: 'cancelled' },
-        OR: [{ userId }, { group: { members: { some: { userId, organizationId, deletedAt: null } } } }],
-      },
-      select: { id: true },
+    const resolution = await this.learningTargets.resolveForUser(organizationId, userId, courseId, {
+      course: { selfEnrollmentEnabled },
     });
 
-    if (!assignment) {
+    if (!resolution.isEntitled) {
       throw new ForbiddenException('Course is not assigned to this user and does not allow self-enrollment');
     }
   }

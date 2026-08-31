@@ -4,6 +4,7 @@ import { formatDate } from '../shared/formatDate.js';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { listDepartments } from '../shared/api/departments.js';
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
@@ -12,25 +13,36 @@ import {
   ASSIGNMENT_STATUSES,
   computeAssignmentStats,
   findCourseTitle,
+  findDepartmentLabel,
   findGroupLabel,
   findUserLabel,
   getUserLabel,
   type Assignment,
   type AssignmentStatus,
   type Course,
+  type Department,
   type Group,
   type Progress,
   type User,
 } from './admin-assignments/model.js';
 
-type AdminAssignmentCompletionData = { courses: Course[]; users: User[]; groups: Group[]; assignments: Assignment[]; progressItems: Progress[] };
+type AdminAssignmentCompletionData = {
+  courses: Course[];
+  users: User[];
+  groups: Group[];
+  departments: Department[];
+  assignments: Assignment[];
+  progressItems: Progress[];
+};
 
 export function AdminAssignmentCompletionPage() {
   const { t } = useTranslation();
   const [courseId, setCourseId] = useState('');
-  const [assignTo, setAssignTo] = useState<'user' | 'group'>('user');
+  const [assignTo, setAssignTo] = useState<'user' | 'group' | 'department'>('user');
   const [userId, setUserId] = useState('');
   const [groupId, setGroupId] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [includeDescendants, setIncludeDescendants] = useState(false);
   const [dueAt, setDueAt] = useState('');
   const [completionStatus, setCompletionStatus] = useState<'in_progress' | 'completed'>('in_progress');
   const [score, setScore] = useState('');
@@ -55,10 +67,11 @@ export function AdminAssignmentCompletionPage() {
 
   const { state: loadState, reload: loadData, mutate } = useAsyncData<AdminAssignmentCompletionData>(
     async () => {
-      const [{ items: courses }, { items: users }, groups, { items: assignments }, { items: progressItems }] = await Promise.all([
+      const [{ items: courses }, { items: users }, groups, { items: departments }, { items: assignments }, { items: progressItems }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
         apiRequest<Group[]>('/groups'),
+        listDepartments({ status: 'active', pageSize: 200 }),
         apiRequest<PaginatedResponse<Assignment>>('/assignments?pageSize=200'),
         apiRequest<PaginatedResponse<Progress>>('/progress?pageSize=200'),
       ]);
@@ -68,7 +81,8 @@ export function AdminAssignmentCompletionPage() {
       setCourseId(selectedCourseId);
       setUserId((current) => current || users[0]?.id || '');
       setGroupId((current) => current || groups[0]?.id || '');
-      return { courses, users, groups, assignments, progressItems };
+      setDepartmentId((current) => current || departments[0]?.id || '');
+      return { courses, users, groups, departments, assignments, progressItems };
     },
     [t],
     {
@@ -98,6 +112,7 @@ export function AdminAssignmentCompletionPage() {
     if (loadState.status !== 'loaded' || !selectedCourse) return;
     if (assignTo === 'user' && !userId) return;
     if (assignTo === 'group' && !groupId) return;
+    if (assignTo === 'department' && !departmentId) return;
 
     setSubmitState({ status: 'saving' });
 
@@ -107,7 +122,11 @@ export function AdminAssignmentCompletionPage() {
         body: JSON.stringify({
           organizationId: selectedCourse.organizationId,
           courseId: selectedCourse.id,
-          ...(assignTo === 'user' ? { userId } : { groupId }),
+          ...(assignTo === 'user'
+            ? { userId }
+            : assignTo === 'group'
+              ? { groupId }
+              : { departmentId, includeDescendants }),
           status: 'assigned',
           dueAt: dueAt || undefined,
         }),
@@ -238,7 +257,9 @@ export function AdminAssignmentCompletionPage() {
             { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
             { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
               ? findUserLabel(loadState.data.users, a.userId, a.userId)
-              : findGroupLabel(loadState.data.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group')) },
+              : a.groupId
+                ? findGroupLabel(loadState.data.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group'))
+                : `${findDepartmentLabel(loadState.data.departments, a.departmentId ?? null, t('admin.assignments.departmentAssignment', 'Department'))}${a.includeDescendants ? ` (${t('admin.assignments.includeDescendantsShort', '+ sub-departments')})` : ''}` },
             { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
               ? formatDate(a.dueAt)
               : t('admin.assignments.noDueDate', '—') },
@@ -304,9 +325,10 @@ export function AdminAssignmentCompletionPage() {
               </select>
             </FormField>
             <FormField id="assign-create-assign-to" label={t('admin.assignments.assignTo', 'Assign to')}>
-              <select id="assign-create-assign-to" value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group')}>
+              <select id="assign-create-assign-to" value={assignTo} onChange={(event) => setAssignTo(event.target.value as 'user' | 'group' | 'department')}>
                 <option value="user">{t('admin.assignments.assignToUser', 'User')}</option>
                 <option value="group">{t('admin.assignments.assignToGroup', 'Group')}</option>
+                <option value="department">{t('admin.assignments.assignToDepartment', 'Department')}</option>
               </select>
             </FormField>
             {assignTo === 'user' ? (
@@ -319,7 +341,7 @@ export function AdminAssignmentCompletionPage() {
                   ))}
                 </select>
               </FormField>
-            ) : (
+            ) : assignTo === 'group' ? (
               <FormField id="assign-create-group" label={t('admin.assignments.group', 'Group')}>
                 {loadState.data.groups.length === 0 ? (
                   <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
@@ -335,6 +357,32 @@ export function AdminAssignmentCompletionPage() {
                   </select>
                 )}
               </FormField>
+            ) : (
+              <>
+                <FormField id="assign-create-department" label={t('admin.assignments.department', 'Department')}>
+                  {loadState.data.departments.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                      {t('admin.assignments.noDepartments', 'No departments found. Create a department first.')}
+                    </p>
+                  ) : (
+                    <select id="assign-create-department" value={departmentId} onChange={(event) => setDepartmentId(event.target.value)}>
+                      {loadState.data.departments.map((department) => (
+                        <option key={department.id} value={department.id}>
+                          {department.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </FormField>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={includeDescendants}
+                    onChange={(event) => setIncludeDescendants(event.target.checked)}
+                  />
+                  {' '}{t('admin.assignments.includeDescendants', 'Include sub-departments')}
+                </label>
+              </>
             )}
             <FormField id="assign-create-due-at" label={t('admin.assignments.dueAt', 'Due date')}>
               <input id="assign-create-due-at" value={dueAt} onChange={(event) => setDueAt(event.target.value)} type="date" />

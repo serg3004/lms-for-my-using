@@ -8,12 +8,18 @@ export const createAssignmentSchema = z
     courseId: z.string().uuid(),
     userId: z.string().uuid().optional(),
     groupId: z.string().uuid().optional(),
+    departmentId: z.string().uuid().optional(),
+    includeDescendants: z.boolean().default(false),
     status: assignmentStatusSchema.default('assigned'),
     dueAt: z.coerce.date().optional(),
   })
-  .refine((input) => Boolean(input.userId) !== Boolean(input.groupId), {
-    message: 'Assignment must target either userId or groupId',
+  .refine((input) => [input.userId, input.groupId, input.departmentId].filter(Boolean).length === 1, {
+    message: 'Assignment must target exactly one of userId, groupId, or departmentId',
     path: ['userId'],
+  })
+  .refine((input) => input.departmentId !== undefined || !input.includeDescendants, {
+    message: 'includeDescendants requires a departmentId target',
+    path: ['includeDescendants'],
   });
 
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;

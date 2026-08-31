@@ -42,6 +42,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `OutboxEvent` |
 | `PasswordResetToken` |
 | `Position` |
+| `PositionCourse` |
 | `Progress` |
 | `Session` |
 | `User` |
@@ -73,6 +74,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `MultipartUploadStatus` | `pending`, `completed`, `aborted` |
 | `OrganizationPlan` | `trial`, `standard`, `enterprise` |
 | `OrganizationStatus` | `active`, `suspended`, `archived` |
+| `PositionCourseRequirement` | `REQUIRED`, `OPTIONAL` |
 | `PositionStatus` | `active`, `archived` |
 | `ProgressStatus` | `not_started`, `in_progress`, `completed` |
 | `UserRole` | `learner`, `instructor`, `mentor`, `manager`, `admin` |

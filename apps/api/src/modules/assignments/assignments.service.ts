@@ -12,6 +12,8 @@ const assignmentSelect = {
   courseId: true,
   userId: true,
   groupId: true,
+  departmentId: true,
+  includeDescendants: true,
   status: true,
   dueAt: true,
   createdAt: true,
@@ -75,6 +77,10 @@ export class AssignmentsService {
       await this.ensureGroupExists(input.groupId, input.organizationId, actor);
     }
 
+    if (input.departmentId) {
+      await this.ensureDepartmentExists(input.departmentId, input.organizationId);
+    }
+
     const created = await this.prisma.assignment.create({
       data: input,
       select: assignmentSelect,
@@ -87,7 +93,13 @@ export class AssignmentsService {
       targetType: 'assignment',
       targetId: created.id,
       summary: 'Created assignment',
-      metadata: { courseId: input.courseId, userId: input.userId ?? null, groupId: input.groupId ?? null },
+      metadata: {
+        courseId: input.courseId,
+        userId: input.userId ?? null,
+        groupId: input.groupId ?? null,
+        departmentId: input.departmentId ?? null,
+        includeDescendants: input.includeDescendants,
+      },
     });
 
     return created;
@@ -163,6 +175,24 @@ export class AssignmentsService {
 
     if (group.status === 'archived') {
       throw new ConflictException('Cannot assign a course to an archived group');
+    }
+  }
+
+  // No manager team-scope filter here (unlike ensureUserExists/ensureGroupExists) -- department
+  // manager object-scope for assignment creation is deliberately out of scope for PR 277 and
+  // belongs to PR 278's OrganizationAccessScopeService.
+  private async ensureDepartmentExists(departmentId: string, organizationId: string) {
+    const department = await this.prisma.department.findFirst({
+      where: { id: departmentId, organizationId },
+      select: { id: true, status: true },
+    });
+
+    if (!department) {
+      throw new NotFoundException('Department not found');
+    }
+
+    if (department.status === 'archived') {
+      throw new ConflictException('Cannot assign a course to an archived department');
     }
   }
 }

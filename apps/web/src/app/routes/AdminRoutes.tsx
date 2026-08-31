@@ -13,6 +13,7 @@ const AdminDepartmentUsersPage = lazy(() => import('../AdminDepartmentUsersPage.
 const AdminGroupsPage = lazy(() => import('../AdminGroupsPage.js').then((m) => ({ default: m.AdminGroupsPage })));
 const AdminLessonsPage = lazy(() => import('../AdminLessonsPage.js').then((m) => ({ default: m.AdminLessonsPage })));
 const AdminMaterialsPage = lazy(() => import('../AdminMaterialsPage.js').then((m) => ({ default: m.AdminMaterialsPage })));
+const AdminPositionCoursesPage = lazy(() => import('../AdminPositionCoursesPage.js').then((m) => ({ default: m.AdminPositionCoursesPage })));
 const AdminPositionsPage = lazy(() => import('../AdminPositionsPage.js').then((m) => ({ default: m.AdminPositionsPage })));
 const AdminResultsCertificatesPage = lazy(() => import('../AdminResultsCertificatesPage.js').then((m) => ({ default: m.AdminResultsCertificatesPage })));
 const AdminRolesPage = lazy(() => import('../AdminRolesPage.js').then((m) => ({ default: m.AdminRolesPage })));
@@ -28,6 +29,7 @@ export function AdminRoutes() {
     <Route path="/admin/departments" element={<AdminDepartmentsPage />} />
     <Route path="/admin/departments/:id/users" element={<AdminDepartmentUsersPage />} />
     <Route path="/admin/positions" element={<AdminPositionsPage />} />
+    <Route path="/admin/position-courses" element={<AdminPositionCoursesPage />} />
     <Route path="/admin/appearance" element={<AdminThemeSettingsPage />} />
     <Route path="/admin/audit-log" element={<AdminAuditLogPage />} />
     <Route path="/admin/courses" element={<AdminCoursesPage />} />
