@@ -12,6 +12,7 @@
 
 - `development-ledger/` — frozen historical development ledger;
 - `old-trackers/` — бывшие writable planning/status trackers, retired on DOC-08;
+- `old-trackers/lms-admin-workplace-check-builder-verified.html` — прототип старой, отменённой архитектуры отдельной сущности `WorkplaceCheck`/`WorkplaceCheckInstance` (Template/Instance по образцу Assessment), описанной в `docs/archive/remediation/ENTITY_TECHSPEC_UNIMPLEMENTED_PRE_DOC12.md`, раздел 25.2 — этот подход superseded, действующее решение — расширение существующего Checklist-модуля, см. `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`;
 - active implementation work после миграции принадлежит GitHub Issues/Project;
 - owner/business decisions принадлежат `docs/status/OPEN_DECISIONS.md`.
 
