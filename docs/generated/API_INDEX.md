@@ -177,6 +177,9 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/questions/{questionId}/options` | `AssessmentQuestions` | `bearer` |
 | `PATCH` | `/api/v1/questions/{questionId}/options/{id}` | `AssessmentQuestions` | `bearer` |
 | `DELETE` | `/api/v1/questions/{questionId}/options/{id}` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/reporting-lines` | `ReportingLines` | `bearer` |
+| `PATCH` | `/api/v1/reporting-lines/{id}` | `ReportingLines` | `bearer` |
+| `POST` | `/api/v1/reporting-lines/{id}/close` | `ReportingLines` | `bearer` |
 | `GET` | `/api/v1/reports/admin-dashboard` | `Reports` | `bearer` |
 | `GET` | `/api/v1/reports/summary` | `Reports` | `bearer` |
 | `GET` | `/api/v1/users` | `Users` | `bearer` |
@@ -187,4 +190,6 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
 | `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
+| `GET` | `/api/v1/users/{id}/effective-manager` | `ReportingLines` | `bearer` |
+| `GET` | `/api/v1/users/{id}/reporting-lines` | `ReportingLines` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |

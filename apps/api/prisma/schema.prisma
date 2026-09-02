@@ -61,6 +61,12 @@ enum DepartmentManagerType {
   FUNCTIONAL
 }
 
+enum ReportingLineType {
+  DIRECT
+  FUNCTIONAL
+  PROJECT
+}
+
 enum CourseStatus {
   draft
   published
@@ -205,6 +211,7 @@ model Organization {
   departments                Department[]
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
+  reportingLines             ReportingLine[]
   positions                  Position[]
   positionCourses            PositionCourse[]
   orgStructureEvents         OrgStructureEvent[]
@@ -266,6 +273,8 @@ model User {
   managedGroups              ManagerGroup[]
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
+  reportingLinesAsEmployee   ReportingLine[]          @relation("ReportingLineEmployee")
+  reportingLinesAsManager    ReportingLine[]          @relation("ReportingLineManager")
   notifications              Notification[]
   checklistsCreated          Checklist[]              @relation("ChecklistCreatedBy")
   checklistInstances         ChecklistInstance[]      @relation("ChecklistInstanceUser")
@@ -508,6 +517,27 @@ model DepartmentManager {
   @@index([organizationId, departmentId, type, effectiveTo])
   @@index([organizationId, userId, effectiveTo])
   @@map("department_managers")
+}
+
+model ReportingLine {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  employeeId     String            @map("employee_id") @db.Uuid
+  managerId      String            @map("manager_id") @db.Uuid
+  type           ReportingLineType
+  isPrimary      Boolean           @default(false) @map("is_primary")
+  effectiveFrom  DateTime          @default(now()) @map("effective_from") @db.Timestamptz
+  effectiveTo    DateTime?         @map("effective_to") @db.Timestamptz
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employee       User              @relation("ReportingLineEmployee", fields: [employeeId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  manager        User              @relation("ReportingLineManager", fields: [managerId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, employeeId, effectiveTo])
+  @@index([organizationId, managerId, effectiveTo])
+  @@map("reporting_lines")
 }
 
 model OrgStructureEvent {

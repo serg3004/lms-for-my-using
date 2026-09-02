@@ -71,6 +71,8 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `positionsWrite` | `admin` |
 | `progressCreate` | `admin`, `manager`, `instructor`, `learner` |
 | `progressRead` | `admin`, `manager`, `instructor`, `learner` |
+| `reportingLinesRead` | `admin` |
+| `reportingLinesWrite` | `admin` |
 | `reportsRead` | `admin`, `manager` |
 | `themeSettingsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `themeSettingsWrite` | `admin` |

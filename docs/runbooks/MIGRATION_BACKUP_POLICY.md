@@ -124,6 +124,17 @@ Migration `20260831090000_add_learning_targets` также additive и backward-
 
 Отдельный data backfill не требуется. Backup сверх общей policy не требуется, но перед применением в production рекомендуется подтвердить через `SELECT count(*) FROM assignments WHERE num_nonnulls(user_id, group_id) != 1` (должно быть 0), что constraint drop+recreate безопасен для текущих данных.
 
+### Reporting line migration
+
+Migration `20260902090000_add_reporting_lines` также additive и backward-compatible:
+
+- создаёт новый enum `ReportingLineType` (`DIRECT`/`FUNCTIONAL`/`PROJECT`) и новую таблицу `reporting_lines` (персональные линии подчинения отдельно от Department tree, PR 279) без изменения существующих таблиц `departments`, `department_managers`, `department_memberships`, `users` или `org_structure_events`;
+- не выполняет backfill: ни один User не получает personal reporting line автоматически;
+- CHECK `reporting_lines_employee_not_manager_check` (`employee_id <> manager_id`) и два partial unique index (`reporting_lines_current_employee_manager_type_key`, `reporting_lines_current_primary_type_key`) заданы вручную raw SQL в migration.sql по той же причине, что и для `department_managers`/`department_memberships`/`departments_org_code_key` — Prisma schema DSL не поддерживает `WHERE`-условие в `@@unique`, поэтому эти constraints намеренно отсутствуют в `schema.prisma`; DIRECT-цикл (A подчиняется B, B подчиняется A) не может быть выражен DB-constraint-ом и проверяется в приложении внутри Serializable-транзакции с bounded retry (`ReportingLinesService.createReportingLine`), тот же паттерн, что и cycle-check при reparent Department (PR 269);
+- допускает overlap со старой версией приложения аналогично предыдущим org-structure миграциям.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

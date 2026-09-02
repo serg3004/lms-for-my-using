@@ -40,6 +40,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `PositionCoursesModule` |
 | `PositionsModule` |
 | `ProgressModule` |
+| `ReportingLinesModule` |
 | `ReportsModule` |
 | `UploadModule` |
 | `UsersModule` |

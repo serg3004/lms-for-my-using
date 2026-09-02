@@ -190,18 +190,31 @@ describe('ReportsService getSummary — department filter', () => {
   const departmentId = '22222222-2222-4222-8222-222222222222';
   const childDepartmentId = '33333333-3333-4333-8333-333333333333';
 
-  function buildPrisma(overrides: { department?: unknown; subtreeIds?: string[]; managedDepartments?: { departmentId: string }[] } = {}) {
+  function buildPrisma(overrides: {
+    department?: unknown;
+    subtreeIds?: string[];
+    managedDepartments?: { departmentId: string }[];
+    reportIds?: string[];
+  } = {}) {
     const record = (result: unknown) => async () => result;
     const calls: Call[] = [];
     const track = (resource: string, method: string, result: unknown) => async (args: Record<string, unknown>) => {
       calls.push({ resource, method, args });
       return result;
     };
+    // $queryRaw backs two distinct raw queries (department subtree and reporting-line
+    // transitive reports); distinguish by the table name in the query text rather than call
+    // order, since OrganizationAccessScopeService issues both concurrently via Promise.all.
+    const queryRaw = async (strings: TemplateStringsArray) => {
+      const sql = strings.join('');
+      if (sql.includes('reporting_lines')) return (overrides.reportIds ?? []).map((id) => ({ id }));
+      return (overrides.subtreeIds ?? [departmentId]).map((id) => ({ id }));
+    };
 
     const prisma = {
       department: { findFirst: record(overrides.department === undefined ? { id: departmentId } : overrides.department) },
       departmentManager: { findMany: record(overrides.managedDepartments ?? []) },
-      $queryRaw: record((overrides.subtreeIds ?? [departmentId]).map((id) => ({ id }))),
+      $queryRaw: queryRaw,
       progress: { findMany: track('progress', 'findMany', []), count: track('progress', 'count', 0), aggregate: record({ _avg: { score: null } }) },
       certificate: { findMany: track('certificate', 'findMany', []), count: track('certificate', 'count', 0) },
       assignment: { findMany: track('assignment', 'findMany', []), count: track('assignment', 'count', 0) },

@@ -31,6 +31,7 @@ import { OrganizationsController } from '../organizations/organizations.controll
 import { PositionCoursesController } from '../position-courses/position-courses.controller.js';
 import { PositionsController } from '../positions/positions.controller.js';
 import { ProgressController } from '../progress/progress.controller.js';
+import { ReportingLinesController } from '../reporting-lines/reporting-lines.controller.js';
 import { ReportsController } from '../reports/reports.controller.js';
 import { UsersController } from '../users/users.controller.js';
 import { AuthController } from './auth.controller.js';
@@ -68,6 +69,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'position-courses/position-courses.controller.ts', Controller: PositionCoursesController },
   { file: 'positions/positions.controller.ts', Controller: PositionsController },
   { file: 'progress/progress.controller.ts', Controller: ProgressController },
+  { file: 'reporting-lines/reporting-lines.controller.ts', Controller: ReportingLinesController },
   { file: 'reports/reports.controller.ts', Controller: ReportsController },
   { file: 'users/users.controller.ts', Controller: UsersController },
 ];
