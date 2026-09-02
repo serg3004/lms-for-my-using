@@ -295,6 +295,15 @@ export class DepartmentsService {
       });
       if (activeChild) throw new ConflictException('Cannot archive a department that has active children');
 
+      const [currentMembership, currentManager, activeAssignment] = await Promise.all([
+        tx.departmentMembership.findFirst({ where: { organizationId, departmentId: id, effectiveTo: null }, select: { id: true } }),
+        tx.departmentManager.findFirst({ where: { organizationId, departmentId: id, effectiveTo: null }, select: { id: true } }),
+        tx.assignment.findFirst({ where: { organizationId, departmentId: id, deletedAt: null, status: { not: 'cancelled' } }, select: { id: true } }),
+      ]);
+      if (currentMembership) throw new ConflictException('Cannot archive a department with current memberships');
+      if (currentManager) throw new ConflictException('Cannot archive a department with current local managers');
+      if (activeAssignment) throw new ConflictException('Cannot archive a department with active learning assignments');
+
       const updated = await tx.department.update({
         where: { id },
         data: { status: 'archived', archivedAt: new Date() },

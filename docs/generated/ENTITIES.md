@@ -37,6 +37,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `MultipartUpload` |
 | `Notification` |
 | `OrgStructureEvent` |
+| `OrgStructureImportPreview` |
 | `Organization` |
 | `OrganizationTheme` |
 | `OutboxEvent` |

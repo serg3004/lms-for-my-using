@@ -29,12 +29,13 @@ export type OrgStructureEventType =
   | 'position.restored'
   | 'reporting_line.created'
   | 'reporting_line.updated'
-  | 'reporting_line.closed';
+  | 'reporting_line.closed'
+  | 'org_structure.import_committed';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position' | 'reporting_line';
+  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position' | 'reporting_line' | 'org_structure_import';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;

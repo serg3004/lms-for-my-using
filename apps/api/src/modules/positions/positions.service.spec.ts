@@ -21,6 +21,8 @@ function createPrisma(overrides: {
       update: jest.fn(),
       ...overrides.position,
     },
+    departmentMembership: { findFirst: jest.fn(async () => null) },
+    positionCourse: { findFirst: jest.fn(async () => null) },
     orgStructureEvent: { create: jest.fn(async () => ({})) },
   };
   base['$transaction'] = jest.fn(async (fn: (tx: unknown) => unknown) => fn(base));

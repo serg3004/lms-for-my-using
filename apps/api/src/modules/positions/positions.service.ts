@@ -128,6 +128,13 @@ export class PositionsService {
       if (!existing) throw new NotFoundException('Position not found');
       if (existing.status === 'archived') throw new ConflictException('Position is already archived');
 
+      const [currentMembership, activeCourse] = await Promise.all([
+        tx.departmentMembership.findFirst({ where: { organizationId, positionId: id, effectiveTo: null }, select: { id: true } }),
+        tx.positionCourse.findFirst({ where: { organizationId, positionId: id, status: 'active' }, select: { id: true } }),
+      ]);
+      if (currentMembership) throw new ConflictException('Cannot archive a position used by a current membership');
+      if (activeCourse) throw new ConflictException('Cannot archive a position with active course requirements');
+
       const updated = await tx.position.update({
         where: { id },
         data: { status: 'archived', archivedAt: new Date() },

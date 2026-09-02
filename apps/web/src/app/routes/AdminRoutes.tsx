@@ -9,6 +9,7 @@ const AdminCourseBuilderPage = lazy(() => import('../AdminCourseBuilderPage.js')
 const AdminCoursesPage = lazy(() => import('../AdminCoursesPage.js').then((m) => ({ default: m.AdminCoursesPage })));
 const AdminDashboardPage = lazy(() => import('../AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })));
 const AdminDepartmentsPage = lazy(() => import('../AdminDepartmentsPage.js').then((m) => ({ default: m.AdminDepartmentsPage })));
+const AdminOrgStructureToolsPage = lazy(() => import('../AdminOrgStructureToolsPage.js').then((m) => ({ default: m.AdminOrgStructureToolsPage })));
 const AdminDepartmentUsersPage = lazy(() => import('../AdminDepartmentUsersPage.js').then((m) => ({ default: m.AdminDepartmentUsersPage })));
 const AdminGroupsPage = lazy(() => import('../AdminGroupsPage.js').then((m) => ({ default: m.AdminGroupsPage })));
 const AdminLessonsPage = lazy(() => import('../AdminLessonsPage.js').then((m) => ({ default: m.AdminLessonsPage })));
@@ -27,6 +28,7 @@ export function AdminRoutes() {
     <Route path="/admin/roles" element={<AdminRolesPage />} />
     <Route path="/admin/groups" element={<AdminGroupsPage />} />
     <Route path="/admin/departments" element={<AdminDepartmentsPage />} />
+    <Route path="/admin/org-structure-tools" element={<AdminOrgStructureToolsPage />} />
     <Route path="/admin/departments/:id/users" element={<AdminDepartmentUsersPage />} />
     <Route path="/admin/positions" element={<AdminPositionsPage />} />
     <Route path="/admin/position-courses" element={<AdminPositionCoursesPage />} />

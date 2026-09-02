@@ -34,6 +34,9 @@ function createPrisma(overrides: {
       findFirst: jest.fn(),
       ...overrides.departmentType,
     },
+    departmentMembership: { findFirst: jest.fn(async () => null) },
+    departmentManager: { findFirst: jest.fn(async () => null) },
+    assignment: { findFirst: jest.fn(async () => null) },
     orgStructureEvent: { create: jest.fn(async () => ({})) },
     $queryRaw: overrides.queryRaw ?? jest.fn(async () => []),
   };

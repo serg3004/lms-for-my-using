@@ -8,4 +8,4 @@ export type {
   RecordOrgStructureEventInput,
 } from './org-structure-event.js';
 export { getAncestorIdChain, getSubtreeDepartmentIds, isSelfOrDescendant } from './department-tree-queries.js';
-export { departmentManagerModeSchema } from './departments.schemas.js';
+export { departmentManagerModeSchema, MAX_DEPARTMENT_DEPTH } from './departments.schemas.js';
