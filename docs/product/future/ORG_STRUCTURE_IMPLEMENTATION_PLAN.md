@@ -1480,6 +1480,8 @@ Department tree при этом не изменяется.
 
 ## PR 280 — Реализовать импорт, lifecycle и полную историю
 
+**Статус: реализовано.** Добавлены tenant/actor-bound, single-use preview tokens с 30-минутным TTL, server-owned normalized payload и атомарный CSV commit для Department/Membership в режимах CREATE_ONLY/UPSERT; UI preview/commit и tenant-scoped history; lifecycle blockers для Department/Position; import event без raw CSV/token. Ограничения CSV и повторная validation внутри Serializable commit защищают от oversized/tampered/stale/concurrent apply.
+
 ### Задача
 
 Сделать оргструктуру пригодной для реального администрирования: безопасный CSV import, archive/restore и полная история критических изменений.

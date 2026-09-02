@@ -146,6 +146,9 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/notifications/unread-count` | `Notifications` | `bearer` |
 | `PATCH` | `/api/v1/notifications/{id}/read` | `Notifications` | `bearer` |
 | `GET` | `/api/v1/openapi` | `OpenApi` | `public` |
+| `GET` | `/api/v1/org-structure/history` | `OrgStructureAdmin` | `bearer` |
+| `POST` | `/api/v1/org-structure/imports/commit` | `OrgStructureAdmin` | `bearer` |
+| `POST` | `/api/v1/org-structure/imports/preview` | `OrgStructureAdmin` | `bearer` |
 | `GET` | `/api/v1/organizations` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations/register` | `Organizations` | `public` |

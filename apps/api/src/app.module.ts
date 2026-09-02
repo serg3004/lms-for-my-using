@@ -32,6 +32,7 @@ import { OpenApiModule } from './modules/openapi/openapi.module.js';
 import { OutboxModule } from './modules/outbox/public.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { OrganizationAccessScopeModule } from './modules/organization-access-scope/organization-access-scope.module.js';
+import { OrgStructureAdminModule } from './modules/org-structure-admin/org-structure-admin.module.js';
 import { PositionCoursesModule } from './modules/position-courses/position-courses.module.js';
 import { PositionsModule } from './modules/positions/positions.module.js';
 import { LearningTargetsModule } from './modules/learning-targets/learning-targets.module.js';
@@ -97,6 +98,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OutboxModule,
     OrganizationsModule,
     OrganizationAccessScopeModule,
+    OrgStructureAdminModule,
     ProgressModule,
     ReportingLinesModule,
     ReportsModule,

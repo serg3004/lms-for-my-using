@@ -97,6 +97,20 @@ describe('positions (database)', () => {
     expect(restored.archivedAt).toBeNull();
   });
 
+  it('blocks archiving a position while a current membership uses it', async () => {
+    const organization = await createOrganization();
+    const user = await createUser(organization.id, 'Current');
+    const department = await createDepartment(organization.id, 'Dept');
+    const position = await service.createPosition({ organizationId: organization.id, code: 'in-use', title: 'In Use' }, null);
+
+    await membershipsService.createMembership(
+      { organizationId: organization.id, departmentId: department.id, userId: user.id, isPrimary: true, positionId: position.id },
+      null,
+    );
+
+    await expect(service.archivePosition(position.id, organization.id, null)).rejects.toMatchObject({ status: 409 });
+  });
+
   it('keeps a historical membership assignment intact after its position is archived, but rejects assigning that archived position to a new membership', async () => {
     const organization = await createOrganization();
     const user = await createUser(organization.id, 'Historical');
@@ -109,6 +123,7 @@ describe('positions (database)', () => {
     );
     expect(membership.positionId).toBe(position.id);
 
+    await membershipsService.closeMembership(membership.id, organization.id, null);
     await service.archivePosition(position.id, organization.id, null);
 
     const memberships = await membershipsService.listUserMemberships(user.id, organization.id);

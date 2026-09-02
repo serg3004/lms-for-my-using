@@ -69,6 +69,24 @@ does not require an edit here, as long as authorization/tenant-scoping is unchan
 Runtime OpenAPI and [`../generated/API_INDEX.md`](../generated/API_INDEX.md) remain the
 route-shape authority.
 
+## Organization structure import and history
+
+An organization-structure CSV preview never mutates domain data. A successful preview stores
+the exact normalized validated payload server-side and returns a random opaque token whose
+SHA-256 digest, tenant, actor, kind, mode, 30-minute expiry, and consumption state are persisted.
+Commit applies only that snapshot in a Serializable transaction, revalidates it against current
+state, and atomically claims the token. Tokens are single-use and cannot cross actors or tenants.
+Neither raw CSV nor the token is written to organization-structure events. A Department import row
+naming an archived department as its parent is rejected at preview time; a Membership import row
+importing a new PRIMARY membership closes the user's existing current primary membership (in any
+department) and records that closure as its own `department_membership.closed` event, distinct
+from the `department_membership.created` event for the new row.
+
+Archiving a Department is non-destructive and is rejected while it has active children, current
+memberships, current local managers, or active Department assignments. Archiving a Position is
+rejected while a current membership or active PositionCourse uses it. Restore does not reactivate
+relations or learning targets.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
