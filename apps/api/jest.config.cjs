@@ -20,6 +20,7 @@ module.exports = {
     '/src/integration/learning-targets\\.database\\.spec\\.ts$',
     '/src/integration/organization-access-scope\\.database\\.spec\\.ts$',
     '/src/integration/reporting-lines\\.database\\.spec\\.ts$',
+    '/src/integration/org-structure-admin\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

@@ -16,6 +16,7 @@ type Row = Record<string, string>;
 type ValidationError = { row: number; field: string; message: string };
 
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class OrgStructureAdminService {
@@ -77,7 +78,7 @@ export class OrgStructureAdminService {
     const existingByCode = new Map(existing.filter(x => x.code).map(x => [x.code!, x]));
     const types = new Map((await db.departmentType.findMany({ where: { organizationId }, select: { code: true, isActive: true } })).map(x => [x.code, x]));
     const managerIds = [...new Set(rows.flatMap(row => [row.directManagerUserIds, row.functionalManagerUserIds].flatMap(value => value && value !== CLEAR ? value.split(';') : [])).filter(Boolean))];
-    const activeManagers = new Set((await db.user.findMany({ where: { organizationId, id: { in: managerIds }, status: 'active' }, select: { id: true } })).map(user => user.id));
+    const activeManagers = new Set((await db.user.findMany({ where: { organizationId, id: { in: managerIds.filter(id => UUID_RE.test(id)) }, status: 'active' }, select: { id: true } })).map(user => user.id));
     const resultingParent = new Map(existing.filter(x => x.code).map(x => [x.code!, x.parent?.code ?? null]));
     rows.forEach((row, i) => {
       const n = i + 2; const code = row.code!;
@@ -97,6 +98,7 @@ export class OrgStructureAdminService {
     });
     for (const [code, parent] of resultingParent) {
       if (parent && !resultingParent.has(parent)) errors.push({ row: (rows.findIndex(r => r.code === code) + 2) || 2, field: 'parentCode', message: `Unknown parent ${parent}` });
+      else if (parent && existingByCode.get(parent)?.status === 'archived') errors.push({ row: (rows.findIndex(r => r.code === code) + 2) || 2, field: 'parentCode', message: `Archived department cannot be used as parent: ${parent}` });
       const seen = new Set<string>(); let cursor: string | null | undefined = code; let depth = 0;
       while (cursor) { if (seen.has(cursor)) { errors.push({ row: Math.max(2, rows.findIndex(r => r.code === code) + 2), field: 'parentCode', message: 'Cycle detected' }); break; } seen.add(cursor); cursor = resultingParent.get(cursor); depth += 1; if (depth > MAX_DEPARTMENT_DEPTH) { errors.push({ row: Math.max(2, rows.findIndex(r => r.code === code) + 2), field: 'parentCode', message: `Depth exceeds ${MAX_DEPARTMENT_DEPTH}` }); break; } }
     }
@@ -105,12 +107,12 @@ export class OrgStructureAdminService {
 
   private async validateMemberships(rows: Row[], mode: ImportMode, organizationId: string, db: Prisma.TransactionClient | PrismaService = this.prisma) {
     const errors: ValidationError[] = []; const intents = new Set<string>();
-    const userIds = [...new Set(rows.map(r => r.userId))]; const departmentCodes = [...new Set(rows.map(r => r.departmentCode))]; const positionCodes = [...new Set(rows.map(r => r.positionCode).filter(Boolean))];
+    const userIds = [...new Set(rows.map(r => r.userId))]; const validUserIds = userIds.filter(id => UUID_RE.test(id ?? '')); const departmentCodes = [...new Set(rows.map(r => r.departmentCode))]; const positionCodes = [...new Set(rows.map(r => r.positionCode).filter(Boolean))];
     const [users, departments, positions, current] = await Promise.all([
-      db.user.findMany({ where: { organizationId, id: { in: userIds } }, select: { id: true, status: true } }),
+      db.user.findMany({ where: { organizationId, id: { in: validUserIds } }, select: { id: true, status: true } }),
       db.department.findMany({ where: { organizationId, code: { in: departmentCodes } }, select: { id: true, code: true, status: true } }),
       db.position.findMany({ where: { organizationId, code: { in: positionCodes } }, select: { id: true, code: true, status: true } }),
-      db.departmentMembership.findMany({ where: { organizationId, effectiveTo: null, userId: { in: userIds } }, select: { userId: true, department: { select: { code: true } }, isPrimary: true } }),
+      db.departmentMembership.findMany({ where: { organizationId, effectiveTo: null, userId: { in: validUserIds } }, select: { userId: true, department: { select: { code: true } }, isPrimary: true, effectiveFrom: true } }),
     ]);
     const us = new Map(users.map(x => [x.id, x])); const ds = new Map(departments.map(x => [x.code!, x])); const ps = new Map(positions.map(x => [x.code, x]));
     rows.forEach((row, i) => { const n = i + 2; const intent = `${row.userId}:${row.departmentCode}`;
@@ -122,7 +124,12 @@ export class OrgStructureAdminService {
       if (row.effectiveFrom && Number.isNaN(Date.parse(row.effectiveFrom))) errors.push({ row: n, field: 'effectiveFrom', message: 'Invalid date' });
       const same = current.find(x => x.userId === row.userId && x.department.code === row.departmentCode);
       if (mode === 'CREATE_ONLY' && same) errors.push({ row: n, field: 'departmentCode', message: 'Current membership already exists' });
-      if (mode === 'CREATE_ONLY' && row.membershipType === 'PRIMARY' && current.some(x => x.userId === row.userId && x.isPrimary)) errors.push({ row: n, field: 'membershipType', message: 'User already has a primary membership' });
+      const priorPrimary = current.find(x => x.userId === row.userId && x.isPrimary);
+      if (mode === 'CREATE_ONLY' && row.membershipType === 'PRIMARY' && priorPrimary) errors.push({ row: n, field: 'membershipType', message: 'User already has a primary membership' });
+      if (mode === 'UPSERT' && row.membershipType === 'PRIMARY' && priorPrimary && priorPrimary.department.code !== row.departmentCode && row.effectiveFrom) {
+        const newFrom = Date.parse(row.effectiveFrom);
+        if (!Number.isNaN(newFrom) && newFrom < priorPrimary.effectiveFrom.getTime()) errors.push({ row: n, field: 'effectiveFrom', message: 'Effective date cannot be earlier than the current primary membership it would replace' });
+      }
     }); return errors;
   }
 
@@ -147,7 +154,13 @@ export class OrgStructureAdminService {
     const positions = new Map((await tx.position.findMany({ where: { organizationId }, select: { id: true, code: true } })).map(x => [x.code, x.id]));
     for (const row of rows) { const departmentId = departments.get(row.departmentCode!)!; const current = await tx.departmentMembership.findFirst({ where: { organizationId, userId: row.userId, departmentId, effectiveTo: null } });
       if (current && mode === 'UPSERT') { await tx.departmentMembership.update({ where: { id: current.id }, data: { positionId: row.positionCode ? positions.get(row.positionCode) : undefined } }); continue; }
-      if (row.membershipType === 'PRIMARY') await tx.departmentMembership.updateMany({ where: { organizationId, userId: row.userId, isPrimary: true, effectiveTo: null }, data: { effectiveTo: new Date(row.effectiveFrom || Date.now()) } });
+      if (row.membershipType === 'PRIMARY') {
+        const priorPrimary = await tx.departmentMembership.findFirst({ where: { organizationId, userId: row.userId, isPrimary: true, effectiveTo: null } });
+        if (priorPrimary) {
+          await tx.departmentMembership.update({ where: { id: priorPrimary.id }, data: { effectiveTo: new Date(row.effectiveFrom || Date.now()) } });
+          await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'department_membership', entityId: priorPrimary.id, eventType: 'department_membership.closed', operationId, metadata: { source: 'csv_import', reason: 'primary_replaced' } });
+        }
+      }
       const created = await tx.departmentMembership.create({ data: { organizationId, userId: row.userId!, departmentId, positionId: row.positionCode ? positions.get(row.positionCode) : null, isPrimary: row.membershipType === 'PRIMARY', effectiveFrom: new Date(row.effectiveFrom || Date.now()) } });
       await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'department_membership', entityId: created.id, eventType: 'department_membership.created', operationId, metadata: { source: 'csv_import' } }); }
   }

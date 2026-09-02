@@ -76,7 +76,11 @@ the exact normalized validated payload server-side and returns a random opaque t
 SHA-256 digest, tenant, actor, kind, mode, 30-minute expiry, and consumption state are persisted.
 Commit applies only that snapshot in a Serializable transaction, revalidates it against current
 state, and atomically claims the token. Tokens are single-use and cannot cross actors or tenants.
-Neither raw CSV nor the token is written to organization-structure events.
+Neither raw CSV nor the token is written to organization-structure events. A Department import row
+naming an archived department as its parent is rejected at preview time; a Membership import row
+importing a new PRIMARY membership closes the user's existing current primary membership (in any
+department) and records that closure as its own `department_membership.closed` event, distinct
+from the `department_membership.created` event for the new row.
 
 Archiving a Department is non-destructive and is rejected while it has active children, current
 memberships, current local managers, or active Department assignments. Archiving a Position is

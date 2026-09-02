@@ -12,6 +12,8 @@ export function previewOrgStructureImport(file: File, kind: ImportKind, mode: Im
 export function commitOrgStructureImport(token: string) {
   return apiRequest<{ imported: number; operationId: string }>('/org-structure/imports/commit', { method: 'POST', body: JSON.stringify({ token }) });
 }
+export const ORG_STRUCTURE_HISTORY_PAGE_SIZE = 25;
+
 export function listOrgStructureHistory(page = 1) {
-  return apiRequest<{ items: OrgStructureEvent[]; total: number; page: number; pageSize: number }>(`/org-structure/history?page=${page}&pageSize=25`);
+  return apiRequest<{ items: OrgStructureEvent[]; total: number; page: number; pageSize: number }>(`/org-structure/history?page=${page}&pageSize=${ORG_STRUCTURE_HISTORY_PAGE_SIZE}`);
 }
