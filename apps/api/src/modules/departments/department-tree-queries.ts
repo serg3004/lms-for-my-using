@@ -146,6 +146,33 @@ export async function getSubtreeHeadcounts(
   return new Map(rows.map((row) => [row.id, Number(row.count)]));
 }
 
+/**
+ * All department ids in the subtree rooted at any of `departmentIds` (each root included),
+ * de-duplicated across every requested root in one query. Roots need not be disjoint.
+ */
+export async function getSubtreeDepartmentIds(
+  client: TransactionClient,
+  departmentIds: string[],
+  organizationId: string,
+): Promise<string[]> {
+  if (departmentIds.length === 0) return [];
+
+  const rows = await client.$queryRaw<{ id: string }[]>`
+    WITH RECURSIVE subtree AS (
+      SELECT id, 0 AS lvl
+      FROM departments
+      WHERE organization_id = ${organizationId}::uuid AND id = ANY(${departmentIds}::uuid[])
+      UNION ALL
+      SELECT c.id, s.lvl + 1
+      FROM departments c
+      JOIN subtree s ON c.parent_id = s.id AND c.organization_id = ${organizationId}::uuid
+      WHERE s.lvl < ${CTE_DEPTH_GUARD}
+    )
+    SELECT DISTINCT id FROM subtree
+  `;
+  return rows.map((row) => row.id);
+}
+
 /** Ancestor chain root-first, including the department itself as the last entry. */
 export async function getAncestorIdChain(
   client: TransactionClient,
