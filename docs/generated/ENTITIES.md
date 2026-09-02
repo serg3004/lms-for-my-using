@@ -44,6 +44,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Position` |
 | `PositionCourse` |
 | `Progress` |
+| `ReportingLine` |
 | `Session` |
 | `User` |
 
@@ -77,5 +78,6 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `PositionCourseRequirement` | `REQUIRED`, `OPTIONAL` |
 | `PositionStatus` | `active`, `archived` |
 | `ProgressStatus` | `not_started`, `in_progress`, `completed` |
+| `ReportingLineType` | `DIRECT`, `FUNCTIONAL`, `PROJECT` |
 | `UserRole` | `learner`, `instructor`, `mentor`, `manager`, `admin` |
 | `UserStatus` | `active`, `invited`, `suspended`, `archived` |

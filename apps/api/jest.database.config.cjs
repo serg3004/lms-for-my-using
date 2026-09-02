@@ -16,6 +16,7 @@ module.exports = {
     '<rootDir>/src/integration/legacy-position-migration.database.spec.ts',
     '<rootDir>/src/integration/learning-targets.database.spec.ts',
     '<rootDir>/src/integration/organization-access-scope.database.spec.ts',
+    '<rootDir>/src/integration/reporting-lines.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,

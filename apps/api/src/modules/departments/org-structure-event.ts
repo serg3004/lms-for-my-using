@@ -26,12 +26,15 @@ export type OrgStructureEventType =
   | 'position.created'
   | 'position.updated'
   | 'position.archived'
-  | 'position.restored';
+  | 'position.restored'
+  | 'reporting_line.created'
+  | 'reporting_line.updated'
+  | 'reporting_line.closed';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position';
+  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position' | 'reporting_line';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;

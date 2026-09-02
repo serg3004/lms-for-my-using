@@ -23,6 +23,7 @@ describe('ManagerService getTeamSummary', () => {
       assignment: { findMany: async () => [] },
       lesson: { groupBy: async () => [] },
       departmentManager: { findMany: async () => [] },
+      $queryRaw: async () => [],
     } as unknown as PrismaService;
     const service = new ManagerService(prisma);
 
@@ -75,6 +76,7 @@ describe('ManagerService getTeamSummary', () => {
         ],
       },
       departmentManager: { findMany: async () => [] },
+      $queryRaw: async () => [],
     } as unknown as PrismaService;
     const service = new ManagerService(prisma);
 
@@ -156,6 +158,7 @@ describe('ManagerService sendOverdueReminders', () => {
       ]) },
       notification: { createMany: notificationCreateMany },
       departmentManager: { findMany: async () => [] },
+      $queryRaw: async () => [],
     } as unknown as PrismaService;
     const service = new ManagerService(prisma);
 

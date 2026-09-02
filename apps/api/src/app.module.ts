@@ -36,6 +36,7 @@ import { PositionCoursesModule } from './modules/position-courses/position-cours
 import { PositionsModule } from './modules/positions/positions.module.js';
 import { LearningTargetsModule } from './modules/learning-targets/learning-targets.module.js';
 import { ProgressModule } from './modules/progress/progress.module.js';
+import { ReportingLinesModule } from './modules/reporting-lines/reporting-lines.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
 import { UsersModule } from './modules/users/users.module.js';
@@ -97,6 +98,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OrganizationsModule,
     OrganizationAccessScopeModule,
     ProgressModule,
+    ReportingLinesModule,
     ReportsModule,
     UploadModule,
     UsersModule,
