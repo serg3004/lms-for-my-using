@@ -135,6 +135,18 @@ Migration `20260902090000_add_reporting_lines` также additive и backward-c
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Organization structure import preview migration
+
+Migration `20260902120000_add_org_structure_import_previews` также additive и backward-compatible:
+
+- создаёт новую таблицу `org_structure_import_previews` (server-owned snapshot CSV import payload для PR 280) без изменения существующих таблиц `departments`, `department_managers`, `department_memberships`, `positions`, `users` или `org_structure_events`;
+- не выполняет backfill: строки появляются только когда admin инициирует CSV preview;
+- хранит только SHA-256 hash одноразового токена (`token_hash`, `UNIQUE`) — сырой токен и сырой CSV нигде не персистятся; `payload` содержит только нормализованный, уже провалидированный набор строк, а не исходный файл;
+- `expires_at`/`consumed_at` реализуют 30-минутный TTL и однократное potребление; истёкшие/потреблённые строки не удаляются миграцией автоматически — очистка stale preview-строк является операционной задачей, а не migration concern;
+- допускает overlap со старой версией приложения аналогично предыдущим org-structure миграциям.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling
