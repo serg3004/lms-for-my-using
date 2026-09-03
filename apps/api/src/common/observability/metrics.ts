@@ -87,6 +87,61 @@ export const retryExhausted = new Counter({
   registers: [metricsRegistry],
 });
 
+const ORG_DURATION_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30];
+
+export const orgDepartmentTreeQueryDuration = new Histogram({
+  name: 'lms_org_department_tree_query_duration_seconds',
+  help: 'Organization-tree query latency by bounded operation and outcome.',
+  labelNames: ['operation', 'outcome'] as const,
+  buckets: ORG_DURATION_BUCKETS,
+  registers: [metricsRegistry],
+});
+
+export const orgScopeResolutionDuration = new Histogram({
+  name: 'lms_org_scope_resolution_duration_seconds',
+  help: 'Organization access-scope resolution latency by bounded operation and outcome.',
+  labelNames: ['operation', 'outcome'] as const,
+  buckets: ORG_DURATION_BUCKETS,
+  registers: [metricsRegistry],
+});
+
+export const orgLearningTargetResolutionDuration = new Histogram({
+  name: 'lms_org_learning_target_resolution_duration_seconds',
+  help: 'Learning-target resolution latency by outcome.',
+  labelNames: ['outcome'] as const,
+  buckets: ORG_DURATION_BUCKETS,
+  registers: [metricsRegistry],
+});
+
+export const orgReportQueryDuration = new Histogram({
+  name: 'lms_org_report_query_duration_seconds',
+  help: 'Organization-aware report query latency by bounded report and outcome.',
+  labelNames: ['report', 'outcome'] as const,
+  buckets: ORG_DURATION_BUCKETS,
+  registers: [metricsRegistry],
+});
+
+export const orgImportRows = new Counter({
+  name: 'lms_org_import_rows_total',
+  help: 'Rows accepted or rejected by organization imports.',
+  labelNames: ['kind', 'stage', 'outcome'] as const,
+  registers: [metricsRegistry],
+});
+
+export const orgImportFailures = new Counter({
+  name: 'lms_org_import_failures_total',
+  help: 'Organization import failures by bounded kind, stage and reason.',
+  labelNames: ['kind', 'stage', 'reason'] as const,
+  registers: [metricsRegistry],
+});
+
+export const orgReparentConflicts = new Counter({
+  name: 'lms_org_reparent_conflicts_total',
+  help: 'Rejected department reparent operations by bounded reason.',
+  labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+
 export function normalizeHttpRoute(url: string): string {
   const path = url.split('?')[0] || '/';
   return path

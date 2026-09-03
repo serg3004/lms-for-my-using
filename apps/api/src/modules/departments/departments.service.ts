@@ -1,7 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { orgDepartmentTreeQueryDuration, orgReparentConflicts } from '../../common/observability/metrics.js';
+import { logOrgDiagnostic, observeOrgDuration, orgFailureReason } from '../../common/observability/org-observability.js';
 import {
   getAncestorIdChain,
   getDepartmentDepth,
@@ -59,6 +61,8 @@ function rethrowAsConflictOnDuplicateCode(error: unknown): never {
 
 @Injectable()
 export class DepartmentsService {
+  private readonly logger = new Logger(DepartmentsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -108,12 +112,14 @@ export class DepartmentsService {
 
   /** Roots only — callers load children lazily via getChildren. */
   async getTree(organizationId: string, status?: 'active' | 'archived') {
-    const roots = await this.prisma.department.findMany({
-      where: { organizationId, parentId: null, status: status ?? 'active' },
-      orderBy: DEPARTMENT_SORT,
-      select: departmentSelect,
+    return observeOrgDuration(orgDepartmentTreeQueryDuration, { operation: 'roots' }, async () => {
+      const roots = await this.prisma.department.findMany({
+        where: { organizationId, parentId: null, status: status ?? 'active' },
+        orderBy: DEPARTMENT_SORT,
+        select: departmentSelect,
+      });
+      return this.withHeadcounts(roots, organizationId);
     });
-    return this.withHeadcounts(roots, organizationId);
   }
 
   async getDepartment(id: string, organizationId: string) {
@@ -124,25 +130,26 @@ export class DepartmentsService {
   }
 
   async getChildren(id: string, organizationId: string, status?: 'active' | 'archived') {
-    await this.ensureDepartmentExists(id, organizationId);
-
-    const children = await this.prisma.department.findMany({
-      where: { organizationId, parentId: id, status: status ?? 'active' },
-      orderBy: DEPARTMENT_SORT,
-      select: departmentSelect,
+    return observeOrgDuration(orgDepartmentTreeQueryDuration, { operation: 'children' }, async () => {
+      await this.ensureDepartmentExists(id, organizationId);
+      const children = await this.prisma.department.findMany({
+        where: { organizationId, parentId: id, status: status ?? 'active' },
+        orderBy: DEPARTMENT_SORT,
+        select: departmentSelect,
+      });
+      return this.withHeadcounts(children, organizationId);
     });
-    return this.withHeadcounts(children, organizationId);
   }
 
   async getPath(id: string, organizationId: string) {
-    await this.ensureDepartmentExists(id, organizationId);
-
-    const ids = await getAncestorIdChain(this.prisma, id, organizationId);
-    const rawRows = await this.prisma.department.findMany({ where: { id: { in: ids }, organizationId }, select: departmentSelect });
-    const rows = await this.withHeadcounts(rawRows, organizationId);
-    const byId = new Map(rows.map((row) => [row.id, row]));
-
-    return ids.map((ancestorId) => byId.get(ancestorId)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+    return observeOrgDuration(orgDepartmentTreeQueryDuration, { operation: 'path' }, async () => {
+      await this.ensureDepartmentExists(id, organizationId);
+      const ids = await getAncestorIdChain(this.prisma, id, organizationId);
+      const rawRows = await this.prisma.department.findMany({ where: { id: { in: ids }, organizationId }, select: departmentSelect });
+      const rows = await this.withHeadcounts(rawRows, organizationId);
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      return ids.map((ancestorId) => byId.get(ancestorId)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+    });
   }
 
   async createDepartment(input: CreateDepartmentInput, actorId: string | null) {
@@ -243,7 +250,8 @@ export class DepartmentsService {
    * winner's committed change and is rejected by the cycle/depth checks.
    */
   async moveDepartment(id: string, organizationId: string, input: MoveDepartmentInput, actorId: string | null) {
-    return runSerializableWithRetry(this.prisma, async (tx) => {
+    try {
+      return await runSerializableWithRetry(this.prisma, async (tx) => {
       const target = await tx.department.findFirst({ where: { id, organizationId }, select: { id: true, parentId: true } });
       if (!target) throw new NotFoundException('Department not found');
 
@@ -280,7 +288,13 @@ export class DepartmentsService {
       });
 
       return updated;
-    });
+      });
+    } catch (error) {
+      const reason = orgFailureReason(error);
+      orgReparentConflicts.inc({ reason });
+      logOrgDiagnostic(this.logger, 'org_reparent_failed', reason);
+      throw error;
+    }
   }
 
   async archiveDepartment(id: string, organizationId: string, actorId: string | null) {

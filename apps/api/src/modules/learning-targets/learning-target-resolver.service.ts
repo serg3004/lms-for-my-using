@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { orgLearningTargetResolutionDuration } from '../../common/observability/metrics.js';
+import { observeOrgDuration } from '../../common/observability/org-observability.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { isSelfOrDescendant } from '../departments/public.js';
 import { buildResolution, type LearningTargetResolution, type LearningTargetSource } from './learning-target-resolver.types.js';
@@ -34,7 +36,8 @@ export class LearningTargetResolverService {
     courseId: string,
     options: { course?: { selfEnrollmentEnabled: boolean } } = {},
   ): Promise<LearningTargetResolution> {
-    const [course, currentPrimaryMembership] = await Promise.all([
+    return observeOrgDuration(orgLearningTargetResolutionDuration, {}, async () => {
+      const [course, currentPrimaryMembership] = await Promise.all([
       options.course ?? this.prisma.course.findFirst({ where: { id: courseId, organizationId }, select: { selfEnrollmentEnabled: true } }),
       this.prisma.departmentMembership.findFirst({
         where: { organizationId, userId, isPrimary: true, effectiveTo: null },
@@ -42,19 +45,20 @@ export class LearningTargetResolverService {
       }),
     ]);
 
-    const sources: LearningTargetSource[] = [];
+      const sources: LearningTargetSource[] = [];
 
-    sources.push(...(await this.resolveDirectAssignments(organizationId, userId, courseId)));
-    sources.push(...(await this.resolveGroupAssignments(organizationId, userId, courseId)));
-    if (currentPrimaryMembership) {
-      sources.push(...(await this.resolveDepartmentAssignments(organizationId, courseId, currentPrimaryMembership.departmentId)));
-      sources.push(...(await this.resolvePositionCourse(organizationId, courseId, currentPrimaryMembership)));
-    }
-    if (course?.selfEnrollmentEnabled) {
-      sources.push({ type: 'SELF_ENROLLMENT', id: courseId, requirement: 'OPTIONAL', dueAt: null });
-    }
+      sources.push(...(await this.resolveDirectAssignments(organizationId, userId, courseId)));
+      sources.push(...(await this.resolveGroupAssignments(organizationId, userId, courseId)));
+      if (currentPrimaryMembership) {
+        sources.push(...(await this.resolveDepartmentAssignments(organizationId, courseId, currentPrimaryMembership.departmentId)));
+        sources.push(...(await this.resolvePositionCourse(organizationId, courseId, currentPrimaryMembership)));
+      }
+      if (course?.selfEnrollmentEnabled) {
+        sources.push({ type: 'SELF_ENROLLMENT', id: courseId, requirement: 'OPTIONAL', dueAt: null });
+      }
 
-    return buildResolution(dedupe(sources));
+      return buildResolution(dedupe(sources));
+    });
   }
 
   private async resolveDirectAssignments(organizationId: string, userId: string, courseId: string): Promise<LearningTargetSource[]> {
