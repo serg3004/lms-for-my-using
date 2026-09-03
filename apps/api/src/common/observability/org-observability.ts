@@ -43,7 +43,7 @@ export async function observeOrgDuration<T>(
 
 export function logOrgDiagnostic(
   logger: OrgDiagnosticLogger,
-  event: 'org_reparent_failed' | 'org_import_failed' | 'org_scope_resolution_failed' | 'org_scope_resolution_denied',
+  event: 'org_reparent_failed' | 'org_import_failed' | 'org_scope_resolution_failed',
   reason: string,
   extra: Record<string, string> = {},
 ): void {

@@ -47,9 +47,9 @@ sum by (kind, stage, reason) (rate(lms_org_import_failures_total[5m]))
 sum by (reason) (rate(lms_org_reparent_conflicts_total[5m]))
 ```
 
-Diagnostics use the events `org_reparent_failed`, `org_import_failed`,
-`org_scope_resolution_failed`, and `org_scope_resolution_denied`. Their reason,
-operation, kind and stage fields are bounded application values. Do not add IDs,
+Diagnostics use the events `org_reparent_failed`, `org_import_failed`, and
+`org_scope_resolution_failed`. Their reason, operation, kind and stage fields
+are bounded application values. Do not add IDs,
 names, codes, filenames, raw CSV, preview hashes/tokens, request bodies or raw
 error messages to either metric labels or these diagnostic records.
 

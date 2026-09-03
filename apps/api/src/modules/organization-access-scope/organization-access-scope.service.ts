@@ -48,10 +48,9 @@ export class OrganizationAccessScopeService {
         where: { organizationId: actor.organizationId, userId: actor.id, type: 'DIRECT', effectiveTo: null },
         select: { departmentId: true },
       });
-      if (directlyManaged.length === 0) {
-        logOrgDiagnostic(this.logger, 'org_scope_resolution_denied', 'no_managed_departments', { operation: 'departments' });
-        return [];
-      }
+      // No DIRECT DepartmentManager rows is the ordinary case for a Group-based manager, not a
+      // denial -- diagnostics are for scope resolution failures/denials, not a routine empty scope.
+      if (directlyManaged.length === 0) return [];
       return getSubtreeDepartmentIds(this.prisma, directlyManaged.map((row) => row.departmentId), actor.organizationId);
     });
   }
