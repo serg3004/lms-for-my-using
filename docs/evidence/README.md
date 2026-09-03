@@ -24,6 +24,7 @@
 | audits | [DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md](./audits/DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md) | 2026-08-27 | DOC-12 branch/PR SHA + GitHub live read-back recorded inside |
 | performance | [PAGINATION_QUERY_PERFORMANCE_AUDIT.md](./performance/PAGINATION_QUERY_PERFORMANCE_AUDIT.md) | 2026-08-09 | environment/SHA not recorded as completed measurement |
 | performance | [PR259_FRONTEND_PERFORMANCE_VERIFICATION.md](./performance/PR259_FRONTEND_PERFORMANCE_VERIFICATION.md) | 2026-08-25 | local production build + seeded demo DB; SHA не указан |
+| performance | [PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md](./performance/PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md) | 2026-09-03 | local disposable PostgreSQL 16; SHA не указан |
 | production | [PR265_PRODUCTION_VERIFICATION.md](./production/PR265_PRODUCTION_VERIFICATION.md) | 2026-08-25 | `d1570ab`; Railway `production` |
 | observability | [PR_130_PRODUCTION_OBSERVABILITY_VERIFICATION.md](./observability/PR_130_PRODUCTION_OBSERVABILITY_VERIFICATION.md) | 2026-08-22 | repository evidence; production integrations `LIVE-VERIFY` |
 | observability | [PR_161_OBSERVABILITY_VERIFICATION.md](./observability/PR_161_OBSERVABILITY_VERIFICATION.md) | 2026-08-23 | repository evidence; production delivery `LIVE-VERIFY` |
