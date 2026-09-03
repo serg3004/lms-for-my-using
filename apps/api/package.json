@@ -24,6 +24,7 @@
     "positions:legacy-inventory": "node dist/scripts/positions-legacy-inventory.js",
     "positions:migrate-legacy": "node dist/scripts/migrate-legacy-positions.js",
     "jobs:worker": "BACKGROUND_JOBS_RUN_WORKER=true node dist/scripts/background-worker.js",
+    "perf:org-structure": "node dist/scripts/perf-org-structure-bench.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",

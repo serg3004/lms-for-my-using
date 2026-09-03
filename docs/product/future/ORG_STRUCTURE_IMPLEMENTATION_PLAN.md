@@ -1697,6 +1697,8 @@ Event для:
 
 ## PR 281 — Performance verification и условная оптимизация иерархии
 
+**Статус: реализовано.** Представительный датасет (2 тенанта, 1000 Departments, 10 000 Users, 12 000 current memberships, depth ≥ 8, wide sibling level) засеян против реального disposable Postgres; все 12 названных в плане операций плюс CSV preview/commit измерены через реальные production-сервисы, `EXPLAIN (ANALYZE, BUFFERS)` снят для критических SQL, N+1 проверен. Вердикт: **adjacency-list + recursive CTE выдерживает нагрузку, optimization storage NOT REQUIRED** — DepartmentClosure/ltree не вводились. По ходу верификации найдены и устранены два узких, не связанных с моделью хранения иерархии дефекта: (1) методологический артефакт бенчмарка (устаревшая планировщиком статистика сразу после bulk-seed — исправлено `ANALYZE` в скрипте, продакшен-код не менялся); (2) реальный bottleneck CSV-импорта 10 000 membership-строк (построчный apply-цикл в `OrgStructureAdminService.applyMemberships` упирался в Prisma transaction timeout и давал ~27с против порога 20с) — исправлено батчингом (`findMany`+`createMany` вместо построчных `findFirst`/`create`), результат 2.4с. Подробности и цифры: [`PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md`](../../evidence/performance/PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md).
+
 ### Задача
 
 Проверить, что adjacency-list + recursive CTE выдерживает реальную нагрузку. Оптимизировать storage только при доказанном bottleneck.

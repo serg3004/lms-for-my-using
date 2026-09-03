@@ -70,7 +70,7 @@ export function newOperationId(): string {
   return randomUUID();
 }
 
-const MAX_SERIALIZATION_RETRIES = 5;
+export const MAX_SERIALIZATION_RETRIES = 5;
 
 /**
  * Runs `fn` in a Serializable transaction, retrying on Postgres serialization failures
@@ -81,10 +81,11 @@ export async function runSerializableWithRetry<T>(
   prisma: PrismaClient,
   fn: (client: TransactionClient) => Promise<T>,
   maxAttempts = MAX_SERIALIZATION_RETRIES,
+  transactionOptions: { maxWait?: number; timeout?: number } = {},
 ): Promise<T> {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await prisma.$transaction(fn, { isolationLevel: 'Serializable' });
+      return await prisma.$transaction(fn, { isolationLevel: 'Serializable', ...transactionOptions });
     } catch (error) {
       const isSerializationFailure =
         error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
