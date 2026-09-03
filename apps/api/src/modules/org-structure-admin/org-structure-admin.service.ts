@@ -1,10 +1,10 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import { BadRequestException, ConflictException, ForbiddenException, GoneException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { MAX_DEPARTMENT_DEPTH, newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/public.js';
+import { MAX_DEPARTMENT_DEPTH, MAX_SERIALIZATION_RETRIES, newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/public.js';
 import { parseCsv, rowsAsObjects } from './csv.js';
 import type { ImportKind, ImportMode } from './org-structure-admin.schemas.js';
 
@@ -17,6 +17,13 @@ type ValidationError = { row: number; field: string; message: string };
 
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Keeps a single createMany's parameter count well under Postgres's limit regardless of row shape. */
+const APPLY_CHUNK_SIZE = 1000;
+function chunkRows<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
 
 @Injectable()
 export class OrgStructureAdminService {
@@ -41,6 +48,12 @@ export class OrgStructureAdminService {
   }
 
   async commit(token: string, organizationId: string, actorId: string) {
+    // A 10,000-row commit applies rows one at a time inside this transaction (see
+    // applyDepartments/applyMemberships) and the plan's own accepted threshold is 20s for that
+    // size -- comfortably past Prisma's 5s default interactive-transaction timeout, which a
+    // PR 281 benchmark run confirmed aborts a large real commit outright (P2028). Only this
+    // bulk, one-shot admin path gets a raised timeout; every other runSerializableWithRetry
+    // caller (reparent, membership/manager transfers) keeps the tight default on purpose.
     return runSerializableWithRetry(this.prisma, async (tx) => {
       const preview = await tx.orgStructureImportPreview.findUnique({ where: { tokenHash: tokenHash(token) } });
       if (!preview || preview.organizationId !== organizationId || preview.actorId !== actorId) throw new ForbiddenException('Import token is invalid for this actor or organization');
@@ -59,7 +72,7 @@ export class OrgStructureAdminService {
       await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'org_structure_import', entityId: preview.id,
         eventType: 'org_structure.import_committed', operationId, metadata: { kind: preview.kind, mode: preview.mode, rowCount: rows.length } });
       return { imported: rows.length, kind: preview.kind, mode: preview.mode, operationId };
-    });
+    }, MAX_SERIALIZATION_RETRIES, { timeout: 60_000, maxWait: 10_000 });
   }
 
   async history(organizationId: string, query: { entityType?: string; entityId?: string; page: number; pageSize: number }) {
@@ -149,19 +162,49 @@ export class OrgStructureAdminService {
       await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'department', entityId: id, eventType: existsBefore ? 'department.updated' : 'department.created', operationId, metadata: { source: 'csv_import', code: row.code } }); }
   }
 
+  /**
+   * PR 281 perf fix: the original per-row implementation (findFirst + create/update +
+   * event-insert, one row at a time) took ~27s to commit a 10,000-row import against real
+   * Postgres -- past the plan's own 20s p95 threshold, confirmed by benchmark. Every current
+   * membership this import could possibly touch is fetched once up front instead of once per
+   * row, and every brand-new membership (the overwhelming majority of a bulk import) is
+   * inserted via chunked `createMany` with client-generated ids instead of one `create` each.
+   * Only the two genuinely per-row-variable writes -- an existing UPSERT row's positionId, and
+   * closing a displaced primary at that row's own effectiveFrom -- stay individual awaits;
+   * their events are still batched.
+   */
   private async applyMemberships(tx: Prisma.TransactionClient, rows: Row[], mode: ImportMode, organizationId: string, actorId: string, operationId: string) {
     const departments = new Map((await tx.department.findMany({ where: { organizationId }, select: { id: true, code: true } })).map(x => [x.code!, x.id]));
     const positions = new Map((await tx.position.findMany({ where: { organizationId }, select: { id: true, code: true } })).map(x => [x.code, x.id]));
-    for (const row of rows) { const departmentId = departments.get(row.departmentCode!)!; const current = await tx.departmentMembership.findFirst({ where: { organizationId, userId: row.userId, departmentId, effectiveTo: null } });
-      if (current && mode === 'UPSERT') { await tx.departmentMembership.update({ where: { id: current.id }, data: { positionId: row.positionCode ? positions.get(row.positionCode) : undefined } }); continue; }
+    const userIds = [...new Set(rows.map(row => row.userId!))];
+    const current = await tx.departmentMembership.findMany({ where: { organizationId, userId: { in: userIds }, effectiveTo: null }, select: { id: true, userId: true, departmentId: true, isPrimary: true } });
+    const currentByUserAndDept = new Map(current.map(row => [`${row.userId}:${row.departmentId}`, row]));
+    const currentPrimaryByUser = new Map(current.filter(row => row.isPrimary).map(row => [row.userId, row]));
+
+    const newMemberships: Prisma.DepartmentMembershipCreateManyInput[] = [];
+    const events: Prisma.OrgStructureEventCreateManyInput[] = [];
+
+    for (const row of rows) {
+      const departmentId = departments.get(row.departmentCode!)!;
+      const existing = currentByUserAndDept.get(`${row.userId}:${departmentId}`);
+      if (existing && mode === 'UPSERT') {
+        await tx.departmentMembership.update({ where: { id: existing.id }, data: { positionId: row.positionCode ? positions.get(row.positionCode) : undefined } });
+        continue;
+      }
       if (row.membershipType === 'PRIMARY') {
-        const priorPrimary = await tx.departmentMembership.findFirst({ where: { organizationId, userId: row.userId, isPrimary: true, effectiveTo: null } });
+        const priorPrimary = currentPrimaryByUser.get(row.userId!);
         if (priorPrimary) {
-          await tx.departmentMembership.update({ where: { id: priorPrimary.id }, data: { effectiveTo: new Date(row.effectiveFrom || Date.now()) } });
-          await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'department_membership', entityId: priorPrimary.id, eventType: 'department_membership.closed', operationId, metadata: { source: 'csv_import', reason: 'primary_replaced' } });
+          const effectiveTo = new Date(row.effectiveFrom || Date.now());
+          await tx.departmentMembership.update({ where: { id: priorPrimary.id }, data: { effectiveTo } });
+          events.push({ organizationId, actorId, entityType: 'department_membership', entityId: priorPrimary.id, eventType: 'department_membership.closed', operationId, metadata: { source: 'csv_import', reason: 'primary_replaced' } });
         }
       }
-      const created = await tx.departmentMembership.create({ data: { organizationId, userId: row.userId!, departmentId, positionId: row.positionCode ? positions.get(row.positionCode) : null, isPrimary: row.membershipType === 'PRIMARY', effectiveFrom: new Date(row.effectiveFrom || Date.now()) } });
-      await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'department_membership', entityId: created.id, eventType: 'department_membership.created', operationId, metadata: { source: 'csv_import' } }); }
+      const id = randomUUID();
+      newMemberships.push({ id, organizationId, userId: row.userId!, departmentId, positionId: row.positionCode ? positions.get(row.positionCode) : null, isPrimary: row.membershipType === 'PRIMARY', effectiveFrom: new Date(row.effectiveFrom || Date.now()) });
+      events.push({ organizationId, actorId, entityType: 'department_membership', entityId: id, eventType: 'department_membership.created', operationId, metadata: { source: 'csv_import' } });
+    }
+
+    for (const batch of chunkRows(newMemberships, APPLY_CHUNK_SIZE)) await tx.departmentMembership.createMany({ data: batch });
+    for (const batch of chunkRows(events, APPLY_CHUNK_SIZE)) await tx.orgStructureEvent.createMany({ data: batch });
   }
 }
