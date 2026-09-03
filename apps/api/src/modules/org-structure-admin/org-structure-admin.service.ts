@@ -1,9 +1,11 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
-import { BadRequestException, ConflictException, ForbiddenException, GoneException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, GoneException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { orgImportFailures, orgImportRows } from '../../common/observability/metrics.js';
+import { logOrgDiagnostic, orgFailureReason } from '../../common/observability/org-observability.js';
 import { MAX_DEPARTMENT_DEPTH, MAX_SERIALIZATION_RETRIES, newOperationId, recordOrgStructureEvent, runSerializableWithRetry } from '../departments/public.js';
 import { parseCsv, rowsAsObjects } from './csv.js';
 import type { ImportKind, ImportMode } from './org-structure-admin.schemas.js';
@@ -27,36 +29,56 @@ function chunkRows<T>(items: T[], size: number): T[][] {
 
 @Injectable()
 export class OrgStructureAdminService {
+  private readonly logger = new Logger(OrgStructureAdminService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async preview(file: Buffer, kind: ImportKind, mode: ImportMode, organizationId: string, actorId: string) {
     let rows: Row[];
-    try { rows = rowsAsObjects(parseCsv(file), kind === 'DEPARTMENTS' ? DEPARTMENT_COLUMNS : MEMBERSHIP_COLUMNS); }
-    catch (error) { if (error instanceof TypeError) throw new BadRequestException('CSV must be valid UTF-8'); throw error; }
-    const errors = kind === 'DEPARTMENTS'
-      ? await this.validateDepartments(rows, mode, organizationId)
-      : await this.validateMemberships(rows, mode, organizationId);
-    if (errors.length) return { valid: false, rowCount: rows.length, errors };
+    try {
+      try { rows = rowsAsObjects(parseCsv(file), kind === 'DEPARTMENTS' ? DEPARTMENT_COLUMNS : MEMBERSHIP_COLUMNS); }
+      catch (error) { if (error instanceof TypeError) throw new BadRequestException('CSV must be valid UTF-8'); throw error; }
+      const errors = kind === 'DEPARTMENTS'
+        ? await this.validateDepartments(rows, mode, organizationId)
+        : await this.validateMemberships(rows, mode, organizationId);
+      if (errors.length) {
+        orgImportRows.inc({ kind, stage: 'preview', outcome: 'rejected' }, rows.length);
+        orgImportFailures.inc({ kind, stage: 'preview', reason: 'validation' });
+        logOrgDiagnostic(this.logger, 'org_import_failed', 'validation', { kind, stage: 'preview' });
+        return { valid: false, rowCount: rows.length, errors };
+      }
 
-    const token = randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + 30 * 60_000);
-    await this.prisma.orgStructureImportPreview.create({ data: {
-      organizationId, actorId, tokenHash: tokenHash(token), kind, mode,
-      payload: rows as Prisma.InputJsonValue, rowCount: rows.length, expiresAt,
-    }});
-    return { valid: true, rowCount: rows.length, errors: [], token, expiresAt };
+      const token = randomBytes(32).toString('base64url');
+      const expiresAt = new Date(Date.now() + 30 * 60_000);
+      await this.prisma.orgStructureImportPreview.create({ data: {
+        organizationId, actorId, tokenHash: tokenHash(token), kind, mode,
+        payload: rows as Prisma.InputJsonValue, rowCount: rows.length, expiresAt,
+      }});
+      orgImportRows.inc({ kind, stage: 'preview', outcome: 'accepted' }, rows.length);
+      return { valid: true, rowCount: rows.length, errors: [], token, expiresAt };
+    } catch (error) {
+      const reason = orgFailureReason(error);
+      orgImportFailures.inc({ kind, stage: 'preview', reason });
+      logOrgDiagnostic(this.logger, 'org_import_failed', reason, { kind, stage: 'preview' });
+      throw error;
+    }
   }
 
   async commit(token: string, organizationId: string, actorId: string) {
-    // A 10,000-row commit applies rows one at a time inside this transaction (see
-    // applyDepartments/applyMemberships) and the plan's own accepted threshold is 20s for that
-    // size -- comfortably past Prisma's 5s default interactive-transaction timeout, which a
-    // PR 281 benchmark run confirmed aborts a large real commit outright (P2028). Only this
-    // bulk, one-shot admin path gets a raised timeout; every other runSerializableWithRetry
-    // caller (reparent, membership/manager transfers) keeps the tight default on purpose.
-    return runSerializableWithRetry(this.prisma, async (tx) => {
+    let diagnosticKind: ImportKind | 'UNKNOWN' = 'UNKNOWN';
+    let diagnosticRowCount = 0;
+    try {
+      // A 10,000-row commit applies rows one at a time inside this transaction (see
+      // applyDepartments/applyMemberships) and the plan's own accepted threshold is 20s for that
+      // size -- comfortably past Prisma's 5s default interactive-transaction timeout, which a
+      // PR 281 benchmark run confirmed aborts a large real commit outright (P2028). Only this
+      // bulk, one-shot admin path gets a raised timeout; every other runSerializableWithRetry
+      // caller (reparent, membership/manager transfers) keeps the tight default on purpose.
+      const result = await runSerializableWithRetry(this.prisma, async (tx) => {
       const preview = await tx.orgStructureImportPreview.findUnique({ where: { tokenHash: tokenHash(token) } });
       if (!preview || preview.organizationId !== organizationId || preview.actorId !== actorId) throw new ForbiddenException('Import token is invalid for this actor or organization');
+      diagnosticKind = preview.kind as ImportKind;
+      diagnosticRowCount = preview.rowCount;
       if (preview.expiresAt <= new Date()) throw new GoneException('Import token has expired');
       if (preview.consumedAt) throw new ConflictException('Import token has already been used');
       const claimed = await tx.orgStructureImportPreview.updateMany({ where: { id: preview.id, consumedAt: null }, data: { consumedAt: new Date() } });
@@ -72,7 +94,16 @@ export class OrgStructureAdminService {
       await recordOrgStructureEvent(tx, { organizationId, actorId, entityType: 'org_structure_import', entityId: preview.id,
         eventType: 'org_structure.import_committed', operationId, metadata: { kind: preview.kind, mode: preview.mode, rowCount: rows.length } });
       return { imported: rows.length, kind: preview.kind, mode: preview.mode, operationId };
-    }, MAX_SERIALIZATION_RETRIES, { timeout: 60_000, maxWait: 10_000 });
+      }, MAX_SERIALIZATION_RETRIES, { timeout: 60_000, maxWait: 10_000 });
+      orgImportRows.inc({ kind: result.kind, stage: 'commit', outcome: 'accepted' }, result.imported);
+      return result;
+    } catch (error) {
+      const reason = orgFailureReason(error);
+      if (diagnosticRowCount > 0) orgImportRows.inc({ kind: diagnosticKind, stage: 'commit', outcome: 'rejected' }, diagnosticRowCount);
+      orgImportFailures.inc({ kind: diagnosticKind, stage: 'commit', reason });
+      logOrgDiagnostic(this.logger, 'org_import_failed', reason, { kind: diagnosticKind, stage: 'commit' });
+      throw error;
+    }
   }
 
   async history(organizationId: string, query: { entityType?: string; entityId?: string; page: number; pageSize: number }) {

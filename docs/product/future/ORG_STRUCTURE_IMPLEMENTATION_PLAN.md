@@ -1803,6 +1803,8 @@ Major Prisma upgrade только ради hierarchy storage запрещён.
 
 ## PR 282 — Observability и operational diagnostics
 
+**Статус: реализовано.** Критические tree/scope/learning-target/report/import/reparent paths используют общий Prometheus registry; telemetry ограничена bounded operation/outcome/reason labels, а structured diagnostics не содержит tenant/user/department identifiers, CSV, token или произвольный error text.
+
 ### Задача
 
 Добавить эксплуатационную наблюдаемость оргструктуры без PII и high-cardinality telemetry.

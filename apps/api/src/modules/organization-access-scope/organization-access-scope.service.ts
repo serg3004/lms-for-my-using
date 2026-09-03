@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { orgScopeResolutionDuration } from '../../common/observability/metrics.js';
+import { logOrgDiagnostic, observeOrgDuration, orgFailureReason } from '../../common/observability/org-observability.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
 import { ManagerTeamScope, isManagerTeamScoped } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -27,6 +29,8 @@ type UserOwnedWhere = { user?: Prisma.UserWhereInput };
  */
 @Injectable()
 export class OrganizationAccessScopeService {
+  private readonly logger = new Logger(OrganizationAccessScopeService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
@@ -39,24 +43,22 @@ export class OrganizationAccessScopeService {
    */
   async managedDepartmentIds(actor: TeamScopeActor): Promise<string[]> {
     if (!isManagerTeamScoped(actor)) return [];
-
-    const directlyManaged = await this.prisma.departmentManager.findMany({
-      where: { organizationId: actor.organizationId, userId: actor.id, type: 'DIRECT', effectiveTo: null },
-      select: { departmentId: true },
+    return this.observeScope('departments', async () => {
+      const directlyManaged = await this.prisma.departmentManager.findMany({
+        where: { organizationId: actor.organizationId, userId: actor.id, type: 'DIRECT', effectiveTo: null },
+        select: { departmentId: true },
+      });
+      // No DIRECT DepartmentManager rows is the ordinary case for a Group-based manager, not a
+      // denial -- diagnostics are for scope resolution failures/denials, not a routine empty scope.
+      if (directlyManaged.length === 0) return [];
+      return getSubtreeDepartmentIds(this.prisma, directlyManaged.map((row) => row.departmentId), actor.organizationId);
     });
-    if (directlyManaged.length === 0) return [];
-
-    return getSubtreeDepartmentIds(
-      this.prisma,
-      directlyManaged.map((row) => row.departmentId),
-      actor.organizationId,
-    );
   }
 
   /** Every user id reporting to the actor via a current DIRECT ReportingLine, direct or transitive. */
   async directReportIds(actor: TeamScopeActor): Promise<string[]> {
     if (!isManagerTeamScoped(actor)) return [];
-    return getTransitiveDirectReportIds(this.prisma, actor.id, actor.organizationId);
+    return this.observeScope('reporting_lines', () => getTransitiveDirectReportIds(this.prisma, actor.id, actor.organizationId));
   }
 
   async user(actor: TeamScopeActor): Promise<Prisma.UserWhereInput> {
@@ -94,5 +96,14 @@ export class OrganizationAccessScopeService {
   async userOwnedResource(actor: TeamScopeActor): Promise<UserOwnedWhere> {
     if (!isManagerTeamScoped(actor)) return {};
     return { user: await this.user(actor) };
+  }
+
+  private async observeScope<T>(operation: 'departments' | 'reporting_lines', action: () => Promise<T>): Promise<T> {
+    try {
+      return await observeOrgDuration(orgScopeResolutionDuration, { operation }, action);
+    } catch (error) {
+      logOrgDiagnostic(this.logger, 'org_scope_resolution_failed', orgFailureReason(error), { operation });
+      throw error;
+    }
   }
 }

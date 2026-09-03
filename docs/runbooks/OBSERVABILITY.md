@@ -31,6 +31,28 @@ histogram_quantile(0.95, sum by (le, operation) (rate(lms_s3_operation_duration_
 lms_queue_depth
 ```
 
+### Organization structure
+
+The org-structure domain publishes latency histograms for tree reads, manager
+scope resolution, learning-target resolution and reports, plus import-row,
+import-failure and reparent-conflict counters:
+
+```promql
+histogram_quantile(0.95, sum by (le, operation) (rate(lms_org_department_tree_query_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le, operation) (rate(lms_org_scope_resolution_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le) (rate(lms_org_learning_target_resolution_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le, report) (rate(lms_org_report_query_duration_seconds_bucket[5m])))
+sum by (kind, stage, outcome) (rate(lms_org_import_rows_total[5m]))
+sum by (kind, stage, reason) (rate(lms_org_import_failures_total[5m]))
+sum by (reason) (rate(lms_org_reparent_conflicts_total[5m]))
+```
+
+Diagnostics use the events `org_reparent_failed`, `org_import_failed`, and
+`org_scope_resolution_failed`. Their reason, operation, kind and stage fields
+are bounded application values. Do not add IDs,
+names, codes, filenames, raw CSV, preview hashes/tokens, request bodies or raw
+error messages to either metric labels or these diagnostic records.
+
 Labels are deliberately bounded. HTTP query strings, UUID/numeric path values,
 tenant/user identifiers, request IDs, S3 buckets/object keys, SQL and job data
 are never metric labels. Job `name` must remain an application-defined constant.

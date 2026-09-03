@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
+import { orgReportQueryDuration } from '../../common/observability/metrics.js';
+import { observeOrgDuration } from '../../common/observability/org-observability.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
@@ -31,7 +33,8 @@ export class ReportsService {
    * request naturally resolves to an empty population instead of an error.
    */
   async getSummary(actor: TeamScopeActor, filter?: ReportsDepartmentFilter) {
-    const baseWhere = { organizationId: actor.organizationId, deletedAt: null } as const;
+    return observeOrgDuration(orgReportQueryDuration, { report: filter ? 'department_summary' : 'summary' }, async () => {
+      const baseWhere = { organizationId: actor.organizationId, deletedAt: null } as const;
 
     let progressWhere: Prisma.ProgressWhereInput;
     let certificateWhere: Prisma.CertificateWhereInput;
@@ -108,18 +111,19 @@ export class ReportsService {
         this.prisma.assignment.count({ where: overdueWhere }),
       ]);
 
-    return {
-      progress,
-      certificates,
-      overdueAssignments,
-      counts: {
-        progressTotal,
-        progressCompletedTotal,
-        progressAvgScore: progressAvgScore._avg.score,
-        certificatesIssuedTotal,
-        overdueTotal,
-      },
-    };
+      return {
+        progress,
+        certificates,
+        overdueAssignments,
+        counts: {
+          progressTotal,
+          progressCompletedTotal,
+          progressAvgScore: progressAvgScore._avg.score,
+          certificatesIssuedTotal,
+          overdueTotal,
+        },
+      };
+    });
   }
 
   async getAdminDashboard(actor: TeamScopeActor) {
