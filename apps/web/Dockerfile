@@ -27,9 +27,11 @@ RUN pnpm run build
 # ---- Runner: nginx serving static files ----
 FROM nginx:stable-alpine AS runner
 
-# Refresh base-image packages so fixed Alpine security updates are present even
-# when the upstream nginx tag has not yet been rebuilt.
-RUN apk upgrade --no-cache
+# Refresh base-image packages and fail the build unless the util-linux fix used
+# by libuuid is available. A plain upgrade can race a newly published advisory
+# and still produce an image that Trivy rejects later in the same workflow.
+RUN apk upgrade --no-cache \
+  && apk add --no-cache --upgrade 'libuuid>=2.42.3-r0'
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/nginx.conf /etc/nginx/templates/default.conf.template
