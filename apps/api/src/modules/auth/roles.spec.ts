@@ -117,6 +117,8 @@ describe('rolePolicies', () => {
     positionsWrite: ['admin'],
     positionCoursesRead: ['admin'],
     positionCoursesWrite: ['admin'],
+    orgExternalReferencesRead: ['admin'],
+    orgExternalReferencesWrite: ['admin'],
     coursesRead: ['admin', 'manager', 'instructor', 'learner'],
     coursesCreate: ['admin', 'instructor'],
     lessonsRead: ['admin', 'manager', 'instructor', 'learner'],

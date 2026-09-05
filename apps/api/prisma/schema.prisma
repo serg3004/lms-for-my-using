@@ -216,6 +216,7 @@ model Organization {
   positionCourses            PositionCourse[]
   orgStructureEvents         OrgStructureEvent[]
   orgStructureImportPreviews OrgStructureImportPreview[]
+  orgExternalReferences      OrgExternalReference[]
   materialFileDeletionAudits MaterialFileDeletionAudit[]
   auditLogs                  AuditLog[]
   notifications              Notification[]
@@ -579,6 +580,35 @@ model OrgStructureImportPreview {
 
   @@index([organizationId, actorId, expiresAt])
   @@map("org_structure_import_previews")
+}
+
+enum OrgExternalReferenceEntityType {
+  DEPARTMENT
+  DEPARTMENT_TYPE
+  POSITION
+}
+
+/// Readiness for future HRIS/SCIM integration (PR 283): a tenant-scoped, historical mapping
+/// from an internal domain entity to an external system's identifier. The internal UUID
+/// (entityId) stays the sole canonical primary key everywhere else in the domain -- this table
+/// is never a foreign key target and no other table references it. One internal entity may have
+/// multiple rows here (one per source system); archiving the internal entity never deletes its
+/// mapping history. No connector, polling, webhook, or background sync is implemented by this
+/// model -- see docs/product/future/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md PR 283.
+model OrgExternalReference {
+  id             String                          @id @default(uuid()) @db.Uuid
+  organizationId String                          @map("organization_id") @db.Uuid
+  entityType     OrgExternalReferenceEntityType  @map("entity_type")
+  entityId       String                          @map("entity_id") @db.Uuid
+  sourceSystem   String                          @map("source_system")
+  externalId     String                          @map("external_id")
+  createdAt      DateTime                        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                        @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sourceSystem, entityType, externalId])
+  @@index([organizationId, entityType, entityId])
+  @@map("org_external_references")
 }
 
 model Course {
