@@ -6,24 +6,37 @@ const PASS = 'PASS';
 // These names intentionally describe evidence categories rather than CI job names.
 // Job topology is mutable; a release record must instead prove every invariant for
 // the exact candidate SHA and target environment.
-export const REQUIRED_CHECKS = Object.freeze([
+export const CORE_REQUIRED_CHECKS = Object.freeze([
   'ci',
   'codeql',
   'generatedDocs',
-  'databaseClean',
-  'databaseUpgrade',
-  'orgStructureSecurity',
-  'orgStructureFlows',
-  'orgStructureLifecycle',
   'accessibility',
   'visualRegression',
-  'performance',
-  'observability',
-  'externalMappings',
   'apiSmoke',
   'webSmoke',
   'environment',
   'rollback',
+]);
+
+// Checks required only for a release that contains the named module. Fail-closed
+// default: a module is in scope unless the release record explicitly excludes it
+// via `excludedModules`, so an operator who says nothing still proves everything.
+export const MODULE_REQUIRED_CHECKS = Object.freeze({
+  'org-structure': Object.freeze([
+    'databaseClean',
+    'databaseUpgrade',
+    'orgStructureSecurity',
+    'orgStructureFlows',
+    'orgStructureLifecycle',
+    'performance',
+    'observability',
+    'externalMappings',
+  ]),
+});
+
+export const REQUIRED_CHECKS = Object.freeze([
+  ...CORE_REQUIRED_CHECKS,
+  ...Object.values(MODULE_REQUIRED_CHECKS).flat(),
 ]);
 
 export function validateReleaseEvidence(value) {
@@ -47,7 +60,27 @@ export function validateReleaseEvidence(value) {
     ? object.checks
     : {};
 
-  for (const check of REQUIRED_CHECKS) {
+  const knownModules = Object.keys(MODULE_REQUIRED_CHECKS);
+  let excludedModules = [];
+  if (object.excludedModules !== undefined) {
+    if (!Array.isArray(object.excludedModules)) {
+      errors.push('excludedModules must be an array when provided');
+    } else {
+      excludedModules = object.excludedModules;
+      for (const module of excludedModules) {
+        if (!knownModules.includes(module)) {
+          errors.push(`excludedModules contains unknown module: ${module}`);
+        }
+      }
+    }
+  }
+
+  const applicableChecks = [
+    ...CORE_REQUIRED_CHECKS,
+    ...knownModules.filter((module) => !excludedModules.includes(module)).flatMap((module) => MODULE_REQUIRED_CHECKS[module]),
+  ];
+
+  for (const check of applicableChecks) {
     const evidence = checks[check];
     if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
       errors.push(`checks.${check} is required`);

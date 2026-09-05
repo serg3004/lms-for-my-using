@@ -78,3 +78,32 @@ test('does not accept documentation assertions as successful runtime evidence', 
   assert(errors.includes('checks.orgStructureSecurity.status must be PASS'));
   assert(errors.includes('checks.databaseUpgrade.status must be PASS'));
 });
+
+test('excludedModules drops that module\'s checks from what is required', () => {
+  const evidence = structuredClone(passingEvidence);
+  evidence.excludedModules = ['org-structure'];
+  for (const check of [
+    'databaseClean',
+    'databaseUpgrade',
+    'orgStructureSecurity',
+    'orgStructureFlows',
+    'orgStructureLifecycle',
+    'performance',
+    'observability',
+    'externalMappings',
+  ]) {
+    delete evidence.checks[check];
+  }
+
+  assert.deepEqual(validateReleaseEvidence(evidence), []);
+});
+
+test('rejects an unknown excludedModules entry and a non-array value', () => {
+  const unknownModule = structuredClone(passingEvidence);
+  unknownModule.excludedModules = ['not-a-real-module'];
+  assert(validateReleaseEvidence(unknownModule).includes('excludedModules contains unknown module: not-a-real-module'));
+
+  const notAnArray = structuredClone(passingEvidence);
+  notAnArray.excludedModules = 'org-structure';
+  assert(validateReleaseEvidence(notAnArray).includes('excludedModules must be an array when provided'));
+});
