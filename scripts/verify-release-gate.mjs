@@ -1,7 +1,23 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const PASS = 'PASS';
+const defaultRepoRoot = fileURLToPath(new URL('../', import.meta.url));
+
+// A marker path proving the named module is wired into this checkout, used to
+// reject a self-declared `excludedModules` claim the actual candidate SHA
+// contradicts. Update this if the module's home directory moves.
+const MODULE_PRESENCE_MARKERS = Object.freeze({
+  'org-structure': 'apps/api/src/modules/org-structure-admin',
+});
+
+export function detectPresentModules(repoRoot = defaultRepoRoot) {
+  return Object.entries(MODULE_PRESENCE_MARKERS)
+    .filter(([, marker]) => existsSync(resolve(repoRoot, marker)))
+    .map(([module]) => module);
+}
 
 // These names intentionally describe evidence categories rather than CI job names.
 // Job topology is mutable; a release record must instead prove every invariant for
@@ -39,7 +55,7 @@ export const REQUIRED_CHECKS = Object.freeze([
   ...Object.values(MODULE_REQUIRED_CHECKS).flat(),
 ]);
 
-export function validateReleaseEvidence(value) {
+export function validateReleaseEvidence(value, { presentModules = detectPresentModules() } = {}) {
   const errors = [];
   const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 
@@ -70,14 +86,20 @@ export function validateReleaseEvidence(value) {
       for (const module of excludedModules) {
         if (!knownModules.includes(module)) {
           errors.push(`excludedModules contains unknown module: ${module}`);
+        } else if (presentModules.includes(module)) {
+          errors.push(`excludedModules claims '${module}' is absent, but the repository at this candidate still wires it in`);
         }
       }
     }
   }
 
+  // Trust the exclusion only where the candidate itself corroborates it -- a claim
+  // the checkout contradicts must not be able to silently drop required evidence.
+  const effectivelyExcluded = excludedModules.filter((module) => !presentModules.includes(module));
+
   const applicableChecks = [
     ...CORE_REQUIRED_CHECKS,
-    ...knownModules.filter((module) => !excludedModules.includes(module)).flatMap((module) => MODULE_REQUIRED_CHECKS[module]),
+    ...knownModules.filter((module) => !effectivelyExcluded.includes(module)).flatMap((module) => MODULE_REQUIRED_CHECKS[module]),
   ];
 
   for (const check of applicableChecks) {

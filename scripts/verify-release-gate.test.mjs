@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { REQUIRED_CHECKS, validateReleaseEvidence } from './verify-release-gate.mjs';
+import { REQUIRED_CHECKS, detectPresentModules, validateReleaseEvidence } from './verify-release-gate.mjs';
 
 const passingEvidence = {
   releaseId: 'release-2026-08-23',
@@ -79,7 +79,7 @@ test('does not accept documentation assertions as successful runtime evidence', 
   assert(errors.includes('checks.databaseUpgrade.status must be PASS'));
 });
 
-test('excludedModules drops that module\'s checks from what is required', () => {
+test('excludedModules drops that module\'s checks only when the candidate actually lacks it', () => {
   const evidence = structuredClone(passingEvidence);
   evidence.excludedModules = ['org-structure'];
   for (const check of [
@@ -95,7 +95,36 @@ test('excludedModules drops that module\'s checks from what is required', () => 
     delete evidence.checks[check];
   }
 
-  assert.deepEqual(validateReleaseEvidence(evidence), []);
+  assert.deepEqual(validateReleaseEvidence(evidence, { presentModules: [] }), []);
+});
+
+test('rejects an excludedModules claim the candidate contradicts', () => {
+  const evidence = structuredClone(passingEvidence);
+  evidence.excludedModules = ['org-structure'];
+
+  const errors = validateReleaseEvidence(evidence, { presentModules: ['org-structure'] });
+  assert(errors.includes("excludedModules claims 'org-structure' is absent, but the repository at this candidate still wires it in"));
+});
+
+test('by default (no presentModules override) rejects an excludedModules claim against this actual checkout', () => {
+  const evidence = structuredClone(passingEvidence);
+  evidence.excludedModules = ['org-structure'];
+  for (const check of [
+    'databaseClean',
+    'databaseUpgrade',
+    'orgStructureSecurity',
+    'orgStructureFlows',
+    'orgStructureLifecycle',
+    'performance',
+    'observability',
+    'externalMappings',
+  ]) {
+    delete evidence.checks[check];
+  }
+
+  const errors = validateReleaseEvidence(evidence);
+  assert(errors.includes("excludedModules claims 'org-structure' is absent, but the repository at this candidate still wires it in"));
+  assert(errors.includes('checks.databaseClean is required'));
 });
 
 test('rejects an unknown excludedModules entry and a non-array value', () => {
@@ -106,4 +135,12 @@ test('rejects an unknown excludedModules entry and a non-array value', () => {
   const notAnArray = structuredClone(passingEvidence);
   notAnArray.excludedModules = 'org-structure';
   assert(validateReleaseEvidence(notAnArray).includes('excludedModules must be an array when provided'));
+});
+
+test('detectPresentModules finds org-structure via its module marker directory', () => {
+  assert.deepEqual(detectPresentModules(), ['org-structure']);
+});
+
+test('detectPresentModules reports nothing for a repo root without the marker', () => {
+  assert.deepEqual(detectPresentModules('/nonexistent/repo/root'), []);
 });
