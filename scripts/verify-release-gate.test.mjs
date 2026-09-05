@@ -78,3 +78,11 @@ test('does not accept documentation assertions as successful runtime evidence', 
   assert(errors.includes('checks.orgStructureSecurity.status must be PASS'));
   assert(errors.includes('checks.databaseUpgrade.status must be PASS'));
 });
+
+test('rejects a verifiedAt timestamp in the future', () => {
+  const evidence = structuredClone(passingEvidence);
+  evidence.verifiedAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+  const errors = validateReleaseEvidence(evidence);
+  assert(errors.includes('verifiedAt must not be in the future'));
+});
