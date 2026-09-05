@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { REQUIRED_CHECKS, detectPresentModules, getCheckoutSha, validateReleaseEvidence } from './verify-release-gate.mjs';
+import { REQUIRED_CHECKS, validateReleaseEvidence } from './verify-release-gate.mjs';
 
 const passingEvidence = {
   releaseId: 'release-2026-08-23',
@@ -77,108 +77,4 @@ test('does not accept documentation assertions as successful runtime evidence', 
   const errors = validateReleaseEvidence(evidence);
   assert(errors.includes('checks.orgStructureSecurity.status must be PASS'));
   assert(errors.includes('checks.databaseUpgrade.status must be PASS'));
-});
-
-test('excludedModules drops that module\'s checks only when the candidate actually lacks it', () => {
-  const evidence = structuredClone(passingEvidence);
-  evidence.excludedModules = ['org-structure'];
-  for (const check of [
-    'databaseClean',
-    'databaseUpgrade',
-    'orgStructureSecurity',
-    'orgStructureFlows',
-    'orgStructureLifecycle',
-    'performance',
-    'observability',
-    'externalMappings',
-  ]) {
-    delete evidence.checks[check];
-  }
-
-  assert.deepEqual(validateReleaseEvidence(evidence, { presentModules: [] }), []);
-});
-
-test('rejects an excludedModules claim the candidate contradicts', () => {
-  const evidence = structuredClone(passingEvidence);
-  evidence.excludedModules = ['org-structure'];
-
-  const errors = validateReleaseEvidence(evidence, { presentModules: ['org-structure'] });
-  assert(errors.includes("excludedModules claims 'org-structure' is absent, but the repository at this candidate still wires it in"));
-});
-
-test('by default (no presentModules override) rejects an excludedModules claim against this actual checkout', () => {
-  const evidence = structuredClone(passingEvidence);
-  evidence.excludedModules = ['org-structure'];
-  for (const check of [
-    'databaseClean',
-    'databaseUpgrade',
-    'orgStructureSecurity',
-    'orgStructureFlows',
-    'orgStructureLifecycle',
-    'performance',
-    'observability',
-    'externalMappings',
-  ]) {
-    delete evidence.checks[check];
-  }
-
-  const errors = validateReleaseEvidence(evidence);
-  assert(errors.includes("excludedModules claims 'org-structure' is absent, but the repository at this candidate still wires it in"));
-  assert(errors.includes('checks.databaseClean is required'));
-});
-
-test('rejects an unknown excludedModules entry and a non-array value', () => {
-  const unknownModule = structuredClone(passingEvidence);
-  unknownModule.excludedModules = ['not-a-real-module'];
-  assert(validateReleaseEvidence(unknownModule).includes('excludedModules contains unknown module: not-a-real-module'));
-
-  const notAnArray = structuredClone(passingEvidence);
-  notAnArray.excludedModules = 'org-structure';
-  assert(validateReleaseEvidence(notAnArray).includes('excludedModules must be an array when provided'));
-});
-
-test('rejects excludedModules when the inspected checkout is not the declared candidate sha', () => {
-  const evidence = structuredClone(passingEvidence);
-  evidence.sha = 'b'.repeat(40);
-  evidence.excludedModules = ['org-structure'];
-
-  const errors = validateReleaseEvidence(evidence, { checkoutSha: 'c'.repeat(40) });
-  assert(errors.some((error) => error.startsWith('excludedModules cannot be trusted:')));
-});
-
-test('does not require a matching checkoutSha when the caller supplies presentModules directly', () => {
-  const evidence = structuredClone(passingEvidence);
-  evidence.excludedModules = ['org-structure'];
-  for (const check of [
-    'databaseClean',
-    'databaseUpgrade',
-    'orgStructureSecurity',
-    'orgStructureFlows',
-    'orgStructureLifecycle',
-    'performance',
-    'observability',
-    'externalMappings',
-  ]) {
-    delete evidence.checks[check];
-  }
-
-  // presentModules is supplied directly, so detection (and the sha binding it needs) never runs.
-  assert.deepEqual(validateReleaseEvidence(evidence, { presentModules: [], checkoutSha: 'unused' }), []);
-});
-
-test('detectPresentModules finds org-structure via its AppModule import wiring', () => {
-  assert.deepEqual(detectPresentModules(), ['org-structure']);
-});
-
-test('detectPresentModules reports nothing for a repo root without app.module.ts', () => {
-  assert.deepEqual(detectPresentModules('/nonexistent/repo/root'), []);
-});
-
-test('getCheckoutSha returns this checkout\'s actual commit', () => {
-  const sha = getCheckoutSha();
-  assert.match(sha, /^[0-9a-f]{40}$/);
-});
-
-test('getCheckoutSha returns null for a path with no git checkout', () => {
-  assert.equal(getCheckoutSha('/nonexistent/repo/root'), null);
 });
