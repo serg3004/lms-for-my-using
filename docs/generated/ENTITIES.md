@@ -36,6 +36,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Membership` |
 | `MultipartUpload` |
 | `Notification` |
+| `OrgExternalReference` |
 | `OrgStructureEvent` |
 | `OrgStructureImportPreview` |
 | `Organization` |
@@ -74,6 +75,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `LessonStatus` | `draft`, `published`, `archived` |
 | `MalwareScanStatus` | `pending`, `scanning`, `available`, `rejected` |
 | `MultipartUploadStatus` | `pending`, `completed`, `aborted` |
+| `OrgExternalReferenceEntityType` | `DEPARTMENT`, `DEPARTMENT_TYPE`, `POSITION` |
 | `OrganizationPlan` | `trial`, `standard`, `enterprise` |
 | `OrganizationStatus` | `active`, `suspended`, `archived` |
 | `PositionCourseRequirement` | `REQUIRED`, `OPTIONAL` |

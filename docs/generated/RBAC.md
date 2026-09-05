@@ -63,6 +63,8 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `membershipsRead` | `admin`, `manager` |
 | `notificationsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `notificationsWrite` | `admin`, `manager`, `instructor`, `learner` |
+| `orgExternalReferencesRead` | `admin` |
+| `orgExternalReferencesWrite` | `admin` |
 | `organizationsCreate` | `admin` |
 | `organizationsRead` | `admin` |
 | `positionCoursesRead` | `admin` |

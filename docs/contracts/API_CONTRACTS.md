@@ -87,6 +87,22 @@ memberships, current local managers, or active Department assignments. Archiving
 rejected while a current membership or active PositionCourse uses it. Restore does not reactivate
 relations or learning targets.
 
+## Organization external references (HRIS/SCIM readiness)
+
+`OrgExternalReference` maps a tenant's internal `DEPARTMENT`/`DEPARTMENT_TYPE`/`POSITION` to an
+identifier in an external system (`sourceSystem`). The internal UUID stays the sole canonical
+primary key everywhere else; no domain table has a foreign key to this one, and no domain lookup
+resolves through an external id implicitly -- a caller must call `GET
+/org-external-references/resolve` explicitly. `sourceSystem` is normalized to a lowercase slug
+(1-64 chars); `externalId` is case-exact (1-255 chars) and never normalized. `POST
+/org-external-references` is create-only: a duplicate (organization, sourceSystem, entityType,
+externalId) is always a 409, even when it targets the same entity, so a mapping is never remapped
+silently -- remapping requires an explicit `DELETE` first. One internal entity may hold mappings
+from multiple source systems at once. Archiving the mapped entity never deletes the mapping, and
+resolving a mapping never reactivates an archived entity; `resolve` reports the target's current
+status for the caller to act on. This PR ships the domain model and resolution service only --
+no SCIM endpoint, HRIS polling, webhook sync, or background reconciliation exists.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

@@ -21,6 +21,7 @@ module.exports = {
     '/src/integration/organization-access-scope\\.database\\.spec\\.ts$',
     '/src/integration/reporting-lines\\.database\\.spec\\.ts$',
     '/src/integration/org-structure-admin\\.database\\.spec\\.ts$',
+    '/src/integration/org-external-references\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

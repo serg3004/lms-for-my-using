@@ -33,6 +33,7 @@ import { OutboxModule } from './modules/outbox/public.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { OrganizationAccessScopeModule } from './modules/organization-access-scope/organization-access-scope.module.js';
 import { OrgStructureAdminModule } from './modules/org-structure-admin/org-structure-admin.module.js';
+import { OrgExternalReferencesModule } from './modules/org-external-references/org-external-references.module.js';
 import { PositionCoursesModule } from './modules/position-courses/position-courses.module.js';
 import { PositionsModule } from './modules/positions/positions.module.js';
 import { LearningTargetsModule } from './modules/learning-targets/learning-targets.module.js';
@@ -99,6 +100,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OrganizationsModule,
     OrganizationAccessScopeModule,
     OrgStructureAdminModule,
+    OrgExternalReferencesModule,
     ProgressModule,
     ReportingLinesModule,
     ReportsModule,

@@ -30,12 +30,14 @@ export type OrgStructureEventType =
   | 'reporting_line.created'
   | 'reporting_line.updated'
   | 'reporting_line.closed'
-  | 'org_structure.import_committed';
+  | 'org_structure.import_committed'
+  | 'org_external_reference.created'
+  | 'org_external_reference.deleted';
 
 export type RecordOrgStructureEventInput = {
   organizationId: string;
   actorId: string | null;
-  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position' | 'reporting_line' | 'org_structure_import';
+  entityType: 'department' | 'department_type' | 'department_membership' | 'department_manager' | 'position' | 'reporting_line' | 'org_structure_import' | 'org_external_reference';
   entityId: string;
   eventType: OrgStructureEventType;
   operationId: string;
