@@ -3,6 +3,29 @@ import { pathToFileURL } from 'node:url';
 
 const PASS = 'PASS';
 
+// These names intentionally describe evidence categories rather than CI job names.
+// Job topology is mutable; a release record must instead prove every invariant for
+// the exact candidate SHA and target environment.
+export const REQUIRED_CHECKS = Object.freeze([
+  'ci',
+  'codeql',
+  'generatedDocs',
+  'databaseClean',
+  'databaseUpgrade',
+  'orgStructureSecurity',
+  'orgStructureFlows',
+  'orgStructureLifecycle',
+  'accessibility',
+  'visualRegression',
+  'performance',
+  'observability',
+  'externalMappings',
+  'apiSmoke',
+  'webSmoke',
+  'environment',
+  'rollback',
+]);
+
 export function validateReleaseEvidence(value) {
   const errors = [];
   const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -20,20 +43,11 @@ export function validateReleaseEvidence(value) {
     errors.push('verifiedAt must be an ISO-8601 timestamp');
   }
 
-  const requiredChecks = [
-    'ci',
-    'codeql',
-    'prismaGenerate',
-    'apiSmoke',
-    'webSmoke',
-    'environment',
-    'rollback',
-  ];
   const checks = object.checks && typeof object.checks === 'object' && !Array.isArray(object.checks)
     ? object.checks
     : {};
 
-  for (const check of requiredChecks) {
+  for (const check of REQUIRED_CHECKS) {
     const evidence = checks[check];
     if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
       errors.push(`checks.${check} is required`);

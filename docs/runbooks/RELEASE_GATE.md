@@ -19,6 +19,16 @@ Create a release record outside the repository containing at least:
     "ci": { "status": "PASS", "evidence": "GitHub Actions run URL/id" },
     "codeql": { "status": "PASS", "evidence": "CodeQL run URL/id" },
     "generatedDocs": { "status": "PASS", "evidence": "generation/check + clean diff" },
+    "databaseClean": { "status": "PASS", "evidence": "clean migration run URL/id" },
+    "databaseUpgrade": { "status": "PASS", "evidence": "representative upgrade run URL/id" },
+    "orgStructureSecurity": { "status": "PASS", "evidence": "two-tenant and PR 266 regression run URL/id" },
+    "orgStructureFlows": { "status": "PASS", "evidence": "admin/manager/learner integration run URL/id" },
+    "orgStructureLifecycle": { "status": "PASS", "evidence": "archive/restore lifecycle run URL/id" },
+    "accessibility": { "status": "PASS", "evidence": "accessibility run URL/id" },
+    "visualRegression": { "status": "PASS", "evidence": "reviewed visual run URL/id" },
+    "performance": { "status": "PASS", "evidence": "org-structure benchmark artifact URL/id" },
+    "observability": { "status": "PASS", "evidence": "metrics and safe diagnostics verification URL/id" },
+    "externalMappings": { "status": "PASS", "evidence": "external-reference integration run URL/id" },
     "apiSmoke": { "status": "PASS", "evidence": "fresh runtime evidence" },
     "webSmoke": { "status": "PASS", "evidence": "fresh Web evidence" },
     "environment": { "status": "PASS", "evidence": "dependency/environment verification" },
@@ -31,6 +41,8 @@ Create a release record outside the repository containing at least:
 ```
 
 Run `pnpm release:gate -- /secure/path/release-evidence.json`. The command is fail-closed: every mandatory check needs `PASS` plus traceable evidence, blockers must be empty, and accepted risks require explicit owner/rationale.
+
+The org-structure categories are mandatory for a release containing that module. `databaseClean` and `databaseUpgrade` are separate because a clean migration does not prove preservation of legacy data. `orgStructureSecurity` must include two-tenant scope coverage and the ManagerGroup exploit regression. `orgStructureFlows` covers the integrated admin, manager, and learner paths rather than isolated unit assertions. Performance, observability, and external mapping evidence must point to their actual run or artifact; a documentation statement is not runtime evidence.
 
 ## Repository verification
 

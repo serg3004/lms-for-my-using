@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { validateReleaseEvidence } from './verify-release-gate.mjs';
+import { REQUIRED_CHECKS, validateReleaseEvidence } from './verify-release-gate.mjs';
 
 const passingEvidence = {
   releaseId: 'release-2026-08-23',
@@ -10,8 +10,7 @@ const passingEvidence = {
   owner: 'release-owner',
   verifiedAt: '2026-08-23T12:00:00Z',
   checks: Object.fromEntries(
-    ['ci', 'codeql', 'prismaGenerate', 'apiSmoke', 'webSmoke', 'environment', 'rollback']
-      .map((name) => [name, { status: 'PASS', evidence: `run:${name}` }]),
+    REQUIRED_CHECKS.map((name) => [name, { status: 'PASS', evidence: `run:${name}` }]),
   ),
   blockers: [],
   acceptedRisks: [{ id: 'H-004', reason: 'Not required for this release scope', owner: 'product-owner' }],
@@ -40,4 +39,42 @@ test('requires traceable evidence for every release check', () => {
   const errors = validateReleaseEvidence(evidence);
   assert(errors.includes('checks.codeql is required'));
   assert(errors.includes('checks.webSmoke.evidence must be a non-empty string'));
+});
+
+test('fails closed when org-structure integration evidence is missing', () => {
+  const evidence = structuredClone(passingEvidence);
+  for (const check of [
+    'databaseClean',
+    'databaseUpgrade',
+    'orgStructureSecurity',
+    'orgStructureFlows',
+    'orgStructureLifecycle',
+    'performance',
+    'observability',
+    'externalMappings',
+  ]) {
+    delete evidence.checks[check];
+  }
+
+  const errors = validateReleaseEvidence(evidence);
+  assert.deepEqual(errors, [
+    'checks.databaseClean is required',
+    'checks.databaseUpgrade is required',
+    'checks.orgStructureSecurity is required',
+    'checks.orgStructureFlows is required',
+    'checks.orgStructureLifecycle is required',
+    'checks.performance is required',
+    'checks.observability is required',
+    'checks.externalMappings is required',
+  ]);
+});
+
+test('does not accept documentation assertions as successful runtime evidence', () => {
+  const evidence = structuredClone(passingEvidence);
+  evidence.checks.orgStructureSecurity.status = 'DOCUMENTED';
+  evidence.checks.databaseUpgrade.status = 'NOT_VERIFIED';
+
+  const errors = validateReleaseEvidence(evidence);
+  assert(errors.includes('checks.orgStructureSecurity.status must be PASS'));
+  assert(errors.includes('checks.databaseUpgrade.status must be PASS'));
 });
