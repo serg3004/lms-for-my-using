@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -6,17 +7,66 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const PASS = 'PASS';
 const defaultRepoRoot = fileURLToPath(new URL('../', import.meta.url));
 
-// A marker path proving the named module is wired into this checkout, used to
-// reject a self-declared `excludedModules` claim the actual candidate SHA
-// contradicts. Update this if the module's home directory moves.
-const MODULE_PRESENCE_MARKERS = Object.freeze({
-  'org-structure': 'apps/api/src/modules/org-structure-admin',
+// A module is "present" only if AppModule's own composition still wires its
+// module class in -- a source directory can outlive its import (would wrongly
+// block a real exclusion) or the class can move without the directory
+// following (would wrongly allow one), so the canonical AppModule imports
+// array is checked directly rather than a directory's existence.
+const APP_MODULE_PRESENCE_MARKERS = Object.freeze({
+  'org-structure': { file: 'apps/api/src/app.module.ts', symbol: 'OrgStructureAdminModule' },
 });
 
+// Extracts the bracket-balanced `[...]` starting at `openIndex`, skipping
+// bracket characters inside string literals (e.g. `process.env['LOG_LEVEL']`)
+// so a nested `]` there cannot be mistaken for the array's real end.
+function extractBalancedBrackets(source, openIndex) {
+  let depth = 0;
+  let quote = null;
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      if (char === '\\') index += 1;
+      else if (char === quote) quote = null;
+      continue;
+    }
+    if (char === '\'' || char === '"' || char === '`') {
+      quote = char;
+      continue;
+    }
+    if (char === '[') depth += 1;
+    else if (char === ']') {
+      depth -= 1;
+      if (depth === 0) return source.slice(openIndex, index + 1);
+    }
+  }
+  return source.slice(openIndex);
+}
+
 export function detectPresentModules(repoRoot = defaultRepoRoot) {
-  return Object.entries(MODULE_PRESENCE_MARKERS)
-    .filter(([, marker]) => existsSync(resolve(repoRoot, marker)))
-    .map(([module]) => module);
+  const present = [];
+  for (const [module, { file, symbol }] of Object.entries(APP_MODULE_PRESENCE_MARKERS)) {
+    const filePath = resolve(repoRoot, file);
+    if (!existsSync(filePath)) continue;
+    const source = readFileSync(filePath, 'utf8');
+    const importsKeyIndex = source.indexOf('imports:');
+    const openIndex = importsKeyIndex === -1 ? -1 : source.indexOf('[', importsKeyIndex);
+    if (openIndex === -1) continue;
+    const importsBlock = extractBalancedBrackets(source, openIndex);
+    if (importsBlock.includes(symbol)) present.push(module);
+  }
+  return present;
+}
+
+// The commit `detectPresentModules` actually inspected. Filesystem-derived
+// scope is only trustworthy for the exact candidate the release record names;
+// a checkout on a different commit must not be allowed to authorize dropping
+// that other candidate's evidence.
+export function getCheckoutSha(repoRoot = defaultRepoRoot) {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
 }
 
 // These names intentionally describe evidence categories rather than CI job names.
@@ -55,9 +105,11 @@ export const REQUIRED_CHECKS = Object.freeze([
   ...Object.values(MODULE_REQUIRED_CHECKS).flat(),
 ]);
 
-export function validateReleaseEvidence(value, { presentModules = detectPresentModules() } = {}) {
+export function validateReleaseEvidence(value, options = {}) {
   const errors = [];
   const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const usingDetectedModules = options.presentModules === undefined;
+  const presentModules = usingDetectedModules ? detectPresentModules() : options.presentModules;
 
   for (const field of ['releaseId', 'sha', 'environment', 'owner', 'verifiedAt']) {
     if (typeof object[field] !== 'string' || object[field].trim() === '') {
@@ -90,6 +142,18 @@ export function validateReleaseEvidence(value, { presentModules = detectPresentM
           errors.push(`excludedModules claims '${module}' is absent, but the repository at this candidate still wires it in`);
         }
       }
+    }
+  }
+
+  // Filesystem-derived presence only speaks for the commit it was read from. When
+  // that detection ran (rather than a caller supplying presentModules directly),
+  // an exclusion is honored only if this checkout is actually the declared candidate.
+  if (usingDetectedModules && excludedModules.length > 0) {
+    const checkoutSha = options.checkoutSha !== undefined ? options.checkoutSha : getCheckoutSha();
+    if (!checkoutSha || typeof object.sha !== 'string' || checkoutSha.toLowerCase() !== object.sha.toLowerCase()) {
+      errors.push(
+        `excludedModules cannot be trusted: this verification ran on checkout ${checkoutSha ?? 'unknown'}, not the declared candidate sha ${typeof object.sha === 'string' && object.sha ? object.sha : '(missing)'}; run pnpm release:gate from the exact candidate checkout`,
+      );
     }
   }
 
