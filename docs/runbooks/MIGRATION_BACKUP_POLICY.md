@@ -147,6 +147,19 @@ Migration `20260902120000_add_org_structure_import_previews` также additive
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Organization external reference migration
+
+Migration `20260903120000_add_org_external_references` также additive и backward-compatible:
+
+- создаёт новый enum `OrgExternalReferenceEntityType` (`DEPARTMENT`/`DEPARTMENT_TYPE`/`POSITION`) и новую таблицу `org_external_references` (readiness для будущей HRIS/SCIM интеграции, PR 283) без изменения существующих таблиц `departments`, `department_types`, `positions`, `users` или `org_structure_events`;
+- не выполняет backfill: ни одна internal entity не получает external mapping автоматически;
+- уникальный индекс `org_external_references_org_source_type_external_key` на (`organization_id`, `source_system`, `entity_type`, `external_id`) — обычный (не partial) unique constraint, поскольку в отличие от `department_managers`/`department_memberships`/`reporting_lines` здесь нет понятия "текущей" записи: mapping не закрывается и не заменяется, только удаляется явно, поэтому Prisma schema DSL `@@unique` полностью выражает это ограничение без raw SQL;
+- `entity_id` намеренно не является foreign key ни на одну из трёх таблиц (полиморфная связь по `entity_type`, тот же паттерн, что и у `org_structure_events.entity_id`) — internal UUID остаётся canonical primary key everywhere else, и эта таблица никогда не является FK-целью для других таблиц;
+- архивирование `Department`/`Position` (`status`) или `DepartmentType` (`is_active`) не удаляет и не изменяет existing mapping — mapping history сохраняется независимо от текущего статуса internal entity;
+- допускает overlap со старой версией приложения аналогично предыдущим org-structure миграциям.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

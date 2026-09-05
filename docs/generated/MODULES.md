@@ -34,6 +34,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `NotificationsModule` |
 | `ObservabilityModule` |
 | `OpenApiModule` |
+| `OrgExternalReferencesModule` |
 | `OrgStructureAdminModule` |
 | `OrganizationAccessScopeModule` |
 | `OrganizationsModule` |

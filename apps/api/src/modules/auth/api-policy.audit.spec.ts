@@ -28,6 +28,7 @@ import { MembershipsController } from '../memberships/memberships.controller.js'
 import { NotificationsController } from '../notifications/notifications.controller.js';
 import { OpenApiController } from '../openapi/openapi.controller.js';
 import { OrganizationsController } from '../organizations/organizations.controller.js';
+import { OrgExternalReferencesController } from '../org-external-references/org-external-references.controller.js';
 import { OrgStructureAdminController } from '../org-structure-admin/org-structure-admin.controller.js';
 import { PositionCoursesController } from '../position-courses/position-courses.controller.js';
 import { PositionsController } from '../positions/positions.controller.js';
@@ -67,6 +68,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'notifications/notifications.controller.ts', Controller: NotificationsController },
   { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
   { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
+  { file: 'org-external-references/org-external-references.controller.ts', Controller: OrgExternalReferencesController },
   { file: 'org-structure-admin/org-structure-admin.controller.ts', Controller: OrgStructureAdminController },
   { file: 'position-courses/position-courses.controller.ts', Controller: PositionCoursesController },
   { file: 'positions/positions.controller.ts', Controller: PositionsController },

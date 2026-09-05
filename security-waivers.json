@@ -1,4 +1,47 @@
 {
   "version": 1,
-  "waivers": []
+  "waivers": [
+    {
+      "id": "CVE-2026-53612",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "libuuid/util-linux HIGH CVE in the nginx:stable-alpine (Alpine 3.24) base image used by apps/web/Dockerfile. Fixed upstream in util-linux 2.42.3-r0, but that build is not yet published in the Alpine 3.24 apk repository, so `apk upgrade --no-cache` in the Dockerfile cannot pull it. Confirmed unrelated to any application code change: reproduces identically on main (unchanged Dockerfile). Re-check and drop this waiver once Alpine 3.24 ships the fixed package.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-53613",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-53614",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-76642",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-78408",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-78409",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2026-78410",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
+      "expires": "2026-10-05"
+    }
+  ]
 }
