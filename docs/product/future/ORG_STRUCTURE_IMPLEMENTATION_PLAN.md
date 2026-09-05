@@ -1897,7 +1897,7 @@ Observability не должна менять authorization/domain semantics.
 
 ## PR 283 — External identifiers и готовность к HRIS/SCIM
 
-**Статус: реализовано.** Добавлена tenant-scoped модель `OrgExternalReference` (DEPARTMENT/DEPARTMENT_TYPE/POSITION), create-only API (never silent remap, unique constraint на organizationId+sourceSystem+entityType+externalId), tenant-scoped resolution service (`GET /org-external-references/resolve`), полное покрытие durable history событиями и integration/unit тестами. USER entity type, SCIM endpoint, HRIS polling, webhook sync и background reconciliation намеренно не реализованы в этом PR.
+**Статус: реализовано.** Добавлена tenant-scoped модель `OrgExternalReference` (DEPARTMENT/DEPARTMENT_TYPE/POSITION), create-only API (never silent remap, unique constraint на organizationId+sourceSystem+entityType+externalId), tenant-scoped resolution service (`GET /org-external-references/resolve`), полное покрытие durable history событиями и integration/unit тестами. USER entity type, SCIM endpoint, HRIS polling, webhook sync и background reconciliation намеренно не реализованы в этом PR. Новый `OrgExternalReferencesModule` в `app.module.ts` следует уже задокументированному правилу module boundaries без нового паттерна (как и в PR 278/279/280 для аналогичного mapping).
 
 ### Задача
 
