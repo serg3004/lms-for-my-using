@@ -3,6 +3,41 @@ import { pathToFileURL } from 'node:url';
 
 const PASS = 'PASS';
 
+// These names intentionally describe evidence categories rather than CI job names.
+// Job topology is mutable; a release record must instead prove every invariant for
+// the exact candidate SHA and target environment.
+//
+// Every category here is unconditionally mandatory: this repository is a single
+// deployable that always contains the org-structure module, so there is no
+// release for which "this candidate doesn't contain it" is actually true. An
+// earlier revision tried a self-declared, checkout-verified `excludedModules`
+// escape hatch for a hypothetical partial release; each attempt to close one
+// bypass (a false claim, a stale checkout, a dirty working tree, an incomplete
+// presence marker) opened another, because there is no real candidate to
+// validate the claim against. Removing the hatch removes the attack surface;
+// reintroduce scoping only once a release genuinely without this module exists,
+// and prefer deriving scope from that release's own build/deploy manifest over
+// re-deriving it from source text.
+export const REQUIRED_CHECKS = Object.freeze([
+  'ci',
+  'codeql',
+  'generatedDocs',
+  'databaseClean',
+  'databaseUpgrade',
+  'orgStructureSecurity',
+  'orgStructureFlows',
+  'orgStructureLifecycle',
+  'accessibility',
+  'visualRegression',
+  'performance',
+  'observability',
+  'externalMappings',
+  'apiSmoke',
+  'webSmoke',
+  'environment',
+  'rollback',
+]);
+
 export function validateReleaseEvidence(value) {
   const errors = [];
   const object = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -16,24 +51,20 @@ export function validateReleaseEvidence(value) {
   if (typeof object.sha === 'string' && !/^[0-9a-f]{40}$/i.test(object.sha)) {
     errors.push('sha must be a full 40-character Git commit SHA');
   }
-  if (typeof object.verifiedAt === 'string' && Number.isNaN(Date.parse(object.verifiedAt))) {
-    errors.push('verifiedAt must be an ISO-8601 timestamp');
+  if (typeof object.verifiedAt === 'string') {
+    const verifiedAtMs = Date.parse(object.verifiedAt);
+    if (Number.isNaN(verifiedAtMs)) {
+      errors.push('verifiedAt must be an ISO-8601 timestamp');
+    } else if (verifiedAtMs > Date.now()) {
+      errors.push('verifiedAt must not be in the future');
+    }
   }
 
-  const requiredChecks = [
-    'ci',
-    'codeql',
-    'prismaGenerate',
-    'apiSmoke',
-    'webSmoke',
-    'environment',
-    'rollback',
-  ];
   const checks = object.checks && typeof object.checks === 'object' && !Array.isArray(object.checks)
     ? object.checks
     : {};
 
-  for (const check of requiredChecks) {
+  for (const check of REQUIRED_CHECKS) {
     const evidence = checks[check];
     if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) {
       errors.push(`checks.${check} is required`);

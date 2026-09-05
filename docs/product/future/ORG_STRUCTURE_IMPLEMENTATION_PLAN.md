@@ -1999,6 +1999,8 @@ USER external reference не добавляется, пока не соглас�
 
 ## PR 284 — Финальная интеграционная проверка и release gate
 
+**Статус: реализовано.** Release gate сделан fail-closed для полного набора доказательств оргструктуры: clean/representative database rollout, двухtenant security и regression PR 266, интегрированные admin/manager/learner flows, lifecycle, accessibility/visual regression, performance, observability и external mappings. Каждая категория требует `PASS` и traceable evidence для конкретного release SHA; documentation-only assertion не принимается. Контракт gate покрыт тестами и включён в обязательный CI. Production rollout остаётся отдельным operator action и требует свежих CI/CodeQL/runtime evidence для точного SHA и target environment.
+
 ### Задача
 
 Проверить модуль как единую систему после реализации PR 266–283 и подтвердить готовность к release.

@@ -88,6 +88,9 @@ jobs:
       - name: Security artifact tests
         run: pnpm security:artifacts:test
 
+      - name: Release gate contract tests
+        run: pnpm release:gate:test
+
       - name: Documentation consistency
         run: pnpm docs:consistency:test
 

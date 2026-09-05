@@ -28,7 +28,11 @@ RUN pnpm run build
 FROM nginx:stable-alpine AS runner
 
 # Refresh base-image packages so fixed Alpine security updates are present even
-# when the upstream nginx tag has not yet been rebuilt.
+# when the upstream nginx tag has not yet been rebuilt. Do not pin a package to
+# a fixed-but-unpublished version here: Alpine's apk repository can lag behind
+# a freshly disclosed advisory by weeks, and a strict `apk add --upgrade
+# 'pkg>=X'` constraint the repo cannot yet satisfy fails the build outright
+# (see security-waivers.json for CVEs currently waived on that basis).
 RUN apk upgrade --no-cache
 
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
