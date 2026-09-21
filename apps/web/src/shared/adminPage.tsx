@@ -15,10 +15,26 @@ export type AdminNavItem = {
   isCurrent?: boolean;
 };
 
+type AdminSidebarNavItem = {
+  label: string;
+  href: string;
+  /** Extra path prefixes (besides `href` itself) that should mark this sidebar link as active. */
+  activePrefixes?: readonly string[];
+};
+
 type AdminSidebarSection = {
   label: string;
-  items: readonly { label: string; href: string }[];
+  items: readonly AdminSidebarNavItem[];
 };
+
+/** Routes grouped under the single "Organizational structure" sidebar entry and its in-page tabs. */
+export const ORG_STRUCTURE_TAB_ROUTES = [
+  '/admin/departments',
+  '/admin/positions',
+  '/admin/position-courses',
+  '/admin/groups',
+  '/admin/org-structure-tools',
+] as const;
 
 function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
   return [
@@ -39,11 +55,11 @@ function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
     {
       label: t('admin.nav.settingsSection', 'Settings'),
       items: [
-        { label: t('admin.nav.groups', 'Groups'), href: '/admin/groups' },
-        { label: t('admin.nav.departments', 'Departments'), href: '/admin/departments' },
-        { label: t('admin.nav.orgStructureTools', 'Import & history'), href: '/admin/org-structure-tools' },
-        { label: t('admin.nav.positions', 'Positions'), href: '/admin/positions' },
-        { label: t('admin.nav.positionCourses', 'Position courses'), href: '/admin/position-courses' },
+        {
+          label: t('admin.nav.orgStructure', 'Organizational structure'),
+          href: ORG_STRUCTURE_TAB_ROUTES[0],
+          activePrefixes: ORG_STRUCTURE_TAB_ROUTES,
+        },
         { label: t('admin.nav.roles', 'Roles'), href: '/admin/roles' },
         { label: t('admin.nav.themeSettings', 'Theme settings'), href: '/admin/appearance' },
         { label: t('admin.nav.auditLog', 'Audit log'), href: '/admin/audit-log' },
@@ -90,6 +106,14 @@ export function AdminPageLayout({
   const currentHrefs = new Set(
     navItems.filter((item) => item.isCurrent).map((item) => item.href),
   );
+  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
+
+  function isSidebarItemActive(item: AdminSidebarNavItem): boolean {
+    if (currentHrefs.has(item.href)) return true;
+    return (item.activePrefixes ?? []).some(
+      (prefix) => currentPathname === prefix || currentPathname.startsWith(`${prefix}/`),
+    );
+  }
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 860px)');
@@ -174,7 +198,7 @@ export function AdminPageLayout({
               <div className="admin-nav-section-label">{section.label}</div>
               {section.items.map((item) => (
                 <a
-                  aria-current={currentHrefs.has(item.href) ? 'page' : undefined}
+                  aria-current={isSidebarItemActive(item) ? 'page' : undefined}
                   className="admin-nav-link"
                   href={item.href}
                   key={item.href}
@@ -247,6 +271,37 @@ export function AdminPageLayout({
         <div className="admin-shell__inner">{children}</div>
       </main>
     </div>
+  );
+}
+
+// ── OrgStructureTabs ─────────────────────────────────────────────────────────
+
+export type OrgStructureTabKey = 'departments' | 'positions' | 'positionCourses' | 'groups' | 'importHistory';
+
+const ORG_STRUCTURE_TABS: readonly { key: OrgStructureTabKey; href: string; labelKey: string; fallback: string }[] = [
+  { key: 'departments', href: '/admin/departments', labelKey: 'admin.nav.departments', fallback: 'Departments' },
+  { key: 'positions', href: '/admin/positions', labelKey: 'admin.nav.positions', fallback: 'Positions' },
+  { key: 'positionCourses', href: '/admin/position-courses', labelKey: 'admin.nav.positionCourses', fallback: 'Position courses' },
+  { key: 'groups', href: '/admin/groups', labelKey: 'admin.nav.groups', fallback: 'Groups' },
+  { key: 'importHistory', href: '/admin/org-structure-tools', labelKey: 'admin.nav.orgStructureTools', fallback: 'Import & history' },
+];
+
+/** In-page tab strip shared by the five pages that make up the "Organizational structure" section. */
+export function OrgStructureTabs({ current }: { current: OrgStructureTabKey }) {
+  const { t } = useTranslation();
+  return (
+    <nav aria-label={t('admin.orgStructure.tabsLabel', 'Organizational structure sections')} className="admin-org-tabs">
+      {ORG_STRUCTURE_TABS.map((tab) => (
+        <a
+          aria-current={tab.key === current ? 'page' : undefined}
+          className="admin-org-tabs__tab"
+          href={tab.href}
+          key={tab.key}
+        >
+          {t(tab.labelKey, tab.fallback)}
+        </a>
+      ))}
+    </nav>
   );
 }
 

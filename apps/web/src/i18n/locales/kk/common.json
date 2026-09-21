@@ -24,14 +24,19 @@
       "assignments": "Тапсырмалар",
       "results": "Нәтижелер",
       "settingsSection": "Баптаулар",
+      "orgStructure": "Ұйымдық құрылым",
       "groups": "Топтар",
       "departments": "Бөлімшелер",
       "positions": "Лауазымдар",
       "positionCourses": "Лауазым талаптары",
+      "orgStructureTools": "Импорт және тарих",
       "roles": "Рөлдер",
       "themeSettings": "Безендіру",
       "checklists": "Чеклистер",
       "auditLog": "Аудит журналы"
+    },
+    "orgStructure": {
+      "tabsLabel": "Ұйымдық құрылым бөлімдері"
     },
     "title": "Басқару панелі",
     "subtitle": "Қайта қош келдіңіз, {{name}}.",
