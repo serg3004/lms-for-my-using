@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { commitOrgStructureImport, listOrgStructureHistory, previewOrgStructureImport, ORG_STRUCTURE_HISTORY_PAGE_SIZE, type ImportKind, type ImportMode, type ImportPreview } from '../shared/api/org-structure-admin.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, FormField, OrgStructureTabs, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, PageState } from '../shared/ui.js';
 
 export function AdminOrgStructureToolsPage() {
@@ -17,6 +17,7 @@ export function AdminOrgStructureToolsPage() {
   async function commit() { if (!preview?.token) return; setBusy(true); try { const result = await commitOrgStructureImport(preview.token); setMessage(`Imported ${result.imported} rows.`); setPreview(null); await reload(); } catch { setMessage('Import could not be committed. Preview again and resolve any conflicts.'); } finally { setBusy(false); } }
   const nav: AdminNavItem[] = [{ label: 'Departments', href: '/admin/departments' }, { label: 'Import & history', href: '/admin/org-structure-tools', isCurrent: true }];
   return <AdminPageLayout brandLabel="LearnSpace" sidebarLabel="Admin navigation" navItems={nav} currentUser={currentUser ?? undefined}>
+    <OrgStructureTabs current="importHistory" />
     <AdminPageHeader eyebrow="Organization structure" title="Import & history" subtitle="Validate CSV changes before applying them, and review the durable change history." />
     <section className="admin-card"><h2>CSV import</h2><form className="admin-form" onSubmit={submit}>
       <FormField id="org-import-kind" label="Import data"><select id="org-import-kind" value={kind} onChange={e => { setKind(e.target.value as ImportKind); setPreview(null); }}><option value="DEPARTMENTS">Departments</option><option value="MEMBERSHIPS">Memberships</option></select></FormField>

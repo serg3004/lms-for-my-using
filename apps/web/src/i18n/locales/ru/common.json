@@ -24,14 +24,19 @@
       "assignments": "Назначения",
       "results": "Результаты",
       "settingsSection": "Настройки",
+      "orgStructure": "Организационная структура",
       "groups": "Группы",
       "departments": "Подразделения",
       "positions": "Должности",
       "positionCourses": "Требования по должностям",
+      "orgStructureTools": "Импорт и история",
       "roles": "Роли",
       "themeSettings": "Оформление",
       "checklists": "Чек-листы",
       "auditLog": "Журнал аудита"
+    },
+    "orgStructure": {
+      "tabsLabel": "Разделы организационной структуры"
     },
     "title": "Панель управления",
     "subtitle": "С возвращением, {{name}}.",
