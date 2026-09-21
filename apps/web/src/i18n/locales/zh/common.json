@@ -24,14 +24,19 @@
       "assignments": "任务",
       "results": "结果",
       "settingsSection": "设置",
+      "orgStructure": "组织架构",
       "groups": "小组",
       "departments": "部门",
       "positions": "职位",
       "positionCourses": "职位课程要求",
+      "orgStructureTools": "导入与历史记录",
       "roles": "角色",
       "themeSettings": "外观设置",
       "checklists": "检查清单",
       "auditLog": "审计日志"
+    },
+    "orgStructure": {
+      "tabsLabel": "组织架构分区"
     },
     "title": "管理面板",
     "subtitle": "欢迎回来，{{name}}。",

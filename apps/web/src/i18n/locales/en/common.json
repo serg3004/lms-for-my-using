@@ -24,14 +24,19 @@
       "assignments": "Assignments",
       "results": "Results",
       "settingsSection": "Settings",
+      "orgStructure": "Organizational structure",
       "groups": "Groups",
       "departments": "Departments",
       "positions": "Positions",
       "positionCourses": "Position courses",
+      "orgStructureTools": "Import & history",
       "roles": "Roles",
       "themeSettings": "Theme settings",
       "checklists": "Checklists",
       "auditLog": "Audit log"
+    },
+    "orgStructure": {
+      "tabsLabel": "Organizational structure sections"
     },
     "title": "Dashboard",
     "subtitle": "Welcome back, {{name}}.",
