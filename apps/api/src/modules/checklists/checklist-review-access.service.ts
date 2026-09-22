@@ -1,14 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { CurrentUser } from '../auth/public.js';
-import { isManagerTeamScoped, ManagerTeamScope } from '../manager-team-scope/public.js';
+import { isManagerTeamScoped } from '../manager-team-scope/public.js';
+import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
+
+export type ChecklistSessionAccessScope = {
+  observerId?: string;
+  instance?: { userId?: string; user?: Prisma.UserWhereInput };
+  OR?: ChecklistSessionAccessScope[];
+};
 
 @Injectable()
 export class ChecklistReviewAccessService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly teamScope: ManagerTeamScope,
+    private readonly organizationScope: OrganizationAccessScopeService,
   ) {}
 
   async filterPending<T extends { userId: string }>(user: CurrentUser, instances: T[]): Promise<T[]> {
@@ -19,7 +27,7 @@ export class ChecklistReviewAccessService {
         organizationId: user.organizationId,
         id: { in: instances.map((instance) => instance.userId) },
         deletedAt: null,
-        ...this.teamScope.user(user),
+        ...(await this.organizationScope.user(user)),
       },
       select: { id: true },
     });
@@ -33,7 +41,7 @@ export class ChecklistReviewAccessService {
         id: instanceId,
         organizationId: user.organizationId,
         deletedAt: null,
-        ...(isManagerTeamScoped(user) ? this.teamScope.userOwnedResource(user) : {}),
+        ...(isManagerTeamScoped(user) ? await this.organizationScope.userOwnedResource(user) : {}),
       },
       select: { id: true, reviewerId: true },
     });
@@ -44,7 +52,24 @@ export class ChecklistReviewAccessService {
     }
   }
 
-  reviewQueueScope(user: CurrentUser) {
-    return isManagerTeamScoped(user) ? this.teamScope.userOwnedResource(user) : {};
+  async reviewQueueScope(user: CurrentUser) {
+    return isManagerTeamScoped(user) ? this.organizationScope.userOwnedResource(user) : {};
+  }
+
+  /**
+   * Canonical object scope for the ChecklistSession model introduced by PR 288.
+   * Keeping this policy in the existing review-access service lets session rows and every
+   * nested resource apply the same parent scope instead of authorizing child UUIDs directly.
+   */
+  async sessionScope(user: CurrentUser): Promise<ChecklistSessionAccessScope> {
+    if (user.roles.includes('admin')) return {};
+    if (isManagerTeamScoped(user)) {
+      const managerScope = { instance: { user: await this.organizationScope.user(user) } };
+      return user.roles.includes('instructor')
+        ? { OR: [managerScope, { observerId: user.id }] }
+        : managerScope;
+    }
+    if (user.roles.includes('instructor')) return { observerId: user.id };
+    return { instance: { userId: user.id } };
   }
 }

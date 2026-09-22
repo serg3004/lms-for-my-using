@@ -533,9 +533,9 @@ export class ChecklistsService {
     return this.listInstancesWithDeadlineRefresh({ checklistId, organizationId });
   }
 
-  async listPendingReview(organizationId: string) {
+  async listPendingReview(organizationId: string, userScope: object = {}) {
     const instances = await this.prisma.checklistInstance.findMany({
-      where: { organizationId, status: 'submitted', deletedAt: null },
+      where: { organizationId, status: 'submitted', deletedAt: null, ...userScope },
       orderBy: { submittedAt: 'asc' },
       select: instanceWithSnapshotSelect,
     });
