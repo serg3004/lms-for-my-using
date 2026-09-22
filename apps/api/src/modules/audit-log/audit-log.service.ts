@@ -29,6 +29,7 @@ export type AuditLogAction =
   | 'checklist.deleted'
   | 'checklist_instance.assigned'
   | 'checklist_item_result.reviewed'
+  | 'checklist_workplace_settings.updated'
   | 'certificate.issued';
 
 export type RecordAuditLogInput = {

@@ -182,6 +182,17 @@ enum ChecklistInstanceEventType {
   expired
 }
 
+enum ChecklistGeolocationPolicy {
+  off
+  optional
+  required
+}
+
+enum ChecklistFeedbackVisibility {
+  after_completion
+  live
+}
+
 model Organization {
   id                         String                      @id @default(uuid()) @db.Uuid
   name                       String
@@ -225,6 +236,7 @@ model Organization {
   checklistInstances         ChecklistInstance[]
   checklistItemResults       ChecklistItemResult[]
   checklistInstanceEvents    ChecklistInstanceEvent[]
+  checklistWorkplaceSettings ChecklistWorkplaceSettings?
   theme                      OrganizationTheme?
 
   @@map("organizations")
@@ -596,15 +608,15 @@ enum OrgExternalReferenceEntityType {
 /// mapping history. No connector, polling, webhook, or background sync is implemented by this
 /// model -- see docs/product/future/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md PR 283.
 model OrgExternalReference {
-  id             String                          @id @default(uuid()) @db.Uuid
-  organizationId String                          @map("organization_id") @db.Uuid
-  entityType     OrgExternalReferenceEntityType  @map("entity_type")
-  entityId       String                          @map("entity_id") @db.Uuid
-  sourceSystem   String                          @map("source_system")
-  externalId     String                          @map("external_id")
-  createdAt      DateTime                        @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime                        @updatedAt @map("updated_at") @db.Timestamptz
-  organization   Organization                    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String                         @id @default(uuid()) @db.Uuid
+  organizationId String                         @map("organization_id") @db.Uuid
+  entityType     OrgExternalReferenceEntityType @map("entity_type")
+  entityId       String                         @map("entity_id") @db.Uuid
+  sourceSystem   String                         @map("source_system")
+  externalId     String                         @map("external_id")
+  createdAt      DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, sourceSystem, entityType, externalId])
   @@index([organizationId, entityType, entityId])
@@ -1087,6 +1099,24 @@ model ChecklistItemResult {
   @@index([instanceId])
   @@index([itemId])
   @@map("checklist_item_results")
+}
+
+/// Tenant-scoped configuration for the Checklist "workplace training session" mode.
+/// See docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md for the safe defaults this row ships with.
+model ChecklistWorkplaceSettings {
+  id                       String                      @id @default(uuid()) @db.Uuid
+  organizationId           String                      @unique @map("organization_id") @db.Uuid
+  moduleEnabled            Boolean                     @default(false) @map("module_enabled")
+  highPerformanceThreshold Int                         @default(90) @map("high_performance_threshold")
+  criticalThreshold        Int?                        @map("critical_threshold")
+  lowThreshold             Int?                        @map("low_threshold")
+  defaultGeolocationPolicy ChecklistGeolocationPolicy  @default(off) @map("default_geolocation_policy")
+  feedbackVisibility       ChecklistFeedbackVisibility @default(after_completion) @map("feedback_visibility")
+  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
+  organization             Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("checklist_workplace_settings")
 }
 
 model Membership {

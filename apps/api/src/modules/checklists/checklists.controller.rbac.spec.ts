@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { ChecklistsController } from './checklists.controller.js';
 import type { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import type { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import type { ChecklistsService } from './checklists.service.js';
 import type { UploadService } from '../upload/public.js';
 
@@ -22,15 +23,18 @@ function makeController(overrides: {
   checklistsService?: Partial<ChecklistsService>;
   reviewAccess?: Partial<ChecklistReviewAccessService>;
   uploadService?: Partial<UploadService>;
+  workplaceSettings?: Partial<ChecklistWorkplaceSettingsService>;
 } = {}) {
   const checklistsService = overrides.checklistsService ?? {};
   const reviewAccess = overrides.reviewAccess ?? {};
   const uploadService = overrides.uploadService ?? {};
+  const workplaceSettings = overrides.workplaceSettings ?? {};
 
   return new ChecklistsController(
     checklistsService as ChecklistsService,
     uploadService as UploadService,
     reviewAccess as ChecklistReviewAccessService,
+    workplaceSettings as ChecklistWorkplaceSettingsService,
   );
 }
 
@@ -210,6 +214,68 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
         controller.getItemPhoto(instanceId, itemId, makeRequest(reviewerId, ['mentor'])),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(getItemPhotoDownload).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('workplace settings', () => {
+    it('reads settings scoped to the caller\'s own organization, never a caller-supplied one', async () => {
+      const getSettings = jest.fn(async () => ({ moduleEnabled: false }));
+      const controller = makeController({
+        workplaceSettings: { getSettings: getSettings as unknown as ChecklistWorkplaceSettingsService['getSettings'] },
+      });
+
+      await controller.getWorkplaceSettings(makeRequest(learnerId, ['learner']));
+
+      expect(getSettings).toHaveBeenCalledWith(organizationId);
+    });
+
+    it('writes settings with the caller as actor, scoped to their own organization', async () => {
+      const updateSettings = jest.fn(async () => ({ moduleEnabled: true }));
+      const controller = makeController({
+        workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
+      });
+
+      await controller.updateWorkplaceSettings({ moduleEnabled: true }, makeRequest(reviewerId, ['admin']));
+
+      expect(updateSettings).toHaveBeenCalledWith(organizationId, { moduleEnabled: true }, reviewerId);
+    });
+
+    it('rejects an unknown field instead of silently accepting it', async () => {
+      const updateSettings = jest.fn();
+      const controller = makeController({
+        workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
+      });
+
+      expect(() =>
+        controller.updateWorkplaceSettings({ moduleEnabled: true, notARealField: 1 }, makeRequest(reviewerId, ['admin'])),
+      ).toThrow();
+      expect(updateSettings).not.toHaveBeenCalled();
+    });
+
+    it('rejects a criticalThreshold set below lowThreshold in the same request', async () => {
+      const updateSettings = jest.fn();
+      const controller = makeController({
+        workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
+      });
+
+      expect(() =>
+        controller.updateWorkplaceSettings(
+          { criticalThreshold: 40, lowThreshold: 60 },
+          makeRequest(reviewerId, ['admin']),
+        ),
+      ).toThrow();
+      expect(updateSettings).not.toHaveBeenCalled();
+    });
+
+    it('accepts clearing a previously-set threshold back to null', async () => {
+      const updateSettings = jest.fn(async () => ({}));
+      const controller = makeController({
+        workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
+      });
+
+      await controller.updateWorkplaceSettings({ criticalThreshold: null }, makeRequest(reviewerId, ['admin']));
+
+      expect(updateSettings).toHaveBeenCalledWith(organizationId, { criticalThreshold: null }, reviewerId);
     });
   });
 });

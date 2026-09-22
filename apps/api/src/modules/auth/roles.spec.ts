@@ -153,6 +153,8 @@ describe('rolePolicies', () => {
     checklistInstancesCreate: ['admin', 'manager', 'instructor'],
     checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],
     checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
+    checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
+    checklistWorkplaceSettingsWrite: ['admin'],
   } satisfies Record<PolicyName, readonly UserRole[]>;
 
   it('has an expected-roles entry for every key of rolePolicies (and no extra ones)', () => {

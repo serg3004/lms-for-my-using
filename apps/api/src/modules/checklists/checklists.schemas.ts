@@ -107,3 +107,32 @@ export const checklistAnalyticsQuerySchema = z.object({
   checklistId: z.string().uuid().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
 });
 export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySchema>;
+
+// ---- Workplace-training session settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
+
+export const checklistGeolocationPolicySchema = z.enum(['off', 'optional', 'required']);
+export const checklistFeedbackVisibilitySchema = z.enum(['after_completion', 'live']);
+
+export const updateChecklistWorkplaceSettingsSchema = z
+  .object({
+    moduleEnabled: z.boolean(),
+    highPerformanceThreshold: z.number().int().min(0).max(100),
+    // Nullable, not just optional: an admin must be able to explicitly clear a threshold they
+    // previously set, not just leave it unspecified in the request body.
+    criticalThreshold: z.number().int().min(0).max(100).nullable(),
+    lowThreshold: z.number().int().min(0).max(100).nullable(),
+    defaultGeolocationPolicy: checklistGeolocationPolicySchema,
+    feedbackVisibility: checklistFeedbackVisibilitySchema,
+  })
+  .partial()
+  .strict()
+  .refine(
+    (input) =>
+      input.criticalThreshold === undefined ||
+      input.lowThreshold === undefined ||
+      input.criticalThreshold === null ||
+      input.lowThreshold === null ||
+      input.criticalThreshold >= input.lowThreshold,
+    { message: 'criticalThreshold must be greater than or equal to lowThreshold', path: ['criticalThreshold'] },
+  );
+export type UpdateChecklistWorkplaceSettingsInput = z.infer<typeof updateChecklistWorkplaceSettingsSchema>;

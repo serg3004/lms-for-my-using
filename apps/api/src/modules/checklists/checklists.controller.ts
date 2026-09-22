@@ -7,6 +7,7 @@ import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePo
 import { RolesGuard } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
@@ -18,6 +19,7 @@ import {
   submitChecklistItemResultSchema,
   updateChecklistItemSchema,
   updateChecklistSchema,
+  updateChecklistWorkplaceSettingsSchema,
   checklistAnalyticsQuerySchema,
   checklistQueueQuerySchema,
 } from './checklists.schemas.js';
@@ -30,7 +32,22 @@ export class ChecklistsController {
     private readonly checklistsService: ChecklistsService,
     private readonly uploadService: UploadService,
     private readonly reviewAccess: ChecklistReviewAccessService,
+    private readonly workplaceSettings: ChecklistWorkplaceSettingsService,
   ) {}
+
+  // ---- Workplace-training settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
+  @Get('checklists/workplace-settings')
+  @Roles(...rolePolicies.checklistWorkplaceSettingsRead)
+  getWorkplaceSettings(@Req() request: AuthenticatedRequest) {
+    return this.workplaceSettings.getSettings(request.currentUser!.organizationId);
+  }
+  @Patch('checklists/workplace-settings')
+  @Roles(...rolePolicies.checklistWorkplaceSettingsWrite)
+  updateWorkplaceSettings(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateChecklistWorkplaceSettingsSchema.parse(body);
+    const user = request.currentUser!;
+    return this.workplaceSettings.updateSettings(user.organizationId, input, user.id);
+  }
 
   // ---- Templates ----
   @Get('checklists')
