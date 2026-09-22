@@ -41,9 +41,10 @@ export class ChecklistsController {
 
   @Get('checklists/analytics')
   @Roles(...rolePolicies.checklistReviewWrite)
-  getAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+  async getAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.checklistsService.getAnalytics(user.organizationId, checklistAnalyticsQuerySchema.parse(rawQuery), this.reviewAccess.reviewQueueScope(user));
+    const scope = await this.reviewAccess.reviewQueueScope(user);
+    return this.checklistsService.getAnalytics(user.organizationId, checklistAnalyticsQuerySchema.parse(rawQuery), scope);
   }
 
   @Get('checklists/:id')
@@ -123,15 +124,16 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistReviewWrite)
   async listPendingReview(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    const instances = await this.checklistsService.listPendingReview(user.organizationId);
-    return this.reviewAccess.filterPending(user, instances);
+    const scope = await this.reviewAccess.reviewQueueScope(user);
+    return this.checklistsService.listPendingReview(user.organizationId, scope);
   }
   @Get('checklist-instances/review-queue')
   @Roles(...rolePolicies.checklistReviewWrite)
-  searchReviewQueue(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+  async searchReviewQueue(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const query = checklistQueueQuerySchema.parse(rawQuery);
-    return this.checklistsService.searchReviewQueue(user.organizationId, user.id, query, this.reviewAccess.reviewQueueScope(user));
+    const scope = await this.reviewAccess.reviewQueueScope(user);
+    return this.checklistsService.searchReviewQueue(user.organizationId, user.id, query, scope);
   }
   @Patch('checklist-instances/:id/reviewer')
   @Roles(...rolePolicies.checklistReviewWrite)

@@ -107,6 +107,17 @@
 
 ## PR 287 — Object-level authorization
 
+**Статус: реализовано.** `ChecklistReviewAccessService` переведён с group-only `ManagerTeamScope` на
+`OrganizationAccessScopeService`, поэтому direct access, review queue и analytics используют единый effective
+manager scope (Group ∪ Department DIRECT ∪ ReportingLine DIRECT). Фильтрация pending-review перенесена в
+Prisma-запрос, чтобы строки вне scope не загружались для последующей фильтрации в памяти. В том же сервисе
+зафиксирован canonical `ChecklistSession` parent-scope для моделей/API следующих PR: admin — весь tenant,
+manager — effective organization scope, instructor — только назначенный `observerId`, learner — только
+собственный `ChecklistInstance`; dual-role manager+instructor получает union этих двух разрешённых веток.
+Session events/location/evidence должны применять этот parent-scope при появлении их Prisma-моделей и
+endpoint-ов в PR 288–290, а не авторизовывать nested UUID отдельно. Политики и отрицательные ветки покрыты
+unit/RBAC regression tests; нового module boundary или роли не добавлено.
+
 **Цель:** исключить IDOR/cross-tenant доступ, переиспользуя, а не дублируя существующий access-слой.
 
 **Зависимости:** PR 285.
@@ -118,13 +129,13 @@
 - server-side list/analytics filtering.
 
 **Критерии готовности:**
-- [ ] `ChecklistReviewAccessService` использует `OrganizationAccessScopeService`, не сырой `ManagerTeamScope`;
-- [ ] manager не видит employee вне scope (Group/Department/ReportingLine union);
-- [ ] observer не проводит чужую session;
-- [ ] employee видит только свои sessions;
-- [ ] nested UUID не обходит authorization;
-- [ ] negative access tests покрывают endpoint families;
-- [ ] существующие Checklist review-access тесты не регрессируют.
+- [x] `ChecklistReviewAccessService` использует `OrganizationAccessScopeService`, не сырой `ManagerTeamScope`;
+- [x] manager не видит employee вне scope (Group/Department/ReportingLine union);
+- [x] observer не проводит чужую session;
+- [x] employee видит только свои sessions;
+- [x] nested UUID не обходит authorization;
+- [x] negative access tests покрывают endpoint families;
+- [x] существующие Checklist review-access тесты не регрессируют.
 
 ## PR 288 — Prisma domain model и migrations
 
