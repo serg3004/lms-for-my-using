@@ -1,7 +1,7 @@
 # План реализации: Чек-лист — обучение на рабочем месте
 
 **Основание:** прототип `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (лежит в этой же папке) и проверенные контракты репозитория.
-**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. Следующий шаг — PR 287 (object-level authorization, зависит от PR 285), затем PR 288 (Prisma domain model для `ChecklistSession`, зависит от PR 285+287).
+**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. PR 287 (object-level authorization) частично: существующие checklist review/analytics эндпоинты переведены на `OrganizationAccessScopeService`, а `ChecklistSession` policy-функция определена и unit-протестирована, но её enforcement подтверждается только по мере появления реальной модели/эндпоинтов в PR 288–292. PR 288 (Prisma domain model для `ChecklistSession`) реализован. Следующий шаг — PR 289 (session lifecycle), который зависит от PR 288 и первым реально начнёт вызывать `sessionScope()`.
 **Цель:** это **не новый модуль**. Это расширение существующего модуля `Checklist` (`apps/api/src/modules/checklists/`, frontend `AdminChecklistsPage` и nav-item `admin.nav.checklists`) новым режимом «сессия наблюдения на рабочем месте» — со своим backend-контрактом и полным production UI, а не только backend.
 
 ## 0. Модуль и границы — обязательно к соблюдению
@@ -109,16 +109,23 @@
 
 ## PR 287 — Object-level authorization
 
-**Статус: реализовано.** `ChecklistReviewAccessService` переведён с group-only `ManagerTeamScope` на
-`OrganizationAccessScopeService`, поэтому direct access, review queue и analytics используют единый effective
-manager scope (Group ∪ Department DIRECT ∪ ReportingLine DIRECT). Фильтрация pending-review перенесена в
-Prisma-запрос, чтобы строки вне scope не загружались для последующей фильтрации в памяти. В том же сервисе
-зафиксирован canonical `ChecklistSession` parent-scope для моделей/API следующих PR: admin — весь tenant,
-manager — effective organization scope, instructor — только назначенный `observerId`, learner — только
-собственный `ChecklistInstance`; dual-role manager+instructor получает union этих двух разрешённых веток.
-Session events/location/evidence должны применять этот parent-scope при появлении их Prisma-моделей и
-endpoint-ов в PR 288–290, а не авторизовывать nested UUID отдельно. Политики и отрицательные ветки покрыты
-unit/RBAC regression tests; нового module boundary или роли не добавлено.
+**Статус: частично реализовано.** `ChecklistReviewAccessService` переведён с group-only `ManagerTeamScope` на
+`OrganizationAccessScopeService`, поэтому direct access, review queue и analytics **для уже существующих
+эндпоинтов** используют единый effective manager scope (Group ∪ Department DIRECT ∪ ReportingLine DIRECT).
+Фильтрация pending-review перенесена в Prisma-запрос, чтобы строки вне scope не загружались для последующей
+фильтрации в памяти. Это реально закрывает критерии 1, 2, 6 (для существующих эндпоинтов) и 7 — проверено.
+
+В том же сервисе добавлен метод `sessionScope()` — canonical policy-функция для будущего `ChecklistSession`
+parent-scope (admin — весь tenant, manager — effective organization scope, instructor — только назначенный
+`observerId`, learner — только собственный `ChecklistInstance`; dual-role manager+instructor получает union).
+**Важно:** на момент этого коммита `ChecklistSession` как Prisma-модели/эндпоинта не существовало (PR 288 не
+был реализован) — `sessionScope()` не вызывается ни из одного production-кода, только из собственных unit-тестов
+на моках. Поэтому критерии 3–5 ниже были отмечены `[x]` преждевременно: сама policy-функция написана и её
+внутренняя логика протестирована изолированно, но реального enforcement ("observer не проводит чужую session" и
+т.п.) в этот момент физически не существовало, потому что не существовало самой сессии. Помечено `[ ]` заново;
+станет `[x]`, когда PR 288–292 реально свяжут `sessionScope()` с эндпоинтами `ChecklistSession` и это будет
+подтверждено integration/RBAC-тестами против настоящей модели, а не только unit-тестами policy-функции в
+изоляции.
 
 **Цель:** исключить IDOR/cross-tenant доступ, переиспользуя, а не дублируя существующий access-слой.
 
@@ -132,14 +139,20 @@ unit/RBAC regression tests; нового module boundary или роли не д
 
 **Критерии готовности:**
 - [x] `ChecklistReviewAccessService` использует `OrganizationAccessScopeService`, не сырой `ManagerTeamScope`;
-- [x] manager не видит employee вне scope (Group/Department/ReportingLine union);
-- [x] observer не проводит чужую session;
-- [x] employee видит только свои sessions;
-- [x] nested UUID не обходит authorization;
-- [x] negative access tests покрывают endpoint families;
+- [x] manager не видит employee вне scope (Group/Department/ReportingLine union) — для существующих checklist review/analytics эндпоинтов;
+- [ ] observer не проводит чужую session — `sessionScope()` определена и unit-протестирована изолированно, но `ChecklistSession` не существовала на момент коммита и метод нигде не вызывался; реальный enforcement подтверждается в PR 289/292, когда появится сам эндпоинт;
+- [ ] employee видит только свои sessions — та же причина, см. выше;
+- [ ] nested UUID не обходит authorization — относится к session events/location/evidence, которых ещё не существует (PR 288/290); откладывается до их появления;
+- [x] negative access tests покрывают endpoint families — для существующих эндпоинтов (`getAnalytics`/`listPendingReview`/`searchReviewQueue`/`assertReviewerCanAccess`);
 - [x] существующие Checklist review-access тесты не регрессируют.
 
-## PR 288 — Prisma domain model и migrations
+## PR 288 — Prisma domain model и migrations ✅
+
+**Статус:** реализовано — миграция `20260922180000_add_checklist_session_domain`
+(`apps/api/prisma/migrations/`), применена и проверена на реальном локальном PostgreSQL 16, нулевой
+дрейф между историей миграций и `schema.prisma`. Никакого runtime-кода/эндпоинтов поверх схемы ещё
+нет — это делают PR 289+. `docs/runbooks/MIGRATION_BACKUP_POLICY.md` содержит подробный per-migration
+разбор.
 
 **Цель:** persistence нового режима внутри Checklist-домена.
 
@@ -157,11 +170,11 @@ unit/RBAC regression tests; нового module boundary или роли не д
 - additive migration, raw SQL для любых partial unique index по паттерну `department_managers`/`reporting_lines`.
 
 **Критерии готовности:**
-- [ ] ни одно новое поле не дублирует существующее поле `ChecklistInstance`/`ChecklistItem`/`ChecklistItemResult` без явного обоснования в PR description;
-- [ ] organizationId на бизнес-таблицах;
-- [ ] индексы employee/observer/status/date;
-- [ ] destructive Checklist changes отсутствуют;
-- [ ] Prisma/migration gates проходят.
+- [x] ни одно новое поле не дублирует существующее поле `ChecklistInstance`/`ChecklistItem`/`ChecklistItemResult` без явного обоснования — `weight`/`allowSkip`/`autoSkipUnanswered` объяснены в migration policy doc; счёт/статус остаются только на `ChecklistInstance`, `ChecklistScoreRevision` — только audit trail;
+- [x] organizationId на бизнес-таблицах — все 7 новых таблиц;
+- [x] индексы employee/observer/status/date — `(organizationId, status)`, `(organizationId, observerId)`, `(organizationId, scheduledAt)` на `ChecklistSession`, `(organizationId, createdAt)`/`(sessionId, createdAt, id)` на event-таблицах ("employee" достижим через `instance.userId`, у самой `ChecklistSession` нет прямого employee-поля — она overlay над `ChecklistInstance`);
+- [x] destructive Checklist changes отсутствуют — только `ADD COLUMN`/`CREATE TABLE`/`CREATE TYPE`;
+- [x] Prisma/migration gates проходят — типы, lint, `architecture:check` (35 модулей, новых boundary нет), 2010 unit-тестов, применение миграции + drift-check + 8 новых integration-тестов на реальном Postgres 16, все зелёные.
 
 ## PR 289 — Session lifecycle
 

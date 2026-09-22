@@ -21,6 +21,13 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistInstanceEvent` |
 | `ChecklistItem` |
 | `ChecklistItemResult` |
+| `ChecklistLocationCapture` |
+| `ChecklistScale` |
+| `ChecklistScaleLevel` |
+| `ChecklistScoreRevision` |
+| `ChecklistSession` |
+| `ChecklistSessionEvent` |
+| `ChecklistSessionReminder` |
 | `ChecklistWorkplaceSettings` |
 | `Course` |
 | `CourseInstructor` |
@@ -65,8 +72,15 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistGeolocationPolicy` | `off`, `optional`, `required` |
 | `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
+| `ChecklistLocationCapturePoint` | `start`, `end` |
+| `ChecklistLocationCaptureStatus` | `captured`, `denied`, `unavailable` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
+| `ChecklistScaleStatus` | `active`, `archived` |
 | `ChecklistScoringMode` | `sum_points`, `all_required`, `scale` |
+| `ChecklistSessionEventType` | `created`, `rescheduled`, `started`, `paused`, `resumed`, `completed`, `cancelled`, `observer_reassigned`, `reminder_sent` |
+| `ChecklistSessionReminderStatus` | `pending`, `sent`, `suppressed`, `failed` |
+| `ChecklistSessionReminderType` | `pre_start`, `incomplete_after_start` |
+| `ChecklistSessionStatus` | `scheduled`, `in_progress`, `paused`, `completed`, `cancelled` |
 | `ChecklistStatus` | `draft`, `published`, `archived` |
 | `CourseMaterialKind` | `file`, `link` |
 | `CourseMaterialStatus` | `active`, `archived` |
