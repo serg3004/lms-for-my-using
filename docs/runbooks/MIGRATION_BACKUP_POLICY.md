@@ -160,6 +160,17 @@ Migration `20260903120000_add_org_external_references` также additive и ba
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist workplace settings migration
+
+Migration `20260922150000_add_checklist_workplace_settings` также additive и backward-compatible:
+
+- создаёт два новых enum (`ChecklistGeolocationPolicy`, `ChecklistFeedbackVisibility`) и новую таблицу `checklist_workplace_settings` (tenant-scoped конфигурация для планируемого режима "session" Checklist-модуля, `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` PR 286) без изменения существующих таблиц `checklists`, `checklist_items`, `checklist_instances` или любой другой существующей таблицы;
+- не выполняет backfill: ни одна Organization не получает строку настроек автоматически — сервис (`ChecklistWorkplaceSettingsService`) читает документированные safe defaults для tenant без собственной строки и создаёт строку только при первом `PATCH`, тот же ленивый паттерн, что и `organization_themes`;
+- `organization_id` — обычный (не partial) unique constraint на 1:1 связь с `organizations`, выражен прямо в Prisma DSL (`@unique`), raw SQL не требуется — здесь нет понятия "текущей" записи, как в `department_managers`/`reporting_lines`;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новой таблице/эндпоинте и продолжает работать без неё.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

@@ -103,6 +103,21 @@ resolving a mapping never reactivates an archived entity; `resolve` reports the 
 status for the caller to act on. This PR ships the domain model and resolution service only --
 no SCIM endpoint, HRIS polling, webhook sync, or background reconciliation exists.
 
+## Checklist workplace-training settings
+
+`GET/PATCH /checklists/workplace-settings` is tenant-scoped configuration for the planned Checklist
+"workplace training session" mode (`docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`,
+`docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`). `organizationId` always comes from the
+authenticated caller, never a request parameter or body field. A tenant that has never written a
+settings row reads back documented safe defaults instead of a 404: `moduleEnabled=false`,
+`highPerformanceThreshold=90`, `criticalThreshold`/`lowThreshold` both `null`
+(`docs/status/OPEN_DECISIONS.md` DEC-CHKS-001 -- an unresolved owner decision, not an omission),
+`defaultGeolocationPolicy=off`, `feedbackVisibility=after_completion`. `PATCH` is a partial update:
+only the fields present in the request body change, and `criticalThreshold`/`lowThreshold` accept an
+explicit `null` to clear a previously-set value. A request setting both `criticalThreshold` and
+`lowThreshold` is rejected (422) if `criticalThreshold < lowThreshold`. This endpoint currently only
+stores and returns settings -- no session/instance endpoint in the same plan enforces them yet.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

@@ -9,6 +9,7 @@ import { PrismaService } from '../database/prisma.service.js';
 import { AuditLogService } from '../modules/audit-log/public.js';
 import { AuthGuard, RolesGuard } from '../modules/auth/public.js';
 import { ChecklistReviewAccessService } from '../modules/checklists/checklist-review-access.service.js';
+import { ChecklistWorkplaceSettingsService } from '../modules/checklists/checklist-workplace-settings.service.js';
 import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import { UploadService } from '../modules/upload/public.js';
@@ -175,6 +176,7 @@ describe('Checklist completion HTTP contract', () => {
           provide: ChecklistReviewAccessService,
           useValue: { filterPending: jest.fn(), assertReviewerCanAccess: jest.fn() },
         },
+        { provide: ChecklistWorkplaceSettingsService, useValue: {} },
       ],
     })
       .overrideGuard(AuthGuard)
