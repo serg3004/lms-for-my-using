@@ -1,7 +1,7 @@
 # План реализации: Чек-лист — обучение на рабочем месте
 
 **Основание:** прототип `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (лежит в этой же папке) и проверенные контракты репозитория.
-**Статус:** план готов к реализации, начиная с PR 285.
+**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) выполнен — см. `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`. Следующий шаг — PR 286 (organization-level настройки) и PR 287 (object-level authorization), оба зависят только от PR 285.
 **Цель:** это **не новый модуль**. Это расширение существующего модуля `Checklist` (`apps/api/src/modules/checklists/`, frontend `AdminChecklistsPage` и nav-item `admin.nav.checklists`) новым режимом «сессия наблюдения на рабочем месте» — со своим backend-контрактом и полным production UI, а не только backend.
 
 ## 0. Модуль и границы — обязательно к соблюдению
@@ -58,7 +58,9 @@
 
 ---
 
-## PR 285 — Архитектурные и продуктовые контракты
+## PR 285 — Архитектурные и продуктовые контракты ✅
+
+**Статус:** реализовано — `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`.
 
 **Цель:** закрыть неоднозначности до runtime-кода.
 
@@ -74,12 +76,12 @@
 - ownership сущностей.
 
 **Критерии готовности:**
-- [ ] решение "Session = overlay ChecklistInstance" задокументировано и не имеет альтернативных трактовок;
-- [ ] Observer однозначно = `instructor`;
-- [ ] state machine и scoring однозначны;
-- [ ] role/object policies определены;
-- [ ] нет циклической зависимости;
-- [ ] unresolved decisions имеют safe defaults.
+- [x] решение "Session = overlay ChecklistInstance" задокументировано и не имеет альтернативных трактовок;
+- [x] Observer однозначно = `instructor`;
+- [x] state machine и scoring однозначны;
+- [x] role/object policies определены;
+- [x] нет циклической зависимости;
+- [x] unresolved decisions имеют safe defaults (`criticalThreshold`/`lowThreshold` — см. `docs/status/OPEN_DECISIONS.md` DEC-CHKS-001, единственное исключение, явно допущенное планом).
 
 ## PR 286 — Organization-level настройки
 

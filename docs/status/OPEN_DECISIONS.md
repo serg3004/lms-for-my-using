@@ -84,6 +84,15 @@ Current role model фиксированный. Требуется решить, 
 
 Current waiver validator проверяет обязательные поля, uniqueness, date regex и lexical expiry. Усиление CVE/date semantics выполняется только если owner/security policy этого требует.
 
+## DEC-CHKS-001 — Workplace-training session critical/low performance thresholds
+
+**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 285/286),
+`docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`.
+
+`ChecklistWorkplaceSettings` (PR 286) ships `moduleEnabled=false` и `highPerformanceThreshold=90` как safe defaults.
+`criticalThreshold`/`lowThreshold` намеренно не заданы — что считается «критическим» результатом наблюдаемой
+сессии, product-решение, а не техническая деталь. До решения PR 286 не показывает critical/low band в settings UI.
+
 ## Deferred, не open decisions
 
 Load-test release gate остаётся deferred до появления конкретной цели по нагрузке, dataset, latency/error thresholds и environment. Не считать его implementation obligation без отдельного решения.
