@@ -1,7 +1,7 @@
 # План реализации: Чек-лист — обучение на рабочем месте
 
 **Основание:** прототип `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (лежит в этой же папке) и проверенные контракты репозитория.
-**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) выполнен — см. `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`. Следующий шаг — PR 286 (organization-level настройки) и PR 287 (object-level authorization), оба зависят только от PR 285.
+**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. Следующий шаг — PR 287 (object-level authorization, зависит от PR 285), затем PR 288 (Prisma domain model для `ChecklistSession`, зависит от PR 285+287).
 **Цель:** это **не новый модуль**. Это расширение существующего модуля `Checklist` (`apps/api/src/modules/checklists/`, frontend `AdminChecklistsPage` и nav-item `admin.nav.checklists`) новым режимом «сессия наблюдения на рабочем месте» — со своим backend-контрактом и полным production UI, а не только backend.
 
 ## 0. Модуль и границы — обязательно к соблюдению
@@ -83,7 +83,9 @@
 - [x] нет циклической зависимости;
 - [x] unresolved decisions имеют safe defaults (`criticalThreshold`/`lowThreshold` — см. `docs/status/OPEN_DECISIONS.md` DEC-CHKS-001, единственное исключение, явно допущенное планом).
 
-## PR 286 — Organization-level настройки
+## PR 286 — Organization-level настройки ✅
+
+**Статус:** реализовано — `ChecklistWorkplaceSettingsService`, `GET/PATCH /checklists/workplace-settings` (`apps/api/src/modules/checklists/`), Prisma-модель `ChecklistWorkplaceSettings` (миграция `20260922150000_add_checklist_workplace_settings`).
 
 **Цель:** tenant-scoped управление режимом session у Checklist-модуля.
 
@@ -100,10 +102,10 @@
 - server-side enforcement.
 
 **Критерии готовности:**
-- [ ] настройки tenant-scoped;
-- [ ] safe defaults существуют;
-- [ ] frontend не источник истины;
-- [ ] настройки покрыты тестами.
+- [x] настройки tenant-scoped (unique `organizationId`, `organizationId` всегда из `currentUser`, никогда из body/params);
+- [x] safe defaults существуют (возвращаются даже без строки в БД — строка создаётся лениво при первом `PATCH`, как `organization_themes`);
+- [x] frontend не источник истины (Zod-валидация + `checklistWorkplaceSettingsWrite: admin`-only на сервере);
+- [x] настройки покрыты тестами (`checklist-workplace-settings.service.spec.ts`, RBAC/делегирование в `checklists.controller.rbac.spec.ts`, полный app-bootstrap через `api.database-smoke.spec.ts` против реального Postgres).
 
 ## PR 287 — Object-level authorization
 

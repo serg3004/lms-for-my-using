@@ -21,6 +21,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistInstanceEvent` |
 | `ChecklistItem` |
 | `ChecklistItemResult` |
+| `ChecklistWorkplaceSettings` |
 | `Course` |
 | `CourseInstructor` |
 | `CourseMaterial` |
@@ -60,6 +61,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssessmentStatus` | `draft`, `published`, `archived` |
 | `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
 | `CertificateStatus` | `issued`, `revoked` |
+| `ChecklistFeedbackVisibility` | `after_completion`, `live` |
+| `ChecklistGeolocationPolicy` | `off`, `optional`, `required` |
 | `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
