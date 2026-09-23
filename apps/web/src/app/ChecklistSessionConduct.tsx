@@ -40,7 +40,7 @@ type ConductData = { session: ChecklistSessionSummary; instance: ChecklistInstan
  * itself a valid, auditable outcome, never a silent skip. A 409 (this capture point already
  * exists) is swallowed: it only means an earlier attempt already recorded it.
  */
-async function captureLocationBestEffort(sessionId: string, point: 'start' | 'end', policy: string) {
+export async function captureLocationBestEffort(sessionId: string, point: 'start' | 'end', policy: string) {
   if (policy === 'off') return;
   if (!('geolocation' in navigator)) {
     await captureChecklistSessionLocation(sessionId, point, { status: 'unavailable' }).catch(() => undefined);
@@ -69,19 +69,46 @@ async function captureLocationBestEffort(sessionId: string, point: 'start' | 'en
 }
 
 /**
+ * Shared mutation-error handling for every session/item action on this screen (transitions, item
+ * results/skip/photo, structured feedback): a 409 always means the caller's local copy of the
+ * session/instance is stale, so it's routed to `onConflict` instead of the generic error message,
+ * regardless of which specific call raised it.
+ */
+export async function runMutation(
+  fn: () => Promise<unknown>,
+  handlers: { setBusy: (busy: boolean) => void; setError: (message: string | null) => void; onConflict: () => void; fallbackMessage: string },
+) {
+  handlers.setBusy(true);
+  handlers.setError(null);
+  try {
+    await fn();
+  } catch (err) {
+    if (err instanceof ApiClientError && err.status === 409) {
+      handlers.onConflict();
+    } else {
+      handlers.setError(err instanceof ApiClientError ? err.message : handlers.fallbackMessage);
+    }
+  } finally {
+    handlers.setBusy(false);
+  }
+}
+
+/**
  * PR 297: mobile-first "Observer conducts a session" screen, reached from
  * InstructorChecklistReviewsPage's "Проведение" tab (ChecklistSessionsToConduct). A session and
  * its underlying ChecklistInstance are separate id spaces (docs/architecture/adr/
  * ADR_CHECKLIST_SESSION_OVERLAY.md) -- item results/skip/photo all go through the instance, the
  * lifecycle (start/pause/resume/complete) and structured feedback through the session.
  */
+export async function fetchConductData(sessionId: string): Promise<ConductData> {
+  const session = await getChecklistSession(sessionId);
+  const instance = await getChecklistInstance(session.instanceId);
+  return { session, instance };
+}
+
 export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: string; onBack: () => void; t: TFunction }) {
   const { state, reload } = useAsyncData<ConductData>(
-    async () => {
-      const session = await getChecklistSession(sessionId);
-      const instance = await getChecklistInstance(session.instanceId);
-      return { session, instance };
-    },
+    () => fetchConductData(sessionId),
     [sessionId],
     {
       unauthenticated: t('checklistSessions.conduct.sessionExpired', 'Your session expired. Sign in again.'),
@@ -99,7 +126,7 @@ export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: s
   return <ConductScreen data={state.data} onBack={onBack} onReload={reload} t={t} />;
 }
 
-function ConductScreen({
+export function ConductScreen({
   data,
   onBack,
   onReload,
@@ -122,29 +149,16 @@ function ConductScreen({
   const items = checklist.items;
   const editable = session.status === 'in_progress';
 
-  async function withErrorHandling(fn: () => Promise<void>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-    } catch (err) {
-      if (err instanceof ApiClientError && err.status === 409) {
-        setConflict(true);
-      } else {
-        setError(err instanceof ApiClientError ? err.message : t('checklistSessions.conduct.saveError', 'Unable to save.'));
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function transition(action: 'start' | 'pause' | 'resume' | 'complete') {
-    await withErrorHandling(async () => {
-      await transitionChecklistSession(session.id, action, session.version);
-      if (action === 'start') await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
-      if (action === 'complete') await captureLocationBestEffort(session.id, 'end', session.locationCapturePolicy);
-      await onReload();
-    });
+    await runMutation(
+      async () => {
+        await transitionChecklistSession(session.id, action, session.version);
+        if (action === 'start') await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
+        if (action === 'complete') await captureLocationBestEffort(session.id, 'end', session.locationCapturePolicy);
+        await onReload();
+      },
+      { setBusy, setError, onConflict: () => setConflict(true), fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+    );
   }
 
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(items, instance.results, checklist.scoringMode);
@@ -302,7 +316,7 @@ function Header({ session, instance, t }: { session: ChecklistSessionSummary; in
   );
 }
 
-function formatElapsed(ms: number) {
+export function formatElapsed(ms: number) {
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -421,17 +435,13 @@ function CriterionCard({
   }, [result?.comment, item.id]);
 
   async function run(fn: () => Promise<unknown>) {
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-      await onSaved();
-    } catch (err) {
-      if (err instanceof ApiClientError && err.status === 409) onConflict();
-      else setError(err instanceof ApiClientError ? err.message : t('checklistSessions.conduct.saveError', 'Unable to save.'));
-    } finally {
-      setBusy(false);
-    }
+    await runMutation(
+      async () => {
+        await fn();
+        await onSaved();
+      },
+      { setBusy, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+    );
   }
 
   const canAct = editable && !busy;
@@ -688,17 +698,13 @@ function StructuredFeedback({
   const dirty = strengths !== (session.strengths ?? '') || developmentAreas !== (session.developmentAreas ?? '') || nextSteps !== (session.nextSteps ?? '');
 
   async function save() {
-    setSaving(true);
-    setError(null);
-    try {
-      await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
-      await onSaved();
-    } catch (err) {
-      if (err instanceof ApiClientError && err.status === 409) onConflict();
-      else setError(err instanceof ApiClientError ? err.message : t('checklistSessions.conduct.saveError', 'Unable to save.'));
-    } finally {
-      setSaving(false);
-    }
+    await runMutation(
+      async () => {
+        await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
+        await onSaved();
+      },
+      { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+    );
   }
 
   return (

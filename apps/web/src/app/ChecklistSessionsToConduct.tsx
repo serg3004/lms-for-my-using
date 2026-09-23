@@ -17,6 +17,15 @@ function isActionable(session: ChecklistSessionSummary) {
   return session.status === 'scheduled' || session.status === 'in_progress' || session.status === 'paused';
 }
 
+export async function fetchObserverSessions(): Promise<ChecklistSessionSummary[]> {
+  const result = await listChecklistSessions({ pageSize: 100 });
+  return result.items;
+}
+
+export function makeOpenHandler(onOpenSession: (sessionId: string) => void, sessionId: string) {
+  return () => onOpenSession(sessionId);
+}
+
 /**
  * PR 297: the observer's own sessions, reusing `GET /checklist-sessions` -- `sessionScope()`
  * already restricts a pure instructor to `{ observerId: user.id }`, so no extra query filter is
@@ -26,10 +35,7 @@ function isActionable(session: ChecklistSessionSummary) {
  */
 export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession: (sessionId: string) => void; t: TFunction }) {
   const { state } = useAsyncData<ChecklistSessionSummary[]>(
-    async () => {
-      const result = await listChecklistSessions({ pageSize: 100 });
-      return result.items;
-    },
+    fetchObserverSessions,
     [],
     {
       unauthenticated: t('checklistSessions.conduct.sessionExpired', 'Your session expired. Sign in again.'),
@@ -62,7 +68,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {toConduct.map((session) => (
-              <SessionCard key={session.id} session={session} onOpen={() => onOpenSession(session.id)} t={t} />
+              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} t={t} />
             ))}
           </ul>
         )}
@@ -72,7 +78,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
           <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>{t('checklistSessions.conduct.history', 'History')}</h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {history.map((session) => (
-              <SessionCard key={session.id} session={session} onOpen={() => onOpenSession(session.id)} t={t} />
+              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} t={t} />
             ))}
           </ul>
         </div>
