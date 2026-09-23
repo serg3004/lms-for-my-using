@@ -48,6 +48,7 @@ import {
   removeScaleLevelAt,
   resolveUserName,
 } from './AdminChecklistsPage';
+import { AdminChecklistSessionsPage } from './AdminChecklistSessionsPage';
 import { AdminCourseBuilderPage } from './AdminCourseBuilderPage';
 import { AdminCoursesPage } from './AdminCoursesPage';
 import { AdminDashboardPage } from './AdminDashboardPage';
@@ -754,6 +755,59 @@ describe('admin page smoke rendering', () => {
     const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);
 
     expect(html).toContain('Workplace Safety');
+  });
+});
+
+describe('admin checklist sessions page smoke rendering', () => {
+  it('renders checklist sessions loading state without crashing', () => {
+    useLoadingState();
+
+    const html = renderToStaticMarkup(<AdminChecklistSessionsPage />);
+
+    expect(html).toContain('role="status"');
+  });
+
+  it('renders checklist sessions happy path without crashing', () => {
+    // useState call order in AdminChecklistSessionsPage: 1 statusTab, 2 search, 3 page,
+    // 4 wizardOpen, 5 cancelTarget, 6 actionError, then useAsyncData's internal loadState is
+    // call 7. Later calls belong to the (open=false, so effects are no-ops) ChecklistSessionWizard
+    // child and the closed ConfirmDialog -- left at their own defaults.
+    useStateAtCalls({
+      7: {
+        status: 'loaded',
+        data: {
+          total: 1,
+          sessions: [
+            {
+              id: 'session-1',
+              organizationId: 'org-1',
+              instanceId: 'instance-1',
+              observerId: 'observer-1',
+              status: 'scheduled',
+              version: 1,
+              scheduledAt: ts,
+              startedAt: null,
+              pausedAt: null,
+              locationCapturePolicy: 'off',
+              timezone: 'UTC',
+              overdue: false,
+              createdAt: ts,
+              updatedAt: ts,
+              checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+              learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@demo.com' },
+              observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@demo.com' },
+              result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false },
+            },
+          ],
+        },
+      },
+    });
+
+    const html = renderToStaticMarkup(<AdminChecklistSessionsPage />);
+
+    expect(html).toContain('Opening shift checklist');
+    expect(html).toContain('Leo Learner');
+    expect(html).toContain('Olga Observer');
   });
 });
 
