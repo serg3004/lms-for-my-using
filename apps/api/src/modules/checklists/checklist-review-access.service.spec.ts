@@ -150,4 +150,28 @@ describe('ChecklistReviewAccessService', () => {
       { observerId: managerId },
     ] });
   });
+
+  describe('participantLearnerScope (PR 292)', () => {
+    it('is tenant-wide for admin', async () => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+
+      await expect(service.participantLearnerScope(currentUser(['admin']))).resolves.toEqual({});
+    });
+
+    it("is the manager's effective team scope for a manager", async () => {
+      const userWhere = { OR: [{ id: { in: ['group-user', 'department-user', 'direct-report'] } }] };
+      const scope = accessScope(userWhere);
+      const service = new ChecklistReviewAccessService({} as PrismaService, scope);
+      const manager = currentUser(['manager']);
+
+      await expect(service.participantLearnerScope(manager)).resolves.toEqual(userWhere);
+      expect(scope.user).toHaveBeenCalledWith(manager);
+    });
+
+    it('is tenant-wide for a non-manager, non-admin role (e.g. instructor picking a learner)', async () => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+
+      await expect(service.participantLearnerScope(currentUser(['instructor']))).resolves.toEqual({});
+    });
+  });
 });

@@ -58,6 +58,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/checklist-items/{id}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-sessions/bulk` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-sessions/participants` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/{id}` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-sessions/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/cancel` | `Checklists` | `bearer` |
@@ -66,6 +68,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklist-sessions/{id}/location` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/location/{point}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/pause` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-sessions/{id}/repeat` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/resume` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/start` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists` | `Checklists` | `bearer` |

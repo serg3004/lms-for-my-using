@@ -15,7 +15,10 @@ import {
   assignChecklistSchema,
   assignChecklistReviewerSchema,
   bulkAssignChecklistSchema,
+  bulkCreateChecklistSessionSchema,
+  checklistListQuerySchema,
   checklistLocationCapturePointSchema,
+  checklistSessionParticipantsQuerySchema,
   createChecklistItemSchema,
   createChecklistSchema,
   createChecklistSessionSchema,
@@ -62,8 +65,9 @@ export class ChecklistsController {
   // ---- Templates ----
   @Get('checklists')
   @Roles(...rolePolicies.checklistsRead)
-  listChecklists(@Req() request: AuthenticatedRequest) {
-    return this.checklistsService.listChecklists(request.currentUser!.organizationId);
+  listChecklists(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const { status } = checklistListQuerySchema.parse(rawQuery);
+    return this.checklistsService.listChecklists(request.currentUser!.organizationId, status);
   }
 
   @Get('checklists/analytics')
@@ -322,6 +326,14 @@ export class ChecklistsController {
     const user = request.currentUser!;
     return this.sessions.create(user.organizationId, input, user.id);
   }
+  @Post('checklist-sessions/bulk')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async bulkCreateSessions(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = bulkCreateChecklistSessionSchema.parse(body);
+    const user = request.currentUser!;
+    const learnerScope = await this.reviewAccess.participantLearnerScope(user);
+    return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope);
+  }
   @Get('checklist-sessions')
   @Roles(...rolePolicies.checklistSessionsRead)
   async listSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
@@ -329,6 +341,16 @@ export class ChecklistsController {
     const query = checklistSessionQuerySchema.parse(rawQuery);
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.list(user.organizationId, query, scope);
+  }
+  // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
+  // is never swallowed as a session id.
+  @Get('checklist-sessions/participants')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async listSessionParticipants(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const query = checklistSessionParticipantsQuerySchema.parse(rawQuery);
+    const user = request.currentUser!;
+    const learnerScope = await this.reviewAccess.participantLearnerScope(user);
+    return this.sessions.listParticipants(user.organizationId, query, learnerScope);
   }
   @Get('checklist-sessions/:id')
   @Roles(...rolePolicies.checklistSessionsRead)
@@ -376,6 +398,13 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistSessionsManage)
   transitionCancel(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('cancel', sessionId, body, request);
+  }
+  @Post('checklist-sessions/:id/repeat')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async repeatSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.repeatSession(sessionId, user.organizationId, user.id, scope);
   }
 
   // ---- Geolocation capture (PR 290) ----

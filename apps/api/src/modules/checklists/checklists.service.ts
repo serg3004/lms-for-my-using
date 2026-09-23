@@ -8,6 +8,7 @@ import {
   AssignChecklistInput,
   BulkAssignChecklistInput,
   ChecklistAnalyticsQuery,
+  ChecklistListQuery,
   ChecklistQueueQuery,
   CreateChecklistInput,
   CreateChecklistItemInput,
@@ -176,9 +177,9 @@ export class ChecklistsService {
 
   // ---- Templates ----
 
-  listChecklists(organizationId: string) {
+  listChecklists(organizationId: string, status?: ChecklistListQuery['status']) {
     return this.prisma.checklist.findMany({
-      where: { organizationId, deletedAt: null },
+      where: { organizationId, deletedAt: null, ...(status ? { status } : {}) },
       orderBy: { createdAt: 'desc' },
       select: checklistWithItemsSelect,
     });
@@ -368,8 +369,20 @@ export class ChecklistsService {
 
   // ---- Instances (assignment + taking) ----
 
-  async assignChecklist(checklistId: string, organizationId: string, input: AssignChecklistInput, assignedBy: string) {
-    const checklist = await this.prisma.checklist.findFirst({
+  /**
+   * `db` lets a caller (e.g. ChecklistSessionService.repeat/bulkCreate) run this inside its own
+   * outer transaction, so the new ChecklistInstance and its paired ChecklistSession commit or
+   * roll back together -- never an orphaned active assignment left behind by a session-creation
+   * failure. Defaults to `this.prisma` (its own transaction below) for the standalone caller.
+   */
+  async assignChecklist(
+    checklistId: string,
+    organizationId: string,
+    input: AssignChecklistInput,
+    assignedBy: string,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const checklist = await db.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
       select: checklistSelect,
     });
@@ -382,7 +395,7 @@ export class ChecklistsService {
       throw new BadRequestException('Cannot assign a checklist that is not published');
     }
 
-    const user = await this.prisma.user.findFirst({
+    const user = await db.user.findFirst({
       where: { id: input.userId, organizationId, deletedAt: null },
       select: { id: true },
     });
@@ -391,7 +404,7 @@ export class ChecklistsService {
       throw new NotFoundException('User not found');
     }
 
-    const activeInstance = await this.prisma.checklistInstance.findFirst({
+    const activeInstance = await db.checklistInstance.findFirst({
       where: { checklistId, userId: input.userId, status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null },
       select: { id: true },
     });
@@ -400,7 +413,7 @@ export class ChecklistsService {
       throw new BadRequestException('This user already has an active assignment for this checklist');
     }
 
-    const items = await this.prisma.checklistItem.findMany({
+    const items = await db.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null },
       orderBy: { order: 'asc' },
       select: {
@@ -419,7 +432,7 @@ export class ChecklistsService {
     const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
-    const instance = await this.prisma.$transaction(async (transaction) => {
+    const createInstance = async (transaction: Prisma.TransactionClient | PrismaService) => {
       if (input.reviewerId) await this.assertValidReviewer(transaction, input.reviewerId, organizationId);
       const instance = await transaction.checklistInstance.create({ data: {
         organizationId,
@@ -440,7 +453,10 @@ export class ChecklistsService {
         metadata: input.reviewerId ? { reviewerId: input.reviewerId } : undefined,
       }});
       return instance;
-    });
+    };
+    // Already inside a caller-managed transaction (`db` is a TransactionClient) -- run in place
+    // rather than nesting a second transaction, which Prisma does not support.
+    const instance = db === this.prisma ? await this.prisma.$transaction((tx) => createInstance(tx)) : await createInstance(db);
 
     await this.auditLog.record({
       organizationId,

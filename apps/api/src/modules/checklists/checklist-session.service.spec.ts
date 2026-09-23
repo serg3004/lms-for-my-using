@@ -40,7 +40,7 @@ function createPrisma(overrides: {
   checklistSessionReminder?: Partial<Record<'upsert' | 'updateMany' | 'findMany', jest.Mock>>;
   checklistLocationCapture?: Partial<Record<'create' | 'findMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
-  user?: Partial<Record<'findFirst', jest.Mock>>;
+  user?: Partial<Record<'findFirst' | 'findMany' | 'count', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     checklistSession: {
@@ -74,6 +74,12 @@ function createPrisma(overrides: {
     },
     user: {
       findFirst: jest.fn(async () => ({ id: observerId })),
+      // Default: every requested id is "in scope" (mirrors an empty `{}` scope) -- tests that
+      // need to simulate an out-of-scope learner override this explicitly.
+      findMany: jest.fn(async (args: { where?: { id?: { in?: string[] } } } = {}) =>
+        (args.where?.id?.in ?? []).map((id) => ({ id })),
+      ),
+      count: jest.fn(async () => 0),
       ...overrides.user,
     },
   };
@@ -266,10 +272,9 @@ describe('ChecklistSessionService', () => {
 
       await service.list(organizationId, { overdueOnly: 'true', page: 1, pageSize: 25 }, {});
 
-      expect(prisma.checklistSession.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ status: 'scheduled', scheduledAt: { lt: expect.any(Date) } }),
-        }),
+      const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([{ status: 'scheduled', scheduledAt: { lt: expect.any(Date) } }]),
       );
     });
   });
@@ -508,6 +513,257 @@ describe('ChecklistSessionService', () => {
 
       expect(prisma.checklistSessionReminder.upsert).not.toHaveBeenCalled();
       expect(prisma.checklistSessionReminder.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('bulkCreate (PR 292)', () => {
+    const learnerA = '66666666-6666-6666-6666-666666666666';
+    const learnerB = '77777777-7777-7777-7777-777777777777';
+    const checklistId = '88888888-8888-8888-8888-888888888888';
+
+    function createChecklistsServiceMock(overrides: { assignChecklist?: jest.Mock } = {}) {
+      return {
+        assignChecklist: jest.fn(async (_checklistId: string, _organizationId: string, input: { userId: string }) => ({
+          id: `instance-${input.userId}`,
+        })),
+        ...overrides,
+      } as unknown as import('./checklists.service.js').ChecklistsService;
+    }
+
+    it('creates an independent session per learner and audits the batch', async () => {
+      const prisma = createPrisma();
+      const checklistsService = createChecklistsServiceMock();
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
+
+      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId, {});
+
+      expect(result).toMatchObject({ created: 2, skipped: 0, failed: 0 });
+      expect(checklistsService.assignChecklist).toHaveBeenCalledTimes(2);
+      expect(prisma.checklistSession.create).toHaveBeenCalledTimes(2);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'checklist_session.bulk_created', metadata: { created: 2, total: 2 } }),
+      );
+    });
+
+    it('rejects a learner outside the caller\'s scope without calling assignChecklist for them', async () => {
+      const prisma = createPrisma({
+        user: { findMany: jest.fn(async () => [{ id: learnerA }]) }, // learnerB is outside scope
+      });
+      const checklistsService = createChecklistsServiceMock();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      const result = await service.bulkCreate(
+        organizationId,
+        { checklistId, learnerIds: [learnerA, learnerB], observerId },
+        actorId,
+        { id: { in: [learnerA] } },
+      );
+
+      expect(result).toMatchObject({ created: 1, failed: 1 });
+      expect(result.results).toEqual(
+        expect.arrayContaining([expect.objectContaining({ learnerId: learnerB, status: 'failed', reason: 'Learner is outside your scope' })]),
+      );
+      expect(checklistsService.assignChecklist).toHaveBeenCalledTimes(1);
+      expect(checklistsService.assignChecklist).not.toHaveBeenCalledWith(checklistId, organizationId, { userId: learnerB }, actorId, expect.anything());
+    });
+
+    it('skips a recipient who already has an active assignment without failing the batch', async () => {
+      const prisma = createPrisma();
+      const checklistsService = createChecklistsServiceMock({
+        assignChecklist: jest.fn(async (_checklistId: string, _organizationId: string, input: { userId: string }) => {
+          if (input.userId === learnerA) throw new BadRequestException('This user already has an active assignment for this checklist');
+          return { id: `instance-${input.userId}` };
+        }),
+      });
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId, {});
+
+      expect(result.created).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.results).toEqual(
+        expect.arrayContaining([expect.objectContaining({ learnerId: learnerA, status: 'skipped' })]),
+      );
+    });
+
+    it('rejects the whole batch up front when the observer is invalid', async () => {
+      const prisma = createPrisma({ user: { findFirst: jest.fn(async () => null) } });
+      const checklistsService = createChecklistsServiceMock();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(
+        service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA], observerId }, actorId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(checklistsService.assignChecklist).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('repeat (PR 292)', () => {
+    const checklistId = '88888888-8888-8888-8888-888888888888';
+    const learnerId = '99999999-9999-9999-9999-999999999999';
+
+    function createChecklistsServiceMock() {
+      return {
+        assignChecklist: jest.fn(async () => ({ id: 'new-instance-1' })),
+      } as unknown as import('./checklists.service.js').ChecklistsService;
+    }
+
+    it('creates a new instance/session pair from a completed session, copying observer/policy/timezone', async () => {
+      const prisma = createPrisma({
+        checklistSession: {
+          findFirst: jest.fn(async () =>
+            baseSession({
+              status: 'completed',
+              locationCapturePolicy: 'required',
+              timezone: 'Europe/Moscow',
+              instance: { checklistId, userId: learnerId },
+            }),
+          ),
+        },
+      });
+      const checklistsService = createChecklistsServiceMock();
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
+
+      const result = await service.repeatSession(sessionId, organizationId, actorId, {});
+
+      expect(checklistsService.assignChecklist).toHaveBeenCalledWith(checklistId, organizationId, { userId: learnerId }, actorId, expect.anything());
+      expect(prisma.checklistSession.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ instanceId: 'new-instance-1', observerId, locationCapturePolicy: 'required', timezone: 'Europe/Moscow' }),
+        }),
+      );
+      expect(result.status).toBe('scheduled');
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_session.repeated' }));
+    });
+
+    it('rejects repeating an active (non-terminal) session', async () => {
+      const prisma = createPrisma({
+        checklistSession: {
+          findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance: { checklistId, userId: learnerId } })),
+        },
+      });
+      const checklistsService = createChecklistsServiceMock();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(service.repeatSession(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      expect(checklistsService.assignChecklist).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 when the session is outside the caller scope', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
+      const checklistsService = createChecklistsServiceMock();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(service.repeatSession(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('listParticipants (PR 292)', () => {
+    it('scopes an observer lookup to users holding the instructor role, ignoring the learner scope', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.listParticipants(organizationId, { role: 'observer', page: 1, pageSize: 25 }, { id: { in: ['some-learner'] } });
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ memberships: { some: { role: 'instructor', organizationId } } }),
+        }),
+      );
+      const call = (prisma.user.findMany as jest.Mock).mock.calls[0]?.[0] as { where: Record<string, unknown> };
+      expect(call.where).not.toHaveProperty('id');
+    });
+
+    it('applies the learner scope for a learner lookup', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+      const learnerScope = { id: { in: ['team-member-1'] } };
+
+      await service.listParticipants(organizationId, { role: 'learner', page: 1, pageSize: 25 }, learnerScope);
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining(learnerScope) }),
+      );
+    });
+
+    it('applies a search filter across name/email', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.listParticipants(organizationId, { role: 'learner', search: 'ivan', page: 1, pageSize: 25 }, {});
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: expect.arrayContaining([expect.objectContaining({ firstName: expect.objectContaining({ contains: 'ivan' }) })]),
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('list/get result projection (PR 292)', () => {
+    const projectedSession = {
+      ...baseSession(),
+      instance: {
+        id: instanceId,
+        checklistId: 'checklist-1',
+        userId: 'learner-1',
+        status: 'completed',
+        percentage: 90,
+        passed: true,
+        scored: true,
+        checklist: { id: 'checklist-1', title: 'Onboarding' },
+        user: { id: 'learner-1', firstName: 'Ivan', lastName: 'Petrov', email: 'ivan@example.test' },
+      },
+      observer: { id: observerId, firstName: 'Olga', lastName: 'Ivanova', email: 'olga@example.test' },
+    };
+
+    it('projects checklist/learner/observer/result onto each list item', async () => {
+      const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => [projectedSession]) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {});
+
+      expect(result.items[0]).toMatchObject({
+        checklist: { title: 'Onboarding' },
+        learner: { firstName: 'Ivan' },
+        observer: { firstName: 'Olga' },
+        result: { instanceStatus: 'completed', percentage: 90, passed: true, scored: true },
+      });
+    });
+
+    it('projects the same shape onto a single get()', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => projectedSession) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.get(sessionId, organizationId, {});
+
+      expect(result).toMatchObject({ checklist: { title: 'Onboarding' }, result: { percentage: 90 } });
+    });
+  });
+
+  describe('list() combines the caller scope with checklistId/learnerId filters (PR 292 review fix)', () => {
+    it('ANDs a manager\'s effective-team `instance` scope with a checklistId/learnerId filter instead of overwriting it', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+      const managerScope = { instance: { user: { id: { in: ['team-member-1'] } } } };
+
+      await service.list(organizationId, { checklistId: 'checklist-1', learnerId: 'outside-team-user', page: 1, pageSize: 25 }, managerScope);
+
+      const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
+      // Every clause -- including the team-scope `instance` restriction and the checklistId/
+      // learnerId `instance` filters -- must survive as separate AND members, not collapse into
+      // one `instance` key where the later filter silently discards the scope.
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          managerScope,
+          { instance: { checklistId: 'checklist-1' } },
+          { instance: { userId: 'outside-team-user' } },
+        ]),
+      );
     });
   });
 });

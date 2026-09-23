@@ -72,4 +72,15 @@ export class ChecklistReviewAccessService {
     if (user.roles.includes('instructor')) return { observerId: user.id };
     return { instance: { userId: user.id } };
   }
+
+  /**
+   * Admin API participant lookup (PR 292): who a manager may pick as a session's learner when
+   * scheduling. Tenant-wide for admin, effective team scope (same union as everywhere else) for
+   * manager -- reuses `OrganizationAccessScopeService.user()` directly (a plain `User` filter,
+   * not nested under an `instance`/`user` relation) since the lookup queries `User` rows, not
+   * `ChecklistInstance` rows.
+   */
+  async participantLearnerScope(user: CurrentUser): Promise<Prisma.UserWhereInput> {
+    return isManagerTeamScoped(user) ? this.organizationScope.user(user) : {};
+  }
 }
