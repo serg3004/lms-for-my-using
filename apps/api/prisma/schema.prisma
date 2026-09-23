@@ -242,6 +242,8 @@ enum ChecklistSessionEventType {
   /// PR 290: an admin submitted a geolocation capture on behalf of the assigned observer under a
   /// `required` location-capture policy — audited separately from a normal observer-submitted capture.
   location_override
+  /// PR 297: the observer saved/updated structured feedback (strengths/development areas/next steps).
+  feedback_updated
 }
 
 enum ChecklistSessionReminderType {
@@ -1284,6 +1286,12 @@ model ChecklistSession {
   pausedAt              DateTime?                  @map("paused_at") @db.Timestamptz
   locationCapturePolicy ChecklistGeolocationPolicy @default(off) @map("location_capture_policy")
   timezone              String                     @default("Asia/Almaty")
+  // Structured feedback (PR 297 observer conduct screen): free text the observer records during
+  // or right after the session. Session-level (not per-item) -- the prototype's "structured
+  // feedback" step is about the employee's overall session, not a single criterion.
+  strengths             String?                    @db.Text
+  developmentAreas      String?                    @map("development_areas") @db.Text
+  nextSteps             String?                    @map("next_steps") @db.Text
   createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)

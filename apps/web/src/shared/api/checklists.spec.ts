@@ -27,6 +27,7 @@ import {
   listMyChecklistInstances,
   reviewChecklistItemResult,
   searchChecklistReviewQueue,
+  skipChecklistItem,
   submitChecklistItemResult,
   updateChecklist,
   updateChecklistItem,
@@ -167,6 +168,14 @@ describe('checklists api requests', () => {
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/items/item-1', {
       method: 'PATCH',
       body: JSON.stringify({ checked: true }),
+    });
+  });
+
+  it('skips a checklist item', () => {
+    skipChecklistItem('instance-1', 'item-1', { comment: 'Not applicable' });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-instances/instance-1/items/item-1/skip', {
+      method: 'POST',
+      body: JSON.stringify({ comment: 'Not applicable' }),
     });
   });
 

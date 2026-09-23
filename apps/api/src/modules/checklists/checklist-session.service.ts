@@ -22,6 +22,7 @@ import type {
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
   SubmitChecklistLocationCaptureInput,
+  SubmitChecklistSessionFeedbackInput,
   UpdateChecklistSessionInput,
 } from './checklists.schemas.js';
 
@@ -481,6 +482,44 @@ export class ChecklistSessionService {
       }
 
       await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: event, actorUserId: actorId } });
+
+      return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+    });
+  }
+
+  /**
+   * Structured feedback (PR 297): the observer records strengths/development areas/next steps
+   * during or right after the session. Only meaningful once the session has actually started --
+   * a `scheduled` session has nothing to give feedback on yet, and a `cancelled` one never will --
+   * so this reuses the same "started" gate as item results, just expressed directly against
+   * status rather than TRANSITIONS (there's no session-status transition involved here).
+   * Same optimistic-concurrency contract (version, 409 on stale write) as update()/transition().
+   */
+  async submitFeedback(sessionId: string, organizationId: string, input: SubmitChecklistSessionFeedbackInput, actorId: string, scope: object) {
+    const { version: expectedVersion, ...changes } = input;
+
+    return runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.status === 'scheduled' || session.status === 'cancelled') {
+        throw new BadRequestException(`Cannot record feedback for a session in status "${session.status}"`);
+      }
+      if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      const result = await tx.checklistSession.updateMany({
+        where: { id: sessionId, organizationId, version: expectedVersion },
+        data: {
+          ...(changes.strengths !== undefined ? { strengths: changes.strengths } : {}),
+          ...(changes.developmentAreas !== undefined ? { developmentAreas: changes.developmentAreas } : {}),
+          ...(changes.nextSteps !== undefined ? { nextSteps: changes.nextSteps } : {}),
+          version: { increment: 1 },
+        },
+      });
+      if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      await tx.checklistSessionEvent.create({
+        data: { organizationId, sessionId, eventType: 'feedback_updated', actorUserId: actorId },
+      });
 
       return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
     });

@@ -6,12 +6,16 @@ vi.mock('../apiClient.js', () => mocks);
 
 import {
   bulkCreateChecklistSessions,
+  captureChecklistSessionLocation,
   createChecklistSession,
   getChecklistSession,
+  listChecklistSessionEvents,
+  listChecklistSessionLocationCaptures,
   listChecklistSessionParticipants,
   listChecklistSessions,
   listPublishedChecklists,
   repeatChecklistSession,
+  submitChecklistSessionFeedback,
   transitionChecklistSession,
   updateChecklistSession,
 } from './checklistSessions.js';
@@ -77,5 +81,31 @@ describe('checklist sessions api requests', () => {
   it('lists only published checklists', () => {
     listPublishedChecklists();
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists?status=published');
+  });
+
+  it('lists session events', () => {
+    listChecklistSessionEvents('session-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/events');
+  });
+
+  it('submits structured feedback', () => {
+    submitChecklistSessionFeedback('session-1', { strengths: 'Great', version: 2 });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/feedback', {
+      method: 'PATCH',
+      body: JSON.stringify({ strengths: 'Great', version: 2 }),
+    });
+  });
+
+  it('captures a geolocation point', () => {
+    captureChecklistSessionLocation('session-1', 'start', { status: 'captured', latitude: 1, longitude: 2 });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/location/start', {
+      method: 'POST',
+      body: JSON.stringify({ status: 'captured', latitude: 1, longitude: 2 }),
+    });
+  });
+
+  it('lists geolocation captures', () => {
+    listChecklistSessionLocationCaptures('session-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/location');
   });
 });

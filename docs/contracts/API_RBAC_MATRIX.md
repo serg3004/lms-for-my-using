@@ -64,6 +64,8 @@ Evaluation scale library (PR 293: `GET/POST /checklist-scales`, `GET/PATCH /chec
 
 Observation-sheet builder additions (PR 296: `GET/POST /checklists/:checklistId/groups`, `PATCH /checklist-item-groups/:id`, `POST /checklist-item-groups/:id/copy`, plus `groupId`/`contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` extending the existing checklist/item create/update routes) reuse `checklistsRead` (list groups) and `checklistsCreate` (create/update/copy groups, and every extended field) rather than adding new policies -- authoring a checklist's group structure and sheet-level settings is the same class of action as authoring its items, which already use exactly these two policies. There is no row-level scoping beyond tenant (`organizationId`) plus the existing checklist-ownership check every item route already performs (`assertValidGroup` additionally requires the group's `checklistId` to match the item's, so a group cannot be borrowed across checklists even by an otherwise-authorized caller).
 
+Structured feedback (PR 297: `PATCH /checklist-sessions/:id/feedback`) reuses `checklistSessionsRun` (admin/instructor) rather than adding a new policy -- recording feedback during/after a session is the same class of action as running it, performed by the same assigned observer. Still gated by `sessionScope()` at the row level (an instructor cannot record feedback for a session they are not the observer for), and rejected (400) while the session is `scheduled` or `cancelled`, independent of role.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

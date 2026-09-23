@@ -390,6 +390,39 @@ purely an authoring-time (builder) concept in this PR; PR 297 (observer session-
 does not depend on PR 296 per the implementation plan, may add it to the snapshot later if the
 mobile session screen ends up needing to render group headers.
 
+## Observer conduct screen and structured feedback (PR 297)
+
+Frontend: mobile-first "Observer conducts a session" screen, reached from a new "Conduct" tab
+inside the existing `InstructorChecklistReviewsPage` (`/instructor/checklists`) -- no new page,
+route, or role, matching PR 296's precedent of extending an existing screen rather than adding a
+new one. `ChecklistSessionsToConduct` lists the observer's own sessions (`GET
+/checklist-sessions`, unfiltered -- `sessionScope()` already restricts a plain instructor to
+`{ observerId: user.id }`, so no extra query param is needed to get "my sessions"). Selecting one
+opens `ChecklistSessionConduct`, which drives the session lifecycle
+(`start`/`pause`/`resume`/`complete`) and every criterion's result/skip/photo through the existing
+PR 289/290 endpoints; completion is client-blocked (Complete disabled) until every required
+criterion is answered, mirroring `getRequiredChecklistProgress`'s existing learner-side logic. A
+409 on any mutating call (stale `version`) surfaces as a dedicated "reload and retry" state, never
+a silent overwrite or a generic error toast. Geolocation is captured client-side once per session
+(`navigator.geolocation.getCurrentPosition`, never `watchPosition`) at `start` and at `complete`,
+best-effort (a 409 from an already-existing capture point, or a browser permission denial, is
+swallowed/recorded respectively -- it never blocks the lifecycle transition it rides along with).
+
+**Structured feedback** (`PATCH /checklist-sessions/:id/feedback`, `checklistSessionsRun` role
+policy, same `sessionScope()` access check as every other session sub-resource): three new nullable
+`ChecklistSession` columns -- `strengths`, `developmentAreas`, `nextSteps` -- session-level (not
+per-criterion) free text the observer records during or after the session, matching the prototype's
+"structured feedback" step. Every field is optional and independently settable (a `PATCH` with only
+one field leaves the others untouched) so the UI can save partial progress without a separate
+autosave/draft mechanism. Allowed for `in_progress`, `paused`, and `completed` (feedback commonly
+gets finished right after the session ends); rejected only for `scheduled` (nothing to give
+feedback on yet) and `cancelled` (400). Same
+optimistic-concurrency contract as every other session mutation: the caller's current `version` is
+required and a mismatch is a 409. Every successful save appends a `feedback_updated`
+`ChecklistSessionEvent` (new event type) -- the *content* of the feedback is not duplicated into the
+event's metadata (it lives only on the session row), matching how `rescheduled`/`location_override`
+already carry only the parts of a change that aren't already on the row.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
