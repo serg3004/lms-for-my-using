@@ -126,7 +126,11 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
 
 // ── Badge ────────────────────────────────────────────────────────────────────
 
-type BadgeVariant = 'neutral' | 'published' | 'draft' | 'overdue' | 'done' | 'new' | 'warning';
+// `success`/`info`/`danger` are generic tone variants (PR 294 UI foundation) -- the same tokens
+// as `done`/`new`/`overdue` above, but named by tone rather than by checklist-template semantics
+// so other status families (e.g. ChecklistInstance/ChecklistSession lifecycle status, see
+// apps/web/src/shared/checklistStatus.ts) can reuse them without borrowing a template-specific name.
+export type BadgeVariant = 'neutral' | 'published' | 'draft' | 'overdue' | 'done' | 'new' | 'warning' | 'success' | 'info' | 'danger';
 
 type BadgeProps = {
   variant?: BadgeVariant;

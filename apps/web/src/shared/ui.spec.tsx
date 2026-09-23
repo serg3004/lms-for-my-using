@@ -121,6 +121,23 @@ describe('design system — Badge', () => {
     const html = renderToStaticMarkup(<Badge variant="overdue">Overdue</Badge>);
     expect(html).toContain('ds-badge--overdue');
   });
+
+  // Generic tone variants (PR 294 UI foundation) -- reused by status families other than the
+  // checklist template, e.g. ChecklistInstance/ChecklistSession lifecycle status.
+  it('renders success badge', () => {
+    const html = renderToStaticMarkup(<Badge variant="success">Success</Badge>);
+    expect(html).toContain('ds-badge--success');
+  });
+
+  it('renders info badge', () => {
+    const html = renderToStaticMarkup(<Badge variant="info">Info</Badge>);
+    expect(html).toContain('ds-badge--info');
+  });
+
+  it('renders danger badge', () => {
+    const html = renderToStaticMarkup(<Badge variant="danger">Danger</Badge>);
+    expect(html).toContain('ds-badge--danger');
+  });
 });
 
 describe('design system — Card', () => {

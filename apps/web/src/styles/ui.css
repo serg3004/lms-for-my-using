@@ -1014,6 +1014,24 @@
   background: var(--color-warning-bg);
 }
 
+/* Generic tone variants (PR 294 UI foundation) -- same tokens as --done/--new/--overdue above,
+   named by tone so status families other than the checklist template (draft/published/archived)
+   can reuse them without borrowing a template-specific name. */
+.ds-badge--success {
+  color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.ds-badge--info {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+.ds-badge--danger {
+  color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
 /* ── Card ────────────────────────────────────────────────────────────────── */
 
 .ds-card {

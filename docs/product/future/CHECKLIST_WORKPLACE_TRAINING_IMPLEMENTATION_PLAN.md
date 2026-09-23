@@ -318,23 +318,23 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 
 Дополнительно покрыто (сверх формальных критериев): `createItem`/`updateItem` отклоняют (404) `scaleId`, не существующий в организации caller'а — покрыто и unit-, и database-тестами.
 
-## PR 294 — UI Foundation & Visual Contract
+## PR 294 — UI Foundation & Visual Contract ✅
 
 **Цель:** единый внешний вид согласно прототипу и текущей странице `AdminChecklistsPage`.
 
 **Зависимости:** PR 285.
 
 **Что необходимо сделать:**
-- инвентаризировать UI primitives; reuse shell/header/buttons/forms/tabs/tables/badges/dialogs/cards/tooltips;
-- определить недостающие reusable components;
-- унифицировать status colors с существующими статусами `ChecklistInstance`;
-- breakpoints; loading/empty/error patterns; chart integration; visual baselines.
+- инвентаризировать UI primitives; reuse shell/header/buttons/forms/tabs/tables/badges/dialogs/cards/tooltips — выполнено: полная инвентаризация задокументирована в новой секции `ADR_CHECKLIST_SESSION_OVERLAY.md` ("UI foundation & visual contract") — shell/header (`AdminPageLayout`/`AdminPageHeader`), tabs (`OrgStructureTabs`-паттерн), buttons/badges/cards/tables (`shared/ui.tsx`: `Button`/`Badge`/`Card`/`DataTable`), диалоги (два существующих `ConfirmDialog` задокументированы как known inconsistency, зафиксирован `ds-dialog`-вариант как основа для новой session UI); tooltip-примитива в репозитории нет, зафиксировано как открытый gap для той PR, которой он реально понадобится;
+- определить недостающие reusable components — выполнено: единственный реальный пробел на сегодня — status-color mapping (ниже); generic modal сверх `ConfirmDialog` сознательно не строится заранее без конкретного потребителя (PR 295 wizard решит, когда понадобится);
+- унифицировать status colors с существующими статусами `ChecklistInstance` — выполнено: новый `apps/web/src/shared/checklistStatus.ts` (`CHECKLIST_INSTANCE_STATUS_BADGE_VARIANT`) — единый источник истины, переиспользует существующие token-based `Badge`-тона; `Badge` расширен тремя generic tone-вариантами (`success`/`info`/`danger`, те же токены, что и у `done`/`new`/`overdue`, но без checklist-template-специфичных имён) вместо изобретения новых цветов; существующие страницы с ad hoc `COLORS`-константами (`LearnerChecklistsPage.tsx` и др.) сознательно не мигрированы в этом PR — задокументированный technical debt, мигрируются по мере переработки своего экрана;
+- breakpoints; loading/empty/error patterns; chart integration; visual baselines — выполнено: breakpoints зафиксированы как существующий набор visual-regression матрицы (320/375/768/1024/1280/1440) + существующая точка сворачивания навигации (~860px); loading/empty/error — переиспользуются `PageState`/`EmptyState`/`InlineFeedback`/`Toast` без новых паттернов; chart-библиотека сознательно НЕ выбрана — в репозитории пока нет ни одного чарта, решение отложено до PR 299 (Manager Dashboard), первого реального потребителя; visual baseline — новый тест `admin-checklists-list-<width>` в `responsive-matrix.spec.ts` покрывает ранее не заснэпшоченный plain list view `/admin/checklists` (до этого был заснэпшочен только builder/edit-mode).
 
 **Критерии готовности:**
-- [ ] новый design system не создан;
-- [ ] UI согласован с существующей `AdminChecklistsPage`;
-- [ ] responsive/accessibility rules зафиксированы;
-- [ ] visual baseline существует.
+- [x] новый design system не создан — `ADR_DESIGN_SYSTEM.md` (Tailwind/shadcn запрещены) не тронут по существу; все добавления (3 tone-варианта `Badge`, `checklistStatus.ts`) — расширения существующего token/primitive контракта, не параллельная система;
+- [x] UI согласован с существующей `AdminChecklistsPage` — задокументированный план переиспользования её же shell/header/table/tabs-паттерна для новых session-экранов (PR 295+), явных отклонений не введено;
+- [x] responsive/accessibility rules зафиксированы — breakpoints задокументированы (см. выше); accessibility/visual enforcement — существующие обязательные CI-гейты (`accessibility` — axe-core/Playwright, `visual` — pixel-diff), с явным требованием добавлять каждый новый route в оба списка фикстур по мере появления экранов (PR 295+);
+- [x] visual baseline существует — `admin-checklists-list-<width>` добавлен в `responsive-matrix.spec.ts`, сгенерирован через `Update visual regression baselines` workflow (эксклюзивный источник истины для baseline PNG, чтобы избежать Chromium-version drift — см. `apps/e2e/visual-tests/README.md`).
 
 ## PR 295 — Admin: список сессий и wizard создания
 
