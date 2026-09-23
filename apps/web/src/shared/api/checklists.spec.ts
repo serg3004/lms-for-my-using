@@ -5,10 +5,14 @@ const mocks = vi.hoisted(() => ({ apiRequest: vi.fn(), uploadChecklistItemPhotoW
 vi.mock('../apiClient.js', () => mocks);
 
 import {
+  archiveChecklistScale,
   assignChecklist,
   assignChecklistReviewer,
+  copyChecklistItemGroup,
   createChecklist,
   createChecklistItem,
+  createChecklistItemGroup,
+  createChecklistScale,
   deleteChecklist,
   deleteChecklistItem,
   getChecklist,
@@ -16,7 +20,9 @@ import {
   getChecklistInstance,
   getChecklistItemPhotoUrl,
   listChecklistInstanceEvents,
+  listChecklistItemGroups,
   listChecklists,
+  listChecklistScales,
   listInstancesForChecklist,
   listMyChecklistInstances,
   reviewChecklistItemResult,
@@ -24,6 +30,8 @@ import {
   submitChecklistItemResult,
   updateChecklist,
   updateChecklistItem,
+  updateChecklistItemGroup,
+  updateChecklistScale,
   uploadChecklistItemPhoto,
 } from './checklists.js';
 
@@ -184,5 +192,52 @@ describe('checklists api requests', () => {
     const file = new File(['data'], 'photo.jpg', { type: 'image/jpeg' });
     uploadChecklistItemPhoto('instance-1', 'item-1', file);
     expect(mocks.uploadChecklistItemPhotoWithProgress).toHaveBeenCalledWith('instance-1', 'item-1', file, expect.any(Function));
+  });
+});
+
+describe('checklist item groups (PR 296)', () => {
+  it('lists groups for a checklist', () => {
+    listChecklistItemGroups('checklist-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/checklist-1/groups');
+  });
+
+  it('creates a group', () => {
+    createChecklistItemGroup('checklist-1', { title: 'Opening' });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklists/checklist-1/groups', { method: 'POST', body: JSON.stringify({ title: 'Opening' }) });
+  });
+
+  it('updates a group', () => {
+    updateChecklistItemGroup('group-1', { title: 'Renamed', order: 2 });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-item-groups/group-1', { method: 'PATCH', body: JSON.stringify({ title: 'Renamed', order: 2 }) });
+  });
+
+  it('copies a group', () => {
+    copyChecklistItemGroup('group-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-item-groups/group-1/copy', { method: 'POST' });
+  });
+});
+
+describe('reusable evaluation scales (PR 293)', () => {
+  it('lists scales', () => {
+    listChecklistScales();
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-scales');
+  });
+
+  it('creates a scale', () => {
+    createChecklistScale({ name: 'Skill', levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 100 }] });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-scales', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Skill', levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 100 }] }),
+    });
+  });
+
+  it('updates a scale', () => {
+    updateChecklistScale('scale-1', { name: 'Renamed' });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-scales/scale-1', { method: 'PATCH', body: JSON.stringify({ name: 'Renamed' }) });
+  });
+
+  it('archives a scale', () => {
+    archiveChecklistScale('scale-1');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-scales/scale-1/archive', { method: 'POST' });
   });
 });

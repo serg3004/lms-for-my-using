@@ -32,8 +32,13 @@ const checklist = {
   createdBy: 'user-1',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
+  contextFields: [{ id: 'field-1', label: 'Номер магазина', type: 'text' as const, required: true, order: 0 }],
+  itemGroups: [{ id: 'group-1', checklistId: 'checklist-1', title: 'Приветствие', order: 0 }],
+  defaultLocationCapturePolicy: null,
+  preSessionVisibility: 'structure_only' as const,
   items: [
-    { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true },
+    { id: 'item-1', checklistId: 'checklist-1', order: 0, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: true, groupId: 'group-1' },
+    { id: 'item-2', checklistId: 'checklist-1', order: 1, text: 'Без группы', points: 0, isRequired: false, photoRequired: false, groupId: null },
   ],
 };
 
@@ -62,10 +67,16 @@ describe('ChecklistBuilder (real hooks)', () => {
     );
 
     expect(html).toContain('Работа с кассой');
+    expect(html).toContain('Без группы');
     expect(html).toContain('Очень плохо');
     expect(html).toContain('Отлично');
     expect(html).toContain('Required item');
     expect(html).toContain('Photo required');
     expect(html).toContain('Select an employee');
+    // PR 296 observation-sheet builder: context fields, item groups, ungrouped bucket, scale manager.
+    expect(html).toContain('Номер магазина');
+    expect(html).toContain('Приветствие');
+    expect(html).toContain('Ungrouped');
+    expect(html).toContain('Evaluation scales');
   });
 });

@@ -952,7 +952,11 @@
         "passThreshold": "Өту шегі, %",
         "requiresReview": "Есептелмес бұрын нұсқаушының растауын талап ету",
         "assignUserId": "Пайдаланушы ID",
-        "assignUser": "Қызметкер"
+        "assignUser": "Қызметкер",
+        "weight": "Салмақ",
+        "scale": "Шкала",
+        "defaultLocationCapturePolicy": "Геолокация талабы",
+        "preSessionVisibility": "Сессияға дейін қызметкер көретін ақпарат"
       },
       "itemsTitle": "Чеклист тармақтары",
       "noItems": "Әзірге тармақтар жоқ.",
@@ -1064,6 +1068,47 @@
           "doneSummary": "{{created}} құрылды, {{skipped}} өткізіп жіберілді, {{failed}} сәтсіз аяқталды.",
           "submitError": "Сессияларды құру мүмкін болмады."
         }
+      },
+      "newGroupTitle": "Жаңа топ",
+      "newCriterionText": "Жаңа критерий",
+      "contextFieldsTitle": "Жалпы ақпарат",
+      "contextFieldsHint": "Критерийлерден бұрын бақылаушы толтырады.",
+      "contextFieldLabel": "Өріс атауы",
+      "addContextField": "Өріс",
+      "groupsTitle": "Топтар мен критерийлер",
+      "groupTitle": "Топ атауы",
+      "ungroupedItems": "Топсыз",
+      "moveUp": "Жоғары жылжыту",
+      "moveDown": "Төмен жылжыту",
+      "copyGroup": "Көшіру",
+      "addCriterion": "Критерий",
+      "noScale": "Шкаласыз",
+      "addGroup": "Топ",
+      "defaultLocationCapturePolicyHint": "Осы чек-парақ үшін сессия жоспарлағанда геолокация талабын алдын ала толтырады.",
+      "orgDefault": "Ұйым бойынша әдепкі",
+      "contextFieldType": {
+        "text": "Мәтін",
+        "textarea": "Көп жолды мәтін",
+        "date": "Күні"
+      },
+      "preSessionVisibility": {
+        "full": "Құрылым мен бұрынғы кері байланыс",
+        "structure_only": "Тек құрылым",
+        "none": "Ешнәрсе"
+      },
+      "scaleManager": {
+        "title": "Бағалау шкалалары",
+        "newScaleName": "Жаңа шкала",
+        "error": "Шкаланы сақтау мүмкін болмады.",
+        "name": "Шкала атауы",
+        "levelsCount": "{{count}} деңгей",
+        "archived": "Мұрағатталған",
+        "rename": "Атын өзгерту",
+        "empty": "Бағалау шкалалары әлі жоқ.",
+        "addScale": "Жаңа шкала",
+        "defaultLow": "Төмен",
+        "defaultMedium": "Орташа",
+        "defaultHigh": "Жоғары"
       }
     }
   },

@@ -952,7 +952,11 @@
         "passThreshold": "Pass threshold, %",
         "requiresReview": "Require an instructor to confirm the result before it counts",
         "assignUserId": "User ID",
-        "assignUser": "Employee"
+        "assignUser": "Employee",
+        "weight": "Weight",
+        "scale": "Scale",
+        "defaultLocationCapturePolicy": "Location requirement",
+        "preSessionVisibility": "Employee sees before the session"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1064,6 +1068,47 @@
           "doneSummary": "{{created}} created, {{skipped}} skipped, {{failed}} failed.",
           "submitError": "Unable to create sessions."
         }
+      },
+      "newGroupTitle": "New group",
+      "newCriterionText": "New criterion",
+      "contextFieldsTitle": "General information",
+      "contextFieldsHint": "Filled in by the observer before the criteria.",
+      "contextFieldLabel": "Field label",
+      "addContextField": "Field",
+      "groupsTitle": "Groups and criteria",
+      "groupTitle": "Group title",
+      "ungroupedItems": "Ungrouped",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "copyGroup": "Copy",
+      "addCriterion": "Criterion",
+      "noScale": "No scale",
+      "addGroup": "Group",
+      "defaultLocationCapturePolicyHint": "Pre-fills the location capture policy when scheduling a session for this checklist.",
+      "orgDefault": "Organization default",
+      "contextFieldType": {
+        "text": "Text",
+        "textarea": "Multiline text",
+        "date": "Date"
+      },
+      "preSessionVisibility": {
+        "full": "Structure and past feedback",
+        "structure_only": "Structure only",
+        "none": "Nothing"
+      },
+      "scaleManager": {
+        "title": "Evaluation scales",
+        "newScaleName": "New scale",
+        "error": "Unable to save the scale.",
+        "name": "Scale name",
+        "levelsCount": "{{count}} levels",
+        "archived": "Archived",
+        "rename": "Rename",
+        "empty": "No evaluation scales yet.",
+        "addScale": "New scale",
+        "defaultLow": "Low",
+        "defaultMedium": "Medium",
+        "defaultHigh": "High"
       }
     }
   },

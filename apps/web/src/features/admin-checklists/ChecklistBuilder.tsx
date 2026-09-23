@@ -4,15 +4,64 @@ import { ApiClientError } from '../../shared/apiClient.js';
 import { AdminPageHeader, FormField } from '../../shared/adminPage.js';
 import { Badge, Button, EmptyState } from '../../shared/ui.js';
 import { listUsers } from '../../shared/api/users.js';
-import { assignChecklist, createChecklistItem, deleteChecklistItem, listInstancesForChecklist, updateChecklist, updateChecklistItem } from '../../shared/api/checklists.js';
-import type { ChecklistInstanceSummary, ChecklistItemSummary, ChecklistScaleLevel, ChecklistScoringMode, ChecklistStatus, ChecklistSummary, UserSummary } from '../../shared/api/types.js';
+import {
+  assignChecklist,
+  copyChecklistItemGroup,
+  createChecklistItem,
+  createChecklistItemGroup,
+  deleteChecklistItem,
+  getChecklist,
+  listChecklistItemGroups,
+  listChecklistScales,
+  listInstancesForChecklist,
+  updateChecklist,
+  updateChecklistItem,
+  updateChecklistItemGroup,
+} from '../../shared/api/checklists.js';
+import type {
+  ChecklistGeolocationPolicy,
+  ChecklistInstanceSummary,
+  ChecklistItemGroup,
+  ChecklistItemSummary,
+  ChecklistPreSessionVisibility,
+  ChecklistScaleLevel,
+  ChecklistScaleSummary,
+  ChecklistScoringMode,
+  ChecklistStatus,
+  ChecklistSummary,
+  ContextField,
+  UserSummary,
+} from '../../shared/api/types.js';
 import { ChecklistDeadlineMeta } from '../../app/ChecklistDeadlineMeta.js';
 import { localDateTimeToUtcIso } from '../../app/checklistDeadline.js';
 import { ChecklistAssignmentPanel } from './ChecklistAssignmentPanel.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
-import { applyItemPatch, appendScaleLevel, buildChecklistSettingsPayload, canAssignChecklist, computePreviewResult, createDefaultScale, filterAssignableUsers, formatUserName, removeItemById, removeScaleLevelAt, resolveUserName, SCORING_MODES, type PreviewAnswer, type SaveState, applyScaleLevelPatch } from './domain.js';
+import { ScaleManagerDialog } from './ScaleManagerDialog.js';
+import {
+  applyContextFieldPatch,
+  applyGroupPatch,
+  applyItemPatch,
+  appendContextField,
+  appendScaleLevel,
+  buildChecklistSettingsPayload,
+  canAssignChecklist,
+  computePreviewResult,
+  createDefaultScale,
+  filterAssignableUsers,
+  formatUserName,
+  groupItems,
+  moveGroup,
+  removeContextFieldById,
+  removeItemById,
+  removeScaleLevelAt,
+  resolveUserName,
+  SCORING_MODES,
+  type PreviewAnswer,
+  type SaveState,
+  applyScaleLevelPatch,
+} from './domain.js';
 
 export function ChecklistBuilder({
   checklist,
@@ -49,19 +98,79 @@ export function ChecklistBuilder({
   const [assignError, setAssignError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, PreviewAnswer>>({});
+  // PR 296 observation-sheet builder state.
+  const [itemGroups, setItemGroups] = useState<ChecklistItemGroup[]>(checklist.itemGroups ?? []);
+  const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
+  const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
+  const [scaleManagerOpen, setScaleManagerOpen] = useState(false);
+  const [defaultLocationCapturePolicy, setDefaultLocationCapturePolicy] = useState<ChecklistGeolocationPolicy | ''>(checklist.defaultLocationCapturePolicy ?? '');
+  const [preSessionVisibility, setPreSessionVisibility] = useState<ChecklistPreSessionVisibility>(checklist.preSessionVisibility ?? 'structure_only');
   useEffect(() => {
     listInstancesForChecklist(checklist.id).then(setInstances).catch(() => setInstances([]));
     listUsers({ page: 1, pageSize: 200 }).then((result) => setOrgUsers(result.items)).catch(() => setOrgUsers([]));
+    listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
+    listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
   async function saveSettings() {
     setSaveState({ status: 'saving' });
     try {
-      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels }));
+      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility }));
       setSaveState({ status: 'idle' });
       await onReload();
     } catch (error) {
       setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.') });
     }
+  }
+  async function reloadScales() {
+    const result = await listChecklistScales().catch(() => scales);
+    setScales(result);
+  }
+  async function addGroup() {
+    const created = await createChecklistItemGroup(checklist.id, { title: t('admin.checklists.newGroupTitle', 'New group') });
+    setItemGroups((prev) => [...prev, created]);
+  }
+  function renameGroupLocally(groupId: string, title: string) {
+    setItemGroups((prev) => applyGroupPatch(prev, groupId, { title }));
+  }
+  async function persistGroupTitle(groupId: string, title: string) {
+    const updated = await updateChecklistItemGroup(groupId, { title });
+    setItemGroups((prev) => applyGroupPatch(prev, groupId, updated));
+  }
+  async function moveGroupDirection(groupId: string, direction: 'up' | 'down') {
+    const patches = moveGroup(itemGroups, groupId, direction);
+    if (patches.length === 0) return;
+    setItemGroups((prev) => {
+      let next = prev;
+      for (const patch of patches) next = applyGroupPatch(next, patch.id, { order: patch.order });
+      return next;
+    });
+    await Promise.all(patches.map((patch) => updateChecklistItemGroup(patch.id, { order: patch.order })));
+  }
+  async function copyGroup(groupId: string) {
+    const newGroup = await copyChecklistItemGroup(groupId);
+    setItemGroups((prev) => [...prev, newGroup]);
+    // The copy endpoint duplicates the group's items server-side too -- re-fetch this checklist's
+    // items so the copies show up locally (no per-group items endpoint exists to fetch just them).
+    const refreshed = await getChecklist(checklist.id);
+    setItems(refreshed.items);
+  }
+  async function addCriterionToGroup(groupId: string | null) {
+    const created = await createChecklistItem(checklist.id, { text: t('admin.checklists.newCriterionText', 'New criterion'), points: 10, isRequired: true, photoRequired: false, ...(groupId ? { groupId } : {}) });
+    setItems((prev) => [...prev, created]);
+  }
+  function addContextFieldLocally() {
+    setContextFields((prev) => appendContextField(prev));
+  }
+  function updateContextFieldLocally(fieldId: string, patch: Partial<ContextField>) {
+    setContextFields((prev) => applyContextFieldPatch(prev, fieldId, patch));
+  }
+  async function persistContextFields(fields: ContextField[]) {
+    await updateChecklist(checklist.id, { contextFields: fields.length > 0 ? fields : null });
+  }
+  async function removeContextField(fieldId: string) {
+    const next = removeContextFieldById(contextFields, fieldId);
+    setContextFields(next);
+    await persistContextFields(next);
   }
   async function publish() {
     try {
@@ -127,6 +236,9 @@ export function ChecklistBuilder({
         subtitle={statusLabels[checklist.status]}
         action={
           <div className="admin-builder__header-actions">
+            <Button type="button" variant="secondary" onClick={() => setScaleManagerOpen(true)}>
+              {t('admin.checklists.scaleManager.title', 'Evaluation scales')}
+            </Button>
             <Button
               type="button"
               variant="secondary"
@@ -163,54 +275,152 @@ export function ChecklistBuilder({
             </FormField>
           </ChecklistSettingsForm>
           <ChecklistItemsEditor>
-            <h3>{t('admin.checklists.itemsTitle', 'Checklist items')} <Badge variant="neutral">{items.length}</Badge></h3>
-            <ul className="admin-checklist-items">
-              {items.map((item, index) => (
-                <li key={item.id} className="admin-checklist-item">
-                  <span className="admin-checklist-item__index">{index + 1}</span>
+            <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
+            <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
+            <div className="admin-context-fields">
+              {contextFields.map((field) => (
+                <div className="admin-context-field-row" key={field.id}>
                   <input
-                    value={item.text}
-                    onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
-                    onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
+                    aria-label={t('admin.checklists.contextFieldLabel', 'Field label')}
+                    onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
+                    onChange={(e) => updateContextFieldLocally(field.id, { label: e.target.value })}
+                    placeholder={t('admin.checklists.contextFieldLabel', 'Field label')}
+                    value={field.label}
                   />
-                  {scoringMode === 'sum_points' && (
-                    <input
-                      type="number"
-                      className="admin-checklist-item__points"
-                      value={item.points}
-                      onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
-                      onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
-                      aria-label={t('admin.checklists.field.points', 'Points')}
-                    />
-                  )}
+                  <select
+                    onChange={(e) => {
+                      const type = e.target.value as ContextField['type'];
+                      updateContextFieldLocally(field.id, { type });
+                      void persistContextFields(applyContextFieldPatch(contextFields, field.id, { type }));
+                    }}
+                    value={field.type}
+                  >
+                    <option value="text">{t('admin.checklists.contextFieldType.text', 'Text')}</option>
+                    <option value="textarea">{t('admin.checklists.contextFieldType.textarea', 'Multiline text')}</option>
+                    <option value="date">{t('admin.checklists.contextFieldType.date', 'Date')}</option>
+                  </select>
                   <label className="admin-checklist-item__photo">
                     <input
-                      type="checkbox"
-                      checked={item.isRequired}
+                      checked={field.required}
                       onChange={(e) => {
-                        updateItemLocally(item.id, { isRequired: e.target.checked });
-                        void persistItem(item.id, { isRequired: e.target.checked });
+                        updateContextFieldLocally(field.id, { required: e.target.checked });
+                        void persistContextFields(applyContextFieldPatch(contextFields, field.id, { required: e.target.checked }));
                       }}
+                      type="checkbox"
                     />
                     {t('admin.checklists.field.isRequired', 'Required item')}
                   </label>
-                  <label className="admin-checklist-item__photo">
-                    <input
-                      type="checkbox"
-                      checked={item.photoRequired}
-                      onChange={(e) => {
-                        updateItemLocally(item.id, { photoRequired: e.target.checked });
-                        void persistItem(item.id, { photoRequired: e.target.checked });
-                      }}
-                    />
-                    {t('admin.checklists.field.photoRequired', 'Photo required')}
-                  </label>
-                  <button type="button" className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeItem(item)}>
+                  <button className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeContextField(field.id)} type="button">
                     {t('admin.checklists.delete', 'Delete')}
                   </button>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
+            <Button onClick={() => { addContextFieldLocally(); void persistContextFields(appendContextField(contextFields)); }} type="button" variant="secondary" size="sm">
+              + {t('admin.checklists.addContextField', 'Field')}
+            </Button>
+          </ChecklistItemsEditor>
+          <ChecklistItemsEditor>
+            <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
+            {groupItems(items, itemGroups).map(({ group, items: groupedItems }, groupIndex, allGroups) => (
+              <div className={group ? 'admin-item-group' : 'admin-item-group admin-item-group--ungrouped'} key={group?.id ?? 'ungrouped'}>
+                <div className="admin-item-group__header">
+                  {group ? (
+                    <input
+                      aria-label={t('admin.checklists.groupTitle', 'Group title')}
+                      onBlur={(e) => void persistGroupTitle(group.id, e.target.value)}
+                      onChange={(e) => renameGroupLocally(group.id, e.target.value)}
+                      value={group.title}
+                    />
+                  ) : (
+                    <h4>{t('admin.checklists.ungroupedItems', 'Ungrouped')}</h4>
+                  )}
+                  <div className="admin-item-group__actions">
+                    {group && (
+                      <>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveUp', 'Move up')}>↑</button>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveDown', 'Move down')}>↓</button>
+                        <button className="admin-btn admin-btn--sm" onClick={() => void copyGroup(group.id)} type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
+                      </>
+                    )}
+                    <button className="admin-btn admin-btn--sm admin-btn--primary" onClick={() => void addCriterionToGroup(group?.id ?? null)} type="button">
+                      + {t('admin.checklists.addCriterion', 'Criterion')}
+                    </button>
+                  </div>
+                </div>
+                <ul className="admin-checklist-items">
+                  {groupedItems.map((item) => {
+                    const index = items.indexOf(item);
+                    return (
+                      <li key={item.id} className="admin-checklist-item">
+                        <span className="admin-checklist-item__index">{index + 1}</span>
+                        <input
+                          value={item.text}
+                          onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
+                          onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
+                        />
+                        {scoringMode === 'sum_points' && (
+                          <input
+                            type="number"
+                            className="admin-checklist-item__points"
+                            value={item.points}
+                            onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
+                            onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
+                            aria-label={t('admin.checklists.field.points', 'Points')}
+                          />
+                        )}
+                        <input
+                          type="number"
+                          className="admin-checklist-item__weight"
+                          min={1}
+                          value={item.weight ?? 1}
+                          onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
+                          onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
+                          aria-label={t('admin.checklists.field.weight', 'Weight')}
+                          title={t('admin.checklists.field.weight', 'Weight')}
+                        />
+                        <select
+                          className="admin-checklist-item__scale"
+                          value={item.scaleId ?? ''}
+                          onChange={(e) => void persistItem(item.id, { scaleId: e.target.value || null })}
+                          aria-label={t('admin.checklists.field.scale', 'Scale')}
+                        >
+                          <option value="">{t('admin.checklists.noScale', 'No scale')}</option>
+                          {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                        <label className="admin-checklist-item__photo">
+                          <input
+                            type="checkbox"
+                            checked={item.isRequired}
+                            onChange={(e) => {
+                              updateItemLocally(item.id, { isRequired: e.target.checked });
+                              void persistItem(item.id, { isRequired: e.target.checked });
+                            }}
+                          />
+                          {t('admin.checklists.field.isRequired', 'Required item')}
+                        </label>
+                        <label className="admin-checklist-item__photo">
+                          <input
+                            type="checkbox"
+                            checked={item.photoRequired}
+                            onChange={(e) => {
+                              updateItemLocally(item.id, { photoRequired: e.target.checked });
+                              void persistItem(item.id, { photoRequired: e.target.checked });
+                            }}
+                          />
+                          {t('admin.checklists.field.photoRequired', 'Photo required')}
+                        </label>
+                        <button type="button" className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeItem(item)}>
+                          {t('admin.checklists.delete', 'Delete')}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
             {items.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
             <div className="admin-checklist-add-item">
               <input
@@ -222,6 +432,9 @@ export function ChecklistBuilder({
                 + {t('admin.checklists.addItem', 'Add item')}
               </Button>
             </div>
+            <Button type="button" variant="primary" size="sm" onClick={() => void addGroup()}>
+              + {t('admin.checklists.addGroup', 'Group')}
+            </Button>
           </ChecklistItemsEditor>
         </div>
         <div className="admin-builder__column">
@@ -286,6 +499,29 @@ export function ChecklistBuilder({
             <p className="admin-form__hint">
               {t('admin.checklists.requiresReviewHint', 'When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.')}
             </p>
+            <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')} hint={t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}>
+              <select
+                id="checklist-default-location-policy"
+                value={defaultLocationCapturePolicy}
+                onChange={(e) => setDefaultLocationCapturePolicy(e.target.value as ChecklistGeolocationPolicy | '')}
+              >
+                <option value="">{t('admin.checklists.orgDefault', 'Organization default')}</option>
+                <option value="off">{t('admin.checklists.sessions.wizard.locationOff', 'Off')}</option>
+                <option value="optional">{t('admin.checklists.sessions.wizard.locationOptional', 'Optional')}</option>
+                <option value="required">{t('admin.checklists.sessions.wizard.locationRequired', 'Required')}</option>
+              </select>
+            </FormField>
+            <FormField id="checklist-pre-session-visibility" label={t('admin.checklists.field.preSessionVisibility', 'Employee sees before the session')}>
+              <select
+                id="checklist-pre-session-visibility"
+                value={preSessionVisibility}
+                onChange={(e) => setPreSessionVisibility(e.target.value as ChecklistPreSessionVisibility)}
+              >
+                <option value="full">{t('admin.checklists.preSessionVisibility.full', 'Structure and past feedback')}</option>
+                <option value="structure_only">{t('admin.checklists.preSessionVisibility.structure_only', 'Structure only')}</option>
+                <option value="none">{t('admin.checklists.preSessionVisibility.none', 'Nothing')}</option>
+              </select>
+            </FormField>
             {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}</p>}
             <Button type="button" variant="primary" disabled={saveState.status === 'saving'} onClick={() => void saveSettings()}>
               {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
@@ -403,6 +639,7 @@ export function ChecklistBuilder({
           </div>
         </ChecklistPreviewDialog>
       )}
+      <ScaleManagerDialog onChanged={() => void reloadScales()} onClose={() => setScaleManagerOpen(false)} open={scaleManagerOpen} t={t} />
     </div>
   );
 }
