@@ -305,6 +305,34 @@ export function OrgStructureTabs({ current }: { current: OrgStructureTabKey }) {
   );
 }
 
+// ── ChecklistsTabs ───────────────────────────────────────────────────────────
+
+export type ChecklistsTabKey = 'checklists' | 'sessions';
+
+const CHECKLISTS_TABS: readonly { key: ChecklistsTabKey; href: string; labelKey: string; fallback: string }[] = [
+  { key: 'checklists', href: '/admin/checklists', labelKey: 'admin.checklists.title', fallback: 'Checklists' },
+  { key: 'sessions', href: '/admin/checklists/sessions', labelKey: 'admin.checklists.sessions.title', fallback: 'Sessions' },
+];
+
+/** In-page tab strip shared by the checklist builder and the workplace-training session screens. */
+export function ChecklistsTabs({ current }: { current: ChecklistsTabKey }) {
+  const { t } = useTranslation();
+  return (
+    <nav aria-label={t('admin.checklists.tabsLabel', 'Checklist sections')} className="admin-org-tabs">
+      {CHECKLISTS_TABS.map((tab) => (
+        <a
+          aria-current={tab.key === current ? 'page' : undefined}
+          className="admin-org-tabs__tab"
+          href={tab.href}
+          key={tab.key}
+        >
+          {t(tab.labelKey, tab.fallback)}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 type AdminPageHeaderProps = {
   eyebrow?: string;
   title: string;

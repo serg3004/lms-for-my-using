@@ -299,6 +299,62 @@ async function installChecklistBuilderMocks(page: Page) {
   }));
 }
 
+async function installChecklistSessionsMocks(page: Page) {
+  await installAdminAuthMock(page);
+  await page.route('**/api/v1/checklist-sessions/participants**', (route) => {
+    const url = new URL(route.request().url());
+    const role = url.searchParams.get('role');
+    const items = role === 'observer'
+      ? [{ id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid', position: 'Shift lead' }]
+      : [{ id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid', position: 'Barista' }];
+    return route.fulfill({ json: { items, page: 1, pageSize: 20, total: items.length } });
+  });
+  await page.route('**/api/v1/checklists?status=published', (route) => route.fulfill({
+    json: [{
+      id: 'checklist-1',
+      organizationId: 'visual-org',
+      title: 'Opening shift checklist',
+      description: 'Complete before serving the first customer.',
+      status: 'published',
+      scoringMode: 'sum_points',
+      passThreshold: 80,
+      scaleLevels: null,
+      requiresReview: true,
+      createdBy: 'visual-admin',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      items: [checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' })],
+    }],
+  }));
+  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
+    json: {
+      items: [{
+        id: 'session-1',
+        organizationId: 'visual-org',
+        instanceId: 'instance-1',
+        observerId: 'observer-1',
+        status: 'scheduled',
+        version: 1,
+        scheduledAt: '2026-02-01T09:00:00.000Z',
+        startedAt: null,
+        pausedAt: null,
+        locationCapturePolicy: 'off',
+        timezone: 'UTC',
+        overdue: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+        learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+        observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
+        result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false },
+      }],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    },
+  }));
+}
+
 async function installGuestMock(page: Page) {
   let refreshRequests = 0;
   const unauthorized = (path: string) => ({
@@ -428,6 +484,29 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-builder-${width}`);
+    });
+
+    test('keeps the admin checklist sessions list and wizard responsive', async ({ page }) => {
+      await installChecklistSessionsMocks(page);
+      await page.goto('/admin/checklists/sessions');
+      await expect(page.getByRole('heading', { name: 'Сессии' })).toBeVisible();
+      await expect(page.getByText('Opening shift checklist')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `admin-checklist-sessions-list-${width}`);
+
+      await page.getByRole('button', { name: /Новая сессия/ }).click();
+      await expect(page.getByRole('heading', { name: 'Новая сессия' })).toBeVisible();
+      await expectNoPageOverflow(page);
+
+      const dialogFits = await page.evaluate(() => {
+        const dialog = document.querySelector('dialog.ds-wizard-dialog');
+        if (!dialog) return false;
+        const rect = dialog.getBoundingClientRect();
+        return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+      });
+      expect(dialogFits).toBe(true);
+      await expectVisualMatch(page, `admin-checklist-sessions-wizard-${width}`);
     });
   });
 }

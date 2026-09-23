@@ -997,6 +997,73 @@
         "3": "Хорошо",
         "4": "Очень хорошо",
         "5": "Отлично"
+      },
+      "tabsLabel": "Разделы чек-листов",
+      "sessions": {
+        "title": "Сессии",
+        "subtitle": "Планирование и отслеживание сессий чек-листов очного обучения.",
+        "loadError": "Не удалось загрузить сессии.",
+        "loading": "Загрузка сессий...",
+        "create": "Новая сессия",
+        "searchPlaceholder": "Найти сессию",
+        "statusFilter": "Статус",
+        "empty": "Нет сессий по заданным фильтрам.",
+        "paginationLabel": "Страницы сессий",
+        "cancel": "Отменить",
+        "cancelTitle": "Отменить сессию",
+        "cancelConfirm": "Отменить эту сессию? Действие необратимо.",
+        "cancelError": "Не удалось отменить сессию.",
+        "repeat": "Повторить",
+        "repeatError": "Не удалось повторить сессию.",
+        "overdue": "Просрочено",
+        "status": {
+          "scheduled": "Запланирована",
+          "in_progress": "В процессе",
+          "paused": "На паузе",
+          "completed": "Завершена",
+          "cancelled": "Отменена"
+        },
+        "columns": {
+          "checklist": "Чек-лист",
+          "learner": "Сотрудник",
+          "observer": "Наблюдатель",
+          "scheduledAt": "Дата",
+          "status": "Статус",
+          "result": "Результат",
+          "actions": "Действия"
+        },
+        "wizard": {
+          "title": "Новая сессия",
+          "steps": {
+            "participants": "Участники",
+            "checklist": "Лист",
+            "schedule": "Время и место",
+            "confirm": "Подтверждение"
+          },
+          "cancel": "Отмена",
+          "back": "Назад",
+          "next": "Далее",
+          "create": "Создать",
+          "close": "Закрыть",
+          "observerLabel": "Наблюдатель",
+          "observerSearch": "Найти наблюдателя",
+          "learnersLabel": "Сотрудники",
+          "learnerSearch": "Найти сотрудника",
+          "learnersSelected": "Выбрано {{count}} из {{max}}",
+          "checklistLabel": "Чек-лист",
+          "startNow": "Начать сейчас",
+          "scheduleLater": "Запланировать на потом",
+          "scheduledAt": "Дата и время",
+          "timezone": "Часовой пояс: {{timezone}}",
+          "locationPolicy": "Геолокация",
+          "locationOff": "Выключена",
+          "locationOptional": "Необязательна",
+          "locationRequired": "Обязательна",
+          "whenLabel": "Когда",
+          "doneTitle": "Сессии созданы",
+          "doneSummary": "Создано {{created}}, пропущено {{skipped}}, ошибок {{failed}}.",
+          "submitError": "Не удалось создать сессии."
+        }
       }
     }
   },

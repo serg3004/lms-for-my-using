@@ -103,6 +103,18 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
+  test('admin checklist sessions list and new-session wizard have an accessible rendered state', async ({ page }, testInfo) => {
+    await loginAs(page, 'admin');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByRole('heading', { name: 'Сессии' })).toBeVisible();
+    await auditAccessibility(page, testInfo);
+
+    await page.getByRole('button', { name: /Новая сессия/ }).click();
+    await expect(page.getByRole('heading', { name: 'Новая сессия' })).toBeVisible();
+    await auditAccessibility(page, testInfo);
+  });
+
   test('login remains accessible at 320px and 200% browser zoom', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 812 });
     await page.goto('/login');

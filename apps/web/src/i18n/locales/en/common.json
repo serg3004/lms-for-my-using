@@ -997,6 +997,73 @@
         "3": "Good",
         "4": "Very good",
         "5": "Excellent"
+      },
+      "tabsLabel": "Checklist sections",
+      "sessions": {
+        "title": "Sessions",
+        "subtitle": "Schedule and track workplace-training checklist sessions.",
+        "loadError": "Unable to load sessions.",
+        "loading": "Loading sessions...",
+        "create": "New session",
+        "searchPlaceholder": "Find session",
+        "statusFilter": "Status",
+        "empty": "No sessions match these filters.",
+        "paginationLabel": "Session pages",
+        "cancel": "Cancel",
+        "cancelTitle": "Cancel session",
+        "cancelConfirm": "Cancel this session? This action cannot be undone.",
+        "cancelError": "Unable to cancel the session.",
+        "repeat": "Repeat",
+        "repeatError": "Unable to repeat the session.",
+        "overdue": "Overdue",
+        "status": {
+          "scheduled": "Scheduled",
+          "in_progress": "In progress",
+          "paused": "Paused",
+          "completed": "Completed",
+          "cancelled": "Cancelled"
+        },
+        "columns": {
+          "checklist": "Checklist",
+          "learner": "Employee",
+          "observer": "Observer",
+          "scheduledAt": "Date",
+          "status": "Status",
+          "result": "Result",
+          "actions": "Actions"
+        },
+        "wizard": {
+          "title": "New session",
+          "steps": {
+            "participants": "Participants",
+            "checklist": "Checklist",
+            "schedule": "Time and place",
+            "confirm": "Confirm"
+          },
+          "cancel": "Cancel",
+          "back": "Back",
+          "next": "Next",
+          "create": "Create",
+          "close": "Close",
+          "observerLabel": "Observer",
+          "observerSearch": "Find observer",
+          "learnersLabel": "Employees",
+          "learnerSearch": "Find employee",
+          "learnersSelected": "{{count}} of {{max}} selected",
+          "checklistLabel": "Checklist",
+          "startNow": "Start now",
+          "scheduleLater": "Schedule for later",
+          "scheduledAt": "Date and time",
+          "timezone": "Timezone: {{timezone}}",
+          "locationPolicy": "Location capture",
+          "locationOff": "Off",
+          "locationOptional": "Optional",
+          "locationRequired": "Required",
+          "whenLabel": "When",
+          "doneTitle": "Sessions created",
+          "doneSummary": "{{created}} created, {{skipped}} skipped, {{failed}} failed.",
+          "submitError": "Unable to create sessions."
+        }
       }
     }
   },

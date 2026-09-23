@@ -718,10 +718,13 @@ type WizardDialogProps = {
   backLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** Disables the Next/submit button so an invalid step visibly blocks progress instead of
+   *  silently no-op'ing when onNext returns false. */
+  nextDisabled?: boolean;
   children: ReactNode;
 };
 
-export function WizardDialog({ open, title, steps, currentStep, onClose, onBack, onNext, nextLabel = 'Next', backLabel = 'Back', cancelLabel = 'Cancel', busy, children }: WizardDialogProps) {
+export function WizardDialog({ open, title, steps, currentStep, onClose, onBack, onNext, nextLabel = 'Next', backLabel = 'Back', cancelLabel = 'Cancel', busy, nextDisabled, children }: WizardDialogProps) {
   const titleId = useId();
   const bodyId = useId();
   const firstFieldRef = useRef<HTMLDivElement>(null);
@@ -741,7 +744,7 @@ export function WizardDialog({ open, title, steps, currentStep, onClose, onBack,
       <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={isFirstStep ? onClose : onBack} type="button">
         {isFirstStep ? cancelLabel : backLabel}
       </button>
-      <Button aria-busy={busy || undefined} disabled={busy} onClick={onNext} variant="primary">
+      <Button aria-busy={busy || undefined} disabled={busy || nextDisabled} onClick={onNext} variant="primary">
         {nextLabel}
       </Button>
     </div>

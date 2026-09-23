@@ -997,6 +997,73 @@
         "3": "良好",
         "4": "很好",
         "5": "优秀"
+      },
+      "tabsLabel": "检查清单栏目",
+      "sessions": {
+        "title": "会话",
+        "subtitle": "安排并跟踪现场培训检查清单会话。",
+        "loadError": "无法加载会话。",
+        "loading": "正在加载会话...",
+        "create": "新建会话",
+        "searchPlaceholder": "查找会话",
+        "statusFilter": "状态",
+        "empty": "没有符合筛选条件的会话。",
+        "paginationLabel": "会话分页",
+        "cancel": "取消",
+        "cancelTitle": "取消会话",
+        "cancelConfirm": "取消此会话？此操作无法撤销。",
+        "cancelError": "无法取消会话。",
+        "repeat": "重复",
+        "repeatError": "无法重复此会话。",
+        "overdue": "已逾期",
+        "status": {
+          "scheduled": "已安排",
+          "in_progress": "进行中",
+          "paused": "已暂停",
+          "completed": "已完成",
+          "cancelled": "已取消"
+        },
+        "columns": {
+          "checklist": "检查清单",
+          "learner": "员工",
+          "observer": "观察员",
+          "scheduledAt": "日期",
+          "status": "状态",
+          "result": "结果",
+          "actions": "操作"
+        },
+        "wizard": {
+          "title": "新建会话",
+          "steps": {
+            "participants": "参与者",
+            "checklist": "检查清单",
+            "schedule": "时间与地点",
+            "confirm": "确认"
+          },
+          "cancel": "取消",
+          "back": "上一步",
+          "next": "下一步",
+          "create": "创建",
+          "close": "关闭",
+          "observerLabel": "观察员",
+          "observerSearch": "查找观察员",
+          "learnersLabel": "员工",
+          "learnerSearch": "查找员工",
+          "learnersSelected": "已选择 {{count}} / {{max}}",
+          "checklistLabel": "检查清单",
+          "startNow": "立即开始",
+          "scheduleLater": "稍后安排",
+          "scheduledAt": "日期和时间",
+          "timezone": "时区：{{timezone}}",
+          "locationPolicy": "位置采集",
+          "locationOff": "关闭",
+          "locationOptional": "可选",
+          "locationRequired": "必需",
+          "whenLabel": "时间",
+          "doneTitle": "会话已创建",
+          "doneSummary": "已创建 {{created}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
+          "submitError": "无法创建会话。"
+        }
       }
     }
   },
