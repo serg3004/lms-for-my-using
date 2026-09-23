@@ -26,7 +26,7 @@ vi.mock('../shared/api/checklists.js', async () => {
   return { ...actual, getChecklistInstance: checklistsApiMocks.getChecklistInstance };
 });
 
-import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, fetchConductData, formatElapsed, isSafeImagePreviewUrl, runMutation } from './ChecklistSessionConduct.js';
+import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, fetchConductData, formatElapsed, runMutation } from './ChecklistSessionConduct.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary } from '../shared/api/types.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -189,19 +189,6 @@ describe('runMutation', () => {
     const h = handlers();
     await runMutation(async () => { throw new Error('boom'); }, h);
     expect(h.setError).toHaveBeenLastCalledWith('fallback');
-  });
-});
-
-describe('isSafeImagePreviewUrl', () => {
-  it('accepts a blob URL', () => {
-    expect(isSafeImagePreviewUrl('blob:https://example.invalid/uuid')).toBe(true);
-  });
-
-  it('rejects https, javascript:, data:, and unparseable values', () => {
-    expect(isSafeImagePreviewUrl('https://example.invalid/photo.jpg?sig=abc')).toBe(false);
-    expect(isSafeImagePreviewUrl('javascript:alert(1)')).toBe(false);
-    expect(isSafeImagePreviewUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
-    expect(isSafeImagePreviewUrl('not a url')).toBe(false);
   });
 });
 

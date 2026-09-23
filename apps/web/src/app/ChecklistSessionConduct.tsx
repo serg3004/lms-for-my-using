@@ -74,15 +74,6 @@ export async function captureLocationBestEffort(sessionId: string, point: 'start
  * session/instance is stale, so it's routed to `onConflict` instead of the generic error message,
  * regardless of which specific call raised it.
  */
-/** Only a `blob:` URL may be rendered as a photo preview `<img src>` -- rejects any other scheme
- * (notably `javascript:`/`data:`) rather than trusting a URL structurally just because it came
- * from `URL.createObjectURL`. Inlined as a direct `.startsWith()` check at the call site (not a
- * cross-function helper call) so static analysis of the guard can see it applies to the exact
- * value reaching the sink. */
-export function isSafeImagePreviewUrl(url: string): boolean {
-  return url.startsWith('blob:');
-}
-
 export async function runMutation(
   fn: () => Promise<unknown>,
   handlers: { setBusy: (busy: boolean) => void; setError: (message: string | null) => void; onConflict: () => void; fallbackMessage: string },
@@ -596,28 +587,22 @@ function PhotoAttachment({
   t: TFunction;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
-  // Unlike ChecklistReviewPhotoEvidence.tsx (the async post-submission review queue), this screen
-  // deliberately never fetches the already-uploaded photo back down to render a thumbnail: doing
-  // so means assigning a network-response-derived URL to `<img src>`, which CodeQL's XSS query
-  // keeps flagging regardless of how that value is re-derived (a signed-URL protocol allowlist and
-  // a re-exposed `URL.createObjectURL()` blob both still tripped it) -- so the only `<img src>`
-  // this component ever uses is a `blob:` URL created directly from the *locally selected* File
-  // object below, which never touches network response data at all. An already-attached photo
-  // with no local selection just shows a checkmark; "Replace" still works normally.
+  // Deliberately never renders an `<img>` thumbnail (neither the already-uploaded photo fetched
+  // back from the API nor a local-file blob: preview): every value this component could put into
+  // an `<img src>` -- a signed URL fetched from our API, and even a same-origin blob: URL created
+  // via URL.createObjectURL() and gated on an explicit protocol check -- still tripped CodeQL's
+  // XSS query in this file regardless of how it was re-derived or sanitized. A checkmark/progress
+  // indicator conveys the same information (nothing attached / uploading / attached) without ever
+  // binding a DOM sink to a non-literal value. ChecklistReviewPhotoEvidence.tsx (the async
+  // post-submission review queue) still renders the real photo for review.
   const attached = Boolean(result?.photoFileName);
-
-  useEffect(() => () => {
-    if (localPreview) URL.revokeObjectURL(localPreview);
-  }, [localPreview]);
 
   async function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setLocalPreview(URL.createObjectURL(file));
     setProgress(0);
     try {
       await uploadChecklistItemPhotoWithProgress(instanceId, item.id, file, setProgress);
@@ -627,39 +612,23 @@ function PhotoAttachment({
       else onError(err instanceof ApiClientError ? err.message : t('checklists.photoUploadError', 'Unable to attach this photo.'));
     } finally {
       setProgress(null);
-      setLocalPreview((current) => {
-        if (current) URL.revokeObjectURL(current);
-        return null;
-      });
     }
   }
 
   const canAct = editable && !busy && progress === null;
-  // `localPreview` is always a browser-generated `blob:` URL from a locally selected file, never a
-  // value derived from a network response -- still gated on an explicit protocol allowlist rather
-  // than trusted structurally (CodeQL js/xss).
-  const displayUrl = localPreview && localPreview.startsWith('blob:') ? localPreview : null;
 
   return (
     <div style={{ marginTop: 12 }}>
       <input ref={inputRef} type="file" accept="image/*" onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {displayUrl ? (
-          <img
-            src={displayUrl}
-            alt=""
-            style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: `1px solid ${COLORS.border}`, flexShrink: 0 }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 44, height: 44, borderRadius: 10, background: COLORS.soft, color: COLORS.muted,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}
-          >
-            {attached ? '✓' : '+'}
-          </div>
-        )}
+        <div
+          style={{
+            width: 44, height: 44, borderRadius: 10, background: COLORS.soft, color: COLORS.muted,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}
+        >
+          {attached ? '✓' : '+'}
+        </div>
         <Button type="button" size="sm" variant="secondary" disabled={!canAct} onClick={() => inputRef.current?.click()} style={{ minHeight: 44 }}>
           {progress !== null
             ? t('checklistSessions.conduct.photoUploading', 'Uploading... {{progress}}%', { progress })
