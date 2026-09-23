@@ -74,17 +74,13 @@ export async function captureLocationBestEffort(sessionId: string, point: 'start
  * session/instance is stale, so it's routed to `onConflict` instead of the generic error message,
  * regardless of which specific call raised it.
  */
-const SAFE_IMAGE_PREVIEW_PROTOCOLS = new Set(['https:', 'blob:']);
-
-/** Only `https:`/`blob:` URLs may be rendered as a photo preview `<img src>` -- rejects any other
- * scheme (notably `javascript:`/`data:`) rather than trusting a URL structurally just because it
- * came from our own API response or `URL.createObjectURL`. */
+/** Only a `blob:` URL may be rendered as a photo preview `<img src>` -- rejects any other scheme
+ * (notably `javascript:`/`data:`) rather than trusting a URL structurally just because it came
+ * from `URL.createObjectURL`. Inlined as a direct `.startsWith()` check at the call site (not a
+ * cross-function helper call) so static analysis of the guard can see it applies to the exact
+ * value reaching the sink. */
 export function isSafeImagePreviewUrl(url: string): boolean {
-  try {
-    return SAFE_IMAGE_PREVIEW_PROTOCOLS.has(new URL(url).protocol);
-  } catch {
-    return false;
-  }
+  return url.startsWith('blob:');
 }
 
 export async function runMutation(
@@ -642,7 +638,7 @@ function PhotoAttachment({
   // `localPreview` is always a browser-generated `blob:` URL from a locally selected file, never a
   // value derived from a network response -- still gated on an explicit protocol allowlist rather
   // than trusted structurally (CodeQL js/xss).
-  const displayUrl = localPreview && isSafeImagePreviewUrl(localPreview) ? localPreview : null;
+  const displayUrl = localPreview && localPreview.startsWith('blob:') ? localPreview : null;
 
   return (
     <div style={{ marginTop: 12 }}>

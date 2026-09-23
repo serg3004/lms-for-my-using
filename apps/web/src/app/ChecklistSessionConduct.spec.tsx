@@ -193,12 +193,12 @@ describe('runMutation', () => {
 });
 
 describe('isSafeImagePreviewUrl', () => {
-  it('accepts https and blob URLs', () => {
-    expect(isSafeImagePreviewUrl('https://example.invalid/photo.jpg?sig=abc')).toBe(true);
+  it('accepts a blob URL', () => {
     expect(isSafeImagePreviewUrl('blob:https://example.invalid/uuid')).toBe(true);
   });
 
-  it('rejects javascript:, data:, and unparseable values', () => {
+  it('rejects https, javascript:, data:, and unparseable values', () => {
+    expect(isSafeImagePreviewUrl('https://example.invalid/photo.jpg?sig=abc')).toBe(false);
     expect(isSafeImagePreviewUrl('javascript:alert(1)')).toBe(false);
     expect(isSafeImagePreviewUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
     expect(isSafeImagePreviewUrl('not a url')).toBe(false);
