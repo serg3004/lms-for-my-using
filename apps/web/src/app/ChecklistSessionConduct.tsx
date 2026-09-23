@@ -611,15 +611,24 @@ function PhotoAttachment({
       return;
     }
     let cancelled = false;
+    let objectUrl: string | null = null;
+    // Fetched ourselves and re-exposed as a `blob:` URL rather than assigning the signed URL
+    // string straight to `<img src>` -- the signed URL never reaches the DOM this way, which is
+    // also what keeps a locally selected file's preview (below) inherently safe.
     getChecklistItemPhotoUrl(instanceId, item.id)
-      .then((response) => {
-        if (!cancelled) setPreviewUrl(response.url);
+      .then((response) => fetch(response.url))
+      .then((res) => res.blob())
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
       })
       .catch(() => {
         if (!cancelled) setPreviewUrl(null);
       });
     return () => {
       cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [attached, instanceId, item.id, result?.photoFileName]);
 
