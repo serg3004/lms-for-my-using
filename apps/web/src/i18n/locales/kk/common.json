@@ -997,6 +997,73 @@
         "3": "Жақсы",
         "4": "Өте жақсы",
         "5": "Өте жақсы нәтиже"
+      },
+      "tabsLabel": "Чек-парақ бөлімдері",
+      "sessions": {
+        "title": "Сессиялар",
+        "subtitle": "Жұмыс орнындағы оқыту чек-парақ сессияларын жоспарлау және бақылау.",
+        "loadError": "Сессияларды жүктеу мүмкін болмады.",
+        "loading": "Сессиялар жүктелуде...",
+        "create": "Жаңа сессия",
+        "searchPlaceholder": "Сессияны табу",
+        "statusFilter": "Мәртебе",
+        "empty": "Осы сүзгілерге сай сессия жоқ.",
+        "paginationLabel": "Сессия беттері",
+        "cancel": "Бас тарту",
+        "cancelTitle": "Сессияны бас тарту",
+        "cancelConfirm": "Бұл сессияны бас тартасыз ба? Бұл әрекетті қайтару мүмкін емес.",
+        "cancelError": "Сессияны бас тарту мүмкін болмады.",
+        "repeat": "Қайталау",
+        "repeatError": "Сессияны қайталау мүмкін болмады.",
+        "overdue": "Мерзімі өткен",
+        "status": {
+          "scheduled": "Жоспарланған",
+          "in_progress": "Орындалуда",
+          "paused": "Кідіртілген",
+          "completed": "Аяқталған",
+          "cancelled": "Бас тартылған"
+        },
+        "columns": {
+          "checklist": "Чек-парақ",
+          "learner": "Қызметкер",
+          "observer": "Бақылаушы",
+          "scheduledAt": "Күні",
+          "status": "Мәртебе",
+          "result": "Нәтиже",
+          "actions": "Әрекеттер"
+        },
+        "wizard": {
+          "title": "Жаңа сессия",
+          "steps": {
+            "participants": "Қатысушылар",
+            "checklist": "Чек-парақ",
+            "schedule": "Уақыты мен орны",
+            "confirm": "Растау"
+          },
+          "cancel": "Бас тарту",
+          "back": "Артқа",
+          "next": "Келесі",
+          "create": "Құру",
+          "close": "Жабу",
+          "observerLabel": "Бақылаушы",
+          "observerSearch": "Бақылаушыны табу",
+          "learnersLabel": "Қызметкерлер",
+          "learnerSearch": "Қызметкерді табу",
+          "learnersSelected": "{{max}} ішінен {{count}} таңдалды",
+          "checklistLabel": "Чек-парақ",
+          "startNow": "Қазір бастау",
+          "scheduleLater": "Кейінге жоспарлау",
+          "scheduledAt": "Күні мен уақыты",
+          "timezone": "Уақыт белдеуі: {{timezone}}",
+          "locationPolicy": "Геолокацияны түсіру",
+          "locationOff": "Өшірулі",
+          "locationOptional": "Міндетті емес",
+          "locationRequired": "Міндетті",
+          "whenLabel": "Уақыты",
+          "doneTitle": "Сессиялар құрылды",
+          "doneSummary": "{{created}} құрылды, {{skipped}} өткізіп жіберілді, {{failed}} сәтсіз аяқталды.",
+          "submitError": "Сессияларды құру мүмкін болмады."
+        }
       }
     }
   },

@@ -5,6 +5,7 @@ const AdminAssessmentBuilderPage = lazy(() => import('../AdminAssessmentBuilderP
 const AdminAssignmentCompletionPage = lazy(() => import('../AdminAssignmentCompletionPage.js').then((m) => ({ default: m.AdminAssignmentCompletionPage })));
 const AdminAuditLogPage = lazy(() => import('../AdminAuditLogPage.js').then((m) => ({ default: m.AdminAuditLogPage })));
 const AdminChecklistsPage = lazy(() => import('../AdminChecklistsPage.js').then((m) => ({ default: m.AdminChecklistsPage })));
+const AdminChecklistSessionsPage = lazy(() => import('../AdminChecklistSessionsPage.js').then((m) => ({ default: m.AdminChecklistSessionsPage })));
 const AdminCourseBuilderPage = lazy(() => import('../AdminCourseBuilderPage.js').then((m) => ({ default: m.AdminCourseBuilderPage })));
 const AdminCoursesPage = lazy(() => import('../AdminCoursesPage.js').then((m) => ({ default: m.AdminCoursesPage })));
 const AdminDashboardPage = lazy(() => import('../AdminDashboardPage.js').then((m) => ({ default: m.AdminDashboardPage })));
@@ -40,6 +41,7 @@ export function AdminRoutes() {
     <Route path="/admin/materials" element={<AdminMaterialsPage />} />
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />
     <Route path="/admin/checklists" element={<AdminChecklistsPage />} />
+    <Route path="/admin/checklists/sessions" element={<AdminChecklistSessionsPage />} />
     <Route path="/admin/assignments" element={<AdminAssignmentCompletionPage />} />
     <Route path="/admin/results" element={<AdminResultsCertificatesPage />} />
   </>;

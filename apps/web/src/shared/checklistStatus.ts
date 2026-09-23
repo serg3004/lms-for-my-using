@@ -1,4 +1,4 @@
-import type { ChecklistInstanceStatus } from './api/types.js';
+import type { ChecklistInstanceStatus, ChecklistSessionStatus } from './api/types.js';
 import type { BadgeVariant } from './ui.js';
 
 /**
@@ -17,4 +17,20 @@ export const CHECKLIST_INSTANCE_STATUS_BADGE_VARIANT: Record<ChecklistInstanceSt
   submitted: 'info',
   completed: 'success',
   expired: 'danger',
+};
+
+/**
+ * ChecklistSession lifecycle status -> Badge tone (PR 295), fixed in advance by
+ * ADR_CHECKLIST_SESSION_OVERLAY.md's "UI foundation" section so this PR doesn't invent the
+ * mapping ad hoc. Distinct record from the instance mapping above even though `in_progress`
+ * appears in both -- a session and its underlying instance can be in different states at once
+ * (session lifecycle is orthogonal to instance/submission lifecycle, see the ADR's state-machine
+ * section), so the two must never be collapsed into one shared lookup keyed only by string value.
+ */
+export const CHECKLIST_SESSION_STATUS_BADGE_VARIANT: Record<ChecklistSessionStatus, BadgeVariant> = {
+  scheduled: 'info',
+  in_progress: 'info',
+  paused: 'warning',
+  completed: 'success',
+  cancelled: 'danger',
 };

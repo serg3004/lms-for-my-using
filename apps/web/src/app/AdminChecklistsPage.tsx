@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageHeader, AdminPageLayout, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists } from '../features/admin-checklists/domain.js';
@@ -133,6 +133,7 @@ export function AdminChecklistsPage() {
           </Button>
         }
       />
+      <ChecklistsTabs current="checklists" />
       {statusError && (
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">
           <p>{statusError}</p>

@@ -2,7 +2,7 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from 'rea
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Avatar, Badge, Button, Card, ConfirmDialog, DataTable, InlineFeedback, Input, Menu, Pagination, ProgressBar, SearchInput, Select, SkipLink, Spinner, Textarea, Toast, Toolbar } from './ui';
+import { Avatar, Badge, Button, Card, ConfirmDialog, DataTable, Dialog, InlineFeedback, Input, Menu, Pagination, ProgressBar, SearchInput, Select, SkipLink, Spinner, Textarea, Toast, Toolbar, WizardDialog } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
 import { LearnerTopNav } from './learnerLayout';
 
@@ -76,6 +76,35 @@ describe('shared feedback and interactive primitives', () => {
     expect(html).toContain('<dialog');
     expect(html).toContain('aria-labelledby=');
     expect(html).toContain('aria-describedby=');
+  });
+
+  it('renders a generic Dialog shell with the ds-dialog class', () => {
+    const html = renderToStaticMarkup(
+      <Dialog labelledBy="dlg-title" onClose={vi.fn()} open={false}>
+        <h2 id="dlg-title">Custom dialog</h2>
+      </Dialog>,
+    );
+    expect(html).toContain('<dialog');
+    expect(html).toContain('ds-dialog');
+    expect(html).toContain('aria-labelledby="dlg-title"');
+  });
+
+  it('renders a WizardDialog with a numbered step tracker and Next/Cancel actions', () => {
+    const steps = [
+      { key: 'participants', label: 'Participants' },
+      { key: 'checklist', label: 'Checklist' },
+    ];
+    const html = renderToStaticMarkup(
+      <WizardDialog currentStep={0} onBack={vi.fn()} onClose={vi.fn()} onNext={vi.fn()} open={false} steps={steps} title="New session">
+        <p>Step content</p>
+      </WizardDialog>,
+    );
+    expect(html).toContain('<dialog');
+    expect(html).toContain('ds-wizard-dialog');
+    expect(html).toContain('aria-current="step"');
+    expect(html).toContain('Participants');
+    expect(html).toContain('Checklist');
+    expect(html).toContain('Step content');
   });
 
   it('exposes menu state and ownership on the trigger', () => {

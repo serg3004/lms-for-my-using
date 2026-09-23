@@ -1712,6 +1712,15 @@
 .ds-dialog::backdrop { background: rgb(23 32 51 / 55%); }
 .ds-dialog h2 { margin: 0 0 12px; }
 .ds-dialog__actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.ds-wizard-dialog { width: min(640px, calc(100vw - 32px)); }
+.ds-wizard-dialog__steps { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 20px; padding: 0; list-style: none; }
+.ds-wizard-dialog__step { color: var(--color-text-muted); font-size: 0.875rem; }
+.ds-wizard-dialog__step--active { color: var(--color-text); font-weight: 600; }
+.ds-wizard-dialog__step--done { color: var(--color-success); }
+.ds-wizard-dialog__picklist { max-height: 220px; margin: 8px 0 20px; padding: 0; overflow-y: auto; list-style: none; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.ds-wizard-dialog__picklist li { border-bottom: 1px solid var(--color-border); }
+.ds-wizard-dialog__picklist li:last-child { border-bottom: none; }
+.ds-wizard-dialog__picklist label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; cursor: pointer; }
 .ds-menu { position: relative; display: inline-block; }
 .ds-menu__content { position: absolute; z-index: 100; top: calc(100% + 6px); min-width: 180px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 4px; background: var(--color-surface); box-shadow: var(--shadow-card); transform-origin: top; animation: ds-popover-enter var(--motion-duration-fast) var(--motion-ease-productive); }
 .ds-menu__content--start { left: 0; }
