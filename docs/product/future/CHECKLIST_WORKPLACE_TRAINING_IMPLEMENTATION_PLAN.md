@@ -1,7 +1,7 @@
 # План реализации: Чек-лист — обучение на рабочем месте
 
 **Основание:** прототип `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (лежит в этой же папке) и проверенные контракты репозитория.
-**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. PR 287 (object-level authorization) частично: существующие checklist review/analytics эндпоинты переведены на `OrganizationAccessScopeService`, а `ChecklistSession` policy-функция определена и unit-протестирована, но её enforcement подтверждается только по мере появления реальной модели/эндпоинтов в PR 288–292. PR 288 (Prisma domain model для `ChecklistSession`) реализован. Следующий шаг — PR 289 (session lifecycle), который зависит от PR 288 и первым реально начнёт вызывать `sessionScope()`.
+**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. PR 287 (object-level authorization) частично: существующие checklist review/analytics эндпоинты переведены на `OrganizationAccessScopeService`, а `ChecklistSession` policy-функция (`sessionScope()`) определена и unit-протестирована. PR 288 (Prisma domain model для `ChecklistSession`) реализован. PR 289 (session lifecycle) реализован: `ChecklistSessionService` (`apps/api/src/modules/checklists/checklist-session.service.ts`) — серверная state machine (`scheduled -> in_progress -> paused -> in_progress -> completed`, плюс `scheduled -> cancelled`), optimistic-concurrency переходы через `version` (409 на stale write, отдельно от 400 на invalid transition), Serializable-транзакции с retry (`runSerializableWithRetry`, переиспользован из `departments/public.ts`, не скопирован), append-only `ChecklistSessionEvent`, запрет смены участников после старта. `sessionScope()` (PR 287) теперь реально вызывается из production-кода — маршруты `/checklist-sessions*` (`checklistSessionsRead`/`checklistSessionsManage`/`checklistSessionsRun` в `roles.ts`) — это закрывает предыдущую оговорку про "enforcement подтверждается только по мере появления реальных эндпоинтов". Следующий шаг — PR 290 (Criteria/Skip/scoring v1/фото/геолокация), который зависит от PR 289.
 **Цель:** это **не новый модуль**. Это расширение существующего модуля `Checklist` (`apps/api/src/modules/checklists/`, frontend `AdminChecklistsPage` и nav-item `admin.nav.checklists`) новым режимом «сессия наблюдения на рабочем месте» — со своим backend-контрактом и полным production UI, а не только backend.
 
 ## 0. Модуль и границы — обязательно к соблюдению
@@ -195,10 +195,10 @@ parent-scope (admin — весь tenant, manager — effective organization scop
 Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, плюс `scheduled -> cancelled`. `result_fixed` не хранить как session status: зафиксированный результат определяется revision/result state на `ChecklistInstance`.
 
 **Критерии готовности:**
-- [ ] invalid transitions отклоняются;
-- [ ] terminal actions race-safe;
-- [ ] lifecycle events сохраняются;
-- [ ] state machine покрыта unit tests.
+- [x] invalid transitions отклоняются — `ChecklistSessionService.transition()` проверяет текущий `status` против допустимого `from` списка *до* проверки версии и возвращает 400 (`BadRequestException`), отдельно от 409 stale-write;
+- [x] terminal actions race-safe — `checklist-session-lifecycle.database.spec.ts` (реальный Postgres) гоняет две одновременные конкурирующие транзакции на одну сессию (`start`/`start` и `pause`/`complete`) через `runSerializableWithRetry`, подтверждает, что выигрывает ровно одна и ровно одно lifecycle-событие записывается;
+- [x] lifecycle events сохраняются — каждый transition/create/reschedule пишет `ChecklistSessionEvent` в той же транзакции, что и мутацию (проверено и unit-тестом, и database-тестом на полном цикле `created -> started -> paused -> resumed -> completed`);
+- [x] state machine покрыта unit tests — `checklist-session.service.spec.ts` (15 тестов, mocked Prisma): все переходы, invalid-transition, stale-version, потерянная гонка на `updateMany`, scope-based 404, reschedule/observer_reassigned.
 
 ## PR 290 — Criteria, Skip, scoring v1, фото, геолокация
 

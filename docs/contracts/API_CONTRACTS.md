@@ -118,6 +118,48 @@ explicit `null` to clear a previously-set value. A request setting both `critica
 `lowThreshold` is rejected (422) if `criticalThreshold < lowThreshold`. This endpoint currently only
 stores and returns settings -- no session/instance endpoint in the same plan enforces them yet.
 
+## Checklist sessions (workplace-training lifecycle)
+
+`ChecklistSession` (PR 288/289) is a 1:1 overlay over an existing `ChecklistInstance`
+(`docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`), not a new top-level entity -- it never
+duplicates score or snapshot fields already owned by the instance. Observer is the existing
+`instructor` role, never `manager`.
+
+Endpoints: `POST /checklist-sessions` (create), `GET /checklist-sessions` (list, paginated, filters
+by `status`/`observerId`/`overdueOnly`), `GET /checklist-sessions/:id`, `GET
+/checklist-sessions/:id/events` (append-only lifecycle audit trail), `PATCH /checklist-sessions/:id`
+(reschedule), and one POST-action route per transition: `:id/start`, `:id/pause`, `:id/resume`,
+`:id/complete`, `:id/cancel`.
+
+State machine: `scheduled -> in_progress -> paused -> in_progress -> completed`, plus
+`scheduled -> cancelled`. `complete` is reachable only from `in_progress`, never directly from
+`paused`. Every transition and `create`/`reschedule` appends a `ChecklistSessionEvent` row in the
+same database transaction as the mutation -- never a best-effort side write.
+
+`PATCH` (reschedule) and observer reassignment are only accepted while `status === 'scheduled'`;
+once a session starts, its participants are fixed for the rest of its lifecycle. Creating a session
+validates the observer holds the `instructor` role and that the target instance does not already
+have one (`instanceId` is unique -- a second `POST` for the same instance is a 409).
+
+Every mutating call (`PATCH` and every transition route) requires the caller's current `version` in
+the request body. A `version` that no longer matches the row is a 409 (someone else already
+transitioned or rescheduled it -- reload and retry); a structurally invalid transition for the
+session's *current* status (e.g. `complete` on a `scheduled` session) is a 400, a distinct failure
+class from the stale-write 409. Terminal transitions run inside a Postgres `Serializable`
+transaction with bounded retry on serialization failure
+(`runSerializableWithRetry`, `apps/api/src/modules/departments/org-structure-event.ts`, reused
+rather than duplicated), so two concurrent requests racing on the same session can never both win.
+
+Access is scoped through `ChecklistReviewAccessService.sessionScope()`: tenant-wide for admin, the
+manager's effective team for manager, the assigned session only for instructor (the observer), and
+the learner's own instance only for learner; a manager who also holds `instructor` gets the union of
+both. `RBAC`: `checklistSessionsRead` (admin/manager/instructor/learner) covers every read route;
+`checklistSessionsManage` (admin/manager) covers create/reschedule/cancel; `checklistSessionsRun`
+(admin/instructor) covers start/pause/resume/complete.
+
+`overdue` is a derived, not stored, boolean: true only while `status === 'scheduled'` and
+`scheduledAt` has passed. It is not persisted and carries no separate lifecycle status of its own.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

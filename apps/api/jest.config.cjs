@@ -9,6 +9,7 @@ module.exports = {
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-domain\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-session-lifecycle\\.database\\.spec\\.ts$',
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
     '/src/integration/reports-summary\\.database\\.spec\\.ts$',
     '/src/integration/org-structure-foundation\\.database\\.spec\\.ts$',

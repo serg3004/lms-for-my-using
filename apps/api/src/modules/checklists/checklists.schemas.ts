@@ -136,3 +136,44 @@ export const updateChecklistWorkplaceSettingsSchema = z
     { message: 'criticalThreshold must be greater than or equal to lowThreshold', path: ['criticalThreshold'] },
   );
 export type UpdateChecklistWorkplaceSettingsInput = z.infer<typeof updateChecklistWorkplaceSettingsSchema>;
+
+// ---- Sessions (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md, PR 289 lifecycle) ----
+
+export const checklistSessionStatusSchema = z.enum(['scheduled', 'in_progress', 'paused', 'completed', 'cancelled']);
+
+export const createChecklistSessionSchema = z
+  .object({
+    instanceId: z.string().uuid(),
+    observerId: z.string().uuid(),
+    scheduledAt: z.string().datetime().nullable().optional(),
+    locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
+    timezone: z.string().trim().min(1).max(64).optional(),
+  })
+  .strict();
+export type CreateChecklistSessionInput = z.infer<typeof createChecklistSessionSchema>;
+
+// Allowed only while the session is still `scheduled` — enforces "no participant changes after start".
+export const updateChecklistSessionSchema = z
+  .object({
+    observerId: z.string().uuid().optional(),
+    scheduledAt: z.string().datetime().nullable().optional(),
+    locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
+    timezone: z.string().trim().min(1).max(64).optional(),
+    version: z.number().int().min(1),
+  })
+  .strict();
+export type UpdateChecklistSessionInput = z.infer<typeof updateChecklistSessionSchema>;
+
+// `version` is the client's expected current version — a mismatch means someone else already
+// transitioned this session and the caller must reload before retrying (409).
+export const checklistSessionTransitionSchema = z.object({ version: z.number().int().min(1) }).strict();
+export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTransitionSchema>;
+
+export const checklistSessionQuerySchema = z.object({
+  status: checklistSessionStatusSchema.optional(),
+  observerId: z.string().uuid().optional(),
+  overdueOnly: z.enum(['true', 'false']).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type ChecklistSessionQuery = z.infer<typeof checklistSessionQuerySchema>;

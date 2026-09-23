@@ -7,6 +7,8 @@ import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePo
 import { RolesGuard } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import { ChecklistSessionService } from './checklist-session.service.js';
+import type { ChecklistSessionAction } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
@@ -15,10 +17,14 @@ import {
   bulkAssignChecklistSchema,
   createChecklistItemSchema,
   createChecklistSchema,
+  createChecklistSessionSchema,
+  checklistSessionQuerySchema,
+  checklistSessionTransitionSchema,
   reviewChecklistItemResultSchema,
   submitChecklistItemResultSchema,
   updateChecklistItemSchema,
   updateChecklistSchema,
+  updateChecklistSessionSchema,
   updateChecklistWorkplaceSettingsSchema,
   checklistAnalyticsQuerySchema,
   checklistQueueQuerySchema,
@@ -33,6 +39,7 @@ export class ChecklistsController {
     private readonly uploadService: UploadService,
     private readonly reviewAccess: ChecklistReviewAccessService,
     private readonly workplaceSettings: ChecklistWorkplaceSettingsService,
+    private readonly sessions: ChecklistSessionService,
   ) {}
 
   // ---- Workplace-training settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
@@ -280,5 +287,81 @@ export class ChecklistsController {
     const user = request.currentUser!;
     await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     return this.checklistsService.reviewItemResult(instanceId, itemId, user.organizationId, user.id, input);
+  }
+
+  // ---- Sessions (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md, PR 289 lifecycle) ----
+  @Post('checklist-sessions')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  createSession(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = createChecklistSessionSchema.parse(body);
+    const user = request.currentUser!;
+    return this.sessions.create(user.organizationId, input, user.id);
+  }
+  @Get('checklist-sessions')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async listSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const query = checklistSessionQuerySchema.parse(rawQuery);
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.list(user.organizationId, query, scope);
+  }
+  @Get('checklist-sessions/:id')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async getSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.get(sessionId, user.organizationId, scope);
+  }
+  @Get('checklist-sessions/:id/events')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async listSessionEvents(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.listEvents(sessionId, user.organizationId, scope);
+  }
+  @Patch('checklist-sessions/:id')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async updateSession(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateChecklistSessionSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.update(sessionId, user.organizationId, input, user.id, scope);
+  }
+  @Post('checklist-sessions/:id/start')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  transitionStart(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.transitionSession('start', sessionId, body, request);
+  }
+  @Post('checklist-sessions/:id/pause')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  transitionPause(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.transitionSession('pause', sessionId, body, request);
+  }
+  @Post('checklist-sessions/:id/resume')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  transitionResume(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.transitionSession('resume', sessionId, body, request);
+  }
+  @Post('checklist-sessions/:id/complete')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  transitionComplete(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.transitionSession('complete', sessionId, body, request);
+  }
+  @Post('checklist-sessions/:id/cancel')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  transitionCancel(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.transitionSession('cancel', sessionId, body, request);
+  }
+
+  private async transitionSession(
+    action: ChecklistSessionAction,
+    sessionId: string,
+    body: unknown,
+    request: AuthenticatedRequest,
+  ) {
+    const { version } = checklistSessionTransitionSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope);
   }
 }
