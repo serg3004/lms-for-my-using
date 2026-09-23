@@ -13,6 +13,7 @@ import {
   CreateChecklistItemInput,
   ReviewChecklistItemResultInput,
   ScaleLevel,
+  SkipChecklistItemInput,
   SubmitChecklistItemResultInput,
   UpdateChecklistInput,
   UpdateChecklistItemInput,
@@ -54,6 +55,9 @@ const checklistWithItemsSelect = {
       points: true,
       isRequired: true,
       photoRequired: true,
+      weight: true,
+      allowSkip: true,
+      autoSkipUnanswered: true,
     },
   },
 } as const;
@@ -72,6 +76,7 @@ const instanceSelect = {
   maxScore: true,
   percentage: true,
   passed: true,
+  scored: true,
   dueAt: true,
   submittedAt: true,
   completedAt: true,
@@ -92,6 +97,7 @@ const instanceWithResultsSelect = {
       photoUrl: true,
       photoFileName: true,
       comment: true,
+      answerState: true,
       reviewStatus: true,
       reviewComment: true,
       reviewedBy: true,
@@ -106,14 +112,16 @@ const instanceWithSnapshotSelect = {
   snapshotVersion: true,
 } as const;
 
-type ScoringItem = { id: string; points: number; isRequired: boolean };
-type CompletionItem = { id: string; isRequired: boolean; photoRequired: boolean };
+type ScoringItem = { id: string; points: number; isRequired: boolean; weight?: number };
+type CompletionItem = { id: string; isRequired: boolean; photoRequired: boolean; autoSkipUnanswered?: boolean };
 type CompletionResult = {
   itemId: string;
   checked: boolean;
   scaleLevel: number | null;
+  points?: number;
   photoObjectKey: string | null;
   reviewStatus: string;
+  answerState?: string;
 };
 type ChecklistSnapshotItem = {
   id: string;
@@ -123,6 +131,11 @@ type ChecklistSnapshotItem = {
   points: number;
   isRequired: boolean;
   photoRequired: boolean;
+  // Optional: snapshots taken before PR 290 don't have these — every reader falls back to the
+  // pre-PR-290 defaults (weight 1, not skippable) rather than throwing on old in-flight instances.
+  weight?: number;
+  allowSkip?: boolean;
+  autoSkipUnanswered?: boolean;
 };
 type ChecklistRuntime = {
   id: string;
@@ -324,11 +337,17 @@ export class ChecklistsService {
   async updateItem(itemId: string, organizationId: string, input: UpdateChecklistItemInput) {
     const item = await this.prisma.checklistItem.findFirst({
       where: { id: itemId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, allowSkip: true, autoSkipUnanswered: true },
     });
 
     if (!item) {
       throw new NotFoundException('Checklist item not found');
+    }
+
+    const allowSkip = input.allowSkip ?? item.allowSkip;
+    const autoSkipUnanswered = input.autoSkipUnanswered ?? item.autoSkipUnanswered;
+    if (autoSkipUnanswered && !allowSkip) {
+      throw new BadRequestException('autoSkipUnanswered requires allowSkip to also be true');
     }
 
     return this.prisma.checklistItem.update({ where: { id: itemId, organizationId }, data: input });
@@ -392,6 +411,9 @@ export class ChecklistsService {
         points: true,
         isRequired: true,
         photoRequired: true,
+        weight: true,
+        allowSkip: true,
+        autoSkipUnanswered: true,
       },
     });
     const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
@@ -501,7 +523,7 @@ export class ChecklistsService {
 
     const items = await this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null }, orderBy: { order: 'asc' },
-      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true },
+      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true },
     });
     const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist) as unknown as Prisma.InputJsonValue;
@@ -709,6 +731,7 @@ export class ChecklistsService {
         points,
         photoUrl: input.photoUrl,
         comment: input.comment,
+        answerState: 'answered',
       },
       update: {
         checked: input.checked ?? false,
@@ -716,11 +739,94 @@ export class ChecklistsService {
         points,
         photoUrl: input.photoUrl,
         comment: input.comment,
+        // Answering an item that was previously skipped (explicitly or auto-skipped) un-skips it.
+        answerState: 'answered',
         reviewStatus: 'pending',
         reviewedBy: null,
         reviewedAt: null,
       },
     });
+
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.recordMutationEvents(organizationId, instanceId, requesterId, itemId, 'item_answered', instance.status, updated.status);
+    return updated;
+  }
+
+  async skipItem(
+    instanceId: string,
+    itemId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+    input: SkipChecklistItemInput,
+  ) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        dueAt: true,
+        checklistId: true,
+        templateSnapshot: true,
+        snapshotVersion: true,
+      },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, new Date());
+
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    const item = checklist.items.find((candidate) => candidate.id === itemId);
+
+    if (!item) {
+      throw new NotFoundException('Checklist item not found');
+    }
+
+    if (!(item.allowSkip ?? false)) {
+      throw new BadRequestException('This checklist item cannot be skipped');
+    }
+
+    const existing = await this.prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      select: { photoObjectKey: true },
+    });
+
+    await this.prisma.checklistItemResult.upsert({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      create: {
+        organizationId,
+        instanceId,
+        itemId,
+        checked: false,
+        scaleLevel: null,
+        points: 0,
+        comment: input.comment,
+        answerState: 'skipped',
+      },
+      update: {
+        checked: false,
+        scaleLevel: null,
+        points: 0,
+        photoUrl: null,
+        photoObjectKey: null,
+        photoFileName: null,
+        photoMimeType: null,
+        photoSizeBytes: null,
+        comment: input.comment,
+        answerState: 'skipped',
+        reviewStatus: 'pending',
+        reviewedBy: null,
+        reviewedAt: null,
+      },
+    });
+
+    if (existing?.photoObjectKey) {
+      await this.uploadService.deleteObject(existing.photoObjectKey).catch(() => undefined);
+    }
 
     const updated = await this.recomputeInstance(instanceId, organizationId);
     await this.recordMutationEvents(organizationId, instanceId, requesterId, itemId, 'item_answered', instance.status, updated.status);
@@ -1037,6 +1143,9 @@ export class ChecklistsService {
           points: true,
           isRequired: true,
           photoRequired: true,
+          weight: true,
+          allowSkip: true,
+          autoSkipUnanswered: true,
         },
       }),
     ]);
@@ -1064,6 +1173,7 @@ export class ChecklistsService {
       maxScore: instance.maxScore,
       percentage: instance.percentage,
       passed: instance.passed,
+      scored: instance.scored,
       dueAt: instance.dueAt,
       submittedAt: instance.submittedAt,
       completedAt: instance.completedAt,
@@ -1098,18 +1208,24 @@ export class ChecklistsService {
     return input.checked ? itemPoints : 0;
   }
 
+  // Assignment-time estimate only (used before any ChecklistItemResult exists, to seed the
+  // instance's initial maxScore) -- assumes nothing skipped, since skip is a per-result state.
+  // recomputeInstance() supersedes this with computeAggregateScore() as soon as any result exists.
   private computeMaxScore(items: ScoringItem[], scoring: { scoringMode: string; scaleLevels: unknown }) {
-    if (scoring.scoringMode === 'scale') {
-      const levels = (scoring.scaleLevels as ScaleLevel[] | null) ?? [];
-      const topPoints = levels.reduce((max, level) => Math.max(max, level.points), 0);
-      return items.length * topPoints;
+    return items.reduce((sum, item) => sum + this.computeItemMax(scoring.scoringMode, item, scoring.scaleLevels as ScaleLevel[] | null) * (item.weight ?? 1), 0);
+  }
+
+  private computeItemMax(scoringMode: string, item: { points: number }, scaleLevels: ScaleLevel[] | null) {
+    if (scoringMode === 'scale') {
+      const levels = scaleLevels ?? [];
+      return levels.reduce((max, level) => Math.max(max, level.points), 0);
     }
 
-    if (scoring.scoringMode === 'all_required') {
-      return items.length;
+    if (scoringMode === 'all_required') {
+      return 1;
     }
 
-    return items.reduce((sum, item) => sum + item.points, 0);
+    return item.points;
   }
 
   private hasValidAnswer(scoringMode: string, result: CompletionResult | undefined) {
@@ -1118,6 +1234,13 @@ export class ChecklistsService {
   }
 
   private isItemSatisfied(scoringMode: string, item: CompletionItem, result: CompletionResult | undefined) {
+    // A skipped item (explicit or auto-skipped) is a resolved item -- it never blocks
+    // completion, regardless of isRequired: allowSkip is what an admin uses to say "this
+    // criterion doesn't have to block the session," and skip is only reachable when it's true.
+    if (result?.answerState === 'skipped') {
+      return true;
+    }
+
     const hasAnswer = this.hasValidAnswer(scoringMode, result);
 
     if (!hasAnswer) {
@@ -1125,6 +1248,39 @@ export class ChecklistsService {
     }
 
     return !item.photoRequired || Boolean(result?.photoObjectKey);
+  }
+
+  /**
+   * ADR_CHECKLIST_SESSION_OVERLAY.md scoring v1: skipped items are excluded from BOTH the
+   * numerator and denominator (a skip must not count as zero and must not inflate the max an
+   * unanswerable item is scored against), each item's earned/max is multiplied by its
+   * `weight` (default 1 -- a no-op for every pre-PR-290 checklist), and `scored=false` when the
+   * resulting max is zero (e.g. every item got skipped) so the caller never reports a
+   * misleading 0% for "nothing was actually scored."
+   */
+  private computeAggregateScore(
+    items: ScoringItem[],
+    scoringMode: string,
+    scaleLevels: ScaleLevel[] | null,
+    resultByItemId: Map<string, CompletionResult>,
+  ): { totalScore: number; maxScore: number; scored: boolean } {
+    let totalScore = 0;
+    let maxScore = 0;
+
+    for (const item of items) {
+      const result = resultByItemId.get(item.id);
+      if (result?.answerState === 'skipped') {
+        continue;
+      }
+
+      const weight = item.weight ?? 1;
+      maxScore += this.computeItemMax(scoringMode, item, scaleLevels) * weight;
+
+      const earned = result && result.reviewStatus !== 'rejected' ? (result.points ?? 0) : 0;
+      totalScore += earned * weight;
+    }
+
+    return { totalScore: Math.round(totalScore), maxScore: Math.round(maxScore), scored: maxScore > 0 };
   }
 
   private async recomputeInstance(instanceId: string, organizationId: string) {
@@ -1159,20 +1315,57 @@ export class ChecklistsService {
         points: true,
         photoObjectKey: true,
         reviewStatus: true,
+        answerState: true,
       },
     });
     const itemIds = new Set(checklist.items.map((item) => item.id));
     const relevantResults = results.filter((result) => itemIds.has(result.itemId));
-    const resultByItemId = new Map(relevantResults.map((result) => [result.itemId, result]));
+    const resultByItemId = new Map<string, CompletionResult>(relevantResults.map((result) => [result.itemId, result]));
+
+    // Auto-skip: an item with autoSkipUnanswered=true that has no valid answer on file resolves
+    // itself as skipped -- persisted as a real ChecklistItemResult row (not just a computed
+    // value) so it shows up in the audit trail the same way an explicit skip does.
+    const autoSkipCandidates = checklist.items.filter((item) => {
+      if (!item.autoSkipUnanswered) return false;
+      const result = resultByItemId.get(item.id);
+      if (result?.answerState === 'skipped') return false;
+      return !this.hasValidAnswer(checklist.scoringMode, result);
+    });
+    if (autoSkipCandidates.length > 0) {
+      await this.prisma.$transaction(
+        autoSkipCandidates.map((item) =>
+          this.prisma.checklistItemResult.upsert({
+            where: { instanceId_itemId: { instanceId, itemId: item.id } },
+            create: { organizationId, instanceId, itemId: item.id, answerState: 'skipped', points: 0 },
+            update: {
+              checked: false,
+              scaleLevel: null,
+              points: 0,
+              answerState: 'skipped',
+              reviewStatus: 'pending',
+              reviewedBy: null,
+              reviewedAt: null,
+            },
+          }),
+        ),
+      );
+      for (const item of autoSkipCandidates) {
+        resultByItemId.set(item.id, {
+          itemId: item.id,
+          checked: false,
+          scaleLevel: null,
+          photoObjectKey: null,
+          reviewStatus: 'pending',
+          answerState: 'skipped',
+        });
+      }
+    }
+
     const allRequirementsSatisfied =
       checklist.items.length > 0 &&
       checklist.items.every((item) => this.isItemSatisfied(checklist.scoringMode, item, resultByItemId.get(item.id)));
-    const reviewableResults = relevantResults.filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
+    const reviewableResults = [...resultByItemId.values()].filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
     const allReviewed = reviewableResults.every((result) => result.reviewStatus !== 'pending');
-    const totalScore = relevantResults.reduce(
-      (sum, result) => sum + (result.reviewStatus === 'rejected' ? 0 : result.points),
-      0,
-    );
 
     let status = instance.status;
     let submittedAt: Date | undefined;
@@ -1204,9 +1397,14 @@ export class ChecklistsService {
       status = 'in_progress';
     }
 
-    const maxScore = this.computeMaxScore(checklist.items, checklist);
-    const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
-    const passed = status === 'completed' && percentage >= checklist.passThreshold;
+    const { totalScore, maxScore, scored } = this.computeAggregateScore(
+      checklist.items,
+      checklist.scoringMode,
+      checklist.scaleLevels,
+      resultByItemId,
+    );
+    const percentage = scored ? Math.round((totalScore / maxScore) * 100) : 0;
+    const passed = scored && status === 'completed' && percentage >= checklist.passThreshold;
 
     try {
       const updated = await this.prisma.checklistInstance.update({
@@ -1217,6 +1415,7 @@ export class ChecklistsService {
           maxScore,
           percentage,
           passed,
+          scored,
           ...(submittedAt ? { submittedAt } : {}),
           ...(completedAt ? { completedAt } : {}),
         },

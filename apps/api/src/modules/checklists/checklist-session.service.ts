@@ -1,11 +1,18 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { ChecklistSession, ChecklistSessionEventType, ChecklistSessionStatus, Prisma } from '@prisma/client';
+import type {
+  ChecklistLocationCapturePoint,
+  ChecklistSession,
+  ChecklistSessionEventType,
+  ChecklistSessionStatus,
+  Prisma,
+} from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { runSerializableWithRetry } from '../departments/public.js';
 import type {
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
+  SubmitChecklistLocationCaptureInput,
   UpdateChecklistSessionInput,
 } from './checklists.schemas.js';
 
@@ -209,6 +216,104 @@ export class ChecklistSessionService {
 
       return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
     });
+  }
+
+  /**
+   * Geolocation capture (PR 290): at most one report per (session, capturePoint) -- enforced by
+   * the unique constraint added in PR 288, so a second submission for the same point is a 409,
+   * never a silent overwrite. "getCurrentPosition once, never watchPosition" is a client-side
+   * constraint; this is the server-observable half of "start/end only, no continuous tracking."
+   * When the caller is not the assigned observer (only reachable by an admin, since the RBAC
+   * policy + sessionScope() together restrict everyone else), an `overrideReason` is required
+   * and the submission is separately audited via a `location_override` ChecklistSessionEvent.
+   */
+  async captureLocation(
+    sessionId: string,
+    organizationId: string,
+    capturePoint: ChecklistLocationCapturePoint,
+    input: SubmitChecklistLocationCaptureInput,
+    actorId: string,
+    scope: object,
+  ) {
+    const session = await this.prisma.checklistSession.findFirst({
+      where: { id: sessionId, organizationId, ...scope },
+      select: { id: true, observerId: true, locationCapturePolicy: true },
+    });
+    if (!session) throw new NotFoundException('Checklist session not found');
+    if (session.locationCapturePolicy === 'off') {
+      throw new BadRequestException('Geolocation capture is disabled for this session');
+    }
+
+    const isOverride = session.observerId !== actorId;
+    if (isOverride && !input.overrideReason) {
+      throw new BadRequestException('overrideReason is required when submitting a location capture on behalf of the observer');
+    }
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const capture = await tx.checklistLocationCapture.create({
+          data: {
+            organizationId,
+            sessionId,
+            capturePoint,
+            status: input.status,
+            latitude: input.latitude,
+            longitude: input.longitude,
+            accuracyMeters: input.accuracyMeters,
+            capturedBy: actorId,
+          },
+        });
+
+        if (isOverride) {
+          await tx.checklistSessionEvent.create({
+            data: {
+              organizationId,
+              sessionId,
+              eventType: 'location_override',
+              actorUserId: actorId,
+              metadata: { capturePoint, status: input.status, overrideReason: input.overrideReason },
+            },
+          });
+        }
+
+        return capture;
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintViolation(error, 'capture_point')) {
+        throw new ConflictException(`A ${capturePoint} location capture already exists for this session`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Privacy-safe projection: only the assigned observer (who submitted the capture) and admin
+   * see raw coordinates. Everyone else with read access to the session (manager, learner) sees
+   * only that a capture happened, not where.
+   */
+  async listLocationCaptures(sessionId: string, organizationId: string, scope: object, actorId: string, isAdmin: boolean) {
+    const session = await this.prisma.checklistSession.findFirst({
+      where: { id: sessionId, organizationId, ...scope },
+      select: { id: true, observerId: true },
+    });
+    if (!session) throw new NotFoundException('Checklist session not found');
+
+    const canSeeCoordinates = isAdmin || session.observerId === actorId;
+    const captures = await this.prisma.checklistLocationCapture.findMany({
+      where: { sessionId, organizationId },
+      orderBy: { capturePoint: 'asc' },
+    });
+
+    if (canSeeCoordinates) return captures;
+    return captures.map(({ id, organizationId: orgId, sessionId: sid, capturePoint, status, capturedBy, capturedAt }) => ({
+      id,
+      organizationId: orgId,
+      sessionId: sid,
+      capturePoint,
+      status,
+      capturedBy,
+      capturedAt,
+    }));
   }
 
   private async assertValidObserver(tx: Prisma.TransactionClient, observerId: string, organizationId: string) {

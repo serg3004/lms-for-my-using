@@ -169,6 +169,16 @@ enum ChecklistReviewStatus {
   rejected
 }
 
+/// PR 290: an explicit per-item resolution state, distinct from "no row yet". `skipped` is only
+/// ever reachable through an item with `ChecklistItem.allowSkip = true` — either an explicit skip
+/// action or an auto-skip of an unanswered `autoSkipUnanswered` item — and is excluded from both
+/// the numerator and denominator of ChecklistInstance scoring (ADR_CHECKLIST_SESSION_OVERLAY.md).
+enum ChecklistAnswerState {
+  unanswered
+  answered
+  skipped
+}
+
 enum ChecklistInstanceEventType {
   assigned
   started
@@ -211,6 +221,9 @@ enum ChecklistSessionEventType {
   cancelled
   observer_reassigned
   reminder_sent
+  /// PR 290: an admin submitted a geolocation capture on behalf of the assigned observer under a
+  /// `required` location-capture policy — audited separately from a normal observer-submitted capture.
+  location_override
 }
 
 enum ChecklistSessionReminderType {
@@ -1095,6 +1108,10 @@ model ChecklistInstance {
   maxScore         Int                      @default(0) @map("max_score")
   percentage       Int                      @default(0)
   passed           Boolean                  @default(false)
+  // PR 290: false means "not_scored" (every non-skipped item's max was zero, e.g. all-skipped) —
+  // `percentage` stays whatever it last computed to, never a misleading 0%. True for every
+  // instance that has no skip capability in play, matching pre-PR-290 behavior unchanged.
+  scored           Boolean                  @default(true)
   templateSnapshot Json?                    @map("template_snapshot")
   snapshotVersion  Int?                     @default(1) @map("snapshot_version")
   dueAt            DateTime?                @map("due_at") @db.Timestamptz
@@ -1153,6 +1170,7 @@ model ChecklistItemResult {
   photoMimeType  String?               @map("photo_mime_type")
   photoSizeBytes Int?                  @map("photo_size_bytes")
   comment        String?
+  answerState    ChecklistAnswerState  @default(unanswered) @map("answer_state")
   reviewStatus   ChecklistReviewStatus @default(pending) @map("review_status")
   reviewComment  String?               @map("review_comment")
   reviewedBy     String?               @map("reviewed_by") @db.Uuid
