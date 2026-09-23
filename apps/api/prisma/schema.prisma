@@ -1082,15 +1082,22 @@ model ChecklistItem {
   weight             Int                   @default(1)
   allowSkip          Boolean               @default(false) @map("allow_skip")
   autoSkipUnanswered Boolean               @default(false) @map("auto_skip_unanswered")
+  // Optional reusable evaluation scale (PR 293) for this criterion -- independent of and
+  // coexisting with the checklist-level scoringMode='scale'/Checklist.scaleLevels mechanism
+  // above. Restrict (not SetNull/Cascade): a ChecklistScale is never hard-deleted (only
+  // archived), so this FK can never actually block a real deletion.
+  scaleId            String?               @map("scale_id") @db.Uuid
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt          DateTime?             @map("deleted_at") @db.Timestamptz
   organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   checklist          Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  scale              ChecklistScale?       @relation(fields: [scaleId], references: [id], onDelete: Restrict)
   results            ChecklistItemResult[]
 
   @@index([organizationId])
   @@index([checklistId, order])
+  @@index([scaleId])
   @@map("checklist_items")
 }
 
@@ -1324,7 +1331,9 @@ model ChecklistLocationCapture {
 }
 
 /// Tenant-scoped, reusable evaluation scale. Coexists with Checklist.scaleLevels (the existing
-/// ad-hoc per-checklist JSON scale) rather than replacing it — see PR 293/ADR.
+/// ad-hoc per-checklist JSON scale) rather than replacing it — see PR 293/ADR. Referenced by
+/// ChecklistItem.scaleId (per-criterion, not per-checklist); never hard-deleted, only archived
+/// (status), so an item's scaleId FK never actually blocks a real row deletion.
 model ChecklistScale {
   id             String                @id @default(uuid()) @db.Uuid
   organizationId String                @map("organization_id") @db.Uuid
@@ -1336,6 +1345,7 @@ model ChecklistScale {
   organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   creator        User?                 @relation("ChecklistScaleCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   levels         ChecklistScaleLevel[]
+  items          ChecklistItem[]
 
   @@index([organizationId, status])
   @@map("checklist_scales")

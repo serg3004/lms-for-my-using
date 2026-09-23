@@ -308,6 +308,47 @@ new persisted field, and requires no `ChecklistSession` schema change. `list()` 
 checklist title, case-insensitive) query filters, alongside the existing `status`/`observerId`/
 `overdueOnly`/pagination filters from PR 289.
 
+## Checklist evaluation scales (PR 293)
+
+Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH
+/checklist-scales/:id`, `POST /checklist-scales/:id/archive`) -- coexists with, and never touches,
+the pre-existing per-checklist `scoringMode='scale'` + `Checklist.scaleLevels` JSON mechanism.
+A `ChecklistScale` has ordered `ChecklistScaleLevel` rows (`value`/`label`/`score`); a
+`ChecklistItem` optionally references one via `scaleId` (per-criterion, not per-checklist -- this
+is deliberately independent of `scoringMode`, which stays checklist-level). Create/update always
+replace the full level set (never a partial per-level patch -- levels have no identity a caller
+can address individually); a scale needs at least 2 levels, and level `value`s must be unique
+within the scale.
+
+Lifecycle is create/edit/archive only -- there is no delete endpoint, and `ChecklistItem.scaleId`
+is a `RESTRICT` foreign key that can never actually block a deletion because none exists. `PATCH
+/checklist-scales/:id` is rejected (400) once the scale is already archived, or once it is "used"
+-- defined as: at least one `ChecklistInstance` exists for a checklist that has an item referencing
+this scale. This is a deliberately conservative proxy for "already captured in an assignment-time
+snapshot" (see below): it also blocks edits for a scale whose referencing item was later removed
+from a checklist that still has old instances, which is the safe direction to err in. The only
+lifecycle transition permitted on a used scale is `POST .../archive`, which is non-destructive
+(levels are untouched) and always allowed regardless of usage; archiving an already-archived scale
+is a no-op, not an error. The fix for an in-use scale that needs different levels is to archive it
+and create a fresh one, never to mutate levels a real instance already snapshotted.
+
+Snapshot integration: at assignment time (`ChecklistsService.assignChecklist`/
+`bulkAssignChecklist`, and the legacy pre-snapshot fallback path), every item's `scaleId` is
+resolved against the live `ChecklistScale` table exactly once and embedded into the instance's
+`templateSnapshot` as `scale: {id, name, levels}`. This is the *only* place a live scale lookup
+happens -- every reader (scoring, review, display) reads the already-resolved `scale` back out of
+the snapshot, never re-queries `ChecklistScale`, so a later edit or archival of the scale can never
+retroactively change an already-assigned instance. `POST /checklists/:checklistId/instances`
+(publish-time validation, via `updateChecklist`/`ensurePublishable`) rejects publishing a checklist
+whose items reference an archived scale (400) -- this only blocks a *new* publish attempt; a
+checklist that was already published while its scale was still active keeps working exactly as
+before, since its instances already snapshotted the scale as it looked at assignment time.
+
+No new role policies -- `checklist-scales` routes reuse `checklistsRead` (list/get) and
+`checklistsCreate` (create/update/archive), the same policies that already gate checklist/item
+CRUD, since managing the scale library is the same class of action as managing checklists
+themselves.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

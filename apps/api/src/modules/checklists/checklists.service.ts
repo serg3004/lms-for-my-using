@@ -67,6 +67,7 @@ const checklistWithItemsSelect = {
       weight: true,
       allowSkip: true,
       autoSkipUnanswered: true,
+      scaleId: true,
     },
   },
 } as const;
@@ -132,6 +133,11 @@ type CompletionResult = {
   reviewStatus: string;
   answerState?: string;
 };
+type ChecklistSnapshotItemScale = {
+  id: string;
+  name: string;
+  levels: Array<{ value: number; label: string; score: number }>;
+};
 type ChecklistSnapshotItem = {
   id: string;
   checklistId: string;
@@ -145,6 +151,12 @@ type ChecklistSnapshotItem = {
   weight?: number;
   allowSkip?: boolean;
   autoSkipUnanswered?: boolean;
+  // PR 293: raw FK plus the resolved scale payload as it looked at snapshot time -- both optional
+  // since snapshots taken before PR 293 (and any item that never referenced a scale) have neither.
+  // Readers must use `scale` (the immutable copy), never re-resolve `scaleId` against the live
+  // ChecklistScale table, or an edited/archived scale would silently change a historical instance.
+  scaleId?: string | null;
+  scale?: ChecklistSnapshotItemScale | null;
 };
 type ChecklistRuntime = {
   id: string;
@@ -311,7 +323,7 @@ export class ChecklistsService {
   ) {
     const items = await this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, scaleId: true },
     });
 
     if (items.length === 0) {
@@ -320,6 +332,27 @@ export class ChecklistsService {
 
     if (scoringMode === 'scale' && (!scaleLevels || scaleLevels.length < 2)) {
       throw new BadRequestException('Cannot publish checklist: scale scoring mode requires at least 2 levels');
+    }
+
+    // PR 293: a criterion referencing an archived reusable ChecklistScale can never be part of a
+    // *new* publication -- an already-published checklist keeps working (its instances snapshot
+    // whatever the scale looked like at assignment time regardless of later archival).
+    const referencedScaleIds = [...new Set(items.map((item) => item.scaleId).filter((id): id is string => id != null))];
+    if (referencedScaleIds.length > 0) {
+      const archivedScale = await this.prisma.checklistScale.findFirst({
+        where: { id: { in: referencedScaleIds }, organizationId, status: 'archived' },
+        select: { id: true, name: true },
+      });
+      if (archivedScale) {
+        throw new BadRequestException(`Cannot publish checklist: a criterion references archived evaluation scale "${archivedScale.name}"`);
+      }
+    }
+  }
+
+  private async assertValidScale(scaleId: string, organizationId: string) {
+    const scale = await this.prisma.checklistScale.findFirst({ where: { id: scaleId, organizationId }, select: { id: true } });
+    if (!scale) {
+      throw new NotFoundException('Evaluation scale not found');
     }
   }
 
@@ -336,6 +369,9 @@ export class ChecklistsService {
 
   async createItem(checklistId: string, organizationId: string, input: CreateChecklistItemInput) {
     await this.getChecklist(checklistId, organizationId);
+    if (input.scaleId) {
+      await this.assertValidScale(input.scaleId, organizationId);
+    }
     const count = await this.prisma.checklistItem.count({ where: { checklistId, deletedAt: null } });
 
     return this.prisma.checklistItem.create({
@@ -357,6 +393,10 @@ export class ChecklistsService {
     const autoSkipUnanswered = input.autoSkipUnanswered ?? item.autoSkipUnanswered;
     if (autoSkipUnanswered && !allowSkip) {
       throw new BadRequestException('autoSkipUnanswered requires allowSkip to also be true');
+    }
+
+    if (input.scaleId) {
+      await this.assertValidScale(input.scaleId, organizationId);
     }
 
     return this.prisma.checklistItem.update({ where: { id: itemId, organizationId }, data: input });
@@ -435,9 +475,11 @@ export class ChecklistsService {
         weight: true,
         allowSkip: true,
         autoSkipUnanswered: true,
+        scaleId: true,
       },
     });
-    const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
+    const itemsWithScale = await this.attachItemScales(db, organizationId, items);
+    const runtimeChecklist = this.toRuntimeChecklist(checklist, itemsWithScale);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
     const createInstance = async (transaction: Prisma.TransactionClient | PrismaService) => {
@@ -555,9 +597,10 @@ export class ChecklistsService {
 
     const items = await this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null }, orderBy: { order: 'asc' },
-      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true },
+      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true },
     });
-    const runtimeChecklist = this.toRuntimeChecklist(checklist, items);
+    const itemsWithScale = await this.attachItemScales(this.prisma, organizationId, items);
+    const runtimeChecklist = this.toRuntimeChecklist(checklist, itemsWithScale);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist) as unknown as Prisma.InputJsonValue;
     const dueAt = input.dueAt ? new Date(input.dueAt) : undefined;
 
@@ -1046,6 +1089,38 @@ export class ChecklistsService {
     }
   }
 
+  /**
+   * PR 293: resolves each item's `scaleId` (if any) against the live ChecklistScale table and
+   * embeds the result as `scale` -- this is the one and only place a live scale lookup happens;
+   * everywhere else (scoring, review, display) reads the already-resolved `scale` back out of the
+   * instance's templateSnapshot, never re-queries ChecklistScale. Called once per snapshot build
+   * (at assignment, or when regenerating a legacy pre-snapshot instance's runtime view), so a
+   * later edit or archival of the scale can never retroactively change an existing instance.
+   */
+  private async attachItemScales<T extends { scaleId: string | null }>(
+    db: Prisma.TransactionClient | PrismaService,
+    organizationId: string,
+    items: T[],
+  ): Promise<(T & { scale: ChecklistSnapshotItemScale | null })[]> {
+    const scaleIds = [...new Set(items.map((item) => item.scaleId).filter((id): id is string => id != null))];
+    const scaleMap = new Map<string, ChecklistSnapshotItemScale>();
+    if (scaleIds.length > 0) {
+      const scales = await db.checklistScale.findMany({
+        where: { id: { in: scaleIds }, organizationId },
+        include: { levels: { orderBy: { value: 'asc' } } },
+      });
+      for (const scale of scales) {
+        scaleMap.set(scale.id, {
+          id: scale.id,
+          name: scale.name,
+          levels: scale.levels.map((level) => ({ value: level.value, label: level.label, score: level.score })),
+        });
+      }
+    }
+
+    return items.map((item) => ({ ...item, scale: item.scaleId ? (scaleMap.get(item.scaleId) ?? null) : null }));
+  }
+
   private toRuntimeChecklist(
     checklist: {
       id: string;
@@ -1080,7 +1155,10 @@ export class ChecklistsService {
       checklist: {
         ...checklist,
         scaleLevels: checklist.scaleLevels?.map((level) => ({ ...level })) ?? null,
-        items: checklist.items.map((item) => ({ ...item })),
+        items: checklist.items.map((item) => ({
+          ...item,
+          scale: item.scale ? { ...item.scale, levels: item.scale.levels.map((level) => ({ ...level })) } : item.scale,
+        })),
       },
     };
   }
@@ -1178,11 +1256,13 @@ export class ChecklistsService {
           weight: true,
           allowSkip: true,
           autoSkipUnanswered: true,
+          scaleId: true,
         },
       }),
     ]);
 
-    return this.toRuntimeChecklist(checklist, items);
+    const itemsWithScale = await this.attachItemScales(this.prisma, organizationId, items);
+    return this.toRuntimeChecklist(checklist, itemsWithScale);
   }
 
   private presentInstance(instance: SnapshotInstance) {

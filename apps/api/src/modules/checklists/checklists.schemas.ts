@@ -60,6 +60,10 @@ export const createChecklistItemSchema = z
     weight: z.number().int().min(1).max(100).default(1),
     allowSkip: z.boolean().default(false),
     autoSkipUnanswered: z.boolean().default(false),
+    // Optional reusable evaluation scale (PR 293) -- independent of scoringMode='scale'/
+    // Checklist.scaleLevels above. Validity (exists in org, not archived) is checked in the
+    // service, not here (needs a DB lookup this schema can't do).
+    scaleId: z.string().uuid().optional(),
   })
   .refine(requiresAllowSkipForAutoSkip, AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE);
 export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>;
@@ -78,6 +82,7 @@ export const updateChecklistItemSchema = z
     weight: z.number().int().min(1).max(100),
     allowSkip: z.boolean(),
     autoSkipUnanswered: z.boolean(),
+    scaleId: z.string().uuid().nullable(),
   })
   .partial();
 export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>;
@@ -271,3 +276,47 @@ export const checklistSessionParticipantsQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type ChecklistSessionParticipantsQuery = z.infer<typeof checklistSessionParticipantsQuerySchema>;
+
+// ---- Evaluation scales (PR 293) ----
+//
+// Tenant-scoped, reusable evaluation scale library, referenced per-criterion via
+// ChecklistItem.scaleId. Coexists with (does not replace) the checklist-level
+// scoringMode='scale' + Checklist.scaleLevels mechanism above -- see ADR_CHECKLIST_SESSION_OVERLAY.md.
+
+export const checklistScaleStatusSchema = z.enum(['active', 'archived']);
+
+export const checklistScaleLevelInputSchema = z.object({
+  value: z.number().int().min(1),
+  label: z.string().trim().min(1).max(80),
+  score: z.number().int().min(0).max(1000),
+});
+export type ChecklistScaleLevelInput = z.infer<typeof checklistScaleLevelInputSchema>;
+
+const hasUniqueLevelValues = (levels: ChecklistScaleLevelInput[]) => new Set(levels.map((level) => level.value)).size === levels.length;
+const UNIQUE_LEVEL_VALUES_ISSUE = { message: 'level values must be unique within a scale', path: ['levels'] };
+
+// Levels are always a full, ordered replacement, never a partial patch -- a scale is small enough
+// (max 20 levels, mirroring scaleLevelSchema above) that there is no meaningful "just add one
+// level" operation distinct from "here is the complete level set now".
+export const createChecklistScaleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
+  })
+  .strict()
+  .refine((input) => hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE);
+export type CreateChecklistScaleInput = z.infer<typeof createChecklistScaleSchema>;
+
+// Update replaces name and/or the full level set -- never partial-patches individual levels. Only
+// permitted while the scale is not yet used by any assigned checklist (ChecklistScaleService
+// enforces this; it needs a DB lookup this schema can't do). Archiving (the only lifecycle
+// transition allowed on a used scale) is a separate endpoint, not part of this schema.
+export const updateChecklistScaleSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
+  })
+  .partial()
+  .strict()
+  .refine((input) => !input.levels || hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE);
+export type UpdateChecklistScaleInput = z.infer<typeof updateChecklistScaleSchema>;

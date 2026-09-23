@@ -7,6 +7,7 @@ import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePo
 import { RolesGuard } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
@@ -20,6 +21,7 @@ import {
   checklistLocationCapturePointSchema,
   checklistSessionParticipantsQuerySchema,
   createChecklistItemSchema,
+  createChecklistScaleSchema,
   createChecklistSchema,
   createChecklistSessionSchema,
   checklistSessionQuerySchema,
@@ -29,6 +31,7 @@ import {
   submitChecklistItemResultSchema,
   submitChecklistLocationCaptureSchema,
   updateChecklistItemSchema,
+  updateChecklistScaleSchema,
   updateChecklistSchema,
   updateChecklistSessionSchema,
   updateChecklistWorkplaceSettingsSchema,
@@ -46,6 +49,7 @@ export class ChecklistsController {
     private readonly reviewAccess: ChecklistReviewAccessService,
     private readonly workplaceSettings: ChecklistWorkplaceSettingsService,
     private readonly sessions: ChecklistSessionService,
+    private readonly scales: ChecklistScaleService,
   ) {}
 
   // ---- Workplace-training settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
@@ -125,6 +129,38 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   deleteItem(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {
     return this.checklistsService.deleteItem(itemId, request.currentUser!.organizationId);
+  }
+
+  // ---- Evaluation scales (PR 293) ----
+  @Get('checklist-scales')
+  @Roles(...rolePolicies.checklistsRead)
+  listScales(@Req() request: AuthenticatedRequest) {
+    return this.scales.list(request.currentUser!.organizationId);
+  }
+  @Get('checklist-scales/:id')
+  @Roles(...rolePolicies.checklistsRead)
+  getScale(@Param('id') scaleId: string, @Req() request: AuthenticatedRequest) {
+    return this.scales.get(scaleId, request.currentUser!.organizationId);
+  }
+  @Post('checklist-scales')
+  @Roles(...rolePolicies.checklistsCreate)
+  createScale(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = createChecklistScaleSchema.parse(body);
+    const user = request.currentUser!;
+    return this.scales.create(user.organizationId, input, user.id);
+  }
+  @Patch('checklist-scales/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  updateScale(@Param('id') scaleId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateChecklistScaleSchema.parse(body);
+    const user = request.currentUser!;
+    return this.scales.update(scaleId, user.organizationId, input, user.id);
+  }
+  @Post('checklist-scales/:id/archive')
+  @Roles(...rolePolicies.checklistsCreate)
+  archiveScale(@Param('id') scaleId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.scales.archive(scaleId, user.organizationId, user.id);
   }
 
   // ---- Assignment / instances ----
