@@ -54,6 +54,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/review` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/skip` | `Checklists` | `bearer` |
+| `PATCH` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-item-groups/{id}/copy` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-items/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-items/{id}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-scales` | `Checklists` | `bearer` |
@@ -81,6 +83,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists/analytics` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/workplace-settings` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklists/workplace-settings` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/{checklistId}/groups` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklists/{checklistId}/groups` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/{checklistId}/instances` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/{checklistId}/instances` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/{checklistId}/instances/bulk` | `Checklists` | `bearer` |

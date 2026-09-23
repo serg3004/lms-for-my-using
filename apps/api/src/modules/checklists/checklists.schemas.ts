@@ -4,6 +4,23 @@ export const checklistStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale']);
 export const checklistInstanceStatusSchema = z.enum(['assigned', 'in_progress', 'submitted', 'completed', 'expired']);
 export const checklistReviewStatusSchema = z.enum(['pending', 'approved', 'rejected']);
+// Also used below by the PR 296 checklist-level defaultLocationCapturePolicy field, not just the
+// workplace-session settings section further down this file.
+export const checklistGeolocationPolicySchema = z.enum(['off', 'optional', 'required']);
+
+// ---- PR 296: observation-sheet builder (context fields, item groups, sheet-level settings) ----
+
+export const checklistPreSessionVisibilitySchema = z.enum(['full', 'structure_only', 'none']);
+export const checklistContextFieldTypeSchema = z.enum(['text', 'textarea', 'date']);
+
+export const contextFieldSchema = z.object({
+  id: z.string().uuid(),
+  label: z.string().trim().min(1).max(120),
+  type: checklistContextFieldTypeSchema,
+  required: z.boolean(),
+  order: z.number().int().min(0),
+});
+export type ContextField = z.infer<typeof contextFieldSchema>;
 
 export const scaleLevelSchema = z.object({
   level: z.number().int().min(1),
@@ -26,6 +43,9 @@ export const createChecklistSchema = z.object({
   passThreshold: z.number().int().min(0).max(100).default(80),
   scaleLevels: z.array(scaleLevelSchema).max(20).optional(),
   requiresReview: z.boolean().default(false),
+  contextFields: z.array(contextFieldSchema).max(20).optional(),
+  defaultLocationCapturePolicy: checklistGeolocationPolicySchema.optional(),
+  preSessionVisibility: checklistPreSessionVisibilitySchema.default('structure_only'),
 });
 export type CreateChecklistInput = z.infer<typeof createChecklistSchema>;
 
@@ -38,6 +58,9 @@ export const updateChecklistSchema = z
     passThreshold: z.number().int().min(0).max(100),
     scaleLevels: z.array(scaleLevelSchema).max(20).nullable(),
     requiresReview: z.boolean(),
+    contextFields: z.array(contextFieldSchema).max(20).nullable(),
+    defaultLocationCapturePolicy: checklistGeolocationPolicySchema.nullable(),
+    preSessionVisibility: checklistPreSessionVisibilitySchema,
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
@@ -64,6 +87,9 @@ export const createChecklistItemSchema = z
     // Checklist.scaleLevels above. Validity (exists in org, not archived) is checked in the
     // service, not here (needs a DB lookup this schema can't do).
     scaleId: z.string().uuid().optional(),
+    // Optional ChecklistItemGroup (PR 296 observation-sheet builder). Validity (exists in org,
+    // belongs to the same checklist) is checked in the service.
+    groupId: z.string().uuid().optional(),
   })
   .refine(requiresAllowSkipForAutoSkip, AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE);
 export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>;
@@ -83,9 +109,25 @@ export const updateChecklistItemSchema = z
     allowSkip: z.boolean(),
     autoSkipUnanswered: z.boolean(),
     scaleId: z.string().uuid().nullable(),
+    groupId: z.string().uuid().nullable(),
   })
   .partial();
 export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>;
+
+// ---- PR 296: item groups ("Группы и критерии") ----
+
+export const createChecklistItemGroupSchema = z.object({
+  title: z.string().trim().min(1).max(120).default('Новая группа'),
+});
+export type CreateChecklistItemGroupInput = z.infer<typeof createChecklistItemGroupSchema>;
+
+export const updateChecklistItemGroupSchema = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    order: z.number().int().min(0),
+  })
+  .partial();
+export type UpdateChecklistItemGroupInput = z.infer<typeof updateChecklistItemGroupSchema>;
 
 export const assignChecklistSchema = z.object({
   userId: z.string().uuid(),
@@ -143,8 +185,9 @@ export const checklistAnalyticsQuerySchema = z.object({
 export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySchema>;
 
 // ---- Workplace-training session settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
+// checklistGeolocationPolicySchema itself is declared near the top of this file (reused by the
+// PR 296 checklist-level defaultLocationCapturePolicy field above).
 
-export const checklistGeolocationPolicySchema = z.enum(['off', 'optional', 'required']);
 export const checklistFeedbackVisibilitySchema = z.enum(['after_completion', 'live']);
 
 export const updateChecklistWorkplaceSettingsSchema = z

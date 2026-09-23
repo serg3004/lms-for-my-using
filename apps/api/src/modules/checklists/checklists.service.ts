@@ -10,13 +10,16 @@ import {
   ChecklistAnalyticsQuery,
   ChecklistListQuery,
   ChecklistQueueQuery,
+  ContextField,
   CreateChecklistInput,
+  CreateChecklistItemGroupInput,
   CreateChecklistItemInput,
   ReviewChecklistItemResultInput,
   ScaleLevel,
   SkipChecklistItemInput,
   SubmitChecklistItemResultInput,
   UpdateChecklistInput,
+  UpdateChecklistItemGroupInput,
   UpdateChecklistItemInput,
   MAX_BULK_CHECKLIST_RECIPIENTS,
 } from './checklists.schemas.js';
@@ -46,6 +49,10 @@ const checklistSelect = {
   passThreshold: true,
   scaleLevels: true,
   requiresReview: true,
+  // PR 296 observation-sheet builder settings.
+  contextFields: true,
+  defaultLocationCapturePolicy: true,
+  preSessionVisibility: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -53,6 +60,10 @@ const checklistSelect = {
 
 const checklistWithItemsSelect = {
   ...checklistSelect,
+  itemGroups: {
+    orderBy: { order: 'asc' as const },
+    select: { id: true, checklistId: true, title: true, order: true },
+  },
   items: {
     where: { deletedAt: null },
     orderBy: { order: 'asc' as const },
@@ -68,6 +79,7 @@ const checklistWithItemsSelect = {
       allowSkip: true,
       autoSkipUnanswered: true,
       scaleId: true,
+      groupId: true,
     },
   },
 } as const;
@@ -168,6 +180,12 @@ type ChecklistRuntime = {
   passThreshold: number;
   scaleLevels: ScaleLevel[] | null;
   requiresReview: boolean;
+  // PR 296 observation-sheet builder settings -- optional because a snapshot built before this PR
+  // never had them; new snapshots freeze them here so a later edit to the live checklist can't
+  // retroactively change what an already-assigned instance's observer sees, same as scaleLevels.
+  contextFields?: ContextField[] | null;
+  defaultLocationCapturePolicy?: string | null;
+  preSessionVisibility?: string;
   items: ChecklistSnapshotItem[];
 };
 type ChecklistTemplateSnapshot = {
@@ -255,7 +273,7 @@ export class ChecklistsService {
       );
     }
 
-    const { scaleLevels, ...rest } = input;
+    const { scaleLevels, contextFields, ...rest } = input;
 
     const updated = await this.prisma.checklist.update({
       where: { id: checklistId, organizationId },
@@ -263,6 +281,9 @@ export class ChecklistsService {
         ...rest,
         ...(scaleLevels !== undefined
           ? { scaleLevels: scaleLevels === null ? Prisma.JsonNull : scaleLevels }
+          : {}),
+        ...(contextFields !== undefined
+          ? { contextFields: contextFields === null ? Prisma.JsonNull : contextFields }
           : {}),
       },
       select: checklistWithItemsSelect,
@@ -356,6 +377,92 @@ export class ChecklistsService {
     }
   }
 
+  /** A group can only be assigned to items of the same checklist it belongs to. */
+  private async assertValidGroup(groupId: string, checklistId: string, organizationId: string) {
+    const group = await this.prisma.checklistItemGroup.findFirst({ where: { id: groupId, checklistId, organizationId }, select: { id: true } });
+    if (!group) {
+      throw new NotFoundException('Checklist item group not found');
+    }
+  }
+
+  // ---- Item groups (PR 296 observation-sheet builder) ----
+
+  async listItemGroups(checklistId: string, organizationId: string) {
+    await this.getChecklist(checklistId, organizationId);
+
+    return this.prisma.checklistItemGroup.findMany({
+      where: { checklistId, organizationId },
+      orderBy: { order: 'asc' },
+    });
+  }
+
+  async createItemGroup(checklistId: string, organizationId: string, input: CreateChecklistItemGroupInput) {
+    await this.getChecklist(checklistId, organizationId);
+    const count = await this.prisma.checklistItemGroup.count({ where: { checklistId } });
+
+    return this.prisma.checklistItemGroup.create({
+      data: { ...input, checklistId, organizationId, order: count },
+    });
+  }
+
+  async updateItemGroup(groupId: string, organizationId: string, input: UpdateChecklistItemGroupInput) {
+    const group = await this.prisma.checklistItemGroup.findFirst({ where: { id: groupId, organizationId }, select: { id: true } });
+    if (!group) {
+      throw new NotFoundException('Checklist item group not found');
+    }
+
+    return this.prisma.checklistItemGroup.update({ where: { id: groupId, organizationId }, data: input });
+  }
+
+  /**
+   * Duplicates a group and every one of its (non-deleted) items, appended at the end of the same
+   * checklist's group/item ordering. Runs in a transaction so a copy can never leave behind a
+   * group with no items or items pointing at a group that failed to persist.
+   */
+  async copyItemGroup(groupId: string, organizationId: string) {
+    const group = await this.prisma.checklistItemGroup.findFirst({ where: { id: groupId, organizationId } });
+    if (!group) {
+      throw new NotFoundException('Checklist item group not found');
+    }
+
+    const items = await this.prisma.checklistItem.findMany({
+      where: { groupId, organizationId, deletedAt: null },
+      orderBy: { order: 'asc' },
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const [groupCount, itemCount] = await Promise.all([
+        tx.checklistItemGroup.count({ where: { checklistId: group.checklistId } }),
+        tx.checklistItem.count({ where: { checklistId: group.checklistId, deletedAt: null } }),
+      ]);
+
+      const newGroup = await tx.checklistItemGroup.create({
+        data: { organizationId, checklistId: group.checklistId, title: `${group.title} (копия)`, order: groupCount },
+      });
+
+      for (const [index, item] of items.entries()) {
+        await tx.checklistItem.create({
+          data: {
+            organizationId,
+            checklistId: item.checklistId,
+            groupId: newGroup.id,
+            order: itemCount + index,
+            text: item.text,
+            points: item.points,
+            isRequired: item.isRequired,
+            photoRequired: item.photoRequired,
+            weight: item.weight,
+            allowSkip: item.allowSkip,
+            autoSkipUnanswered: item.autoSkipUnanswered,
+            scaleId: item.scaleId,
+          },
+        });
+      }
+
+      return newGroup;
+    });
+  }
+
   // ---- Items ----
 
   async listItems(checklistId: string, organizationId: string) {
@@ -372,6 +479,9 @@ export class ChecklistsService {
     if (input.scaleId) {
       await this.assertValidScale(input.scaleId, organizationId);
     }
+    if (input.groupId) {
+      await this.assertValidGroup(input.groupId, checklistId, organizationId);
+    }
     const count = await this.prisma.checklistItem.count({ where: { checklistId, deletedAt: null } });
 
     return this.prisma.checklistItem.create({
@@ -382,7 +492,7 @@ export class ChecklistsService {
   async updateItem(itemId: string, organizationId: string, input: UpdateChecklistItemInput) {
     const item = await this.prisma.checklistItem.findFirst({
       where: { id: itemId, organizationId, deletedAt: null },
-      select: { id: true, allowSkip: true, autoSkipUnanswered: true },
+      select: { id: true, checklistId: true, allowSkip: true, autoSkipUnanswered: true },
     });
 
     if (!item) {
@@ -397,6 +507,10 @@ export class ChecklistsService {
 
     if (input.scaleId) {
       await this.assertValidScale(input.scaleId, organizationId);
+    }
+
+    if (input.groupId) {
+      await this.assertValidGroup(input.groupId, item.checklistId, organizationId);
     }
 
     return this.prisma.checklistItem.update({ where: { id: itemId, organizationId }, data: input });
@@ -1132,6 +1246,9 @@ export class ChecklistsService {
       passThreshold: number;
       scaleLevels: Prisma.JsonValue | null;
       requiresReview: boolean;
+      contextFields?: Prisma.JsonValue | null;
+      defaultLocationCapturePolicy?: string | null;
+      preSessionVisibility?: string;
     },
     items: ChecklistSnapshotItem[],
   ): ChecklistRuntime {
@@ -1145,6 +1262,9 @@ export class ChecklistsService {
       passThreshold: checklist.passThreshold,
       scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
       requiresReview: checklist.requiresReview,
+      contextFields: checklist.contextFields as ContextField[] | null | undefined,
+      defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy,
+      preSessionVisibility: checklist.preSessionVisibility,
       items: items.map((item) => ({ ...item })),
     };
   }
@@ -1240,6 +1360,9 @@ export class ChecklistsService {
           passThreshold: true,
           scaleLevels: true,
           requiresReview: true,
+          contextFields: true,
+          defaultLocationCapturePolicy: true,
+          preSessionVisibility: true,
         },
       }),
       this.prisma.checklistItem.findMany({

@@ -349,6 +349,47 @@ No new role policies -- `checklist-scales` routes reuse `checklistsRead` (list/g
 CRUD, since managing the scale library is the same class of action as managing checklists
 themselves.
 
+## Checklist observation-sheet builder (PR 296)
+
+Backend for the admin "Observation Sheet Builder" screen -- criterion grouping, an observer-filled
+"general info" step, and two checklist-level defaults that feed the session wizard/employee
+pre-session view. No new role policies: every new/extended route below reuses `checklistsRead`
+(list) and `checklistsCreate` (create/update/copy), the same policies that already gate
+checklist/item CRUD.
+
+**Checklist-level settings** (`POST/PATCH /checklists`, `POST/PATCH /checklists/:id`, extended,
+not new routes): `contextFields` (`{id, label, type: 'text'|'textarea'|'date', required, order}[]`,
+max 20 -- observer-filled fields shown before a session's criteria; a `select` field type is a
+deliberately deferred gap, see the implementation plan), `defaultLocationCapturePolicy` (nullable
+`off`/`optional`/`required` -- a per-checklist override of the org-wide
+`ChecklistWorkplaceSettings.defaultGeolocationPolicy`; not yet consumed by the session-create
+wizard's own default, storage only in this PR), `preSessionVisibility` (`full`/`structure_only`/
+`none`, defaults to `structure_only` -- a new axis distinct from `ChecklistFeedbackVisibility`,
+which governs when *feedback* becomes visible after a session; this one governs the sheet's
+*structure* beforehand. Not yet consumed by any employee-facing screen -- storage only in this
+PR, consumption is PR 298's scope).
+
+**Item groups** (`GET/POST /checklists/:checklistId/groups`, `PATCH /checklist-item-groups/:id`,
+`POST /checklist-item-groups/:id/copy`): named, ordered `ChecklistItemGroup` rows a `ChecklistItem`
+can optionally belong to via `groupId` (also added to `POST /checklists/:checklistId/items` and
+`PATCH /checklist-items/:id`). Deliberately no delete endpoint -- the DoD only calls for
+add/rename/reorder/copy; assigning an item to a group belonging to a *different* checklist is
+rejected (404). Copy duplicates the group and every one of its (non-deleted) items in one
+transaction, appended at the end of the same checklist's ordering -- the copy is fully independent
+of the original from that point on. `groupId` is a `SetNull` foreign key (not `Cascade`/
+`Restrict`): a future group-delete endpoint, if one is ever added, should ungroup surviving items
+rather than silently delete them.
+
+Snapshot integration: `contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` are
+resolved into `ChecklistInstance.templateSnapshot` at assignment time exactly like `scaleLevels`
+(PR 293's pattern) -- a later edit to the live checklist can never retroactively change what an
+already-assigned instance's snapshot says. `CHECKLIST_SNAPSHOT_VERSION` is **not** bumped: these
+are added as strictly optional fields on the runtime type, so a pre-PR-296 snapshot (which never
+had them) still parses as valid. Item `groupId` itself is *not* embedded in the snapshot -- it is
+purely an authoring-time (builder) concept in this PR; PR 297 (observer session-taking), which
+does not depend on PR 296 per the implementation plan, may add it to the snapshot later if the
+mobile session screen ends up needing to render group headers.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

@@ -203,6 +203,24 @@ enum ChecklistFeedbackVisibility {
   live
 }
 
+/// PR 296 observation-sheet builder: what an employee can see about a session before it starts.
+/// Distinct from ChecklistFeedbackVisibility above, which governs when *feedback* becomes visible
+/// after a session completes -- this axis is about the sheet's *structure* beforehand.
+enum ChecklistPreSessionVisibility {
+  full
+  structure_only
+  none
+}
+
+/// PR 296 observation-sheet builder "Общая информация" fields, filled by the observer before a
+/// session's criteria. Kept intentionally small (text/textarea/date) -- a "select" type is a
+/// documented future gap, see docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md.
+enum ChecklistContextFieldType {
+  text
+  textarea
+  date
+}
+
 enum ChecklistSessionStatus {
   scheduled
   in_progress
@@ -294,6 +312,7 @@ model Organization {
   notifications              Notification[]
   checklists                 Checklist[]
   checklistItems             ChecklistItem[]
+  checklistItemGroups        ChecklistItemGroup[]
   checklistInstances         ChecklistInstance[]
   checklistItemResults       ChecklistItemResult[]
   checklistInstanceEvents    ChecklistInstanceEvent[]
@@ -1052,6 +1071,12 @@ model Checklist {
   passThreshold  Int                  @default(80) @map("pass_threshold")
   scaleLevels    Json?                @map("scale_levels")
   requiresReview Boolean              @default(false) @map("requires_review")
+  // PR 296 observation-sheet builder settings. See ChecklistContextFieldType/
+  // ChecklistPreSessionVisibility docs above -- these are additive, optional/defaulted fields so
+  // every pre-PR-296 checklist keeps working unchanged.
+  contextFields               Json?                          @map("context_fields")
+  defaultLocationCapturePolicy ChecklistGeolocationPolicy?   @map("default_location_capture_policy")
+  preSessionVisibility        ChecklistPreSessionVisibility  @default(structure_only) @map("pre_session_visibility")
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
@@ -1059,10 +1084,32 @@ model Checklist {
   organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   creator        User?                @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   items          ChecklistItem[]
+  itemGroups     ChecklistItemGroup[]
   instances      ChecklistInstance[]
 
   @@index([organizationId, status])
   @@map("checklists")
+}
+
+/// PR 296 observation-sheet builder: named, ordered grouping of ChecklistItem rows within one
+/// Checklist ("Группы и критерии" in the builder). Deliberately no delete endpoint -- the DoD
+/// only calls for add/rename/copy/reorder, so ungrouping/removing a group is an explicit future
+/// gap rather than something this PR half-implements.
+model ChecklistItemGroup {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  checklistId    String         @map("checklist_id") @db.Uuid
+  title          String
+  order          Int            @default(0)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist      Checklist      @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  items          ChecklistItem[]
+
+  @@index([organizationId])
+  @@index([checklistId, order])
+  @@map("checklist_item_groups")
 }
 
 model ChecklistItem {
@@ -1087,17 +1134,23 @@ model ChecklistItem {
   // above. Restrict (not SetNull/Cascade): a ChecklistScale is never hard-deleted (only
   // archived), so this FK can never actually block a real deletion.
   scaleId            String?               @map("scale_id") @db.Uuid
+  // PR 296 observation-sheet builder grouping ("Группы и критерии"). SetNull, not Cascade/Restrict
+  // -- there is no group-delete endpoint yet, but if one is ever added an item should survive as
+  // ungrouped rather than being silently deleted along with its group.
+  groupId            String?               @map("group_id") @db.Uuid
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt          DateTime?             @map("deleted_at") @db.Timestamptz
   organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   checklist          Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   scale              ChecklistScale?       @relation(fields: [scaleId], references: [id], onDelete: Restrict)
+  group              ChecklistItemGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   results            ChecklistItemResult[]
 
   @@index([organizationId])
   @@index([checklistId, order])
   @@index([scaleId])
+  @@index([groupId])
   @@map("checklist_items")
 }
 

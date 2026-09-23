@@ -20,6 +20,7 @@ import {
   checklistListQuerySchema,
   checklistLocationCapturePointSchema,
   checklistSessionParticipantsQuerySchema,
+  createChecklistItemGroupSchema,
   createChecklistItemSchema,
   createChecklistScaleSchema,
   createChecklistSchema,
@@ -30,6 +31,7 @@ import {
   skipChecklistItemSchema,
   submitChecklistItemResultSchema,
   submitChecklistLocationCaptureSchema,
+  updateChecklistItemGroupSchema,
   updateChecklistItemSchema,
   updateChecklistScaleSchema,
   updateChecklistSchema,
@@ -129,6 +131,30 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   deleteItem(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {
     return this.checklistsService.deleteItem(itemId, request.currentUser!.organizationId);
+  }
+
+  // ---- Item groups (PR 296 observation-sheet builder) ----
+  @Get('checklists/:checklistId/groups')
+  @Roles(...rolePolicies.checklistsRead)
+  listItemGroups(@Param('checklistId') checklistId: string, @Req() request: AuthenticatedRequest) {
+    return this.checklistsService.listItemGroups(checklistId, request.currentUser!.organizationId);
+  }
+  @Post('checklists/:checklistId/groups')
+  @Roles(...rolePolicies.checklistsCreate)
+  createItemGroup(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = createChecklistItemGroupSchema.parse(body);
+    return this.checklistsService.createItemGroup(checklistId, request.currentUser!.organizationId, input);
+  }
+  @Patch('checklist-item-groups/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  updateItemGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateChecklistItemGroupSchema.parse(body);
+    return this.checklistsService.updateItemGroup(groupId, request.currentUser!.organizationId, input);
+  }
+  @Post('checklist-item-groups/:id/copy')
+  @Roles(...rolePolicies.checklistsCreate)
+  copyItemGroup(@Param('id') groupId: string, @Req() request: AuthenticatedRequest) {
+    return this.checklistsService.copyItemGroup(groupId, request.currentUser!.organizationId);
   }
 
   // ---- Evaluation scales (PR 293) ----
