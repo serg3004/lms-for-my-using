@@ -5,9 +5,11 @@ import type {
   ChecklistAnalyticsQuery,
   ChecklistInstanceEvent,
   ChecklistInstanceSummary,
+  ChecklistItemGroup,
   ChecklistItemResultSummary,
   ChecklistItemSummary,
   ChecklistReviewQueueQuery,
+  ChecklistScaleSummary,
   ChecklistSummary,
   PaginatedResponse,
 } from './types.js';
@@ -72,6 +74,54 @@ export function updateChecklistItem(itemId: string, input: Record<string, unknow
 
 export function deleteChecklistItem(itemId: string) {
   return apiRequest<void>(`/checklist-items/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+}
+
+// ---- Item groups (PR 296 observation-sheet builder) ----
+
+export function listChecklistItemGroups(checklistId: string) {
+  return apiRequest<ChecklistItemGroup[]>(`/checklists/${encodeURIComponent(checklistId)}/groups`);
+}
+
+export function createChecklistItemGroup(checklistId: string, input: { title?: string } = {}) {
+  return apiRequest<ChecklistItemGroup>(`/checklists/${encodeURIComponent(checklistId)}/groups`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateChecklistItemGroup(groupId: string, input: { title?: string; order?: number }) {
+  return apiRequest<ChecklistItemGroup>(`/checklist-item-groups/${encodeURIComponent(groupId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function copyChecklistItemGroup(groupId: string) {
+  return apiRequest<ChecklistItemGroup>(`/checklist-item-groups/${encodeURIComponent(groupId)}/copy`, { method: 'POST' });
+}
+
+// ---- Reusable evaluation scale library (PR 293) ----
+
+export function listChecklistScales() {
+  return apiRequest<ChecklistScaleSummary[]>('/checklist-scales');
+}
+
+export function createChecklistScale(input: { name: string; levels: { value: number; label: string; score: number }[] }) {
+  return apiRequest<ChecklistScaleSummary>('/checklist-scales', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateChecklistScale(scaleId: string, input: { name?: string; levels?: { value: number; label: string; score: number }[] }) {
+  return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function archiveChecklistScale(scaleId: string) {
+  return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}/archive`, { method: 'POST' });
 }
 
 export function assignChecklist(checklistId: string, userId: string, dueAt?: string) {

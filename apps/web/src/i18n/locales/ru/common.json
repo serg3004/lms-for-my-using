@@ -952,7 +952,11 @@
         "passThreshold": "Порог зачёта, %",
         "requiresReview": "Требовать подтверждение инструктора перед итоговым зачётом",
         "assignUserId": "ID пользователя",
-        "assignUser": "Сотрудник"
+        "assignUser": "Сотрудник",
+        "weight": "Вес",
+        "scale": "Шкала",
+        "defaultLocationCapturePolicy": "Требование геолокации",
+        "preSessionVisibility": "Что видит сотрудник до сессии"
       },
       "itemsTitle": "Пункты чек-листа",
       "noItems": "Пока нет пунктов.",
@@ -1064,6 +1068,47 @@
           "doneSummary": "Создано {{created}}, пропущено {{skipped}}, ошибок {{failed}}.",
           "submitError": "Не удалось создать сессии."
         }
+      },
+      "newGroupTitle": "Новая группа",
+      "newCriterionText": "Новый критерий",
+      "contextFieldsTitle": "Общая информация",
+      "contextFieldsHint": "Заполняется наблюдателем перед критериями.",
+      "contextFieldLabel": "Название поля",
+      "addContextField": "Поле",
+      "groupsTitle": "Группы и критерии",
+      "groupTitle": "Название группы",
+      "ungroupedItems": "Без группы",
+      "moveUp": "Переместить вверх",
+      "moveDown": "Переместить вниз",
+      "copyGroup": "Копировать",
+      "addCriterion": "Критерий",
+      "noScale": "Без шкалы",
+      "addGroup": "Группа",
+      "defaultLocationCapturePolicyHint": "Предзаполняет требование геолокации при планировании сессии для этого чек-листа.",
+      "orgDefault": "По умолчанию организации",
+      "contextFieldType": {
+        "text": "Текст",
+        "textarea": "Многострочный текст",
+        "date": "Дата"
+      },
+      "preSessionVisibility": {
+        "full": "Структуру и прошлую обратную связь",
+        "structure_only": "Только структуру",
+        "none": "Ничего"
+      },
+      "scaleManager": {
+        "title": "Оценочные шкалы",
+        "newScaleName": "Новая шкала",
+        "error": "Не удалось сохранить шкалу.",
+        "name": "Название шкалы",
+        "levelsCount": "Уровней: {{count}}",
+        "archived": "В архиве",
+        "rename": "Переименовать",
+        "empty": "Оценочных шкал пока нет.",
+        "addScale": "Новая шкала",
+        "defaultLow": "Низко",
+        "defaultMedium": "Средне",
+        "defaultHigh": "Высоко"
       }
     }
   },

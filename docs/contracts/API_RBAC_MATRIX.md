@@ -62,6 +62,8 @@ Admin API additions (PR 292: `POST /checklist-sessions/bulk`, `POST /checklist-s
 
 Evaluation scale library (PR 293: `GET/POST /checklist-scales`, `GET/PATCH /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) reuses `checklistsRead` (list/get) and `checklistsCreate` (create/update/archive) rather than adding new policies -- managing a reusable scale library is the same class of action as managing checklists/items themselves, which already use exactly these two policies. There is no row-level scoping beyond tenant (`organizationId`): a scale is a tenant-wide library resource, not owned by an individual manager's team.
 
+Observation-sheet builder additions (PR 296: `GET/POST /checklists/:checklistId/groups`, `PATCH /checklist-item-groups/:id`, `POST /checklist-item-groups/:id/copy`, plus `groupId`/`contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` extending the existing checklist/item create/update routes) reuse `checklistsRead` (list groups) and `checklistsCreate` (create/update/copy groups, and every extended field) rather than adding new policies -- authoring a checklist's group structure and sheet-level settings is the same class of action as authoring its items, which already use exactly these two policies. There is no row-level scoping beyond tenant (`organizationId`) plus the existing checklist-ownership check every item route already performs (`assertValidGroup` additionally requires the group's `checklistId` to match the item's, so a group cannot be borrowed across checklists even by an otherwise-authorized caller).
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

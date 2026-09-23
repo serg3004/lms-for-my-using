@@ -20,6 +20,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistInstance` |
 | `ChecklistInstanceEvent` |
 | `ChecklistItem` |
+| `ChecklistItemGroup` |
 | `ChecklistItemResult` |
 | `ChecklistLocationCapture` |
 | `ChecklistScale` |
@@ -69,12 +70,14 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
 | `CertificateStatus` | `issued`, `revoked` |
 | `ChecklistAnswerState` | `unanswered`, `answered`, `skipped` |
+| `ChecklistContextFieldType` | `text`, `textarea`, `date` |
 | `ChecklistFeedbackVisibility` | `after_completion`, `live` |
 | `ChecklistGeolocationPolicy` | `off`, `optional`, `required` |
 | `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
 | `ChecklistLocationCapturePoint` | `start`, `end` |
 | `ChecklistLocationCaptureStatus` | `captured`, `denied`, `unavailable` |
+| `ChecklistPreSessionVisibility` | `full`, `structure_only`, `none` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
 | `ChecklistScaleStatus` | `active`, `archived` |
 | `ChecklistScoringMode` | `sum_points`, `all_required`, `scale` |

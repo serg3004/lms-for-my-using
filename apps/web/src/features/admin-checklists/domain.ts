@@ -4,12 +4,17 @@ import type {
 } from '../../app/checklistCompletion.js';
 import { isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
+  ChecklistGeolocationPolicy,
   ChecklistInstanceSummary,
+  ChecklistItemGroup,
   ChecklistItemSummary,
+  ChecklistPreSessionVisibility,
   ChecklistScaleLevel,
+  ChecklistScaleLevelSummary,
   ChecklistScoringMode,
   ChecklistStatus,
   ChecklistSummary,
+  ContextField,
   UserSummary,
 } from '../../shared/api/types.js';
 
@@ -47,6 +52,8 @@ export function buildChecklistSettingsPayload(form: {
   passThreshold: number;
   requiresReview: boolean;
   scaleLevels: ChecklistScaleLevel[];
+  defaultLocationCapturePolicy: ChecklistGeolocationPolicy | '';
+  preSessionVisibility: ChecklistPreSessionVisibility;
 }) {
   return {
     title: form.title,
@@ -55,6 +62,8 @@ export function buildChecklistSettingsPayload(form: {
     passThreshold: form.passThreshold,
     requiresReview: form.requiresReview,
     scaleLevels: form.scoringMode === 'scale' ? form.scaleLevels : null,
+    defaultLocationCapturePolicy: form.defaultLocationCapturePolicy || null,
+    preSessionVisibility: form.preSessionVisibility,
   };
 }
 
@@ -116,4 +125,59 @@ export function createDefaultScale(t: TFunction): ChecklistScaleLevel[] {
     label: t(`admin.checklists.defaultScale.${index + 1}`),
     points,
   }));
+}
+
+// ---- PR 296: observation-sheet builder (item groups, context fields) ----
+
+export type GroupedItems = { group: ChecklistItemGroup | null; items: ChecklistItemSummary[] };
+
+/**
+ * Buckets items by their group, ordered groups-first (by ChecklistItemGroup.order), then a
+ * synthetic "ungrouped" bucket (group: null) for items whose groupId doesn't match any group --
+ * always last, so a criterion is never silently dropped from the builder's view.
+ */
+export function groupItems(items: ChecklistItemSummary[], groups: ChecklistItemGroup[]): GroupedItems[] {
+  const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
+  const buckets: GroupedItems[] = sortedGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id) }));
+  const groupIds = new Set(groups.map((group) => group.id));
+  const ungrouped = items.filter((item) => item.groupId == null || !groupIds.has(item.groupId));
+  if (ungrouped.length > 0 || groups.length === 0) buckets.push({ group: null, items: ungrouped });
+  return buckets;
+}
+
+export function applyGroupPatch(groups: ChecklistItemGroup[], groupId: string, patch: Partial<ChecklistItemGroup>) {
+  return groups.map((group) => (group.id === groupId ? { ...group, ...patch } : group));
+}
+
+/** Swaps a group with its neighbour in the given direction, returning the two {id, order} pairs to persist. */
+export function moveGroup(groups: ChecklistItemGroup[], groupId: string, direction: 'up' | 'down'): Array<{ id: string; order: number }> {
+  const sorted = [...groups].sort((a, b) => a.order - b.order);
+  const index = sorted.findIndex((group) => group.id === groupId);
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (index === -1 || targetIndex < 0 || targetIndex >= sorted.length) return [];
+  const a = sorted[index];
+  const b = sorted[targetIndex];
+  return [{ id: a.id, order: b.order }, { id: b.id, order: a.order }];
+}
+
+export function applyContextFieldPatch(fields: ContextField[], fieldId: string, patch: Partial<ContextField>) {
+  return fields.map((field) => (field.id === fieldId ? { ...field, ...patch } : field));
+}
+
+export function appendContextField(fields: ContextField[]): ContextField[] {
+  return [...fields, { id: crypto.randomUUID(), label: '', type: 'text', required: false, order: fields.length }];
+}
+
+export function removeContextFieldById(fields: ContextField[], fieldId: string) {
+  return fields.filter((field) => field.id !== fieldId);
+}
+
+// ---- PR 293/296: reusable evaluation scale library (scale-manager builder UI) ----
+
+export function createDefaultReusableScaleLevels(t: TFunction): ChecklistScaleLevelSummary[] {
+  return [
+    { value: 1, label: t('admin.checklists.scaleManager.defaultLow', 'Low'), score: 0 },
+    { value: 2, label: t('admin.checklists.scaleManager.defaultMedium', 'Medium'), score: 50 },
+    { value: 3, label: t('admin.checklists.scaleManager.defaultHigh', 'High'), score: 100 },
+  ];
 }

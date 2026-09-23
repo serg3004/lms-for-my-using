@@ -344,6 +344,35 @@ export type ChecklistItemSummary = {
   points: number;
   isRequired: boolean;
   photoRequired: boolean;
+  // PR 290/293/296 fields -- optional so pre-existing test fixtures across the codebase that
+  // predate them don't all need updating; the server always sends real values (weight defaults
+  // to 1, the rest to false/null), so `?? <default>` at the read site is the correct fallback.
+  weight?: number;
+  allowSkip?: boolean;
+  autoSkipUnanswered?: boolean;
+  scaleId?: string | null;
+  groupId?: string | null;
+};
+
+// ---- PR 296: observation-sheet builder (context fields, item groups, sheet-level settings) ----
+
+export type ChecklistContextFieldType = 'text' | 'textarea' | 'date';
+
+export type ContextField = {
+  id: string;
+  label: string;
+  type: ChecklistContextFieldType;
+  required: boolean;
+  order: number;
+};
+
+export type ChecklistPreSessionVisibility = 'full' | 'structure_only' | 'none';
+
+export type ChecklistItemGroup = {
+  id: string;
+  checklistId: string;
+  title: string;
+  order: number;
 };
 
 export type ChecklistSummary = {
@@ -356,10 +385,33 @@ export type ChecklistSummary = {
   passThreshold: number;
   scaleLevels: ChecklistScaleLevel[] | null;
   requiresReview: boolean;
+  // PR 296 fields -- optional for the same reason as ChecklistItemSummary's above.
+  contextFields?: ContextField[] | null;
+  defaultLocationCapturePolicy?: ChecklistGeolocationPolicy | null;
+  preSessionVisibility?: ChecklistPreSessionVisibility;
+  itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
   items: ChecklistItemSummary[];
+};
+
+// ---- PR 293: reusable evaluation scale library ----
+
+export type ChecklistScaleStatus = 'active' | 'archived';
+
+export type ChecklistScaleLevelSummary = {
+  value: number;
+  label: string;
+  score: number;
+};
+
+export type ChecklistScaleSummary = {
+  id: string;
+  organizationId: string;
+  name: string;
+  status: ChecklistScaleStatus;
+  levels: ChecklistScaleLevelSummary[];
 };
 
 export type ChecklistItemResultSummary = {

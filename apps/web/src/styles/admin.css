@@ -1380,12 +1380,18 @@
   flex: none;
 }
 
-.admin-checklist-item__points {
-  width: 60px;
-  text-align: center;
+.admin-checklist-item__points,
+.admin-checklist-item__weight,
+.admin-checklist-item__scale {
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 4px;
+}
+
+.admin-checklist-item__points,
+.admin-checklist-item__weight {
+  width: 52px;
+  text-align: center;
 }
 
 .admin-checklist-item__photo {
@@ -1395,6 +1401,48 @@
   font-size: 12px;
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+.admin-checklist-item__scale {
+  max-width: 140px;
+  font-size: 12px;
+}
+
+/* PR 296 observation-sheet builder: item groups, context fields, scale manager. */
+.admin-item-group {
+  margin-bottom: 16px;
+}
+
+.admin-item-group__header,
+.admin-context-field-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-item-group__header {
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.admin-item-group__header h4 {
+  margin: 0;
+}
+
+.admin-item-group__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-context-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.admin-context-field-row input[type='text'] {
+  flex: 1;
 }
 
 .admin-checklist-add-item {

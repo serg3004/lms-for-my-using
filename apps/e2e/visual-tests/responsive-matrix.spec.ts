@@ -297,6 +297,9 @@ async function installChecklistBuilderMocks(page: Page) {
       ],
     }],
   }));
+  // PR 296 observation-sheet builder: fetched on mount, empty is a valid/expected state here.
+  await page.route('**/api/v1/checklists/checklist-1/groups', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/checklist-scales', (route) => route.fulfill({ json: [] }));
 }
 
 async function installChecklistSessionsMocks(page: Page) {

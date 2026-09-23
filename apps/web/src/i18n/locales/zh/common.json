@@ -952,7 +952,11 @@
         "passThreshold": "通过阈值（%）",
         "requiresReview": "结果生效前需要讲师确认",
         "assignUserId": "用户 ID",
-        "assignUser": "员工"
+        "assignUser": "员工",
+        "weight": "权重",
+        "scale": "量表",
+        "defaultLocationCapturePolicy": "位置要求",
+        "preSessionVisibility": "员工会话前可见内容"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1064,6 +1068,47 @@
           "doneSummary": "已创建 {{created}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
           "submitError": "无法创建会话。"
         }
+      },
+      "newGroupTitle": "新建分组",
+      "newCriterionText": "新标准",
+      "contextFieldsTitle": "基本信息",
+      "contextFieldsHint": "由观察员在评估标准之前填写。",
+      "contextFieldLabel": "字段标签",
+      "addContextField": "字段",
+      "groupsTitle": "分组与标准",
+      "groupTitle": "分组名称",
+      "ungroupedItems": "未分组",
+      "moveUp": "上移",
+      "moveDown": "下移",
+      "copyGroup": "复制",
+      "addCriterion": "标准",
+      "noScale": "无量表",
+      "addGroup": "分组",
+      "defaultLocationCapturePolicyHint": "为此检查清单安排会话时预填位置采集策略。",
+      "orgDefault": "组织默认值",
+      "contextFieldType": {
+        "text": "文本",
+        "textarea": "多行文本",
+        "date": "日期"
+      },
+      "preSessionVisibility": {
+        "full": "结构和历史反馈",
+        "structure_only": "仅结构",
+        "none": "无内容"
+      },
+      "scaleManager": {
+        "title": "评估量表",
+        "newScaleName": "新量表",
+        "error": "无法保存量表。",
+        "name": "量表名称",
+        "levelsCount": "{{count}} 个等级",
+        "archived": "已归档",
+        "rename": "重命名",
+        "empty": "暂无评估量表。",
+        "addScale": "新量表",
+        "defaultLow": "低",
+        "defaultMedium": "中",
+        "defaultHigh": "高"
       }
     }
   },

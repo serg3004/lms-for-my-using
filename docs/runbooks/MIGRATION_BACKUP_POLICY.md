@@ -214,6 +214,20 @@ Migration `20260923120000_add_checklist_item_scale_ref` также additive и b
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Observation sheet builder migration
+
+Migration `20260923150000_add_checklist_observation_sheet_builder` также additive и backward-compatible (PR 296, `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`):
+
+- `checklists`: три новые колонки — `context_fields JSONB` (nullable, без `DEFAULT`), `default_location_capture_policy` (nullable enum `ChecklistGeolocationPolicy`, уже существующий с PR 289/290), `pre_session_visibility` (новый enum `ChecklistPreSessionVisibility`, `NOT NULL DEFAULT 'structure_only'` — безопасный дефолт, скрывающий прошлую обратную связь до явного решения администратора, аналогично `off`/`after_completion` дефолтам PR 286); ни одна существующая колонка не изменена;
+- новая таблица `checklist_item_groups` (id/organization_id/checklist_id/title/order + timestamps), FK на `organizations`/`checklists` (`ON DELETE CASCADE`, зеркалит существующий паттерн `checklist_items`), два обычных индекса; не имеет endpoint удаления группы в этом PR (только add/rename/reorder/copy), поэтому пустая таблица никогда не блокирует ничего;
+- `checklist_items` получает одну nullable колонку `group_id UUID` (без `DEFAULT`) и FK `ON DELETE SET NULL ON UPDATE CASCADE` на `checklist_item_groups` — `SetNull`, а не `Cascade`/`Restrict`, специально выбран так, чтобы гипотетическое будущее удаление группы никогда не удаляло криterii молча; существующие строки получают `group_id = NULL` — backfill не требуется (группы — новая концепция, у старых критериев их не было и не может быть);
+- `CHECKLIST_SNAPSHOT_VERSION` **не увеличена** — `contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` добавлены в `ChecklistRuntime`/`toRuntimeChecklist()` как строго опциональные поля; `parseTemplateSnapshot()`'s runtime-валидатор не требует их присутствия, поэтому существующие (созданные до PR 296) `templateSnapshot`-снэпшоты продолжают парситься как валидные без каких-либо изменений;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых колонках/таблице и продолжает работать с чек-листами как раньше.
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверена на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>`, реплеирующий полную историю миграций в чистую shadow-БД перед сравнением со schema.prisma — после применения миграции вывод совпадает byte-for-byte с тем же (167-строчным, предсуществующим, не связанным с этим PR — тем же, что задокументирован выше для PR 293) baseline-дрейфом, подтверждённым отдельным прогоном diff без миграции; применено к реальному локальному PostgreSQL 16 (`psql -f migration.sql` + ручная запись в `_prisma_migrations`), `checklist-observation-sheet-builder.database.spec.ts` подтверждает group CRUD/copy, FK cross-checklist rejection и snapshot-immutability инварианты через сервисный слой на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling
