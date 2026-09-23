@@ -255,6 +255,59 @@ codebase. Email delivery is a separate, best-effort async step triggered by that
 valid no-op -- the in-app `Notification` is already durable regardless of whether email delivery is
 configured or succeeds.
 
+## Checklist session admin API (PR 292)
+
+Rounds out the admin surface for `ChecklistSession` (list/detail/create already existed from PR
+289) with bulk create, repeat, participant/checklist lookups for the "new session" wizard, and a
+richer list/detail projection -- no new tables, no new role policies (see
+[`API_RBAC_MATRIX.md`](./API_RBAC_MATRIX.md), "Role policy vs object scope").
+
+`POST /checklist-sessions/bulk` accepts one `checklistId` + up to 100 `learnerId`s + one shared
+`observerId`/`scheduledAt`/`locationCapturePolicy`/`timezone`, and creates independent
+instance+session pairs per learner -- **not** an all-or-nothing batch. Each recipient is processed
+individually through the existing `ChecklistsService.assignChecklist` (so per-learner
+active-assignment conflicts surface the same way a single `POST /checklist-instances` would) and
+the response reports per-recipient outcome: `{learnerId, status: 'created'|'skipped'|'failed',
+sessionId?, reason?}`, plus `created`/`skipped`/`failed` counts. A learner who already has an
+active assignment for the checklist is `skipped` (400 from `assignChecklist`, not fatal to the
+batch); an unknown/invalid learner is `failed` (404); anything else propagates as a real error and
+aborts the remaining batch. One `checklist_session.bulk_created` audit-log entry is written per
+call, summarizing total/created counts.
+
+`POST /checklist-sessions/:id/repeat` creates a **fresh** `ChecklistInstance` + `ChecklistSession`
+pair for the same learner/checklist, copying `observerId`/`locationCapturePolicy`/`timezone` from
+the original -- it never reopens or mutates the original session/instance (both are terminal by
+then). Only callable when the original session's own status is `completed` or `cancelled` (400
+otherwise, e.g. a session still `in_progress`); because `ChecklistSession` is a 1:1 overlay,
+repeating also depends on the underlying `ChecklistInstance` no longer being active -- completing
+the *session* does not complete the *instance* (they are independently-lifecycled per
+`ADR_CHECKLIST_SESSION_OVERLAY.md`), so a repeat attempt made before the learner actually submits
+the checklist still fails with the same "already has an active assignment" 400 that a fresh manual
+assignment would. Writes a `checklist_session.repeated` audit-log entry.
+
+`GET /checklist-sessions/participants?role=learner|observer` backs the wizard's people-pickers.
+`role=observer` returns tenant-wide users holding the `instructor` role membership (observers are
+not team-scoped -- any instructor can be assigned to any session, same as today's manual
+`observerId` selection). `role=learner` is scoped by the caller: admin sees the whole tenant, a
+manager sees only their effective team (`ChecklistReviewAccessService.participantLearnerScope`,
+reusing `OrganizationAccessScopeService.user()` -- the same Group ∪ Department ∪ ReportingLine
+union `sessionScope()` already uses), any other caller role gets tenant-wide (mirrors how
+`sessionScope()` treats a non-manager, non-learner caller elsewhere in this module). Supports
+`search` (name substring) and pagination.
+
+`GET /checklists?status=published` (existing route, now accepts an optional `status` query param)
+backs the wizard's checklist picker -- filters out `draft`/`archived` checklists client-side would
+otherwise have to do manually. Omitting `status` preserves the prior unfiltered behavior.
+
+`GET /checklist-sessions` and `GET /checklist-sessions/:id` now return a joined projection instead
+of the bare `ChecklistSession` row: `checklist: {id, title}`, `learner: {id, firstName, lastName,
+email}`, `observer: {id, firstName, lastName, email}`, and `result: {instanceStatus, percentage,
+passed, scored}` sourced from the underlying `ChecklistInstance` -- this is a read-only join, not a
+new persisted field, and requires no `ChecklistSession` schema change. `list()` also gained
+`checklistId`, `learnerId`, `scheduledFrom`/`scheduledTo`, and `search` (matches learner name or
+checklist title, case-insensitive) query filters, alongside the existing `status`/`observerId`/
+`overdueOnly`/pagination filters from PR 289.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

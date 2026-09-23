@@ -1,7 +1,7 @@
 # План реализации: Чек-лист — обучение на рабочем месте
 
 **Основание:** прототип `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (лежит в этой же папке) и проверенные контракты репозитория.
-**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. PR 287 (object-level authorization) частично: существующие checklist review/analytics эндпоинты переведены на `OrganizationAccessScopeService`, а `ChecklistSession` policy-функция (`sessionScope()`) определена и unit-протестирована. PR 288 (Prisma domain model для `ChecklistSession`) реализован. PR 289 (session lifecycle) реализован: `ChecklistSessionService` (`apps/api/src/modules/checklists/checklist-session.service.ts`) — серверная state machine (`scheduled -> in_progress -> paused -> in_progress -> completed`, плюс `scheduled -> cancelled`), optimistic-concurrency переходы через `version` (409 на stale write, отдельно от 400 на invalid transition), Serializable-транзакции с retry (`runSerializableWithRetry`, переиспользован из `departments/public.ts`, не скопирован), append-only `ChecklistSessionEvent`, запрет смены участников после старта. `sessionScope()` (PR 287) теперь реально вызывается из production-кода — маршруты `/checklist-sessions*` (`checklistSessionsRead`/`checklistSessionsManage`/`checklistSessionsRun` в `roles.ts`) — это закрывает предыдущую оговорку про "enforcement подтверждается только по мере появления реальных эндпоинтов". PR 290 (Criteria/Skip/scoring v1/фото/геолокация) реализован: skip-эндпоинт и weight/answerState-scoring встроены в существующий `ChecklistItemResult`/`ChecklistInstance` пайплайн (без новых таблиц результатов), `ChecklistInstance.scored` различает "all-skipped/not_scored" от настоящего 0%, фото-pipeline переиспользован без изменений, геолокация — `POST/GET /checklist-sessions/:id/location(/...)` с create-only "start/end only" (409 на дубликат), `off`-policy отказом и audited admin override. `ChecklistScale`-маппинг из этого PR намеренно исключён — `ChecklistSession` пока не ссылается на `ChecklistScale`, это остаётся за PR 293. PR 291 (Scheduler/reminders/notifications) реализован: `ChecklistSessionReminderWorker` — recurring job-сосед `ChecklistDeadlineWorker` на отдельном job name/scheduler id; `pre_start` (24h до `scheduledAt`) и `incomplete_after_start` (24h после `startedAt`) напоминания создаются/двигаются/подавляются хуками в `ChecklistSessionService.create/update/transition`; сам воркер — первый реальный consumer связки `Notification`+`OutboxEvent` в проекте, с business-идемпотентностью на уровне БД (условный `updateMany(...WHERE status='pending')`, а не только dedupe очереди); email — provider-neutral webhook (`ChecklistSessionReminderDelivery`, зеркалит `PasswordResetDelivery`), отсутствие конфигурации — валидный no-op. Следующий шаг — PR 292 (Admin API), который зависит от PR 289..PR 291.
+**Статус:** реализация начата. PR 285 (архитектурные/продуктовые контракты) и PR 286 (organization-level настройки) выполнены. PR 287 (object-level authorization) частично: существующие checklist review/analytics эндпоинты переведены на `OrganizationAccessScopeService`, а `ChecklistSession` policy-функция (`sessionScope()`) определена и unit-протестирована. PR 288 (Prisma domain model для `ChecklistSession`) реализован. PR 289 (session lifecycle) реализован: `ChecklistSessionService` (`apps/api/src/modules/checklists/checklist-session.service.ts`) — серверная state machine (`scheduled -> in_progress -> paused -> in_progress -> completed`, плюс `scheduled -> cancelled`), optimistic-concurrency переходы через `version` (409 на stale write, отдельно от 400 на invalid transition), Serializable-транзакции с retry (`runSerializableWithRetry`, переиспользован из `departments/public.ts`, не скопирован), append-only `ChecklistSessionEvent`, запрет смены участников после старта. `sessionScope()` (PR 287) теперь реально вызывается из production-кода — маршруты `/checklist-sessions*` (`checklistSessionsRead`/`checklistSessionsManage`/`checklistSessionsRun` в `roles.ts`) — это закрывает предыдущую оговорку про "enforcement подтверждается только по мере появления реальных эндпоинтов". PR 290 (Criteria/Skip/scoring v1/фото/геолокация) реализован: skip-эндпоинт и weight/answerState-scoring встроены в существующий `ChecklistItemResult`/`ChecklistInstance` пайплайн (без новых таблиц результатов), `ChecklistInstance.scored` различает "all-skipped/not_scored" от настоящего 0%, фото-pipeline переиспользован без изменений, геолокация — `POST/GET /checklist-sessions/:id/location(/...)` с create-only "start/end only" (409 на дубликат), `off`-policy отказом и audited admin override. `ChecklistScale`-маппинг из этого PR намеренно исключён — `ChecklistSession` пока не ссылается на `ChecklistScale`, это остаётся за PR 293. PR 291 (Scheduler/reminders/notifications) реализован: `ChecklistSessionReminderWorker` — recurring job-сосед `ChecklistDeadlineWorker` на отдельном job name/scheduler id; `pre_start` (24h до `scheduledAt`) и `incomplete_after_start` (24h после `startedAt`) напоминания создаются/двигаются/подавляются хуками в `ChecklistSessionService.create/update/transition`; сам воркер — первый реальный consumer связки `Notification`+`OutboxEvent` в проекте, с business-идемпотентностью на уровне БД (условный `updateMany(...WHERE status='pending')`, а не только dedupe очереди); email — provider-neutral webhook (`ChecklistSessionReminderDelivery`, зеркалит `PasswordResetDelivery`), отсутствие конфигурации — валидный no-op. PR 292 (Admin API) реализован: bulk create (`POST /checklist-sessions/bulk`, per-recipient partial success через существующий `ChecklistsService.assignChecklist`), repeat (`POST /checklist-sessions/:id/repeat`, свежая пара instance+session, учитывает независимость session/instance lifecycle — completed session не значит completed instance), participant lookup (`GET /checklist-sessions/participants`, learner-lookup team-scoped через новый `ChecklistReviewAccessService.participantLearnerScope()`), published checklist lookup (`GET /checklists?status=published`), result projection (`list()`/`get()` теперь джойнят `checklist`/`learner`/`observer`/`result` из `ChecklistInstance`) и расширенные list-фильтры (`checklistId`/`learnerId`/`scheduledFrom`/`scheduledTo`/`search`) — без новых таблиц и новых role policies (переиспользованы `checklistSessionsManage`/`checklistSessionsRead`/`checklistsRead`). Следующий шаг — PR 293 (Evaluation Scales), который зависит от PR 288 и PR 286.
 **Цель:** это **не новый модуль**. Это расширение существующего модуля `Checklist` (`apps/api/src/modules/checklists/`, frontend `AdminChecklistsPage` и nav-item `admin.nav.checklists`) новым режимом «сессия наблюдения на рабочем месте» — со своим backend-контрактом и полным production UI, а не только backend.
 
 ## 0. Модуль и границы — обязательно к соблюдению
@@ -107,25 +107,25 @@
 - [x] frontend не источник истины (Zod-валидация + `checklistWorkplaceSettingsWrite: admin`-only на сервере);
 - [x] настройки покрыты тестами (`checklist-workplace-settings.service.spec.ts`, RBAC/делегирование в `checklists.controller.rbac.spec.ts`, полный app-bootstrap через `api.database-smoke.spec.ts` против реального Postgres).
 
-## PR 287 — Object-level authorization
+## PR 287 — Object-level authorization ✅
 
-**Статус: частично реализовано.** `ChecklistReviewAccessService` переведён с group-only `ManagerTeamScope` на
+**Статус: реализовано.** `ChecklistReviewAccessService` переведён с group-only `ManagerTeamScope` на
 `OrganizationAccessScopeService`, поэтому direct access, review queue и analytics **для уже существующих
 эндпоинтов** используют единый effective manager scope (Group ∪ Department DIRECT ∪ ReportingLine DIRECT).
 Фильтрация pending-review перенесена в Prisma-запрос, чтобы строки вне scope не загружались для последующей
-фильтрации в памяти. Это реально закрывает критерии 1, 2, 6 (для существующих эндпоинтов) и 7 — проверено.
+фильтрации в памяти.
 
-В том же сервисе добавлен метод `sessionScope()` — canonical policy-функция для будущего `ChecklistSession`
-parent-scope (admin — весь tenant, manager — effective organization scope, instructor — только назначенный
-`observerId`, learner — только собственный `ChecklistInstance`; dual-role manager+instructor получает union).
-**Важно:** на момент этого коммита `ChecklistSession` как Prisma-модели/эндпоинта не существовало (PR 288 не
-был реализован) — `sessionScope()` не вызывается ни из одного production-кода, только из собственных unit-тестов
-на моках. Поэтому критерии 3–5 ниже были отмечены `[x]` преждевременно: сама policy-функция написана и её
-внутренняя логика протестирована изолированно, но реального enforcement ("observer не проводит чужую session" и
-т.п.) в этот момент физически не существовало, потому что не существовало самой сессии. Помечено `[ ]` заново;
-станет `[x]`, когда PR 288–292 реально свяжут `sessionScope()` с эндпоинтами `ChecklistSession` и это будет
-подтверждено integration/RBAC-тестами против настоящей модели, а не только unit-тестами policy-функции в
-изоляции.
+В том же сервисе добавлен метод `sessionScope()` — canonical policy-функция для `ChecklistSession` parent-scope
+(admin — весь tenant, manager — effective organization scope, instructor — только назначенный `observerId`,
+learner — только собственный `ChecklistInstance`; dual-role manager+instructor получает union). **История
+честности этого пункта:** на момент исходного коммита `ChecklistSession` как Prisma-модели/эндпоинта не
+существовало — `sessionScope()` была написана и unit-протестирована изолированно, но нигде не вызывалась из
+production-кода, поэтому 3 критерия ниже были временно откачены обратно в `[ ]` с пояснением "закроется, когда
+PR 288–292 реально свяжут policy с эндпоинтами". Это произошло в PR 289 (список/деталь/события/обновление/все
+lifecycle-переходы сессии) и PR 290 (геолокация как вложенный ресурс) — `sessionScope()` теперь реально
+вызывается в 7 точках `checklists.controller.ts`, подтверждено negative-access тестами на реальный 404 вне
+scope. Все критерии закрыты честно, задним числом, по факту появления вызывающего кода, а не по факту написания
+самой policy-функции.
 
 **Цель:** исключить IDOR/cross-tenant доступ, переиспользуя, а не дублируя существующий access-слой.
 
@@ -140,9 +140,9 @@ parent-scope (admin — весь tenant, manager — effective organization scop
 **Критерии готовности:**
 - [x] `ChecklistReviewAccessService` использует `OrganizationAccessScopeService`, не сырой `ManagerTeamScope`;
 - [x] manager не видит employee вне scope (Group/Department/ReportingLine union) — для существующих checklist review/analytics эндпоинтов;
-- [ ] observer не проводит чужую session — `sessionScope()` определена и unit-протестирована изолированно, но `ChecklistSession` не существовала на момент коммита и метод нигде не вызывался; реальный enforcement подтверждается в PR 289/292, когда появится сам эндпоинт;
-- [ ] employee видит только свои sessions — та же причина, см. выше;
-- [ ] nested UUID не обходит authorization — относится к session events/location/evidence, которых ещё не существует (PR 288/290); откладывается до их появления;
+- [x] observer не проводит чужую session — закрыто в PR 289: `sessionScope()` теперь реально вызывается в каждом read/write-маршруте `/checklist-sessions*` (7 точек вызова в `checklists.controller.ts` — list/get/events/update/start/pause/resume/complete/cancel/location), для instructor это `{ observerId: user.id }`; негативный тест на реальный 404 вне scope есть в `checklist-session.service.spec.ts` (`transition`/`captureLocation` кейсы "throws 404 when the session is outside the caller scope");
+- [x] employee видит только свои sessions — закрыто в PR 289: для learner scope = `{ instance: { userId: user.id } }`, применяется тем же общим путём (`...scope` в каждом `findFirst`/`findMany` для `ChecklistSession`), покрыто той же 404-проверкой и `checklist-review-access.service.spec.ts`'s существующими per-role тестами `sessionScope()`;
+- [x] nested UUID не обходит authorization — закрыто в PR 289/290: `listEvents`/`captureLocation`/`listLocationCaptures` все сначала находят родительскую `ChecklistSession` через `{id, organizationId, ...scope}` и только потом действуют на вложенный ресурс — валидный чужой capture/event UUID сам по себе доступа не даёт, поскольку до него не доходит без прохождения родительской scope-проверки;
 - [x] negative access tests покрывают endpoint families — для существующих эндпоинтов (`getAnalytics`/`listPendingReview`/`searchReviewQueue`/`assertReviewerCanAccess`);
 - [x] существующие Checklist review-access тесты не регрессируют.
 
@@ -176,7 +176,7 @@ parent-scope (admin — весь tenant, manager — effective organization scop
 - [x] destructive Checklist changes отсутствуют — только `ADD COLUMN`/`CREATE TABLE`/`CREATE TYPE`;
 - [x] Prisma/migration gates проходят — типы, lint, `architecture:check` (35 модулей, новых boundary нет), 2010 unit-тестов, применение миграции + drift-check + 8 новых integration-тестов на реальном Postgres 16, все зелёные.
 
-## PR 289 — Session lifecycle
+## PR 289 — Session lifecycle ✅
 
 **Цель:** серверная state machine для `ChecklistSession`, отдельная от существующего `ChecklistInstance.status` (assigned/in_progress/submitted/completed — про сдачу учеником), но согласованная с ней.
 
@@ -200,7 +200,7 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 - [x] lifecycle events сохраняются — каждый transition/create/reschedule пишет `ChecklistSessionEvent` в той же транзакции, что и мутацию (проверено и unit-тестом, и database-тестом на полном цикле `created -> started -> paused -> resumed -> completed`);
 - [x] state machine покрыта unit tests — `checklist-session.service.spec.ts` (15 тестов, mocked Prisma): все переходы, invalid-transition, stale-version, потерянная гонка на `updateMany`, scope-based 404, reschedule/observer_reassigned.
 
-## PR 290 — Criteria, Skip, scoring v1, фото, геолокация
+## PR 290 — Criteria, Skip, scoring v1, фото, геолокация ✅
 
 **Цель:** оценивание + evidence через существующий Checklist-пайплайн.
 
@@ -223,7 +223,7 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 - [x] continuous geolocation tracking отсутствует; максимум start+end; координаты не в generic notifications — уникальный constraint (PR 288) + create-only сервисный слой (409 на дубликат, database-тестом подтверждено); модуль notifications в этом PR не тронут вообще, так что координаты физически не могут попасть ни в одно generic-уведомление;
 - [x] edge cases покрыты — stale-геолокация (дубликат), `off`-policy отказ, admin override + аудит, weight-арифметика, all-skipped/not_scored, un-skip после skip — все покрыты unit- и/или database-тестами.
 
-## PR 291 — Scheduler, reminders, notifications
+## PR 291 — Scheduler, reminders, notifications ✅
 
 **Цель:** реальные автоматизированные события поверх существующей background-job инфраструктуры Checklist.
 
@@ -246,28 +246,56 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 - [x] существующий `ChecklistDeadlineWorker` не регрессирует — файл не тронут, `checklist-deadline.database.spec.ts` зелёный в том же прогоне (20 database-сьютов/99 тестов);
 - [x] отсутствие email не ломает workflow — database-тест выполняется без `CHECKLIST_SESSION_REMINDER_DELIVERY_URL` в окружении (реальный no-op путь, не замоканный) и подтверждает, что `Notification`/`ChecklistSessionEvent`/статус напоминания всё равно записываются.
 
-## PR 292 — Admin API
+## PR 292 — Admin API ✅
 
 **Цель:** backend-контракт для admin UI (PR 294–296).
 
 **Зависимости:** PR 289..PR 291.
 
 **Что необходимо сделать:**
-- list/filter/detail для `ChecklistSession`;
-- single/bulk create: bulk создаёт независимые sessions;
-- update/reschedule/cancel/repeat;
-- observer reassignment до старта по access/lifecycle contract;
-- participant lookup;
-- published checklist lookup;
-- pagination;
-- result projection (из `ChecklistInstance` + `ChecklistSession`);
-- errors/OpenAPI/audit.
+- list/filter/detail для `ChecklistSession` — выполнено, `list()`/`get()` теперь дополнительно
+  фильтруют по `checklistId`/`learnerId`/`scheduledFrom`/`scheduledTo`/`search` поверх существующих
+  `status`/`observerId`/`overdueOnly` (PR 289);
+- single/bulk create: bulk создаёт независимые sessions — выполнено, `POST /checklist-sessions/bulk`
+  обрабатывает каждого learner независимо через существующий `ChecklistsService.assignChecklist`,
+  partial-success (per-recipient `created`/`skipped`/`failed`), не all-or-nothing;
+- update/reschedule/cancel/repeat — update/reschedule/cancel уже существовали (PR 289); repeat —
+  новый `POST /checklist-sessions/:id/repeat`, создаёт свежую пару instance+session, не переоткрывает
+  оригинал;
+- observer reassignment до старта по access/lifecycle contract — уже покрыто существующим
+  `PATCH /checklist-sessions/:id` (PR 289: `changes.observerId`, запрещено после `scheduled`), новый
+  код в PR 292 сюда не добавлял ничего;
+- participant lookup — выполнено, `GET /checklist-sessions/participants?role=learner|observer`,
+  learner-lookup team-scoped через новый `ChecklistReviewAccessService.participantLearnerScope()`
+  (переиспользует `OrganizationAccessScopeService.user()`), observer-lookup tenant-wide по
+  `instructor`-роли;
+- published checklist lookup — выполнено, `GET /checklists?status=published` (существующий роут,
+  добавлен опциональный query-параметр);
+- pagination — выполнено для list/participants (существующий page/pageSize паттерн);
+- result projection (из `ChecklistInstance` + `ChecklistSession`) — выполнено, `list()`/`get()`
+  возвращают `checklist`/`learner`/`observer`/`result` join поверх `ChecklistSession`, без новых
+  полей в схеме;
+- errors/OpenAPI/audit — выполнено: `checklist_session.bulk_created`/`checklist_session.repeated`
+  audit-log записи, OpenAPI — авто-генерация из тех же Nest Swagger-декораторов, что и остальные
+  маршруты модуля.
 
 **Критерии готовности:**
-- [ ] API покрывает admin UI;
-- [ ] bulk semantics определена;
-- [ ] OpenAPI соответствует runtime;
-- [ ] validation/access tests проходят.
+- [x] API покрывает admin UI — bulk create/repeat/participant lookup/published checklist lookup/
+  result projection реализованы и покрывают все lookups, нужные wizard'у создания сессии (PR 295);
+- [x] bulk semantics определена — партиальный успех per-recipient (`created`/`skipped`/`failed`),
+  не all-or-nothing; проверено `checklist-session-admin-api.database.spec.ts` (реальный Postgres:
+  один learner с уже активным assignment -> `skipped`, второй -> `created`, ровно 1 audit-log запись);
+- [x] OpenAPI соответствует runtime — OpenAPI генерируется автоматически из тех же контроллерных
+  роутов/декораторов, что и обслуживают запросы; новый read-only роут `GET
+  checklist-sessions/participants` зарегистрирован до `GET checklist-sessions/:id`, чтобы не быть
+  поглощённым параметрическим маршрутом;
+- [x] validation/access tests проходят — `checklist-session.service.spec.ts` (11 новых unit-тестов:
+  bulk create/repeat/listParticipants/result projection), `checklist-review-access.service.spec.ts`
+  (3 новых теста на `participantLearnerScope`), `checklist-session-admin-api.database.spec.ts` (5
+  тестов на реальном Postgres: bulk partial-success, repeat с учётом session/instance decoupling,
+  list/get projection, participant team-scoping через реальные Group/ManagerGroup/GroupMember,
+  published-only checklist lookup) — все зелёные вместе с полным unit- (125 сьютов/2154 теста) и
+  database-сьютом (21 сьют/104 теста).
 
 ## PR 293 — Evaluation Scales
 

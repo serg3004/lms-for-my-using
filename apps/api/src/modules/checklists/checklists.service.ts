@@ -8,6 +8,7 @@ import {
   AssignChecklistInput,
   BulkAssignChecklistInput,
   ChecklistAnalyticsQuery,
+  ChecklistListQuery,
   ChecklistQueueQuery,
   CreateChecklistInput,
   CreateChecklistItemInput,
@@ -176,9 +177,9 @@ export class ChecklistsService {
 
   // ---- Templates ----
 
-  listChecklists(organizationId: string) {
+  listChecklists(organizationId: string, status?: ChecklistListQuery['status']) {
     return this.prisma.checklist.findMany({
-      where: { organizationId, deletedAt: null },
+      where: { organizationId, deletedAt: null, ...(status ? { status } : {}) },
       orderBy: { createdAt: 'desc' },
       select: checklistWithItemsSelect,
     });

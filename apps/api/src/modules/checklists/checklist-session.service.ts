@@ -8,18 +8,41 @@ import type {
 } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
 import { runSerializableWithRetry } from '../departments/public.js';
 import {
   createIncompleteAfterStartReminder,
   suppressPendingReminders,
   upsertPreStartReminder,
 } from './checklist-session-reminders.js';
+import { ChecklistsService } from './checklists.service.js';
 import type {
+  BulkCreateChecklistSessionInput,
+  ChecklistSessionParticipantsQuery,
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
   SubmitChecklistLocationCaptureInput,
   UpdateChecklistSessionInput,
 } from './checklists.schemas.js';
+
+const sessionProjectionInclude = {
+  instance: {
+    select: {
+      id: true,
+      checklistId: true,
+      userId: true,
+      status: true,
+      percentage: true,
+      passed: true,
+      scored: true,
+      checklist: { select: { id: true, title: true } },
+      user: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+  },
+  observer: { select: { id: true, firstName: true, lastName: true, email: true } },
+} as const;
+
+type SessionWithProjection = Prisma.ChecklistSessionGetPayload<{ include: typeof sessionProjectionInclude }>;
 
 export type ChecklistSessionAction = 'start' | 'pause' | 'resume' | 'complete' | 'cancel';
 
@@ -51,9 +74,35 @@ function present(session: ChecklistSession): ChecklistSessionView {
   };
 }
 
+/**
+ * Admin API result projection (PR 292): the session list/detail views need learner/observer/
+ * checklist identity and the underlying ChecklistInstance's result, not just the bare session
+ * row -- joined here rather than duplicated onto ChecklistSession, since ChecklistInstance stays
+ * the single source of truth for the submission's score (ADR_CHECKLIST_SESSION_OVERLAY.md).
+ */
+function presentProjected(session: SessionWithProjection) {
+  const { instance, observer, ...rest } = session;
+  return {
+    ...present(rest as ChecklistSession),
+    checklist: instance.checklist,
+    learner: instance.user,
+    observer,
+    result: {
+      instanceStatus: instance.status,
+      percentage: instance.percentage,
+      passed: instance.passed,
+      scored: instance.scored,
+    },
+  };
+}
+
 @Injectable()
 export class ChecklistSessionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly checklistsService: ChecklistsService,
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+  ) {}
 
   async create(organizationId: string, input: CreateChecklistSessionInput, actorId: string) {
     const instance = await this.prisma.checklistInstance.findFirst({
@@ -63,30 +112,17 @@ export class ChecklistSessionService {
     if (!instance) throw new NotFoundException('Checklist assignment not found');
 
     try {
-      const session = await this.prisma.$transaction(async (tx) => {
-        await this.assertValidObserver(tx, input.observerId, organizationId);
-
-        const created = await tx.checklistSession.create({
-          data: {
-            organizationId,
-            instanceId: input.instanceId,
-            observerId: input.observerId,
-            scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
-            locationCapturePolicy: input.locationCapturePolicy,
-            timezone: input.timezone,
-          },
-        });
-
-        await tx.checklistSessionEvent.create({
-          data: { organizationId, sessionId: created.id, eventType: 'created', actorUserId: actorId },
-        });
-
-        if (created.scheduledAt) {
-          await upsertPreStartReminder(tx, { organizationId, sessionId: created.id, scheduledAt: created.scheduledAt });
-        }
-
-        return created;
-      });
+      const session = await this.prisma.$transaction((tx) =>
+        this.createSessionInTransaction(tx, {
+          organizationId,
+          instanceId: input.instanceId,
+          observerId: input.observerId,
+          scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+          locationCapturePolicy: input.locationCapturePolicy,
+          timezone: input.timezone,
+          actorId,
+        }),
+      );
 
       return present(session);
     } catch (error) {
@@ -97,6 +133,156 @@ export class ChecklistSessionService {
     }
   }
 
+  /**
+   * Bulk create (PR 292): each recipient becomes an independent (ChecklistInstance,
+   * ChecklistSession) pair -- one recipient's failure (e.g. already has an active assignment for
+   * this checklist) never blocks the others, mirroring ChecklistsService.bulkAssignChecklist's
+   * partial-success shape.
+   */
+  async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string) {
+    await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+
+    const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
+    const results: Array<{ learnerId: string; status: 'created' | 'skipped' | 'failed'; sessionId?: string; reason?: string }> = [];
+
+    for (const learnerId of input.learnerIds) {
+      try {
+        const instance = await this.checklistsService.assignChecklist(input.checklistId, organizationId, { userId: learnerId }, actorId);
+        const session = await this.prisma.$transaction((tx) =>
+          this.createSessionInTransaction(tx, {
+            organizationId,
+            instanceId: instance.id,
+            observerId: input.observerId,
+            scheduledAt,
+            locationCapturePolicy: input.locationCapturePolicy,
+            timezone: input.timezone,
+            actorId,
+          }),
+        );
+        results.push({ learnerId, status: 'created', sessionId: session.id });
+      } catch (error) {
+        if (error instanceof BadRequestException) {
+          results.push({ learnerId, status: 'skipped', reason: error.message });
+        } else if (error instanceof NotFoundException) {
+          results.push({ learnerId, status: 'failed', reason: error.message });
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_session.bulk_created',
+      targetType: 'checklist',
+      targetId: input.checklistId,
+      summary: `Bulk-created checklist sessions for ${input.learnerIds.length} recipient(s)`,
+      metadata: { created: results.filter((r) => r.status === 'created').length, total: input.learnerIds.length },
+    });
+
+    return {
+      created: results.filter((r) => r.status === 'created').length,
+      skipped: results.filter((r) => r.status === 'skipped').length,
+      failed: results.filter((r) => r.status === 'failed').length,
+      results,
+    };
+  }
+
+  /**
+   * Repeat (PR 292): a ChecklistSession is a permanent 1:1 overlay over one ChecklistInstance
+   * (unique instanceId), so "repeating" a session can never mean a second session on the same
+   * instance -- it means a fresh assignment of the same checklist to the same learner, with a new
+   * session over that new instance, copying the observer/geolocation/timezone config forward.
+   * Only allowed from a terminal session: an active one should be updated in place instead.
+   */
+  async repeat(sessionId: string, organizationId: string, actorId: string, scope: object) {
+    const original = await this.prisma.checklistSession.findFirst({
+      where: { id: sessionId, organizationId, ...scope },
+      select: {
+        status: true,
+        observerId: true,
+        locationCapturePolicy: true,
+        timezone: true,
+        instance: { select: { checklistId: true, userId: true } },
+      },
+    });
+    if (!original) throw new NotFoundException('Checklist session not found');
+    if (original.status !== 'completed' && original.status !== 'cancelled') {
+      throw new BadRequestException('Only a completed or cancelled session can be repeated');
+    }
+
+    const instance = await this.checklistsService.assignChecklist(
+      original.instance.checklistId,
+      organizationId,
+      { userId: original.instance.userId },
+      actorId,
+    );
+
+    const session = await this.prisma.$transaction((tx) =>
+      this.createSessionInTransaction(tx, {
+        organizationId,
+        instanceId: instance.id,
+        observerId: original.observerId,
+        scheduledAt: null,
+        locationCapturePolicy: original.locationCapturePolicy,
+        timezone: original.timezone,
+        actorId,
+      }),
+    );
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_session.repeated',
+      targetType: 'checklist_session',
+      targetId: session.id,
+      summary: 'Repeated checklist session as a new instance/session pair',
+      metadata: { originalSessionId: sessionId },
+    });
+
+    return present(session);
+  }
+
+  /**
+   * Participant lookup (PR 292): the admin "new session" wizard's employee/observer pickers.
+   * `learner` is scoped the same way session visibility is (tenant-wide for admin, effective team
+   * for manager) so a manager can't schedule a session for someone outside their team; `observer`
+   * is any active user holding the `instructor` role, tenant-wide (observers aren't team-scoped).
+   */
+  async listParticipants(organizationId: string, query: ChecklistSessionParticipantsQuery, learnerScope: object) {
+    const searchClause: Prisma.UserWhereInput = query.search
+      ? {
+          OR: [
+            { firstName: { contains: query.search, mode: 'insensitive' } },
+            { lastName: { contains: query.search, mode: 'insensitive' } },
+            { email: { contains: query.search, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
+    const where: Prisma.UserWhereInput = {
+      organizationId,
+      deletedAt: null,
+      status: 'active',
+      ...searchClause,
+      ...(query.role === 'observer' ? { memberships: { some: { role: 'instructor', organizationId } } } : learnerScope),
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where,
+        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+        select: { id: true, firstName: true, lastName: true, email: true, position: true },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { items, page: query.page, pageSize: query.pageSize, total };
+  }
+
   async list(organizationId: string, query: ChecklistSessionQuery, scope: object) {
     const overdueClause: Prisma.ChecklistSessionWhereInput =
       query.overdueOnly === 'true'
@@ -104,18 +290,40 @@ export class ChecklistSessionService {
         : query.overdueOnly === 'false'
           ? { OR: [{ status: { not: 'scheduled' } }, { scheduledAt: null }, { scheduledAt: { gte: new Date() } }] }
           : {};
+    const scheduledClause: Prisma.ChecklistSessionWhereInput =
+      query.scheduledFrom || query.scheduledTo
+        ? {
+            scheduledAt: {
+              ...(query.scheduledFrom ? { gte: new Date(query.scheduledFrom) } : {}),
+              ...(query.scheduledTo ? { lte: new Date(query.scheduledTo) } : {}),
+            },
+          }
+        : {};
+    const searchClause: Prisma.ChecklistSessionWhereInput = query.search
+      ? {
+          OR: [
+            { instance: { user: { OR: [{ firstName: { contains: query.search, mode: 'insensitive' } }, { lastName: { contains: query.search, mode: 'insensitive' } }] } } },
+            { instance: { checklist: { title: { contains: query.search, mode: 'insensitive' } } } },
+          ],
+        }
+      : {};
 
     const where: Prisma.ChecklistSessionWhereInput = {
       organizationId,
       ...scope,
       ...(query.status ? { status: query.status } : {}),
       ...(query.observerId ? { observerId: query.observerId } : {}),
+      ...(query.checklistId ? { instance: { checklistId: query.checklistId } } : {}),
+      ...(query.learnerId ? { instance: { userId: query.learnerId } } : {}),
       ...overdueClause,
+      ...scheduledClause,
+      ...searchClause,
     };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.checklistSession.findMany({
         where,
+        include: sessionProjectionInclude,
         orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
@@ -123,13 +331,16 @@ export class ChecklistSessionService {
       this.prisma.checklistSession.count({ where }),
     ]);
 
-    return { items: items.map(present), page: query.page, pageSize: query.pageSize, total };
+    return { items: items.map(presentProjected), page: query.page, pageSize: query.pageSize, total };
   }
 
   async get(sessionId: string, organizationId: string, scope: object) {
-    const session = await this.prisma.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+    const session = await this.prisma.checklistSession.findFirst({
+      where: { id: sessionId, organizationId, ...scope },
+      include: sessionProjectionInclude,
+    });
     if (!session) throw new NotFoundException('Checklist session not found');
-    return present(session);
+    return presentProjected(session);
   }
 
   async listEvents(sessionId: string, organizationId: string, scope: object) {
@@ -340,6 +551,43 @@ export class ChecklistSessionService {
       capturedBy,
       capturedAt,
     }));
+  }
+
+  /** Shared by create/bulkCreate/repeat: create the session row + `created` event + pre_start reminder. */
+  private async createSessionInTransaction(
+    tx: Prisma.TransactionClient,
+    input: {
+      organizationId: string;
+      instanceId: string;
+      observerId: string;
+      scheduledAt: Date | null;
+      locationCapturePolicy?: CreateChecklistSessionInput['locationCapturePolicy'];
+      timezone?: string;
+      actorId: string;
+    },
+  ) {
+    await this.assertValidObserver(tx, input.observerId, input.organizationId);
+
+    const created = await tx.checklistSession.create({
+      data: {
+        organizationId: input.organizationId,
+        instanceId: input.instanceId,
+        observerId: input.observerId,
+        scheduledAt: input.scheduledAt ?? undefined,
+        locationCapturePolicy: input.locationCapturePolicy,
+        timezone: input.timezone,
+      },
+    });
+
+    await tx.checklistSessionEvent.create({
+      data: { organizationId: input.organizationId, sessionId: created.id, eventType: 'created', actorUserId: input.actorId },
+    });
+
+    if (created.scheduledAt) {
+      await upsertPreStartReminder(tx, { organizationId: input.organizationId, sessionId: created.id, scheduledAt: created.scheduledAt });
+    }
+
+    return created;
   }
 
   private async assertValidObserver(tx: Prisma.TransactionClient, observerId: string, organizationId: string) {

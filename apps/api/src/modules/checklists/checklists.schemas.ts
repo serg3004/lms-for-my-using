@@ -13,6 +13,11 @@ export const scaleLevelSchema = z.object({
 });
 export type ScaleLevel = z.infer<typeof scaleLevelSchema>;
 
+export const checklistListQuerySchema = z.object({
+  status: checklistStatusSchema.optional(),
+});
+export type ChecklistListQuery = z.infer<typeof checklistListQuerySchema>;
+
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
@@ -196,6 +201,13 @@ export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTra
 export const checklistSessionQuerySchema = z.object({
   status: checklistSessionStatusSchema.optional(),
   observerId: z.string().uuid().optional(),
+  checklistId: z.string().uuid().optional(),
+  learnerId: z.string().uuid().optional(),
+  // Matches the admin sessions list screen's "Период" filter -- against scheduledAt.
+  scheduledFrom: z.string().datetime().optional(),
+  scheduledTo: z.string().datetime().optional(),
+  // Matches the admin sessions list screen's free-text search -- employee name or checklist title.
+  search: z.string().trim().min(1).max(120).optional(),
   overdueOnly: z.enum(['true', 'false']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
@@ -231,3 +243,31 @@ export const submitChecklistLocationCaptureSchema = z
     },
   );
 export type SubmitChecklistLocationCaptureInput = z.infer<typeof submitChecklistLocationCaptureSchema>;
+
+// ---- Admin API: bulk create, repeat, participant/checklist lookup (PR 292) ----
+
+export const MAX_BULK_CHECKLIST_SESSION_RECIPIENTS = 100;
+
+// Bulk create is intentionally NOT a variant of the single-create schema: each recipient becomes
+// an independent (ChecklistInstance, ChecklistSession) pair, so this always takes checklistId +
+// learnerIds, never a pre-existing instanceId (single create still requires one).
+export const bulkCreateChecklistSessionSchema = z
+  .object({
+    checklistId: z.string().uuid(),
+    learnerIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS),
+    observerId: z.string().uuid(),
+    scheduledAt: z.string().datetime().nullable().optional(),
+    locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
+    timezone: z.string().trim().min(1).max(64).optional(),
+  })
+  .strict();
+export type BulkCreateChecklistSessionInput = z.infer<typeof bulkCreateChecklistSessionSchema>;
+
+export const checklistSessionParticipantRoleSchema = z.enum(['learner', 'observer']);
+export const checklistSessionParticipantsQuerySchema = z.object({
+  role: checklistSessionParticipantRoleSchema,
+  search: z.string().trim().min(1).max(120).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+});
+export type ChecklistSessionParticipantsQuery = z.infer<typeof checklistSessionParticipantsQuerySchema>;
