@@ -201,6 +201,19 @@ Migration `20260923040000_add_checklist_scoring_v1` также additive и backw
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist item scale reference migration
+
+Migration `20260923120000_add_checklist_item_scale_ref` также additive и backward-compatible (PR 293, `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`):
+
+- добавляет одну nullable колонку `checklist_items.scale_id UUID` (без `DEFAULT`) и FK `ON DELETE RESTRICT ON UPDATE CASCADE` на уже существующую с PR 288 таблицу `checklist_scales`, плюс обычный (не partial) индекс `checklist_items_scale_id_idx`; не трогает ни одну другую колонку `checklist_items` и ни одну другую таблицу;
+- существующие строки `checklist_items` получают `scale_id = NULL` — backfill не требуется и невозможен (нет способа автоматически сопоставить существующий критерий с одной из будущих переиспользуемых шкал);
+- `RESTRICT` здесь не является реальным operational risk: `ChecklistScale` не имеет и не будет иметь endpoint физического удаления (`ChecklistScaleService` — только create/update/archive), поэтому эта FK-политика на практике никогда не блокирует удаление;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новой колонке и продолжает работать с критериями как раньше.
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверена на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>`, реплеирующий полную историю миграций в чистую shadow-БД перед сравнением со schema.prisma — вывод содержал ровно три ожидаемых DDL-оператора (`ADD COLUMN`, `CREATE INDEX`, `ADD CONSTRAINT`) и ничего больше; применено к реальному локальному PostgreSQL 16 (`prisma migrate deploy`), `checklist-evaluation-scales.database.spec.ts` подтверждает FK/immutability-инварианты через сервисный слой на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling
