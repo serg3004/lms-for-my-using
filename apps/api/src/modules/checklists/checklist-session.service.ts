@@ -137,19 +137,33 @@ export class ChecklistSessionService {
    * Bulk create (PR 292): each recipient becomes an independent (ChecklistInstance,
    * ChecklistSession) pair -- one recipient's failure (e.g. already has an active assignment for
    * this checklist) never blocks the others, mirroring ChecklistsService.bulkAssignChecklist's
-   * partial-success shape.
+   * partial-success shape. `learnerScope` is the caller's effective-team scope (same as the
+   * participant picker): a learnerId outside it is rejected here, not just hidden from the picker
+   * UI -- a manager can't bypass the scoped picker by posting an arbitrary in-tenant learner id.
+   * Each recipient's instance+session pair is created in one transaction so a session-creation
+   * failure never leaves an orphaned active assignment behind.
    */
-  async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string) {
+  async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string, learnerScope: object) {
     await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+
+    const allowedLearners = await this.prisma.user.findMany({
+      where: { organizationId, id: { in: input.learnerIds }, ...learnerScope },
+      select: { id: true },
+    });
+    const allowedLearnerIds = new Set(allowedLearners.map((u) => u.id));
 
     const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
     const results: Array<{ learnerId: string; status: 'created' | 'skipped' | 'failed'; sessionId?: string; reason?: string }> = [];
 
     for (const learnerId of input.learnerIds) {
+      if (!allowedLearnerIds.has(learnerId)) {
+        results.push({ learnerId, status: 'failed', reason: 'Learner is outside your scope' });
+        continue;
+      }
       try {
-        const instance = await this.checklistsService.assignChecklist(input.checklistId, organizationId, { userId: learnerId }, actorId);
-        const session = await this.prisma.$transaction((tx) =>
-          this.createSessionInTransaction(tx, {
+        const session = await this.prisma.$transaction(async (tx) => {
+          const instance = await this.checklistsService.assignChecklist(input.checklistId, organizationId, { userId: learnerId }, actorId, tx);
+          return this.createSessionInTransaction(tx, {
             organizationId,
             instanceId: instance.id,
             observerId: input.observerId,
@@ -157,8 +171,8 @@ export class ChecklistSessionService {
             locationCapturePolicy: input.locationCapturePolicy,
             timezone: input.timezone,
             actorId,
-          }),
-        );
+          });
+        });
         results.push({ learnerId, status: 'created', sessionId: session.id });
       } catch (error) {
         if (error instanceof BadRequestException) {
@@ -195,8 +209,14 @@ export class ChecklistSessionService {
    * instance -- it means a fresh assignment of the same checklist to the same learner, with a new
    * session over that new instance, copying the observer/geolocation/timezone config forward.
    * Only allowed from a terminal session: an active one should be updated in place instead.
+   * Named `repeatSession` (not `repeat`) so it can't be mistaken for `String.prototype.repeat`
+   * by taint-tracking static analysis over its `sessionId` argument.
+   * The new instance+session pair is created in one transaction, so a session-creation failure
+   * (e.g. the copied observer no longer holds the instructor role) rolls back the fresh
+   * assignment too -- it never leaves an orphaned active assignment that would make every retry
+   * fail with "already has an active assignment".
    */
-  async repeat(sessionId: string, organizationId: string, actorId: string, scope: object) {
+  async repeatSession(sessionId: string, organizationId: string, actorId: string, scope: object) {
     const original = await this.prisma.checklistSession.findFirst({
       where: { id: sessionId, organizationId, ...scope },
       select: {
@@ -212,15 +232,15 @@ export class ChecklistSessionService {
       throw new BadRequestException('Only a completed or cancelled session can be repeated');
     }
 
-    const instance = await this.checklistsService.assignChecklist(
-      original.instance.checklistId,
-      organizationId,
-      { userId: original.instance.userId },
-      actorId,
-    );
-
-    const session = await this.prisma.$transaction((tx) =>
-      this.createSessionInTransaction(tx, {
+    const session = await this.prisma.$transaction(async (tx) => {
+      const instance = await this.checklistsService.assignChecklist(
+        original.instance.checklistId,
+        organizationId,
+        { userId: original.instance.userId },
+        actorId,
+        tx,
+      );
+      return this.createSessionInTransaction(tx, {
         organizationId,
         instanceId: instance.id,
         observerId: original.observerId,
@@ -228,8 +248,8 @@ export class ChecklistSessionService {
         locationCapturePolicy: original.locationCapturePolicy,
         timezone: original.timezone,
         actorId,
-      }),
-    );
+      });
+    });
 
     await this.auditLog.record({
       organizationId,
@@ -308,16 +328,23 @@ export class ChecklistSessionService {
         }
       : {};
 
+    // `scope` (from sessionScope()) may itself set a nested `instance: {...}` clause for a
+    // manager's effective-team restriction -- a flat spread here would let a later `instance:`
+    // key (checklistId/learnerId filters) silently *replace* rather than narrow it, letting a
+    // manager read outside-team sessions by supplying either filter. Combine every clause under
+    // `AND` instead so nested `instance`/`OR` keys from different clauses compose, not overwrite.
     const where: Prisma.ChecklistSessionWhereInput = {
-      organizationId,
-      ...scope,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.observerId ? { observerId: query.observerId } : {}),
-      ...(query.checklistId ? { instance: { checklistId: query.checklistId } } : {}),
-      ...(query.learnerId ? { instance: { userId: query.learnerId } } : {}),
-      ...overdueClause,
-      ...scheduledClause,
-      ...searchClause,
+      AND: [
+        { organizationId },
+        scope,
+        query.status ? { status: query.status } : {},
+        query.observerId ? { observerId: query.observerId } : {},
+        query.checklistId ? { instance: { checklistId: query.checklistId } } : {},
+        query.learnerId ? { instance: { userId: query.learnerId } } : {},
+        overdueClause,
+        scheduledClause,
+        searchClause,
+      ],
     };
 
     const [items, total] = await this.prisma.$transaction([

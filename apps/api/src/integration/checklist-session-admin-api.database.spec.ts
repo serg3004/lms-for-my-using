@@ -111,6 +111,7 @@ describe('checklist session admin API (PR 292) — database', () => {
       organizationId,
       { checklistId, learnerIds: [learnerA.id, learnerB.id], observerId },
       observerId,
+      {},
     );
 
     expect(result.created).toBe(1);
@@ -144,7 +145,7 @@ describe('checklist session admin API (PR 292) — database', () => {
     await sessionService.transition(session.id, organizationId, 'start', 1, observerId, {});
 
     // Can't repeat while the session itself is active.
-    await expect(sessionService.repeat(session.id, organizationId, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
+    await expect(sessionService.repeatSession(session.id, organizationId, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
 
     await sessionService.transition(session.id, organizationId, 'complete', 2, observerId, {});
     // Completing the *session* doesn't complete the underlying *instance* (they're decoupled per
@@ -152,7 +153,7 @@ describe('checklist session admin API (PR 292) — database', () => {
     // exactly like a real assignment would need to finish before a fresh one can be created.
     await checklistsService.submitItemResult(instance.id, item.id, organizationId, learner.id, false, { checked: true });
 
-    const repeated = await sessionService.repeat(session.id, organizationId, observerId, {});
+    const repeated = await sessionService.repeatSession(session.id, organizationId, observerId, {});
 
     expect(repeated.instanceId).not.toBe(instance.id);
     expect(repeated.observerId).toBe(observerId);
@@ -210,6 +211,55 @@ describe('checklist session admin API (PR 292) — database', () => {
     const adminLearnerIds = adminLearners.items.map((u) => u.id);
     expect(adminLearnerIds).toContain(inTeam.id);
     expect(adminLearnerIds).toContain(outsideTeam.id);
+
+    // Bulk create enforces the same team scope server-side, not just in the picker: a manager
+    // posting an outside-team learner id directly (bypassing the picker UI) must not get a
+    // session created for that learner.
+    const bulkResult = await sessionService.bulkCreate(
+      organizationId,
+      { checklistId, learnerIds: [inTeam.id, outsideTeam.id], observerId },
+      manager.id,
+      managerScope,
+    );
+    expect(bulkResult.created).toBe(1);
+    expect(bulkResult.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ learnerId: inTeam.id, status: 'created' }),
+        expect.objectContaining({ learnerId: outsideTeam.id, status: 'failed', reason: 'Learner is outside your scope' }),
+      ]),
+    );
+    const outsideTeamInstance = await prisma.checklistInstance.findFirst({ where: { organizationId, userId: outsideTeam.id, checklistId } });
+    expect(outsideTeamInstance).toBeNull();
+  });
+
+  it('repeat is atomic: a session-creation failure rolls back the fresh assignment instead of orphaning it', async () => {
+    // The item must exist before assignChecklist() so it's captured in the instance's
+    // templateSnapshot -- submitItemResult() resolves items from that snapshot, not live rows.
+    const item = await prisma.checklistItem.create({ data: { organizationId, checklistId, order: 1, text: 'Item2', points: 10, isRequired: true } });
+    const learner = await prisma.user.create({ data: { organizationId, email: `learner-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'D', lastName: 'Learner' } });
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learner.id }, observerId);
+    const session = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, observerId);
+    await sessionService.transition(session.id, organizationId, 'start', 1, observerId, {});
+    await sessionService.transition(session.id, organizationId, 'complete', 2, observerId, {});
+    await checklistsService.submitItemResult(instance.id, item.id, organizationId, learner.id, false, { checked: true });
+
+    // The observer loses their instructor membership after the original session completed but
+    // before repeat runs, so `createSessionInTransaction`'s observer check fails.
+    await prisma.membership.deleteMany({ where: { organizationId, userId: observerId, role: 'instructor' } });
+
+    await expect(sessionService.repeatSession(session.id, organizationId, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
+
+    // The fresh ChecklistInstance created by assignChecklist() inside the same transaction must
+    // have rolled back too -- no orphaned active assignment left blocking a future retry.
+    const active = await prisma.checklistInstance.findFirst({
+      where: { checklistId, userId: learner.id, status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null },
+    });
+    expect(active).toBeNull();
+
+    // Restore the role and confirm a retry now succeeds (proves the rollback, not just the 400).
+    await prisma.membership.create({ data: { organizationId, userId: observerId, role: 'instructor' } });
+    const repeated = await sessionService.repeatSession(session.id, organizationId, observerId, {});
+    expect(repeated.status).toBe('scheduled');
   });
 
   it('published checklist lookup: GET-equivalent filter excludes drafts', async () => {

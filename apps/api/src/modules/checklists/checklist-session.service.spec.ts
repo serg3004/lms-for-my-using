@@ -74,7 +74,11 @@ function createPrisma(overrides: {
     },
     user: {
       findFirst: jest.fn(async () => ({ id: observerId })),
-      findMany: jest.fn(async () => []),
+      // Default: every requested id is "in scope" (mirrors an empty `{}` scope) -- tests that
+      // need to simulate an out-of-scope learner override this explicitly.
+      findMany: jest.fn(async (args: { where?: { id?: { in?: string[] } } } = {}) =>
+        (args.where?.id?.in ?? []).map((id) => ({ id })),
+      ),
       count: jest.fn(async () => 0),
       ...overrides.user,
     },
@@ -268,10 +272,9 @@ describe('ChecklistSessionService', () => {
 
       await service.list(organizationId, { overdueOnly: 'true', page: 1, pageSize: 25 }, {});
 
-      expect(prisma.checklistSession.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ status: 'scheduled', scheduledAt: { lt: expect.any(Date) } }),
-        }),
+      const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([{ status: 'scheduled', scheduledAt: { lt: expect.any(Date) } }]),
       );
     });
   });
@@ -533,7 +536,7 @@ describe('ChecklistSessionService', () => {
       const auditLog = { record: jest.fn(async () => undefined) };
       const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
 
-      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId);
+      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId, {});
 
       expect(result).toMatchObject({ created: 2, skipped: 0, failed: 0 });
       expect(checklistsService.assignChecklist).toHaveBeenCalledTimes(2);
@@ -541,6 +544,28 @@ describe('ChecklistSessionService', () => {
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'checklist_session.bulk_created', metadata: { created: 2, total: 2 } }),
       );
+    });
+
+    it('rejects a learner outside the caller\'s scope without calling assignChecklist for them', async () => {
+      const prisma = createPrisma({
+        user: { findMany: jest.fn(async () => [{ id: learnerA }]) }, // learnerB is outside scope
+      });
+      const checklistsService = createChecklistsServiceMock();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      const result = await service.bulkCreate(
+        organizationId,
+        { checklistId, learnerIds: [learnerA, learnerB], observerId },
+        actorId,
+        { id: { in: [learnerA] } },
+      );
+
+      expect(result).toMatchObject({ created: 1, failed: 1 });
+      expect(result.results).toEqual(
+        expect.arrayContaining([expect.objectContaining({ learnerId: learnerB, status: 'failed', reason: 'Learner is outside your scope' })]),
+      );
+      expect(checklistsService.assignChecklist).toHaveBeenCalledTimes(1);
+      expect(checklistsService.assignChecklist).not.toHaveBeenCalledWith(checklistId, organizationId, { userId: learnerB }, actorId, expect.anything());
     });
 
     it('skips a recipient who already has an active assignment without failing the batch', async () => {
@@ -553,7 +578,7 @@ describe('ChecklistSessionService', () => {
       });
       const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
 
-      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId);
+      const result = await service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId, {});
 
       expect(result.created).toBe(1);
       expect(result.skipped).toBe(1);
@@ -568,7 +593,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
 
       await expect(
-        service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA], observerId }, actorId),
+        service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA], observerId }, actorId, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(checklistsService.assignChecklist).not.toHaveBeenCalled();
     });
@@ -601,9 +626,9 @@ describe('ChecklistSessionService', () => {
       const auditLog = { record: jest.fn(async () => undefined) };
       const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
 
-      const result = await service.repeat(sessionId, organizationId, actorId, {});
+      const result = await service.repeatSession(sessionId, organizationId, actorId, {});
 
-      expect(checklistsService.assignChecklist).toHaveBeenCalledWith(checklistId, organizationId, { userId: learnerId }, actorId);
+      expect(checklistsService.assignChecklist).toHaveBeenCalledWith(checklistId, organizationId, { userId: learnerId }, actorId, expect.anything());
       expect(prisma.checklistSession.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ instanceId: 'new-instance-1', observerId, locationCapturePolicy: 'required', timezone: 'Europe/Moscow' }),
@@ -622,7 +647,7 @@ describe('ChecklistSessionService', () => {
       const checklistsService = createChecklistsServiceMock();
       const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
 
-      await expect(service.repeat(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.repeatSession(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(checklistsService.assignChecklist).not.toHaveBeenCalled();
     });
 
@@ -631,7 +656,7 @@ describe('ChecklistSessionService', () => {
       const checklistsService = createChecklistsServiceMock();
       const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
 
-      await expect(service.repeat(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.repeatSession(sessionId, organizationId, actorId, {})).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -717,6 +742,28 @@ describe('ChecklistSessionService', () => {
       const result = await service.get(sessionId, organizationId, {});
 
       expect(result).toMatchObject({ checklist: { title: 'Onboarding' }, result: { percentage: 90 } });
+    });
+  });
+
+  describe('list() combines the caller scope with checklistId/learnerId filters (PR 292 review fix)', () => {
+    it('ANDs a manager\'s effective-team `instance` scope with a checklistId/learnerId filter instead of overwriting it', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+      const managerScope = { instance: { user: { id: { in: ['team-member-1'] } } } };
+
+      await service.list(organizationId, { checklistId: 'checklist-1', learnerId: 'outside-team-user', page: 1, pageSize: 25 }, managerScope);
+
+      const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
+      // Every clause -- including the team-scope `instance` restriction and the checklistId/
+      // learnerId `instance` filters -- must survive as separate AND members, not collapse into
+      // one `instance` key where the later filter silently discards the scope.
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          managerScope,
+          { instance: { checklistId: 'checklist-1' } },
+          { instance: { userId: 'outside-team-user' } },
+        ]),
+      );
     });
   });
 });

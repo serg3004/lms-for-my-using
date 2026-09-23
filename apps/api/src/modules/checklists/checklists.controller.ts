@@ -328,10 +328,11 @@ export class ChecklistsController {
   }
   @Post('checklist-sessions/bulk')
   @Roles(...rolePolicies.checklistSessionsManage)
-  bulkCreateSessions(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async bulkCreateSessions(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = bulkCreateChecklistSessionSchema.parse(body);
     const user = request.currentUser!;
-    return this.sessions.bulkCreate(user.organizationId, input, user.id);
+    const learnerScope = await this.reviewAccess.participantLearnerScope(user);
+    return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope);
   }
   @Get('checklist-sessions')
   @Roles(...rolePolicies.checklistSessionsRead)
@@ -403,7 +404,7 @@ export class ChecklistsController {
   async repeatSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.repeat(sessionId, user.organizationId, user.id, scope);
+    return this.sessions.repeatSession(sessionId, user.organizationId, user.id, scope);
   }
 
   // ---- Geolocation capture (PR 290) ----
