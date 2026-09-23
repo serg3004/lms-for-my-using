@@ -222,6 +222,39 @@ projection: only the assigned observer and admin see `latitude`/`longitude`/`acc
 other caller with read access to the session (e.g. a manager) sees only that a capture happened
 (`capturePoint`/`status`/`capturedAt`/`capturedBy`), never where.
 
+## Checklist session reminders (PR 291)
+
+No new HTTP endpoints -- this is background automation over the `ChecklistSession` lifecycle, not a
+request/response contract. `ChecklistSessionReminderWorker`
+(`apps/api/src/modules/checklists/checklist-session-reminder.worker.ts`) is a recurring job
+registered through the same `BackgroundJobsService.registerHandler`/`registerRecurring` pattern as
+`ChecklistDeadlineWorker`, on its own job name (`checklists.session-reminders-due`) and scheduler id
+-- the two coexist as independent recurring jobs; this one never touches `ChecklistInstance.dueAt`.
+
+Two reminder types, tracked as `ChecklistSessionReminder` rows (unique per `(session, type)`, PR
+288): `pre_start` (scheduled for 24h before `ChecklistSession.scheduledAt`, created when a schedule
+is first set on `POST /checklist-sessions`, moved when rescheduled via `PATCH`, suppressed if the
+schedule is cleared) and `incomplete_after_start` (scheduled for 24h after `startedAt`, created
+exactly once by the `start` transition, never re-created by `resume`). Both are suppressed
+(`status='suppressed'`, never sent) the moment a session reaches `completed` or `cancelled` -- the
+lifecycle service does this synchronously in the same transaction as the transition, and the worker
+independently re-checks session status before sending as a defensive second layer.
+
+When a reminder becomes due, the worker claims it with a conditional `updateMany(... WHERE
+status='pending')`: a count other than 1 means a concurrent run already claimed it, so retries
+(whether from the job queue's own backoff or an overlapping worker tick) can never double-send --
+this is a database-level idempotency guarantee, independent of and in addition to the queue's
+`idempotencyKey` dedupe. Claiming, appending a `ChecklistSessionEvent` (`reminder_sent`), creating
+an in-app `Notification` for the assigned observer, and writing an `OutboxEvent`
+(`checklists.session-reminder-notify`) all happen in one transaction (`OutboxService.runInTransaction`)
+-- this is the first production consumer of the `Notification`+`OutboxEvent` pairing in the
+codebase. Email delivery is a separate, best-effort async step triggered by that outbox event:
+`ChecklistSessionReminderDelivery` (mirroring `PasswordResetDelivery`,
+`apps/api/src/modules/auth/password-reset.ts`) POSTs to a configured provider-neutral webhook
+(`CHECKLIST_SESSION_REMINDER_DELIVERY_URL`/`_TOKEN`); an unconfigured endpoint is a documented,
+valid no-op -- the in-app `Notification` is already durable regardless of whether email delivery is
+configured or succeeds.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

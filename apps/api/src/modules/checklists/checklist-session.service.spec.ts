@@ -37,6 +37,7 @@ function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
 function createPrisma(overrides: {
   checklistSession?: Partial<Record<'findFirst' | 'findUniqueOrThrow' | 'findMany' | 'count' | 'create' | 'updateMany', jest.Mock>>;
   checklistSessionEvent?: Partial<Record<'create' | 'findMany', jest.Mock>>;
+  checklistSessionReminder?: Partial<Record<'upsert' | 'updateMany' | 'findMany', jest.Mock>>;
   checklistLocationCapture?: Partial<Record<'create' | 'findMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
   user?: Partial<Record<'findFirst', jest.Mock>>;
@@ -55,6 +56,12 @@ function createPrisma(overrides: {
       create: jest.fn(async () => ({})),
       findMany: jest.fn(async () => []),
       ...overrides.checklistSessionEvent,
+    },
+    checklistSessionReminder: {
+      upsert: jest.fn(async () => ({})),
+      updateMany: jest.fn(async () => ({ count: 0 })),
+      findMany: jest.fn(async () => []),
+      ...overrides.checklistSessionReminder,
     },
     checklistLocationCapture: {
       create: jest.fn(async (args: { data: Record<string, unknown> }) => ({ id: 'capture-1', ...args.data })),
@@ -395,6 +402,112 @@ describe('ChecklistSessionService', () => {
       expect(result[0]).not.toHaveProperty('longitude');
       expect(result[0]).not.toHaveProperty('accuracyMeters');
       expect(result[0]).toMatchObject({ capturePoint: 'start', status: 'captured' });
+    });
+  });
+
+  describe('reminders (PR 291)', () => {
+    it('creates a pending pre_start reminder 24h before scheduledAt on create', async () => {
+      const scheduledAt = new Date('2026-10-01T12:00:00.000Z');
+      const created = baseSession({ scheduledAt });
+      const prisma = createPrisma({ checklistSession: { create: jest.fn(async () => created) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.create(organizationId, { instanceId, observerId, scheduledAt: scheduledAt.toISOString() }, actorId);
+
+      expect(prisma.checklistSessionReminder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            reminderType: 'pre_start',
+            status: 'pending',
+            scheduledFor: new Date('2026-09-30T12:00:00.000Z'),
+          }),
+        }),
+      );
+    });
+
+    it('creates no reminder on create when no scheduledAt is given', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.create(organizationId, { instanceId, observerId }, actorId);
+
+      expect(prisma.checklistSessionReminder.upsert).not.toHaveBeenCalled();
+      expect(prisma.checklistSessionReminder.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('moves the pre_start reminder when the session is rescheduled', async () => {
+      const newScheduledAt = new Date('2026-11-01T09:00:00.000Z');
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.update(sessionId, organizationId, { version: 1, scheduledAt: newScheduledAt.toISOString() }, actorId, {});
+
+      // The upsert-shaped helper tries an update-if-pending first, then falls back to upsert.
+      expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ sessionId, reminderType: 'pre_start', status: 'pending' }),
+          data: { scheduledFor: new Date('2026-10-31T09:00:00.000Z') },
+        }),
+      );
+    });
+
+    it('suppresses the pre_start reminder when the schedule is cleared on reschedule', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.update(sessionId, organizationId, { version: 1, scheduledAt: null }, actorId, {});
+
+      expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ sessionId, reminderType: 'pre_start', status: 'pending' }),
+          data: { status: 'suppressed' },
+        }),
+      );
+    });
+
+    it('creates an incomplete_after_start reminder exactly once, on start', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.transition(sessionId, organizationId, 'start', 1, actorId, {});
+
+      expect(prisma.checklistSessionReminder.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({ reminderType: 'incomplete_after_start', status: 'pending' }),
+        }),
+      );
+    });
+
+    it('suppresses pending reminders when a session completes', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.transition(sessionId, organizationId, 'complete', 1, actorId, {});
+
+      expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { organizationId, sessionId, status: 'pending' }, data: { status: 'suppressed' } }),
+      );
+    });
+
+    it('suppresses pending reminders when a session is cancelled', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.transition(sessionId, organizationId, 'cancel', 1, actorId, {});
+
+      expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { organizationId, sessionId, status: 'pending' }, data: { status: 'suppressed' } }),
+      );
+    });
+
+    it('does not touch reminders on pause/resume (only start/complete/cancel do)', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.transition(sessionId, organizationId, 'pause', 1, actorId, {});
+
+      expect(prisma.checklistSessionReminder.upsert).not.toHaveBeenCalled();
+      expect(prisma.checklistSessionReminder.updateMany).not.toHaveBeenCalled();
     });
   });
 });
