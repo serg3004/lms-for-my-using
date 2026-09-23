@@ -363,7 +363,8 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 - шаг 1 — поиск+выбор observer (radio) и multi-select до 100 employees (checkbox), оба через `GET /checklist-sessions/participants` с debounce (300мс, паттерн из `AdminDepartmentUsersPage`); шаг 2 — `GET /checklists?status=published`; шаг 3 — «Начать сейчас»/«Запланировать» + `locationCapturePolicy`; шаг 4 — read-only summary + submit;
 - submit — `POST /checklist-sessions/bulk` (partial success: created/skipped/failed по каждому learnerId); «Начать сейчас» — bulk-create, затем для каждой созданной сессии `GET .../:id` (чтобы узнать актуальный `version`) + `POST .../:id/start` — атомарного create-and-start эндпоинта в API нет, это осознанная two-step реализация; ошибка автостарта одной сессии не откатывает и не блокирует остальные — сессия остаётся `scheduled` и может быть запущена вручную;
 - i18n: новые ключи `admin.checklists.tabsLabel` и `admin.checklists.sessions.*` добавлены во все 4 локали (en/ru/zh/kk), key-set остаётся синхронным (`locale-sync.spec.ts` зелёный);
-- unit-тесты: `features/admin-checklist-sessions/domain.spec.ts` (11 тестов — cancel/repeat eligibility, participant name formatting, все 3 wizard-step-валидатора, партиционирование bulk-результата), `ChecklistSessionWizard.spec.tsx` (closed-dialog smoke test), новые `Dialog`/`WizardDialog` render-тесты в `ui.spec.tsx`, существующий `ConfirmDialog`-тест не изменён и остаётся зелёным после рефакторинга на общий `Dialog` shell.
+- unit-тесты: `features/admin-checklist-sessions/domain.spec.ts` (11 тестов — cancel/repeat eligibility, participant name formatting, все 3 wizard-step-валидатора, партиционирование bulk-результата), `ChecklistSessionWizard.spec.tsx` (closed-dialog smoke test), `shared/api/checklistSessions.spec.ts` (по одному тесту на каждую экспортируемую функцию api-клиента), smoke-рендер loading/happy-path `AdminChecklistSessionsPage` в `AdminPages.smoke.spec.tsx`, новые `Dialog`/`WizardDialog` render-тесты в `ui.spec.tsx`, существующий `ConfirmDialog`-тест не изменён и остаётся зелёным после рефакторинга на общий `Dialog` shell;
+- visual regression: `admin-checklist-sessions-list-<width>` и `admin-checklist-sessions-wizard-<width>` добавлены в `responsive-matrix.spec.ts` (мокнутый `GET /checklist-sessions`/участники/чек-листы), baseline PNG сгенерированы через `Update visual regression baselines` workflow (не локально); accessibility: новый тест `/admin/checklists/sessions` + открытый wizard в `accessibility.spec.ts` через live-login паттерн (`loginAs`), как и остальные тесты этого файла.
 
 **Осознанно не реализовано в этом PR (честный gap, не блокирует остальной workstream):**
 - индивидуальное расписание на сотрудника внутри bulk-запроса — backend поддерживает только одно общее время на весь batch, per-employee override не добавлялся ни здесь, ни в PR 292;
@@ -372,14 +373,13 @@ Lifecycle: `scheduled -> in_progress -> paused -> in_progress -> completed`, п�
 - детальный экран отчёта по сессии (прототипный `▤ Отчёт`) — отдельный PR;
 - drawer «Настройки» из шапки прототипа — уже есть отдельная точка входа с PR 286, вне scope этого экрана;
 - обнаружение конфликта расписания наблюдателя — backend-концепции не существует вовсе (см. заметку в PR 292/API-контракте), поэтому и в UI не отображается как анимация/ошибка.
-- visual regression и accessibility e2e-фикстуры для новых экранов (`/admin/checklists/sessions`, wizard) — не добавлены в этом PR; см. `apps/e2e/visual-tests/responsive-matrix.spec.ts` и `apps/e2e/accessibility-tests/accessibility.spec.ts` (задокументированный follow-up, не блокирует merge — типовая практика workstream'а не требует 100% e2e-покрытия каждого PR, только growing coverage).
 
 **Критерии готовности:**
 - [x] оба экрана — часть `/admin/checklists`, ни один не создал новый nav-item;
 - [x] структура соответствует прототипу (список + wizard); фильтры server-side; actions учитывают RBAC/state (Cancel только для `scheduled`, Repeat только для терминальных статусов);
 - [x] Back/Next сохраняют state (controlled state в `ChecklistSessionWizard`, не в `WizardDialog`); invalid step блокируется (`nextDisabled`); server error не стирает форму (ошибка показывается на шаге подтверждения, состояние формы сохраняется); duplicate submit защищён (`busy`/`submitting` дизейблит кнопку на время запроса);
 - [x] single/bulk создаются через UI (единственный путь в этом UI — bulk-эндпоинт с 1..100 получателями, включая частный случай из одного человека); keyboard/focus flow — `Dialog`/`WizardDialog` наследуют существующий `ConfirmDialog` focus-trap/return-focus/Escape-механизм нативного `<dialog>`;
-- [ ] visual regression test есть — не добавлен в этом PR (см. gap выше), оставлен как follow-up.
+- [x] visual regression test есть — `admin-checklist-sessions-list-<width>`/`admin-checklist-sessions-wizard-<width>` в `responsive-matrix.spec.ts`, baseline PNG сгенерированы через `Update visual regression baselines` workflow.
 
 ## PR 296 — Observation Sheet Builder
 
