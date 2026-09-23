@@ -460,3 +460,115 @@ export type ChecklistAnalytics = {
   averageCompletionTimeMs: number;
   averageReviewTimeMs: number;
 };
+
+// ---- Checklist sessions (workplace-training "session" mode, PR 289/292) ----
+
+export type ChecklistSessionStatus = 'scheduled' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
+export type ChecklistGeolocationPolicy = 'off' | 'optional' | 'required';
+
+export type ChecklistSessionParticipant = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  position: string | null;
+};
+
+// The list/get projection (`presentProjected` on the API) -- a ChecklistSession row joined with
+// its underlying ChecklistInstance's checklist/learner/result, exactly what the sessions list
+// table and detail views need without a second round trip.
+export type ChecklistSessionSummary = {
+  id: string;
+  organizationId: string;
+  instanceId: string;
+  observerId: string;
+  status: ChecklistSessionStatus;
+  version: number;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  pausedAt: string | null;
+  locationCapturePolicy: ChecklistGeolocationPolicy;
+  timezone: string;
+  overdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+  checklist: { id: string; title: string };
+  learner: { id: string; firstName: string; lastName: string; email: string };
+  observer: { id: string; firstName: string; lastName: string; email: string };
+  result: { instanceStatus: ChecklistInstanceStatus; percentage: number; passed: boolean; scored: boolean };
+};
+
+export type ChecklistSessionQuery = {
+  status?: ChecklistSessionStatus;
+  observerId?: string;
+  checklistId?: string;
+  learnerId?: string;
+  scheduledFrom?: string;
+  scheduledTo?: string;
+  search?: string;
+  overdueOnly?: 'true' | 'false';
+  page?: number;
+  pageSize?: number;
+};
+
+export type ChecklistSessionParticipantsQuery = {
+  role: 'learner' | 'observer';
+  search?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type CreateChecklistSessionInput = {
+  instanceId: string;
+  observerId: string;
+  scheduledAt?: string | null;
+  locationCapturePolicy?: ChecklistGeolocationPolicy;
+  timezone?: string;
+};
+
+export type BulkCreateChecklistSessionInput = {
+  checklistId: string;
+  learnerIds: string[];
+  observerId: string;
+  scheduledAt?: string | null;
+  locationCapturePolicy?: ChecklistGeolocationPolicy;
+  timezone?: string;
+};
+
+export type BulkCreateChecklistSessionRecipientStatus = 'created' | 'skipped' | 'failed';
+
+export type BulkCreateChecklistSessionResult = {
+  created: number;
+  skipped: number;
+  failed: number;
+  results: Array<{ learnerId: string; status: BulkCreateChecklistSessionRecipientStatus; sessionId?: string; reason?: string }>;
+};
+
+export type UpdateChecklistSessionInput = {
+  observerId?: string;
+  scheduledAt?: string | null;
+  locationCapturePolicy?: ChecklistGeolocationPolicy;
+  timezone?: string;
+  version: number;
+};
+
+export type ChecklistSessionAction = 'start' | 'pause' | 'resume' | 'complete' | 'cancel';
+
+// The bare row (no checklist/learner/observer/result projection) -- what create/transition/repeat
+// return, as opposed to list/get's joined ChecklistSessionSummary.
+export type ChecklistSession = {
+  id: string;
+  organizationId: string;
+  instanceId: string;
+  observerId: string;
+  status: ChecklistSessionStatus;
+  version: number;
+  scheduledAt: string | null;
+  startedAt: string | null;
+  pausedAt: string | null;
+  locationCapturePolicy: ChecklistGeolocationPolicy;
+  timezone: string;
+  overdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

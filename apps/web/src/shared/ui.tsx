@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type InputHTMLAttributes,
   type ReactNode,
+  type RefObject,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
@@ -631,17 +632,29 @@ export function Toast(props: FeedbackProps) {
   return <aside aria-atomic="true" aria-live={props.tone === 'error' ? 'assertive' : 'polite'} className="ds-toast"><InlineFeedback {...props} /></aside>;
 }
 
-type ConfirmDialogProps = {
-  open: boolean; title: string; message: ReactNode; onConfirm: () => void; onCancel: () => void;
-  confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean;
+// ── Dialog (shared native-<dialog> shell) ─────────────────────────────────────
+//
+// Low-level modal mechanics -- native <dialog>.showModal() (built-in top-layer + focus trap),
+// Escape-to-close, backdrop-click-to-close, and return-focus-to-trigger-on-close -- factored out
+// so every modal in the app (ConfirmDialog below, and PR 295's multi-step WizardDialog) shares one
+// implementation instead of three (per docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md's
+// "UI foundation" section). Purely structural: callers own their own header/body/footer markup.
+type DialogProps = {
+  open: boolean;
+  /** Called on Escape or a backdrop click. Callers typically use this to flip `open` to false --
+   *  the dialog closes itself once `open` becomes false, this is a notification, not a command. */
+  onClose: () => void;
+  labelledBy: string;
+  describedBy?: string;
+  className?: string;
+  /** Focused once the dialog opens; defaults to the browser's native default (the dialog itself). */
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  children: ReactNode;
 };
 
-export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, busy }: ConfirmDialogProps) {
+export function Dialog({ open, onClose, labelledBy, describedBy, className, initialFocusRef, children }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const cancelRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const titleId = useId();
-  const messageId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -649,27 +662,90 @@ export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confi
     if (open && !dialog.open) {
       returnFocusRef.current = document.activeElement as HTMLElement | null;
       dialog.showModal();
-      cancelRef.current?.focus();
+      initialFocusRef?.current?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
       requestAnimationFrame(() => returnFocusRef.current?.focus());
     }
-  }, [open]);
+  }, [open, initialFocusRef]);
 
-  function close() {
-    onCancel();
-    requestAnimationFrame(() => returnFocusRef.current?.focus());
-  }
+  return <dialog aria-describedby={describedBy} aria-labelledby={labelledBy} className={['ds-dialog', className].filter(Boolean).join(' ')} ref={dialogRef}
+    onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    {children}
+  </dialog>;
+}
 
-  return <dialog aria-describedby={messageId} aria-labelledby={titleId} className="ds-dialog" ref={dialogRef}
-    onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+type ConfirmDialogProps = {
+  open: boolean; title: string; message: ReactNode; onConfirm: () => void; onCancel: () => void;
+  confirmLabel?: string; cancelLabel?: string; danger?: boolean; busy?: boolean;
+};
+
+export function ConfirmDialog({ open, title, message, onConfirm, onCancel, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, busy }: ConfirmDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const messageId = useId();
+
+  return <Dialog describedBy={messageId} initialFocusRef={cancelRef} labelledBy={titleId} onClose={onCancel} open={open}>
     <h2 id={titleId}>{title}</h2>
     <div id={messageId}>{message}</div>
     <div className="ds-dialog__actions">
-      <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={close} ref={cancelRef} type="button">{cancelLabel}</button>
+      <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={onCancel} ref={cancelRef} type="button">{cancelLabel}</button>
       <Button aria-busy={busy || undefined} disabled={busy} onClick={onConfirm} variant={danger ? 'danger' : 'primary'}>{confirmLabel}</Button>
     </div>
-  </dialog>;
+  </Dialog>;
+}
+
+// ── WizardDialog (multi-step modal shell, PR 295) ──────────────────────────────
+//
+// Builds on Dialog above for a numbered-step flow (participants/checklist/schedule/confirmation
+// for the session-creation wizard) -- a visual step tracker, per-step content, and a Back/Next
+// (or Cancel/Next on the first step) footer. Step validation/content is entirely the caller's;
+// this only owns the shell, navigation buttons, and the "can't go past an invalid step" gate.
+export type WizardStep = { key: string; label: string };
+
+type WizardDialogProps = {
+  open: boolean;
+  title: string;
+  steps: readonly WizardStep[];
+  currentStep: number;
+  onClose: () => void;
+  onBack: () => void;
+  /** Called when Next/submit is pressed. Returning `false` keeps the wizard on the current step
+   *  (e.g. the step's own fields failed validation) -- the caller is expected to have already
+   *  surfaced why (an InlineFeedback in `children` is the established pattern). */
+  onNext: () => boolean | void;
+  nextLabel?: string;
+  backLabel?: string;
+  cancelLabel?: string;
+  busy?: boolean;
+  children: ReactNode;
+};
+
+export function WizardDialog({ open, title, steps, currentStep, onClose, onBack, onNext, nextLabel = 'Next', backLabel = 'Back', cancelLabel = 'Cancel', busy, children }: WizardDialogProps) {
+  const titleId = useId();
+  const bodyId = useId();
+  const firstFieldRef = useRef<HTMLDivElement>(null);
+  const isFirstStep = currentStep === 0;
+
+  return <Dialog className="ds-wizard-dialog" describedBy={bodyId} initialFocusRef={firstFieldRef} labelledBy={titleId} onClose={onClose} open={open}>
+    <h2 id={titleId}>{title}</h2>
+    <ol className="ds-wizard-dialog__steps">
+      {steps.map((step, index) => (
+        <li aria-current={index === currentStep ? 'step' : undefined} className={['ds-wizard-dialog__step', index === currentStep ? 'ds-wizard-dialog__step--active' : '', index < currentStep ? 'ds-wizard-dialog__step--done' : ''].filter(Boolean).join(' ')} key={step.key}>
+          {index + 1}. {step.label}
+        </li>
+      ))}
+    </ol>
+    <div id={bodyId} ref={firstFieldRef} tabIndex={-1}>{children}</div>
+    <div className="ds-dialog__actions">
+      <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={isFirstStep ? onClose : onBack} type="button">
+        {isFirstStep ? cancelLabel : backLabel}
+      </button>
+      <Button aria-busy={busy || undefined} disabled={busy} onClick={onNext} variant="primary">
+        {nextLabel}
+      </Button>
+    </div>
+  </Dialog>;
 }
 
 type MenuProps = { label: ReactNode; children: ReactNode; align?: 'start' | 'end'; className?: string; buttonClassName?: string };
