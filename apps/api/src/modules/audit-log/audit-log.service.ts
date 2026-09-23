@@ -32,6 +32,9 @@ export type AuditLogAction =
   | 'checklist_workplace_settings.updated'
   | 'checklist_session.bulk_created'
   | 'checklist_session.repeated'
+  | 'checklist_scale.created'
+  | 'checklist_scale.updated'
+  | 'checklist_scale.archived'
   | 'certificate.issued';
 
 export type RecordAuditLogInput = {
