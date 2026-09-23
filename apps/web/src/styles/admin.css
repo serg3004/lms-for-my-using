@@ -1380,12 +1380,18 @@
   flex: none;
 }
 
-.admin-checklist-item__points {
-  width: 60px;
-  text-align: center;
+.admin-checklist-item__points,
+.admin-checklist-item__weight,
+.admin-checklist-item__scale {
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 4px;
+}
+
+.admin-checklist-item__points,
+.admin-checklist-item__weight {
+  width: 52px;
+  text-align: center;
 }
 
 .admin-checklist-item__photo {
@@ -1397,19 +1403,8 @@
   white-space: nowrap;
 }
 
-.admin-checklist-item__weight {
-  width: 52px;
-  text-align: center;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px;
-}
-
 .admin-checklist-item__scale {
   max-width: 140px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px;
   font-size: 12px;
 }
 
@@ -1418,11 +1413,15 @@
   margin-bottom: 16px;
 }
 
-.admin-item-group__header {
+.admin-item-group__header,
+.admin-context-field-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
+}
+
+.admin-item-group__header {
+  justify-content: space-between;
   margin-bottom: 8px;
 }
 
@@ -1435,11 +1434,6 @@
   gap: 6px;
 }
 
-.admin-item-group--ungrouped .admin-item-group__header h4 {
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-
 .admin-context-fields {
   display: flex;
   flex-direction: column;
@@ -1447,34 +1441,8 @@
   margin: 8px 0;
 }
 
-.admin-context-field-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.admin-context-field-row input[type='text'],
-.admin-context-field-row > input:not([type]) {
+.admin-context-field-row input[type='text'] {
   flex: 1;
-}
-
-.admin-scale-manager-list {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.admin-scale-manager-list__item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
 }
 
 .admin-checklist-add-item {

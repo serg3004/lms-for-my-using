@@ -58,9 +58,9 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{t('admin.checklists.scaleManager.title', 'Evaluation scales')}</h2>
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
-      <ul className="admin-scale-manager-list">
+      <ul className="admin-checklist-instances">
         {scales.map((scale) => (
-          <li className="admin-scale-manager-list__item" key={scale.id}>
+          <li key={scale.id}>
             {renamingId === scale.id ? (
               <>
                 <Input aria-label={t('admin.checklists.scaleManager.name', 'Scale name')} onChange={(e) => setRenameValue(e.target.value)} value={renameValue} />

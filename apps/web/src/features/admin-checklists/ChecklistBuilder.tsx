@@ -285,6 +285,7 @@ export function ChecklistBuilder({
                     onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
                     onChange={(e) => updateContextFieldLocally(field.id, { label: e.target.value })}
                     placeholder={t('admin.checklists.contextFieldLabel', 'Field label')}
+                    type="text"
                     value={field.label}
                   />
                   <select
@@ -323,7 +324,7 @@ export function ChecklistBuilder({
           <ChecklistItemsEditor>
             <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
             {groupItems(items, itemGroups).map(({ group, items: groupedItems }, groupIndex, allGroups) => (
-              <div className={group ? 'admin-item-group' : 'admin-item-group admin-item-group--ungrouped'} key={group?.id ?? 'ungrouped'}>
+              <div className="admin-item-group" key={group?.id ?? 'ungrouped'}>
                 <div className="admin-item-group__header">
                   {group ? (
                     <input
