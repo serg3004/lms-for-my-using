@@ -87,6 +87,13 @@ export const retryExhausted = new Counter({
   registers: [metricsRegistry],
 });
 
+export const checklistSessionReminderDeliveryErrors = new Counter({
+  name: 'lms_checklist_session_reminder_delivery_errors_total',
+  help: 'Checklist session reminder email delivery failures by bounded reason. Never labeled with tokens, URLs, or emails.',
+  labelNames: ['reason'] as const,
+  registers: [metricsRegistry],
+});
+
 const ORG_DURATION_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30];
 
 export const orgDepartmentTreeQueryDuration = new Histogram({

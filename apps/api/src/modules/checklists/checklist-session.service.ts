@@ -9,6 +9,11 @@ import type {
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { runSerializableWithRetry } from '../departments/public.js';
+import {
+  createIncompleteAfterStartReminder,
+  suppressPendingReminders,
+  upsertPreStartReminder,
+} from './checklist-session-reminders.js';
 import type {
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
@@ -75,6 +80,10 @@ export class ChecklistSessionService {
         await tx.checklistSessionEvent.create({
           data: { organizationId, sessionId: created.id, eventType: 'created', actorUserId: actorId },
         });
+
+        if (created.scheduledAt) {
+          await upsertPreStartReminder(tx, { organizationId, sessionId: created.id, scheduledAt: created.scheduledAt });
+        }
 
         return created;
       });
@@ -160,6 +169,14 @@ export class ChecklistSessionService {
       });
       if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
 
+      if (changes.scheduledAt !== undefined) {
+        await upsertPreStartReminder(tx, {
+          organizationId,
+          sessionId,
+          scheduledAt: changes.scheduledAt ? new Date(changes.scheduledAt) : null,
+        });
+      }
+
       await tx.checklistSessionEvent.create({
         data: { organizationId, sessionId, eventType: 'rescheduled', actorUserId: actorId, metadata: changes as Prisma.InputJsonValue },
       });
@@ -197,13 +214,14 @@ export class ChecklistSessionService {
       }
       if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
 
+      const now = new Date();
       const result = await tx.checklistSession.updateMany({
         where: { id: sessionId, organizationId, version: expectedVersion, status: { in: from as ChecklistSessionStatus[] } },
         data: {
           status: to,
           version: { increment: 1 },
-          ...(action === 'start' ? { startedAt: new Date() } : {}),
-          ...(action === 'pause' ? { pausedAt: new Date() } : {}),
+          ...(action === 'start' ? { startedAt: now } : {}),
+          ...(action === 'pause' ? { pausedAt: now } : {}),
           ...(action === 'resume' ? { pausedAt: null } : {}),
         },
       });
@@ -211,6 +229,14 @@ export class ChecklistSessionService {
       // transaction to retry with a fresh read (via runSerializableWithRetry), which then hits
       // one of the checks above — but a count mismatch here is still caught rather than assumed.
       if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      if (action === 'start') {
+        await createIncompleteAfterStartReminder(tx, { organizationId, sessionId, startedAt: now });
+      }
+      if (action === 'complete' || action === 'cancel') {
+        // A terminal session must never leave a pending reminder behind for the worker to find.
+        await suppressPendingReminders(tx, { organizationId, sessionId });
+      }
 
       await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: event, actorUserId: actorId } });
 
