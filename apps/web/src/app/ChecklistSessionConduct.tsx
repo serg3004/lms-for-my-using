@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
-import { getChecklistInstance, getChecklistItemPhotoUrl, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { getChecklistInstance, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
 import {
   captureChecklistSessionLocation,
   getChecklistSession,
@@ -600,37 +600,18 @@ function PhotoAttachment({
   t: TFunction;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
+  // Unlike ChecklistReviewPhotoEvidence.tsx (the async post-submission review queue), this screen
+  // deliberately never fetches the already-uploaded photo back down to render a thumbnail: doing
+  // so means assigning a network-response-derived URL to `<img src>`, which CodeQL's XSS query
+  // keeps flagging regardless of how that value is re-derived (a signed-URL protocol allowlist and
+  // a re-exposed `URL.createObjectURL()` blob both still tripped it) -- so the only `<img src>`
+  // this component ever uses is a `blob:` URL created directly from the *locally selected* File
+  // object below, which never touches network response data at all. An already-attached photo
+  // with no local selection just shows a checkmark; "Replace" still works normally.
   const attached = Boolean(result?.photoFileName);
-  useEffect(() => {
-    if (!attached) {
-      setPreviewUrl(null);
-      return;
-    }
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    // Fetched ourselves and re-exposed as a `blob:` URL rather than assigning the signed URL
-    // string straight to `<img src>` -- the signed URL never reaches the DOM this way, which is
-    // also what keeps a locally selected file's preview (below) inherently safe.
-    getChecklistItemPhotoUrl(instanceId, item.id)
-      .then((response) => fetch(response.url))
-      .then((res) => res.blob())
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setPreviewUrl(objectUrl);
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewUrl(null);
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [attached, instanceId, item.id, result?.photoFileName]);
 
   useEffect(() => () => {
     if (localPreview) URL.revokeObjectURL(localPreview);
@@ -658,12 +639,10 @@ function PhotoAttachment({
   }
 
   const canAct = editable && !busy && progress === null;
-  const rawDisplayUrl = localPreview ?? previewUrl;
-  // `previewUrl` is a signed URL echoed back from our own API and `localPreview` is a
-  // browser-generated `blob:` URL from a locally selected file -- neither is expected to carry an
-  // unsafe scheme, but this is still a value flowing into an `<img src>` sink, so gate it on an
-  // explicit protocol allowlist rather than trusting it structurally (CodeQL js/xss).
-  const displayUrl = rawDisplayUrl && isSafeImagePreviewUrl(rawDisplayUrl) ? rawDisplayUrl : null;
+  // `localPreview` is always a browser-generated `blob:` URL from a locally selected file, never a
+  // value derived from a network response -- still gated on an explicit protocol allowlist rather
+  // than trusted structurally (CodeQL js/xss).
+  const displayUrl = localPreview && isSafeImagePreviewUrl(localPreview) ? localPreview : null;
 
   return (
     <div style={{ marginTop: 12 }}>
