@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE } from './checklists.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -572,7 +573,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const checklistsService = createChecklistsServiceMock({
         assignChecklist: jest.fn(async (_checklistId: string, _organizationId: string, input: { userId: string }) => {
-          if (input.userId === learnerA) throw new BadRequestException('This user already has an active assignment for this checklist');
+          if (input.userId === learnerA) throw new BadRequestException(ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE);
           return { id: `instance-${input.userId}` };
         }),
       });
@@ -585,6 +586,20 @@ describe('ChecklistSessionService', () => {
       expect(result.results).toEqual(
         expect.arrayContaining([expect.objectContaining({ learnerId: learnerA, status: 'skipped' })]),
       );
+    });
+
+    it('aborts the whole batch (does not swallow as a per-learner skip) on a non-active-assignment BadRequestException', async () => {
+      const prisma = createPrisma();
+      const checklistsService = createChecklistsServiceMock({
+        assignChecklist: jest.fn(async () => {
+          throw new BadRequestException('Cannot assign a checklist that is not published');
+        }),
+      });
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(
+        service.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA, learnerB], observerId }, actorId, {}),
+      ).rejects.toThrow('Cannot assign a checklist that is not published');
     });
 
     it('rejects the whole batch up front when the observer is invalid', async () => {
