@@ -28,6 +28,14 @@ import {
 
 const CHECKLIST_SNAPSHOT_VERSION = 1;
 
+/**
+ * Exported so callers (e.g. ChecklistSessionService.bulkCreate) can distinguish this specific,
+ * per-recipient-skippable conflict from every other BadRequestException assignChecklist can
+ * throw (e.g. "checklist is not published"), which are request-level validation failures that
+ * must abort the whole batch, not silently skip every recipient.
+ */
+export const ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE = 'This user already has an active assignment for this checklist';
+
 const checklistSelect = {
   id: true,
   organizationId: true,
@@ -410,7 +418,7 @@ export class ChecklistsService {
     });
 
     if (activeInstance) {
-      throw new BadRequestException('This user already has an active assignment for this checklist');
+      throw new BadRequestException(ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE);
     }
 
     const items = await db.checklistItem.findMany({
@@ -458,15 +466,23 @@ export class ChecklistsService {
     // rather than nesting a second transaction, which Prisma does not support.
     const instance = db === this.prisma ? await this.prisma.$transaction((tx) => createInstance(tx)) : await createInstance(db);
 
-    await this.auditLog.record({
-      organizationId,
-      actorId: assignedBy,
-      action: 'checklist_instance.assigned',
-      targetType: 'checklist_instance',
-      targetId: instance.id,
-      summary: `Assigned checklist ${checklist.title} to user`,
-      metadata: { checklistId, userId: input.userId },
-    });
+    // AuditLogService writes through the root Prisma client, not `db` -- it can't participate in
+    // a caller-managed transaction. Recording here unconditionally would log a "checklist_instance
+    // assigned" entry that survives even if the caller's outer transaction later rolls back this
+    // very instance (e.g. repeatSession/bulkCreate failing at the session-creation step). Only
+    // audit when this call ran (and already committed) its own transaction; a caller running us
+    // inside its own transaction is responsible for its own post-commit audit entry.
+    if (db === this.prisma) {
+      await this.auditLog.record({
+        organizationId,
+        actorId: assignedBy,
+        action: 'checklist_instance.assigned',
+        targetType: 'checklist_instance',
+        targetId: instance.id,
+        summary: `Assigned checklist ${checklist.title} to user`,
+        metadata: { checklistId, userId: input.userId },
+      });
+    }
 
     return instance;
   }
