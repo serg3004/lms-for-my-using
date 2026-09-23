@@ -15,7 +15,7 @@ import {
   suppressPendingReminders,
   upsertPreStartReminder,
 } from './checklist-session-reminders.js';
-import { ChecklistsService } from './checklists.service.js';
+import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
   BulkCreateChecklistSessionInput,
   ChecklistSessionParticipantsQuery,
@@ -175,7 +175,11 @@ export class ChecklistSessionService {
         });
         results.push({ learnerId, status: 'created', sessionId: session.id });
       } catch (error) {
-        if (error instanceof BadRequestException) {
+        // Only the per-recipient active-assignment conflict is skippable -- any other
+        // BadRequestException (e.g. "checklist is not published") is a request-level validation
+        // failure that applies identically to every recipient and must abort the whole batch,
+        // not be silently swallowed as a per-learner skip.
+        if (error instanceof BadRequestException && error.message === ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE) {
           results.push({ learnerId, status: 'skipped', reason: error.message });
         } else if (error instanceof NotFoundException) {
           results.push({ learnerId, status: 'failed', reason: error.message });

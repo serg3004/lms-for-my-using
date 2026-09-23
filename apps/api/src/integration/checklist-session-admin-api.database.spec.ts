@@ -256,6 +256,17 @@ describe('checklist session admin API (PR 292) — database', () => {
     });
     expect(active).toBeNull();
 
+    // assignChecklist() no longer records its own "checklist_instance.assigned" audit entry when
+    // it runs inside a caller-managed transaction (it writes through the root connection, not the
+    // transaction) -- otherwise this failed attempt would leave a false "assigned" audit trail
+    // entry for an instance that was actually rolled back. Only the one standalone
+    // assignChecklist() call above (for the original instance) should have recorded one so far.
+    const assignedAuditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_instance.assigned' },
+    });
+    expect(assignedAuditEntries).toHaveLength(1);
+    expect(assignedAuditEntries[0]?.targetId).toBe(instance.id);
+
     // Restore the role and confirm a retry now succeeds (proves the rollback, not just the 400).
     await prisma.membership.create({ data: { organizationId, userId: observerId, role: 'instructor' } });
     const repeated = await sessionService.repeatSession(session.id, organizationId, observerId, {});
