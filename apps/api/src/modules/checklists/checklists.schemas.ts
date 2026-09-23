@@ -37,14 +37,32 @@ export const updateChecklistSchema = z
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
 
-export const createChecklistItemSchema = z.object({
-  text: z.string().trim().min(1).max(500),
-  points: z.number().int().min(0).max(1000).default(0),
-  isRequired: z.boolean().default(true),
-  photoRequired: z.boolean().default(false),
-});
+// autoSkipUnanswered only makes sense for an item that's actually allowed to be skipped — an item
+// that isn't skippable can't be *auto*-skipped either (PR 290 "required validation").
+const requiresAllowSkipForAutoSkip = (input: { allowSkip?: boolean; autoSkipUnanswered?: boolean }) =>
+  !input.autoSkipUnanswered || input.allowSkip === true;
+const AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE = {
+  message: 'autoSkipUnanswered requires allowSkip to also be true',
+  path: ['autoSkipUnanswered'],
+};
+
+export const createChecklistItemSchema = z
+  .object({
+    text: z.string().trim().min(1).max(500),
+    points: z.number().int().min(0).max(1000).default(0),
+    isRequired: z.boolean().default(true),
+    photoRequired: z.boolean().default(false),
+    weight: z.number().int().min(1).max(100).default(1),
+    allowSkip: z.boolean().default(false),
+    autoSkipUnanswered: z.boolean().default(false),
+  })
+  .refine(requiresAllowSkipForAutoSkip, AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE);
 export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>;
 
+// Note: the allowSkip/autoSkipUnanswered invariant above is intentionally NOT enforced here — a
+// partial update may set only one of the two fields while the other keeps its current DB value,
+// which this schema can't see. ChecklistsService.updateItem() checks the invariant against the
+// merged (current + incoming) state instead.
 export const updateChecklistItemSchema = z
   .object({
     text: z.string().trim().min(1).max(500),
@@ -52,6 +70,9 @@ export const updateChecklistItemSchema = z
     isRequired: z.boolean(),
     photoRequired: z.boolean(),
     order: z.number().int().min(0),
+    weight: z.number().int().min(1).max(100),
+    allowSkip: z.boolean(),
+    autoSkipUnanswered: z.boolean(),
   })
   .partial();
 export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>;
@@ -93,6 +114,9 @@ export const reviewChecklistItemResultSchema = z.object({
   comment: z.string().trim().max(1000).optional(),
 });
 export type ReviewChecklistItemResultInput = z.infer<typeof reviewChecklistItemResultSchema>;
+
+export const skipChecklistItemSchema = z.object({ comment: z.string().trim().max(1000).optional() }).strict();
+export type SkipChecklistItemInput = z.infer<typeof skipChecklistItemSchema>;
 
 export const assignChecklistReviewerSchema = z.object({ reviewerId: z.string().uuid().nullable() }).strict();
 export const checklistQueueQuerySchema = z.object({
@@ -177,3 +201,33 @@ export const checklistSessionQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type ChecklistSessionQuery = z.infer<typeof checklistSessionQuerySchema>;
+
+// ---- Criteria/skip/scoring v1 + geolocation (PR 290) ----
+
+export const checklistLocationCapturePointSchema = z.enum(['start', 'end']);
+export const checklistLocationCaptureStatusSchema = z.enum(['captured', 'denied', 'unavailable']);
+
+// `getCurrentPosition` (never `watchPosition`) is a client-side constraint this schema can't
+// enforce directly -- what it does enforce is the server-observable half of "start/end only, no
+// continuous tracking": exactly one report per capture point (@@unique on the table), and
+// coordinates present if and only if the browser actually produced a position.
+export const submitChecklistLocationCaptureSchema = z
+  .object({
+    status: checklistLocationCaptureStatusSchema,
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    accuracyMeters: z.number().min(0).optional(),
+    // Required only when an admin submits on behalf of the observer under a `required` policy --
+    // ChecklistSessionService enforces exactly when this is mandatory (it depends on who the
+    // caller is and the session's policy, neither of which this schema can see).
+    overrideReason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict()
+  .refine(
+    (input) => (input.status === 'captured' ? input.latitude !== undefined && input.longitude !== undefined : input.latitude === undefined && input.longitude === undefined),
+    {
+      message: 'latitude/longitude are required when status is "captured" and must be omitted otherwise',
+      path: ['latitude'],
+    },
+  );
+export type SubmitChecklistLocationCaptureInput = z.infer<typeof submitChecklistLocationCaptureSchema>;

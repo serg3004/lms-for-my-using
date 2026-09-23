@@ -37,6 +37,7 @@ function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
 function createPrisma(overrides: {
   checklistSession?: Partial<Record<'findFirst' | 'findUniqueOrThrow' | 'findMany' | 'count' | 'create' | 'updateMany', jest.Mock>>;
   checklistSessionEvent?: Partial<Record<'create' | 'findMany', jest.Mock>>;
+  checklistLocationCapture?: Partial<Record<'create' | 'findMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
   user?: Partial<Record<'findFirst', jest.Mock>>;
 } = {}) {
@@ -54,6 +55,11 @@ function createPrisma(overrides: {
       create: jest.fn(async () => ({})),
       findMany: jest.fn(async () => []),
       ...overrides.checklistSessionEvent,
+    },
+    checklistLocationCapture: {
+      create: jest.fn(async (args: { data: Record<string, unknown> }) => ({ id: 'capture-1', ...args.data })),
+      findMany: jest.fn(async () => []),
+      ...overrides.checklistLocationCapture,
     },
     checklistInstance: {
       findFirst: jest.fn(async () => ({ id: instanceId })),
@@ -258,6 +264,137 @@ describe('ChecklistSessionService', () => {
           where: expect.objectContaining({ status: 'scheduled', scheduledAt: { lt: expect.any(Date) } }),
         }),
       );
+    });
+  });
+
+  describe('captureLocation', () => {
+    it('rejects capture when the session policy is "off"', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'off' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
+    });
+
+    it('records a capture submitted by the assigned observer without requiring an override reason', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 51.1, longitude: 71.4 }, observerId, {});
+
+      expect(prisma.checklistLocationCapture.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ sessionId, capturePoint: 'start', status: 'captured', capturedBy: observerId }) }),
+      );
+      expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('requires an overrideReason when someone other than the observer submits a capture', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const service = new ChecklistSessionService(prisma);
+      const adminId = '66666666-6666-6666-6666-666666666666';
+
+      await expect(
+        service.captureLocation(sessionId, organizationId, 'start', { status: 'denied' }, adminId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
+    });
+
+    it('audits an admin override with a location_override event and the reason in its metadata', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const service = new ChecklistSessionService(prisma);
+      const adminId = '66666666-6666-6666-6666-666666666666';
+
+      await service.captureLocation(
+        sessionId,
+        organizationId,
+        'end',
+        { status: 'unavailable', overrideReason: 'Observer device had no GPS signal' },
+        adminId,
+        {},
+      );
+
+      expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: 'location_override',
+            actorUserId: adminId,
+            metadata: expect.objectContaining({ capturePoint: 'end', overrideReason: 'Observer device had no GPS signal' }),
+          }),
+        }),
+      );
+    });
+
+    it('maps a duplicate capture-point submission to a 409, not a silent overwrite', async () => {
+      const conflict = Object.assign(new Error('duplicate'), { code: 'P2002', meta: { target: ['session_id', 'capture_point'] } });
+      const prisma = createPrisma({
+        checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'optional' })) },
+        checklistLocationCapture: {
+          create: jest.fn(async () => {
+            throw conflict;
+          }),
+        },
+      });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('throws 404 when the session is outside the caller scope', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('listLocationCaptures', () => {
+    const rawCapture = {
+      id: 'capture-1',
+      organizationId,
+      sessionId,
+      capturePoint: 'start',
+      status: 'captured',
+      latitude: 51.1,
+      longitude: 71.4,
+      accuracyMeters: 5,
+      capturedBy: observerId,
+      capturedAt: new Date(),
+    };
+
+    it('returns full coordinates to the assigned observer', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.listLocationCaptures(sessionId, organizationId, {}, observerId, false);
+
+      expect(result[0]).toMatchObject({ latitude: 51.1, longitude: 71.4 });
+    });
+
+    it('returns full coordinates to an admin', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
+
+      expect(result[0]).toMatchObject({ latitude: 51.1, longitude: 71.4 });
+    });
+
+    it('redacts coordinates for everyone else (privacy-safe projection)', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.listLocationCaptures(sessionId, organizationId, {}, 'a-manager', false);
+
+      expect(result[0]).not.toHaveProperty('latitude');
+      expect(result[0]).not.toHaveProperty('longitude');
+      expect(result[0]).not.toHaveProperty('accuracyMeters');
+      expect(result[0]).toMatchObject({ capturePoint: 'start', status: 'captured' });
     });
   });
 });

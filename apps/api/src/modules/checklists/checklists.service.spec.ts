@@ -27,9 +27,9 @@ type FakeChecklist = {
  */
 function createFakePrisma() {
   const checklists: FakeChecklist[] = [];
-  const items: Array<{ id: string; organizationId: string; checklistId: string; order: number; text: string; points: number; isRequired: boolean; photoRequired: boolean; deletedAt: Date | null }> = [];
-  const instances: Array<{ id: string; organizationId: string; checklistId: string; userId: string; assignedBy: string | null; status: string; totalScore: number; maxScore: number; percentage: number; passed: boolean; dueAt: Date | null; submittedAt: Date | null; completedAt: Date | null; deletedAt: Date | null }> = [];
-  const results: Array<{ id: string; organizationId: string; instanceId: string; itemId: string; checked: boolean; scaleLevel: number | null; points: number; photoUrl: string | null; comment: string | null; reviewStatus: string; reviewComment: string | null; reviewedBy: string | null; reviewedAt: Date | null }> = [];
+  const items: Array<{ id: string; organizationId: string; checklistId: string; order: number; text: string; points: number; isRequired: boolean; photoRequired: boolean; weight: number; allowSkip: boolean; autoSkipUnanswered: boolean; deletedAt: Date | null }> = [];
+  const instances: Array<{ id: string; organizationId: string; checklistId: string; userId: string; assignedBy: string | null; status: string; totalScore: number; maxScore: number; percentage: number; passed: boolean; scored: boolean; dueAt: Date | null; submittedAt: Date | null; completedAt: Date | null; deletedAt: Date | null }> = [];
+  const results: Array<{ id: string; organizationId: string; instanceId: string; itemId: string; checked: boolean; scaleLevel: number | null; points: number; photoUrl: string | null; photoObjectKey: string | null; comment: string | null; answerState: string; reviewStatus: string; reviewComment: string | null; reviewedBy: string | null; reviewedAt: Date | null }> = [];
   const users = [
     { id: learnerId, organizationId, deletedAt: null },
     { id: instructorId, organizationId, deletedAt: null },
@@ -86,6 +86,9 @@ function createFakePrisma() {
           points: (data['points'] as number) ?? 0,
           isRequired: (data['isRequired'] as boolean) ?? true,
           photoRequired: (data['photoRequired'] as boolean) ?? false,
+          weight: (data['weight'] as number) ?? 1,
+          allowSkip: (data['allowSkip'] as boolean) ?? false,
+          autoSkipUnanswered: (data['autoSkipUnanswered'] as boolean) ?? false,
           deletedAt: null,
         };
         items.push(item);
@@ -132,6 +135,7 @@ function createFakePrisma() {
           maxScore: (data['maxScore'] as number) ?? 0,
           percentage: 0,
           passed: false,
+          scored: true,
           dueAt: (data['dueAt'] as Date) ?? null,
           submittedAt: null,
           completedAt: null,
@@ -174,9 +178,11 @@ function createFakePrisma() {
           itemId: create['itemId'] as string,
           checked: (create['checked'] as boolean) ?? false,
           scaleLevel: (create['scaleLevel'] as number) ?? null,
-          points: create['points'] as number,
+          points: (create['points'] as number) ?? 0,
           photoUrl: (create['photoUrl'] as string) ?? null,
+          photoObjectKey: (create['photoObjectKey'] as string) ?? null,
           comment: (create['comment'] as string) ?? null,
+          answerState: (create['answerState'] as string) ?? 'unanswered',
           reviewStatus: 'pending',
           reviewComment: null,
           reviewedBy: null,
@@ -568,5 +574,97 @@ describe('ChecklistsService — item photo attachment', () => {
     await expect(
       service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {
+  async function setUpTwoItemChecklist(prisma: ReturnType<typeof createFakePrisma>, itemOverrides: [Record<string, unknown>?, Record<string, unknown>?] = []) {
+    const service = new ChecklistsService(prisma);
+    const checklist = await service.createChecklist(
+      { organizationId, title: 'Skip/weight test', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
+      instructorId,
+    );
+    await service.createItem(checklist.id, organizationId, { text: 'A', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[0] });
+    await service.createItem(checklist.id, organizationId, { text: 'B', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[1] });
+    await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
+    const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
+    const items = await service.listItems(checklist.id, organizationId);
+    return { service, checklist, instance, items };
+  }
+
+  it('excludes a skipped item from both the numerator and the denominator', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma, [{ allowSkip: true }, { allowSkip: true }]);
+
+    await service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {});
+    const result = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+
+    // Item A is skipped (excluded entirely); item B is fully earned -> 10/10, not 10/20.
+    expect(result.percentage).toBe(100);
+    expect(result.scored).toBe(true);
+    expect(result.status).toBe('completed');
+  });
+
+  it('marks an all-skipped instance not_scored instead of reporting a misleading 0%', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma, [{ allowSkip: true }, { allowSkip: true }]);
+
+    await service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {});
+    const result = await service.skipItem(instance.id, items[1].id, organizationId, learnerId, false, {});
+
+    expect(result.scored).toBe(false);
+    expect(result.percentage).toBe(0);
+    expect(result.passed).toBe(false);
+    // Still resolves the instance -- an all-skipped checklist isn't stuck "in_progress" forever.
+    expect(result.status).toBe('completed');
+  });
+
+  it('rejects skipping an item that does not allow it', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma);
+
+    await expect(service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {})).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('applies per-item weight to both earned and max', async () => {
+    const prisma = createFakePrisma();
+    // A: weight 1, 10 points, checked -> earns 10, contributes 10 to max.
+    // B: weight 3, 10 points, unchecked -> earns 0, contributes 30 to max.
+    // percentage = round(10 / 40 * 100) = 25.
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma, [{ weight: 1 }, { weight: 3 }]);
+
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
+    const result = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: false });
+
+    expect(result.percentage).toBe(25);
+  });
+
+  it('auto-skips an unanswered item so it never blocks completion, and persists the skip', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma, [{ allowSkip: true, autoSkipUnanswered: true }, {}]);
+
+    // Item A (auto-skippable) is never answered; only item B is.
+    const result = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+
+    expect(result.status).toBe('completed');
+    expect(result.percentage).toBe(100);
+    const persisted = await prisma.checklistItemResult.findMany({ where: { instanceId: instance.id } });
+    const autoSkipped = persisted.find((row: { itemId: string }) => row.itemId === items[0].id) as { answerState: string } | undefined;
+    expect(autoSkipped?.answerState).toBe('skipped');
+  });
+
+  it('un-skips an item when it is subsequently answered', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma, [{ allowSkip: true }, {}]);
+
+    await service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {});
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
+    const result = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+
+    // Both items now answered and checked -> full 20/20.
+    expect(result.percentage).toBe(100);
+    const persisted = await prisma.checklistItemResult.findMany({ where: { instanceId: instance.id } });
+    const itemA = persisted.find((row: { itemId: string }) => row.itemId === items[0].id) as { answerState: string } | undefined;
+    expect(itemA?.answerState).toBe('answered');
   });
 });

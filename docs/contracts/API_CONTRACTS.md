@@ -115,8 +115,10 @@ settings row reads back documented safe defaults instead of a 404: `moduleEnable
 `defaultGeolocationPolicy=off`, `feedbackVisibility=after_completion`. `PATCH` is a partial update:
 only the fields present in the request body change, and `criticalThreshold`/`lowThreshold` accept an
 explicit `null` to clear a previously-set value. A request setting both `criticalThreshold` and
-`lowThreshold` is rejected (422) if `criticalThreshold < lowThreshold`. This endpoint currently only
-stores and returns settings -- no session/instance endpoint in the same plan enforces them yet.
+`lowThreshold` is rejected (422) if `criticalThreshold < lowThreshold`. `defaultGeolocationPolicy` is
+a tenant-wide default that `POST /checklist-sessions` can override per session
+(`locationCapturePolicy` in the request body); `highPerformanceThreshold`/`criticalThreshold`/`lowThreshold`
+are not yet consumed by any scoring endpoint (deferred to a future reporting PR).
 
 ## Checklist sessions (workplace-training lifecycle)
 
@@ -159,6 +161,66 @@ both. `RBAC`: `checklistSessionsRead` (admin/manager/instructor/learner) covers 
 
 `overdue` is a derived, not stored, boolean: true only while `status === 'scheduled'` and
 `scheduledAt` has passed. It is not persisted and carries no separate lifecycle status of its own.
+
+## Checklist criteria, skip, scoring v1, and geolocation capture (PR 290)
+
+Extends the existing `ChecklistItem`/`ChecklistItemResult`/`ChecklistInstance` pipeline
+(`docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md` scoring v1) -- no new result table, no
+second scoring algorithm. Applies to every checklist (session-backed or plain), but is a no-op for
+any checklist that never uses the new per-item fields: `weight` defaults to `1` and `allowSkip`/
+`autoSkipUnanswered` default to `false`, so a checklist created before PR 290 scores exactly as it
+did before.
+
+`ChecklistItem` gains three optional creation/update fields: `weight` (1-100, default 1, multiplies
+into both a criterion's earned and max score), `allowSkip` (default false, whether this criterion
+may be explicitly skipped), and `autoSkipUnanswered` (default false, whether an unanswered instance
+of this criterion silently resolves as skipped instead of blocking completion). Setting
+`autoSkipUnanswered=true` requires `allowSkip=true` in the same effective state -- rejected as 422 on
+create, and re-validated server-side on `PATCH` against the item's current stored state (a partial
+update setting only one of the two fields is checked against what the other already is in the DB).
+
+`POST /checklist-instances/:instanceId/items/:itemId/skip` (same `checklistItemResultsWrite` role
+policy and instance-ownership/reviewer-access checks as the existing submit-result endpoint) records
+`ChecklistItemResult.answerState = 'skipped'` for a criterion whose item has `allowSkip=true` (400
+otherwise); clears any previously checked/scale-level answer and deletes a previously attached photo
+object. Answering a skipped item afterward (`PATCH .../items/:itemId`) un-skips it (`answerState`
+reverts to `'answered'`).
+
+Scoring formula: `earned = sum(item.weight * result.points)` and `max = sum(item.weight * itemMax)`,
+both computed **only over items whose `answerState !== 'skipped'`** -- a skip is excluded from both
+the numerator and the denominator, never counted as a zero. `ChecklistInstance.percentage` /
+`totalScore` / `maxScore` are recomputed on every mutation exactly as before, now skip-aware.
+`ChecklistInstance.scored` (new field) is `false` when the resulting max is zero (every item got
+skipped, or a checklist has zero point-earning items) -- in that case `percentage` stays `0` but
+callers must read `scored` to distinguish "nothing was actually gradable" from "failed everything";
+`passed` is always `false` when `scored=false`, regardless of `percentage`. An `autoSkipUnanswered`
+item that's still unanswered is auto-resolved to `answerState='skipped'` (a real, queryable
+`ChecklistItemResult` row, not just a computed value) the moment any other mutation on the same
+instance triggers a recompute -- it never blocks `allRequirementsSatisfied`, `isRequired` or not.
+
+Photo evidence is unchanged from the existing pipeline: still
+`ChecklistItemResult.photoUrl/photoObjectKey/photoFileName/photoMimeType/photoSizeBytes`, still the
+same upload/presigned-download endpoints and access checks (`getItemPhotoDownload` scopes by
+`instance.userId === requester || isPrivileged`, presigned URLs expire in 300s) -- no
+`ChecklistEvidence` table, no more than one photo per criterion, and no malware-quarantine claim
+this PR doesn't actually implement.
+
+Geolocation capture: `POST /checklist-sessions/:id/location/:point` (`point` is `start` or `end`;
+`checklistSessionsRun` role policy, same `sessionScope()` access check as every other session
+sub-resource) and `GET /checklist-sessions/:id/location`. At most one capture per `(session, point)`
+-- enforced by the PR 288 unique constraint, so a duplicate submission is a 409, never a silent
+overwrite ("start/end only, no continuous tracking" -- the client calls `getCurrentPosition` once
+per point, never `watchPosition`; this endpoint pair is the server-observable half of that
+constraint). A session whose `locationCapturePolicy` is `off` rejects any capture attempt (400);
+`optional`/`required` both accept `captured`/`denied`/`unavailable` status reports (coordinates are
+required in the request body if and only if `status === 'captured'`). When the caller submitting a
+capture is not the session's assigned observer -- reachable only by an admin, since RBAC plus
+`sessionScope()` block everyone else from a session they don't own -- the request requires a non-empty
+`overrideReason` and is separately audited via a `ChecklistSessionEvent` of type
+`location_override` carrying the reason in its metadata. `GET .../location` applies a privacy-safe
+projection: only the assigned observer and admin see `latitude`/`longitude`/`accuracyMeters`; every
+other caller with read access to the session (e.g. a manager) sees only that a capture happened
+(`capturePoint`/`status`/`capturedAt`/`capturedBy`), never where.
 
 ## Product scope vs implementation
 

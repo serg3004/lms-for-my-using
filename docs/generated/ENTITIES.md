@@ -68,6 +68,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssessmentStatus` | `draft`, `published`, `archived` |
 | `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
 | `CertificateStatus` | `issued`, `revoked` |
+| `ChecklistAnswerState` | `unanswered`, `answered`, `skipped` |
 | `ChecklistFeedbackVisibility` | `after_completion`, `live` |
 | `ChecklistGeolocationPolicy` | `off`, `optional`, `required` |
 | `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
@@ -77,7 +78,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
 | `ChecklistScaleStatus` | `active`, `archived` |
 | `ChecklistScoringMode` | `sum_points`, `all_required`, `scale` |
-| `ChecklistSessionEventType` | `created`, `rescheduled`, `started`, `paused`, `resumed`, `completed`, `cancelled`, `observer_reassigned`, `reminder_sent` |
+| `ChecklistSessionEventType` | `created`, `rescheduled`, `started`, `paused`, `resumed`, `completed`, `cancelled`, `observer_reassigned`, `reminder_sent`, `location_override` |
 | `ChecklistSessionReminderStatus` | `pending`, `sent`, `suppressed`, `failed` |
 | `ChecklistSessionReminderType` | `pre_start`, `incomplete_after_start` |
 | `ChecklistSessionStatus` | `scheduled`, `in_progress`, `paused`, `completed`, `cancelled` |

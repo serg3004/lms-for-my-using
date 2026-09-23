@@ -15,13 +15,16 @@ import {
   assignChecklistSchema,
   assignChecklistReviewerSchema,
   bulkAssignChecklistSchema,
+  checklistLocationCapturePointSchema,
   createChecklistItemSchema,
   createChecklistSchema,
   createChecklistSessionSchema,
   checklistSessionQuerySchema,
   checklistSessionTransitionSchema,
   reviewChecklistItemResultSchema,
+  skipChecklistItemSchema,
   submitChecklistItemResultSchema,
+  submitChecklistLocationCaptureSchema,
   updateChecklistItemSchema,
   updateChecklistSchema,
   updateChecklistSessionSchema,
@@ -214,6 +217,28 @@ export class ChecklistsController {
       input,
     );
   }
+  @Post('checklist-instances/:instanceId/items/:itemId/skip')
+  @Roles(...rolePolicies.checklistItemResultsWrite)
+  async skipItem(
+    @Param('instanceId') instanceId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = skipChecklistItemSchema.parse(body);
+    const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
+    return this.checklistsService.skipItem(
+      instanceId,
+      itemId,
+      user.organizationId,
+      user.id,
+      !isLearnerOnly(user.roles),
+      input,
+    );
+  }
   @Post('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistItemResultsWrite)
   @UseInterceptors(
@@ -351,6 +376,29 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistSessionsManage)
   transitionCancel(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('cancel', sessionId, body, request);
+  }
+
+  // ---- Geolocation capture (PR 290) ----
+  @Post('checklist-sessions/:id/location/:point')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  async captureLocation(
+    @Param('id') sessionId: string,
+    @Param('point') point: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const capturePoint = checklistLocationCapturePointSchema.parse(point);
+    const input = submitChecklistLocationCaptureSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.captureLocation(sessionId, user.organizationId, capturePoint, input, user.id, scope);
+  }
+  @Get('checklist-sessions/:id/location')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async listLocationCaptures(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.listLocationCaptures(sessionId, user.organizationId, scope, user.id, user.roles.includes('admin'));
   }
 
   private async transitionSession(

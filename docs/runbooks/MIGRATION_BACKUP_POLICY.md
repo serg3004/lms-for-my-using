@@ -188,6 +188,19 @@ Migration `20260922180000_add_checklist_session_domain` также additive и b
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist scoring v1 migration
+
+Migration `20260923040000_add_checklist_scoring_v1` также additive и backward-compatible (PR 290, `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md` scoring v1):
+
+- создаёт новый enum `ChecklistAnswerState` (`unanswered`/`answered`/`skipped`) и добавляет колонку `checklist_item_results.answer_state` с `DEFAULT 'unanswered'` — существующие строки (все ответы, отправленные до PR 290) автоматически получают `unanswered`, что затем немедленно переопределяется первым же `recomputeInstance()` на `answered`/`skipped` по факту существующих `checked`/`scaleLevel`; backfill не требуется, поле не участвует в вычислении score задним числом для уже завершённых `ChecklistInstance` (их `percentage`/`passed` не пересчитываются повторно);
+- добавляет колонку `checklist_instances.scored BOOLEAN NOT NULL DEFAULT true` — существующие инстансы (ни один из которых физически не мог иметь skip до PR 290) остаются `scored=true`, что сохраняет их текущий `percentage` как есть, без искажения истории;
+- добавляет значение `location_override` в существующий enum `ChecklistSessionEventType` (`ALTER TYPE ... ADD VALUE`) для аудита случая, когда админ подтверждает геолокацию за наблюдателя при policy `required`;
+- не трогает ни одну существующую колонку и не переименовывает ничего — старая версия приложения продолжает работать, просто не зная о новом enum-значении `skipped`/`answer_state`/`scored` (Prisma-клиент старой версии их не читает и не пишет, а PostgreSQL хранит их как есть).
+
+Применено к реальному локальному PostgreSQL 16 и проверено на нулевой дрейф тем же способом, что и предыдущие миграции этого модуля; `checklist-scoring-v1.database.spec.ts` подтверждает skip/weight/not_scored-инварианты и уникальность геолокационного захвата через сервисный слой на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling
