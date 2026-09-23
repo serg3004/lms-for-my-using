@@ -171,6 +171,23 @@ Migration `20260922150000_add_checklist_workplace_settings` также additive 
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist session domain migration
+
+Migration `20260922180000_add_checklist_session_domain` также additive и backward-compatible:
+
+- создаёт семь новых enum (`ChecklistSessionStatus`, `ChecklistSessionEventType`, `ChecklistSessionReminderType`, `ChecklistSessionReminderStatus`, `ChecklistLocationCapturePoint`, `ChecklistLocationCaptureStatus`, `ChecklistScaleStatus`) и семь новых таблиц (`checklist_sessions`, `checklist_session_events`, `checklist_score_revisions`, `checklist_session_reminders`, `checklist_location_captures`, `checklist_scales`, `checklist_scale_levels`) — domain model для workplace-training режима "session" (`docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` PR 288, `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`);
+- добавляет три nullable-с-default колонки в существующую таблицу `checklist_items` (`weight INTEGER DEFAULT 1`, `allow_skip BOOLEAN DEFAULT false`, `auto_skip_unanswered BOOLEAN DEFAULT false`) — существующие строки получают safe defaults, backfill не требуется, ни одна из трёх не дублирует уже существующие `is_required`/`photo_required` (разные концепции: `allowSkip` — можно ли explicitly пропустить критерий во время сессии, а не обязателен ли он к заполнению для обычной сдачи);
+- `checklist_sessions.instance_id` — обычный (не partial) unique FK на `checklist_instances`, обеспечивающий истинный 1:1 overlay (создать вторую session на тот же instance невозможно на уровне БД, не только в сервисе);
+- `checklist_session_reminders` и `checklist_location_captures` используют обычные (не partial) составные unique-индексы — `(session_id, reminder_type)` и `(session_id, capture_point)` соответственно — как DB-level idempotency guardrail: at most один pre-start/incomplete-after-start reminder и at most одна start/end геолокация на сессию, независимо от того, сколько раз worker или клиент повторит запрос; raw SQL не требуется, поскольку (в отличие от `department_managers`/`reporting_lines`) здесь нет понятия "текущей активной" записи, которую нужно закрыть перед новой — это простые plain unique constraints, полностью выразимые в Prisma DSL;
+- `checklist_scale_levels` имеет `UNIQUE(scale_id, value)`, запрещающий дублирующееся значение уровня внутри одной шкалы;
+- не выполняет backfill ни для одной новой таблицы: ни одна `ChecklistInstance` не получает `ChecklistSession` автоматически — session создаётся только явно через будущий admin API (PR 292);
+- не трогает существующие поля `ChecklistInstance` (`totalScore`/`maxScore`/`percentage`/`passed`/`templateSnapshot`/`snapshotVersion`/`status`) — счёт и статус сдачи остаются исключительно там; `checklist_score_revisions` — только append-only audit trail до/после, не второй источник истины текущего счёта;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых таблицах/колонках и продолжает работать как раньше.
+
+Все семь новых таблиц и три новые колонки применены к реальному локальному PostgreSQL 16 и проверены на нулевой дрейф (`prisma migrate diff --from-migrations ... --to-schema-datamodel ...` не показывает ни одной из новых таблиц/колонок в diff), плюс отдельный integration-тест (`checklist-session-domain.database.spec.ts`) подтверждает все перечисленные unique/cascade-инварианты на реальной БД, а не только валидность синтаксиса миграции.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

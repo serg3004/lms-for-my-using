@@ -193,6 +193,54 @@ enum ChecklistFeedbackVisibility {
   live
 }
 
+enum ChecklistSessionStatus {
+  scheduled
+  in_progress
+  paused
+  completed
+  cancelled
+}
+
+enum ChecklistSessionEventType {
+  created
+  rescheduled
+  started
+  paused
+  resumed
+  completed
+  cancelled
+  observer_reassigned
+  reminder_sent
+}
+
+enum ChecklistSessionReminderType {
+  pre_start
+  incomplete_after_start
+}
+
+enum ChecklistSessionReminderStatus {
+  pending
+  sent
+  suppressed
+  failed
+}
+
+enum ChecklistLocationCapturePoint {
+  start
+  end
+}
+
+enum ChecklistLocationCaptureStatus {
+  captured
+  denied
+  unavailable
+}
+
+enum ChecklistScaleStatus {
+  active
+  archived
+}
+
 model Organization {
   id                         String                      @id @default(uuid()) @db.Uuid
   name                       String
@@ -237,6 +285,13 @@ model Organization {
   checklistItemResults       ChecklistItemResult[]
   checklistInstanceEvents    ChecklistInstanceEvent[]
   checklistWorkplaceSettings ChecklistWorkplaceSettings?
+  checklistSessions          ChecklistSession[]
+  checklistSessionEvents     ChecklistSessionEvent[]
+  checklistScoreRevisions    ChecklistScoreRevision[]
+  checklistSessionReminders  ChecklistSessionReminder[]
+  checklistLocationCaptures  ChecklistLocationCapture[]
+  checklistScales            ChecklistScale[]
+  checklistScaleLevels       ChecklistScaleLevel[]
   theme                      OrganizationTheme?
 
   @@map("organizations")
@@ -256,26 +311,26 @@ model OrganizationTheme {
 }
 
 model User {
-  id                         String                   @id @default(uuid()) @db.Uuid
-  organizationId             String                   @map("organization_id") @db.Uuid
+  id                         String                     @id @default(uuid()) @db.Uuid
+  organizationId             String                     @map("organization_id") @db.Uuid
   email                      String
-  passwordHash               String                   @map("password_hash")
-  firstName                  String                   @map("first_name")
-  lastName                   String                   @map("last_name")
-  middleName                 String?                  @map("middle_name")
+  passwordHash               String                     @map("password_hash")
+  firstName                  String                     @map("first_name")
+  lastName                   String                     @map("last_name")
+  middleName                 String?                    @map("middle_name")
   position                   String?
   shift                      String?
   phone                      String?
-  status                     UserStatus               @default(active)
-  locale                     String                   @default("ru")
-  timezone                   String                   @default("Asia/Almaty")
-  lastLoginAt                DateTime?                @map("last_login_at") @db.Timestamptz
-  createdAt                  DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                  DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt                  DateTime?                @map("deleted_at") @db.Timestamptz
-  organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  memberships                Membership[]             @relation("UserMemberships")
-  assignedMemberships        Membership[]             @relation("MembershipAssignedBy")
+  status                     UserStatus                 @default(active)
+  locale                     String                     @default("ru")
+  timezone                   String                     @default("Asia/Almaty")
+  lastLoginAt                DateTime?                  @map("last_login_at") @db.Timestamptz
+  createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                  DateTime?                  @map("deleted_at") @db.Timestamptz
+  organization               Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  memberships                Membership[]               @relation("UserMemberships")
+  assignedMemberships        Membership[]               @relation("MembershipAssignedBy")
   assignments                Assignment[]
   progress                   Progress[]
   assessmentAttempts         AssessmentAttempt[]
@@ -287,17 +342,22 @@ model User {
   managedGroups              ManagerGroup[]
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
-  reportingLinesAsEmployee   ReportingLine[]          @relation("ReportingLineEmployee")
-  reportingLinesAsManager    ReportingLine[]          @relation("ReportingLineManager")
+  reportingLinesAsEmployee   ReportingLine[]            @relation("ReportingLineEmployee")
+  reportingLinesAsManager    ReportingLine[]            @relation("ReportingLineManager")
   notifications              Notification[]
-  checklistsCreated          Checklist[]              @relation("ChecklistCreatedBy")
-  checklistInstances         ChecklistInstance[]      @relation("ChecklistInstanceUser")
-  checklistInstancesAssigned ChecklistInstance[]      @relation("ChecklistInstanceAssignedBy")
-  checklistItemReviews       ChecklistItemResult[]    @relation("ChecklistItemResultReviewedBy")
-  checklistInstancesReviewed ChecklistInstance[]      @relation("ChecklistInstanceReviewer")
-  checklistReviewsAssigned   ChecklistInstance[]      @relation("ChecklistInstanceReviewAssignedBy")
-  checklistInstanceEvents    ChecklistInstanceEvent[] @relation("ChecklistInstanceEventActor")
-  orgStructureEvents         OrgStructureEvent[]      @relation("OrgStructureEventActor")
+  checklistsCreated          Checklist[]                @relation("ChecklistCreatedBy")
+  checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
+  checklistInstancesAssigned ChecklistInstance[]        @relation("ChecklistInstanceAssignedBy")
+  checklistItemReviews       ChecklistItemResult[]      @relation("ChecklistItemResultReviewedBy")
+  checklistInstancesReviewed ChecklistInstance[]        @relation("ChecklistInstanceReviewer")
+  checklistReviewsAssigned   ChecklistInstance[]        @relation("ChecklistInstanceReviewAssignedBy")
+  checklistInstanceEvents    ChecklistInstanceEvent[]   @relation("ChecklistInstanceEventActor")
+  checklistSessionsObserved  ChecklistSession[]         @relation("ChecklistSessionObserver")
+  checklistSessionEvents     ChecklistSessionEvent[]    @relation("ChecklistSessionEventActor")
+  checklistScoreRevisions    ChecklistScoreRevision[]   @relation("ChecklistScoreRevisionActor")
+  checklistLocationCaptures  ChecklistLocationCapture[] @relation("ChecklistLocationCaptureActor")
+  checklistScalesCreated     ChecklistScale[]           @relation("ChecklistScaleCreatedBy")
+  orgStructureEvents         OrgStructureEvent[]        @relation("OrgStructureEventActor")
 
   @@unique([organizationId, email])
   @@unique([id, organizationId])
@@ -993,20 +1053,28 @@ model Checklist {
 }
 
 model ChecklistItem {
-  id             String                @id @default(uuid()) @db.Uuid
-  organizationId String                @map("organization_id") @db.Uuid
-  checklistId    String                @map("checklist_id") @db.Uuid
-  order          Int                   @default(0)
-  text           String
-  points         Int                   @default(0)
-  isRequired     Boolean               @default(true) @map("is_required")
-  photoRequired  Boolean               @default(false) @map("photo_required")
-  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?             @map("deleted_at") @db.Timestamptz
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checklist      Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  results        ChecklistItemResult[]
+  id                 String                @id @default(uuid()) @db.Uuid
+  organizationId     String                @map("organization_id") @db.Uuid
+  checklistId        String                @map("checklist_id") @db.Uuid
+  order              Int                   @default(0)
+  text               String
+  points             Int                   @default(0)
+  isRequired         Boolean               @default(true) @map("is_required")
+  photoRequired      Boolean               @default(false) @map("photo_required")
+  // Workplace-training session criteria config (PR 290 reads these; see
+  // docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md PR 288/290).
+  // Distinct from isRequired: isRequired gates normal (non-session) submission; allowSkip/
+  // autoSkipUnanswered govern the session answerState machine, which excludes skipped items
+  // from both the scoring numerator and denominator.
+  weight             Int                   @default(1)
+  allowSkip          Boolean               @default(false) @map("allow_skip")
+  autoSkipUnanswered Boolean               @default(false) @map("auto_skip_unanswered")
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?             @map("deleted_at") @db.Timestamptz
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist          Checklist             @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  results            ChecklistItemResult[]
 
   @@index([organizationId])
   @@index([checklistId, order])
@@ -1043,6 +1111,8 @@ model ChecklistInstance {
   reviewAssigner   User?                    @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
   results          ChecklistItemResult[]
   events           ChecklistInstanceEvent[]
+  session          ChecklistSession?
+  scoreRevisions   ChecklistScoreRevision[]
 
   @@index([organizationId, status])
   @@index([organizationId, reviewerId, status])
@@ -1117,6 +1187,157 @@ model ChecklistWorkplaceSettings {
   organization             Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("checklist_workplace_settings")
+}
+
+/// 1:1 overlay over ChecklistInstance for the workplace-training "session" mode — see
+/// docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md. Holds only what a live, observed,
+/// in-person session needs that a normal async ChecklistInstance doesn't; score/snapshot/status
+/// of the underlying submission stay on ChecklistInstance and are never duplicated here.
+model ChecklistSession {
+  id                    String                     @id @default(uuid()) @db.Uuid
+  organizationId        String                     @map("organization_id") @db.Uuid
+  instanceId            String                     @unique @map("instance_id") @db.Uuid
+  observerId            String                     @map("observer_id") @db.Uuid
+  status                ChecklistSessionStatus     @default(scheduled)
+  // Optimistic concurrency for PR 289's conditional transitions (stale write -> 409).
+  version               Int                        @default(1)
+  scheduledAt           DateTime?                  @map("scheduled_at") @db.Timestamptz
+  startedAt             DateTime?                  @map("started_at") @db.Timestamptz
+  pausedAt              DateTime?                  @map("paused_at") @db.Timestamptz
+  locationCapturePolicy ChecklistGeolocationPolicy @default(off) @map("location_capture_policy")
+  timezone              String                     @default("Asia/Almaty")
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance              ChecklistInstance          @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  observer              User                       @relation("ChecklistSessionObserver", fields: [observerId], references: [id], onDelete: Restrict)
+  events                ChecklistSessionEvent[]
+  reminders             ChecklistSessionReminder[]
+  locationCaptures      ChecklistLocationCapture[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, observerId])
+  @@index([organizationId, scheduledAt])
+  @@map("checklist_sessions")
+}
+
+/// Append-only lifecycle/audit trail for ChecklistSession, mirroring ChecklistInstanceEvent.
+model ChecklistSessionEvent {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  sessionId      String                    @map("session_id") @db.Uuid
+  eventType      ChecklistSessionEventType @map("event_type")
+  actorUserId    String?                   @map("actor_user_id") @db.Uuid
+  metadata       Json?
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session        ChecklistSession          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  actor          User?                     @relation("ChecklistSessionEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, createdAt, id])
+  @@index([organizationId, createdAt])
+  @@map("checklist_session_events")
+}
+
+/// Append-only audit trail of re-scoring events on ChecklistInstance (the score itself stays on
+/// ChecklistInstance; this table only records the before/after of an explicit revision).
+model ChecklistScoreRevision {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  instanceId         String            @map("instance_id") @db.Uuid
+  previousPercentage Int               @map("previous_percentage")
+  newPercentage      Int               @map("new_percentage")
+  previousPassed     Boolean           @map("previous_passed")
+  newPassed          Boolean           @map("new_passed")
+  reason             String?
+  actorUserId        String?           @map("actor_user_id") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance           ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor              User?             @relation("ChecklistScoreRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([instanceId, createdAt, id])
+  @@index([organizationId, createdAt])
+  @@map("checklist_score_revisions")
+}
+
+/// Persistent reminder ledger for PR 291's scheduler. The unique constraint is the DB-level
+/// idempotency guardrail the plan asks for: at most one pre_start and one incomplete_after_start
+/// reminder can ever exist per session, regardless of how many times the worker tick fires.
+model ChecklistSessionReminder {
+  id             String                         @id @default(uuid()) @db.Uuid
+  organizationId String                         @map("organization_id") @db.Uuid
+  sessionId      String                         @map("session_id") @db.Uuid
+  reminderType   ChecklistSessionReminderType   @map("reminder_type")
+  status         ChecklistSessionReminderStatus @default(pending)
+  scheduledFor   DateTime                       @map("scheduled_for") @db.Timestamptz
+  sentAt         DateTime?                      @map("sent_at") @db.Timestamptz
+  createdAt      DateTime                       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                       @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session        ChecklistSession               @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, reminderType])
+  @@index([organizationId, scheduledFor])
+  @@map("checklist_session_reminders")
+}
+
+/// Geolocation is start/end only (no continuous tracking) per PR 290. The unique constraint is
+/// the DB-level enforcement of "start/end only": at most one start row and one end row per
+/// session can ever exist.
+model ChecklistLocationCapture {
+  id             String                         @id @default(uuid()) @db.Uuid
+  organizationId String                         @map("organization_id") @db.Uuid
+  sessionId      String                         @map("session_id") @db.Uuid
+  capturePoint   ChecklistLocationCapturePoint  @map("capture_point")
+  status         ChecklistLocationCaptureStatus
+  latitude       Float?
+  longitude      Float?
+  accuracyMeters Float?                         @map("accuracy_meters")
+  capturedBy     String?                        @map("captured_by") @db.Uuid
+  capturedAt     DateTime                       @default(now()) @map("captured_at") @db.Timestamptz
+  organization   Organization                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  session        ChecklistSession               @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  actor          User?                          @relation("ChecklistLocationCaptureActor", fields: [capturedBy], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, capturePoint])
+  @@index([organizationId])
+  @@map("checklist_location_captures")
+}
+
+/// Tenant-scoped, reusable evaluation scale. Coexists with Checklist.scaleLevels (the existing
+/// ad-hoc per-checklist JSON scale) rather than replacing it — see PR 293/ADR.
+model ChecklistScale {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  name           String
+  status         ChecklistScaleStatus  @default(active)
+  createdBy      String?               @map("created_by") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator        User?                 @relation("ChecklistScaleCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  levels         ChecklistScaleLevel[]
+
+  @@index([organizationId, status])
+  @@map("checklist_scales")
+}
+
+model ChecklistScaleLevel {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  scaleId        String         @map("scale_id") @db.Uuid
+  value          Int
+  label          String
+  score          Int
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  scale          ChecklistScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+
+  @@unique([scaleId, value])
+  @@index([organizationId])
+  @@map("checklist_scale_levels")
 }
 
 model Membership {
