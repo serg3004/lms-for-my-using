@@ -384,31 +384,33 @@ async function installInstructorConductMocks(page: Page) {
       averageCompletionTimeMs: 0, averageReviewTimeMs: 0,
     },
   }));
-  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
-    json: paginated([{
-      id: 'session-1',
-      organizationId: 'visual-org',
-      instanceId: 'instance-1',
-      observerId: 'visual-instructor',
-      status: 'in_progress',
-      version: 2,
-      scheduledAt: '2026-02-01T09:00:00.000Z',
-      startedAt: '2026-02-01T09:05:00.000Z',
-      pausedAt: null,
-      locationCapturePolicy: 'off',
-      timezone: 'UTC',
-      overdue: false,
-      strengths: null,
-      developmentAreas: null,
-      nextSteps: null,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-02-01T09:05:00.000Z',
-      checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
-      learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
-      observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
-      result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false },
-    }]),
-  }));
+  const instructorSession = {
+    id: 'session-1',
+    organizationId: 'visual-org',
+    instanceId: 'instance-1',
+    observerId: 'visual-instructor',
+    status: 'in_progress',
+    version: 2,
+    scheduledAt: '2026-02-01T09:00:00.000Z',
+    startedAt: '2026-02-01T09:05:00.000Z',
+    pausedAt: null,
+    locationCapturePolicy: 'off',
+    timezone: 'UTC',
+    overdue: false,
+    strengths: null,
+    developmentAreas: null,
+    nextSteps: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T09:05:00.000Z',
+    checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+    learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+    observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
+    result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false },
+  };
+  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([instructorSession]) }));
+  // Distinct from the list route above (no query string) -- fetched by ChecklistSessionConduct
+  // when the observer opens a session from the "Conduct" tab.
+  await page.route('**/api/v1/checklist-sessions/session-1', (route) => route.fulfill({ json: instructorSession }));
   await page.route('**/api/v1/checklist-instances/instance-1', (route) => route.fulfill({
     json: {
       id: 'instance-1',
