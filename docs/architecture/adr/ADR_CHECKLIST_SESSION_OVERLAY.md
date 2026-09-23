@@ -151,6 +151,69 @@ All new tables listed in PR 288 (`ChecklistSession`, `ChecklistSessionEvent`, `C
 | Manager-as-observer | not privileged (see Observer section above) | Keeps a single authorization rule for observer assignment. |
 | Email reminders | off unless a production email delivery capability is configured | Restated from PR 291; a missing email capability must never block or break the reminder/session workflow itself. |
 
+### UI foundation & visual contract (binding for PR 294)
+
+No new design system. `docs/architecture/adr/ADR_DESIGN_SYSTEM.md` remains the source of truth for
+tokens/primitives/cascade (`apps/web/src/styles/tokens.css`, `ui.css`, `apps/web/src/shared/ui.tsx`)
+— this section only fixes checklist-session-specific decisions on top of it, it does not restate or
+fork that contract.
+
+- **Shell/nav/primitives to reuse, not reinvent** (PR 295+): `AdminPageLayout`/`AdminPageHeader`
+  (`apps/web/src/shared/adminPage.tsx`) for the page shell; `Button`/`Badge`/`Card`/`DataTable`/
+  `Toolbar`/`Pagination`/`Menu`/`PageState`/`EmptyState`/`InlineFeedback`/`Toast` (`shared/ui.tsx`)
+  for everything else. The "Сессии" sub-route tab strip under `/admin/checklists` reuses the
+  existing `OrgStructureTabs` route-link pattern (`adminPage.tsx`) — not a new ARIA tablist
+  component; this is the closest existing primitive to "tabs" and the plan's routing table (0.1)
+  already requires a sub-route, not real client-side tabs.
+- **Dialog**: the repo currently has two divergent `ConfirmDialog` implementations
+  (`shared/ui.tsx`'s `ds-dialog`-styled one, and a separately-styled `admin-dialog` one in
+  `shared/adminPage.tsx`) plus a bespoke ad hoc overlay in `ChecklistPreviewDialog`. This is a
+  known pre-existing inconsistency this workstream does not fix. New session UI (the PR 295 wizard
+  modal, any confirm prompts) builds on `shared/ui.tsx`'s `ConfirmDialog` (`ds-dialog`), the more
+  actively maintained of the two, and generalizes it if a non-confirm modal shell turns out to be
+  needed — it does not add a third dialog implementation.
+- **Status colors**: `apps/web/src/shared/checklistStatus.ts` (PR 294) is the single source of
+  truth mapping `ChecklistInstanceStatus` to a `Badge` tone variant, reusing existing tokens via
+  three new generic tone variants added to `Badge` (`success`/`info`/`danger` — the same tokens as
+  the existing template-specific `done`/`new`/`overdue`, named by tone so non-template status
+  families can reuse them). Existing pages that render instance status with ad hoc per-file
+  `COLORS` constants (`LearnerChecklistsPage.tsx`, `InstructorChecklistReviewsPage.tsx`, and
+  others) are **not** migrated by this PR — known debt, migrated only when their owning screen is
+  next touched, per `ADR_DESIGN_SYSTEM.md`'s migration policy. The `ChecklistSession` lifecycle
+  statuses (`scheduled`/`in_progress`/`paused`/`completed`/`cancelled`, this ADR's state-machine
+  section above) map the same way once PR 295+ adds a frontend type for them: `scheduled`→`info`,
+  `in_progress`→`info`, `paused`→`warning`, `completed`→`success`, `cancelled`→`danger` — fixed
+  here so PR 295 does not have to invent this mapping ad hoc, even though the frontend type and its
+  own `checklistStatus.ts` entry don't exist until that PR actually needs them.
+- **Breakpoints**: no centralized breakpoint tokens exist in `tokens.css` today. New session UI
+  adopts the widths the visual-regression matrix already standardizes on — 320/375/768/1024/1280/
+  1440 — as the documented set to test against, plus the existing ~860px sidebar/nav collapse point
+  (`AdminPageLayout`'s `matchMedia('(max-width: 860px)')`). Admin/manager screens (sessions list,
+  wizard, observation-sheet builder) are desktop-first responsive down to mobile, matching every
+  other admin screen; the observer's live in-session screen (PR 297) is mobile-first, matching the
+  prototype's phone-frame observer mockup — this split is explicit because nothing formalizes
+  desktop-first-vs-mobile-first today.
+- **Charts**: no chart library exists in `apps/web` today (`StatCard`/`StatsGrid`, `shared/ui.tsx`,
+  cover simple numeric summaries; no admin/manager screen renders an actual chart). This PR does
+  not pick one speculatively — the manager analytics dashboard (PR 299) is the first concrete
+  consumer and picks/introduces a library (or hand-rolled SVG, matching the "no new dependencies
+  without a real need" posture this ADR already takes for the design system) when it actually
+  builds a chart, not before.
+- **Responsive tables**: the new sessions list table reuses `DataTable`'s existing
+  `responsiveDetails`/column-`priority` mechanism (secondary/tertiary columns collapse into an
+  expandable detail row on narrow viewports) — no new responsive-table pattern.
+- **Loading/empty/error**: reuse `PageState`/`EmptyState`/`InlineFeedback`/`Toast` exactly as
+  `AdminChecklistsPage` already does — no new state-pattern primitives.
+- **Accessibility/visual regression enforcement**: unchanged CI gates — `accessibility`
+  (axe-core via Playwright, `apps/e2e/accessibility-tests/accessibility.spec.ts`, wcag2a/wcag2aa/
+  wcag21a/wcag21aa, critical/serious/moderate findings block) and `visual` (Playwright pixel-diff
+  screenshots, `apps/e2e/visual-tests/responsive-matrix.spec.ts`, committed baselines regenerated
+  only via the `Update visual regression baselines` workflow or the documented manual fallback,
+  never accepted from a failed CI run). PR 295+ must add each new route to both specs' fixture
+  lists as it ships; this PR adds a baseline for the previously-unbaselined plain `/admin/checklists`
+  list view (`admin-checklists-list-<width>`) so later PRs have something to diff their shared
+  shell/header/table against, without waiting for a new screen to exist first.
+
 ## Consequences
 
 - PR 286–308 build against this document: any deviation (e.g. giving `ChecklistSession` its own score fields,

@@ -410,6 +410,10 @@ for (const width of widths) {
       await expect(page.getByRole('heading', { name: 'Чек-листы' })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
+      // Baseline for the plain list view (PR 294 UI foundation) -- previously only the builder
+      // (edit-mode) surface below had a baseline, so PR 295+'s new sessions tab/screens next to
+      // this list had nothing to diff their shared shell/header/table against.
+      await expectVisualMatch(page, `admin-checklists-list-${width}`);
 
       await page.getByRole('button', { name: 'Редактировать' }).click();
       await expect(page.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
