@@ -31,10 +31,8 @@ function createHarness(options: { employees: Employee[]; currentSessions?: Sessi
     },
   });
 
-  const findMany = jest.fn(async ({ where }: { where: { scheduledAt: { gte: Date; lte: Date } } }) => {
-    // The service issues exactly two findMany calls: current window first, previous window second.
-    // Distinguish them by which fixture range the `gte` falls into rather than call order, so a
-    // future reordering in the service can't silently make this test pass for the wrong reason.
+  const findMany = jest.fn(async () => {
+    // The service issues exactly two findMany calls, in order: current window first, previous window second.
     return findMany.mock.calls.length <= 1 ? currentSessions.map(toRow) : previousSessions.map(toRow);
   });
 
