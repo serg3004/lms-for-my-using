@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
-import { LanguageSwitcher } from './learnerLayout.js';
+import { LanguageSwitcher, NotificationBell } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { Avatar, SkipLink } from './ui.js';
 
@@ -249,7 +249,10 @@ export function AdminPageLayout({
           )}
         </nav>
         <div className="admin-topheader__actions">
-          <span aria-hidden="true" className="admin-topheader__bell">🔔</span>
+          {/* PR 302 review fix: was a static, non-interactive bell emoji -- admins (the primary
+              recipients of e.g. checklist_session_observer_unavailable) never saw an in-app alert
+              for their own notifications unless they happened to visit a /learn route. */}
+          <NotificationBell />
           <AccountSwitcher />
           <LanguageSwitcher />
           <button

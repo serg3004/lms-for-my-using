@@ -76,6 +76,9 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
     await prisma.checklistSession.deleteMany({ where: { organizationId } });
     await prisma.checklistInstance.deleteMany({ where: { organizationId } });
     await prisma.checklist.deleteMany({ where: { organizationId } });
+    await prisma.groupMember.deleteMany({ where: { organizationId } });
+    await prisma.managerGroup.deleteMany({ where: { organizationId } });
+    await prisma.group.deleteMany({ where: { organizationId } });
     await prisma.membership.deleteMany({ where: { organizationId } });
     await prisma.user.deleteMany({ where: { organizationId } });
     await prisma.organization.deleteMany({ where: { id: organizationId } });
@@ -84,7 +87,9 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
   it('marks the observer unavailable, notifies every org admin, and still allows the session to be started', async () => {
     const created = await service.create(organizationId, { instanceId, observerId }, observerId);
 
-    const scope = await reviewAccess.sessionScope(currentUser(observerId, ['instructor']));
+    // markObserverUnavailable is called with observerActionScope() in production (checklists.controller.ts),
+    // not the broader read-oriented sessionScope() -- see the "review fix" describe block below for why.
+    const scope = reviewAccess.observerActionScope(currentUser(observerId, ['instructor']));
     const flagged = await service.markObserverUnavailable(created.id, organizationId, 'Out sick', created.version, observerId, scope);
     expect(flagged.observerUnavailableReason).toBe('Out sick');
     expect(flagged.observerUnavailableAt).not.toBeNull();
@@ -95,7 +100,8 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
 
     // DoD: "unavailable does not block session management" -- start/complete still work exactly
     // as if the flag were never set.
-    const started = await service.transition(created.id, organizationId, 'start', flagged.version, observerId, scope);
+    const readScope = await reviewAccess.sessionScope(currentUser(observerId, ['instructor']));
+    const started = await service.transition(created.id, organizationId, 'start', flagged.version, observerId, readScope);
     expect(started.status).toBe('in_progress');
   });
 
@@ -104,8 +110,8 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
     const adminScope = await reviewAccess.sessionScope(adminUser);
     const created = await service.create(organizationId, { instanceId, observerId }, observerId);
 
-    const observerScope = await reviewAccess.sessionScope(currentUser(observerId, ['instructor']));
-    const flagged = await service.markObserverUnavailable(created.id, organizationId, 'Out sick', created.version, observerId, observerScope);
+    const observerActionScope = reviewAccess.observerActionScope(currentUser(observerId, ['instructor']));
+    const flagged = await service.markObserverUnavailable(created.id, organizationId, 'Out sick', created.version, observerId, observerActionScope);
 
     const reassigned = await service.update(created.id, organizationId, { observerId: secondObserverId, version: flagged.version }, adminId, adminScope);
     expect(reassigned.observerUnavailableReason).toBeNull();
@@ -116,10 +122,26 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
     expect(events.map((event) => event.eventType)).toEqual(['created', 'observer_marked_unavailable', 'rescheduled', 'observer_reassigned']);
   });
 
+  it('rejects reassigning to the same observer instead of silently dismissing a valid unavailability report (review fix)', async () => {
+    const adminScope = await reviewAccess.sessionScope(currentUser(adminId, ['admin']));
+    const created = await service.create(organizationId, { instanceId, observerId }, observerId);
+    const observerActionScope = reviewAccess.observerActionScope(currentUser(observerId, ['instructor']));
+    const flagged = await service.markObserverUnavailable(created.id, organizationId, 'Out sick', created.version, observerId, observerActionScope);
+
+    await expect(
+      service.update(created.id, organizationId, { observerId, version: flagged.version }, adminId, adminScope),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    // The unavailable flag must survive the rejected no-op attempt -- it was never a real reassignment.
+    const stillFlagged = await prisma.checklistSession.findUniqueOrThrow({ where: { id: created.id } });
+    expect(stillFlagged.observerUnavailableReason).toBe('Out sick');
+  });
+
   it('rejects marking unavailable once the session has started (no participant changes after start)', async () => {
     const created = await service.create(organizationId, { instanceId, observerId }, observerId);
-    const scope = await reviewAccess.sessionScope(currentUser(observerId, ['instructor']));
-    const started = await service.transition(created.id, organizationId, 'start', created.version, observerId, scope);
+    const scope = reviewAccess.observerActionScope(currentUser(observerId, ['instructor']));
+    const readScope = await reviewAccess.sessionScope(currentUser(observerId, ['instructor']));
+    const started = await service.transition(created.id, organizationId, 'start', created.version, observerId, readScope);
 
     await expect(
       service.markObserverUnavailable(created.id, organizationId, 'Too late', started.version, observerId, scope),
@@ -131,10 +153,35 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
 
     const manager = await prisma.user.create({ data: { organizationId, email: `manager-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Man', lastName: 'Ager' } });
     await prisma.membership.create({ data: { organizationId, userId: manager.id, role: 'manager' } });
-    const managerScope = await reviewAccess.sessionScope(currentUser(manager.id, ['manager']));
+    const managerScope = reviewAccess.observerActionScope(currentUser(manager.id, ['manager']));
 
     await expect(
       service.markObserverUnavailable(created.id, organizationId, 'reason', created.version, manager.id, managerScope),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("denies a dual manager+instructor user from marking unavailable a session they don't personally observe, even though sessionScope() (read) would allow it via the team union (review fix)", async () => {
+    // The learner is in the manager's effective team (ManagerGroup membership), so sessionScope()
+    // (read) legitimately includes this session for the manager -- but the manager never observed
+    // it (observerId is the *other* instructor), so the write-side action must still deny it.
+    const created = await service.create(organizationId, { instanceId, observerId }, observerId);
+
+    const dualRoleUser = await prisma.user.create({ data: { organizationId, email: `dual-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Dual', lastName: 'Role' } });
+    await prisma.membership.create({ data: { organizationId, userId: dualRoleUser.id, role: 'manager' } });
+    await prisma.membership.create({ data: { organizationId, userId: dualRoleUser.id, role: 'instructor' } });
+    const group = await prisma.group.create({ data: { organizationId, name: `Team ${randomUUID()}`, slug: `team-${randomUUID()}` } });
+    await prisma.managerGroup.create({ data: { organizationId, groupId: group.id, managerId: dualRoleUser.id } });
+    await prisma.groupMember.create({ data: { organizationId, groupId: group.id, userId: learnerId } });
+
+    const readScope = await reviewAccess.sessionScope(currentUser(dualRoleUser.id, ['manager', 'instructor']));
+    // Sanity check: the read scope really does include this session for the dual-role user --
+    // otherwise this test would pass for the wrong reason.
+    const visible = await prisma.checklistSession.findFirst({ where: { id: created.id, organizationId, ...readScope } });
+    expect(visible).not.toBeNull();
+
+    const actionScope = reviewAccess.observerActionScope(currentUser(dualRoleUser.id, ['manager', 'instructor']));
+    await expect(
+      service.markObserverUnavailable(created.id, organizationId, 'Not actually my session', created.version, dualRoleUser.id, actionScope),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

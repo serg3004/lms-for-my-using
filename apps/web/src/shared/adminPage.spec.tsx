@@ -43,6 +43,18 @@ describe('admin page toolkit', () => {
     expect(html).toContain('aria-expanded="false"');
   });
 
+  it('renders a real, interactive NotificationBell in the top header, not a static bell icon (PR 302 review fix)', () => {
+    // Admins are the primary recipient of some notification types (e.g.
+    // checklist_session_observer_unavailable) but previously had no in-app way to see them --
+    // AdminPageLayout rendered only a non-interactive `<span>🔔</span>`, while the real
+    // NotificationBell component was mounted solely in LearnerPageLayout under /learn.
+    const html = renderLayout();
+
+    expect(html).toContain('class="notification-bell"');
+    expect(html).toContain('class="notification-bell__btn"');
+    expect(html).not.toContain('class="admin-topheader__bell"');
+  });
+
   it('renders sidebar close button', () => {
     const html = renderLayout();
 

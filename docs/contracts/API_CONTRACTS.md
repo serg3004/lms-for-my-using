@@ -576,6 +576,39 @@ also clears the flag on the observer it changes away from.
   `ADR_CHECKLIST_SESSION_OVERLAY.md`'s UI-foundation rule) with the same debounced observer-search
   picklist as `ChecklistSessionWizard`'s participants step.
 
+**Post-merge review fixes** (Codex automated review on PR 302, addressed in a follow-up PR since
+302 had already merged):
+
+- **Action-specific scope**: `POST .../observer-unavailable` now calls a new
+  `ChecklistReviewAccessService.observerActionScope()` instead of the read-oriented
+  `sessionScope()`. For a user holding both `manager` and `instructor` roles, `sessionScope()`
+  legitimately returns a union (their team's sessions OR sessions they personally observe) --
+  correct for visibility, but passing that same union into a *write* action let such a user report
+  unavailability on a teammate's session they merely manage but never personally observe,
+  triggering a false admin alert for the wrong person. `observerActionScope()` is always
+  `{ observerId: user.id }` for non-admin callers, regardless of what other roles they hold.
+- **No-op reassignment rejected**: `ChecklistSessionService.update()` now throws
+  `BadRequestException` when `observerId` equals the session's current observer, instead of
+  silently clearing a valid `observerUnavailableReason` and writing a no-op `observer_reassigned`
+  event. `ReassignObserverDialog`'s picklist additionally excludes the current observer from its
+  candidates (`excludeCurrentObserver()`) -- the actual UX fix; the backend check is defense in
+  depth for direct API calls.
+- **Dialog state reset on close**: `ChecklistSessionsToConduct`'s mark-unavailable dialog stays
+  mounted between opens (only its `session` prop toggles null/a row), so its `reason`/`error`
+  state is now reset via a `useEffect` keyed on `session?.id` -- without it, a stale reason from a
+  cancelled report could resurface, already submittable, when the CTA was clicked for a different
+  session next.
+- **Admin notifications now actually visible**: `AdminPageLayout` rendered a static, non-interactive
+  `🔔` span -- the real `NotificationBell` component (fetching unread count, listing notifications,
+  mark-as-read) was mounted only in `LearnerPageLayout` under `/learn`, so admins (the primary
+  recipients of `checklist_session_observer_unavailable`) never saw an in-app alert. `AdminPageLayout`
+  now renders the same `NotificationBell` (imported from `learnerLayout.tsx`, not duplicated).
+  Separately, `checklist_session_observer_unavailable` and its PR 291 siblings
+  (`checklist_session_pre_start_reminder`, `checklist_session_incomplete_after_start_reminder`) had
+  no `notifications.types.*` i18n entries at all in any locale, so `describeNotification()` fell
+  back to the raw type string with an empty message -- all three now have title/message strings in
+  every supported locale (`ru`/`en`/`kk`/`zh`).
+
 ## Timezone contract (PR 303)
 
 `ChecklistSession` already stored a UTC instant (`scheduledAt`, `timestamptz`) plus an IANA

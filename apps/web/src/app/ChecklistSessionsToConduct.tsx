@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { listChecklistSessions, markChecklistSessionObserverUnavailable } from '../shared/api/checklistSessions.js';
@@ -161,6 +161,15 @@ function MarkUnavailableDialog({ session, onClose, onMarked, t }: { session: Che
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleId = useId();
+
+  // Review fix (PR 302): the dialog stays mounted between opens (only `session` toggles null/a
+  // row), so without this the previous reason/error would survive a Cancel/Escape/backdrop close
+  // and reappear -- already filled in and submittable -- if the button is clicked for a
+  // *different* session next.
+  useEffect(() => {
+    setReason('');
+    setError(null);
+  }, [session?.id]);
 
   async function submit() {
     if (!session || !reason.trim()) return;

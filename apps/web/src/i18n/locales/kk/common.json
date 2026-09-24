@@ -1947,6 +1947,18 @@
       "manager_overdue_reminder": {
         "title": "Мерзімі өткен оқу туралы еске салу",
         "message": "«{{courseTitle}}» курсының мерзімі өтті. Менеджер еске салу жіберді."
+      },
+      "checklist_session_observer_unavailable": {
+        "title": "Бақылаушы қолжетімсіз",
+        "message": "Бақылаушы жоспарланған сессияны өткізе алмайтынын хабарлады. Жаңа бақылаушы тағайындаңыз."
+      },
+      "checklist_session_pre_start_reminder": {
+        "title": "Сессия жақында басталады",
+        "message": "Сіз бақылап отырған сессия жақында басталады."
+      },
+      "checklist_session_incomplete_after_start_reminder": {
+        "title": "Сессия әлі аяқталмады",
+        "message": "Сіз бақылап отырған сессия әлі аяқталмады."
       }
     },
     "centerTitle": "Хабарландыру орталығы",

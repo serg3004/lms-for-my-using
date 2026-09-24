@@ -1947,6 +1947,18 @@
       "manager_overdue_reminder": {
         "title": "逾期学习提醒",
         "message": "“{{courseTitle}}”已逾期。您的经理向您发送了提醒。"
+      },
+      "checklist_session_observer_unavailable": {
+        "title": "观察员不可用",
+        "message": "观察员报告他们无法进行已安排的检查表环节。请重新指派观察员。"
+      },
+      "checklist_session_pre_start_reminder": {
+        "title": "环节即将开始",
+        "message": "您负责观察的检查表环节即将开始。"
+      },
+      "checklist_session_incomplete_after_start_reminder": {
+        "title": "环节尚未完成",
+        "message": "您负责观察的检查表环节尚未完成。"
       }
     },
     "centerTitle": "通知中心",
