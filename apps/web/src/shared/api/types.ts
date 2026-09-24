@@ -352,6 +352,10 @@ export type ChecklistItemSummary = {
   autoSkipUnanswered?: boolean;
   scaleId?: string | null;
   groupId?: string | null;
+  // PR 293: the item's per-criterion reusable scale, resolved once at assignment time and frozen
+  // into the instance's checklist -- readers use this directly, never `scaleId` against the live
+  // scale library (which may have moved on since).
+  scale?: { id: string; name: string; levels: ChecklistScaleLevelSummary[] } | null;
 };
 
 // ---- PR 296: observation-sheet builder (context fields, item groups, sheet-level settings) ----
@@ -542,6 +546,11 @@ export type ChecklistSessionSummary = {
   locationCapturePolicy: ChecklistGeolocationPolicy;
   timezone: string;
   overdue: boolean;
+  // Structured feedback (PR 297) -- session-level, optional since it's only filled in once the
+  // observer starts recording it.
+  strengths: string | null;
+  developmentAreas: string | null;
+  nextSteps: string | null;
   createdAt: string;
   updatedAt: string;
   checklist: { id: string; title: string };
@@ -621,6 +630,70 @@ export type ChecklistSession = {
   locationCapturePolicy: ChecklistGeolocationPolicy;
   timezone: string;
   overdue: boolean;
+  strengths: string | null;
+  developmentAreas: string | null;
+  nextSteps: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+// Structured feedback (PR 297): every field optional so the observer can autosave partial
+// progress; `version` is required for the same optimistic-concurrency contract as every other
+// session mutation.
+export type SubmitChecklistSessionFeedbackInput = {
+  strengths?: string | null;
+  developmentAreas?: string | null;
+  nextSteps?: string | null;
+  version: number;
+};
+
+// ---- Session events + geolocation capture (PR 290/297) ----
+
+export type ChecklistSessionEventType =
+  | 'created'
+  | 'rescheduled'
+  | 'started'
+  | 'paused'
+  | 'resumed'
+  | 'completed'
+  | 'cancelled'
+  | 'observer_reassigned'
+  | 'reminder_sent'
+  | 'location_override'
+  | 'feedback_updated';
+
+export type ChecklistSessionEvent = {
+  id: string;
+  organizationId: string;
+  sessionId: string;
+  eventType: ChecklistSessionEventType;
+  actorUserId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ChecklistLocationCapturePoint = 'start' | 'end';
+export type ChecklistLocationCaptureStatus = 'captured' | 'denied' | 'unavailable';
+
+export type SubmitChecklistLocationCaptureInput = {
+  status: ChecklistLocationCaptureStatus;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
+  overrideReason?: string;
+};
+
+// Coordinates (latitude/longitude/accuracyMeters) are present only in the admin/assigned-observer
+// projection -- everyone else with read access sees this same shape with those fields omitted.
+export type ChecklistLocationCapture = {
+  id: string;
+  organizationId: string;
+  sessionId: string;
+  capturePoint: ChecklistLocationCapturePoint;
+  status: ChecklistLocationCaptureStatus;
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracyMeters?: number | null;
+  capturedBy: string | null;
+  capturedAt: string;
 };

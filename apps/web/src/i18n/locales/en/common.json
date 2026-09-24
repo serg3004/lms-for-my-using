@@ -1938,7 +1938,8 @@
       "label": "Review queue",
       "mine": "Assigned to me",
       "unassigned": "Unassigned",
-      "all": "All"
+      "all": "All",
+      "sessions": "Conduct"
     },
     "analytics": {
       "assigned": "Assigned",
@@ -1989,5 +1990,47 @@
     "saveError": "Could not save preferences. Try again.",
     "loading": "Loading profile…",
     "loadError": "Could not load profile."
+  },
+  "checklistSessions": {
+    "status": {
+      "scheduled": "Scheduled",
+      "in_progress": "In progress",
+      "paused": "Paused",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "conduct": {
+      "title": "Sessions",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "loadError": "Unable to load your sessions.",
+      "loading": "Loading your sessions...",
+      "empty": "No checklist sessions are assigned to you yet.",
+      "toConduct": "To conduct",
+      "toConductEmpty": "Nothing scheduled right now.",
+      "history": "History",
+      "backToList": "My sessions",
+      "start": "Start session",
+      "pause": "Pause",
+      "resume": "Resume",
+      "complete": "Complete",
+      "incompleteHint": "All required criteria must be answered before completing.",
+      "progress": "{{completed}} / {{total}} required",
+      "criterionOf": "Criterion {{index}} / {{total}}",
+      "back": "Back",
+      "next": "Next",
+      "comment": "Comment",
+      "saveComment": "Save comment",
+      "skip": "Skip",
+      "photoUploading": "Uploading... {{progress}}%",
+      "staleTitle": "This session changed elsewhere",
+      "staleMessage": "Someone else updated this session. Reload to see the latest state before continuing.",
+      "reload": "Reload",
+      "saveError": "Unable to save.",
+      "feedbackTitle": "Structured feedback",
+      "strengths": "Strengths",
+      "developmentAreas": "Development areas",
+      "nextSteps": "Next steps",
+      "saveFeedback": "Save feedback"
+    }
   }
 }

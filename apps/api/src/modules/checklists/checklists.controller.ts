@@ -31,6 +31,7 @@ import {
   skipChecklistItemSchema,
   submitChecklistItemResultSchema,
   submitChecklistLocationCaptureSchema,
+  submitChecklistSessionFeedbackSchema,
   updateChecklistItemGroupSchema,
   updateChecklistItemSchema,
   updateChecklistScaleSchema,
@@ -467,6 +468,16 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.repeatSession(sessionId, user.organizationId, user.id, scope);
+  }
+
+  // ---- Structured feedback (PR 297 observer conduct screen) ----
+  @Patch('checklist-sessions/:id/feedback')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  async submitFeedback(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = submitChecklistSessionFeedbackSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.submitFeedback(sessionId, user.organizationId, input, user.id, scope);
   }
 
   // ---- Geolocation capture (PR 290) ----

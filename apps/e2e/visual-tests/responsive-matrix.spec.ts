@@ -358,6 +358,99 @@ async function installChecklistSessionsMocks(page: Page) {
   }));
 }
 
+async function installInstructorConductMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-instructor',
+      organizationId: 'visual-org',
+      email: 'instructor@example.invalid',
+      firstName: 'Visual',
+      lastName: 'Instructor',
+      middleName: null,
+      position: null,
+      shift: null,
+      phone: null,
+      status: 'active',
+      locale: 'ru',
+      timezone: 'UTC',
+      roles: ['instructor'],
+    },
+  }));
+  await page.route('**/api/v1/checklist-instances/review-queue**', (route) => route.fulfill({ json: paginated([]) }));
+  await page.route('**/api/v1/checklists/analytics**', (route) => route.fulfill({
+    json: {
+      assignmentsTotal: 0, counts: { assigned: 0, in_progress: 0, submitted: 0, completed: 0, expired: 0 },
+      completionRate: 0, passRate: 0, averagePercentage: 0, expiredRate: 0, pendingReview: 0,
+      averageCompletionTimeMs: 0, averageReviewTimeMs: 0,
+    },
+  }));
+  const instructorSession = {
+    id: 'session-1',
+    organizationId: 'visual-org',
+    instanceId: 'instance-1',
+    observerId: 'visual-instructor',
+    status: 'in_progress',
+    version: 2,
+    scheduledAt: '2026-02-01T09:00:00.000Z',
+    startedAt: '2026-02-01T09:05:00.000Z',
+    pausedAt: null,
+    locationCapturePolicy: 'off',
+    timezone: 'UTC',
+    overdue: false,
+    strengths: null,
+    developmentAreas: null,
+    nextSteps: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-02-01T09:05:00.000Z',
+    checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+    learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+    observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
+    result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false },
+  };
+  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([instructorSession]) }));
+  // Distinct from the list route above (no query string) -- fetched by ChecklistSessionConduct
+  // when the observer opens a session from the "Conduct" tab.
+  await page.route('**/api/v1/checklist-sessions/session-1', (route) => route.fulfill({ json: instructorSession }));
+  await page.route('**/api/v1/checklist-instances/instance-1', (route) => route.fulfill({
+    json: {
+      id: 'instance-1',
+      organizationId: 'visual-org',
+      checklistId: 'checklist-1',
+      userId: 'learner-1',
+      assignedBy: 'visual-instructor',
+      reviewerId: null,
+      reviewAssignedAt: null,
+      reviewAssignedBy: null,
+      status: 'in_progress',
+      totalScore: 0,
+      maxScore: 10,
+      percentage: 0,
+      passed: false,
+      dueAt: null,
+      submittedAt: null,
+      completedAt: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T09:05:00.000Z',
+      checklist: {
+        id: 'checklist-1',
+        organizationId: 'visual-org',
+        title: 'Opening shift checklist',
+        description: 'Complete before serving the first customer.',
+        status: 'published',
+        scoringMode: 'sum_points',
+        passThreshold: 80,
+        scaleLevels: null,
+        requiresReview: true,
+        createdBy: 'visual-admin',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        items: [checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' })],
+      },
+      results: [],
+    },
+  }));
+}
+
 async function installGuestMock(page: Page) {
   let refreshRequests = 0;
   const unauthorized = (path: string) => ({
@@ -440,6 +533,23 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `instructor-dashboard-${width}`);
+    });
+
+    test('keeps the instructor mobile observer conduct screen responsive', async ({ page }) => {
+      await installInstructorConductMocks(page);
+      await page.goto('/instructor/checklists');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await page.getByRole('tab', { name: 'Проведение' }).click();
+      await expect(page.getByText('Opening shift checklist').first()).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `instructor-checklist-sessions-list-${width}`);
+
+      await page.getByRole('button', { name: /Leo Learner/ }).click();
+      await expect(page.getByRole('button', { name: 'Пауза' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `instructor-checklist-session-conduct-${width}`);
     });
 
     test('keeps the admin course builder and its add-lesson dialog responsive', async ({ page }) => {

@@ -228,6 +228,19 @@ Migration `20260923150000_add_checklist_observation_sheet_builder` также ad
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Session structured-feedback migration
+
+Migration `20260923160000_add_checklist_session_feedback` также additive и backward-compatible (PR 297, наблюдатель на мобильном):
+
+- `checklist_sessions`: три новые nullable колонки без `DEFAULT` — `strengths TEXT`, `development_areas TEXT`, `next_steps TEXT`; ни одна существующая колонка не изменена;
+- `ChecklistSessionEventType` получает новое значение `feedback_updated` (`ALTER TYPE ... ADD VALUE`) — не используется в той же транзакции, что и его добавление, поэтому совместимо с обёрткой миграции в транзакцию;
+- существующие строки `checklist_sessions` получают `strengths/development_areas/next_steps = NULL` — backfill не требуется (структурированная обратная связь — новая концепция для существующих сессий);
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых колонках/enum-значении и продолжает работать с сессиями как раньше.
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверена на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>` — вывод байт-в-байт совпадает с тем же предсуществующим (110-строчным на момент этой проверки), не связанным с этим PR baseline-дрейфом, подтверждённым отдельным прогоном diff без миграции (сравнение `git stash`-версии и версии с миграцией дало пустой `diff`). Применено к реальному локальному PostgreSQL 16 (`prisma migrate deploy`), `checklist-session-feedback.database.spec.ts` подтверждает gate "не раньше старта"/"не после отмены", partial-update autosave-семантику, optimistic-concurrency 409 и очистку поля через `null` через сервисный слой на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

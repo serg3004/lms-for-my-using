@@ -246,6 +246,20 @@ export type UpdateChecklistSessionInput = z.infer<typeof updateChecklistSessionS
 export const checklistSessionTransitionSchema = z.object({ version: z.number().int().min(1) }).strict();
 export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTransitionSchema>;
 
+// Structured feedback (PR 297 observer conduct screen): session-level, saved during/after the
+// observation. Every field optional so the observer can save partial progress (autosave) --
+// `version` is still required, matching the rest of the session mutation endpoints' optimistic-
+// concurrency contract.
+export const submitChecklistSessionFeedbackSchema = z
+  .object({
+    strengths: z.string().trim().max(4000).nullable().optional(),
+    developmentAreas: z.string().trim().max(4000).nullable().optional(),
+    nextSteps: z.string().trim().max(4000).nullable().optional(),
+    version: z.number().int().min(1),
+  })
+  .strict();
+export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklistSessionFeedbackSchema>;
+
 export const checklistSessionQuerySchema = z.object({
   status: checklistSessionStatusSchema.optional(),
   observerId: z.string().uuid().optional(),

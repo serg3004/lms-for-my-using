@@ -266,6 +266,63 @@ describe('ChecklistSessionService', () => {
     });
   });
 
+  describe('submitFeedback (PR 297)', () => {
+    it('rejects feedback while the session is still scheduled', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.submitFeedback(sessionId, organizationId, { strengths: 'Great', version: 1 }, actorId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects feedback once the session is cancelled', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'cancelled' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.submitFeedback(sessionId, organizationId, { nextSteps: 'Retry', version: 1 }, actorId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects a stale version as a conflict before writing', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', version: 3 })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.submitFeedback(sessionId, organizationId, { strengths: 'Stale', version: 1 }, actorId, {}),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 when the session is outside the caller scope', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.submitFeedback(sessionId, organizationId, { strengths: 'x', version: 1 }, actorId, {}),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('writes only the provided fields and records a feedback_updated event', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.submitFeedback(sessionId, organizationId, { developmentAreas: 'Practice more', version: 1 }, actorId, {});
+
+      const updateCall = (prisma.checklistSession.updateMany as jest.Mock).mock.calls[0]?.[0] as { data: Record<string, unknown> };
+      expect(updateCall.data).toEqual(expect.objectContaining({ developmentAreas: 'Practice more' }));
+      expect(updateCall.data).not.toHaveProperty('strengths');
+      expect(updateCall.data).not.toHaveProperty('nextSteps');
+
+      const eventTypes = (prisma.checklistSessionEvent.create as jest.Mock).mock.calls.map(
+        // @ts-expect-error jest.Mock call args are untyped here
+        ([arg]) => arg.data.eventType,
+      );
+      expect(eventTypes).toEqual(['feedback_updated']);
+    });
+  });
+
   describe('list', () => {
     it('filters to overdue-only when requested', async () => {
       const prisma = createPrisma();

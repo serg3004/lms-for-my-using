@@ -12,6 +12,7 @@ module.exports = {
     '<rootDir>/src/integration/checklist-session-admin-api.database.spec.ts',
     '<rootDir>/src/integration/checklist-evaluation-scales.database.spec.ts',
     '<rootDir>/src/integration/checklist-observation-sheet-builder.database.spec.ts',
+    '<rootDir>/src/integration/checklist-session-feedback.database.spec.ts',
     '<rootDir>/src/integration/checklist-deadline.database.spec.ts',
     '<rootDir>/src/integration/reports-summary.database.spec.ts',
     '<rootDir>/src/integration/org-structure-foundation.database.spec.ts',

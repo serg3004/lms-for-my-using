@@ -192,6 +192,13 @@ export function submitChecklistItemResult(
   );
 }
 
+export function skipChecklistItem(instanceId: string, itemId: string, input: { comment?: string } = {}) {
+  return apiRequest<ChecklistInstanceSummary>(
+    `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/skip`,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+}
+
 export function uploadChecklistItemPhoto(instanceId: string, itemId: string, file: File) {
   return uploadChecklistItemPhotoWithProgress(instanceId, itemId, file, () => undefined) as Promise<ChecklistInstanceSummary>;
 }

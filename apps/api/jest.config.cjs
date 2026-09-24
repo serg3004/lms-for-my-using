@@ -15,6 +15,7 @@ module.exports = {
     '/src/integration/checklist-session-admin-api\\.database\\.spec\\.ts$',
     '/src/integration/checklist-evaluation-scales\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
     '/src/integration/reports-summary\\.database\\.spec\\.ts$',
     '/src/integration/org-structure-foundation\\.database\\.spec\\.ts$',

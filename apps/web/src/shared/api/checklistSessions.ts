@@ -3,8 +3,11 @@ import { apiRequest } from '../apiClient.js';
 import type {
   BulkCreateChecklistSessionInput,
   BulkCreateChecklistSessionResult,
+  ChecklistLocationCapture,
+  ChecklistLocationCapturePoint,
   ChecklistSession,
   ChecklistSessionAction,
+  ChecklistSessionEvent,
   ChecklistSessionParticipant,
   ChecklistSessionParticipantsQuery,
   ChecklistSessionQuery,
@@ -12,6 +15,8 @@ import type {
   ChecklistSummary,
   CreateChecklistSessionInput,
   PaginatedResponse,
+  SubmitChecklistLocationCaptureInput,
+  SubmitChecklistSessionFeedbackInput,
   UpdateChecklistSessionInput,
 } from './types.js';
 
@@ -49,6 +54,32 @@ export function transitionChecklistSession(sessionId: string, action: ChecklistS
 
 export function repeatChecklistSession(sessionId: string) {
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/repeat`, { method: 'POST' });
+}
+
+export function listChecklistSessionEvents(sessionId: string) {
+  return apiRequest<ChecklistSessionEvent[]>(`/checklist-sessions/${encodeURIComponent(sessionId)}/events`);
+}
+
+export function submitChecklistSessionFeedback(sessionId: string, input: SubmitChecklistSessionFeedbackInput) {
+  return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/feedback`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function captureChecklistSessionLocation(
+  sessionId: string,
+  point: ChecklistLocationCapturePoint,
+  input: SubmitChecklistLocationCaptureInput,
+) {
+  return apiRequest<ChecklistLocationCapture>(
+    `/checklist-sessions/${encodeURIComponent(sessionId)}/location/${encodeURIComponent(point)}`,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+}
+
+export function listChecklistSessionLocationCaptures(sessionId: string) {
+  return apiRequest<ChecklistLocationCapture[]>(`/checklist-sessions/${encodeURIComponent(sessionId)}/location`);
 }
 
 export function listChecklistSessionParticipants(query: ChecklistSessionParticipantsQuery) {

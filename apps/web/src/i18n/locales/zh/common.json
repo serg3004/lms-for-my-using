@@ -1938,7 +1938,8 @@
       "label": "审核队列",
       "mine": "分配给我",
       "unassigned": "未分配",
-      "all": "全部"
+      "all": "全部",
+      "sessions": "开展"
     },
     "analytics": {
       "assigned": "已分配",
@@ -1989,5 +1990,47 @@
     "saveError": "无法保存偏好设置，请重试。",
     "loading": "正在加载个人资料…",
     "loadError": "无法加载个人资料。"
+  },
+  "checklistSessions": {
+    "status": {
+      "scheduled": "已计划",
+      "in_progress": "进行中",
+      "paused": "已暂停",
+      "completed": "已完成",
+      "cancelled": "已取消"
+    },
+    "conduct": {
+      "title": "会话",
+      "sessionExpired": "会话已过期，请重新登录。",
+      "loadError": "无法加载会话。",
+      "loading": "正在加载会话…",
+      "empty": "尚未分配任何会话。",
+      "toConduct": "待开展",
+      "toConductEmpty": "目前没有安排。",
+      "history": "历史记录",
+      "backToList": "我的会话",
+      "start": "开始会话",
+      "pause": "暂停",
+      "resume": "继续",
+      "complete": "完成",
+      "incompleteHint": "完成前必须回答所有必填项。",
+      "progress": "{{completed}} / {{total}} 项必填",
+      "criterionOf": "标准 {{index}} / {{total}}",
+      "back": "上一项",
+      "next": "下一项",
+      "comment": "备注",
+      "saveComment": "保存备注",
+      "skip": "跳过",
+      "photoUploading": "上传中… {{progress}}%",
+      "staleTitle": "此会话已在别处被更新",
+      "staleMessage": "其他人已更新此会话。请刷新以查看最新状态后再继续。",
+      "reload": "刷新",
+      "saveError": "无法保存。",
+      "feedbackTitle": "结构化反馈",
+      "strengths": "优点",
+      "developmentAreas": "待提升领域",
+      "nextSteps": "后续步骤",
+      "saveFeedback": "保存反馈"
+    }
   }
 }
