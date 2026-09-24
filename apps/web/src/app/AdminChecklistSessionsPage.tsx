@@ -96,7 +96,10 @@ export function AdminChecklistSessionsPage() {
     {
       key: 'scheduledAt',
       label: t('admin.checklists.sessions.columns.scheduledAt', 'Date'),
-      render: (row) => (row.scheduledAt ? formatDate(row.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—'),
+      // PR 303: rendered in the session's own IANA timezone, not the viewer's browser timezone --
+      // otherwise an admin/manager in a different timezone than the session would see a wall-clock
+      // time that doesn't match what was actually scheduled.
+      render: (row) => (row.scheduledAt ? formatDate(row.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: row.timezone }) : '—'),
       priority: 'secondary',
     },
     {

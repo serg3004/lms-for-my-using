@@ -300,14 +300,18 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
                 {t('admin.checklists.sessions.wizard.scheduleLater', 'Schedule for later')}
               </label>
               {scheduleMode === 'later' && (
-                <Input
-                  label={t('admin.checklists.sessions.wizard.scheduledAt', 'Date and time')}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  type="datetime-local"
-                  value={scheduledAt}
-                />
+                <>
+                  <Input
+                    label={t('admin.checklists.sessions.wizard.scheduledAt', 'Date and time')}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                    type="datetime-local"
+                    value={scheduledAt}
+                  />
+                  {/* PR 303: only shown when there's an actual future instant to disambiguate --
+                      "Start now" has nothing for a timezone to clarify. */}
+                  <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
+                </>
               )}
-              <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
               <Select
                 label={t('admin.checklists.sessions.wizard.locationPolicy', 'Location capture')}
                 onChange={(e) => setLocationPolicy(e.target.value as ChecklistGeolocationPolicy)}

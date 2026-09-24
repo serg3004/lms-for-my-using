@@ -540,6 +540,41 @@ version-based conflict detection that already protects against a *different* con
   conditional `updateMany(... WHERE status = 'pending')` claim, independent of the job queue's own
   retry/backoff) -- no changes were needed there for this PR.
 
+## Timezone contract (PR 303)
+
+`ChecklistSession` already stored a UTC instant (`scheduledAt`, `timestamptz`) plus an IANA
+timezone (`timezone`, defaulting to `Asia/Almaty`), and reminder scheduling (`checklist-session-
+reminders.ts`) already computed `scheduledFor` as pure millisecond-offset arithmetic against
+`scheduledAt.getTime()` -- never a local-calendar calculation -- since PR 289/291. Neither needed
+to change. What this PR fixes is a real, previously-unnoticed client bug: every screen that
+rendered a session's `scheduledAt` (`AdminChecklistSessionsPage`, `AdminChecklistSessionReportPage`,
+`ManagerChecklistsPage`, `LearnerChecklistSessions`, `ChecklistSessionsToConduct`) formatted it via
+`Intl.DateTimeFormat`/`toLocaleString()` **without** an explicit `timeZone`, which silently defaults
+to the *viewer's own browser timezone* -- two people in different timezones looking at the exact
+same session would see two different wall-clock times, neither of which is necessarily what the
+session's own declared `timezone` means.
+
+- **Fix**: every such call site now passes `timeZone: session.timezone` to `formatDate()`
+  (`Intl.DateTimeFormatOptions` already supports `timeZone`, no new helper needed). Audit-trail
+  timestamps (`ChecklistSessionEvent.createdAt`, `ChecklistScoreRevision.createdAt`,
+  `ChecklistLocationCapture.capturedAt`) are deliberately left rendering in the viewer's own
+  timezone -- those answer "when did I see this happen," not "when is the session," so the
+  viewer's local time is the correct frame for them.
+- **Wizard**: the "Timezone: …" confirmation line (`ChecklistSessionWizard`, schedule step) now
+  only renders when `scheduleMode === 'later'` -- "Start now" has no future instant for a timezone
+  to disambiguate, so showing it there was noise, not information.
+- **DST-safety, made explicit rather than assumed**: new unit tests
+  (`checklist-session-reminders.spec.ts`) pin down that `upsertPreStartReminder`/
+  `createIncompleteAfterStartReminder` subtract/add a fixed millisecond offset, never a
+  timezone-aware calendar delta, across the 2026-03-08 US spring-forward transition (both a fresh
+  schedule and a cross-DST reschedule). A new integration test in
+  `checklist-session-reminders.database.spec.ts` confirms the same against real Postgres and the
+  real worker: a session scheduled just after that transition still gets its reminder fired
+  exactly 24 real hours earlier, not 24 (now-nonexistent) local wall-clock hours earlier.
+- `formatDate.spec.ts` gained direct coverage of `timeZone`-aware formatting: the same UTC instant
+  rendering as `10:00 AM` in `America/New_York` (EDT) and `7:00 PM` in `Asia/Almaty` for the same
+  moment, and the correct EST/EDT abbreviation resolving on each side of the same DST transition.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

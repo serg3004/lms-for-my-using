@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { TFunction } from 'i18next';
 import { getChecklistInstance } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
+import { formatDate } from '../shared/formatDate.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary, ChecklistSessionStatus } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Badge, PageState } from '../shared/ui.js';
@@ -123,8 +124,9 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
               <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>
                 {t('checklistSessions.learner.observer', 'Observer: {{name}}', { name: `${session.observer.firstName} ${session.observer.lastName}` })}
               </p>
+              {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
               {session.scheduledAt && (
-                <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 12.5 }}>{new Date(session.scheduledAt).toLocaleString()}</p>
+                <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 12.5 }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</p>
               )}
               {session.result.visible && session.result.scored && (
                 <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>
@@ -169,7 +171,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
       <p style={{ color: COLORS.muted, margin: '4px 0' }}>
         {t('checklistSessions.learner.observer', 'Observer: {{name}}', { name: `${session.observer.firstName} ${session.observer.lastName}` })}
       </p>
-      {session.scheduledAt && <p style={{ color: COLORS.muted, margin: '4px 0' }}>{new Date(session.scheduledAt).toLocaleString()}</p>}
+      {session.scheduledAt && <p style={{ color: COLORS.muted, margin: '4px 0' }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</p>}
 
       {!session.result.visible ? (
         <p style={{ color: COLORS.muted, marginTop: 16 }}>

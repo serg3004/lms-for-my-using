@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionSummary } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
+import { formatDate } from '../shared/formatDate.js';
 import { Badge, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
@@ -114,9 +115,10 @@ function SessionCard({ session, onOpen, t }: { session: ChecklistSessionSummary;
         <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>
           {session.learner.firstName} {session.learner.lastName}
         </p>
+        {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
         {session.scheduledAt && (
           <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 12.5 }}>
-            {new Date(session.scheduledAt).toLocaleString()}
+            {formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}
           </p>
         )}
       </button>
