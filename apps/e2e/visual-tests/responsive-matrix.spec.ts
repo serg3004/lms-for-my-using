@@ -154,14 +154,14 @@ async function installLearnerChecklistsMocks(page: Page) {
   await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
     json: paginated([{
       id: 'session-1', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'observer-1',
-      status: 'in_progress', version: 2, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: '2026-02-01T09:05:00.000Z',
+      status: 'scheduled', version: 2, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: null,
       pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
       strengths: null, developmentAreas: null, nextSteps: null,
-      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-02-01T09:05:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
       checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
       learner: { id: 'visual-learner', firstName: 'Visual', lastName: 'Learner', email: 'learner@example.invalid' },
       observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
-      result: { instanceStatus: 'in_progress', percentage: null, passed: null, scored: null, visible: false },
+      result: { instanceStatus: 'assigned', percentage: null, passed: null, scored: null, visible: false },
     }]),
   }));
 }
