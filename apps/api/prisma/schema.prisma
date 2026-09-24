@@ -248,6 +248,11 @@ enum ChecklistSessionEventType {
   /// ChecklistItemResult rows -- always paired with a ChecklistScoreRevision row (event metadata
   /// carries the revision id), even when the recalculation produced no change.
   score_recalculated
+  /// PR 302: the assigned observer (or an admin on their behalf) reported they can't conduct this
+  /// scheduled session -- metadata carries the reason. Not itself a lifecycle transition; paired
+  /// with a Notification to every org admin so someone can reassign via the existing
+  /// `PATCH .../checklist-sessions/:id` observerId change, which clears the flag.
+  observer_marked_unavailable
 }
 
 enum ChecklistSessionReminderType {
@@ -1297,6 +1302,13 @@ model ChecklistSession {
   strengths             String?                    @db.Text
   developmentAreas      String?                    @map("development_areas") @db.Text
   nextSteps             String?                    @map("next_steps") @db.Text
+  // PR 302: an orthogonal business flag, not a lifecycle status -- the assigned observer (or an
+  // admin on their behalf) reports they can't conduct this session, which surfaces a "Заменить
+  // наблюдателя" CTA for admin/manager. Non-null reason is what "unavailable" means; it never
+  // gates start/pause/resume/complete/cancel, and PATCH .../reassigning the observer clears it
+  // (see `update()`/`checklist-session.service.ts`).
+  observerUnavailableReason String?                @map("observer_unavailable_reason") @db.Text
+  observerUnavailableAt DateTime?                  @map("observer_unavailable_at") @db.Timestamptz
   createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)

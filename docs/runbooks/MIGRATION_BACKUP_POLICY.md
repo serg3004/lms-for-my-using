@@ -268,6 +268,19 @@ Migration `20260924100000_add_checklist_idempotency_keys` — новая таб�
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist session observer-unavailable migration
+
+Две последовательные миграции, обе additive и backward-compatible (PR 302, observer unavailable / reassignment):
+
+- `20260924150000_add_checklist_session_observer_unavailable` — две новые nullable-колонки на `checklist_sessions`: `observer_unavailable_reason` (TEXT), `observer_unavailable_at` (TIMESTAMPTZ). Ни одна существующая колонка не меняется, backfill не требуется — обе колонки `NULL` для всех уже существующих сессий, что и означает "observer available" (отсутствие флага);
+- `20260924150100_add_checklist_session_observer_unavailable_event` — `ChecklistSessionEventType` получает новое значение `observer_marked_unavailable` (`ALTER TYPE ... ADD VALUE`), единственное изменение в этой миграции. Разнесено в отдельный файл от колонок намеренно (как и `20260924040000_add_checklist_score_recalculated_event` в PR 300) — Postgres запрещает использовать новое enum-значение в той же транзакции, где оно добавлено, а колонки и enum-значение логически независимы, так что разделение на два файла не требует специального non-transactional flag;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых колонках/enum-значении и продолжает работать как раньше;
+- retention: колонки не удаляются автоматически (`observerUnavailableReason: null` на reassign — обычный UPDATE, не soft/hard delete) — отдельный data backfill или backup сверх общей policy не требуется.
+
+Обе миграции написаны вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверены на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>` — вывод байт-в-байт совпадает (167 строк) с тем же прогоном без этих миграций (сравнение дало пустой `diff`). Применены к реальному локальному PostgreSQL 16 (`prisma migrate deploy`), `checklist-session-observer-unavailable.database.spec.ts` подтверждает mark-unavailable + notification + "не блокирует управление session" + reassign-clears-flag + object-scope denial на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

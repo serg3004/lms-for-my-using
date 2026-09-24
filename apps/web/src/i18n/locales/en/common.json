@@ -2142,7 +2142,8 @@
       "reminder_sent": "Reminder sent",
       "location_override": "Location captured by admin override",
       "feedback_updated": "Feedback updated",
-      "score_recalculated": "Score recalculated"
+      "score_recalculated": "Score recalculated",
+      "observer_marked_unavailable": "Observer marked unavailable"
     }
   }
 }

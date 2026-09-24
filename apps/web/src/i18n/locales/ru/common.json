@@ -2142,7 +2142,8 @@
       "reminder_sent": "Напоминание отправлено",
       "location_override": "Геолокация зафиксирована администратором",
       "feedback_updated": "Обратная связь обновлена",
-      "score_recalculated": "Балл пересчитан"
+      "score_recalculated": "Балл пересчитан",
+      "observer_marked_unavailable": "Наблюдатель отметил недоступность"
     }
   }
 }

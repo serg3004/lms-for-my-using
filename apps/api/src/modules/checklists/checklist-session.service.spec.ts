@@ -47,6 +47,8 @@ function createPrisma(overrides: {
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
   checklistIdempotencyKey?: Partial<Record<'findUnique' | 'create', jest.Mock>>;
   user?: Partial<Record<'findFirst' | 'findMany' | 'count', jest.Mock>>;
+  membership?: Partial<Record<'findMany', jest.Mock>>;
+  notification?: Partial<Record<'createMany', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     checklistSession: {
@@ -92,6 +94,14 @@ function createPrisma(overrides: {
       ),
       count: jest.fn(async () => 0),
       ...overrides.user,
+    },
+    membership: {
+      findMany: jest.fn(async () => [{ userId: 'admin-1' }]),
+      ...overrides.membership,
+    },
+    notification: {
+      createMany: jest.fn(async () => ({ count: 0 })),
+      ...overrides.notification,
     },
   };
   base['$transaction'] = jest.fn(async (arg: unknown) =>
@@ -329,6 +339,80 @@ describe('ChecklistSessionService', () => {
         ([arg]) => arg.data.eventType,
       );
       expect(eventTypes).toEqual(['rescheduled', 'observer_reassigned']);
+    });
+
+    it('clears any observer-unavailable flag when the observer changes (PR 302)', async () => {
+      const newObserverId = '66666666-6666-6666-6666-666666666666';
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.update(sessionId, organizationId, { version: 1, observerId: newObserverId }, actorId, {});
+
+      expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ observerId: newObserverId, observerUnavailableReason: null, observerUnavailableAt: null }),
+        }),
+      );
+    });
+  });
+
+  describe('markObserverUnavailable (PR 302)', () => {
+    it('records the reason, creates an "observer_marked_unavailable" event, and notifies every org admin', async () => {
+      const prisma = createPrisma({ membership: { findMany: jest.fn(async () => [{ userId: 'admin-1' }, { userId: 'admin-2' }]) } });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, actorId, {});
+
+      expect(result).toMatchObject({ id: sessionId });
+      expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: sessionId, organizationId, version: 1, status: 'scheduled' },
+          data: expect.objectContaining({ observerUnavailableReason: 'Out sick', observerUnavailableAt: expect.any(Date), version: { increment: 1 } }),
+        }),
+      );
+      expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ eventType: 'observer_marked_unavailable', actorUserId: actorId, metadata: { reason: 'Out sick' } }) }),
+      );
+      expect(prisma.notification.createMany).toHaveBeenCalledWith({
+        data: [
+          { organizationId, userId: 'admin-1', type: 'checklist_session_observer_unavailable', data: { sessionId, reason: 'Out sick' }, link: `/admin/checklists/sessions/${sessionId}` },
+          { organizationId, userId: 'admin-2', type: 'checklist_session_observer_unavailable', data: { sessionId, reason: 'Out sick' }, link: `/admin/checklists/sessions/${sessionId}` },
+        ],
+      });
+    });
+
+    it('never notifies (skips the createMany call) when the org has no admins', async () => {
+      const prisma = createPrisma({ membership: { findMany: jest.fn(async () => []) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, actorId, {});
+
+      expect(prisma.notification.createMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects marking unavailable once the session has left "scheduled"', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a stale version as a conflict before writing', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, {})).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 when the session is outside the caller scope', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, { observerId: 'someone-else' }),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

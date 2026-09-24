@@ -265,6 +265,12 @@ export const checklistSessionTransitionSchema = z
   .strict();
 export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTransitionSchema>;
 
+// ---- PR 302: observer unavailable -- an orthogonal business flag, not a lifecycle transition ----
+export const markChecklistSessionObserverUnavailableSchema = z
+  .object({ reason: z.string().trim().min(1).max(500), version: z.number().int().min(1) })
+  .strict();
+export type MarkChecklistSessionObserverUnavailableInput = z.infer<typeof markChecklistSessionObserverUnavailableSchema>;
+
 // Structured feedback (PR 297 observer conduct screen): session-level, saved during/after the
 // observation. Every field optional so the observer can save partial progress (autosave) --
 // `version` is still required, matching the rest of the session mutation endpoints' optimistic-

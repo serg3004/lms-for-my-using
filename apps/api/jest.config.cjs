@@ -16,6 +16,7 @@ module.exports = {
     '/src/integration/checklist-manager-analytics\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-recalculate\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-idempotency\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-session-observer-unavailable\\.database\\.spec\\.ts$',
     '/src/integration/checklist-evaluation-scales\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',

@@ -42,6 +42,7 @@ import {
   checklistManagerAnalyticsQuerySchema,
   checklistQueueQuerySchema,
   recalculateChecklistScoreSchema,
+  markChecklistSessionObserverUnavailableSchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -486,6 +487,17 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.repeatSession(sessionId, user.organizationId, user.id, scope);
+  }
+
+  // ---- PR 302: observer unavailable (reuses checklistSessionsRun -- the observer's own action,
+  // or admin on their behalf; reassignment itself is the existing PATCH above, checklistSessionsManage) ----
+  @Post('checklist-sessions/:id/observer-unavailable')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  async markObserverUnavailable(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = markChecklistSessionObserverUnavailableSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.markObserverUnavailable(sessionId, user.organizationId, input.reason, input.version, user.id, scope);
   }
 
   // ---- Structured feedback (PR 297 observer conduct screen) ----
