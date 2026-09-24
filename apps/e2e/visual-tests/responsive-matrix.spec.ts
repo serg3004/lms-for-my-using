@@ -208,6 +208,34 @@ async function installManagerMocks(page: Page) {
   }));
 }
 
+async function installManagerChecklistsAnalyticsMocks(page: Page) {
+  await installManagerMocks(page);
+  await page.route('**/api/v1/checklists', (route) => route.fulfill({
+    json: [{
+      id: 'checklist-1', organizationId: 'visual-org', title: 'Opening shift checklist', description: null,
+      status: 'published', scoringMode: 'sum_points', passThreshold: 80, scaleLevels: null, requiresReview: true,
+      createdBy: 'visual-manager', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', items: [],
+    }],
+  }));
+  await page.route('**/api/v1/checklists/manager-analytics*', (route) => route.fulfill({
+    json: {
+      summary: { totalEmployees: 3, totalSessions: 6, completedSessions: 5, averagePercentage: 78, lowCount: 1, highCount: 2, noCompletionCount: 1 },
+      thresholds: { high: 90, low: 60 },
+      distribution: [{ bucket: 'low', count: 1 }, { bucket: 'mid', count: 2 }, { bucket: 'high', count: 2 }],
+      trend: [
+        { date: '2026-02-05', averagePercentage: 65, count: 2 },
+        { date: '2026-02-12', averagePercentage: 80, count: 2 },
+        { date: '2026-02-19', averagePercentage: 88, count: 1 },
+      ],
+      employees: [
+        { userId: 'visual-user-1', firstName: 'Responsive', lastName: 'One', department: 'Warehouse', sessionsCount: 3, completedCount: 3, averagePercentage: 88, trend: 'up', lastSessionAt: '2026-02-19T00:00:00.000Z' },
+        { userId: 'visual-user-2', firstName: 'Responsive', lastName: 'Two', department: 'Warehouse', sessionsCount: 2, completedCount: 2, averagePercentage: 55, trend: 'down', lastSessionAt: '2026-02-12T00:00:00.000Z' },
+        { userId: 'visual-user-3', firstName: 'Responsive', lastName: 'Three', department: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
+      ],
+    },
+  }));
+}
+
 async function installInstructorMocks(page: Page) {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
@@ -558,6 +586,16 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `manager-dashboard-${width}`);
+    });
+
+    test('keeps the manager checklist analytics dashboard responsive', async ({ page }) => {
+      await installManagerChecklistsAnalyticsMocks(page);
+      await page.goto('/manager/checklists');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByText('Responsive One')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `manager-checklist-analytics-${width}`);
     });
 
     test('keeps the instructor dashboard responsive', async ({ page }) => {

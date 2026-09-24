@@ -184,6 +184,15 @@ export const checklistAnalyticsQuerySchema = z.object({
 });
 export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySchema>;
 
+// ---- PR 299: manager checklist analytics ----
+export const checklistManagerAnalyticsQuerySchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  checklistId: z.string().uuid().optional(),
+  departmentId: z.string().uuid().optional(),
+});
+export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
+
 // ---- Workplace-training session settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
 // checklistGeolocationPolicySchema itself is declared near the top of this file (reused by the
 // PR 296 checklist-level defaultLocationCapturePolicy field above).

@@ -5,6 +5,7 @@ const ManagerDashboardPage = lazy(() => import('../ManagerDashboardPage.js').the
 const ManagerTeamPage = lazy(() => import('../ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })));
 const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m) => ({ default: m.ManagerOverduePage })));
 const ManagerReportsPage = lazy(() => import('../ManagerReportsPage.js').then((m) => ({ default: m.ManagerReportsPage })));
+const ManagerChecklistsPage = lazy(() => import('../ManagerChecklistsPage.js').then((m) => ({ default: m.ManagerChecklistsPage })));
 
 export function ManagerRoutes() {
   return (
@@ -14,6 +15,7 @@ export function ManagerRoutes() {
       <Route path="team" element={<ManagerTeamPage />} />
       <Route path="overdue" element={<ManagerOverduePage />} />
       <Route path="reports" element={<ManagerReportsPage />} />
+      <Route path="checklists" element={<ManagerChecklistsPage />} />
     </Route>
   );
 }

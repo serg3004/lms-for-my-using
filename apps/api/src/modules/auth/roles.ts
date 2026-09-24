@@ -76,6 +76,7 @@ export const rolePolicies = {
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'learner'],
   checklistSessionsManage: ['admin', 'manager'],
   checklistSessionsRun: ['admin', 'instructor'],
+  checklistManagerAnalyticsRead: ['admin', 'manager'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export function Roles(...roles: UserRole[]) {

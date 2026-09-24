@@ -8,6 +8,7 @@ import {
   AssignChecklistInput,
   BulkAssignChecklistInput,
   ChecklistAnalyticsQuery,
+  ChecklistManagerAnalyticsQuery,
   ChecklistListQuery,
   ChecklistQueueQuery,
   ContextField,
@@ -38,6 +39,18 @@ const CHECKLIST_SNAPSHOT_VERSION = 1;
  * must abort the whole batch, not silently skip every recipient.
  */
 export const ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE = 'This user already has an active assignment for this checklist';
+
+export type ManagerAnalyticsEmployeeRow = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  department: string | null;
+  sessionsCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
+  trend: 'up' | 'down' | 'flat' | null;
+  lastSessionAt: string | null;
+};
 
 const checklistSelect = {
   id: true,
@@ -796,6 +809,139 @@ export class ChecklistsService {
     const reviewed = completed.filter((row) => row.submittedAt && row.completedAt);
     const average = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
     return { assignmentsTotal: rows.length, counts, completionRate: rows.length ? completed.length / rows.length : 0, passRate: completed.length ? completed.filter((row) => row.passed).length / completed.length : 0, averagePercentage: average(completed.map((row) => row.percentage)), expiredRate: rows.length ? counts.expired / rows.length : 0, pendingReview: counts.submitted, averageCompletionTimeMs: average(completed.filter((row) => row.completedAt).map((row) => row.completedAt!.getTime() - row.createdAt.getTime())), averageReviewTimeMs: average(reviewed.map((row) => row.completedAt!.getTime() - row.submittedAt!.getTime())) };
+  }
+
+  /**
+   * PR 299 — manager checklist analytics: employee-first aggregation over `ChecklistSession`
+   * (the workplace-training overlay, not every async `ChecklistInstance`) for the `/manager/checklists`
+   * dashboard. `userScope` comes from `ChecklistReviewAccessService.participantLearnerScope()` --
+   * `{}` for admin, the unified `OrganizationAccessScopeService.user()` filter for a manager.
+   *
+   * `lowThreshold` is deliberately nullable (DEC-CHKS-001, docs/status/OPEN_DECISIONS.md defers a
+   * concrete value) -- when unset we bucket by the instance's own `passed` flag instead of
+   * inventing a percentage cutoff no one configured.
+   */
+  async getManagerAnalytics(
+    organizationId: string,
+    query: ChecklistManagerAnalyticsQuery,
+    userScope: Prisma.UserWhereInput,
+    thresholds: { high: number; low: number | null },
+  ) {
+    const from = new Date(query.from);
+    const to = new Date(query.to);
+    const previousFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
+
+    const departmentWhere: Prisma.UserWhereInput = query.departmentId
+      ? { departmentMemberships: { some: { organizationId, departmentId: query.departmentId, isPrimary: true, effectiveTo: null } } }
+      : {};
+    const employees = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null, ...userScope, ...departmentWhere },
+      select: {
+        id: true, firstName: true, lastName: true,
+        departmentMemberships: { where: { isPrimary: true, effectiveTo: null }, select: { department: { select: { name: true } } }, take: 1 },
+      },
+      orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+    });
+    const employeeIds = employees.map((employee) => employee.id);
+    const emptyResult = {
+      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
+      thresholds,
+      distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: 0 }, { bucket: 'high', count: 0 }],
+      trend: [] as { date: string; averagePercentage: number; count: number }[],
+      employees: [] as ManagerAnalyticsEmployeeRow[],
+    };
+    if (employeeIds.length === 0) return emptyResult;
+
+    const sessionSelect = {
+      scheduledAt: true,
+      instance: { select: { userId: true, status: true, percentage: true, passed: true, scored: true } },
+    } as const;
+    const sessionWhere = (range: { gte: Date; lte: Date }): Prisma.ChecklistSessionWhereInput => ({
+      organizationId,
+      scheduledAt: range,
+      instance: { deletedAt: null, userId: { in: employeeIds }, ...(query.checklistId ? { checklistId: query.checklistId } : {}) },
+    });
+    const [currentSessions, previousSessions] = await Promise.all([
+      this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: from, lte: to }), select: sessionSelect }),
+      this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: previousFrom, lte: from }), select: sessionSelect }),
+    ]);
+
+    const bucketOf = (percentage: number, passed: boolean): 'low' | 'mid' | 'high' => {
+      if (percentage >= thresholds.high) return 'high';
+      if (thresholds.low !== null) return percentage < thresholds.low ? 'low' : 'mid';
+      return passed ? 'mid' : 'low';
+    };
+    const average = (values: number[]) => (values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null);
+
+    const scoredCompleted = currentSessions.filter((session) => session.instance.status === 'completed' && session.instance.scored);
+    const distributionCounts = { low: 0, mid: 0, high: 0 };
+    for (const session of scoredCompleted) distributionCounts[bucketOf(session.instance.percentage, session.instance.passed)] += 1;
+
+    const byDay = new Map<string, { total: number; count: number }>();
+    for (const session of scoredCompleted) {
+      const day = session.scheduledAt!.toISOString().slice(0, 10);
+      const bucket = byDay.get(day) ?? { total: 0, count: 0 };
+      bucket.total += session.instance.percentage;
+      bucket.count += 1;
+      byDay.set(day, bucket);
+    }
+    const trend = [...byDay.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, bucket]) => ({ date, averagePercentage: Math.round(bucket.total / bucket.count), count: bucket.count }));
+
+    const byEmployee = (sessions: typeof currentSessions) => {
+      const map = new Map<string, { sessionsCount: number; completed: { percentage: number }[]; lastSessionAt: Date | null }>();
+      for (const session of sessions) {
+        const userId = session.instance.userId;
+        const entry = map.get(userId) ?? { sessionsCount: 0, completed: [], lastSessionAt: null };
+        entry.sessionsCount += 1;
+        if (session.instance.status === 'completed' && session.instance.scored) entry.completed.push({ percentage: session.instance.percentage });
+        if (session.scheduledAt && (!entry.lastSessionAt || session.scheduledAt > entry.lastSessionAt)) entry.lastSessionAt = session.scheduledAt;
+        map.set(userId, entry);
+      }
+      return map;
+    };
+    const currentByEmployee = byEmployee(currentSessions);
+    const previousByEmployee = byEmployee(previousSessions);
+
+    const employeeRows: ManagerAnalyticsEmployeeRow[] = employees.map((employee) => {
+      const current = currentByEmployee.get(employee.id);
+      const previousAverage = average((previousByEmployee.get(employee.id)?.completed ?? []).map((row) => row.percentage));
+      const currentAverage = average((current?.completed ?? []).map((row) => row.percentage));
+      const trendDirection =
+        currentAverage === null || previousAverage === null ? null : currentAverage === previousAverage ? 'flat' : currentAverage > previousAverage ? 'up' : 'down';
+      return {
+        userId: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        department: employee.departmentMemberships[0]?.department.name ?? null,
+        sessionsCount: current?.sessionsCount ?? 0,
+        completedCount: current?.completed.length ?? 0,
+        averagePercentage: currentAverage,
+        trend: trendDirection,
+        lastSessionAt: current?.lastSessionAt?.toISOString() ?? null,
+      };
+    });
+
+    return {
+      summary: {
+        totalEmployees: employees.length,
+        totalSessions: currentSessions.length,
+        completedSessions: currentSessions.filter((session) => session.instance.status === 'completed').length,
+        averagePercentage: average(scoredCompleted.map((session) => session.instance.percentage)) ?? 0,
+        lowCount: distributionCounts.low,
+        highCount: distributionCounts.high,
+        noCompletionCount: employeeRows.filter((row) => row.completedCount === 0).length,
+      },
+      thresholds,
+      distribution: [
+        { bucket: 'low' as const, count: distributionCounts.low },
+        { bucket: 'mid' as const, count: distributionCounts.mid },
+        { bucket: 'high' as const, count: distributionCounts.high },
+      ],
+      trend,
+      employees: employeeRows,
+    };
   }
 
   private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {
