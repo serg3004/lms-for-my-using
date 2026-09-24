@@ -133,6 +133,34 @@ describe('checklist session reminders — database', () => {
     expect(outboxEvents).toHaveLength(1);
   });
 
+  it('schedules and fires a pre_start reminder for a session that spans a real DST transition (PR 303)', async () => {
+    // 2026-03-08 07:00 UTC = 2026-03-08 03:00 EDT, just after the US spring-forward transition
+    // (clocks jumped 2:00 AM -> 3:00 AM). The session's own `timezone` field is display-only
+    // (ADR/PR 303) -- scheduling math here works entirely in UTC instants, so this asserts the
+    // real worker/DB path never drifts by the "missing" hour a naive local-calendar calculation
+    // would introduce.
+    const scheduledAt = new Date('2026-03-08T07:00:00.000Z');
+    const session = await sessionService.create(
+      organizationId,
+      { instanceId, observerId, scheduledAt: scheduledAt.toISOString(), timezone: 'America/New_York' },
+      observerId,
+    );
+
+    const reminder = await prisma.checklistSessionReminder.findUniqueOrThrow({
+      where: { sessionId_reminderType: { sessionId: session.id, reminderType: 'pre_start' } },
+    });
+    expect(reminder.scheduledFor.getTime()).toBe(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
+
+    // Not yet due one second before the computed instant...
+    const sentBefore = await worker.processDue(new Date(reminder.scheduledFor.getTime() - 1000));
+    expect(sentBefore).toBe(0);
+
+    // ...but due exactly at (or after) the computed instant, 24 real hours before the session,
+    // regardless of the DST transition sitting between the reminder and the session itself.
+    const sentAt = await worker.processDue(new Date(reminder.scheduledFor.getTime()));
+    expect(sentAt).toBe(1);
+  });
+
   it('creates an incomplete_after_start reminder on start and suppresses it on complete, end to end', async () => {
     const session = await sessionService.create(organizationId, { instanceId, observerId }, observerId);
     const started = await sessionService.transition(session.id, organizationId, 'start', 1, observerId, {});

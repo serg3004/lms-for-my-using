@@ -183,7 +183,8 @@ export function SessionReportBody({ session, reloadSession, t }: { session: Chec
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>{t(`checklistSessions.status.${session.status}`, session.status)}</Badge>
-        {session.scheduledAt && <span style={{ color: '#6b7280' }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>}
+        {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
+        {session.scheduledAt && <span style={{ color: '#6b7280' }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</span>}
       </div>
 
       <div role="tablist" aria-label={t('admin.checklists.report.tabsLabel', 'Session report sections')} style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>

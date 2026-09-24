@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { listChecklists } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
+import { formatDate } from '../shared/formatDate.js';
 import {
   getManagerChecklistAnalytics,
   type ManagerChecklistAnalytics,
@@ -159,7 +160,8 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: str
       {state.data.map((session) => (
         <li key={session.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: `1px solid ${COLORS.border}` }}>
           <span>{session.checklist.title}</span>
-          <span style={{ color: COLORS.muted }}>{session.scheduledAt ? new Date(session.scheduledAt).toLocaleDateString() : '—'}</span>
+          {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
+          <span style={{ color: COLORS.muted }}>{session.scheduledAt ? formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeZone: session.timezone }) : '—'}</span>
           <span>{session.result.visible && session.result.scored ? `${session.result.percentage}%` : '—'}</span>
         </li>
       ))}
