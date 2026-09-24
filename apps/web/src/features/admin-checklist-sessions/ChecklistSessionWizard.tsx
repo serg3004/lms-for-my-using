@@ -27,7 +27,8 @@ import {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-function useDebounced(value: string) {
+/** Shared with ReassignObserverDialog.tsx (PR 302) -- same debounced-search pattern, same delay. */
+export function useDebounced(value: string) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(value.trim()), SEARCH_DEBOUNCE_MS);

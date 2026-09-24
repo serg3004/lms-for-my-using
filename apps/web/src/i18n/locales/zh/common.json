@@ -2142,7 +2142,8 @@
       "reminder_sent": "已发送提醒",
       "location_override": "管理员覆盖记录了位置",
       "feedback_updated": "反馈已更新",
-      "score_recalculated": "分数已重新计算"
+      "score_recalculated": "分数已重新计算",
+      "observer_marked_unavailable": "观察员标记为不可用"
     }
   }
 }

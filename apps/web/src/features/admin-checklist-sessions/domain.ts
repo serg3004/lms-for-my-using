@@ -22,6 +22,14 @@ export function canRepeatSession(session: Pick<ChecklistSessionSummary, 'status'
   return session.status === 'completed' || session.status === 'cancelled';
 }
 
+/**
+ * PR 302: reassigning the observer is just a PATCH observerId change, so it shares the exact same
+ * "still scheduled" window as cancel/update (ADR: participants are frozen once a session starts).
+ */
+export function canReassignObserver(session: Pick<ChecklistSessionSummary, 'status'>) {
+  return session.status === 'scheduled';
+}
+
 export function formatParticipantName(participant: { firstName: string; lastName?: string | null; email: string }) {
   return formatUserName(participant);
 }

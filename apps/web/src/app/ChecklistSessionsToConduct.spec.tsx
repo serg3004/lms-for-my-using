@@ -48,6 +48,8 @@ function makeSession(overrides: Partial<ChecklistSessionSummary>): ChecklistSess
     strengths: null,
     developmentAreas: null,
     nextSteps: null,
+    observerUnavailableReason: null,
+    observerUnavailableAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
@@ -108,5 +110,35 @@ describe('ChecklistSessionsToConduct', () => {
     useStateAtCalls({ 1: { status: 'error', message: 'Unable to load your sessions.' } });
     const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
     expect(html).toContain('Unable to load your sessions.');
+  });
+
+  it('shows the "can\'t conduct" CTA for a scheduled session with no reported unavailability (PR 302)', () => {
+    useStateAtCalls({ 1: { status: 'loaded', data: [makeSession({ status: 'scheduled', observerUnavailableReason: null })] } });
+    const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
+    expect(html).toContain("Can&#x27;t conduct this");
+  });
+
+  it('shows the already-reported note instead of the CTA once unavailability was reported (PR 302)', () => {
+    useStateAtCalls({ 1: { status: 'loaded', data: [makeSession({ status: 'scheduled', observerUnavailableReason: 'Out sick' })] } });
+    const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
+    expect(html).not.toContain(">Can&#x27;t conduct this<");
+    expect(html).toContain("You&#x27;ve reported you can&#x27;t conduct this session.");
+  });
+
+  it('never shows the "can\'t conduct" CTA once the session has started', () => {
+    useStateAtCalls({ 1: { status: 'loaded', data: [makeSession({ status: 'in_progress', observerUnavailableReason: null })] } });
+    const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
+    expect(html).not.toContain(">Can&#x27;t conduct this<");
+  });
+
+  it('renders the mark-unavailable dialog once a target session is set (PR 302)', () => {
+    // Call 1 is useAsyncData's internal state; call 2 is this component's own `unavailableTarget`.
+    useStateAtCalls({
+      1: { status: 'loaded', data: [makeSession({ status: 'scheduled' })] },
+      2: makeSession({ status: 'scheduled' }),
+    });
+    const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
+    expect(html).toContain("Can&#x27;t conduct this session");
+    expect(html).toContain('Reason');
   });
 });

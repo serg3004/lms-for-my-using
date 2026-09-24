@@ -459,7 +459,12 @@ export class ChecklistSessionService {
       const result = await tx.checklistSession.updateMany({
         where: { id: sessionId, organizationId, version: expectedVersion, status: 'scheduled' },
         data: {
-          ...(changes.observerId !== undefined ? { observerId: changes.observerId } : {}),
+          ...(changes.observerId !== undefined
+            ? // PR 302: a fresh observer is presumed available -- reassigning clears whatever
+              // unavailability the *previous* observer reported, so the "Заменить наблюдателя" CTA
+              // disappears the moment it's acted on rather than lingering against the new observer.
+              { observerId: changes.observerId, observerUnavailableReason: null, observerUnavailableAt: null }
+            : {}),
           ...(changes.scheduledAt !== undefined ? { scheduledAt: changes.scheduledAt ? new Date(changes.scheduledAt) : null } : {}),
           ...(changes.locationCapturePolicy !== undefined ? { locationCapturePolicy: changes.locationCapturePolicy } : {}),
           ...(changes.timezone !== undefined ? { timezone: changes.timezone } : {}),
@@ -488,6 +493,56 @@ export class ChecklistSessionService {
             actorUserId: actorId,
             metadata: { observerId: changes.observerId },
           },
+        });
+      }
+
+      return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+    });
+  }
+
+  /**
+   * PR 302: the assigned observer (or an admin on their behalf, via `checklistSessionsRun`) reports
+   * they can't conduct this session. An orthogonal business flag, not a lifecycle transition -- it
+   * never touches `status` and so never blocks start/pause/resume/complete/cancel; it only surfaces
+   * a "Заменить наблюдателя" CTA (`PATCH .../checklist-sessions/:id` with a new `observerId`,
+   * `checklistSessionsManage`: admin/manager, already object-scoped via `sessionScope()`) for
+   * whoever can reassign. Restricted to a still-`scheduled` session for the same reason reassignment
+   * itself is (ADR: participants are frozen once a session starts, so there's nothing to reassign
+   * after that point). Notifies every org admin -- computing "which managers have this learner in
+   * their effective team" would need a reverse walk over ManagerGroup/DepartmentManager that
+   * OrganizationAccessScopeService doesn't expose today; an honest, scoped choice rather than an
+   * unreliable one (admin can always reassign regardless of team scope).
+   */
+  async markObserverUnavailable(sessionId: string, organizationId: string, reason: string, expectedVersion: number, actorId: string, scope: object) {
+    return runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.status !== 'scheduled') {
+        throw new BadRequestException('Only a scheduled session\'s observer can be marked unavailable');
+      }
+      if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      const now = new Date();
+      const result = await tx.checklistSession.updateMany({
+        where: { id: sessionId, organizationId, version: expectedVersion, status: 'scheduled' },
+        data: { observerUnavailableReason: reason, observerUnavailableAt: now, version: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      await tx.checklistSessionEvent.create({
+        data: { organizationId, sessionId, eventType: 'observer_marked_unavailable', actorUserId: actorId, metadata: { reason } },
+      });
+
+      const admins = await tx.membership.findMany({ where: { organizationId, role: 'admin' }, select: { userId: true } });
+      if (admins.length > 0) {
+        await tx.notification.createMany({
+          data: admins.map((admin) => ({
+            organizationId,
+            userId: admin.userId,
+            type: 'checklist_session_observer_unavailable',
+            data: { sessionId, reason },
+            link: `/admin/checklists/sessions/${sessionId}`,
+          })),
         });
       }
 

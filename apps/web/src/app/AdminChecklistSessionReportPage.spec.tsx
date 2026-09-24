@@ -66,6 +66,7 @@ function makeSession(overrides: Partial<ChecklistSessionSummary> = {}): Checklis
     status: 'completed', version: 2, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: '2026-02-01T09:05:00.000Z',
     pausedAt: null, locationCapturePolicy: 'required', timezone: 'UTC', overdue: false,
     strengths: 'Great attention to detail', developmentAreas: null, nextSteps: null,
+    observerUnavailableReason: null, observerUnavailableAt: null,
     createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-02-01T09:05:00.000Z',
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
     learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },

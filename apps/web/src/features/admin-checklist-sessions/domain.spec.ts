@@ -5,6 +5,7 @@ import {
   canProceedFromChecklistStep,
   canProceedFromParticipantsStep,
   canProceedFromScheduleStep,
+  canReassignObserver,
   canRepeatSession,
   formatParticipantName,
   partitionBulkCreateResults,
@@ -26,6 +27,15 @@ describe('canRepeatSession', () => {
     expect(canRepeatSession({ status: 'cancelled' })).toBe(true);
     for (const status of ['scheduled', 'in_progress', 'paused'] as ChecklistSessionStatus[]) {
       expect(canRepeatSession({ status })).toBe(false);
+    }
+  });
+});
+
+describe('canReassignObserver', () => {
+  it('allows reassigning only a scheduled session (PR 302)', () => {
+    expect(canReassignObserver({ status: 'scheduled' })).toBe(true);
+    for (const status of ['in_progress', 'paused', 'completed', 'cancelled'] as ChecklistSessionStatus[]) {
+      expect(canReassignObserver({ status })).toBe(false);
     }
   });
 });
