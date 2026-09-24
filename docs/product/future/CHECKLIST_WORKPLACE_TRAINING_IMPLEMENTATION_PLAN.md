@@ -593,7 +593,7 @@ strengths/developmentAreas/nextSteps для чистого learner, пока pol
 - [x] DST не сдвигает reminder/session (юнит-тесты `checklist-session-reminders.spec.ts` + integration-тест `checklist-session-reminders.database.spec.ts` доказывают это на реальном переходе US DST против реального Postgres);
 - [x] reschedule пересчитывает automation безопасно (уже покрыто существующими тестами PR 289/291 — `upsertPreStartReminder` всегда пересчитывает `scheduledFor` из нового instant; новый DST-тест добавляет именно cross-DST reschedule случай).
 
-## PR 304 — Privacy, retention и audit
+## PR 304 — Privacy, retention и audit ✅
 
 **Цель:** ограничить чувствительные данные.
 
@@ -605,9 +605,30 @@ strengths/developmentAreas/nextSteps для чистого learner, пока pol
 - admin geo override требует reason и audit.
 
 **Критерии готовности:**
-- [ ] employee/manager projections не раскрывают лишнее;
-- [ ] override имеет actor/reason/time;
-- [ ] retention не выдумана: до решения помечена как release blocker.
+- [x] employee/manager projections не раскрывают лишнее;
+- [x] override имеет actor/reason/time;
+- [x] retention не выдумана: до решения помечена как release blocker.
+
+**Что сделано:** exact-coordinates masking (`listLocationCaptures`) и notification-payload'ы без
+координат уже существовали с PR 290 — новых изменений не потребовалось, только regression-покрытие.
+Новое в этом PR: два `AuditLogAction` (`checklist_location.accessed`, `checklist_evidence.accessed`,
+`audit-log.service.ts`), best-effort, пишутся после коммита транзакции (тот же паттерн, что и
+`AuditLogService`-вызовы PR 300, — не внутри Serializable-retry, чтобы не задублировать запись).
+`checklist_location.accessed` покрывает обе стороны admin-исключения из PR 290's privacy-safe
+projection: submit-override (`captureLocation`, уже требовавший `overrideReason` с PR 290) и
+read-override (`listLocationCaptures`, админ смотрит чужие координаты) — не пишется для наблюдателя,
+работающего со своими же данными. Существующий `location_override` `ChecklistSessionEvent`
+(таймлайн самой сессии) не тронут — оба audit-механизма сосуществуют, у них разная аудитория.
+`checklist_evidence.accessed` покрывает privileged-просмотр фото-evidence (`getItemPhotoDownload`)
+вне обычного review-назначения (не learner, не `checklistInstance.reviewerId`) — рутинный доступ
+(сам learner, назначенный reviewer) не аудируется: это уже покрыто существующим
+`checklist_item_result.reviewed`. Retention/deletion policy сознательно не реализована — новая
+запись [`DEC-CHKS-002`](../../status/OPEN_DECISIONS.md#dec-chks-002--workplace-training-session-data-retention-policy)
+в `OPEN_DECISIONS.md` фиксирует её как открытое owner-решение, а не implementation requirement.
+Юнит-тесты (`checklist-session.service.spec.ts`, `checklists.service.spec.ts`) и integration-тест
+на реальном Postgres (`checklist-scoring-v1.database.spec.ts`) подтверждают: audit пишется для
+override/privileged-случаев и не пишется для рутинного доступа. Подробности — в
+`API_CONTRACTS.md`'s "Privacy, retention, audit (PR 304)".
 
 ## PR 305 — Progressive disclosure и финальный UX
 

@@ -1300,7 +1300,7 @@ export class ChecklistsService {
   ) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: { userId: true },
+      select: { userId: true, reviewerId: true },
     });
 
     if (!instance) {
@@ -1326,6 +1326,19 @@ export class ChecklistsService {
       result.photoMimeType ?? 'image/jpeg',
       expiresIn,
     );
+
+    const isOutsideNormalWorkflow = instance.userId !== requesterId && instance.reviewerId !== requesterId;
+    if (isPrivileged && isOutsideNormalWorkflow) {
+      await this.auditLog.record({
+        organizationId,
+        actorId: requesterId,
+        action: 'checklist_evidence.accessed',
+        targetType: 'checklist_item_result',
+        targetId: itemId,
+        summary: 'Viewed photo evidence for a checklist assignment outside own review assignment',
+        metadata: { instanceId },
+      });
+    }
 
     return { url, expiresIn };
   }

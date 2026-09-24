@@ -546,6 +546,42 @@ describe('ChecklistSessionService', () => {
       );
     });
 
+    it('records a checklist_location.accessed audit log entry for an admin override, after the transaction commits', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+      const adminId = '66666666-6666-6666-6666-666666666666';
+
+      await service.captureLocation(
+        sessionId,
+        organizationId,
+        'end',
+        { status: 'unavailable', overrideReason: 'Observer device had no GPS signal' },
+        adminId,
+        {},
+      );
+
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId,
+          actorId: adminId,
+          action: 'checklist_location.accessed',
+          targetType: 'checklist_session',
+          targetId: sessionId,
+        }),
+      );
+    });
+
+    it('does not write an audit log entry when the assigned observer submits their own capture', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 51.1, longitude: 71.4 }, observerId, {});
+
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
     it('maps a duplicate capture-point submission to a 409, not a silent overwrite', async () => {
       const conflict = Object.assign(new Error('duplicate'), { code: 'P2002', meta: { target: ['session_id', 'capture_point'] } });
       const prisma = createPrisma({
@@ -603,6 +639,44 @@ describe('ChecklistSessionService', () => {
       const result = await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
 
       expect(result[0]).toMatchObject({ latitude: 51.1, longitude: 71.4 });
+    });
+
+    it('records a checklist_location.accessed audit log entry when an admin views another observer\'s coordinates', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
+
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          organizationId,
+          actorId: 'someone-else',
+          action: 'checklist_location.accessed',
+          targetType: 'checklist_session',
+          targetId: sessionId,
+        }),
+      );
+    });
+
+    it('does not write an audit log entry when the observer views their own coordinates', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.listLocationCaptures(sessionId, organizationId, {}, observerId, false);
+
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
+    it('does not write an audit log entry when coordinates are redacted (no read access to them)', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.listLocationCaptures(sessionId, organizationId, {}, 'a-manager', false);
+
+      expect(auditLog.record).not.toHaveBeenCalled();
     });
 
     it('redacts coordinates for everyone else (privacy-safe projection)', async () => {

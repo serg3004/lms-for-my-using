@@ -93,6 +93,17 @@ Current waiver validator проверяет обязательные поля, u
 `criticalThreshold`/`lowThreshold` намеренно не заданы — что считается «критическим» результатом наблюдаемой
 сессии, product-решение, а не техническая деталь. До решения PR 286 не показывает critical/low band в settings UI.
 
+## DEC-CHKS-002 — Workplace-training session data retention policy
+
+**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 304).
+
+Checklist-session данные (location captures с exact coordinates, photo evidence, session timeline/audit trail)
+хранятся бессрочно — retention/deletion policy не задана. Требуется owner-решение: retention period для exact
+coordinates и photo evidence, нужен ли separate retention для audit log (`AuditLog`/`ChecklistSessionEvent`), и
+какой механизм удаления (scheduled job, manual admin action, per-organization override). До решения retention
+hooks/config/scheduled deletion не реализуются — release blocker для отдельного retention feature, но не для
+PR 304 (audit trail и access scoping не зависят от retention period).
+
 ## Deferred, не open decisions
 
 Load-test release gate остаётся deferred до появления конкретной цели по нагрузке, dataset, latency/error thresholds и environment. Не считать его implementation obligation без отдельного решения.
