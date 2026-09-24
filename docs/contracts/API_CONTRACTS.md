@@ -540,6 +540,42 @@ version-based conflict detection that already protects against a *different* con
   conditional `updateMany(... WHERE status = 'pending')` claim, independent of the job queue's own
   retry/backoff) -- no changes were needed there for this PR.
 
+## Observer unavailable / reassignment (PR 302)
+
+`ChecklistSession.observerUnavailableReason`/`observerUnavailableAt` is an orthogonal business
+flag, not a lifecycle status -- it never gates `start`/`pause`/`resume`/`complete`/`cancel`, only
+surfaces a "Заменить наблюдателя" (reassign observer) CTA. Reassignment itself is not a new
+endpoint: it's the existing `PATCH /checklist-sessions/:id` with a new `observerId`
+(`checklistSessionsManage`: admin/manager, already object-scoped via `sessionScope()`), which now
+also clears the flag on the observer it changes away from.
+
+- **`POST /checklist-sessions/:id/observer-unavailable`** (`checklistSessionsRun`: admin/instructor
+  -- the assigned observer reporting it themselves, or admin on their behalf), body
+  `{ reason: string (1-500 chars), version: number }`. Restricted to a still-`scheduled` session,
+  same optimistic-concurrency contract (409 on stale `version`) as every other session mutation --
+  reassignment is only meaningful pre-start (ADR: participants are frozen once a session starts),
+  so there's nothing useful to flag once it has.
+- Records a `ChecklistSessionEvent` (`observer_marked_unavailable`, metadata carries the reason)
+  and creates an in-app `Notification` for every org admin (`type:
+  "checklist_session_observer_unavailable"`, links to the admin session report). Managers are not
+  individually targeted: computing "which managers have this learner in their effective team"
+  would require a reverse walk over `ManagerGroup`/`DepartmentManager` that
+  `OrganizationAccessScopeService` doesn't expose today for that direction -- an honest, scoped
+  choice (admin can always reassign, regardless of team scope) rather than an unreliable one.
+- Reassigning the observer (`PATCH .../checklist-sessions/:id` with `observerId`) clears
+  `observerUnavailableReason`/`observerUnavailableAt` in the same conditional update that also
+  writes the pre-existing `observer_reassigned` event -- a fresh observer is presumed available,
+  and the CTA disappears the moment it's acted on. The full assignment history (unavailable flag,
+  then reassignment) is preserved as an append-only `ChecklistSessionEvent` trail, not a silent
+  overwrite.
+- Frontend: the instructor's "Проведение" list (`ChecklistSessionsToConduct`) gets a "Can't
+  conduct this" button on a still-`scheduled` session (replaced by a static note once reported);
+  the admin sessions list (`AdminChecklistSessionsPage`) shows an "Unavailable" badge on the
+  Observer column and a "Reassign observer" action that opens `ReassignObserverDialog` -- a
+  single-step reuse of `WizardDialog` (no third modal implementation, per
+  `ADR_CHECKLIST_SESSION_OVERLAY.md`'s UI-foundation rule) with the same debounced observer-search
+  picklist as `ChecklistSessionWizard`'s participants step.
+
 ## Timezone contract (PR 303)
 
 `ChecklistSession` already stored a UTC instant (`scheduledAt`, `timestamptz`) plus an IANA

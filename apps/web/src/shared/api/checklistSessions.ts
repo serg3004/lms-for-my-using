@@ -15,6 +15,7 @@ import type {
   ChecklistSessionSummary,
   ChecklistSummary,
   CreateChecklistSessionInput,
+  MarkChecklistSessionObserverUnavailableInput,
   PaginatedResponse,
   RecalculateChecklistScoreInput,
   SubmitChecklistLocationCaptureInput,
@@ -101,6 +102,15 @@ export function listChecklistScoreRevisions(sessionId: string) {
 
 export function recalculateChecklistSessionScore(sessionId: string, input: RecalculateChecklistScoreInput) {
   return apiRequest<ChecklistScoreRevision>(`/checklist-sessions/${encodeURIComponent(sessionId)}/recalculate`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// ---- PR 302: observer unavailable ----
+
+export function markChecklistSessionObserverUnavailable(sessionId: string, input: MarkChecklistSessionObserverUnavailableInput) {
+  return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/observer-unavailable`, {
     method: 'POST',
     body: JSON.stringify(input),
   });

@@ -551,6 +551,10 @@ export type ChecklistSessionSummary = {
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
+  // PR 302: an orthogonal business flag (not a lifecycle status) -- non-null reason means the
+  // assigned observer reported they can't conduct this session; reassigning the observer clears it.
+  observerUnavailableReason: string | null;
+  observerUnavailableAt: string | null;
   createdAt: string;
   updatedAt: string;
   checklist: { id: string; title: string };
@@ -636,8 +640,17 @@ export type ChecklistSession = {
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
+  observerUnavailableReason: string | null;
+  observerUnavailableAt: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+// PR 302: an orthogonal business flag, not a lifecycle transition -- `version` is the same
+// optimistic-concurrency contract as every other session mutation.
+export type MarkChecklistSessionObserverUnavailableInput = {
+  reason: string;
+  version: number;
 };
 
 // Structured feedback (PR 297): every field optional so the observer can autosave partial
@@ -664,7 +677,8 @@ export type ChecklistSessionEventType =
   | 'reminder_sent'
   | 'location_override'
   | 'feedback_updated'
-  | 'score_recalculated';
+  | 'score_recalculated'
+  | 'observer_marked_unavailable';
 
 export type ChecklistSessionEvent = {
   id: string;

@@ -1,9 +1,11 @@
+import { useId, useState } from 'react';
 import type { TFunction } from 'i18next';
-import { listChecklistSessions } from '../shared/api/checklistSessions.js';
+import { ApiClientError } from '../shared/apiClient.js';
+import { listChecklistSessions, markChecklistSessionObserverUnavailable } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionSummary } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { formatDate } from '../shared/formatDate.js';
-import { Badge, PageState } from '../shared/ui.js';
+import { Badge, Button, Dialog, InlineFeedback, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 const COLORS = {
@@ -35,7 +37,7 @@ export function makeOpenHandler(onOpenSession: (sessionId: string) => void, sess
  * order of the review-queue tabs it sits alongside in InstructorChecklistReviewsPage.
  */
 export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession: (sessionId: string) => void; t: TFunction }) {
-  const { state } = useAsyncData<ChecklistSessionSummary[]>(
+  const { state, reload } = useAsyncData<ChecklistSessionSummary[]>(
     fetchObserverSessions,
     [],
     {
@@ -43,6 +45,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
       error: t('checklistSessions.conduct.loadError', 'Unable to load your sessions.'),
     },
   );
+  const [unavailableTarget, setUnavailableTarget] = useState<ChecklistSessionSummary | null>(null);
 
   if (state.status === 'loading') {
     return <PageState message={t('checklistSessions.conduct.loading', 'Loading your sessions...')} variant="loading" />;
@@ -69,7 +72,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {toConduct.map((session) => (
-              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} t={t} />
+              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} onMarkUnavailable={() => setUnavailableTarget(session)} t={t} />
             ))}
           </ul>
         )}
@@ -79,28 +82,38 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
           <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>{t('checklistSessions.conduct.history', 'History')}</h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {history.map((session) => (
-              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} t={t} />
+              <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} onMarkUnavailable={() => setUnavailableTarget(session)} t={t} />
             ))}
           </ul>
         </div>
       )}
+      <MarkUnavailableDialog
+        onClose={() => setUnavailableTarget(null)}
+        onMarked={() => void reload()}
+        session={unavailableTarget}
+        t={t}
+      />
     </div>
   );
 }
 
-function SessionCard({ session, onOpen, t }: { session: ChecklistSessionSummary; onOpen: () => void; t: TFunction }) {
+function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: ChecklistSessionSummary; onOpen: () => void; onMarkUnavailable: () => void; t: TFunction }) {
   return (
-    <li>
+    <li style={{
+      border: `1px solid ${COLORS.border}`,
+      background: COLORS.surface,
+      borderRadius: 14,
+      padding: 16,
+    }}>
       <button
         type="button"
         onClick={onOpen}
         style={{
           width: '100%',
           textAlign: 'left',
-          border: `1px solid ${COLORS.border}`,
-          background: COLORS.surface,
-          borderRadius: 14,
-          padding: 16,
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
           cursor: 'pointer',
           // >=44px touch target per PR 297's mobile UX criterion.
           minHeight: 44,
@@ -122,6 +135,65 @@ function SessionCard({ session, onOpen, t }: { session: ChecklistSessionSummary;
           </p>
         )}
       </button>
+      {/* PR 302: reporting unavailability only makes sense while the observer could still be
+          swapped out -- once the session starts, participants are frozen (see ADR). */}
+      {session.status === 'scheduled' && (
+        session.observerUnavailableReason ? (
+          <p style={{ color: 'var(--color-warning-text, #92400e)', margin: '8px 0 0', fontSize: 12.5 }}>
+            {t('checklistSessions.conduct.markedUnavailable', "You've reported you can't conduct this session.")}
+          </p>
+        ) : (
+          <button
+            onClick={onMarkUnavailable}
+            style={{ marginTop: 8, minHeight: 44, background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '6px 12px', cursor: 'pointer' }}
+            type="button"
+          >
+            {t('checklistSessions.conduct.markUnavailable', "Can't conduct this")}
+          </button>
+        )
+      )}
     </li>
+  );
+}
+
+function MarkUnavailableDialog({ session, onClose, onMarked, t }: { session: ChecklistSessionSummary | null; onClose: () => void; onMarked: () => void; t: TFunction }) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
+
+  async function submit() {
+    if (!session || !reason.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await markChecklistSessionObserverUnavailable(session.id, { reason: reason.trim(), version: session.version });
+      setReason('');
+      onMarked();
+      onClose();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('checklistSessions.conduct.markUnavailableError', 'Unable to report unavailability.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog labelledBy={titleId} onClose={onClose} open={session !== null}>
+      <h2 id={titleId}>{t('checklistSessions.conduct.markUnavailableTitle', "Can't conduct this session")}</h2>
+      {error && <InlineFeedback tone="error">{error}</InlineFeedback>}
+      <label>
+        {t('checklistSessions.conduct.markUnavailableReason', 'Reason')}
+        <textarea onChange={(e) => setReason(e.target.value)} rows={3} style={{ width: '100%' }} value={reason} />
+      </label>
+      <div className="ds-dialog__actions">
+        <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={onClose} type="button">
+          {t('checklistSessions.conduct.markUnavailableCancel', 'Cancel')}
+        </button>
+        <Button aria-busy={busy || undefined} disabled={busy || !reason.trim()} onClick={() => void submit()} variant="primary">
+          {t('checklistSessions.conduct.markUnavailableSubmit', 'Report')}
+        </Button>
+      </div>
+    </Dialog>
   );
 }

@@ -2142,7 +2142,8 @@
       "reminder_sent": "Ескерту жіберілді",
       "location_override": "Геолокацияны әкімші тіркеді",
       "feedback_updated": "Кері байланыс жаңартылды",
-      "score_recalculated": "Балл қайта есептелді"
+      "score_recalculated": "Балл қайта есептелді",
+      "observer_marked_unavailable": "Бақылаушы қолжетімсіздігін белгіледі"
     }
   }
 }

@@ -12,7 +12,8 @@ import { Badge, Button, DataTable, PageState, Pagination, SearchInput, Toolbar, 
 import { listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionStatus, ChecklistSessionSummary } from '../shared/api/types.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
-import { canCancelSession, canRepeatSession, formatParticipantName, SESSION_STATUS_TABS, type SessionStatusTab } from '../features/admin-checklist-sessions/domain.js';
+import { ReassignObserverDialog } from '../features/admin-checklist-sessions/ReassignObserverDialog.js';
+import { canCancelSession, canReassignObserver, canRepeatSession, formatParticipantName, SESSION_STATUS_TABS, type SessionStatusTab } from '../features/admin-checklist-sessions/domain.js';
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +27,7 @@ export function AdminChecklistSessionsPage() {
   const [page, setPage] = useState(1);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<ChecklistSessionSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const statusLabels: Record<ChecklistSessionStatus, string> = {
@@ -92,7 +94,19 @@ export function AdminChecklistSessionsPage() {
   const columns: Column<ChecklistSessionSummary>[] = [
     { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => row.checklist.title, priority: 'primary' },
     { key: 'learner', label: t('admin.checklists.sessions.columns.learner', 'Employee'), render: (row) => formatParticipantName(row.learner), priority: 'primary' },
-    { key: 'observer', label: t('admin.checklists.sessions.columns.observer', 'Observer'), render: (row) => formatParticipantName(row.observer), priority: 'secondary' },
+    {
+      key: 'observer',
+      label: t('admin.checklists.sessions.columns.observer', 'Observer'),
+      render: (row) => (
+        <>
+          {formatParticipantName(row.observer)}
+          {row.observerUnavailableReason && (
+            <Badge variant="warning">{t('admin.checklists.sessions.observerUnavailable', 'Unavailable')}</Badge>
+          )}
+        </>
+      ),
+      priority: 'secondary',
+    },
     {
       key: 'scheduledAt',
       label: t('admin.checklists.sessions.columns.scheduledAt', 'Date'),
@@ -130,6 +144,11 @@ export function AdminChecklistSessionsPage() {
           {canCancelSession(row) && (
             <button className="admin-btn admin-btn--sm" onClick={() => setCancelTarget(row)} type="button">
               {t('admin.checklists.sessions.cancel', 'Cancel')}
+            </button>
+          )}
+          {canReassignObserver(row) && (
+            <button className="admin-btn admin-btn--sm" onClick={() => setReassignTarget(row)} type="button">
+              {t('admin.checklists.sessions.reassignObserver', 'Reassign observer')}
             </button>
           )}
           {canRepeatSession(row) && (
@@ -192,6 +211,7 @@ export function AdminChecklistSessionsPage() {
         title={t('admin.checklists.sessions.cancelTitle', 'Cancel session')}
         variant="danger"
       />
+      <ReassignObserverDialog onClose={() => setReassignTarget(null)} onReassigned={() => void load()} session={reassignTarget} t={t} />
     </AdminPageLayout>
   );
 }

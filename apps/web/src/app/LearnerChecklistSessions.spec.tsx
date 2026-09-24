@@ -50,6 +50,8 @@ function makeSession(overrides: Partial<ChecklistSessionSummary> = {}): Checklis
     strengths: null,
     developmentAreas: null,
     nextSteps: null,
+    observerUnavailableReason: null,
+    observerUnavailableAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
