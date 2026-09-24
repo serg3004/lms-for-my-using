@@ -663,7 +663,8 @@ export type ChecklistSessionEventType =
   | 'observer_reassigned'
   | 'reminder_sent'
   | 'location_override'
-  | 'feedback_updated';
+  | 'feedback_updated'
+  | 'score_recalculated';
 
 export type ChecklistSessionEvent = {
   id: string;
@@ -700,3 +701,20 @@ export type ChecklistLocationCapture = {
   capturedBy: string | null;
   capturedAt: string;
 };
+
+// ---- Score revisions (PR 300 admin session report + auditable recalculate) ----
+
+export type ChecklistScoreRevision = {
+  id: string;
+  organizationId: string;
+  instanceId: string;
+  previousPercentage: number;
+  newPercentage: number;
+  previousPassed: boolean;
+  newPassed: boolean;
+  reason: string | null;
+  actorUserId: string | null;
+  createdAt: string;
+};
+
+export type RecalculateChecklistScoreInput = { reason: string };

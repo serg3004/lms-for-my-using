@@ -1067,7 +1067,8 @@
           "doneTitle": "Сессии созданы",
           "doneSummary": "Создано {{created}}, пропущено {{skipped}}, ошибок {{failed}}.",
           "submitError": "Не удалось создать сессии."
-        }
+        },
+        "report": "Отчёт"
       },
       "newGroupTitle": "Новая группа",
       "newCriterionText": "Новый критерий",
@@ -1109,6 +1110,36 @@
         "defaultLow": "Низко",
         "defaultMedium": "Средне",
         "defaultHigh": "Высоко"
+      },
+      "report": {
+        "eyebrow": "Отчёт по сессии",
+        "title": "Отчёт по сессии",
+        "subtitle": "Полная запись одной сессии обучения на рабочем месте.",
+        "loadError": "Не удалось загрузить отчёт по сессии.",
+        "loading": "Загрузка...",
+        "print": "Печать",
+        "tabsLabel": "Разделы отчёта",
+        "tabSummary": "Сводка",
+        "tabParticipants": "Участники",
+        "tabCriteria": "Критерии",
+        "tabFiles": "Файлы",
+        "tabHistory": "История",
+        "checklist": "Чек-лист",
+        "result": "Результат",
+        "location": "Геолокация",
+        "criteriaEmpty": "В этом чек-листе нет критериев.",
+        "photosTitle": "Фотодоказательства",
+        "photosEmpty": "К этой сессии не прикреплено фото.",
+        "locationTitle": "Геометки",
+        "locationEmpty": "Геометки не зафиксированы.",
+        "eventsTitle": "История событий",
+        "eventsEmpty": "Событий пока нет.",
+        "revisionsTitle": "История пересчётов",
+        "revisionsEmpty": "Балл ещё ни разу не пересчитывался.",
+        "recalculateReason": "Причина пересчёта",
+        "recalculate": "Пересчитать балл",
+        "recalculating": "Пересчёт...",
+        "recalculateError": "Не удалось пересчитать балл."
       }
     }
   },
@@ -2098,6 +2129,20 @@
       "resultHidden": "Результат станет виден после завершения сессии.",
       "feedbackTitle": "Обратная связь от наблюдателя",
       "criteriaTitle": "Критерии"
+    },
+    "event": {
+      "created": "Сессия создана",
+      "rescheduled": "Перенесена",
+      "started": "Начата",
+      "paused": "Приостановлена",
+      "resumed": "Возобновлена",
+      "completed": "Завершена",
+      "cancelled": "Отменена",
+      "observer_reassigned": "Наблюдатель заменён",
+      "reminder_sent": "Напоминание отправлено",
+      "location_override": "Геолокация зафиксирована администратором",
+      "feedback_updated": "Обратная связь обновлена",
+      "score_recalculated": "Балл пересчитан"
     }
   }
 }

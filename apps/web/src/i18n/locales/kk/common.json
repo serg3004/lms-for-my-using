@@ -1067,7 +1067,8 @@
           "doneTitle": "Сессиялар құрылды",
           "doneSummary": "{{created}} құрылды, {{skipped}} өткізіп жіберілді, {{failed}} сәтсіз аяқталды.",
           "submitError": "Сессияларды құру мүмкін болмады."
-        }
+        },
+        "report": "Есеп"
       },
       "newGroupTitle": "Жаңа топ",
       "newCriterionText": "Жаңа критерий",
@@ -1109,6 +1110,36 @@
         "defaultLow": "Төмен",
         "defaultMedium": "Орташа",
         "defaultHigh": "Жоғары"
+      },
+      "report": {
+        "eyebrow": "Сессия туралы есеп",
+        "title": "Сессия туралы есеп",
+        "subtitle": "Жұмыс орнындағы оқыту сессиясының толық жазбасы.",
+        "loadError": "Сессия туралы есепті жүктеу мүмкін болмады.",
+        "loading": "Жүктелуде...",
+        "print": "Басып шығару",
+        "tabsLabel": "Есеп бөлімдері",
+        "tabSummary": "Сводка",
+        "tabParticipants": "Қатысушылар",
+        "tabCriteria": "Критерийлер",
+        "tabFiles": "Файлдар",
+        "tabHistory": "Тарих",
+        "checklist": "Чек-парақ",
+        "result": "Нәтиже",
+        "location": "Геолокация",
+        "criteriaEmpty": "Бұл чек-парақта критерийлер жоқ.",
+        "photosTitle": "Фото дәлелдер",
+        "photosEmpty": "Бұл сессияға фото тіркелмеген.",
+        "locationTitle": "Геобелгілер",
+        "locationEmpty": "Геобелгілер тіркелмеген.",
+        "eventsTitle": "Оқиғалар тарихы",
+        "eventsEmpty": "Әзірге оқиғалар жоқ.",
+        "revisionsTitle": "Қайта есептеу тарихы",
+        "revisionsEmpty": "Балл әлі бір рет те қайта есептелмеген.",
+        "recalculateReason": "Қайта есептеу себебі",
+        "recalculate": "Баллды қайта есептеу",
+        "recalculating": "Қайта есептелуде...",
+        "recalculateError": "Баллды қайта есептеу мүмкін болмады."
       }
     }
   },
@@ -2098,6 +2129,20 @@
       "resultHidden": "Нәтиже сессия аяқталғаннан кейін көрінеді.",
       "feedbackTitle": "Бақылаушының кері байланысы",
       "criteriaTitle": "Критерийлер"
+    },
+    "event": {
+      "created": "Сессия құрылды",
+      "rescheduled": "Ауыстырылды",
+      "started": "Басталды",
+      "paused": "Тоқтатылды",
+      "resumed": "Жалғастырылды",
+      "completed": "Аяқталды",
+      "cancelled": "Бас тартылды",
+      "observer_reassigned": "Бақылаушы ауыстырылды",
+      "reminder_sent": "Ескерту жіберілді",
+      "location_override": "Геолокацияны әкімші тіркеді",
+      "feedback_updated": "Кері байланыс жаңартылды",
+      "score_recalculated": "Балл қайта есептелді"
     }
   }
 }

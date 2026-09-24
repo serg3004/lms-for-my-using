@@ -269,6 +269,12 @@ export const submitChecklistSessionFeedbackSchema = z
   .strict();
 export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklistSessionFeedbackSchema>;
 
+// ---- PR 300: admin-only score recalculation, audited via ChecklistScoreRevision ----
+// `reason` is required (not merely encouraged) -- the plan explicitly calls for a required
+// reason on every recalculation, since it's an admin overriding a learner/observer-facing result.
+export const recalculateChecklistScoreSchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
+export type RecalculateChecklistScoreInput = z.infer<typeof recalculateChecklistScoreSchema>;
+
 export const checklistSessionQuerySchema = z.object({
   status: checklistSessionStatusSchema.optional(),
   observerId: z.string().uuid().optional(),

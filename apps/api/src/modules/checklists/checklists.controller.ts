@@ -41,6 +41,7 @@ import {
   checklistAnalyticsQuerySchema,
   checklistManagerAnalyticsQuerySchema,
   checklistQueueQuerySchema,
+  recalculateChecklistScoreSchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -518,6 +519,23 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.listLocationCaptures(sessionId, user.organizationId, scope, user.id, user.roles.includes('admin'));
+  }
+
+  // ---- PR 300: admin session report — auditable score recalculation ----
+  @Post('checklist-sessions/:id/recalculate')
+  @Roles(...rolePolicies.checklistScoreRecalculate)
+  async recalculateScore(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = recalculateChecklistScoreSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.recalculateScore(sessionId, user.organizationId, input.reason, user.id, scope);
+  }
+  @Get('checklist-sessions/:id/score-revisions')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async listScoreRevisions(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.listScoreRevisions(sessionId, user.organizationId, scope);
   }
 
   private async transitionSession(

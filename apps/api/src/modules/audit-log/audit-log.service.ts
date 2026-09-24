@@ -35,6 +35,7 @@ export type AuditLogAction =
   | 'checklist_scale.created'
   | 'checklist_scale.updated'
   | 'checklist_scale.archived'
+  | 'checklist_score_revision.created'
   | 'certificate.issued';
 
 export type RecordAuditLogInput = {

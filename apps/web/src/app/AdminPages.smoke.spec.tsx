@@ -1,6 +1,7 @@
 import '../i18n/index.js';
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const reactMocks = vi.hoisted(() => ({
@@ -803,7 +804,9 @@ describe('admin checklist sessions page smoke rendering', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<AdminChecklistSessionsPage />);
+    // PR 300 added a per-row "Report" link to /admin/checklists/sessions/:id, which needs a
+    // router context to render (unlike every other assertion in this describe block).
+    const html = renderToStaticMarkup(<MemoryRouter><AdminChecklistSessionsPage /></MemoryRouter>);
 
     expect(html).toContain('Opening shift checklist');
     expect(html).toContain('Leo Learner');

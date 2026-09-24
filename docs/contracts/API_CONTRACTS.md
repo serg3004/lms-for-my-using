@@ -467,6 +467,38 @@ period against an equal-length immediately-preceding period. Only `completed` + 
 feed percentage-based stats; `sessionsCount`/`totalSessions` count every session in the period
 regardless of status.
 
+## Admin session report and auditable score recalculation (PR 300)
+
+Frontend: `/admin/checklists/sessions/:id` (`AdminChecklistSessionReportPage`) -- a nested drill-down
+from the existing `/admin/checklists/sessions` list (a new "Report" link per row), not a new nav item.
+Tabs: Summary/Participants/Criteria/Files/History, reusing `GET /checklist-sessions/:id` (Summary/
+Participants), `GET /checklist-instances/:id` (Criteria, plus photo evidence via the existing
+`ChecklistReviewPhotoEvidence`), `GET /checklist-sessions/:id/location` (Files), and `GET
+/checklist-sessions/:id/events` (History). A browser "Print" button (`window.print()`) is the extent
+of the "print-friendly report" requirement -- no server-side PDF/export exists or was requested.
+
+**Recalculate** (`POST /checklist-sessions/:id/recalculate`, `checklistScoreRecalculate`: admin-only,
+required non-empty `reason`): `ChecklistsService.computeInstanceScore()` re-derives the score purely
+from persisted `ChecklistItemResult` rows plus the instance's immutable `templateSnapshot` -- it never
+re-runs status transitions or auto-skip persistence (unlike the existing `recomputeInstance()` used by
+the submit/review/skip mutation paths), so a recalculation can only correct the score, never silently
+change what "completed" means for that session. `ChecklistSessionService.recalculateScore()` wraps the
+read (via `computeInstanceScore`'s transaction-client parameter) and the write in one
+`runSerializableWithRetry` transaction, so a concurrent item-result submission can't race the
+recalculation into a stale write. Every recalculation writes a `ChecklistScoreRevision` row
+(previous/new percentage and passed, reason, actor) -- even when the recomputed score matches the
+stored one, since "an admin explicitly re-checked this score" is itself worth auditing -- plus a
+`score_recalculated` `ChecklistSessionEvent` and an `AuditLogService` entry. `GET
+/checklist-sessions/:id/score-revisions` (`checklistSessionsRead`, same object scope as every other
+session read) lists the full revision history for the session's underlying instance.
+
+Not implemented in this PR (honest gap, doesn't block the rest of the workstream): the accessibility
+test suite doesn't cover this specific screen with a real login, because the demo environment has no
+seeded `ChecklistSession` and creating one through the multi-step wizard from an a11y test was judged
+not worth the added flakiness risk without a live run to verify selectors -- unit tests (loading/
+summary/participants/criteria/history/recalculate branches), a real-Postgres integration test, and a
+mocked visual-regression test cover the screen instead.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
