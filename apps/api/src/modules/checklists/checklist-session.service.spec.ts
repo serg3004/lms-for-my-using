@@ -10,6 +10,10 @@ const sessionId = '22222222-2222-2222-2222-222222222222';
 const instanceId = '33333333-3333-3333-3333-333333333333';
 const observerId = '44444444-4444-4444-4444-444444444444';
 const actorId = '55555555-5555-5555-5555-555555555555';
+// Never masks -- most existing list/get tests care about projection shape, not visibility, so
+// this is the "nothing special happening" default; the PR 298 describe block below exercises the
+// masking behavior itself with its own explicit viewer contexts.
+const adminViewer = { isLearnerOnly: false, feedbackVisibility: 'after_completion' as const };
 
 function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
   return {
@@ -328,7 +332,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.list(organizationId, { overdueOnly: 'true', page: 1, pageSize: 25 }, {});
+      await service.list(organizationId, { overdueOnly: 'true', page: 1, pageSize: 25 }, {}, adminViewer);
 
       const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
       expect(call.where.AND).toEqual(
@@ -797,7 +801,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => [projectedSession]) } });
       const service = new ChecklistSessionService(prisma);
 
-      const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {});
+      const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {}, adminViewer);
 
       expect(result.items[0]).toMatchObject({
         checklist: { title: 'Onboarding' },
@@ -811,9 +815,78 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => projectedSession) } });
       const service = new ChecklistSessionService(prisma);
 
-      const result = await service.get(sessionId, organizationId, {});
+      const result = await service.get(sessionId, organizationId, {}, adminViewer);
 
       expect(result).toMatchObject({ checklist: { title: 'Onboarding' }, result: { percentage: 90 } });
+    });
+  });
+
+  describe('feedbackVisibility enforcement (PR 298)', () => {
+    function sessionWithStatus(status: string) {
+      return {
+        ...baseSession(),
+        strengths: 'Great work',
+        developmentAreas: 'Speed',
+        nextSteps: 'Practice',
+        instance: {
+          id: instanceId,
+          checklistId: 'checklist-1',
+          userId: 'learner-1',
+          status,
+          percentage: 90,
+          passed: true,
+          scored: true,
+          checklist: { id: 'checklist-1', title: 'Onboarding' },
+          user: { id: 'learner-1', firstName: 'Ivan', lastName: 'Petrov', email: 'ivan@example.test' },
+        },
+        observer: { id: observerId, firstName: 'Olga', lastName: 'Ivanova', email: 'olga@example.test' },
+      };
+    }
+
+    it('masks the score and structured feedback for the learner while after_completion and not yet completed', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('in_progress')) } });
+      const service = new ChecklistSessionService(prisma);
+      const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'after_completion' as const };
+
+      const result = await service.get(sessionId, organizationId, {}, learnerViewer);
+
+      expect(result.result).toEqual({ instanceStatus: 'in_progress', percentage: null, passed: null, scored: null, visible: false });
+      expect(result.strengths).toBeNull();
+      expect(result.developmentAreas).toBeNull();
+      expect(result.nextSteps).toBeNull();
+    });
+
+    it('reveals the score and feedback for the learner once the instance is completed', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('completed')) } });
+      const service = new ChecklistSessionService(prisma);
+      const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'after_completion' as const };
+
+      const result = await service.get(sessionId, organizationId, {}, learnerViewer);
+
+      expect(result.result).toEqual({ instanceStatus: 'completed', percentage: 90, passed: true, scored: true, visible: true });
+      expect(result.strengths).toBe('Great work');
+    });
+
+    it('never masks under the live policy, even mid-session', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('in_progress')) } });
+      const service = new ChecklistSessionService(prisma);
+      const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'live' as const };
+
+      const result = await service.get(sessionId, organizationId, {}, learnerViewer);
+
+      expect(result.result.visible).toBe(true);
+      expect(result.result.percentage).toBe(90);
+    });
+
+    it('never masks for a non-learner caller (admin/manager/instructor), regardless of policy', async () => {
+      const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => [sessionWithStatus('in_progress')]) } });
+      const service = new ChecklistSessionService(prisma);
+      const staffViewer = { isLearnerOnly: false, feedbackVisibility: 'after_completion' as const };
+
+      const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {}, staffViewer);
+
+      expect(result.items[0]?.result.visible).toBe(true);
+      expect(result.items[0]?.strengths).toBe('Great work');
     });
   });
 
@@ -823,7 +896,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
       const managerScope = { instance: { user: { id: { in: ['team-member-1'] } } } };
 
-      await service.list(organizationId, { checklistId: 'checklist-1', learnerId: 'outside-team-user', page: 1, pageSize: 25 }, managerScope);
+      await service.list(organizationId, { checklistId: 'checklist-1', learnerId: 'outside-team-user', page: 1, pageSize: 25 }, managerScope, adminViewer);
 
       const call = (prisma.checklistSession.findMany as jest.Mock).mock.calls[0]?.[0] as { where: { AND: unknown[] } };
       // Every clause -- including the team-scope `instance` restriction and the checklistId/

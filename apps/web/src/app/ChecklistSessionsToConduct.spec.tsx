@@ -53,7 +53,7 @@ function makeSession(overrides: Partial<ChecklistSessionSummary>): ChecklistSess
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
     learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
     observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
-    result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false },
+    result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false, visible: true },
     ...overrides,
   };
 }

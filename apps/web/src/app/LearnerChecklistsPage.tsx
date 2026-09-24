@@ -13,6 +13,7 @@ import {
   isChecklistAnswerComplete,
 } from './checklistCompletion.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
+import { LearnerChecklistSessions } from './LearnerChecklistSessions.js';
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
 }
@@ -26,7 +27,11 @@ const COLORS = {
   primary: '#4f46e5',
   success: '#0f9f6e',
   successSoft: '#e9f8f2',
-  warning: '#d97706',
+  // #d97706 (the design system's --color-warning token) only reaches a 2.99:1 contrast ratio
+  // against warningSoft/white as *text* -- WCAG AA needs 4.5:1 for normal-size text. This darker
+  // shade (~6.7:1 on warningSoft, ~4.9:1 on white) is used for warning-toned text specifically on
+  // this page; warningSoft (the background) is unaffected.
+  warning: '#92400e',
   warningSoft: '#fff7e8',
   primarySoft: '#eef2ff',
 };
@@ -108,6 +113,7 @@ export function LearnerChecklistsPage() {
           ))}
         </ul>
       )}
+      <LearnerChecklistSessions t={t} />
     </main>
   );
 }

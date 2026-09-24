@@ -2031,6 +2031,25 @@
       "developmentAreas": "待提升领域",
       "nextSteps": "后续步骤",
       "saveFeedback": "保存反馈"
+    },
+    "learner": {
+      "title": "我的培训会话",
+      "sessionExpired": "会话已过期，请重新登录。",
+      "loadError": "无法加载培训会话。",
+      "loading": "正在加载培训会话…",
+      "tabs": {
+        "label": "培训会话",
+        "scheduled": "已分配",
+        "active": "进行中",
+        "done": "已完成"
+      },
+      "tabEmpty": "这里还没有内容。",
+      "observer": "观察员：{{name}}",
+      "percentage": "{{percentage}}%",
+      "backToList": "我的培训会话",
+      "resultHidden": "会话完成后即可查看您的结果。",
+      "feedbackTitle": "来自观察员的反馈",
+      "criteriaTitle": "标准"
     }
   }
 }

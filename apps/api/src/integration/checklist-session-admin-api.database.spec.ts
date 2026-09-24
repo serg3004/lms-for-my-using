@@ -171,13 +171,14 @@ describe('checklist session admin API (PR 292) — database', () => {
     const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learner.id }, observerId);
     const created = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, observerId);
 
-    const fetched = await sessionService.get(created.id, organizationId, {});
+    const adminViewer = { isLearnerOnly: false, feedbackVisibility: 'after_completion' as const };
+    const fetched = await sessionService.get(created.id, organizationId, {}, adminViewer);
     expect(fetched.checklist).toMatchObject({ id: checklistId, title: 'Admin API checklist' });
     expect(fetched.learner).toMatchObject({ id: learner.id, firstName: 'Ivan', lastName: 'Petrov' });
     expect(fetched.observer).toMatchObject({ id: observerId });
     expect(fetched.result).toMatchObject({ instanceStatus: 'assigned', percentage: 0, passed: false, scored: true });
 
-    const listed = await sessionService.list(organizationId, { page: 1, pageSize: 25 }, {});
+    const listed = await sessionService.list(organizationId, { page: 1, pageSize: 25 }, {}, adminViewer);
     expect(listed.items).toHaveLength(1);
     expect(listed.items[0]).toMatchObject({ checklist: { title: 'Admin API checklist' } });
   });

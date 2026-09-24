@@ -2031,6 +2031,25 @@
       "developmentAreas": "Development areas",
       "nextSteps": "Next steps",
       "saveFeedback": "Save feedback"
+    },
+    "learner": {
+      "title": "My training sessions",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "loadError": "Unable to load your training sessions.",
+      "loading": "Loading your training sessions...",
+      "tabs": {
+        "label": "Training sessions",
+        "scheduled": "Assigned",
+        "active": "In progress",
+        "done": "Completed"
+      },
+      "tabEmpty": "Nothing here yet.",
+      "observer": "Observer: {{name}}",
+      "percentage": "{{percentage}}%",
+      "backToList": "My training sessions",
+      "resultHidden": "Your result will be visible once the session is completed.",
+      "feedbackTitle": "Feedback from your observer",
+      "criteriaTitle": "Criteria"
     }
   }
 }

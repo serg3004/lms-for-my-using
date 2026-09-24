@@ -423,6 +423,28 @@ required and a mismatch is a 409. Every successful save appends a `feedback_upda
 event's metadata (it lives only on the session row), matching how `rescheduled`/`location_override`
 already carry only the parts of a change that aren't already on the row.
 
+## Employee training-session view and feedbackVisibility enforcement (PR 298)
+
+Frontend: "Мои обучающие сессии" (My training sessions), a new additive section appended inside
+the existing `/learn/checklists` (`LearnerChecklistsPage`) -- no new route/nav-item. Reuses `GET
+/checklist-sessions` unfiltered (`sessionScope()` already restricts a plain learner to `{ instance:
+{ userId: user.id } }`) with three client-side tabs (scheduled / in_progress+paused / completed+
+cancelled) and a detail view that additionally fetches the instance via the existing `GET
+/checklist-instances/:id` for a read-only per-criterion comment list.
+
+**`feedbackVisibility` server-side enforcement**: PR 286 introduced `ChecklistWorkplaceSettings.
+feedbackVisibility` (`after_completion` default / `live`) but nothing ever consumed it -- this is
+the first read path that actually needs to decide what a learner sees before their result exists.
+`GET /checklist-sessions` and `GET /checklist-sessions/:id` now mask their `result` (`percentage`/
+`passed`/`scored` nulled, a new `visible: false` flag added) and the PR 297 structured-feedback
+fields (`strengths`/`developmentAreas`/`nextSteps`, nulled) whenever the caller is a plain learner,
+the tenant's policy is `after_completion`, and the underlying `ChecklistInstance.status` isn't yet
+`completed`. Admin/manager/instructor callers are never masked, and `live` never masks anything --
+this is specifically about hiding a result from the person being evaluated until it's meant to be
+shown, not a general-purpose field restriction. Numbers are nulled outright, not merely flagged, so
+an unauthorized value never reaches the response body in the first place. No new role policy --
+enforcement is caller-identity-based inside the existing `checklistSessionsRead` handlers.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

@@ -128,6 +128,14 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
+  test('learner checklists page (with the "My training sessions" section) has an accessible rendered state', async ({ page }, testInfo) => {
+    await loginAs(page, 'learner');
+    await expect(page).toHaveURL(/\/learn$/);
+    await page.goto('/learn/checklists');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await auditAccessibility(page, testInfo);
+  });
+
   test('login remains accessible at 320px and 200% browser zoom', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 812 });
     await page.goto('/login');

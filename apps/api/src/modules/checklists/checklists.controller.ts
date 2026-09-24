@@ -9,7 +9,7 @@ import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } fro
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
-import type { ChecklistSessionAction } from './checklist-session.service.js';
+import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
@@ -402,8 +402,8 @@ export class ChecklistsController {
   async listSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const query = checklistSessionQuerySchema.parse(rawQuery);
-    const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.list(user.organizationId, query, scope);
+    const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
+    return this.sessions.list(user.organizationId, query, scope, viewer);
   }
   // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
   // is never swallowed as a session id.
@@ -419,8 +419,8 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistSessionsRead)
   async getSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.get(sessionId, user.organizationId, scope);
+    const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
+    return this.sessions.get(sessionId, user.organizationId, scope, viewer);
   }
   @Get('checklist-sessions/:id/events')
   @Roles(...rolePolicies.checklistSessionsRead)
@@ -513,5 +513,15 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope);
+  }
+
+  /**
+   * PR 298: closes PR 286's unfinished "server-side enforcement" of `feedbackVisibility` for the
+   * one read path that actually needs it -- the employee's own session list/detail. Only the
+   * caller's own learner-ness and the tenant's policy matter here, never a per-session override.
+   */
+  private async sessionViewerContext(user: AuthenticatedRequest['currentUser']): Promise<ChecklistSessionViewerContext> {
+    const settings = await this.workplaceSettings.getSettings(user!.organizationId);
+    return { isLearnerOnly: isLearnerOnly(user!.roles), feedbackVisibility: settings.feedbackVisibility };
   }
 }

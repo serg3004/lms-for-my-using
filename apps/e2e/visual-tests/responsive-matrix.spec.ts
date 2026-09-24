@@ -142,6 +142,30 @@ async function installLearnerMocks(page: Page) {
   }));
 }
 
+async function installLearnerChecklistsMocks(page: Page) {
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({
+    json: {
+      id: 'visual-learner', organizationId: 'visual-org', email: 'learner@example.invalid',
+      firstName: 'Visual', lastName: 'Learner', middleName: null, position: null, shift: null,
+      phone: null, status: 'active', locale: 'ru', timezone: 'UTC', roles: ['learner'],
+    },
+  }));
+  await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
+    json: paginated([{
+      id: 'session-1', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'observer-1',
+      status: 'scheduled', version: 2, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: null,
+      pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
+      strengths: null, developmentAreas: null, nextSteps: null,
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+      checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+      learner: { id: 'visual-learner', firstName: 'Visual', lastName: 'Learner', email: 'learner@example.invalid' },
+      observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
+      result: { instanceStatus: 'assigned', percentage: null, passed: null, scored: null, visible: false },
+    }]),
+  }));
+}
+
 async function installManagerMocks(page: Page) {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
@@ -349,7 +373,7 @@ async function installChecklistSessionsMocks(page: Page) {
         checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
         learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
         observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
-        result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false },
+        result: { instanceStatus: 'assigned', percentage: 0, passed: false, scored: false, visible: true },
       }],
       page: 1,
       pageSize: 20,
@@ -405,7 +429,7 @@ async function installInstructorConductMocks(page: Page) {
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
     learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
     observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
-    result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false },
+    result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false, visible: true },
   };
   await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([instructorSession]) }));
   // Distinct from the list route above (no query string) -- fetched by ChecklistSessionConduct
@@ -515,6 +539,16 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `learner-home-${width}`);
+    });
+
+    test('keeps the learner training sessions section responsive', async ({ page }) => {
+      await installLearnerChecklistsMocks(page);
+      await page.goto('/learn/checklists');
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByText('Opening shift checklist')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `learner-checklist-sessions-${width}`);
     });
 
     test('keeps the manager team dashboard responsive', async ({ page }) => {
