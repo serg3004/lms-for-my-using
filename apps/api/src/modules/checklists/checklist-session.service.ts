@@ -93,7 +93,45 @@ function presentProjected(session: SessionWithProjection) {
       percentage: instance.percentage,
       passed: instance.passed,
       scored: instance.scored,
+      visible: true,
     },
+  };
+}
+
+export type ChecklistSessionViewerContext = {
+  isLearnerOnly: boolean;
+  feedbackVisibility: 'after_completion' | 'live';
+};
+
+/**
+ * PR 286 required "server-side enforcement" of `ChecklistWorkplaceSettings.feedbackVisibility`
+ * but nothing ever consumed it -- PR 298 (the employee's own session view) is the first read path
+ * that actually needs to decide what a learner sees before their session is complete, so this is
+ * where the gap gets closed. Only ever masks for the learner themselves (`isLearnerOnly`) -- admin/
+ * manager/instructor always see the real numbers/feedback regardless of this policy, since it's
+ * specifically about hiding a result from the person being evaluated until it's meant to be shown.
+ * `after_completion` masks the score AND the PR 297 structured feedback until
+ * `result.instanceStatus === 'completed'`; `live` never masks anything. Numbers are nulled out
+ * entirely (not just flagged) -- `result.visible` tells the caller why, but the actual percentage/
+ * passed never reaches an unauthorized response body to be read from dev tools.
+ */
+function applyFeedbackVisibility<
+  T extends {
+    result: { instanceStatus: string; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
+    strengths: string | null;
+    developmentAreas: string | null;
+    nextSteps: string | null;
+  },
+>(session: T, viewer: ChecklistSessionViewerContext): T {
+  if (!viewer.isLearnerOnly || viewer.feedbackVisibility === 'live' || session.result.instanceStatus === 'completed') {
+    return session;
+  }
+  return {
+    ...session,
+    result: { ...session.result, percentage: null, passed: null, scored: null, visible: false },
+    strengths: null,
+    developmentAreas: null,
+    nextSteps: null,
   };
 }
 
@@ -308,7 +346,7 @@ export class ChecklistSessionService {
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
-  async list(organizationId: string, query: ChecklistSessionQuery, scope: object) {
+  async list(organizationId: string, query: ChecklistSessionQuery, scope: object, viewer: ChecklistSessionViewerContext) {
     const overdueClause: Prisma.ChecklistSessionWhereInput =
       query.overdueOnly === 'true'
         ? { status: 'scheduled', scheduledAt: { lt: new Date() } }
@@ -363,16 +401,21 @@ export class ChecklistSessionService {
       this.prisma.checklistSession.count({ where }),
     ]);
 
-    return { items: items.map(presentProjected), page: query.page, pageSize: query.pageSize, total };
+    return {
+      items: items.map((item) => applyFeedbackVisibility(presentProjected(item), viewer)),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
-  async get(sessionId: string, organizationId: string, scope: object) {
+  async get(sessionId: string, organizationId: string, scope: object, viewer: ChecklistSessionViewerContext) {
     const session = await this.prisma.checklistSession.findFirst({
       where: { id: sessionId, organizationId, ...scope },
       include: sessionProjectionInclude,
     });
     if (!session) throw new NotFoundException('Checklist session not found');
-    return presentProjected(session);
+    return applyFeedbackVisibility(presentProjected(session), viewer);
   }
 
   async listEvents(sessionId: string, organizationId: string, scope: object) {

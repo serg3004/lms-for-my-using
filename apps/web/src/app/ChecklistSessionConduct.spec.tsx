@@ -53,7 +53,7 @@ function session(overrides: Partial<ChecklistSessionSummary> = {}): ChecklistSes
     checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
     learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
     observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
-    result: { instanceStatus: 'in_progress', percentage: 40, passed: false, scored: true },
+    result: { instanceStatus: 'in_progress', percentage: 40, passed: false, scored: true, visible: true },
     ...overrides,
   };
 }

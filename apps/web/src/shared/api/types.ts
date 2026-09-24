@@ -556,7 +556,10 @@ export type ChecklistSessionSummary = {
   checklist: { id: string; title: string };
   learner: { id: string; firstName: string; lastName: string; email: string };
   observer: { id: string; firstName: string; lastName: string; email: string };
-  result: { instanceStatus: ChecklistInstanceStatus; percentage: number; passed: boolean; scored: boolean };
+  // PR 298: masked (percentage/passed/scored nulled, visible=false) for the learner while the
+  // tenant's `feedbackVisibility` is `after_completion` and the instance isn't `completed` yet --
+  // never masked for admin/manager/instructor, nor once the instance completes.
+  result: { instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
 };
 
 export type ChecklistSessionQuery = {

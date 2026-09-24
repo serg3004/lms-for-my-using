@@ -13,6 +13,7 @@ import {
   isChecklistAnswerComplete,
 } from './checklistCompletion.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
+import { LearnerChecklistSessions } from './LearnerChecklistSessions.js';
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
 }
@@ -108,6 +109,7 @@ export function LearnerChecklistsPage() {
           ))}
         </ul>
       )}
+      <LearnerChecklistSessions t={t} />
     </main>
   );
 }
