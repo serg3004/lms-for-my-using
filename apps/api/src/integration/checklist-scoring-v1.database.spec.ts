@@ -326,18 +326,49 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
       sizeBytes: 1000,
     });
     await prisma.checklistInstance.update({ where: { id: instance.id }, data: { reviewerId: reviewer.id } });
+    const storedResult = await prisma.checklistItemResult.findUniqueOrThrow({
+      where: { instanceId_itemId: { instanceId: instance.id, itemId: item.id } },
+    });
 
     await checklistsServiceWithUpload.getItemPhotoDownload(instance.id, item.id, organizationId, reviewer.id, true);
     let auditEntries = await prisma.auditLog.findMany({
-      where: { organizationId, action: 'checklist_evidence.accessed', targetId: item.id },
+      where: { organizationId, action: 'checklist_evidence.accessed', targetId: storedResult.id },
     });
     expect(auditEntries).toHaveLength(0);
 
     await checklistsServiceWithUpload.getItemPhotoDownload(instance.id, item.id, organizationId, otherAdmin.id, true);
     auditEntries = await prisma.auditLog.findMany({
-      where: { organizationId, action: 'checklist_evidence.accessed', targetId: item.id },
+      where: { organizationId, action: 'checklist_evidence.accessed', targetId: storedResult.id },
     });
     expect(auditEntries).toHaveLength(1);
     expect(auditEntries[0]).toMatchObject({ actorId: otherAdmin.id, targetType: 'checklist_item_result' });
+    expect(auditEntries[0]?.metadata).toMatchObject({ instanceId: instance.id, itemId: item.id });
+  });
+
+  it('geolocation: reading another observer\'s captures is not audited when none carry coordinates (denied/unavailable only)', async () => {
+    const admin = await prisma.user.create({
+      data: {
+        organizationId,
+        email: `admin-${randomUUID()}@example.test`,
+        passwordHash: 'not-used-by-this-test',
+        firstName: 'Scoring',
+        lastName: 'Admin',
+      },
+    });
+
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
+    const session = await sessionService.create(
+      organizationId,
+      { instanceId: instance.id, observerId, locationCapturePolicy: 'optional' },
+      observerId,
+    );
+    await sessionService.captureLocation(session.id, organizationId, 'start', { status: 'denied' }, observerId, {});
+
+    await sessionService.listLocationCaptures(session.id, organizationId, {}, admin.id, true);
+
+    const auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
+    });
+    expect(auditEntries).toHaveLength(0);
   });
 });

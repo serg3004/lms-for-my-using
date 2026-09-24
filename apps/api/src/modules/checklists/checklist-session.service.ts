@@ -751,7 +751,9 @@ export class ChecklistSessionService {
    * PR 304: an admin reading another observer's exact coordinates is audited the same way the
    * write-side override is -- `checklist_location.accessed` -- since it's the same privacy-
    * sensitive exception to the normal "only the observer sees their own coordinates" rule. Not
-   * logged for the observer reading their own captures (the routine, expected case).
+   * logged for the observer reading their own captures (the routine, expected case), nor when no
+   * returned capture actually carries coordinates (e.g. all `denied`/`unavailable`, or none yet) --
+   * there is nothing sensitive to have viewed.
    */
   async listLocationCaptures(sessionId: string, organizationId: string, scope: object, actorId: string, isAdmin: boolean) {
     const session = await this.prisma.checklistSession.findFirst({
@@ -779,7 +781,8 @@ export class ChecklistSessionService {
       }));
     }
 
-    if (!isOwnCapture) {
+    const hasCoordinates = captures.some((capture) => capture.latitude !== null && capture.longitude !== null);
+    if (!isOwnCapture && hasCoordinates) {
       await this.auditLog.record({
         organizationId,
         actorId,

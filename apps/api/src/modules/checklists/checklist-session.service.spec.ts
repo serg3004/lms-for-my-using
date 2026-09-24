@@ -690,6 +690,27 @@ describe('ChecklistSessionService', () => {
       expect(auditLog.record).not.toHaveBeenCalled();
     });
 
+    it('does not write an audit log entry when no returned capture actually carries coordinates (denied/unavailable only)', async () => {
+      const deniedCapture = { ...rawCapture, id: 'capture-2', status: 'denied', latitude: null, longitude: null, accuracyMeters: null };
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [deniedCapture]) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
+
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
+    it('does not write an audit log entry when there are no captures yet', async () => {
+      const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => []) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+
+      await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
+
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
     it('redacts coordinates for everyone else (privacy-safe projection)', async () => {
       const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
       const service = new ChecklistSessionService(prisma);

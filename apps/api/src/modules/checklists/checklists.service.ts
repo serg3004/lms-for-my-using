@@ -1313,7 +1313,7 @@ export class ChecklistsService {
 
     const result = await this.prisma.checklistItemResult.findUnique({
       where: { instanceId_itemId: { instanceId, itemId } },
-      select: { photoObjectKey: true, photoMimeType: true },
+      select: { id: true, photoObjectKey: true, photoMimeType: true },
     });
 
     if (!result?.photoObjectKey) {
@@ -1334,9 +1334,9 @@ export class ChecklistsService {
         actorId: requesterId,
         action: 'checklist_evidence.accessed',
         targetType: 'checklist_item_result',
-        targetId: itemId,
+        targetId: result.id,
         summary: 'Viewed photo evidence for a checklist assignment outside own review assignment',
-        metadata: { instanceId },
+        metadata: { instanceId, itemId },
       });
     }
 

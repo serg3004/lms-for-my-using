@@ -589,6 +589,9 @@ describe('ChecklistsService — item photo attachment', () => {
       sizeBytes: 1000,
     });
     const otherAdminId = '99999999-9999-9999-9999-999999999999';
+    const storedResult = await prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId: instance.id, itemId: item.id } },
+    });
 
     await service.getItemPhotoDownload(instance.id, item.id, organizationId, otherAdminId, true);
 
@@ -598,7 +601,8 @@ describe('ChecklistsService — item photo attachment', () => {
         actorId: otherAdminId,
         action: 'checklist_evidence.accessed',
         targetType: 'checklist_item_result',
-        targetId: item.id,
+        targetId: storedResult?.id,
+        metadata: expect.objectContaining({ instanceId: instance.id, itemId: item.id }),
       }),
     );
   });
