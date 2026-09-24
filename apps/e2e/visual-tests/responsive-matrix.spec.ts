@@ -739,7 +739,9 @@ for (const width of widths) {
     test('keeps the admin session report responsive', async ({ page }) => {
       await installChecklistSessionReportMocks(page);
       await page.goto('/admin/checklists/sessions/session-1');
-      await expect(page.getByText('Opening shift checklist').first()).toBeVisible();
+      // The breadcrumb also renders this text but collapses on narrow viewports -- the <h1> is
+      // the one guaranteed-visible occurrence at every width.
+      await expect(page.getByRole('heading', { level: 1, name: 'Opening shift checklist' })).toBeVisible();
       await expect(page.getByText('92% ✓')).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
