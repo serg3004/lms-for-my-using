@@ -499,6 +499,47 @@ not worth the added flakiness risk without a live run to verify selectors -- uni
 summary/participants/criteria/history/recalculate branches), a real-Postgres integration test, and a
 mocked visual-regression test cover the screen instead.
 
+## Checklist session concurrency and idempotency (PR 301)
+
+Every ChecklistSession mutation the ADR already required version/status optimistic concurrency for
+(`update`, `start`/`pause`/`resume`/`complete`/`cancel`, `submitFeedback`) was already conditional on
+`(status, version)` and already ran inside `runSerializableWithRetry` (Serializable isolation, bounded
+retry on Postgres serialization failure P2034, `MAX_SERIALIZATION_RETRIES = 5`) -- that part of the
+plan's PR 301 scope predates this PR (PR 289/291/297/300). What this PR adds is the remaining,
+genuinely missing half: **idempotency for `create`/`complete`/`recalculate`**, so a network retry of
+the exact same request never produces a duplicate mutation, distinct from (and complementary to) the
+version-based conflict detection that already protects against a *different* concurrent request.
+
+- **New `ChecklistIdempotencyKey` table** (`checklist_idempotency_keys`): `(organizationId, scope, key)`
+  unique, `responseBody` JSONB. `scope` namespaces the key per endpoint (`session.create`,
+  `session.transition:<action>`, `session.recalculate`) so the same client-chosen key string can never
+  collide across unrelated operations.
+- **`idempotencyKey`** is an optional field (`z.string().trim().min(1).max(200).optional()`) on the
+  request bodies of `POST /checklist-sessions`, `POST /checklist-sessions/:id/{start,pause,resume,
+  complete,cancel}`, and `POST /checklist-sessions/:id/recalculate`. Never required -- omitting it just
+  means no replay protection beyond the DB-level guards that already existed (the instance-scoped
+  unique constraint on `ChecklistSession.instanceId`, and the version/status conditional update).
+- **Ordering is the actual mechanism**: inside the same Serializable transaction as the mutation, the
+  idempotency-key table is checked *before* any version/status logic runs. A hit replays the stored
+  response immediately -- this is what lets a genuine retry of "my own complete request" (same key,
+  same now-stale `expectedVersion`) succeed with the original response instead of a 409, while a truly
+  conflicting concurrent request (different key, or none) still gets the existing
+  `STALE_WRITE_MESSAGE` 409. A miss falls through to the existing mutation logic and stores the
+  response under that key before the transaction commits.
+- **`recalculate` has no version/status guard at all** (deliberately, per PR 300: every explicit
+  re-check is recorded, no-op or not), so without an idempotency key a bare network retry would write
+  a second, spurious `ChecklistScoreRevision`. On a cache hit, `recalculateScore()` skips both the
+  revision write and the `AuditLogService` call -- a replayed retry didn't mutate anything the first
+  call hadn't already audited.
+- **Concurrent double-send, not just sequential retry**: because the check-then-write happens inside
+  `runSerializableWithRetry`, two truly concurrent calls carrying the same key resolve to exactly one
+  mutation -- the loser hits a Postgres serialization conflict (P2034), retries with a fresh read, and
+  on that retry finds the winner's already-stored response. Verified against real Postgres in
+  `checklist-session-idempotency.database.spec.ts`, including a `Promise.all` double-`create()` race.
+- Reminders (`ChecklistSessionReminderWorker`) already had DB-level idempotency from PR 291 (a
+  conditional `updateMany(... WHERE status = 'pending')` claim, independent of the job queue's own
+  retry/backoff) -- no changes were needed there for this PR.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

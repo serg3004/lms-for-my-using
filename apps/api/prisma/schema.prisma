@@ -330,6 +330,7 @@ model Organization {
   checklistLocationCaptures  ChecklistLocationCapture[]
   checklistScales            ChecklistScale[]
   checklistScaleLevels       ChecklistScaleLevel[]
+  checklistIdempotencyKeys   ChecklistIdempotencyKey[]
   theme                      OrganizationTheme?
 
   @@map("organizations")
@@ -1370,6 +1371,32 @@ model ChecklistSessionReminder {
   @@unique([sessionId, reminderType])
   @@index([organizationId, scheduledFor])
   @@map("checklist_session_reminders")
+}
+
+/// PR 301: client-supplied idempotency for the checklist session mutations that a network retry
+/// could otherwise duplicate -- `session.create` (a fresh session row), `session.transition:*`
+/// (a lifecycle event that a stale-version 409 doesn't distinguish from "my own request landed,
+/// I just never saw the response"), and `session.recalculate` (which, unlike lifecycle
+/// transitions, has no version/status guard at all and would otherwise write a second
+/// ChecklistScoreRevision for the exact same retried call). The unique constraint on
+/// (organizationId, scope, key) is the actual guardrail: a second call with the same key is
+/// detected by a P2002 unique-violation race exactly like PR 292's session-per-instance
+/// constraint, and the caller gets back the FIRST call's stored response, never a duplicate
+/// mutation. `key` is caller-supplied (e.g. a client-generated UUID kept across a retry) --
+/// never inferred from request content, since two legitimately different requests could
+/// otherwise collide.
+model ChecklistIdempotencyKey {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  scope          String
+  key            String
+  responseBody   Json         @map("response_body")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, scope, key])
+  @@index([organizationId, createdAt])
+  @@map("checklist_idempotency_keys")
 }
 
 /// Geolocation is start/end only (no continuous tracking) per PR 290. The unique constraint is

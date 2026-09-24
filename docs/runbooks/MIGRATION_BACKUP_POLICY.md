@@ -254,6 +254,20 @@ Migration `20260924040000_add_checklist_score_recalculated_event` также add
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist idempotency keys migration
+
+Migration `20260924100000_add_checklist_idempotency_keys` — новая таблица, additive и backward-compatible (PR 301, concurrency и idempotency для checklist-сессий):
+
+- новая таблица `checklist_idempotency_keys` (`id`, `organization_id`, `scope`, `key`, `response_body` JSONB, `created_at`) с уникальным индексом `(organization_id, scope, key)` и вспомогательным индексом `(organization_id, created_at)`; FK на `organizations(id) ON DELETE CASCADE`;
+- не изменяет ни одну существующую таблицу/колонку — `POST /checklist-sessions`, `POST /checklist-sessions/:id/{start,pause,resume,complete,cancel}` и `POST /checklist-sessions/:id/recalculate` получили новое optional поле `idempotencyKey` в теле запроса, но при его отсутствии поведение полностью совпадает с поведением до этой миграции;
+- backfill не требуется — таблица используется только для новых запросов, отправленных с непустым `idempotencyKey`;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новой таблице и продолжает работать как раньше (никогда не читает и не пишет в неё);
+- retention: строки не удаляются автоматически в этой PR — таблица растёт пропорционально числу запросов с явным `idempotencyKey`, что ожидается редким (только retry-логика клиента). TTL/очистка сверх этого не запрошены и помечены как будущая задача, а не release blocker (значение поля небольшое, JSONB-снимок ограничен размером самого session/revision-ответа).
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверена на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>` — вывод байт-в-байт совпадает (167 строк) с тем же прогоном без этой миграции (сравнение дало пустой `diff`). Применено к реальному локальному PostgreSQL 16 (`prisma migrate deploy`), `checklist-session-idempotency.database.spec.ts` подтверждает replay-поведение (включая гонку двух конкурентных `create()`-вызовов с одинаковым ключом, резолвящуюся ровно в одну сессию) на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

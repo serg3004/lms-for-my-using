@@ -227,6 +227,13 @@ export type UpdateChecklistWorkplaceSettingsInput = z.infer<typeof updateCheckli
 
 export const checklistSessionStatusSchema = z.enum(['scheduled', 'in_progress', 'paused', 'completed', 'cancelled']);
 
+// PR 301: an optional client-generated key (kept identical across a network retry of the exact
+// same request) that lets create/transition/recalculate detect "this is my own retry" and replay
+// the first call's stored response instead of risking a duplicate mutation. Never required --
+// omitting it just means no replay protection beyond the DB-level guards that already exist
+// (the instance-scoped unique constraint, optimistic-concurrency version checks).
+const idempotencyKeySchema = z.string().trim().min(1).max(200).optional();
+
 export const createChecklistSessionSchema = z
   .object({
     instanceId: z.string().uuid(),
@@ -234,6 +241,7 @@ export const createChecklistSessionSchema = z
     scheduledAt: z.string().datetime().nullable().optional(),
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
     timezone: z.string().trim().min(1).max(64).optional(),
+    idempotencyKey: idempotencyKeySchema,
   })
   .strict();
 export type CreateChecklistSessionInput = z.infer<typeof createChecklistSessionSchema>;
@@ -252,7 +260,9 @@ export type UpdateChecklistSessionInput = z.infer<typeof updateChecklistSessionS
 
 // `version` is the client's expected current version — a mismatch means someone else already
 // transitioned this session and the caller must reload before retrying (409).
-export const checklistSessionTransitionSchema = z.object({ version: z.number().int().min(1) }).strict();
+export const checklistSessionTransitionSchema = z
+  .object({ version: z.number().int().min(1), idempotencyKey: idempotencyKeySchema })
+  .strict();
 export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTransitionSchema>;
 
 // Structured feedback (PR 297 observer conduct screen): session-level, saved during/after the
@@ -272,7 +282,9 @@ export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklist
 // ---- PR 300: admin-only score recalculation, audited via ChecklistScoreRevision ----
 // `reason` is required (not merely encouraged) -- the plan explicitly calls for a required
 // reason on every recalculation, since it's an admin overriding a learner/observer-facing result.
-export const recalculateChecklistScoreSchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
+export const recalculateChecklistScoreSchema = z
+  .object({ reason: z.string().trim().min(1).max(500), idempotencyKey: idempotencyKeySchema })
+  .strict();
 export type RecalculateChecklistScoreInput = z.infer<typeof recalculateChecklistScoreSchema>;
 
 export const checklistSessionQuerySchema = z.object({
