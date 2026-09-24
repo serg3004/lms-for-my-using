@@ -45,6 +45,7 @@ function createPrisma(overrides: {
   checklistSessionReminder?: Partial<Record<'upsert' | 'updateMany' | 'findMany', jest.Mock>>;
   checklistLocationCapture?: Partial<Record<'create' | 'findMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
+  checklistIdempotencyKey?: Partial<Record<'findUnique' | 'create', jest.Mock>>;
   user?: Partial<Record<'findFirst' | 'findMany' | 'count', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
@@ -76,6 +77,11 @@ function createPrisma(overrides: {
     checklistInstance: {
       findFirst: jest.fn(async () => ({ id: instanceId })),
       ...overrides.checklistInstance,
+    },
+    checklistIdempotencyKey: {
+      findUnique: jest.fn(async () => null),
+      create: jest.fn(async () => ({})),
+      ...overrides.checklistIdempotencyKey,
     },
     user: {
       findFirst: jest.fn(async () => ({ id: observerId })),
@@ -142,6 +148,32 @@ describe('ChecklistSessionService', () => {
 
       await expect(service.create(organizationId, { instanceId, observerId }, actorId)).rejects.toBeInstanceOf(
         ConflictException,
+      );
+    });
+
+    it('replays the stored response for a retry carrying the same idempotencyKey, without creating a second session', async () => {
+      const cachedResponse = { id: sessionId, status: 'scheduled', overdue: false, replayed: true };
+      const prisma = createPrisma({
+        checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: cachedResponse })) },
+      });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.create(organizationId, { instanceId, observerId, idempotencyKey: 'retry-key-1' }, actorId);
+
+      expect(result).toEqual(cachedResponse);
+      expect(prisma.checklistSession.create).not.toHaveBeenCalled();
+    });
+
+    it('stores the response under the given idempotencyKey on a fresh (first) create', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.create(organizationId, { instanceId, observerId, idempotencyKey: 'retry-key-2' }, actorId);
+
+      expect(prisma.checklistIdempotencyKey.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ organizationId, scope: 'session.create', key: 'retry-key-2' }),
+        }),
       );
     });
   });
@@ -241,6 +273,36 @@ describe('ChecklistSessionService', () => {
 
       await expect(service.transition(sessionId, organizationId, 'cancel', 1, actorId, {})).rejects.toBeInstanceOf(
         BadRequestException,
+      );
+    });
+
+    it('replays the stored response for a retry with the same idempotencyKey, even against an already-advanced version (no 409)', async () => {
+      const cachedResponse = { id: sessionId, status: 'in_progress', overdue: false, replayed: true };
+      const prisma = createPrisma({
+        // The version the DB now holds (2) no longer matches the client's original expectedVersion
+        // (1) -- exactly what a real retry looks like after the first call already succeeded.
+        checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) },
+        checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: cachedResponse })) },
+      });
+      const service = new ChecklistSessionService(prisma);
+
+      const result = await service.transition(sessionId, organizationId, 'start', 1, actorId, {}, 'retry-key-3');
+
+      expect(result).toEqual(cachedResponse);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+      expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('stores the response under the given idempotencyKey on a fresh (first) transition', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await service.transition(sessionId, organizationId, 'start', 1, actorId, {}, 'retry-key-4');
+
+      expect(prisma.checklistIdempotencyKey.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ organizationId, scope: 'session.transition:start', key: 'retry-key-4' }),
+        }),
       );
     });
   });
@@ -927,12 +989,15 @@ describe('ChecklistSessionService', () => {
       const instanceUpdate = jest.fn(async () => ({}));
       const sessionEventCreate = jest.fn(async () => ({}));
       const scoreRevisionFindMany = jest.fn(async () => []);
+      const idempotencyKeyFindUnique = jest.fn(async () => null);
+      const idempotencyKeyCreate = jest.fn(async () => ({}));
 
       const base: Record<string, unknown> = {
         checklistSession: { findFirst: jest.fn(async () => session) },
         checklistScoreRevision: { create: scoreRevisionCreate, findMany: scoreRevisionFindMany },
         checklistInstance: { update: instanceUpdate },
         checklistSessionEvent: { create: sessionEventCreate },
+        checklistIdempotencyKey: { findUnique: idempotencyKeyFindUnique, create: idempotencyKeyCreate },
       };
       base['$transaction'] = jest.fn(async (fn: (tx: unknown) => unknown) => fn(base));
 
@@ -940,7 +1005,16 @@ describe('ChecklistSessionService', () => {
         computeInstanceScore: jest.fn(async () => overrides.score ?? { totalScore: 8, maxScore: 10, scored: true, percentage: 80, passThreshold: 80 }),
       } as unknown as import('./checklists.service.js').ChecklistsService;
 
-      return { prisma: base as unknown as PrismaService, checklistsService, scoreRevisionCreate, instanceUpdate, sessionEventCreate, scoreRevisionFindMany };
+      return {
+        prisma: base as unknown as PrismaService,
+        checklistsService,
+        scoreRevisionCreate,
+        instanceUpdate,
+        sessionEventCreate,
+        scoreRevisionFindMany,
+        idempotencyKeyFindUnique,
+        idempotencyKeyCreate,
+      };
     }
 
     it('creates a ChecklistScoreRevision, updates the instance score, and records a score_recalculated event', async () => {
@@ -1026,6 +1100,33 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
 
       await expect(service.listScoreRevisions(sessionId, organizationId, {})).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('replays the stored revision for a retry with the same idempotencyKey, without writing a second revision or audit entry (PR 301)', async () => {
+      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80 };
+      const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma();
+      (prisma.checklistIdempotencyKey.findUnique as jest.Mock).mockResolvedValueOnce({ responseBody: cachedRevision });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
+
+      const result = await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {}, 'retry-key-5');
+
+      expect(result).toEqual(cachedRevision);
+      expect(scoreRevisionCreate).not.toHaveBeenCalled();
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
+    it('stores the response under the given idempotencyKey on a fresh (first) recalculate', async () => {
+      const { prisma, checklistsService, idempotencyKeyCreate } = createRecalculatePrisma();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {}, 'retry-key-6');
+
+      expect(idempotencyKeyCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ organizationId, scope: 'session.recalculate', key: 'retry-key-6' }),
+        }),
+      );
     });
   });
 });

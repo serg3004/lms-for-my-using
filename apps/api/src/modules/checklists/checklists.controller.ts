@@ -528,7 +528,7 @@ export class ChecklistsController {
     const input = recalculateChecklistScoreSchema.parse(body);
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.recalculateScore(sessionId, user.organizationId, input.reason, user.id, scope);
+    return this.sessions.recalculateScore(sessionId, user.organizationId, input.reason, user.id, scope, input.idempotencyKey);
   }
   @Get('checklist-sessions/:id/score-revisions')
   @Roles(...rolePolicies.checklistSessionsRead)
@@ -544,10 +544,10 @@ export class ChecklistsController {
     body: unknown,
     request: AuthenticatedRequest,
   ) {
-    const { version } = checklistSessionTransitionSchema.parse(body);
+    const { version, idempotencyKey } = checklistSessionTransitionSchema.parse(body);
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope);
+    return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope, idempotencyKey);
   }
 
   /**

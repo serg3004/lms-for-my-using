@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   ChecklistLocationCapturePoint,
+  ChecklistScoreRevision,
   ChecklistSession,
   ChecklistSessionEventType,
   ChecklistSessionStatus,
@@ -143,6 +144,13 @@ export class ChecklistSessionService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
+  /**
+   * PR 301: wrapped in a Serializable transaction (not a plain one) so the idempotency-key
+   * check-then-write below is itself race-safe, same as every other lifecycle mutation. A retry
+   * carrying the same `idempotencyKey` replays the first call's stored response instead of
+   * relying solely on the instance-scoped unique constraint below, which only ever produces a
+   * 409 -- not the original success payload -- on a second attempt.
+   */
   async create(organizationId: string, input: CreateChecklistSessionInput, actorId: string) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: input.instanceId, organizationId, deletedAt: null },
@@ -151,8 +159,11 @@ export class ChecklistSessionService {
     if (!instance) throw new NotFoundException('Checklist assignment not found');
 
     try {
-      const session = await this.prisma.$transaction((tx) =>
-        this.createSessionInTransaction(tx, {
+      return await runSerializableWithRetry(this.prisma, async (tx) => {
+        const cached = await this.findIdempotentResponse<ChecklistSessionView>(tx, organizationId, 'session.create', input.idempotencyKey);
+        if (cached) return cached;
+
+        const session = await this.createSessionInTransaction(tx, {
           organizationId,
           instanceId: input.instanceId,
           observerId: input.observerId,
@@ -160,10 +171,12 @@ export class ChecklistSessionService {
           locationCapturePolicy: input.locationCapturePolicy,
           timezone: input.timezone,
           actorId,
-        }),
-      );
+        });
 
-      return present(session);
+        const presented = present(session);
+        await this.recordIdempotentResponse(tx, organizationId, 'session.create', input.idempotencyKey, presented);
+        return presented;
+      });
     } catch (error) {
       if (this.isUniqueConstraintViolation(error, 'instance_id')) {
         throw new ConflictException('This checklist assignment already has a session');
@@ -482,6 +495,12 @@ export class ChecklistSessionService {
     });
   }
 
+  /**
+   * PR 301: `idempotencyKey`, when present, is checked before any version/status logic runs --
+   * that ordering is what lets a genuine retry of "my own complete request" (same key, same
+   * expectedVersion) succeed with the original response instead of a 409, while a truly
+   * conflicting concurrent request (different key, or none) still gets STALE_WRITE_MESSAGE.
+   */
   async transition(
     sessionId: string,
     organizationId: string,
@@ -489,10 +508,15 @@ export class ChecklistSessionService {
     expectedVersion: number,
     actorId: string,
     scope: object,
+    idempotencyKey?: string,
   ) {
     const { from, to, event } = TRANSITIONS[action];
+    const idempotencyScope = `session.transition:${action}`;
 
     return runSerializableWithRetry(this.prisma, async (tx) => {
+      const cached = await this.findIdempotentResponse<ChecklistSessionView>(tx, organizationId, idempotencyScope, idempotencyKey);
+      if (cached) return cached;
+
       const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (!from.includes(session.status)) {
@@ -526,7 +550,9 @@ export class ChecklistSessionService {
 
       await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: event, actorUserId: actorId } });
 
-      return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+      const presented = present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+      await this.recordIdempotentResponse(tx, organizationId, idempotencyScope, idempotencyKey, presented);
+      return presented;
     });
   }
 
@@ -673,9 +699,21 @@ export class ChecklistSessionService {
    * `ChecklistScoreRevision` -- even a no-op recalculation is a meaningful audit event ("an admin
    * explicitly re-checked this score") -- inside a Serializable transaction with retry so a
    * concurrent item-result submission can't race the recalculation into a stale write.
+   *
+   * PR 301: unlike the lifecycle transitions, recalculate has no version/status guard at all
+   * (deliberately -- PR 300 wants every explicit re-check recorded, no-op or not), so without an
+   * idempotency key a bare network retry of the same request would write a second, spurious
+   * revision. `idempotencyKey` is checked first and, on a hit, replays the first call's revision
+   * without touching the audit log a second time.
    */
-  async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object) {
-    const { revision, previousPercentage, newPercentage } = await runSerializableWithRetry(this.prisma, async (tx) => {
+  async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object, idempotencyKey?: string) {
+    const idempotencyScope = 'session.recalculate';
+    const { revision, previousPercentage, newPercentage, replayed } = await runSerializableWithRetry(this.prisma, async (tx) => {
+      const cached = await this.findIdempotentResponse<ChecklistScoreRevision>(tx, organizationId, idempotencyScope, idempotencyKey);
+      if (cached) {
+        return { revision: cached, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
+      }
+
       const session = await tx.checklistSession.findFirst({
         where: { id: sessionId, organizationId, ...scope },
         select: {
@@ -721,18 +759,24 @@ export class ChecklistSessionService {
         },
       });
 
-      return { revision: createdRevision, previousPercentage: session.instance.percentage, newPercentage: percentage };
+      await this.recordIdempotentResponse(tx, organizationId, idempotencyScope, idempotencyKey, createdRevision);
+
+      return { revision: createdRevision, previousPercentage: session.instance.percentage, newPercentage: percentage, replayed: false };
     });
 
-    await this.auditLog.record({
-      organizationId,
-      actorId,
-      action: 'checklist_score_revision.created',
-      targetType: 'checklist_instance',
-      targetId: revision.instanceId,
-      summary: `Recalculated checklist score (${previousPercentage}% -> ${newPercentage}%)`,
-      metadata: { sessionId, reason },
-    });
+    // A replayed retry didn't mutate anything the first call hadn't already audited -- recording
+    // a second audit-log entry for it would misrepresent the timeline as two recalculations.
+    if (!replayed) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'checklist_score_revision.created',
+        targetType: 'checklist_instance',
+        targetId: revision.instanceId,
+        summary: `Recalculated checklist score (${previousPercentage}% -> ${newPercentage}%)`,
+        metadata: { sessionId, reason },
+      });
+    }
 
     return revision;
   }
@@ -784,6 +828,41 @@ export class ChecklistSessionService {
     }
 
     return created;
+  }
+
+  /**
+   * PR 301: the shared idempotency-key read half. `scope` distinguishes which endpoint the key
+   * belongs to (`session.create`, `session.transition:<action>`, `session.recalculate`) so the
+   * same client-chosen key string can never accidentally collide across unrelated operations --
+   * the (organizationId, scope, key) tuple is what the unique constraint on
+   * ChecklistIdempotencyKey actually enforces. Returns undefined (never throws) when no key was
+   * supplied -- the caller always proceeds with a fresh mutation in that case.
+   */
+  private async findIdempotentResponse<T>(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    scope: string,
+    key: string | undefined,
+  ): Promise<T | undefined> {
+    if (!key) return undefined;
+    const existing = await tx.checklistIdempotencyKey.findUnique({
+      where: { organizationId_scope_key: { organizationId, scope, key } },
+    });
+    return existing ? (existing.responseBody as T) : undefined;
+  }
+
+  /** The write half of the pair above -- a no-op when the caller supplied no key. */
+  private async recordIdempotentResponse(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    scope: string,
+    key: string | undefined,
+    responseBody: unknown,
+  ): Promise<void> {
+    if (!key) return;
+    await tx.checklistIdempotencyKey.create({
+      data: { organizationId, scope, key, responseBody: responseBody as Prisma.InputJsonValue },
+    });
   }
 
   private async assertValidObserver(tx: Prisma.TransactionClient, observerId: string, organizationId: string) {
