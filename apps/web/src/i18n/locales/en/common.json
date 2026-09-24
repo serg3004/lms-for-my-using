@@ -1947,6 +1947,18 @@
       "manager_overdue_reminder": {
         "title": "Overdue learning reminder",
         "message": "“{{courseTitle}}” is overdue. Your manager has sent you a reminder."
+      },
+      "checklist_session_observer_unavailable": {
+        "title": "Observer unavailable",
+        "message": "An observer reported they can't conduct a scheduled checklist session. Reassign a new observer."
+      },
+      "checklist_session_pre_start_reminder": {
+        "title": "Session starting soon",
+        "message": "A checklist session you're observing starts soon."
+      },
+      "checklist_session_incomplete_after_start_reminder": {
+        "title": "Session still in progress",
+        "message": "A checklist session you're observing hasn't been completed yet."
       }
     },
     "centerTitle": "Notification Center",

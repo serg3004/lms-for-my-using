@@ -1,6 +1,7 @@
 import { formatUserName } from '../admin-checklists/domain.js';
 import type {
   BulkCreateChecklistSessionResult,
+  ChecklistSessionParticipant,
   ChecklistSessionStatus,
   ChecklistSessionSummary,
 } from '../../shared/api/types.js';
@@ -32,6 +33,17 @@ export function canReassignObserver(session: Pick<ChecklistSessionSummary, 'stat
 
 export function formatParticipantName(participant: { firstName: string; lastName?: string | null; email: string }) {
   return formatUserName(participant);
+}
+
+/**
+ * PR 302 review fix: `ReassignObserverDialog`'s picklist exists to pick a *replacement* -- listing
+ * the session's current observer among the candidates invited picking a no-op "reassignment" that
+ * would silently dismiss a valid unavailability report without assigning anyone new. The backend
+ * now rejects that no-op too (`ChecklistSessionService.update()`), but excluding it here is the
+ * actual UX fix -- a disabled/absent option beats a 400 after the admin already picked it.
+ */
+export function excludeCurrentObserver(candidates: ChecklistSessionParticipant[], currentObserverId: string) {
+  return candidates.filter((candidate) => candidate.id !== currentObserverId);
 }
 
 /** Matches the backend's `POST /checklist-sessions/bulk` `learnerIds` cap (see API contract). */

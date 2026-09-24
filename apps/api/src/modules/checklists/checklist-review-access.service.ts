@@ -74,6 +74,21 @@ export class ChecklistReviewAccessService {
   }
 
   /**
+   * PR 302 review fix: `sessionScope()` is a *read* policy -- for a user holding both `manager`
+   * and `instructor` roles it deliberately returns a union (their team's sessions OR sessions
+   * they personally observe), which is correct for visibility but wrong for an action that must
+   * mean "the assigned observer, acting on their own session." Passing the read union into
+   * `markObserverUnavailable` let such a dual-role user report unavailability on a teammate's
+   * session they merely manage but don't observe, triggering a false admin alert for the wrong
+   * person. This scope is action-specific: unrestricted for admin (acting on the observer's
+   * behalf is the documented admin path), otherwise always `{ observerId: user.id }` --
+   * never the broader manager-team union, regardless of what other roles the caller also holds.
+   */
+  observerActionScope(user: CurrentUser): ChecklistSessionAccessScope {
+    return user.roles.includes('admin') ? {} : { observerId: user.id };
+  }
+
+  /**
    * Admin API participant lookup (PR 292): who a manager may pick as a session's learner when
    * scheduling. Tenant-wide for admin, effective team scope (same union as everywhere else) for
    * manager -- reuses `OrganizationAccessScopeService.user()` directly (a plain `User` filter,

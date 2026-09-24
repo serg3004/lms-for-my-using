@@ -496,7 +496,9 @@ export class ChecklistsController {
   async markObserverUnavailable(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = markChecklistSessionObserverUnavailableSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    // Action-specific scope, not the read-oriented sessionScope() -- see observerActionScope()'s
+    // own doc comment for why a manager+instructor dual-role caller must not get the union here.
+    const scope = this.reviewAccess.observerActionScope(user);
     return this.sessions.markObserverUnavailable(sessionId, user.organizationId, input.reason, input.version, user.id, scope);
   }
 

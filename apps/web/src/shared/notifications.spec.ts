@@ -1,5 +1,8 @@
+import i18next from 'i18next';
 import { describe, expect, it } from 'vitest';
 
+import '../i18n/index.js';
+import { supportedLocales } from '../i18n/index.js';
 import { describeNotification, markAllReadLocally, markReadLocally } from './notifications.js';
 import type { NotificationSummary } from './api/types.js';
 
@@ -41,6 +44,31 @@ describe('describeNotification', () => {
       message: '',
     });
   });
+});
+
+// PR 302 review fix: the observer-unavailable notification (and its PR 291 siblings, the same
+// bug shape) previously had no i18n entry at all, so describeNotification() silently fell back to
+// the raw type string with an empty message -- this checks the *real* locale resources (not a
+// hand-written fake t()), in every supported locale, so a missing key can't ship silently again.
+describe('checklist session notification types resolve in every supported locale (PR 302 review fix)', () => {
+  const types = [
+    'checklist_session_observer_unavailable',
+    'checklist_session_pre_start_reminder',
+    'checklist_session_incomplete_after_start_reminder',
+  ] as const;
+
+  for (const locale of supportedLocales) {
+    for (const type of types) {
+      it(`${type} has a non-empty title and message in ${locale}`, () => {
+        const t = i18next.getFixedT(locale);
+        const notification: NotificationSummary = { id: 'n1', type, data: { sessionId: 's1', reason: 'Out sick' }, link: null, readAt: null, createdAt: '2026-01-01T00:00:00.000Z' };
+        const { title, message } = describeNotification(notification, t);
+        expect(title).not.toBe(type);
+        expect(title.length).toBeGreaterThan(0);
+        expect(message.length).toBeGreaterThan(0);
+      });
+    }
+  }
 });
 
 const items: NotificationSummary[] = [

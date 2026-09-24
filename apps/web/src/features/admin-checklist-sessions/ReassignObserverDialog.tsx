@@ -5,7 +5,7 @@ import { ApiClientError } from '../../shared/apiClient.js';
 import { listChecklistSessionParticipants, updateChecklistSession } from '../../shared/api/checklistSessions.js';
 import type { ChecklistSessionParticipant, ChecklistSessionSummary } from '../../shared/api/types.js';
 import { InlineFeedback, Input, WizardDialog } from '../../shared/ui.js';
-import { formatParticipantName } from './domain.js';
+import { excludeCurrentObserver, formatParticipantName } from './domain.js';
 import { useDebounced } from './ChecklistSessionWizard.js';
 
 type Props = {
@@ -42,7 +42,9 @@ export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Pr
     if (!session) return;
     let cancelled = false;
     listChecklistSessionParticipants({ role: 'observer', search: debounced || undefined, pageSize: 20 })
-      .then((result) => { if (!cancelled) setResults(result.items); })
+      .then((result) => {
+        if (!cancelled) setResults(excludeCurrentObserver(result.items, session.observerId));
+      })
       .catch(() => { if (!cancelled) setResults([]); });
     return () => { cancelled = true; };
   }, [session, debounced]);
