@@ -666,6 +666,89 @@ export class ChecklistSessionService {
     }));
   }
 
+  /**
+   * PR 300 — admin-only recalculate: re-derives the score purely from persisted
+   * `ChecklistItemResult` rows + the immutable template snapshot (`ChecklistsService.
+   * computeInstanceScore`), never touching status or results. Always records a
+   * `ChecklistScoreRevision` -- even a no-op recalculation is a meaningful audit event ("an admin
+   * explicitly re-checked this score") -- inside a Serializable transaction with retry so a
+   * concurrent item-result submission can't race the recalculation into a stale write.
+   */
+  async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object) {
+    const { revision, previousPercentage, newPercentage } = await runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({
+        where: { id: sessionId, organizationId, ...scope },
+        select: {
+          id: true,
+          instanceId: true,
+          instance: { select: { status: true, percentage: true, passed: true } },
+        },
+      });
+      if (!session) throw new NotFoundException('Checklist session not found');
+
+      const { totalScore, maxScore, scored, percentage, passThreshold } = await this.checklistsService.computeInstanceScore(
+        session.instanceId,
+        organizationId,
+        tx,
+      );
+      const passed = scored && session.instance.status === 'completed' && percentage >= passThreshold;
+
+      const createdRevision = await tx.checklistScoreRevision.create({
+        data: {
+          organizationId,
+          instanceId: session.instanceId,
+          previousPercentage: session.instance.percentage,
+          newPercentage: percentage,
+          previousPassed: session.instance.passed,
+          newPassed: passed,
+          reason,
+          actorUserId: actorId,
+        },
+      });
+
+      await tx.checklistInstance.update({
+        where: { id: session.instanceId },
+        data: { totalScore, maxScore, percentage, passed, scored },
+      });
+
+      await tx.checklistSessionEvent.create({
+        data: {
+          organizationId,
+          sessionId,
+          eventType: 'score_recalculated',
+          actorUserId: actorId,
+          metadata: { revisionId: createdRevision.id, previousPercentage: session.instance.percentage, newPercentage: percentage },
+        },
+      });
+
+      return { revision: createdRevision, previousPercentage: session.instance.percentage, newPercentage: percentage };
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_score_revision.created',
+      targetType: 'checklist_instance',
+      targetId: revision.instanceId,
+      summary: `Recalculated checklist score (${previousPercentage}% -> ${newPercentage}%)`,
+      metadata: { sessionId, reason },
+    });
+
+    return revision;
+  }
+
+  async listScoreRevisions(sessionId: string, organizationId: string, scope: object) {
+    const session = await this.prisma.checklistSession.findFirst({
+      where: { id: sessionId, organizationId, ...scope },
+      select: { instanceId: true },
+    });
+    if (!session) throw new NotFoundException('Checklist session not found');
+    return this.prisma.checklistScoreRevision.findMany({
+      where: { instanceId: session.instanceId, organizationId },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   /** Shared by create/bulkCreate/repeat: create the session row + `created` event + pre_start reminder. */
   private async createSessionInTransaction(
     tx: Prisma.TransactionClient,

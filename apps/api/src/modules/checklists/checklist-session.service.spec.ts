@@ -911,4 +911,121 @@ describe('ChecklistSessionService', () => {
       );
     });
   });
+
+  describe('recalculateScore / listScoreRevisions (PR 300)', () => {
+    function createRecalculatePrisma(overrides: {
+      session?: Partial<Record<string, unknown>>;
+      score?: { totalScore: number; maxScore: number; scored: boolean; percentage: number; passThreshold: number };
+    } = {}) {
+      const session = {
+        id: sessionId,
+        instanceId,
+        instance: { status: 'completed', percentage: 70, passed: false },
+        ...overrides.session,
+      };
+      const scoreRevisionCreate = jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'revision-1', ...data }));
+      const instanceUpdate = jest.fn(async () => ({}));
+      const sessionEventCreate = jest.fn(async () => ({}));
+      const scoreRevisionFindMany = jest.fn(async () => []);
+
+      const base: Record<string, unknown> = {
+        checklistSession: { findFirst: jest.fn(async () => session) },
+        checklistScoreRevision: { create: scoreRevisionCreate, findMany: scoreRevisionFindMany },
+        checklistInstance: { update: instanceUpdate },
+        checklistSessionEvent: { create: sessionEventCreate },
+      };
+      base['$transaction'] = jest.fn(async (fn: (tx: unknown) => unknown) => fn(base));
+
+      const checklistsService = {
+        computeInstanceScore: jest.fn(async () => overrides.score ?? { totalScore: 8, maxScore: 10, scored: true, percentage: 80, passThreshold: 80 }),
+      } as unknown as import('./checklists.service.js').ChecklistsService;
+
+      return { prisma: base as unknown as PrismaService, checklistsService, scoreRevisionCreate, instanceUpdate, sessionEventCreate, scoreRevisionFindMany };
+    }
+
+    it('creates a ChecklistScoreRevision, updates the instance score, and records a score_recalculated event', async () => {
+      const { prisma, checklistsService, scoreRevisionCreate, instanceUpdate, sessionEventCreate } = createRecalculatePrisma();
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
+
+      const result = await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {});
+
+      expect(result).toMatchObject({ id: 'revision-1' });
+      expect(scoreRevisionCreate).toHaveBeenCalledWith({
+        data: {
+          organizationId,
+          instanceId,
+          previousPercentage: 70,
+          newPercentage: 80,
+          previousPassed: false,
+          newPassed: true,
+          reason: 'Fixing a scoring bug',
+          actorUserId: actorId,
+        },
+      });
+      expect(instanceUpdate).toHaveBeenCalledWith({
+        where: { id: instanceId },
+        data: { totalScore: 8, maxScore: 10, percentage: 80, passed: true, scored: true },
+      });
+      expect(sessionEventCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({ organizationId, sessionId, eventType: 'score_recalculated', actorUserId: actorId }),
+      });
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId, actorId, action: 'checklist_score_revision.created', targetId: instanceId }),
+      );
+    });
+
+    it('still records a revision when the recalculation produces no change', async () => {
+      const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma({
+        session: { instance: { status: 'completed', percentage: 80, passed: true } },
+      });
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await service.recalculateScore(sessionId, organizationId, 'Double-checking after a dispute', actorId, {});
+
+      expect(scoreRevisionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ previousPercentage: 80, newPercentage: 80 }) }));
+    });
+
+    it('never marks passed=true for a session whose instance is not completed, even at 100%', async () => {
+      const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma({
+        session: { instance: { status: 'in_progress', percentage: 0, passed: false } },
+        score: { totalScore: 10, maxScore: 10, scored: true, percentage: 100, passThreshold: 80 },
+      });
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await service.recalculateScore(sessionId, organizationId, 'Sanity check mid-session', actorId, {});
+
+      expect(scoreRevisionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ newPassed: false }) }));
+    });
+
+    it('denies recalculating a session outside the caller scope', async () => {
+      const { prisma, checklistsService } = createRecalculatePrisma();
+      (prisma.checklistSession.findFirst as jest.Mock).mockResolvedValueOnce(null);
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(service.recalculateScore(sessionId, organizationId, 'reason', actorId, { observerId: 'someone-else' })).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
+    it('lists score revisions for the session\'s underlying instance, oldest first', async () => {
+      const { prisma, checklistsService, scoreRevisionFindMany } = createRecalculatePrisma();
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await service.listScoreRevisions(sessionId, organizationId, {});
+
+      expect(scoreRevisionFindMany).toHaveBeenCalledWith({
+        where: { instanceId, organizationId },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      });
+    });
+
+    it('raises NotFoundException listing revisions for a session outside scope', async () => {
+      const { prisma, checklistsService } = createRecalculatePrisma();
+      (prisma.checklistSession.findFirst as jest.Mock).mockResolvedValueOnce(null);
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      await expect(service.listScoreRevisions(sessionId, organizationId, {})).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
 });

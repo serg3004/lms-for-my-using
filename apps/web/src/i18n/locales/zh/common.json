@@ -1067,7 +1067,8 @@
           "doneTitle": "会话已创建",
           "doneSummary": "已创建 {{created}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
           "submitError": "无法创建会话。"
-        }
+        },
+        "report": "报告"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -1109,6 +1110,36 @@
         "defaultLow": "低",
         "defaultMedium": "中",
         "defaultHigh": "高"
+      },
+      "report": {
+        "eyebrow": "会话报告",
+        "title": "会话报告",
+        "subtitle": "一次在岗培训会话的完整记录。",
+        "loadError": "无法加载会话报告。",
+        "loading": "加载中...",
+        "print": "打印",
+        "tabsLabel": "报告分区",
+        "tabSummary": "摘要",
+        "tabParticipants": "参与者",
+        "tabCriteria": "标准",
+        "tabFiles": "文件",
+        "tabHistory": "历史",
+        "checklist": "检查表",
+        "result": "结果",
+        "location": "位置采集",
+        "criteriaEmpty": "此检查表没有标准项。",
+        "photosTitle": "照片证据",
+        "photosEmpty": "此会话未附加照片。",
+        "locationTitle": "位置记录",
+        "locationEmpty": "未记录位置。",
+        "eventsTitle": "事件历史",
+        "eventsEmpty": "尚无记录的事件。",
+        "revisionsTitle": "分数修订历史",
+        "revisionsEmpty": "分数从未被重新计算过。",
+        "recalculateReason": "重新计算原因",
+        "recalculate": "重新计算分数",
+        "recalculating": "正在重新计算...",
+        "recalculateError": "无法重新计算分数。"
       }
     }
   },
@@ -2098,6 +2129,20 @@
       "resultHidden": "会话完成后即可查看您的结果。",
       "feedbackTitle": "来自观察员的反馈",
       "criteriaTitle": "标准"
+    },
+    "event": {
+      "created": "会话已创建",
+      "rescheduled": "已重新安排",
+      "started": "已开始",
+      "paused": "已暂停",
+      "resumed": "已恢复",
+      "completed": "已完成",
+      "cancelled": "已取消",
+      "observer_reassigned": "观察员已更换",
+      "reminder_sent": "已发送提醒",
+      "location_override": "管理员覆盖记录了位置",
+      "feedback_updated": "反馈已更新",
+      "score_recalculated": "分数已重新计算"
     }
   }
 }

@@ -410,6 +410,48 @@ async function installChecklistSessionsMocks(page: Page) {
   }));
 }
 
+async function installChecklistSessionReportMocks(page: Page) {
+  await installAdminAuthMock(page);
+  const session = {
+    id: 'session-1', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'observer-1',
+    status: 'completed', version: 3, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: '2026-02-01T09:05:00.000Z',
+    pausedAt: null, locationCapturePolicy: 'required', timezone: 'UTC', overdue: false,
+    strengths: 'Great attention to detail', developmentAreas: null, nextSteps: null,
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-02-01T09:05:00.000Z',
+    checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+    learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+    observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
+    result: { instanceStatus: 'completed', percentage: 92, passed: true, scored: true, visible: true },
+  };
+  await page.route('**/api/v1/checklist-sessions/session-1', (route) => route.fulfill({ json: session }));
+  await page.route('**/api/v1/checklist-sessions/session-1/events', (route) => route.fulfill({
+    json: [
+      { id: 'event-1', organizationId: 'visual-org', sessionId: 'session-1', eventType: 'created', actorUserId: 'observer-1', metadata: null, createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'event-2', organizationId: 'visual-org', sessionId: 'session-1', eventType: 'completed', actorUserId: 'observer-1', metadata: null, createdAt: '2026-02-01T09:30:00.000Z' },
+    ],
+  }));
+  await page.route('**/api/v1/checklist-sessions/session-1/score-revisions', (route) => route.fulfill({ json: [] }));
+  await page.route('**/api/v1/checklist-sessions/session-1/location', (route) => route.fulfill({
+    json: [{ id: 'capture-1', organizationId: 'visual-org', sessionId: 'session-1', capturePoint: 'start', status: 'captured', capturedBy: 'observer-1', capturedAt: '2026-02-01T09:05:00.000Z' }],
+  }));
+  await page.route('**/api/v1/checklist-instances/instance-1', (route) => route.fulfill({
+    json: {
+      id: 'instance-1', organizationId: 'visual-org', checklistId: 'checklist-1', userId: 'learner-1',
+      assignedBy: 'observer-1', reviewerId: null, reviewAssignedAt: null, reviewAssignedBy: null,
+      status: 'completed', totalScore: 10, maxScore: 10, percentage: 92, passed: true,
+      dueAt: null, submittedAt: '2026-02-01T09:25:00.000Z', completedAt: '2026-02-01T09:30:00.000Z',
+      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-02-01T09:30:00.000Z',
+      checklist: {
+        id: 'checklist-1', organizationId: 'visual-org', title: 'Opening shift checklist', description: null,
+        status: 'published', scoringMode: 'sum_points', passThreshold: 80, scaleLevels: null, requiresReview: false,
+        createdBy: 'visual-admin', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+        items: [checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' })],
+      },
+      results: [{ id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: 'Done well', reviewStatus: 'approved', reviewComment: null, reviewedBy: null, reviewedAt: null }],
+    },
+  }));
+}
+
 async function installInstructorConductMocks(page: Page) {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
@@ -692,6 +734,18 @@ for (const width of widths) {
       });
       expect(dialogFits).toBe(true);
       await expectVisualMatch(page, `admin-checklist-sessions-wizard-${width}`);
+    });
+
+    test('keeps the admin session report responsive', async ({ page }) => {
+      await installChecklistSessionReportMocks(page);
+      await page.goto('/admin/checklists/sessions/session-1');
+      // The breadcrumb also renders this text but collapses on narrow viewports -- the <h1> is
+      // the one guaranteed-visible occurrence at every width.
+      await expect(page.getByRole('heading', { level: 1, name: 'Opening shift checklist' })).toBeVisible();
+      await expect(page.getByText('92% ✓')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `admin-checklist-session-report-${width}`);
     });
   });
 }

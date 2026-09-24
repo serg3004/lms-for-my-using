@@ -244,6 +244,10 @@ enum ChecklistSessionEventType {
   location_override
   /// PR 297: the observer saved/updated structured feedback (strengths/development areas/next steps).
   feedback_updated
+  /// PR 300: an admin recalculated the underlying ChecklistInstance's score from persisted
+  /// ChecklistItemResult rows -- always paired with a ChecklistScoreRevision row (event metadata
+  /// carries the revision id), even when the recalculation produced no change.
+  score_recalculated
 }
 
 enum ChecklistSessionReminderType {

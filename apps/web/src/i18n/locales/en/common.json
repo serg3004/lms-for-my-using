@@ -1067,7 +1067,8 @@
           "doneTitle": "Sessions created",
           "doneSummary": "{{created}} created, {{skipped}} skipped, {{failed}} failed.",
           "submitError": "Unable to create sessions."
-        }
+        },
+        "report": "Report"
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -1109,6 +1110,36 @@
         "defaultLow": "Low",
         "defaultMedium": "Medium",
         "defaultHigh": "High"
+      },
+      "report": {
+        "eyebrow": "Session report",
+        "title": "Session report",
+        "subtitle": "Full record for one workplace-training session.",
+        "loadError": "Unable to load the session report.",
+        "loading": "Loading...",
+        "print": "Print",
+        "tabsLabel": "Session report sections",
+        "tabSummary": "Summary",
+        "tabParticipants": "Participants",
+        "tabCriteria": "Criteria",
+        "tabFiles": "Files",
+        "tabHistory": "History",
+        "checklist": "Checklist",
+        "result": "Result",
+        "location": "Location capture",
+        "criteriaEmpty": "This checklist has no criteria.",
+        "photosTitle": "Photo evidence",
+        "photosEmpty": "No photos were attached to this session.",
+        "locationTitle": "Location captures",
+        "locationEmpty": "No location captures recorded.",
+        "eventsTitle": "Event history",
+        "eventsEmpty": "No events recorded yet.",
+        "revisionsTitle": "Score revisions",
+        "revisionsEmpty": "The score has never been recalculated.",
+        "recalculateReason": "Reason for recalculation",
+        "recalculate": "Recalculate score",
+        "recalculating": "Recalculating...",
+        "recalculateError": "Unable to recalculate the score."
       }
     }
   },
@@ -2098,6 +2129,20 @@
       "resultHidden": "Your result will be visible once the session is completed.",
       "feedbackTitle": "Feedback from your observer",
       "criteriaTitle": "Criteria"
+    },
+    "event": {
+      "created": "Session created",
+      "rescheduled": "Rescheduled",
+      "started": "Started",
+      "paused": "Paused",
+      "resumed": "Resumed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "observer_reassigned": "Observer reassigned",
+      "reminder_sent": "Reminder sent",
+      "location_override": "Location captured by admin override",
+      "feedback_updated": "Feedback updated",
+      "score_recalculated": "Score recalculated"
     }
   }
 }

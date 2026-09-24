@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -120,6 +121,9 @@ export function AdminChecklistSessionsPage() {
       label: t('admin.checklists.sessions.columns.actions', 'Actions'),
       render: (row) => (
         <>
+          <Link className="admin-btn admin-btn--sm" to={`/admin/checklists/sessions/${row.id}`}>
+            {t('admin.checklists.sessions.report', 'Report')}
+          </Link>
           {canCancelSession(row) && (
             <button className="admin-btn admin-btn--sm" onClick={() => setCancelTarget(row)} type="button">
               {t('admin.checklists.sessions.cancel', 'Cancel')}

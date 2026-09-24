@@ -241,6 +241,19 @@ Migration `20260923160000_add_checklist_session_feedback` также additive и
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Session score-recalculation event migration
+
+Migration `20260924040000_add_checklist_score_recalculated_event` также additive и backward-compatible (PR 300, admin session report и аудируемый пересчёт):
+
+- `ChecklistSessionEventType` получает новое значение `score_recalculated` (`ALTER TYPE ... ADD VALUE`) — единственное изменение схемы в этой миграции; `ChecklistScoreRevision` (таблица `checklist_score_revisions`) уже существовала с миграции `20260922180000_add_checklist_session_domain`, новых колонок/таблиц не создаётся;
+- не используется в той же транзакции, что и его добавление, поэтому совместимо с обёрткой миграции в транзакцию;
+- backfill не требуется — новое значение enum используется только для новых событий, создаваемых `POST /checklist-sessions/:id/recalculate`;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новом enum-значении и продолжает работать с событиями сессий как раньше.
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и проверена на нулевой дрейф через `prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url <fresh empty db>` — вывод байт-в-байт совпадает (165 строк) с тем же прогоном без этой миграции (сравнение дало пустой `diff`). Применено к реальному локальному PostgreSQL 16 (`prisma migrate deploy`), `checklist-session-recalculate.database.spec.ts` подтверждает пересчёт из persisted-результатов, запись revision/событие/audit log и object-scope denial через сервисный слой на реальной БД.
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

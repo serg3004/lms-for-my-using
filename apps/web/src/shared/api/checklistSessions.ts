@@ -5,6 +5,7 @@ import type {
   BulkCreateChecklistSessionResult,
   ChecklistLocationCapture,
   ChecklistLocationCapturePoint,
+  ChecklistScoreRevision,
   ChecklistSession,
   ChecklistSessionAction,
   ChecklistSessionEvent,
@@ -15,6 +16,7 @@ import type {
   ChecklistSummary,
   CreateChecklistSessionInput,
   PaginatedResponse,
+  RecalculateChecklistScoreInput,
   SubmitChecklistLocationCaptureInput,
   SubmitChecklistSessionFeedbackInput,
   UpdateChecklistSessionInput,
@@ -89,4 +91,17 @@ export function listChecklistSessionParticipants(query: ChecklistSessionParticip
 /** Wizard's checklist picker -- published-only, so a draft/archived checklist can't be selected. */
 export function listPublishedChecklists() {
   return apiRequest<ChecklistSummary[]>(`/checklists${buildQueryString({ status: 'published' })}`);
+}
+
+// ---- PR 300: admin session report — auditable recalculate ----
+
+export function listChecklistScoreRevisions(sessionId: string) {
+  return apiRequest<ChecklistScoreRevision[]>(`/checklist-sessions/${encodeURIComponent(sessionId)}/score-revisions`);
+}
+
+export function recalculateChecklistSessionScore(sessionId: string, input: RecalculateChecklistScoreInput) {
+  return apiRequest<ChecklistScoreRevision>(`/checklist-sessions/${encodeURIComponent(sessionId)}/recalculate`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
