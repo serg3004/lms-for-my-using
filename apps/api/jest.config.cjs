@@ -13,6 +13,7 @@ module.exports = {
     '/src/integration/checklist-scoring-v1\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-reminders\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-admin-api\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-manager-analytics\\.database\\.spec\\.ts$',
     '/src/integration/checklist-evaluation-scales\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',
