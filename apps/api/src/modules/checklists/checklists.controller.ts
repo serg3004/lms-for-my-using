@@ -39,6 +39,7 @@ import {
   updateChecklistSessionSchema,
   updateChecklistWorkplaceSettingsSchema,
   checklistAnalyticsQuerySchema,
+  checklistManagerAnalyticsQuerySchema,
   checklistQueueQuerySchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
@@ -83,6 +84,22 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.reviewQueueScope(user);
     return this.checklistsService.getAnalytics(user.organizationId, checklistAnalyticsQuerySchema.parse(rawQuery), scope);
+  }
+
+  @Get('checklists/manager-analytics')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async getManagerAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const [scope, settings] = await Promise.all([
+      this.reviewAccess.participantLearnerScope(user),
+      this.workplaceSettings.getSettings(user.organizationId),
+    ]);
+    return this.checklistsService.getManagerAnalytics(
+      user.organizationId,
+      checklistManagerAnalyticsQuerySchema.parse(rawQuery),
+      scope,
+      { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
+    );
   }
 
   @Get('checklists/:id')

@@ -66,6 +66,8 @@ Observation-sheet builder additions (PR 296: `GET/POST /checklists/:checklistId/
 
 Structured feedback (PR 297: `PATCH /checklist-sessions/:id/feedback`) reuses `checklistSessionsRun` (admin/instructor) rather than adding a new policy -- recording feedback during/after a session is the same class of action as running it, performed by the same assigned observer. Still gated by `sessionScope()` at the row level (an instructor cannot record feedback for a session they are not the observer for), and rejected (400) while the session is `scheduled` or `cancelled`, independent of role.
 
+Manager checklist analytics (PR 299: `GET /checklists/manager-analytics`) introduces a new policy, `checklistManagerAnalyticsRead` (admin/manager) — narrower than `checklistReviewWrite` (which also grants instructor/mentor), because this endpoint feeds the manager-only `/manager/checklists` dashboard, not the shared review queue; instructor/mentor have no use for tenant-wide employee analytics and were deliberately left out rather than reusing the broader policy. Row-level scope is `ChecklistReviewAccessService.participantLearnerScope()` (`{}` tenant-wide for admin, `OrganizationAccessScopeService.user()` effective-team for manager — the same helper `sessionScope()`/the participant lookup already use), applied to the employee lookup that seeds the aggregation, so a manager can only ever see analytics for users already in their effective Group ∪ Department DIRECT ∪ ReportingLine DIRECT scope.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

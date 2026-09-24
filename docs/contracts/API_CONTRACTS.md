@@ -445,6 +445,28 @@ shown, not a general-purpose field restriction. Numbers are nulled outright, not
 an unauthorized value never reaches the response body in the first place. No new role policy --
 enforcement is caller-identity-based inside the existing `checklistSessionsRead` handlers.
 
+## Manager checklist analytics (PR 299)
+
+`GET /checklists/manager-analytics` (`checklistManagerAnalyticsRead`: `admin`/`manager`) powers the
+new `/manager/checklists` dashboard -- the workstream's single new nav item. Required `from`/`to`
+(ISO datetimes), optional `checklistId`/`departmentId`. Scope is
+`ChecklistReviewAccessService.participantLearnerScope()` (the same unified
+`OrganizationAccessScopeService.user()` filter used by the review queue and session scoping
+elsewhere in this module, not a bare Group-only filter) -- `{}` for admin, tenant-wide.
+
+Aggregation is employee-first over `ChecklistSession` (the workplace-training overlay), not every
+async `ChecklistInstance`: every employee in scope appears in `employees[]` even with zero sessions
+in the period, so a manager can see who has completed nothing (`summary.noCompletionCount`). Low/mid/
+high buckets (`distribution[]`, `summary.lowCount`/`highCount`) use the tenant's
+`ChecklistWorkplaceSettings.highPerformanceThreshold`/`lowThreshold` -- `lowThreshold` is nullable by
+design (DEC-CHKS-001 defers a concrete value), so when unset the low/mid split falls back to the
+instance's own `passed` flag instead of inventing a percentage cutoff. `trend[]` is a deterministic
+day-bucketed average-percentage time series from the current period's completed+scored sessions.
+Each employee row's own `trend` (`up`/`down`/`flat`/`null`) compares their average in the requested
+period against an equal-length immediately-preceding period. Only `completed` + `scored` sessions
+feed percentage-based stats; `sessionsCount`/`totalSessions` count every session in the period
+regardless of status.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

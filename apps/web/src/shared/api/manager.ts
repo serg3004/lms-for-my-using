@@ -44,3 +44,49 @@ export function sendManagerOverdueReminders(assignmentIds: string[]) {
     body: JSON.stringify({ assignmentIds }),
   });
 }
+
+// ---- PR 299: manager checklist analytics (`/manager/checklists`) ----
+
+export type ManagerChecklistAnalyticsQuery = {
+  from: string;
+  to: string;
+  checklistId?: string;
+  departmentId?: string;
+};
+
+export type ManagerChecklistAnalyticsEmployeeRow = {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  department: string | null;
+  sessionsCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
+  trend: 'up' | 'down' | 'flat' | null;
+  lastSessionAt: string | null;
+};
+
+export type ManagerChecklistAnalytics = {
+  summary: {
+    totalEmployees: number;
+    totalSessions: number;
+    completedSessions: number;
+    averagePercentage: number;
+    lowCount: number;
+    highCount: number;
+    noCompletionCount: number;
+  };
+  thresholds: { high: number; low: number | null };
+  distribution: { bucket: 'low' | 'mid' | 'high'; count: number }[];
+  trend: { date: string; averagePercentage: number; count: number }[];
+  employees: ManagerChecklistAnalyticsEmployeeRow[];
+};
+
+function buildQueryString(params: Record<string, unknown>) {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== '');
+  return entries.length ? `?${new URLSearchParams(Object.fromEntries(entries.map(([key, value]) => [key, String(value)]))).toString()}` : '';
+}
+
+export function getManagerChecklistAnalytics(query: ManagerChecklistAnalyticsQuery) {
+  return apiRequest<ManagerChecklistAnalytics>(`/checklists/manager-analytics${buildQueryString(query)}`);
+}
