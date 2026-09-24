@@ -287,17 +287,6 @@
   flex-shrink: 0;
 }
 
-.admin-topheader__bell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-}
-
 .admin-topheader__logout {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

@@ -1947,6 +1947,18 @@
       "manager_overdue_reminder": {
         "title": "Напоминание о просроченном обучении",
         "message": "Курс «{{courseTitle}}» просрочен. Руководитель отправил вам напоминание."
+      },
+      "checklist_session_observer_unavailable": {
+        "title": "Наблюдатель недоступен",
+        "message": "Наблюдатель отметил, что не может провести запланированную сессию. Назначьте нового наблюдателя."
+      },
+      "checklist_session_pre_start_reminder": {
+        "title": "Сессия скоро начнётся",
+        "message": "Сессия, за которой вы наблюдаете, скоро начнётся."
+      },
+      "checklist_session_incomplete_after_start_reminder": {
+        "title": "Сессия ещё не завершена",
+        "message": "Сессия, за которой вы наблюдаете, ещё не завершена."
       }
     },
     "centerTitle": "Центр уведомлений",

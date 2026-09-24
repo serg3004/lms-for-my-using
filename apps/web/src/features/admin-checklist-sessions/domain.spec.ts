@@ -7,6 +7,7 @@ import {
   canProceedFromScheduleStep,
   canReassignObserver,
   canRepeatSession,
+  excludeCurrentObserver,
   formatParticipantName,
   partitionBulkCreateResults,
 } from './domain.js';
@@ -37,6 +38,21 @@ describe('canReassignObserver', () => {
     for (const status of ['in_progress', 'paused', 'completed', 'cancelled'] as ChecklistSessionStatus[]) {
       expect(canReassignObserver({ status })).toBe(false);
     }
+  });
+});
+
+describe('excludeCurrentObserver (PR 302 review fix)', () => {
+  it('filters the session\'s current observer out of the candidate list', () => {
+    const candidates = [
+      { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'olga@x.com', position: null },
+      { id: 'observer-2', firstName: 'Second', lastName: 'Observer', email: 'second@x.com', position: null },
+    ];
+    expect(excludeCurrentObserver(candidates, 'observer-1')).toEqual([candidates[1]]);
+  });
+
+  it('leaves the list untouched when the current observer is not among the candidates', () => {
+    const candidates = [{ id: 'observer-2', firstName: 'Second', lastName: 'Observer', email: 'second@x.com', position: null }];
+    expect(excludeCurrentObserver(candidates, 'observer-1')).toEqual(candidates);
   });
 });
 

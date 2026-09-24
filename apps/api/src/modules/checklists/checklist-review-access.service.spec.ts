@@ -151,6 +151,26 @@ describe('ChecklistReviewAccessService', () => {
     ] });
   });
 
+  describe('observerActionScope (PR 302 review fix)', () => {
+    it('is unrestricted for admin', () => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+      expect(service.observerActionScope(currentUser(['admin']))).toEqual({});
+    });
+
+    it('is always observerId-only for a pure instructor', () => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+      expect(service.observerActionScope(currentUser(['instructor']))).toEqual({ observerId: managerId });
+    });
+
+    it('never widens to the manager-team union for a dual manager+instructor user, unlike sessionScope()', () => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+      // sessionScope() (read) legitimately returns an OR union for this same user (see the
+      // "combines manager scope..." test above) -- observerActionScope() (write) must not, since
+      // "mark my own session unavailable" must never mean "any session my team can see."
+      expect(service.observerActionScope(currentUser(['manager', 'instructor']))).toEqual({ observerId: managerId });
+    });
+  });
+
   describe('participantLearnerScope (PR 292)', () => {
     it('is tenant-wide for admin', async () => {
       const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());

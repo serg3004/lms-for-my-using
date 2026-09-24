@@ -354,6 +354,17 @@ describe('ChecklistSessionService', () => {
         }),
       );
     });
+
+    it('rejects reassigning to the same observer instead of silently no-op-clearing an unavailable flag (review fix)', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(
+        service.update(sessionId, organizationId, { version: 1, observerId }, actorId, {}),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+      expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('markObserverUnavailable (PR 302)', () => {

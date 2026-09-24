@@ -454,7 +454,16 @@ export class ChecklistSessionService {
       }
       if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
 
-      if (changes.observerId) await this.assertValidObserver(tx, changes.observerId, organizationId);
+      if (changes.observerId) {
+        // Review fix (PR 302): reassigning to the *same* observer is never a real reassignment --
+        // without this check it would still silently clear an unavailability report (and record a
+        // no-op "observer_reassigned" event) even though nothing actually changed, letting an
+        // admin dismiss a valid report without ever picking a replacement.
+        if (changes.observerId === session.observerId) {
+          throw new BadRequestException('The new observer must be different from the current one');
+        }
+        await this.assertValidObserver(tx, changes.observerId, organizationId);
+      }
 
       const result = await tx.checklistSession.updateMany({
         where: { id: sessionId, organizationId, version: expectedVersion, status: 'scheduled' },
