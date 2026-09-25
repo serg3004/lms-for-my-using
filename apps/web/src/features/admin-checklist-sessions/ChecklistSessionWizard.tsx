@@ -146,7 +146,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
         await Promise.all(createdIds.map(async (sessionId) => {
           try {
             const session = await getChecklistSession(sessionId);
-            await transitionChecklistSession(sessionId, 'start', session.version);
+            await transitionChecklistSession(sessionId, 'start', session.version, crypto.randomUUID());
           } catch {
             // Leave the session scheduled if it couldn't be auto-started -- it still exists and
             // can be started manually from the list; the bulk-create outcome itself is unaffected.

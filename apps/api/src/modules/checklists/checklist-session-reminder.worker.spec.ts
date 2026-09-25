@@ -208,5 +208,44 @@ describe('ChecklistSessionReminderWorker', () => {
 
       expect(delivery.send).not.toHaveBeenCalled();
     });
+
+    // PR 306 anomaly #13: a failed delivery must not be swallowed -- ChecklistSessionReminderDelivery
+    // already re-throws (see checklist-session-reminder-delivery.ts's catch block), and this worker
+    // must let that propagate rather than catching it, so BackgroundJobsService's own queue-level
+    // retry (attempts/backoffMs, same mechanism as every other job in this worker) actually gets a
+    // chance to run. Swallowing the error here would silently turn a transient delivery failure into
+    // a permanently un-retried, un-logged drop.
+    it('propagates a delivery failure instead of swallowing it, so the job queue retries the notify job', async () => {
+      const { worker, backgroundJobs, delivery } = createHarness();
+      const deliveryError = new Error('delivery provider returned status 503');
+      delivery.send.mockRejectedValueOnce(deliveryError);
+      worker.onModuleInit();
+      const handler = backgroundJobs.handlers.get(CHECKLIST_SESSION_REMINDER_NOTIFY_JOB)!;
+
+      await expect(
+        handler({
+          id: 'job-3',
+          name: CHECKLIST_SESSION_REMINDER_NOTIFY_JOB,
+          attemptsMade: 0,
+          data: { reminderId, sessionId, organizationId, observerId, reminderType: 'pre_start' },
+        }),
+      ).rejects.toThrow(deliveryError);
+    });
+
+    it('succeeds on a retried attempt after a first delivery failure, with no state to duplicate on the retry', async () => {
+      const { worker, backgroundJobs, delivery } = createHarness();
+      delivery.send.mockRejectedValueOnce(new Error('delivery provider returned status 503'));
+      worker.onModuleInit();
+      const handler = backgroundJobs.handlers.get(CHECKLIST_SESSION_REMINDER_NOTIFY_JOB)!;
+      const payload = { id: 'job-4', name: CHECKLIST_SESSION_REMINDER_NOTIFY_JOB, attemptsMade: 0, data: { reminderId, sessionId, organizationId, observerId, reminderType: 'pre_start' } };
+
+      await expect(handler(payload)).rejects.toThrow();
+      // A retried attempt is just another call to the same idempotent handler -- deliverEmail
+      // holds no state of its own (the ChecklistSessionReminder row was already marked "sent"
+      // before this job was even enqueued), so a second attempt after a transient failure is safe
+      // and simply forwards the same payload again.
+      await expect(handler({ ...payload, attemptsMade: 1 })).resolves.toBeUndefined();
+      expect(delivery.send).toHaveBeenCalledTimes(2);
+    });
   });
 });

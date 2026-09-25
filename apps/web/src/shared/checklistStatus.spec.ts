@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CHECKLIST_INSTANCE_STATUS_BADGE_VARIANT, CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from './checklistStatus.js';
+import { CHECKLIST_INSTANCE_STATUS_BADGE_VARIANT, CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from './checklistStatus.js';
 
 describe('CHECKLIST_INSTANCE_STATUS_BADGE_VARIANT', () => {
   it('covers every ChecklistInstanceStatus value exhaustively', () => {
@@ -42,5 +42,33 @@ describe('CHECKLIST_SESSION_STATUS_BADGE_VARIANT', () => {
   it('marks cancelled as danger and completed as success, distinctly from the instance mapping', () => {
     expect(CHECKLIST_SESSION_STATUS_BADGE_VARIANT.cancelled).toBe('danger');
     expect(CHECKLIST_SESSION_STATUS_BADGE_VARIANT.completed).toBe('success');
+  });
+});
+
+describe('describeChecklistSessionResult', () => {
+  it('is pending while the instance has not completed, regardless of scored/percentage', () => {
+    expect(describeChecklistSessionResult({ instanceStatus: 'in_progress', scored: null, percentage: null, passed: null })).toEqual({
+      kind: 'pending',
+    });
+    expect(describeChecklistSessionResult({ instanceStatus: 'assigned', scored: null, percentage: null, passed: null })).toEqual({
+      kind: 'pending',
+    });
+    expect(describeChecklistSessionResult({ instanceStatus: 'submitted', scored: null, percentage: null, passed: null })).toEqual({
+      kind: 'pending',
+    });
+  });
+
+  it('is notScored (not pending) when the instance completed with every criterion skipped', () => {
+    expect(describeChecklistSessionResult({ instanceStatus: 'completed', scored: false, percentage: null, passed: null })).toEqual({
+      kind: 'notScored',
+    });
+  });
+
+  it('is scored with the percentage/passed values when the instance completed with a real score', () => {
+    expect(describeChecklistSessionResult({ instanceStatus: 'completed', scored: true, percentage: 80, passed: true })).toEqual({
+      kind: 'scored',
+      percentage: 80,
+      passed: true,
+    });
   });
 });

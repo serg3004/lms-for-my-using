@@ -132,4 +132,38 @@ describe('manager checklist analytics (PR 299) — database', () => {
 
     expect(result.employees[0]).toMatchObject({ sessionsCount: 1, averagePercentage: 80 });
   });
+
+  // PR 306 anomaly #15: no session at all was ever the untested path -- every other test in this
+  // file creates at least one session before asserting. This proves the "no-data" claim in PR 299's
+  // status paragraph ("каждый сотрудник в scope попадает в employees[], даже с нулём сессий за
+  // период, что даёт честный noCompletionCount") against real Postgres, not just against the
+  // in-memory aggregation logic: a managed employee with zero ChecklistSession rows in the whole
+  // organization must still surface as an honest zero-row, not be silently dropped or crash the
+  // aggregation on an empty result set.
+  it('PR 306 #15: reports an honest zero-row for a managed employee with no sessions at all, not a dropped row or a crash', async () => {
+    const managerScope = await reviewAccess.participantLearnerScope(currentUser(managerId, ['manager']));
+    const result = await checklistsService.getManagerAnalytics(organizationId, query, managerScope, thresholds);
+
+    expect(result.summary).toMatchObject({
+      totalEmployees: 1,
+      totalSessions: 0,
+      completedSessions: 0,
+      averagePercentage: 0,
+      lowCount: 0,
+      highCount: 0,
+      noCompletionCount: 1,
+    });
+    expect(result.employees).toEqual([
+      expect.objectContaining({
+        userId: managedEmployeeId,
+        sessionsCount: 0,
+        completedCount: 0,
+        averagePercentage: null,
+        trend: null,
+        lastSessionAt: null,
+      }),
+    ]);
+    expect(result.distribution.every((bucket) => bucket.count === 0)).toBe(true);
+    expect(result.trend).toEqual([]);
+  });
 });
