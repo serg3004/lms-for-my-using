@@ -1097,6 +1097,22 @@
         "structure_only": "Тек құрылым",
         "none": "Ешнәрсе"
       },
+      "settings": {
+        "open": "Параметрлер",
+        "title": "Жұмыс орнында оқыту параметрлері",
+        "loading": "Параметрлер жүктелуде…",
+        "loadError": "Параметрлерді жүктеу мүмкін болмады.",
+        "saveError": "Параметрлерді сақтау мүмкін болмады.",
+        "moduleEnabled": "Модуль осы ұйым үшін қосылған",
+        "highPerformanceThreshold": "Жоғары нәтиже шегі",
+        "defaultGeolocationPolicy": "Әдепкі геолокация саясаты",
+        "geolocationOptional": "Қаласа",
+        "geolocationRequired": "Міндетті",
+        "geolocationOff": "Өшірулі",
+        "feedbackVisibility": "Қызметкер кері байланысты қашан көреді",
+        "feedbackAfterCompletion": "Сессия аяқталғаннан кейін",
+        "feedbackLive": "Бақылаушы толтырған сайын"
+      },
       "scaleManager": {
         "title": "Бағалау шкалалары",
         "newScaleName": "Жаңа шкала",

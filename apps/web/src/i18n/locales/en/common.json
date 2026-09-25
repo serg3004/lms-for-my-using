@@ -1097,6 +1097,22 @@
         "structure_only": "Structure only",
         "none": "Nothing"
       },
+      "settings": {
+        "open": "Settings",
+        "title": "Workplace-training settings",
+        "loading": "Loading settings…",
+        "loadError": "Unable to load settings.",
+        "saveError": "Unable to save settings.",
+        "moduleEnabled": "Module enabled for this organization",
+        "highPerformanceThreshold": "High-performance threshold",
+        "defaultGeolocationPolicy": "Default geolocation policy",
+        "geolocationOptional": "Optional",
+        "geolocationRequired": "Required",
+        "geolocationOff": "Off",
+        "feedbackVisibility": "When learners see session feedback",
+        "feedbackAfterCompletion": "After the session is completed",
+        "feedbackLive": "As the observer records it"
+      },
       "scaleManager": {
         "title": "Evaluation scales",
         "newScaleName": "New scale",

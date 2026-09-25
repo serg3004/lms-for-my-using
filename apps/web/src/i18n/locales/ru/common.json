@@ -1097,6 +1097,22 @@
         "structure_only": "Только структуру",
         "none": "Ничего"
       },
+      "settings": {
+        "open": "Настройки",
+        "title": "Настройки обучения на рабочем месте",
+        "loading": "Загрузка настроек…",
+        "loadError": "Не удалось загрузить настройки.",
+        "saveError": "Не удалось сохранить настройки.",
+        "moduleEnabled": "Модуль включён для этой организации",
+        "highPerformanceThreshold": "Порог высокого выполнения",
+        "defaultGeolocationPolicy": "Геолокация по умолчанию",
+        "geolocationOptional": "По желанию",
+        "geolocationRequired": "Обязательно",
+        "geolocationOff": "Выключено",
+        "feedbackVisibility": "Когда сотрудник видит обратную связь",
+        "feedbackAfterCompletion": "После завершения сессии",
+        "feedbackLive": "По мере заполнения наблюдателем"
+      },
       "scaleManager": {
         "title": "Оценочные шкалы",
         "newScaleName": "Новая шкала",
