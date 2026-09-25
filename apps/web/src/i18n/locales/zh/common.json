@@ -1097,6 +1097,22 @@
         "structure_only": "仅结构",
         "none": "无内容"
       },
+      "settings": {
+        "open": "设置",
+        "title": "岗位培训设置",
+        "loading": "正在加载设置…",
+        "loadError": "无法加载设置。",
+        "saveError": "无法保存设置。",
+        "moduleEnabled": "为此组织启用模块",
+        "highPerformanceThreshold": "高绩效阈值",
+        "defaultGeolocationPolicy": "默认地理位置策略",
+        "geolocationOptional": "可选",
+        "geolocationRequired": "必须",
+        "geolocationOff": "关闭",
+        "feedbackVisibility": "学员何时可见反馈",
+        "feedbackAfterCompletion": "会话完成后",
+        "feedbackLive": "观察员记录时"
+      },
       "scaleManager": {
         "title": "评估量表",
         "newScaleName": "新量表",

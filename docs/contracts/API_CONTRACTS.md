@@ -688,6 +688,37 @@ defers retention/deletion to an owner decision instead of inventing one.
   (`checklist-scoring-v1.database.spec.ts`) proving the audit trail is written for the override
   cases and stays silent for the routine ones.
 
+## Progressive disclosure and routing contract audit (PR 305)
+
+An audit of the checklist-session module's routing/navigation against the contract table in the
+plan doc's "0.1. Прототип и то, как с ним работать" confirmed PR 295-304 already held the line:
+exactly one checklist-labelled nav entry per role (`/admin/checklists`, `/instructor/checklists`,
+`/learn/checklists`, `/manager/checklists`), no rogue top-level routes, evaluation scales reachable
+only via `ScaleManagerDialog` from the builder, score revisions only inside the admin session
+report's History tab, "observer unavailable" surfaced as a badge + reassignment CTA (never a
+separate page), reminders surfaced as ordinary notifications with no diagnostics UI exposed to
+non-admins, and zero occurrences of backend jargon (`ManagerTeamScope`, `OrganizationAccessScopeService`,
+`snapshotVersion`, `idempotencyKey`, `P2034`, `denominator`, `worker`) anywhere in `apps/web/src`.
+
+The one real gap: `ChecklistWorkplaceSettings` (PR 286) had a backend service/controller
+(`GET`/`PATCH /checklists/workplace-settings`) but **no frontend at all** -- no dialog, no API
+client wrapper. Closed in this PR:
+
+- `ChecklistWorkplaceSettingsDialog` (`apps/web/src/features/admin-checklist-sessions/`) -- a
+  contextual `Dialog` (same shell as `ScaleManagerDialog`), opened via a "Settings" button in
+  `/admin/checklists/sessions`'s header, next to "New session". Not a new nav item or route,
+  matching the prototype's `#openAdminSettings` -> `#settingsDrawer` pattern (the prototype uses a
+  drawer; this reuses the app's one shared modal primitive instead of introducing a second shell).
+- Editable fields: `moduleEnabled`, `highPerformanceThreshold`, `defaultGeolocationPolicy`,
+  `feedbackVisibility`. **`criticalThreshold`/`lowThreshold` are deliberately not exposed** --
+  `DEC-CHKS-001` (`docs/status/OPEN_DECISIONS.md`) explicitly defers what counts as a "critical"
+  session result to an unresolved owner decision, and states the settings UI must not show a
+  critical/low band until that decision is made. Building the fields anyway would have turned an
+  open decision into a shipped implementation detail.
+- `getChecklistWorkplaceSettings`/`updateChecklistWorkplaceSettings` (`shared/api/checklists.ts`)
+  are the first frontend callers of this endpoint; `ChecklistWorkplaceSettingsView` (`shared/api/
+  types.ts`) mirrors the backend view type minus the two deferred threshold fields.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

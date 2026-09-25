@@ -12,6 +12,7 @@ import { Badge, Button, DataTable, PageState, Pagination, SearchInput, Toolbar, 
 import { listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionStatus, ChecklistSessionSummary } from '../shared/api/types.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
+import { ChecklistWorkplaceSettingsDialog } from '../features/admin-checklist-sessions/ChecklistWorkplaceSettingsDialog.js';
 import { ReassignObserverDialog } from '../features/admin-checklist-sessions/ReassignObserverDialog.js';
 import { canCancelSession, canReassignObserver, canRepeatSession, formatParticipantName, SESSION_STATUS_TABS, type SessionStatusTab } from '../features/admin-checklist-sessions/domain.js';
 
@@ -26,6 +27,7 @@ export function AdminChecklistSessionsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
   const [reassignTarget, setReassignTarget] = useState<ChecklistSessionSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -168,7 +170,12 @@ export function AdminChecklistSessionsPage() {
         eyebrow={t('admin.checklists.eyebrow', 'Knowledge control')}
         title={t('admin.checklists.sessions.title', 'Sessions')}
         subtitle={t('admin.checklists.sessions.subtitle', 'Schedule and track workplace-training checklist sessions.')}
-        action={<Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>}
+        action={
+          <>
+            <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Settings')}</Button>
+            <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
+          </>
+        }
       />
       <ChecklistsTabs current="sessions" />
       {actionError && (
@@ -212,6 +219,7 @@ export function AdminChecklistSessionsPage() {
         variant="danger"
       />
       <ReassignObserverDialog onClose={() => setReassignTarget(null)} onReassigned={() => void load()} session={reassignTarget} t={t} />
+      <ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />
     </AdminPageLayout>
   );
 }

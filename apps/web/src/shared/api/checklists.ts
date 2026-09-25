@@ -11,6 +11,7 @@ import type {
   ChecklistReviewQueueQuery,
   ChecklistScaleSummary,
   ChecklistSummary,
+  ChecklistWorkplaceSettingsView,
   PaginatedResponse,
 } from './types.js';
 
@@ -218,6 +219,24 @@ export function reviewChecklistItemResult(
     `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/review`,
     { method: 'POST', body: JSON.stringify(input) },
   );
+}
+
+// ---- Workplace-training module settings (PR 286) ----
+
+export function getChecklistWorkplaceSettings() {
+  return apiRequest<ChecklistWorkplaceSettingsView>('/checklists/workplace-settings');
+}
+
+export function updateChecklistWorkplaceSettings(input: {
+  moduleEnabled?: boolean;
+  highPerformanceThreshold?: number;
+  defaultGeolocationPolicy?: ChecklistWorkplaceSettingsView['defaultGeolocationPolicy'];
+  feedbackVisibility?: ChecklistWorkplaceSettingsView['feedbackVisibility'];
+}) {
+  return apiRequest<ChecklistWorkplaceSettingsView>('/checklists/workplace-settings', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 export type { ChecklistItemResultSummary };
