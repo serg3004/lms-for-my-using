@@ -281,6 +281,22 @@ Migration `20260924100000_add_checklist_idempotency_keys` — новая таб�
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist score-revision scored-flag migration
+
+Миграция `20260925120000_add_checklist_score_revision_scored` — новая колонка с data-dependent backfill (PR 307/308 follow-up, #797/#798): единственная миграция во всём checklist-session модуле, у которой backfill зависит от существующих данных, а не является тривиальным additive/no-op:
+
+- добавляет `new_scored` (BOOLEAN) на `checklist_score_revisions` — иммутабельный исторический факт "был ли пересчёт реальным баллом или not-scored placeholder'ом", нужный для корректного idempotency-replay `POST /checklist-sessions/:id/recalculate` (см. `API_CONTRACTS.md`'s PR 301 секцию, "Post-merge fixes");
+- колонка добавлена **nullable**, затем **backfilled per-row** из текущего `checklist_instances.scored` соответствующего инстанса (`UPDATE ... FROM checklist_instances i WHERE i.id = r.instance_id`), и только после этого переведена в `NOT NULL DEFAULT true` — блок-бланкетный `DEFAULT true` для всех существующих строк первой версии этой миграции был отклонён на код-ревью (Codex) именно потому, что он неверно пометил бы любую историческую all-skipped-ревизию как `scored: true`;
+- backfill — best-effort, не perfect: это единственная доступная историческая аппроксимация (точное значение на момент конкретного пересчёта никогда не персистилось до появления этой колонки), но она свободна от единственной альтернативы (blanket `true`), которая гарантированно была бы неверна для части строк;
+- допускает overlap со старой версией приложения: старая версия не знает о новой колонке и продолжает работать как раньше (никогда не читает и не пишет `newScored`);
+- retention: колонка не удаляется и не обнуляется automated-процессом — обычная append-only ревизионная история, как и остальные поля `ChecklistScoreRevision`.
+
+Миграция написана вручную (`prisma migrate dev` недоступен в non-interactive sandbox-окружении этой сессии) и применена к реальному локальному PostgreSQL 16 (`prisma migrate deploy`) дважды — сначала с blanket-default версией, затем (после отката колонки и записи миграции в `_prisma_migrations` вручную) с исправленной backfill-версией. Backfill-логика проверена отдельно на реальных данных: инстанс с `scored=false` был создан, для него вручную вставлена ревизия, применён сам `UPDATE`-запрос из миграции внутри явно **откатываемой** (`BEGIN ... ROLLBACK`) транзакции — результат подтвердил `new_scored = false`, не `true`. `checklist-session-idempotency.database.spec.ts` (новый тест, реплеящий сохранённую legacy-формы `responseBody` без `scored`) и `checklist-session-recalculate.database.spec.ts` оба зелёные на реальном Postgres после применения миграции.
+
+В этой sandbox-среде попытка честной `prisma migrate diff --from-migrations ... --shadow-database-url <fresh db>` проверки (тот же метод, что у миграций выше) дала большой шумный diff по множеству никак не связанных с этой миграцией таблиц (`assessments`, `courses`, `groups`, ...) — похоже на артефакт версии Prisma CLI/engine в этой sandbox, а не реальный дрейф; результат не включён как достоверное свидетельство и не должен интерпретироваться как обнаруженная проблема с миграцией. Верификация для этой миграции опирается на прямое применение к реальной БД + integration-тесты + ручную проверку backfill-запроса, а не на byte-diff инструмент.
+
+Отдельный data backfill сверх описанного выше или backup сверх общей policy не требуется — миграция additive (новая колонка), не destructive.
+
 ---
 
 ## 5. Drift handling

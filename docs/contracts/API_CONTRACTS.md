@@ -540,6 +540,27 @@ version-based conflict detection that already protects against a *different* con
   conditional `updateMany(... WHERE status = 'pending')` claim, independent of the job queue's own
   retry/backoff) -- no changes were needed there for this PR.
 
+**Post-merge fixes** (Codex automated review on PR 307/797, addressed in follow-up PRs #797 and
+#798 since #797 had already merged before the last of these landed):
+
+- **Recalculate response was missing `scored`**: `POST .../recalculate`'s response (a bare
+  `ChecklistScoreRevision`) has no `scored` field, so a client recalculating an all-skipped
+  (not-scored) session couldn't tell `newPercentage: 0` (the real, computed placeholder for "not
+  scored") apart from a genuine 0% score -- `AdminChecklistSessionReportPage` hardcoded `scored:
+  true` on every recalculation, silently flipping a "Not scored (all skipped)" session to a
+  misleading `0% ✗`. Fixed by returning the already-computed `scored` alongside the revision.
+- **Idempotency-cache replay read the wrong `scored`, twice**: the first fix stashed `scored` in
+  the `ChecklistIdempotencyKey.responseBody` JSON, with a fallback to `ChecklistInstance.scored`
+  for replaying a cache row written before that field existed. That fallback was itself wrong --
+  `ChecklistInstance.scored` is mutable (a later `submitItemResult()` changes it), so replaying an
+  old cached response after the instance changed would report *today's* unrelated scored state,
+  not what that specific recalculation actually produced. Fixed by adding a real column,
+  `ChecklistScoreRevision.newScored` (immutable once written, unlike the instance's own `scored`),
+  backfilled per-row from each revision's instance at migration time (not a blanket default, which
+  would have wrongly marked every historical not-scored revision as scored) -- the idempotency
+  fallback now re-reads this column by the cached revision's own `id`, correct regardless of what
+  has happened to the instance since.
+
 ## Observer unavailable / reassignment (PR 302)
 
 `ChecklistSession.observerUnavailableReason`/`observerUnavailableAt` is an orthogonal business

@@ -58,6 +58,57 @@ The following remain `LIVE-VERIFY` unless fresh external evidence exists:
 
 Repository code/config proves intended/implemented behavior, not current production state.
 
+## Checklist workplace-training production gates (PR 308)
+
+`docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`'s PR 308 requires each
+of its listed production gates to be confirmed by actual verification, not left "unknown" when
+prior work already confirmed it. Fresh Railway read-back (`serg3004/lms-for-my-using`, project
+`reasonable-reprieve`, environment `production`, services `api`/`web`/`minio`/`malware-scanner`,
+2026-09-25) found:
+
+- **Redis / background worker -- `LIVE-VERIFIED`, and the answer is negative.** The production
+  `api` service has no `REDIS_URL` variable at all (`ALLOW_IN_MEMORY_RATE_LIMIT` is set instead,
+  the only way the app's own `env.ts` startup validation would have allowed it to boot without
+  one). `BackgroundJobsModule`'s provider factory (`apps/api/src/modules/background-jobs/
+  background-jobs.module.ts`) is unconditional: `process.env['REDIS_URL'] ? new
+  BullMqBackgroundJobBackend(...) : new DisabledBackgroundJobBackend()` -- no other code path
+  exists. **This means every recurring background job is currently inert in production**,
+  including the pre-existing `ChecklistDeadlineWorker` (predates this module) and the new
+  `ChecklistSessionReminderWorker` (PR 291): `DisabledBackgroundJobBackend.upsertRecurring()`
+  silently no-ops (the scan job never gets scheduled) and `.enqueue()` throws
+  `ServiceUnavailableException`. The plan's own PR 308 bullet assumed this gate was "already
+  confirmed" via the pre-existing worker; that assumption does not hold for the live deployment as
+  of this check. Separately, and independently blocking, neither delivery webhook the checklist
+  reminder or password-reset flow needs (`CHECKLIST_SESSION_REMINDER_DELIVERY_URL`,
+  `PASSWORD_RESET_DELIVERY_URL`) is configured either -- both are documented as a valid no-op when
+  absent, so even with Redis this would not yet send real email. Provisioning a Redis service and
+  the delivery webhook is an infrastructure change outside a documentation PR's scope; flagged here
+  for an explicit owner decision rather than silently left undiscovered.
+- **Object storage + CORS/presigned upload/download -- partially `LIVE-VERIFIED`.** The `minio`
+  service is `live` with a persistent 5GB volume and a successful latest deployment; the `api` and
+  `malware-scanner` services both carry matching `S3_*` variables. Direct outbound HTTP from this
+  sandbox is proxy-restricted (cannot fetch the bucket's actual CORS policy or exercise a real
+  presigned upload/download round-trip), so the specific CORS configuration and a live
+  upload/download smoke test remain `LIVE-VERIFY`.
+- **Mail provider/SLA -- `LIVE-VERIFIED`, and it is unconfigured.** See the Redis bullet above:
+  both delivery webhook URLs are absent from the production `api` service's variables, which the
+  code treats as an intentional no-op rather than a startup failure. No SLA exists to evaluate
+  because no provider is wired up.
+- **Geolocation retention/legal policy -- not a gap to close here.** Already tracked as an
+  explicit open owner decision, `docs/status/OPEN_DECISIONS.md` DEC-CHKS-002: retention/deletion
+  is deliberately unimplemented pending an owner decision on period/mechanism, documented as a
+  release blocker for a future dedicated retention feature, not for this module's own PRs.
+- **Production-like load/latency -- deferred, not an obligation.** `docs/status/
+  OPEN_DECISIONS.md`'s "Deferred, не open decisions" section already states the load-test release
+  gate is deferred until a concrete target (dataset, latency/error thresholds, environment) exists;
+  PR 308 does not introduce a new obligation here.
+- **Observability/alerts -- partially `CONFIGURED`.** A checklist-specific Prometheus counter
+  exists (`lms_checklist_session_reminder_delivery_errors_total`,
+  `apps/api/src/common/observability/metrics.ts`) alongside the generic metrics endpoint (gated by
+  `METRICS_BEARER_TOKEN`, present in production). Whether this metric is actually wired to a live
+  alert (Sentry/PagerDuty threshold) requires access to that alerting platform, not just repository
+  config, and remains `LIVE-VERIFY`.
+
 ## Release interpretation
 
 A production/pilot decision must bind evidence to an exact SHA and target environment. Use [`../runbooks/RELEASE_GATE.md`](../runbooks/RELEASE_GATE.md) and [`../runbooks/PILOT_CHECKLIST.md`](../runbooks/PILOT_CHECKLIST.md). Old GO/smoke records cannot be reused for a newer SHA/environment.
