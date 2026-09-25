@@ -672,7 +672,7 @@ history-таб `AdminChecklistSessionReportPage`, observer unavailable — badge
 сознательно не показаны — `DEC-CHKS-001` прямо требует не выводить critical/low band в settings UI
 до отдельного product-решения.
 
-## PR 306 — UI State & Anomaly Matrix
+## PR 306 — UI State & Anomaly Matrix ✅
 
 **Цель:** эксплуатационные состояния, не только happy path.
 
@@ -686,7 +686,41 @@ history-таб `AdminChecklistSessionReportPage`, observer unavailable — badge
 **Критерии готовности:**
 - [x] нет silent data loss; пользователь понимает следующее действие (geolocation denied/unavailable и 404 теперь дают явный, различимый notice вместо тихого пропуска или generic-ошибки);
 - [x] security errors не раскрывают чужие данные; retry безопасен (403-manager-scope реализован как 404 anti-enumeration с PR 287/292, admin location override аудируется через `checklist_location.accessed`);
-- [x] anomalies покрыты integration/E2E — все 17 из 17: 9 уже имели покрытие до этого PR или получили его в нём; оставшиеся 8 (#4, #6, #7, #11, #13, #15, #16, #17) закрыты follow-up PR (см. "PR 306-followup" в статусе выше).
+- [x] anomalies покрыты integration/E2E — все 17 из 17: 9 уже имели покрытие до этого PR или получили его в нём; оставшиеся 8 (#4, #6, #7, #11, #13, #15, #16, #17) закрыты follow-up PR (см. ниже).
+
+**Что сделано:** аудит всех 17 обязательных аномалий против уже существующего кода (PR 285-305)
+показал, что 5 из них не были пробелами вовсе — #1 (403 manager scope) на самом деле реализован
+как 404 (anti-enumeration-паттерн с PR 287/292, `checklist-session.service.spec.ts` — "throws 404
+when the session is outside the caller scope" — намеренно более безопасно, чем буквальная
+формулировка плана, реализация не менялась); #3 (409 completed in another tab) уже покрыт с обеих
+сторон (backend: stale-version 409 именно на `complete`-переходе; frontend:
+`ChecklistSessionConduct.spec.tsx` — "routes a 409 to onConflict"); #5 (observer
+blocked/unavailable) уже имел frontend с PR 302/305 (badge + reassignment CTA); #12 (incomplete
+mandatory criteria) — не пробел, а намеренная архитектурная развязка session/instance по
+`ADR_CHECKLIST_SESSION_OVERLAY.md` (подтверждена реальным Postgres-интеграционным тестом), клиент
+уже блокирует Complete до ответа на все обязательные критерии; #14 (cancelled reminder
+suppression) уже протестирован в `checklist-session-reminder.worker.spec.ts`. В этом PR закрыто:
+#8/#9 (geolocation denied/unavailable) — `captureLocationBestEffort()` путал
+`PERMISSION_DENIED`/`POSITION_UNAVAILABLE`, теперь различает по `GeolocationPositionError.code` и
+показывает разный inline-notice (`describeGeoNotice`); #10 (required location + audited override)
+— backend admin-override существовал с PR 290/304, но не имел frontend: добавлен
+`LocationOverrideForm` в admin session report (Files tab), обязательная причина, аудируется через
+`checklist_location.accessed`; #2 (404 session) — существующий `notFound`-вариант `AsyncDataState`
+довёрстан в `ChecklistSessionConduct` и `AdminChecklistSessionReportPage`. Честно
+задокументированы как оставшиеся открытыми (не блокируют остальной workstream): #4, #6, #7, #11,
+#13, #15, #16, #17 — все восемь закрыты отдельным follow-up PR
+(`fix(checklists): close PR 306's 8 remaining anomaly-matrix gaps`), каждый проверен тестом на
+реальных данных (Postgres или полный frontend render), а не только исправлением логики: #17
+(idempotencyKey теперь реально отправляется с фронтенда на create/transition/recalculate), #11
+(новый `describeChecklistSessionResult()` различает pending/notScored/scored на всех 4 экранах,
+где показывается результат сессии), #4 (DB-integration тест доказывает, что архивация чек-листа
+во время wizard'а абортит весь batch без частичных строк), #6/#7 (`checklists.photo-upload.spec.ts`
+— MIME-отклонение, propagation сбоя storage, cleanup осиротевшего объекта при падении attach),
+#13 (сбой доставки напоминания пробрасывается наружу, а не глушится, давая queue retry реальный
+шанс), #15 (DB-integration тест: сотрудник без единой сессии — честный zero-row, не пропадает),
+#16 (frontend-тест на таблицу со смешанной полнотой данных без `null`/`undefined` в DOM).
+Подробности обеих частей — в `API_CONTRACTS.md`'s "Anomaly matrix audit (PR 306)" и "Anomaly
+matrix follow-up (PR 306-followup)".
 
 ## PR 307 — E2E, security, accessibility, visual regression
 
