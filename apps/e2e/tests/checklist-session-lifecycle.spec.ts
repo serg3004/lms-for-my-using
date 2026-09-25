@@ -12,19 +12,34 @@ const password = 'Demo1234!';
 
 type DemoRole = 'admin' | 'manager' | 'instructor' | 'learner';
 
+const landingByRole: Record<DemoRole, RegExp> = {
+  admin: /\/admin$/,
+  manager: /\/manager\/dashboard$/,
+  instructor: /\/instructor\/dashboard$/,
+  learner: /\/learn$/,
+};
+
+// The backend's account-level login rate limit is a FIXED 60s window (see
+// resilience-matrix.spec.ts for the full rationale): other E2E files log in as these same demo
+// accounts too, so this file's login can be the 6th in someone else's window and get a 429 that
+// leaves the login form on /login. Only waiting out the full window (60s) reliably clears it, so
+// retry once after a 65s backoff instead of failing outright (same pattern as
+// login-role-redirect.spec.ts and instructor-workspace.spec.ts).
 async function login(page: Page, role: DemoRole) {
-  await page.goto('/login');
-  await page.locator('input[name="organizationId"]').fill(organization);
-  await page.locator('input[name="email"]').fill(`${role}@demo.com`);
-  await page.locator('input[name="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  const landing: Record<DemoRole, RegExp> = {
-    admin: /\/admin$/,
-    manager: /\/manager\/dashboard$/,
-    instructor: /\/instructor\/dashboard$/,
-    learner: /\/learn$/,
-  };
-  await expect(page).toHaveURL(landing[role]);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await page.goto('/login');
+    await page.locator('input[name="organizationId"]').fill(organization);
+    await page.locator('input[name="email"]').fill(`${role}@demo.com`);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('button[type="submit"]').click();
+    try {
+      await expect(page).toHaveURL(landingByRole[role], { timeout: 5000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(65_000);
+    }
+  }
 }
 
 type ItemResult = {
@@ -152,6 +167,9 @@ function instanceSummary(checklist: ReturnType<typeof checklistSummary>, state: 
 
 test.describe('checklist session lifecycle (PR 307 E2E)', () => {
   test('admin creates a session via the wizard; observer conducts it on mobile with geolocation and a required photo; the employee sees the result; the admin views the report and recalculates', async ({ browser }) => {
+    // Three independent logins (admin, observer, learner); a rate-limit retry inside login() can
+    // wait out a 65s backoff on any of them, so budget well past the default 30s.
+    test.setTimeout(240_000);
     let session = sessionSummary({ status: 'scheduled', version: 1, startedAt: null, results: {} });
     let instance = instanceSummary(checklistSummary(), { status: 'assigned', results: {} });
     const events: { id: string; eventType: string; createdAt: string }[] = [
@@ -400,6 +418,9 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
   });
 
   test('manager sees only their own scoped analytics, can drill into an employee\'s sessions, and a narrower scope neither leaks nor loses aggregate rows (#7, #8, #9)', async ({ browser }) => {
+    // A rate-limit retry inside login() can wait out a 65s backoff; budget well past the
+    // default 30s so that wait doesn't itself time out the test.
+    test.setTimeout(90_000);
     // Real cross-tenant/manager-scope enforcement (a foreign manager's team excludes a sibling
     // employee) is proven server-side against real Postgres in
     // checklist-manager-analytics.database.spec.ts. This test proves the frontend's half: it
@@ -469,7 +490,10 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
 
     let sharedContext: Awaited<ReturnType<import('@playwright/test').Browser['newContext']>>;
 
-    test.beforeAll(async ({ browser }) => {
+    test.beforeAll(async ({ browser }, testInfo) => {
+      // A rate-limit retry inside login() can wait out a 65s backoff; budget well past the
+      // default timeout so that wait doesn't itself time out the hook.
+      testInfo.setTimeout(90_000);
       sharedContext = await browser.newContext();
       const setupPage = await sharedContext.newPage();
       await login(setupPage, 'instructor');
@@ -553,6 +577,9 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
   });
 
   test('a session where every criterion was skipped shows an explicit not-scored result, not a blank one (#15)', async ({ browser }) => {
+    // A rate-limit retry inside login() can wait out a 65s backoff; budget well past the
+    // default 30s so that wait doesn't itself time out the test.
+    test.setTimeout(90_000);
     const skippedChecklist = checklistSummary();
     skippedChecklist.items = skippedChecklist.items.map((item) => ({ ...item, allowSkip: true }));
     const session = sessionSummary({ status: 'completed', version: 3, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
