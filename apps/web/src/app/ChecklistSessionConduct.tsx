@@ -415,6 +415,12 @@ function CriterionStepper({
   t: TFunction;
 }) {
   const checklist = instance.checklist;
+  // Each response carries a whole instance snapshot, and onInstanceSaved replaces `current.instance`
+  // with it wholesale -- navigating to another criterion while this one's save/upload is still in
+  // flight would let that request's response resolve after the next criterion's and overwrite it
+  // with stale data. Blocking Back/Next while the visible card reports a pending mutation keeps
+  // these requests serialized instead of merging out of order.
+  const [cardBusy, setCardBusy] = useState(false);
   if (!checklist) return null;
   const boundedIndex = Math.min(stepIndex, items.length - 1);
   const item = items[boundedIndex];
@@ -446,6 +452,7 @@ function CriterionStepper({
           scaleLevels={checklist.scaleLevels}
           editable={editable}
           onSaved={onInstanceSaved}
+          onBusyChange={setCardBusy}
           onConflict={onConflict}
           t={t}
         />
@@ -455,7 +462,7 @@ function CriterionStepper({
         <Button
           type="button"
           variant="secondary"
-          disabled={boundedIndex === 0}
+          disabled={boundedIndex === 0 || cardBusy}
           onClick={() => setStepIndex(boundedIndex - 1)}
           style={{ flex: 1, minHeight: 44 }}
         >
@@ -464,7 +471,7 @@ function CriterionStepper({
         <Button
           type="button"
           variant="secondary"
-          disabled={boundedIndex === items.length - 1}
+          disabled={boundedIndex === items.length - 1 || cardBusy}
           onClick={() => setStepIndex(boundedIndex + 1)}
           style={{ flex: 1, minHeight: 44 }}
         >
@@ -483,6 +490,7 @@ function CriterionCard({
   scaleLevels,
   editable,
   onSaved,
+  onBusyChange,
   onConflict,
   t,
 }: {
@@ -493,16 +501,26 @@ function CriterionCard({
   scaleLevels: { level: number; label: string; points: number }[] | null;
   editable: boolean;
   onSaved: (instance: ChecklistInstanceSummary) => void;
+  onBusyChange: (busy: boolean) => void;
   onConflict: () => void;
   t: TFunction;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState(result?.comment ?? '');
+  // Combines this card's own save state with the photo upload's (tracked separately below, since
+  // it doesn't go through run()) so the parent stepper can block navigation during either -- see
+  // CriterionStepper's cardBusy comment for why that matters.
+  const busy = saving || uploading;
 
   useEffect(() => {
     setComment(result?.comment ?? '');
   }, [result?.comment, item.id]);
+
+  useEffect(() => {
+    onBusyChange(busy);
+  }, [busy, onBusyChange]);
 
   async function run(fn: () => Promise<ChecklistInstanceSummary>) {
     await runMutation(
@@ -510,7 +528,7 @@ function CriterionCard({
         const updated = await fn();
         onSaved(updated);
       },
-      { setBusy, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+      { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
   }
 
@@ -611,7 +629,8 @@ function CriterionCard({
           item={item}
           result={result}
           editable={editable}
-          busy={busy}
+          busy={saving}
+          onUploadingChange={setUploading}
           onUploaded={onSaved}
           onError={setError}
           onConflict={onConflict}
@@ -641,6 +660,7 @@ function PhotoAttachment({
   result,
   editable,
   busy,
+  onUploadingChange,
   onUploaded,
   onError,
   onConflict,
@@ -651,6 +671,7 @@ function PhotoAttachment({
   result: ChecklistItemResultSummary | undefined;
   editable: boolean;
   busy: boolean;
+  onUploadingChange: (uploading: boolean) => void;
   onUploaded: (instance: ChecklistInstanceSummary) => void;
   onError: (message: string) => void;
   onConflict: () => void;
@@ -674,6 +695,7 @@ function PhotoAttachment({
     e.target.value = '';
     if (!file) return;
     setProgress(0);
+    onUploadingChange(true);
     try {
       const updated = (await uploadChecklistItemPhotoWithProgress(instanceId, item.id, file, setProgress)) as ChecklistInstanceSummary;
       onUploaded(updated);
@@ -682,6 +704,7 @@ function PhotoAttachment({
       else onError(err instanceof ApiClientError ? err.message : t('checklists.photoUploadError', 'Unable to attach this photo.'));
     } finally {
       setProgress(null);
+      onUploadingChange(false);
     }
   }
 
