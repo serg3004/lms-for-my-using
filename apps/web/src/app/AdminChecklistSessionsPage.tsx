@@ -7,7 +7,7 @@ import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
-import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
+import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, Button, DataTable, PageState, Pagination, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import { listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionStatus, ChecklistSessionSummary } from '../shared/api/types.js';
@@ -61,7 +61,7 @@ export function AdminChecklistSessionsPage() {
     if (!cancelTarget) return;
     setActionError(null);
     try {
-      await transitionChecklistSession(cancelTarget.id, 'cancel', cancelTarget.version);
+      await transitionChecklistSession(cancelTarget.id, 'cancel', cancelTarget.version, crypto.randomUUID());
       setCancelTarget(null);
       await load();
     } catch (error) {
@@ -132,7 +132,12 @@ export function AdminChecklistSessionsPage() {
     {
       key: 'result',
       label: t('admin.checklists.sessions.columns.result', 'Result'),
-      render: (row) => (row.result.scored ? `${row.result.percentage}% ${row.result.passed ? '✓' : '✗'}` : '—'),
+      render: (row) => {
+        const result = describeChecklistSessionResult(row.result);
+        if (result.kind === 'scored') return `${result.percentage}% ${result.passed ? '✓' : '✗'}`;
+        if (result.kind === 'notScored') return t('admin.checklists.sessions.notScored', 'Not scored (all skipped)');
+        return '—';
+      },
       priority: 'tertiary',
     },
     {

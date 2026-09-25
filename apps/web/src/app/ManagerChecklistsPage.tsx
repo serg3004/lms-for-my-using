@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { listChecklists } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
 import { formatDate } from '../shared/formatDate.js';
+import { describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import {
   getManagerChecklistAnalytics,
   type ManagerChecklistAnalytics,
@@ -162,7 +163,15 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: str
           <span>{session.checklist.title}</span>
           {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
           <span style={{ color: COLORS.muted }}>{session.scheduledAt ? formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeZone: session.timezone }) : '—'}</span>
-          <span>{session.result.visible && session.result.scored ? `${session.result.percentage}%` : '—'}</span>
+          <span>
+            {(() => {
+              if (!session.result.visible) return '—';
+              const result = describeChecklistSessionResult(session.result);
+              if (result.kind === 'scored') return `${result.percentage}%`;
+              if (result.kind === 'notScored') return t('manager.checklists.notScored', 'Not scored (all skipped)');
+              return '—';
+            })()}
+          </span>
         </li>
       ))}
     </ul>

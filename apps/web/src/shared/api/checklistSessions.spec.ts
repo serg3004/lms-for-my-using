@@ -68,6 +68,14 @@ describe('checklist sessions api requests', () => {
     });
   });
 
+  it('transitions a session with an idempotency key when one is given', () => {
+    transitionChecklistSession('session-1', 'complete', 2, 'key-abc');
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/complete', {
+      method: 'POST',
+      body: JSON.stringify({ version: 2, idempotencyKey: 'key-abc' }),
+    });
+  });
+
   it('repeats a session', () => {
     repeatChecklistSession('session-1');
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/repeat', { method: 'POST' });

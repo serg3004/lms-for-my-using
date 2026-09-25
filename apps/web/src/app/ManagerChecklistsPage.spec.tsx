@@ -85,6 +85,48 @@ describe('ManagerChecklistsPage', () => {
     expect(html).toContain('Warehouse');
   });
 
+  it('PR 306 #16: renders a "no data yet" dash, not a crash or a blank cell, for an employee with zero sessions in the period', () => {
+    // analyticsFixture mixes a fully-scored employee (Alex Kim) with one who has no sessions in
+    // the selected period at all (Mira Lee: sessionsCount 0, averagePercentage/trend/lastSessionAt
+    // null) -- the employee table must render both rows without throwing, and the no-data row's
+    // average/trend cells must fall back to an explicit "—", not `null`/`undefined` leaking into
+    // the DOM or the row being silently dropped.
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+
+    expect(html).not.toContain('null');
+    expect(html).not.toContain('undefined');
+    expect(html).toContain('Mira Lee');
+    // The "No completion" summary stat reflects noCompletionCount (1 in the fixture) -- confirms
+    // the aggregate-level no-data signal (PR 299's honest noCompletionCount) actually reaches the
+    // dashboard, not just the per-row fallback.
+    expect(html).toContain(String(analyticsFixture.summary.noCompletionCount));
+  });
+
+  it('PR 306 #15: shows an explicit empty-scope message, not a blank table, when there are zero employees in scope for the period', () => {
+    const emptyAnalytics: ManagerChecklistAnalytics = {
+      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
+      thresholds: { high: 90, low: 60 },
+      distribution: [],
+      trend: [],
+      employees: [],
+    };
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: emptyAnalytics }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+
+    expect(html).toContain('Нет сотрудников в зоне ответственности за этот период.');
+  });
+
   it('shows the custom period date inputs when ?period=custom is in the URL', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(

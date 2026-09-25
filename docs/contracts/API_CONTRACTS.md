@@ -762,6 +762,46 @@ Explicitly **not** closed in this PR (documented gaps, not silent omissions):
   backend has fully supported it since PR 301 -- confirmed via grep (`apps/web/src` has zero
   matches for `idempotencyKey`). This is a genuine, unaddressed duplicate-request gap.
 
+## Anomaly matrix follow-up (PR 306-followup)
+
+Closes all 8 gaps left open by the PR 306 audit above. Each was verified with a test against real
+data (Postgres or a full frontend render), not just a logic fix:
+
+- **#17 (duplicate create/complete)**: `idempotencyKey` (backend since PR 301) is now actually sent
+  by the frontend. `transitionChecklistSession()`/`recalculateChecklistSessionScore()`
+  (`apps/web/src/shared/api/checklistSessions.ts`) take an optional `idempotencyKey`; every
+  mutating call site (`ChecklistSessionConduct`'s start/pause/resume/complete, the admin sessions
+  list's cancel, the wizard's auto-start-on-create, `RecalculateForm`) generates a fresh
+  `crypto.randomUUID()` per action.
+- **#11 (all-skipped vs. not-yet-scored)**: a new pure `describeChecklistSessionResult()`
+  (`apps/web/src/shared/checklistStatus.ts`) disambiguates `pending` / `notScored` / `scored` using
+  `instanceStatus`, wired into all four screens that render a session's result (admin sessions
+  list, admin session report, manager dashboard, employee list + detail), with a new `notScored`
+  string instead of the same blank `—` a still-in-progress session shows.
+- **#4 (checklist archived during wizard)**: a new database-integration test
+  (`checklist-session-admin-api.database.spec.ts`) against real Postgres proves that archiving a
+  checklist in the window between the wizard loading it and the bulk-create request landing aborts
+  the whole batch with zero partial `ChecklistSession`/`ChecklistInstance` rows -- the business
+  logic was already correct, it just had no test against a real, unmocked `assignChecklist()`.
+- **#6/#7 (photo rejected / storage failure)**: `uploadItemPhoto` had zero dedicated tests before
+  this PR. New `checklists.photo-upload.spec.ts` covers: rejecting a disallowed MIME type before
+  the upload service is ever called, propagating a storage-layer failure instead of swallowing it,
+  and deleting the orphaned just-uploaded object when the subsequent `attachItemPhoto` call fails
+  (and still surfacing the original attach error even if that cleanup itself also fails).
+- **#13 (reminder retry)**: `checklist-session-reminder.worker.spec.ts` now proves a
+  `ChecklistSessionReminderDelivery.send()` failure propagates out of the notify job handler
+  (rather than being caught and dropped), giving `BackgroundJobsService`'s own queue-level
+  attempts/backoff an actual chance to retry, and that a retried attempt succeeds cleanly (the
+  handler holds no state of its own to duplicate).
+- **#15 (analytics no-data)**: a new database-integration test
+  (`checklist-manager-analytics.database.spec.ts`) against real Postgres proves a managed employee
+  with zero sessions in the period still surfaces as an honest zero-row (`noCompletionCount`,
+  `averagePercentage: null`, empty `distribution`/`trend`), plus a new frontend test asserting the
+  dashboard shows an explicit "no employees in scope" message rather than a blank table.
+- **#16 (partial chart data)**: a new frontend test renders the manager employee table with a mix
+  of a fully-scored row and a zero-sessions row in the same table, asserting neither `null` nor
+  `undefined` leaks into the DOM and the no-data row falls back to an explicit `—`.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

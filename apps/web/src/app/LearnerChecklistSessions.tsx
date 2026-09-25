@@ -4,7 +4,7 @@ import { getChecklistInstance } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
 import { formatDate } from '../shared/formatDate.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary, ChecklistSessionStatus } from '../shared/api/types.js';
-import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
+import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
@@ -128,12 +128,15 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
               {session.scheduledAt && (
                 <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 12.5 }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</p>
               )}
-              {session.result.visible && session.result.scored && (
+              {session.result.visible && describeChecklistSessionResult(session.result).kind === 'scored' && (
                 <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>
                   {t('checklistSessions.learner.percentage', '{{percentage}}%', { percentage: session.result.percentage })}
                   {' '}
                   {session.result.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}
                 </p>
+              )}
+              {session.result.visible && describeChecklistSessionResult(session.result).kind === 'notScored' && (
+                <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{t('checklistSessions.learner.notScored', 'Not scored (all skipped)')}</p>
               )}
             </li>
           ))}
@@ -179,7 +182,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
         </p>
       ) : (
         <>
-          {session.result.scored && (
+          {describeChecklistSessionResult(session.result).kind === 'scored' && (
             <div
               style={{
                 marginTop: 16,
@@ -194,6 +197,11 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
             >
               <span>{session.result.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
               <strong>{session.result.percentage}%</strong>
+            </div>
+          )}
+          {describeChecklistSessionResult(session.result).kind === 'notScored' && (
+            <div style={{ marginTop: 16, borderRadius: 14, padding: '16px 18px', background: COLORS.warningSoft, color: COLORS.warning }}>
+              {t('checklistSessions.learner.notScored', 'Not scored (all skipped)')}
             </div>
           )}
           {(session.strengths || session.developmentAreas || session.nextSteps) && (

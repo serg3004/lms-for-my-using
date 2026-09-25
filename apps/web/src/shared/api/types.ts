@@ -606,6 +606,7 @@ export type CreateChecklistSessionInput = {
   scheduledAt?: string | null;
   locationCapturePolicy?: ChecklistGeolocationPolicy;
   timezone?: string;
+  idempotencyKey?: string;
 };
 
 export type BulkCreateChecklistSessionInput = {
@@ -745,4 +746,4 @@ export type ChecklistScoreRevision = {
   createdAt: string;
 };
 
-export type RecalculateChecklistScoreInput = { reason: string };
+export type RecalculateChecklistScoreInput = { reason: string; idempotencyKey?: string };

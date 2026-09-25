@@ -26,7 +26,7 @@ import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
+import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, PageState } from '../shared/ui.js';
 import { formatParticipantName } from '../features/admin-checklist-sessions/domain.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
@@ -51,7 +51,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
     setStatus('saving');
     setError(null);
     try {
-      await recalculateChecklistSessionScore(sessionId, { reason: trimmed });
+      await recalculateChecklistSessionScore(sessionId, { reason: trimmed, idempotencyKey: crypto.randomUUID() });
       setReason('');
       setStatus('idle');
       onDone();
@@ -312,7 +312,15 @@ export function SessionReportBody({ session, reloadSession, t }: { session: Chec
       {tab === 'summary' && (
         <div className="admin-card">
           <p><strong>{t('admin.checklists.report.checklist', 'Checklist')}:</strong> {session.checklist.title}</p>
-          <p><strong>{t('admin.checklists.report.result', 'Result')}:</strong> {session.result.scored ? `${session.result.percentage}% ${session.result.passed ? '✓' : '✗'}` : '—'}</p>
+          <p>
+            <strong>{t('admin.checklists.report.result', 'Result')}:</strong>{' '}
+            {(() => {
+              const result = describeChecklistSessionResult(session.result);
+              if (result.kind === 'scored') return `${result.percentage}% ${result.passed ? '✓' : '✗'}`;
+              if (result.kind === 'notScored') return t('admin.checklists.report.notScored', 'Not scored (all skipped)');
+              return '—';
+            })()}
+          </p>
           <p><strong>{t('admin.checklists.report.location', 'Location capture')}:</strong> {session.locationCapturePolicy}</p>
           {(session.strengths || session.developmentAreas || session.nextSteps) && (
             <>

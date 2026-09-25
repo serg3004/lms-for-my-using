@@ -48,10 +48,10 @@ export function updateChecklistSession(sessionId: string, input: UpdateChecklist
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 
-export function transitionChecklistSession(sessionId: string, action: ChecklistSessionAction, version: number) {
+export function transitionChecklistSession(sessionId: string, action: ChecklistSessionAction, version: number, idempotencyKey?: string) {
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/${action}`, {
     method: 'POST',
-    body: JSON.stringify({ version }),
+    body: JSON.stringify(idempotencyKey ? { version, idempotencyKey } : { version }),
   });
 }
 

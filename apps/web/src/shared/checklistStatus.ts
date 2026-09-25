@@ -34,3 +34,25 @@ export const CHECKLIST_SESSION_STATUS_BADGE_VARIANT: Record<ChecklistSessionStat
   completed: 'success',
   cancelled: 'danger',
 };
+
+export type ChecklistSessionResultDisplay =
+  | { kind: 'pending' }
+  | { kind: 'notScored' }
+  | { kind: 'scored'; percentage: number; passed: boolean };
+
+/**
+ * PR 306 anomaly #11: `scored: false` (all criteria skipped -> no denominator, PR 290) and "the
+ * instance simply isn't completed yet" both render as an empty/blank result if a screen only
+ * checks `scored`. The instance's own status is the disambiguator -- only `completed` instances
+ * can be genuinely "not scored"; anything else is still pending, not a scoring outcome.
+ */
+export function describeChecklistSessionResult(result: {
+  instanceStatus: ChecklistInstanceStatus;
+  scored: boolean | null;
+  percentage: number | null;
+  passed: boolean | null;
+}): ChecklistSessionResultDisplay {
+  if (result.instanceStatus !== 'completed') return { kind: 'pending' };
+  if (!result.scored) return { kind: 'notScored' };
+  return { kind: 'scored', percentage: result.percentage ?? 0, passed: Boolean(result.passed) };
+}

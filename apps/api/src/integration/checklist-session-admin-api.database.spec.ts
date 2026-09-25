@@ -131,6 +131,34 @@ describe('checklist session admin API (PR 292) — database', () => {
     expect(auditEntries).toHaveLength(1);
   });
 
+  // PR 306 anomaly #4: the admin's create-session wizard loads the published-checklist picker up
+  // front, but nothing stops another admin from archiving that same checklist before the wizard's
+  // submit actually reaches the server (the classic TOCTOU window a mock-only unit test can't
+  // exercise). This proves the real, unmocked assignChecklist() rejection propagates through
+  // ChecklistSessionService.bulkCreate() against actual Postgres: the whole batch is aborted (not
+  // silently partial-successed), no ChecklistSession/ChecklistInstance rows are created for either
+  // recipient, and no bulk_created audit entry is written for a request that never truly happened.
+  it('bulk create: aborts the whole batch, with no partial rows, when the checklist was archived before the request landed', async () => {
+    const [learnerA, learnerB] = await Promise.all([
+      prisma.user.create({ data: { organizationId, email: `arch-a-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'A', lastName: 'Learner' } }),
+      prisma.user.create({ data: { organizationId, email: `arch-b-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'B', lastName: 'Learner' } }),
+    ]);
+    // Simulates the wizard having loaded this checklist while it was still published, then the
+    // checklist being archived by another admin before the wizard's own submit request arrives.
+    await prisma.checklist.update({ where: { id: checklistId }, data: { status: 'archived' } });
+
+    await expect(
+      sessionService.bulkCreate(organizationId, { checklistId, learnerIds: [learnerA.id, learnerB.id], observerId }, observerId, {}),
+    ).rejects.toThrow('Cannot assign a checklist that is not published');
+
+    const sessions = await prisma.checklistSession.findMany({ where: { organizationId } });
+    expect(sessions).toHaveLength(0);
+    const instances = await prisma.checklistInstance.findMany({ where: { organizationId } });
+    expect(instances).toHaveLength(0);
+    const auditEntries = await prisma.auditLog.findMany({ where: { organizationId, action: 'checklist_session.bulk_created' } });
+    expect(auditEntries).toHaveLength(0);
+  });
+
   it('repeat: creates a fresh instance/session pair from a completed session, copying observer/policy/timezone; rejects an active session', async () => {
     const learner = await prisma.user.create({ data: { organizationId, email: `learner-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'C', lastName: 'Learner' } });
     const item = await prisma.checklistItem.create({

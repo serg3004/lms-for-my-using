@@ -193,9 +193,10 @@ export function ConductScreen({
   const editable = session.status === 'in_progress';
 
   async function transition(action: 'start' | 'pause' | 'resume' | 'complete') {
+    const idempotencyKey = crypto.randomUUID();
     await runMutation(
       async () => {
-        await transitionChecklistSession(session.id, action, session.version);
+        await transitionChecklistSession(session.id, action, session.version, idempotencyKey);
         if (action === 'start') {
           const outcome = await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
           setGeoNotice(describeGeoNotice(outcome, session.locationCapturePolicy, t));
