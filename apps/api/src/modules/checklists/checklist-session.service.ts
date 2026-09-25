@@ -814,21 +814,21 @@ export class ChecklistSessionService {
   async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object, idempotencyKey?: string) {
     const idempotencyScope = 'session.recalculate';
     const { revision, previousPercentage, newPercentage, replayed } = await runSerializableWithRetry(this.prisma, async (tx) => {
-      // `scored` isn't a ChecklistScoreRevision column (it belongs to the instance, not the
-      // revision audit row) but the client needs it in the response to know whether `newPercentage`
-      // is a real score or the placeholder 0 computeInstanceScore() returns for an all-skipped,
-      // not-scored instance -- otherwise it can't tell "recalculated to 0%" from "still not scored"
-      // apart. Stashed alongside the cached idempotent response so a replay returns the same value.
+      // The client needs to know whether `newPercentage` is a real score or the placeholder 0
+      // computeInstanceScore() returns for an all-skipped, not-scored instance -- otherwise it
+      // can't tell "recalculated to 0%" from "still not scored" apart. `ChecklistInstance.scored`
+      // can't answer this for a *replay*: it's mutable (a later submitItemResult() can change it),
+      // so reading it for an old cached response would return today's value, not the one this
+      // exact recalculation actually produced. `ChecklistScoreRevision.newScored` is the immutable
+      // historical fact instead -- re-reading it by the cached revision's own id is correct no
+      // matter how much has happened to the instance since, and also covers cache rows written
+      // before this response started including `scored` at all (raw historical JSON, never
+      // migrated): those fall back to the same lookup.
       const cached = await this.findIdempotentResponse<ChecklistScoreRevision & { scored?: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
       if (cached) {
-        // A cache row written before `scored` was added to this response (any real recalculate
-        // from before this fix shipped) has no such field -- responseBody is raw historical JSON,
-        // never migrated. The instance's own persisted `scored` is authoritative for it: nothing
-        // else can have changed it between the original recalculation and this replay of the exact
-        // same request.
         const scored = cached.scored ?? (
-          await tx.checklistInstance.findUnique({ where: { id: cached.instanceId }, select: { scored: true } })
-        )?.scored ?? false;
+          await tx.checklistScoreRevision.findUnique({ where: { id: cached.id }, select: { newScored: true } })
+        )?.newScored ?? false;
         return { revision: { ...cached, scored }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
       }
 
@@ -857,6 +857,7 @@ export class ChecklistSessionService {
           newPercentage: percentage,
           previousPassed: session.instance.passed,
           newPassed: passed,
+          newScored: scored,
           reason,
           actorUserId: actorId,
         },
