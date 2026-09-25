@@ -1,4 +1,7 @@
 <title>Чек-лист-сессии — концепт редизайна</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   /* Токены = default ThemeSettings проекта (apps/web/src/shared/theme.ts), не выдуманы */
   :root{
@@ -30,7 +33,7 @@
   }
 
   *{box-sizing:border-box}
-  body{margin:0;background:var(--color-background);color:var(--color-text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.5}
+  body{margin:0;background:var(--color-background);color:var(--color-text);font-family:"Manrope Variable","Manrope",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
 
   .concept-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--admin-sidebar-background);color:var(--admin-sidebar-text-muted);font-size:12px;border-bottom:1px solid rgb(255 255 255 / 8%)}
   .concept-banner strong{color:#fff;font-weight:700}
@@ -154,7 +157,7 @@
   }
 </style>
 
-<div class="concept-banner"><span class="concept-dot"></span><strong>Дизайн-концепт</strong> — только раскладка/навигация. Цвета и типографика — те же, что уже в проекте (<code style="color:#fff">apps/web/src/shared/theme.ts</code>, дефолтный org-theme «LearnSpace»). Весь функционал (визард, билдер критериев, проведение сессии, аналитика руководителя) уже работает в проекте.</div>
+<div class="concept-banner"><span class="concept-dot"></span><strong>Дизайн-концепт</strong> — только раскладка/навигация. Цвета — настраиваемая org-theme из <code style="color:#fff">apps/web/src/shared/theme.ts</code>, статусные (success/warning/danger/info) — из <code style="color:#fff">apps/web/src/styles/tokens.css</code>, шрифт Manrope — из <code style="color:#fff">apps/web/src/styles/global.css</code>. Тёмная тема здесь — только для удобства чтения макета в этом просмотрщике, в реальном приложении её сейчас нет. Кнопка «+ Новая сессия» на этой странице не открывает визард (это отдельный modal-компонент в реальном приложении, здесь не воспроизведён) — визард сравнивается в аудите PR 310 как диалоговое состояние экрана «Сессии», а не отдельный экран. Весь функционал (визард, билдер критериев, проведение сессии, аналитика руководителя) уже работает в проекте.</div>
 
 <div class="shell">
   <aside class="side">
