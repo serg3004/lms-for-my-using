@@ -21,6 +21,7 @@ import type {
   ChecklistScoreRevision,
   ChecklistSessionEvent,
   ChecklistSessionSummary,
+  RecalculateChecklistScoreResult,
 } from '../shared/api/types.js';
 import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
@@ -39,7 +40,7 @@ export function findResultForItem(results: ChecklistInstanceSummary['results'], 
   return results.find((result) => result.itemId === itemId);
 }
 
-export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: (revision: ChecklistScoreRevision) => void; t: TFunction }) {
+export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +177,7 @@ export function LocationOverrideForm({
 
 type HistoryData = { events: ChecklistSessionEvent[]; revisions: ChecklistScoreRevision[] };
 
-export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionId: string; isAdmin: boolean; onRecalculated: (revision: ChecklistScoreRevision) => void; t: TFunction }) {
+export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionId: string; isAdmin: boolean; onRecalculated: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
   const { state, reload } = useAsyncData<HistoryData>(
     async () => {
       const [events, revisions] = await Promise.all([listChecklistSessionEvents(sessionId), listChecklistScoreRevisions(sessionId)]);
@@ -248,7 +249,7 @@ export function AdminChecklistSessionReportPage() {
     return <main className="admin-state"><PageState title={t('admin.checklists.report.title', 'Session report')} message={state.message} variant="error" /></main>;
   }
 
-  return <SessionReportBody session={state.data} onScoreRecalculated={(revision) => mutate((s) => ({ ...s, result: { ...s.result, percentage: revision.newPercentage, passed: revision.newPassed, scored: true } }))} t={t} />;
+  return <SessionReportBody session={state.data} onScoreRecalculated={(revision) => mutate((s) => ({ ...s, result: { ...s.result, percentage: revision.newPercentage, passed: revision.newPassed, scored: revision.scored } }))} t={t} />;
 }
 
 export function SessionReportBody({
@@ -261,7 +262,7 @@ export function SessionReportBody({
   // a network reload flips the parent's AsyncDataState back to 'loading', which early-returns
   // above and unmounts this whole component (losing the currently-selected tab) for the split
   // second the refetch is in flight. Same fix as ChecklistSessionConduct.tsx's onMutate.
-  onScoreRecalculated: (revision: ChecklistScoreRevision) => void;
+  onScoreRecalculated: (revision: RecalculateChecklistScoreResult) => void;
   t: TFunction;
 }) {
   const { currentUser } = useSession();

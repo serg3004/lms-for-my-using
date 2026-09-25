@@ -18,6 +18,7 @@ import type {
   MarkChecklistSessionObserverUnavailableInput,
   PaginatedResponse,
   RecalculateChecklistScoreInput,
+  RecalculateChecklistScoreResult,
   SubmitChecklistLocationCaptureInput,
   SubmitChecklistSessionFeedbackInput,
   UpdateChecklistSessionInput,
@@ -101,7 +102,7 @@ export function listChecklistScoreRevisions(sessionId: string) {
 }
 
 export function recalculateChecklistSessionScore(sessionId: string, input: RecalculateChecklistScoreInput) {
-  return apiRequest<ChecklistScoreRevision>(`/checklist-sessions/${encodeURIComponent(sessionId)}/recalculate`, {
+  return apiRequest<RecalculateChecklistScoreResult>(`/checklist-sessions/${encodeURIComponent(sessionId)}/recalculate`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
