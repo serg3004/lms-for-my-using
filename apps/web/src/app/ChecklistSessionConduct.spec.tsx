@@ -26,7 +26,7 @@ vi.mock('../shared/api/checklists.js', async () => {
   return { ...actual, getChecklistInstance: checklistsApiMocks.getChecklistInstance };
 });
 
-import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, fetchConductData, formatElapsed, runMutation } from './ChecklistSessionConduct.js';
+import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, runMutation } from './ChecklistSessionConduct.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary } from '../shared/api/types.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -122,13 +122,15 @@ describe('captureLocationBestEffort', () => {
   });
 
   it('is a no-op when the session policy is off', async () => {
-    await captureLocationBestEffort('session-1', 'start', 'off');
+    const outcome = await captureLocationBestEffort('session-1', 'start', 'off');
     expect(apiMocks.captureChecklistSessionLocation).not.toHaveBeenCalled();
+    expect(outcome).toBe('off');
   });
 
   it('reports unavailable when the browser has no geolocation API', async () => {
-    await captureLocationBestEffort('session-1', 'start', 'optional');
+    const outcome = await captureLocationBestEffort('session-1', 'start', 'optional');
     expect(apiMocks.captureChecklistSessionLocation).toHaveBeenCalledWith('session-1', 'start', { status: 'unavailable' });
+    expect(outcome).toBe('unavailable');
   });
 
   it('reports captured coordinates on a successful getCurrentPosition', async () => {
@@ -140,10 +142,11 @@ describe('captureLocationBestEffort', () => {
         },
       },
     });
-    await captureLocationBestEffort('session-1', 'end', 'required');
+    const outcome = await captureLocationBestEffort('session-1', 'end', 'required');
     expect(apiMocks.captureChecklistSessionLocation).toHaveBeenCalledWith('session-1', 'end', {
       status: 'captured', latitude: 1.5, longitude: 2.5, accuracyMeters: 10,
     });
+    expect(outcome).toBe('captured');
   });
 
   it('reports denied when the browser rejects the permission', async () => {
@@ -151,12 +154,45 @@ describe('captureLocationBestEffort', () => {
       configurable: true,
       value: {
         getCurrentPosition: (_success: unknown, error: (err: unknown) => void) => {
-          error(new Error('denied'));
+          error({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
         },
       },
     });
-    await captureLocationBestEffort('session-1', 'start', 'optional');
+    const outcome = await captureLocationBestEffort('session-1', 'start', 'optional');
     expect(apiMocks.captureChecklistSessionLocation).toHaveBeenCalledWith('session-1', 'start', { status: 'denied' });
+    expect(outcome).toBe('denied');
+  });
+
+  it('reports unavailable (not denied) for a non-permission getCurrentPosition error, e.g. POSITION_UNAVAILABLE', async () => {
+    Object.defineProperty(globalThis.navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition: (_success: unknown, error: (err: unknown) => void) => {
+          error({ code: 2, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
+        },
+      },
+    });
+    const outcome = await captureLocationBestEffort('session-1', 'start', 'optional');
+    expect(apiMocks.captureChecklistSessionLocation).toHaveBeenCalledWith('session-1', 'start', { status: 'unavailable' });
+    expect(outcome).toBe('unavailable');
+  });
+});
+
+describe('describeGeoNotice', () => {
+  it('clears the notice for a captured or off outcome', () => {
+    expect(describeGeoNotice('captured', 'optional', t)).toBeNull();
+    expect(describeGeoNotice('off', 'required', t)).toBeNull();
+  });
+
+  it('warns (not errors) on denied/unavailable under a non-required policy', () => {
+    expect(describeGeoNotice('denied', 'optional', t)).toMatchObject({ tone: 'warning', message: expect.stringContaining('denied') });
+    expect(describeGeoNotice('unavailable', 'optional', t)).toMatchObject({ tone: 'warning', message: expect.stringContaining('could not be determined') });
+  });
+
+  it('escalates to an error and mentions the admin override under a required policy', () => {
+    const notice = describeGeoNotice('denied', 'required', t);
+    expect(notice).toMatchObject({ tone: 'error' });
+    expect(notice?.message).toContain('An admin can record it on your behalf.');
   });
 });
 

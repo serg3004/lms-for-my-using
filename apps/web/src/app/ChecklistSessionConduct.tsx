@@ -34,19 +34,35 @@ const COLORS = {
 
 type ConductData = { session: ChecklistSessionSummary; instance: ChecklistInstanceSummary };
 
+export type LocationCaptureOutcome = 'off' | 'captured' | 'denied' | 'unavailable';
+
 /**
  * One-shot browser geolocation capture, per PR 290's "getCurrentPosition once, never
  * watchPosition" contract. Every outcome (captured/denied/unavailable) is POSTed -- a denial is
  * itself a valid, auditable outcome, never a silent skip. A 409 (this capture point already
- * exists) is swallowed: it only means an earlier attempt already recorded it.
+ * exists) is swallowed: it only means an earlier attempt already recorded it. The outcome is
+ * also returned (not just posted) so the caller can tell the observer what happened -- PR 306:
+ * previously this was fire-and-forget, so a denied/unavailable capture was invisible to the
+ * person conducting the session.
+ *
+ * `GeolocationPositionError.code` distinguishes an actual permission refusal
+ * (`PERMISSION_DENIED`) from every other failure (`POSITION_UNAVAILABLE`, `TIMEOUT`) -- only the
+ * former is a "denied" in the sense the backend's `denied` status describes; anything else is
+ * reported as `unavailable`, same as the browser having no geolocation API at all. Collapsing
+ * both into `denied` (as an earlier version of this function did) mislabels a GPS/timeout failure
+ * as a permission refusal in the audit trail.
  */
-export async function captureLocationBestEffort(sessionId: string, point: 'start' | 'end', policy: string) {
-  if (policy === 'off') return;
+export async function captureLocationBestEffort(
+  sessionId: string,
+  point: 'start' | 'end',
+  policy: string,
+): Promise<LocationCaptureOutcome> {
+  if (policy === 'off') return 'off';
   if (!('geolocation' in navigator)) {
     await captureChecklistSessionLocation(sessionId, point, { status: 'unavailable' }).catch(() => undefined);
-    return;
+    return 'unavailable';
   }
-  await new Promise<void>((resolve) => {
+  return new Promise<LocationCaptureOutcome>((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         captureChecklistSessionLocation(sessionId, point, {
@@ -56,16 +72,41 @@ export async function captureLocationBestEffort(sessionId: string, point: 'start
           accuracyMeters: position.coords.accuracy,
         })
           .catch(() => undefined)
-          .finally(resolve);
+          .finally(() => resolve('captured'));
       },
-      () => {
-        captureChecklistSessionLocation(sessionId, point, { status: 'denied' })
+      (positionError) => {
+        const outcome: LocationCaptureOutcome = positionError.code === positionError.PERMISSION_DENIED ? 'denied' : 'unavailable';
+        captureChecklistSessionLocation(sessionId, point, { status: outcome })
           .catch(() => undefined)
-          .finally(resolve);
+          .finally(() => resolve(outcome));
       },
       { timeout: 10_000 },
     );
   });
+}
+
+export type GeoNotice = { tone: 'warning' | 'error'; message: string } | null;
+
+/**
+ * PR 306: pure message selection for a geolocation capture outcome, factored out of
+ * `ConductScreen` so it's unit-testable without an interactive render (jsdom doesn't support
+ * the DOM APIs this screen's other interactions would need). `off`/`captured` clear any prior
+ * notice; `denied`/`unavailable` explain what happened, and under a `required` policy add that
+ * an admin can record an audited override on the observer's behalf (the only capture path that
+ * actually exists for that case -- see `captureChecklistSessionLocation`'s `overrideReason`).
+ */
+export function describeGeoNotice(outcome: LocationCaptureOutcome, policy: string, t: TFunction): GeoNotice {
+  if (outcome === 'off' || outcome === 'captured') return null;
+
+  const deniedOrUnavailable =
+    outcome === 'denied'
+      ? t('checklistSessions.conduct.geoDenied', 'Location access was denied for this session.')
+      : t('checklistSessions.conduct.geoUnavailable', 'Location could not be determined for this session.');
+  const message =
+    policy === 'required'
+      ? `${deniedOrUnavailable} ${t('checklistSessions.conduct.geoRequiredHint', 'An admin can record it on your behalf.')}`
+      : deniedOrUnavailable;
+  return { tone: policy === 'required' ? 'error' : 'warning', message };
 }
 
 /**
@@ -112,6 +153,7 @@ export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: s
     [sessionId],
     {
       unauthenticated: t('checklistSessions.conduct.sessionExpired', 'Your session expired. Sign in again.'),
+      notFound: t('checklistSessions.conduct.notFound', 'This session no longer exists or you no longer have access to it.'),
       error: t('checklistSessions.conduct.loadError', 'Unable to load this session.'),
     },
   );
@@ -143,6 +185,7 @@ export function ConductScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [geoNotice, setGeoNotice] = useState<GeoNotice>(null);
 
   if (!checklist) return null;
 
@@ -153,8 +196,14 @@ export function ConductScreen({
     await runMutation(
       async () => {
         await transitionChecklistSession(session.id, action, session.version);
-        if (action === 'start') await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
-        if (action === 'complete') await captureLocationBestEffort(session.id, 'end', session.locationCapturePolicy);
+        if (action === 'start') {
+          const outcome = await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
+          setGeoNotice(describeGeoNotice(outcome, session.locationCapturePolicy, t));
+        }
+        if (action === 'complete') {
+          const outcome = await captureLocationBestEffort(session.id, 'end', session.locationCapturePolicy);
+          setGeoNotice(describeGeoNotice(outcome, session.locationCapturePolicy, t));
+        }
         await onReload();
       },
       { setBusy, setError, onConflict: () => setConflict(true), fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
@@ -205,6 +254,10 @@ export function ConductScreen({
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>
           {error}
         </p>
+      )}
+
+      {geoNotice && (
+        <InlineFeedback tone={geoNotice.tone}>{geoNotice.message}</InlineFeedback>
       )}
 
       {session.status === 'scheduled' && (

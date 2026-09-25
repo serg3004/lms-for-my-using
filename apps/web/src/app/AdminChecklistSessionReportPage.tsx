@@ -6,6 +6,7 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { getChecklistInstance } from '../shared/api/checklists.js';
 import {
+  captureChecklistSessionLocation,
   getChecklistSession,
   listChecklistScoreRevisions,
   listChecklistSessionEvents,
@@ -15,6 +16,8 @@ import {
 import type {
   ChecklistInstanceSummary,
   ChecklistLocationCapture,
+  ChecklistLocationCapturePoint,
+  ChecklistLocationCaptureStatus,
   ChecklistScoreRevision,
   ChecklistSessionEvent,
   ChecklistSessionSummary,
@@ -67,6 +70,105 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
       {error && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={status === 'saving' || reason.trim().length === 0} type="submit">
         {status === 'saving' ? t('admin.checklists.report.recalculating', 'Recalculating...') : t('admin.checklists.report.recalculate', 'Recalculate score')}
+      </button>
+    </form>
+  );
+}
+
+/**
+ * PR 306: closes the "required location + audited override" anomaly's missing half -- the
+ * backend (`ChecklistSessionService.captureLocation`, PR 290/304) has always accepted an admin
+ * submitting a capture on the observer's behalf with a required `overrideReason`, and audits it
+ * (`checklist_location.accessed`), but no frontend ever called it for anyone other than the
+ * observer themselves (`ChecklistSessionConduct.tsx`'s own capture is always self-service). This
+ * is the admin-facing entry point: only offered for a capture point that has no row yet (the
+ * unique-per-point constraint would otherwise 409), same shape as `RecalculateForm` above.
+ */
+export function LocationOverrideForm({
+  sessionId,
+  missingPoints,
+  onDone,
+  t,
+}: {
+  sessionId: string;
+  missingPoints: ChecklistLocationCapturePoint[];
+  onDone: () => void;
+  t: TFunction;
+}) {
+  const [point, setPoint] = useState<ChecklistLocationCapturePoint>(missingPoints[0] ?? 'start');
+  const [status, setStatus] = useState<ChecklistLocationCaptureStatus>('captured');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [reason, setReason] = useState('');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+
+  if (missingPoints.length === 0) return null;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) return;
+    if (status === 'captured' && (latitude.trim() === '' || longitude.trim() === '')) return;
+    setSaveState('saving');
+    setError(null);
+    try {
+      await captureChecklistSessionLocation(sessionId, point, {
+        status,
+        overrideReason: trimmedReason,
+        ...(status === 'captured' ? { latitude: Number(latitude), longitude: Number(longitude) } : {}),
+      });
+      setReason('');
+      setLatitude('');
+      setLongitude('');
+      setSaveState('idle');
+      onDone();
+    } catch (err) {
+      setSaveState('error');
+      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.report.locationOverrideError', 'Unable to record the location capture.'));
+    }
+  }
+
+  return (
+    <form onSubmit={(event) => { void submit(event); }} style={{ display: 'grid', gap: 8, marginTop: 16, maxWidth: 480 }}>
+      <h4 style={{ margin: 0 }}>{t('admin.checklists.report.locationOverrideTitle', 'Record on the observer’s behalf')}</h4>
+      <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+        {t('admin.checklists.report.locationOverridePoint', 'Capture point')}
+        <select className="admin-input" onChange={(event) => setPoint(event.target.value as ChecklistLocationCapturePoint)} value={point}>
+          {missingPoints.map((candidate) => (
+            <option key={candidate} value={candidate}>
+              {candidate === 'start' ? t('admin.checklists.report.locationStart', 'Start') : t('admin.checklists.report.locationEnd', 'End')}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+        {t('admin.checklists.report.locationOverrideStatus', 'Status')}
+        <select className="admin-input" onChange={(event) => setStatus(event.target.value as ChecklistLocationCaptureStatus)} value={status}>
+          <option value="captured">{t('admin.checklists.report.locationOverrideCaptured', 'Coordinates known')}</option>
+          <option value="denied">{t('admin.checklists.report.locationOverrideDenied', 'Denied')}</option>
+          <option value="unavailable">{t('admin.checklists.report.locationOverrideUnavailable', 'Unavailable')}</option>
+        </select>
+      </label>
+      {status === 'captured' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+            {t('admin.checklists.report.locationLatitude', 'Latitude')}
+            <input className="admin-input" onChange={(event) => setLatitude(event.target.value)} required type="number" step="any" min={-90} max={90} value={latitude} />
+          </label>
+          <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+            {t('admin.checklists.report.locationLongitude', 'Longitude')}
+            <input className="admin-input" onChange={(event) => setLongitude(event.target.value)} required type="number" step="any" min={-180} max={180} value={longitude} />
+          </label>
+        </div>
+      )}
+      <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+        {t('admin.checklists.report.locationOverrideReason', 'Reason for recording this on their behalf')}
+        <textarea className="admin-input" onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
+      </label>
+      {error && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{error}</p>}
+      <button className="admin-btn admin-btn--secondary" disabled={saveState === 'saving' || reason.trim().length === 0} type="submit">
+        {saveState === 'saving' ? t('admin.checklists.report.locationOverrideSaving', 'Saving...') : t('admin.checklists.report.locationOverrideSubmit', 'Record location')}
       </button>
     </form>
   );
@@ -132,7 +234,11 @@ export function AdminChecklistSessionReportPage() {
   const { state, reload } = useAsyncData<ChecklistSessionSummary>(
     () => getChecklistSession(id!),
     [id],
-    { unauthenticated: t('admin.checklists.report.loadError', 'Unable to load the session report.'), error: t('admin.checklists.report.loadError', 'Unable to load the session report.') },
+    {
+      unauthenticated: t('admin.checklists.report.loadError', 'Unable to load the session report.'),
+      notFound: t('admin.checklists.report.notFound', 'This session no longer exists.'),
+      error: t('admin.checklists.report.loadError', 'Unable to load the session report.'),
+    },
   );
 
   if (state.status === 'loading') {
@@ -155,7 +261,7 @@ export function SessionReportBody({ session, reloadSession, t }: { session: Chec
     [session.instanceId],
     { unauthenticated: '', error: t('admin.checklists.report.loadError', 'Unable to load the session report.') },
   );
-  const { state: locationState } = useAsyncData<ChecklistLocationCapture[]>(
+  const { state: locationState, reload: reloadLocations } = useAsyncData<ChecklistLocationCapture[]>(
     () => listChecklistSessionLocationCaptures(session.id),
     [session.id],
     { unauthenticated: '', error: t('admin.checklists.report.loadError', 'Unable to load the session report.') },
@@ -292,6 +398,16 @@ export function SessionReportBody({ session, reloadSession, t }: { session: Chec
                 ))}
               </ul>
             )
+          )}
+          {isAdmin && locationState.status === 'loaded' && session.locationCapturePolicy !== 'off' && (
+            <LocationOverrideForm
+              missingPoints={(['start', 'end'] as ChecklistLocationCapturePoint[]).filter(
+                (candidate) => !locationState.data.some((capture) => capture.capturePoint === candidate),
+              )}
+              onDone={() => void reloadLocations()}
+              sessionId={session.id}
+              t={t}
+            />
           )}
         </div>
       )}

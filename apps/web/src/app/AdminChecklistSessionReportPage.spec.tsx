@@ -30,6 +30,7 @@ vi.mock('../shared/session.js', () => ({
 }));
 
 const apiMocks = vi.hoisted(() => ({
+  captureChecklistSessionLocation: vi.fn(),
   getChecklistInstance: vi.fn(),
   getChecklistSession: vi.fn(),
   listChecklistScoreRevisions: vi.fn(),
@@ -39,6 +40,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 vi.mock('../shared/api/checklists.js', () => ({ getChecklistInstance: apiMocks.getChecklistInstance }));
 vi.mock('../shared/api/checklistSessions.js', () => ({
+  captureChecklistSessionLocation: apiMocks.captureChecklistSessionLocation,
   getChecklistSession: apiMocks.getChecklistSession,
   listChecklistScoreRevisions: apiMocks.listChecklistScoreRevisions,
   listChecklistSessionEvents: apiMocks.listChecklistSessionEvents,
@@ -50,6 +52,7 @@ import {
   AdminChecklistSessionReportPage,
   findResultForItem,
   HistoryTab,
+  LocationOverrideForm,
   RecalculateForm,
   SessionReportBody,
 } from './AdminChecklistSessionReportPage.js';
@@ -141,6 +144,31 @@ describe('RecalculateForm', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
     expect(html).toContain('disabled=""');
+  });
+});
+
+describe('LocationOverrideForm', () => {
+  it('renders nothing when every capture point already has a row', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    const html = renderToStaticMarkup(<LocationOverrideForm missingPoints={[]} onDone={vi.fn()} sessionId="session-1" t={t} />);
+    expect(html).toBe('');
+  });
+
+  it('offers only the missing capture point(s) and disables submit until a reason is entered', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    const html = renderToStaticMarkup(<LocationOverrideForm missingPoints={['end']} onDone={vi.fn()} sessionId="session-1" t={t} />);
+    expect(html).toContain('value="end"');
+    expect(html).not.toContain('value="start"');
+    expect(html).toContain('disabled=""');
+  });
+
+  it('shows latitude/longitude fields only when status is "captured"', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => {
+      if (initial === 'captured') return ['denied', vi.fn()];
+      return [initial, vi.fn()];
+    });
+    const html = renderToStaticMarkup(<LocationOverrideForm missingPoints={['start', 'end']} onDone={vi.fn()} sessionId="session-1" t={t} />);
+    expect(html).not.toContain('Latitude');
   });
 });
 
