@@ -719,6 +719,49 @@ client wrapper. Closed in this PR:
   are the first frontend callers of this endpoint; `ChecklistWorkplaceSettingsView` (`shared/api/
   types.ts`) mirrors the backend view type minus the two deferred threshold fields.
 
+## Anomaly matrix audit (PR 306)
+
+An audit of the checklist-session module against the plan doc's 17 mandatory anomalies (PR 306
+spec) found that most were already correctly handled by PR 285-305, not gaps -- notably anomaly
+"403 manager scope" is implemented as 404 (`checklist-session.service.spec.ts`: "throws 404 when
+the session is outside the caller scope"), an intentional anti-enumeration pattern already in
+place since PR 287/292, and "incomplete mandatory criteria" blocking session completion is not a
+gap at all: session and instance completion are deliberately decoupled per
+[`ADR_CHECKLIST_SESSION_OVERLAY.md`](../architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md), and the
+client already disables Complete until all required criteria are answered.
+
+Two real bugs and one missing admin surface were fixed in this PR:
+
+- `captureLocationBestEffort()` (`apps/web/src/app/ChecklistSessionConduct.tsx`) collapsed
+  `GeolocationPositionError.PERMISSION_DENIED` and `POSITION_UNAVAILABLE` into a single "denied"
+  outcome. It now branches on `error.code` and returns a distinct `LocationCaptureOutcome`
+  (`'denied' | 'unavailable'`), surfaced via a new pure `describeGeoNotice()` helper as a
+  distinguishable inline notice on session start/complete.
+- The backend admin location-override endpoint (`POST /checklist-sessions/:id/location`, admin
+  override path, audited via `checklist_location.accessed` since PR 304) had no frontend caller.
+  Added `LocationOverrideForm` to the admin session report's Files tab (plain `<form>`, matching
+  the `RecalculateForm` convention rather than a `Dialog`), gated to missing `start`/`end` capture
+  points, requiring an override reason.
+- The existing `notFound` variant of `AsyncDataState` (`apps/web/src/shared/asyncData.ts`, already
+  present before this PR) was wired into `ChecklistSessionConduct` and
+  `AdminChecklistSessionReportPage`'s `useAsyncData` calls so a deleted/inaccessible session shows
+  a clear message instead of a generic error.
+
+Explicitly **not** closed in this PR (documented gaps, not silent omissions):
+
+- Checklist archived mid-wizard, photo-rejected, and storage-failure anomalies are covered only by
+  generic error handling, not checklist-endpoint-specific tests/messages.
+- All-criteria-skipped vs. not-yet-scored: the backend already distinguishes these
+  (`ChecklistInstance.scored`, PR 290), but the frontend does not surface the distinction to the
+  user.
+- `ChecklistSessionReminderWorker` has test coverage for cancelled/completed/orphaned suppression
+  (PR 291) but no test for retry-on-delivery-failure.
+- Manager analytics no-data and partial-chart-data anomalies lack a true DB-integration test and a
+  frontend test respectively.
+- The frontend never sends `idempotencyKey` on session create/transition calls, even though the
+  backend has fully supported it since PR 301 -- confirmed via grep (`apps/web/src` has zero
+  matches for `idempotencyKey`). This is a genuine, unaddressed duplicate-request gap.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
