@@ -36,7 +36,17 @@ export type AuditLogAction =
   | 'checklist_scale.updated'
   | 'checklist_scale.archived'
   | 'checklist_score_revision.created'
-  | 'certificate.issued';
+  | 'certificate.issued'
+  // PR 304: privacy audit trail for sensitive checklist-session data. `checklist_location.accessed`
+  // covers both directions -- an admin submitting a location capture on behalf of the assigned
+  // observer (override write) and an admin reading another observer's exact coordinates (override
+  // read); `checklist_evidence.accessed` covers a privileged viewer opening photo evidence for an
+  // instance outside their own normal review assignment (not the learner, not the assigned
+  // reviewer). Routine access within the normal workflow (the learner's own data, the assigned
+  // reviewer reviewing it) is deliberately NOT audited here -- see API_CONTRACTS.md's "Privacy,
+  // retention, audit" section for why.
+  | 'checklist_location.accessed'
+  | 'checklist_evidence.accessed';
 
 export type RecordAuditLogInput = {
   organizationId: string;

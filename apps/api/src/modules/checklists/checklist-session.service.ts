@@ -665,7 +665,9 @@ export class ChecklistSessionService {
    * constraint; this is the server-observable half of "start/end only, no continuous tracking."
    * When the caller is not the assigned observer (only reachable by an admin, since the RBAC
    * policy + sessionScope() together restrict everyone else), an `overrideReason` is required
-   * and the submission is separately audited via a `location_override` ChecklistSessionEvent.
+   * and the submission is separately audited: a `location_override` ChecklistSessionEvent (the
+   * session's own timeline) plus a `checklist_location.accessed` AuditLogService entry (PR 304 --
+   * the formal, tenant-wide-reviewable privacy audit trail admin geo override requires).
    */
   async captureLocation(
     sessionId: string,
@@ -689,9 +691,10 @@ export class ChecklistSessionService {
       throw new BadRequestException('overrideReason is required when submitting a location capture on behalf of the observer');
     }
 
+    let capture;
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const capture = await tx.checklistLocationCapture.create({
+      capture = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.checklistLocationCapture.create({
           data: {
             organizationId,
             sessionId,
@@ -716,7 +719,7 @@ export class ChecklistSessionService {
           });
         }
 
-        return capture;
+        return created;
       });
     } catch (error) {
       if (this.isUniqueConstraintViolation(error, 'capture_point')) {
@@ -724,12 +727,33 @@ export class ChecklistSessionService {
       }
       throw error;
     }
+
+    if (isOverride) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'checklist_location.accessed',
+        targetType: 'checklist_session',
+        targetId: sessionId,
+        summary: `Submitted a ${capturePoint} location capture on behalf of the assigned observer`,
+        metadata: { capturePoint, reason: input.overrideReason },
+      });
+    }
+
+    return capture;
   }
 
   /**
    * Privacy-safe projection: only the assigned observer (who submitted the capture) and admin
    * see raw coordinates. Everyone else with read access to the session (manager, learner) sees
    * only that a capture happened, not where.
+   *
+   * PR 304: an admin reading another observer's exact coordinates is audited the same way the
+   * write-side override is -- `checklist_location.accessed` -- since it's the same privacy-
+   * sensitive exception to the normal "only the observer sees their own coordinates" rule. Not
+   * logged for the observer reading their own captures (the routine, expected case), nor when no
+   * returned capture actually carries coordinates (e.g. all `denied`/`unavailable`, or none yet) --
+   * there is nothing sensitive to have viewed.
    */
   async listLocationCaptures(sessionId: string, organizationId: string, scope: object, actorId: string, isAdmin: boolean) {
     const session = await this.prisma.checklistSession.findFirst({
@@ -738,22 +762,39 @@ export class ChecklistSessionService {
     });
     if (!session) throw new NotFoundException('Checklist session not found');
 
-    const canSeeCoordinates = isAdmin || session.observerId === actorId;
+    const isOwnCapture = session.observerId === actorId;
+    const canSeeCoordinates = isAdmin || isOwnCapture;
     const captures = await this.prisma.checklistLocationCapture.findMany({
       where: { sessionId, organizationId },
       orderBy: { capturePoint: 'asc' },
     });
 
-    if (canSeeCoordinates) return captures;
-    return captures.map(({ id, organizationId: orgId, sessionId: sid, capturePoint, status, capturedBy, capturedAt }) => ({
-      id,
-      organizationId: orgId,
-      sessionId: sid,
-      capturePoint,
-      status,
-      capturedBy,
-      capturedAt,
-    }));
+    if (!canSeeCoordinates) {
+      return captures.map(({ id, organizationId: orgId, sessionId: sid, capturePoint, status, capturedBy, capturedAt }) => ({
+        id,
+        organizationId: orgId,
+        sessionId: sid,
+        capturePoint,
+        status,
+        capturedBy,
+        capturedAt,
+      }));
+    }
+
+    const hasCoordinates = captures.some((capture) => capture.latitude !== null && capture.longitude !== null);
+    if (!isOwnCapture && hasCoordinates) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'checklist_location.accessed',
+        targetType: 'checklist_session',
+        targetId: sessionId,
+        summary: "Viewed another observer's exact geolocation coordinates",
+        metadata: {},
+      });
+    }
+
+    return captures;
   }
 
   /**

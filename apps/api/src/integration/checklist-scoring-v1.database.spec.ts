@@ -84,6 +84,7 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
   });
 
   afterEach(async () => {
+    await prisma.auditLog.deleteMany({ where: { organizationId } });
     await prisma.checklistLocationCapture.deleteMany({ where: { organizationId } });
     await prisma.checklistSessionEvent.deleteMany({ where: { organizationId } });
     await prisma.checklistSession.deleteMany({ where: { organizationId } });
@@ -241,5 +242,133 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
     const events = await prisma.checklistSessionEvent.findMany({ where: { sessionId: session.id, eventType: 'location_override' } });
     expect(events).toHaveLength(1);
     expect(events[0]?.metadata).toMatchObject({ capturePoint: 'start', overrideReason: expect.stringContaining('Observer device offline') });
+
+    // PR 304: the same override is also written to the tenant-wide privacy audit trail, distinct
+    // from the session's own timeline above.
+    const auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
+    });
+    expect(auditEntries).toHaveLength(1);
+    expect(auditEntries[0]).toMatchObject({ actorId: admin.id, targetType: 'checklist_session' });
+  });
+
+  it('geolocation: an admin reading another observer\'s exact coordinates is audited; the observer reading their own is not', async () => {
+    const admin = await prisma.user.create({
+      data: {
+        organizationId,
+        email: `admin-${randomUUID()}@example.test`,
+        passwordHash: 'not-used-by-this-test',
+        firstName: 'Scoring',
+        lastName: 'Admin',
+      },
+    });
+
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
+    const session = await sessionService.create(
+      organizationId,
+      { instanceId: instance.id, observerId, locationCapturePolicy: 'required' },
+      observerId,
+    );
+    await sessionService.captureLocation(
+      session.id,
+      organizationId,
+      'start',
+      { status: 'captured', latitude: 51.1, longitude: 71.4 },
+      observerId,
+      {},
+    );
+
+    await sessionService.listLocationCaptures(session.id, organizationId, {}, observerId, false);
+    let auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
+    });
+    expect(auditEntries).toHaveLength(0);
+
+    await sessionService.listLocationCaptures(session.id, organizationId, {}, admin.id, true);
+    auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
+    });
+    expect(auditEntries).toHaveLength(1);
+    expect(auditEntries[0]).toMatchObject({ actorId: admin.id, targetType: 'checklist_session' });
+  });
+
+  it('evidence: a privileged viewer opening photo evidence outside their own review assignment is audited; the assigned reviewer is not', async () => {
+    const item = await prisma.checklistItem.create({
+      data: { organizationId, checklistId, order: 0, text: 'Photo item', points: 10, isRequired: true, photoRequired: true },
+    });
+    const reviewer = await prisma.user.create({
+      data: {
+        organizationId,
+        email: `reviewer-${randomUUID()}@example.test`,
+        passwordHash: 'not-used-by-this-test',
+        firstName: 'Scoring',
+        lastName: 'Reviewer',
+      },
+    });
+    const otherAdmin = await prisma.user.create({
+      data: {
+        organizationId,
+        email: `other-admin-${randomUUID()}@example.test`,
+        passwordHash: 'not-used-by-this-test',
+        firstName: 'Scoring',
+        lastName: 'OtherAdmin',
+      },
+    });
+
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
+    await checklistsService.submitItemResult(instance.id, item.id, organizationId, learnerId, false, { checked: true });
+    const uploadService = { getInlinePresignedUrl: async () => 'https://files.example.test/signed', deleteObject: async () => undefined } as unknown as UploadService;
+    const checklistsServiceWithUpload = new ChecklistsService(prisma, uploadService);
+    await checklistsServiceWithUpload.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'evidence-key-1',
+      fileName: 'evidence.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+    await prisma.checklistInstance.update({ where: { id: instance.id }, data: { reviewerId: reviewer.id } });
+    const storedResult = await prisma.checklistItemResult.findUniqueOrThrow({
+      where: { instanceId_itemId: { instanceId: instance.id, itemId: item.id } },
+    });
+
+    await checklistsServiceWithUpload.getItemPhotoDownload(instance.id, item.id, organizationId, reviewer.id, true);
+    let auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_evidence.accessed', targetId: storedResult.id },
+    });
+    expect(auditEntries).toHaveLength(0);
+
+    await checklistsServiceWithUpload.getItemPhotoDownload(instance.id, item.id, organizationId, otherAdmin.id, true);
+    auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_evidence.accessed', targetId: storedResult.id },
+    });
+    expect(auditEntries).toHaveLength(1);
+    expect(auditEntries[0]).toMatchObject({ actorId: otherAdmin.id, targetType: 'checklist_item_result' });
+    expect(auditEntries[0]?.metadata).toMatchObject({ instanceId: instance.id, itemId: item.id });
+  });
+
+  it('geolocation: reading another observer\'s captures is not audited when none carry coordinates (denied/unavailable only)', async () => {
+    const admin = await prisma.user.create({
+      data: {
+        organizationId,
+        email: `admin-${randomUUID()}@example.test`,
+        passwordHash: 'not-used-by-this-test',
+        firstName: 'Scoring',
+        lastName: 'Admin',
+      },
+    });
+
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
+    const session = await sessionService.create(
+      organizationId,
+      { instanceId: instance.id, observerId, locationCapturePolicy: 'optional' },
+      observerId,
+    );
+    await sessionService.captureLocation(session.id, organizationId, 'start', { status: 'denied' }, observerId, {});
+
+    await sessionService.listLocationCaptures(session.id, organizationId, {}, admin.id, true);
+
+    const auditEntries = await prisma.auditLog.findMany({
+      where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
+    });
+    expect(auditEntries).toHaveLength(0);
   });
 });

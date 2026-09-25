@@ -575,6 +575,74 @@ describe('ChecklistsService — item photo attachment', () => {
       service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('records a checklist_evidence.accessed audit log entry for a privileged viewer outside the normal workflow', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    const { instance, item } = await setUpCheckedInstance(prisma, uploadService);
+    const service = new ChecklistsService(prisma, uploadService as never, auditLog as never);
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+    const otherAdminId = '99999999-9999-9999-9999-999999999999';
+    const storedResult = await prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId: instance.id, itemId: item.id } },
+    });
+
+    await service.getItemPhotoDownload(instance.id, item.id, organizationId, otherAdminId, true);
+
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId,
+        actorId: otherAdminId,
+        action: 'checklist_evidence.accessed',
+        targetType: 'checklist_item_result',
+        targetId: storedResult?.id,
+        metadata: expect.objectContaining({ instanceId: instance.id, itemId: item.id }),
+      }),
+    );
+  });
+
+  it('does not audit the assigned reviewer opening evidence for their own review assignment', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    const { instance, item } = await setUpCheckedInstance(prisma, uploadService);
+    const service = new ChecklistsService(prisma, uploadService as never, auditLog as never);
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+    await prisma.checklistInstance.update({ where: { id: instance.id }, data: { reviewerId: instructorId } });
+
+    await service.getItemPhotoDownload(instance.id, item.id, organizationId, instructorId, true);
+
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('does not audit the learner viewing their own evidence', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    const { instance, item } = await setUpCheckedInstance(prisma, uploadService);
+    const service = new ChecklistsService(prisma, uploadService as never, auditLog as never);
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, {
+      objectKey: 'key-1',
+      fileName: 'photo.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: 1000,
+    });
+
+    await service.getItemPhotoDownload(instance.id, item.id, organizationId, learnerId, false);
+
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
 });
 
 describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {

@@ -644,6 +644,50 @@ session's own declared `timezone` means.
   rendering as `10:00 AM` in `America/New_York` (EDT) and `7:00 PM` in `Asia/Almaty` for the same
   moment, and the correct EST/EDT abbreviation resolving on each side of the same DST transition.
 
+## Privacy, retention, audit (PR 304)
+
+Checklist-session workplace-training data already carried privacy-safe projections and a session-
+scoped event timeline (PR 290/300). This PR adds the missing tenant-wide, admin-reviewable
+**audit trail** for the two categories of sensitive data those projections gate, and formally
+defers retention/deletion to an owner decision instead of inventing one.
+
+- **Two new `AuditLogAction` values** (`audit-log.service.ts`): `checklist_location.accessed` and
+  `checklist_evidence.accessed`. Both are best-effort (never fail the mutation/read they describe,
+  same as every existing `AuditLogAction`) and are written **after** any enclosing transaction
+  commits, never inside it -- the same rule PR 300 established for `AuditLogService` writes, to
+  avoid duplicate entries on a Serializable-retry.
+- **`checklist_location.accessed`** covers both directions of the pre-existing "only the assigned
+  observer and admin see exact GPS coordinates" exception (PR 290's privacy-safe projection in
+  `listLocationCaptures`): an admin **submitting** a location capture on behalf of the observer
+  (`captureLocation`, the pre-existing `overrideReason`-gated path) and an admin **reading**
+  another observer's exact coordinates (`listLocationCaptures`). Not logged for the observer
+  acting on/reading their own captures -- that is the routine, expected case, not a privacy
+  exception. The pre-existing `location_override` `ChecklistSessionEvent` (session's own timeline)
+  is unchanged and continues to exist alongside this tenant-wide entry; they serve different
+  audiences (a session's own participants vs. an org-wide audit reviewer).
+- **`checklist_evidence.accessed`** covers a privileged viewer (`isPrivileged`, i.e. not
+  learner-only) opening photo evidence (`getItemPhotoDownload`) for an instance **outside their own
+  normal review assignment** -- neither the learner who owns the instance nor its assigned
+  reviewer (`checklistInstance.reviewerId`). Routine access within the normal workflow (the
+  learner viewing their own evidence, the assigned reviewer reviewing it) is deliberately **not**
+  audited here: the pre-existing `checklist_item_result.reviewed` audit action already captures
+  that flow, and a per-view entry for every routine review would be noise without added security
+  value. When `reviewerId` is unset, any privileged viewer with read access is "outside the normal
+  workflow" and is audited, consistent with `assertReviewerCanAccess`'s own unset-reviewer
+  semantics.
+- **No new retention/deletion code.** The plan explicitly marks retention as undecided ("retention
+  не выдумана: до решения помечена как release blocker") and `OPEN_DECISIONS.md`'s house rule
+  forbids turning an unresolved decision into an implementation requirement. See
+  [`DEC-CHKS-002`](../status/OPEN_DECISIONS.md#dec-chks-002--workplace-training-session-data-retention-policy)
+  for the open retention-period/deletion-mechanism decision this PR registers instead of
+  implementing.
+- **"Exact coordinates only to policy-scoped roles/objects" and "generic notifications without
+  coordinates"** were already satisfied by pre-existing PR 290 code (`listLocationCaptures`'s
+  masking, and reminder/notification payloads never carrying `lat`/`lng`) -- this PR adds no new
+  masking, only the audit trail around the existing exception paths, plus regression coverage
+  (`checklist-scoring-v1.database.spec.ts`) proving the audit trail is written for the override
+  cases and stays silent for the routine ones.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).
