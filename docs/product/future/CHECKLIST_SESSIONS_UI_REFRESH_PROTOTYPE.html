@@ -202,10 +202,8 @@
         </div>
         <div class="card settings-panel">
           <b style="font-size:13px">Настройки листа</b>
-          <div class="setting-row"><div class="toggle on"></div><div class="txt"><b>«Пропустить»</b><span>Критерий не влияет на результат</span></div></div>
-          <div class="setting-row"><div class="toggle on"></div><div class="txt"><b>Фото-доказательства</b><span>Разрешить прикреплять фото</span></div></div>
-          <div class="setting-row"><div class="toggle on"></div><div class="txt"><b>Геолокация</b><span>Фиксация в начале и конце</span></div></div>
-          <div class="field" style="margin-top:12px"><label>Требование геолокации</label><select><option>По желанию</option><option>Обязательно</option><option>Выключено</option></select></div>
+          <div class="sub" style="margin:6px 0 4px">«Пропустить» и «Фото» — свойства каждого критерия (колонки в таблице слева), не общая настройка листа.</div>
+          <div class="field" style="margin-top:8px"><label>Требование геолокации</label><select><option>По желанию</option><option>Обязательно</option><option>Выключено</option></select></div>
         </div>
       </div>
     </section>
@@ -218,10 +216,9 @@
         <div class="pbody">
           <div class="sub">Иван Петров · 00:15:24</div>
           <div class="progress"><div style="width:64%"></div></div>
-          <div class="sub" style="margin-top:2px">Контакт с клиентом · 2 из 3</div>
+          <div class="sub" style="margin-top:2px">Критерий 2 из 3</div>
           <div class="alert info">Геопозиция начала: зафиксирована</div>
           <div class="ccard">
-            <div class="sub">Контакт с клиентом</div>
             <b style="font-size:13.5px">Выявление потребностей клиента</b>
             <div class="sub">Обязательный · 5-балльная шкала</div>
             <div class="scaleBtns"><button>1</button><button>2</button><button>3</button><button class="sel">4</button><button>5</button></div>
@@ -246,10 +243,10 @@
     <section class="screen" id="screen-manager">
       <div class="top"><div><span class="eyebrow">Аналитика</span><h1>Моя команда</h1><div class="sub">Выполнение стандартов за период</div></div></div>
       <div class="grid4">
-        <div class="card kpi"><div class="label">Низкое выполнение</div><div class="v" style="color:var(--color-danger)">7</div><div class="sub">&lt;70%</div></div>
+        <div class="card kpi"><div class="label">Низкое выполнение</div><div class="v" style="color:var(--color-danger)">7</div><div class="sub">порог не задан <span title="lowThreshold не настроен владельцем (DEC-CHKS-001) — бакет определяется по факту прохождения сессии, не по фиксированному %">ⓘ</span></div></div>
         <div class="card kpi"><div class="label">Высокое выполнение</div><div class="v" style="color:var(--color-success)">18</div><div class="sub">≥90%</div></div>
         <div class="card kpi"><div class="label">Без сессий за период</div><div class="v">3</div><div class="sub">требуют планирования</div></div>
-        <div class="card kpi"><div class="label">Средний результат</div><div class="v">87%</div><div class="trend up">↑ 4% к прошлому периоду</div></div>
+        <div class="card kpi"><div class="label">Средний результат</div><div class="v">87%</div><div class="trend up">↑ растёт к прошлому периоду</div></div>
       </div>
       <div class="chartrow">
         <div class="card chart">
@@ -263,9 +260,9 @@
               <text x="21" y="23" text-anchor="middle" font-size="7" font-weight="700" fill="var(--color-text)">87%</text>
             </svg>
             <div class="legend">
-              <div class="li"><span class="sw" style="background:var(--color-success)"></span>≥90% — 18</div>
-              <div class="li"><span class="sw" style="background:var(--color-warning)"></span>70–89% — 8</div>
-              <div class="li"><span class="sw" style="background:var(--color-danger)"></span>&lt;70% — 2</div>
+              <div class="li"><span class="sw" style="background:var(--color-success)"></span>Высокий (≥90%) — 18</div>
+              <div class="li"><span class="sw" style="background:var(--color-warning)"></span>Средний — 8</div>
+              <div class="li"><span class="sw" style="background:var(--color-danger)"></span>Низкий — 2</div>
             </div>
           </div>
         </div>
@@ -280,9 +277,9 @@
         </div>
       </div>
       <div class="card" style="margin-top:14px;overflow:hidden"><table><thead><tr><th>Сотрудник</th><th>Подразделение</th><th>Сессии</th><th>Средний результат</th><th>Тренд</th></tr></thead><tbody>
-        <tr class="row"><td><b>Иван Петров</b></td><td>Отдел продаж</td><td>5</td><td>92%</td><td class="trend up">↑ 6%</td></tr>
-        <tr class="row"><td><b>Мария Сидорова</b></td><td>Отдел продаж</td><td>4</td><td>68%</td><td class="trend down">↓ 12%</td></tr>
-        <tr class="row"><td><b>Алексей Смирнов</b></td><td>Отдел сервиса</td><td>3</td><td>95%</td><td class="trend up">↑ 8%</td></tr>
+        <tr class="row"><td><b>Иван Петров</b></td><td>Отдел продаж</td><td>5</td><td>92%</td><td class="trend up">↑</td></tr>
+        <tr class="row"><td><b>Мария Сидорова</b></td><td>Отдел продаж</td><td>4</td><td>68%</td><td class="trend down">↓</td></tr>
+        <tr class="row"><td><b>Алексей Смирнов</b></td><td>Отдел сервиса</td><td>3</td><td>95%</td><td class="trend up">↑</td></tr>
       </tbody></table></div>
     </section>
 
