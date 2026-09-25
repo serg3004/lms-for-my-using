@@ -157,4 +157,29 @@ describe('checklist session idempotency (PR 301) — database', () => {
     const auditEntries = await prisma.auditLog.findMany({ where: { organizationId, action: 'checklist_score_revision.created' } });
     expect(auditEntries).toHaveLength(1);
   });
+
+  it('replays a legacy recalculateScore() idempotency cache row (written before `scored` was added to the response) with the instance\'s real scored flag, not undefined', async () => {
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
+    await checklistsService.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: true });
+    const session = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, observerId);
+    const adminScope = await reviewAccess.sessionScope(currentUser(adminId, ['admin']));
+    const key = randomUUID();
+
+    const first = await sessionService.recalculateScore(session.id, organizationId, 'Fixing a scoring bug', adminId, adminScope, key);
+    expect(first.scored).toBe(true);
+
+    // Simulate a row cached by the pre-fix implementation, which stored the bare
+    // ChecklistScoreRevision (no `scored` field) as responseBody.
+    const revisionOnly = asJson(first) as Record<string, unknown>;
+    delete revisionOnly.scored;
+    await prisma.checklistIdempotencyKey.update({
+      where: { organizationId_scope_key: { organizationId, scope: 'session.recalculate', key } },
+      data: { responseBody: revisionOnly as object },
+    });
+
+    const replayed = await sessionService.recalculateScore(session.id, organizationId, 'Fixing a scoring bug', adminId, adminScope, key);
+    expect(replayed.scored).toBe(true);
+    const revisions = await prisma.checklistScoreRevision.findMany({ where: { organizationId, instanceId: instance.id } });
+    expect(revisions).toHaveLength(1);
+  });
 });

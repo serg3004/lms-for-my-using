@@ -1182,10 +1182,12 @@ describe('ChecklistSessionService', () => {
       const idempotencyKeyFindUnique = jest.fn(async () => null);
       const idempotencyKeyCreate = jest.fn(async () => ({}));
 
+      const instanceFindUnique = jest.fn(async () => ({ scored: true }));
+
       const base: Record<string, unknown> = {
         checklistSession: { findFirst: jest.fn(async () => session) },
         checklistScoreRevision: { create: scoreRevisionCreate, findMany: scoreRevisionFindMany },
-        checklistInstance: { update: instanceUpdate },
+        checklistInstance: { update: instanceUpdate, findUnique: instanceFindUnique },
         checklistSessionEvent: { create: sessionEventCreate },
         checklistIdempotencyKey: { findUnique: idempotencyKeyFindUnique, create: idempotencyKeyCreate },
       };
@@ -1204,6 +1206,7 @@ describe('ChecklistSessionService', () => {
         scoreRevisionFindMany,
         idempotencyKeyFindUnique,
         idempotencyKeyCreate,
+        instanceFindUnique,
       };
     }
 
@@ -1293,7 +1296,7 @@ describe('ChecklistSessionService', () => {
     });
 
     it('replays the stored revision for a retry with the same idempotencyKey, without writing a second revision or audit entry (PR 301)', async () => {
-      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80 };
+      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80, scored: true };
       const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma();
       (prisma.checklistIdempotencyKey.findUnique as jest.Mock).mockResolvedValueOnce({ responseBody: cachedRevision });
       const auditLog = { record: jest.fn(async () => undefined) };
@@ -1304,6 +1307,20 @@ describe('ChecklistSessionService', () => {
       expect(result).toEqual(cachedRevision);
       expect(scoreRevisionCreate).not.toHaveBeenCalled();
       expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the instance\'s persisted `scored` flag when replaying a legacy cache row that predates the field', async () => {
+      // Cached before the fix that started stashing `scored` alongside the revision -- the
+      // response body is raw historical JSON, never migrated.
+      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 0 };
+      const { prisma, checklistsService, instanceFindUnique } = createRecalculatePrisma();
+      (prisma.checklistIdempotencyKey.findUnique as jest.Mock).mockResolvedValueOnce({ responseBody: cachedRevision });
+      const service = new ChecklistSessionService(prisma, checklistsService, { record: jest.fn() } as never);
+
+      const result = await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {}, 'retry-key-legacy');
+
+      expect(result).toEqual({ ...cachedRevision, scored: true });
+      expect(instanceFindUnique).toHaveBeenCalledWith({ where: { id: instanceId }, select: { scored: true } });
     });
 
     it('stores the response under the given idempotencyKey on a fresh (first) recalculate', async () => {

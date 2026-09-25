@@ -819,9 +819,17 @@ export class ChecklistSessionService {
       // is a real score or the placeholder 0 computeInstanceScore() returns for an all-skipped,
       // not-scored instance -- otherwise it can't tell "recalculated to 0%" from "still not scored"
       // apart. Stashed alongside the cached idempotent response so a replay returns the same value.
-      const cached = await this.findIdempotentResponse<ChecklistScoreRevision & { scored: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
+      const cached = await this.findIdempotentResponse<ChecklistScoreRevision & { scored?: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
       if (cached) {
-        return { revision: cached, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
+        // A cache row written before `scored` was added to this response (any real recalculate
+        // from before this fix shipped) has no such field -- responseBody is raw historical JSON,
+        // never migrated. The instance's own persisted `scored` is authoritative for it: nothing
+        // else can have changed it between the original recalculation and this replay of the exact
+        // same request.
+        const scored = cached.scored ?? (
+          await tx.checklistInstance.findUnique({ where: { id: cached.instanceId }, select: { scored: true } })
+        )?.scored ?? false;
+        return { revision: { ...cached, scored }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
       }
 
       const session = await tx.checklistSession.findFirst({
