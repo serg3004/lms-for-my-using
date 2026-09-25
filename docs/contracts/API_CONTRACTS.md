@@ -802,6 +802,60 @@ data (Postgres or a full frontend render), not just a logic fix:
   of a fully-scored row and a zero-sessions row in the same table, asserting neither `null` nor
   `undefined` leaks into the DOM and the no-data row falls back to an explicit `—`.
 
+## E2E, security, accessibility, visual regression (PR 307)
+
+New `apps/e2e/tests/checklist-session-lifecycle.spec.ts` covers 14 of the 15 mandatory E2E
+scenarios from the plan doc's PR 307 section against the real backend and frontend (route-mocked
+per-test data, matching `checklist-review-workflow.spec.ts`'s established pattern -- not a
+fully-mocked frontend-only test): the full admin-creates -> observer-conducts-on-mobile
+(`context.setGeolocation()`, a real required photo upload via `setInputFiles`) ->
+employee-sees-result -> admin-report -> recalculate-creates-revision lifecycle; manager scoped
+analytics and drill-down; a checklist edited after scheduling still renders the session's frozen
+`templateSnapshot`, not the live edit; a stale-version 409 on a concurrent complete routes to the
+existing reload prompt instead of a silent overwrite; an all-skipped session shows PR 306's
+`notScored` state instead of a blank result. Anomaly #13 (cancelled session -> no reminder) is
+deliberately not an E2E case -- it has no observable UI signal, and is already covered by
+`checklist-session-reminder.worker.spec.ts`'s suppression test.
+
+Building this surfaced two real, pre-existing production bugs that no unit test had caught,
+because both only manifest across a real mutate-then-rerender cycle a mocked-component test
+doesn't exercise:
+
+- **`AdminChecklistSessionsPage`**: `ChecklistSessionWizard`'s `onCreated` immediately called the
+  parent's `load()`, which flips `useAsyncData`'s `AsyncDataState` back to `'loading'`. The page's
+  own `if (status === 'loading') return <PageState .../>` early-return then unmounts the whole
+  page -- including the just-opened wizard's "Сессии созданы" success screen -- for the instant the
+  background refetch is in flight, so the user watches their own successful submission get yanked
+  away and replaced by a freshly reset, empty wizard. Fixed by deferring the reload until the
+  wizard is actually closed (`wizardReloadPending` state), not on creation.
+- **`ChecklistSessionConduct`** (worse): every criterion action -- checking an item, attaching a
+  photo, saving a comment, skipping, any lifecycle transition -- called `onReload()` after its
+  mutation, hitting the identical `'loading'`-unmounts-the-page pattern. Since this component owns
+  `stepIndex` (which criterion is currently shown), every single answer silently snapped the
+  observer's mobile view back to criterion 1, making a checklist with more than one item
+  practically unusable. `AdminChecklistSessionReportPage` had the same bug on score recalculation
+  (resetting the selected tab). All three are fixed the same way: `useAsyncData` already exposes a
+  `mutate()` escape hatch (merge new data into state without the `'loading'` flip) that none of
+  these three call sites used; each mutation already returns the updated object in its response, so
+  `mutate()` merges it directly instead of triggering a redundant, state-destroying network reload.
+  `useAsyncData` itself is untouched -- it is shared infrastructure used across dozens of unrelated
+  screens, well outside this PR's blast radius.
+
+`cross-tenant-idor.audit.spec.ts` (the project's org-scoping matrix, distinct from
+`checklist-session.service.spec.ts`'s own equivalent coverage) previously had zero checklist-session
+entries; two are added for `ChecklistSessionService.get()`/`listEvents()`, matching the file's
+existing mocked-`findFirst`-scoped-by-`organizationId` pattern for every other module.
+
+Accessibility (`@axe-core/playwright`, WCAG AA): admin sessions list + wizard, the mobile observer
+"Проведение" tab (375px, matching its actual design viewport), `learn/checklists`, and
+`manager/checklists` all report zero violations. Visual regression: zero diffs on the two screens
+this PR's fixes actually touch (`admin-checklist-session-report`, `instructor-checklist-session-conduct`);
+unrelated screens (`admin-checklist-builder`, `admin-checklist-sessions-wizard`,
+`manager-checklist-analytics`) showed small pixel diffs in local verification, consistent with the
+Chromium-build-version drift `visual-tests/responsive-matrix.spec.ts` already documents (a fixed
+pixel count, not a layout regression) -- confirmed against the pinned CI browser by this PR's own
+CI run rather than the local sandbox's mismatched Chromium revision.
+
 ## Product scope vs implementation
 
 Implementation existence does not determine MVP disposition. Product boundaries live in [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md); unresolved owner/business decisions live in [`../status/OPEN_DECISIONS.md`](../status/OPEN_DECISIONS.md).

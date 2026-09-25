@@ -39,7 +39,7 @@ export function findResultForItem(results: ChecklistInstanceSummary['results'], 
   return results.find((result) => result.itemId === itemId);
 }
 
-export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: () => void; t: TFunction }) {
+export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: (revision: ChecklistScoreRevision) => void; t: TFunction }) {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +51,10 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
     setStatus('saving');
     setError(null);
     try {
-      await recalculateChecklistSessionScore(sessionId, { reason: trimmed, idempotencyKey: crypto.randomUUID() });
+      const revision = await recalculateChecklistSessionScore(sessionId, { reason: trimmed, idempotencyKey: crypto.randomUUID() });
       setReason('');
       setStatus('idle');
-      onDone();
+      onDone(revision);
     } catch (err) {
       setStatus('error');
       setError(err instanceof ApiClientError ? err.message : t('admin.checklists.report.recalculateError', 'Unable to recalculate the score.'));
@@ -176,7 +176,7 @@ export function LocationOverrideForm({
 
 type HistoryData = { events: ChecklistSessionEvent[]; revisions: ChecklistScoreRevision[] };
 
-export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionId: string; isAdmin: boolean; onRecalculated: () => void; t: TFunction }) {
+export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionId: string; isAdmin: boolean; onRecalculated: (revision: ChecklistScoreRevision) => void; t: TFunction }) {
   const { state, reload } = useAsyncData<HistoryData>(
     async () => {
       const [events, revisions] = await Promise.all([listChecklistSessionEvents(sessionId), listChecklistScoreRevisions(sessionId)]);
@@ -222,7 +222,7 @@ export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionI
         </ul>
       )}
 
-      {isAdmin && <RecalculateForm sessionId={sessionId} onDone={() => { void reload(); onRecalculated(); }} t={t} />}
+      {isAdmin && <RecalculateForm sessionId={sessionId} onDone={(revision) => { void reload(); onRecalculated(revision); }} t={t} />}
     </div>
   );
 }
@@ -231,7 +231,7 @@ export function AdminChecklistSessionReportPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
 
-  const { state, reload } = useAsyncData<ChecklistSessionSummary>(
+  const { state, mutate } = useAsyncData<ChecklistSessionSummary>(
     () => getChecklistSession(id!),
     [id],
     {
@@ -248,10 +248,22 @@ export function AdminChecklistSessionReportPage() {
     return <main className="admin-state"><PageState title={t('admin.checklists.report.title', 'Session report')} message={state.message} variant="error" /></main>;
   }
 
-  return <SessionReportBody session={state.data} reloadSession={reload} t={t} />;
+  return <SessionReportBody session={state.data} onScoreRecalculated={(revision) => mutate((s) => ({ ...s, result: { ...s.result, percentage: revision.newPercentage, passed: revision.newPassed, scored: true } }))} t={t} />;
 }
 
-export function SessionReportBody({ session, reloadSession, t }: { session: ChecklistSessionSummary; reloadSession: () => void; t: TFunction }) {
+export function SessionReportBody({
+  session,
+  onScoreRecalculated,
+  t,
+}: {
+  session: ChecklistSessionSummary;
+  // Merges the recalculation's own response into local state instead of a full page reload --
+  // a network reload flips the parent's AsyncDataState back to 'loading', which early-returns
+  // above and unmounts this whole component (losing the currently-selected tab) for the split
+  // second the refetch is in flight. Same fix as ChecklistSessionConduct.tsx's onMutate.
+  onScoreRecalculated: (revision: ChecklistScoreRevision) => void;
+  t: TFunction;
+}) {
   const { currentUser } = useSession();
   const isAdmin = currentUser?.roles.includes('admin') ?? false;
   const [tab, setTab] = useState<Tab>('summary');
@@ -420,7 +432,7 @@ export function SessionReportBody({ session, reloadSession, t }: { session: Chec
         </div>
       )}
 
-      {tab === 'history' && <HistoryTab sessionId={session.id} isAdmin={isAdmin} onRecalculated={reloadSession} t={t} />}
+      {tab === 'history' && <HistoryTab sessionId={session.id} isAdmin={isAdmin} onRecalculated={onScoreRecalculated} t={t} />}
     </AdminPageLayout>
   );
 }

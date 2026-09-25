@@ -770,13 +770,15 @@ describe('admin checklist sessions page smoke rendering', () => {
 
   it('renders checklist sessions happy path without crashing', () => {
     // useState call order in AdminChecklistSessionsPage: 1 statusTab, 2 search, 3 page,
-    // 4 wizardOpen, 5 settingsOpen (PR 305), 6 cancelTarget, 7 reassignTarget (PR 302),
-    // 8 actionError, then useAsyncData's internal loadState is call 9. Later calls belong to
-    // the (open=false, so effects are no-ops) ChecklistSessionWizard child and the closed
-    // ConfirmDialog/ReassignObserverDialog/ChecklistWorkplaceSettingsDialog -- left at their
-    // own defaults.
+    // 4 wizardOpen, 5 wizardReloadPending (PR 307 -- defers the wizard's post-create list
+    // reload until it actually closes, so the success screen isn't yanked away by the
+    // reload's own transient 'loading' state), 6 settingsOpen (PR 305), 7 cancelTarget,
+    // 8 reassignTarget (PR 302), 9 actionError, then useAsyncData's internal loadState is
+    // call 10. Later calls belong to the (open=false, so effects are no-ops)
+    // ChecklistSessionWizard child and the closed ConfirmDialog/ReassignObserverDialog/
+    // ChecklistWorkplaceSettingsDialog -- left at their own defaults.
     useStateAtCalls({
-      9: {
+      10: {
         status: 'loaded',
         data: {
           total: 1,

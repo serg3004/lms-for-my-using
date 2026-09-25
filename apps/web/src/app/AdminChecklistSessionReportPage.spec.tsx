@@ -98,7 +98,7 @@ describe('AdminChecklistSessionReportPage', () => {
 describe('SessionReportBody', () => {
   it('renders the summary tab by default with checklist/result/feedback', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
-    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} reloadSession={vi.fn()} t={t} />);
+    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html).toContain('Opening shift checklist');
     expect(html).toContain('92% ✓');
     expect(html).toContain('Great attention to detail');
@@ -108,7 +108,7 @@ describe('SessionReportBody', () => {
     reactMocks.useState
       .mockReturnValueOnce(['participants', vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
-    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} reloadSession={vi.fn()} t={t} />);
+    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html).toContain('Leo Learner');
     expect(html).toContain('Olga Observer');
   });
@@ -133,7 +133,7 @@ describe('SessionReportBody', () => {
       if (typeof initial === 'object' && initial !== null && 'status' in (initial as object)) return [{ status: 'loaded', data: instance }, vi.fn()];
       return [initial, vi.fn()];
     });
-    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} reloadSession={vi.fn()} t={t} />);
+    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html).toContain('Turn on the lights');
     expect(html).toContain('Done well');
   });
