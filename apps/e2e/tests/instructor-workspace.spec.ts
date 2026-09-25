@@ -9,13 +9,28 @@ const password = 'Demo1234!';
 
 type DemoRole = 'admin' | 'instructor';
 
+// The backend's account-level login rate limit is a FIXED 60s window (see
+// resilience-matrix.spec.ts for the full rationale): other E2E files log in as these same
+// demo accounts too, so this file's login can be the 6th in someone else's window and get a
+// 429 that leaves the login form on /login. Only waiting out the full window (60s) reliably
+// clears it, so retry once after a 65s backoff instead of failing outright (same pattern as
+// login-role-redirect.spec.ts).
 async function loginAs(page: Page, role: DemoRole) {
-  await page.goto('/login');
-  await page.locator('input[name="organizationId"]').fill(organization);
-  await page.locator('input[name="email"]').fill(`${role}@demo.com`);
-  await page.locator('input[name="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(role === 'admin' ? /\/admin$/ : /\/instructor\/dashboard$/);
+  const destination = role === 'admin' ? /\/admin$/ : /\/instructor\/dashboard$/;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await page.goto('/login');
+    await page.locator('input[name="organizationId"]').fill(organization);
+    await page.locator('input[name="email"]').fill(`${role}@demo.com`);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('button[type="submit"]').click();
+    try {
+      await expect(page).toHaveURL(destination, { timeout: 5000 });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(65_000);
+    }
+  }
 }
 
 async function deleteCourse(page: Page, courseId: string) {
@@ -63,6 +78,9 @@ async function createForeignCourse(browser: Browser, slug: string, title: string
 
 test.describe('instructor workspace', () => {
   test('shows scoped dashboard, course list, students, and correct progress', async ({ page }) => {
+    // A rate-limit retry inside loginAs can wait out a 65s backoff; budget well past the
+    // default 30s so that wait doesn't itself time out the test.
+    test.setTimeout(90_000);
     const coursesResponsePromise = page.waitForResponse((response) =>
       new URL(response.url()).pathname === '/api/v1/courses' && response.request().method() === 'GET');
     const progressResponsePromise = page.waitForResponse((response) =>
@@ -99,6 +117,9 @@ test.describe('instructor workspace', () => {
   });
 
   test('validates, creates, edits, handles duplicate slugs and API errors, then cleans up', async ({ page, isolatedCourse }) => {
+    // A rate-limit retry inside loginAs can wait out a 65s backoff; budget well past the
+    // default 30s so that wait doesn't itself time out the test.
+    test.setTimeout(90_000);
     await loginAs(page, 'instructor');
     await page.goto('/instructor/courses/new');
 
@@ -143,6 +164,9 @@ test.describe('instructor workspace', () => {
   });
 
   test('hides a foreign course and denies direct UI and API access', async ({ browser, page, isolatedCourse }) => {
+    // This test performs two independent logins (the foreign admin, then this instructor), each
+    // of which can independently wait out a rate-limit retry's 65s backoff; budget for both.
+    test.setTimeout(150_000);
     const foreign = await createForeignCourse(browser, `${isolatedCourse.slug}-foreign`, `${isolatedCourse.title} foreign`);
     try {
       await loginAs(page, 'instructor');

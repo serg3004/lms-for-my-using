@@ -455,79 +455,101 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await context.close();
   });
 
-  test('a checklist edited after a session was scheduled still shows the original snapshotted criterion text (#10)', async ({ browser }) => {
-    const originalItemText = 'Turn on the lights';
-    const editedItemText = 'Turn on the lights AND the espresso machine';
-    const snapshotChecklist = checklistSummary({ itemText: { item1: originalItemText, item2: 'Check the fire extinguisher' } });
-    const session = sessionSummary({ status: 'in_progress', version: 1, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
-    const instance = instanceSummary(snapshotChecklist, { status: 'in_progress', results: {} });
+  // instructor@demo.com is also logged into by several other spec files (instructor-workspace.spec.ts,
+  // checklist-photo-review.spec.ts, login-role-redirect.spec.ts), and /api/v1/auth/login is rate-limited
+  // to 5 requests/60s per account (DEFAULT_SENSITIVE_RATE_LIMIT_POLICY in
+  // apps/api/src/common/middleware/api-hardening.ts) against an in-memory, single-process store in this
+  // E2E environment (no REDIS_URL is set for the API in apps/e2e/playwright.config.ts's webServer, so
+  // every Playwright worker shares one counter). Neither scenario below needs an independent session --
+  // just independent route mocks -- so they share ONE real login instead of two (`serial` mode pins both
+  // tests onto the same worker so `beforeAll` only runs once) to avoid tipping that shared account over
+  // the limit when the full suite runs.
+  test.describe('instructor session views sharing one login', () => {
+    test.describe.configure({ mode: 'serial' });
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
-    await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => route.fulfill({ json: session }));
-    // The live checklist has since been edited -- the instance's snapshot (served above) must win,
-    // this route must never be what the conduct screen actually renders from.
-    await page.route(`**/api/v1/checklists/${checklistId}`, (route) => route.fulfill({
-      json: checklistSummary({ itemText: { item1: editedItemText, item2: 'Check the fire extinguisher' } }),
-    }));
-    await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
+    let sharedContext: Awaited<ReturnType<import('@playwright/test').Browser['newContext']>>;
 
-    await login(page, 'instructor');
-    await page.goto('/instructor/checklists');
-    await page.getByRole('tab', { name: 'Проведение' }).click();
-    await page.getByText('Opening shift checklist').click();
-
-    await expect(page.getByText(originalItemText)).toBeVisible();
-    await expect(page.getByText(editedItemText)).not.toBeVisible();
-
-    await context.close();
-  });
-
-  test('two attempts to complete the same session: the second is routed to a safe reload prompt, not a silent overwrite (#14)', async ({ browser }) => {
-    const session = sessionSummary({ status: 'in_progress', version: 5, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
-    const instance = instanceSummary(checklistSummary(), {
-      status: 'in_progress',
-      results: {
-        [item1Id]: { id: 'r1', itemId: item1Id, checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
-        [item2Id]: { id: 'r2', itemId: item2Id, checked: true, scaleLevel: null, points: 10, photoUrl: 'https://example.invalid/p.jpg', photoFileName: 'p.jpg', comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
-      },
+    test.beforeAll(async ({ browser }) => {
+      sharedContext = await browser.newContext();
+      const setupPage = await sharedContext.newPage();
+      await login(setupPage, 'instructor');
+      await setupPage.close();
     });
 
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    let completeAttempts = 0;
-    await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
-    await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => {
-      if (route.request().method() !== 'GET') return route.fallback();
-      return route.fulfill({ json: session });
+    test.afterAll(async () => {
+      await sharedContext.close();
     });
-    await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
-    await page.route(`**/api/v1/checklist-sessions/${sessionId}/complete`, (route) => {
-      completeAttempts += 1;
-      // The first "complete" already won (e.g. from another tab) -- this attempt's version is now
-      // stale, exactly what a real 409 from ChecklistSessionService.transition() looks like.
-      return route.fulfill({
-        status: 409,
-        json: { statusCode: 409, error: { code: 'CONFLICT', message: 'This session was already updated.' }, path: `/api/v1/checklist-sessions/${sessionId}/complete`, timestamp: new Date().toISOString() },
+
+    test('a checklist edited after a session was scheduled still shows the original snapshotted criterion text (#10)', async () => {
+      const originalItemText = 'Turn on the lights';
+      const editedItemText = 'Turn on the lights AND the espresso machine';
+      const snapshotChecklist = checklistSummary({ itemText: { item1: originalItemText, item2: 'Check the fire extinguisher' } });
+      const session = sessionSummary({ status: 'in_progress', version: 1, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
+      const instance = instanceSummary(snapshotChecklist, { status: 'in_progress', results: {} });
+
+      const page = await sharedContext.newPage();
+      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => route.fulfill({ json: session }));
+      // The live checklist has since been edited -- the instance's snapshot (served above) must win,
+      // this route must never be what the conduct screen actually renders from.
+      await page.route(`**/api/v1/checklists/${checklistId}`, (route) => route.fulfill({
+        json: checklistSummary({ itemText: { item1: editedItemText, item2: 'Check the fire extinguisher' } }),
+      }));
+      await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
+
+      await page.goto('/instructor/checklists');
+      await page.getByRole('tab', { name: 'Проведение' }).click();
+      await page.getByText('Opening shift checklist').click();
+
+      await expect(page.getByText(originalItemText)).toBeVisible();
+      await expect(page.getByText(editedItemText)).not.toBeVisible();
+
+      await page.close();
+    });
+
+    test('two attempts to complete the same session: the second is routed to a safe reload prompt, not a silent overwrite (#14)', async () => {
+      const session = sessionSummary({ status: 'in_progress', version: 5, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
+      const instance = instanceSummary(checklistSummary(), {
+        status: 'in_progress',
+        results: {
+          [item1Id]: { id: 'r1', itemId: item1Id, checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+          [item2Id]: { id: 'r2', itemId: item2Id, checked: true, scaleLevel: null, points: 10, photoUrl: 'https://example.invalid/p.jpg', photoFileName: 'p.jpg', comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null },
+        },
       });
+
+      const page = await sharedContext.newPage();
+      let completeAttempts = 0;
+      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        return route.fulfill({ json: session });
+      });
+      await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}/complete`, (route) => {
+        completeAttempts += 1;
+        // The first "complete" already won (e.g. from another tab) -- this attempt's version is now
+        // stale, exactly what a real 409 from ChecklistSessionService.transition() looks like.
+        return route.fulfill({
+          status: 409,
+          json: { statusCode: 409, error: { code: 'CONFLICT', message: 'This session was already updated.' }, path: `/api/v1/checklist-sessions/${sessionId}/complete`, timestamp: new Date().toISOString() },
+        });
+      });
+
+      await page.goto('/instructor/checklists');
+      await page.getByRole('tab', { name: 'Проведение' }).click();
+      await page.getByText('Opening shift checklist').click();
+
+      await page.getByRole('button', { name: 'Завершить' }).click();
+
+      await expect(page.getByText('Сессия изменилась в другом месте')).toBeVisible();
+      expect(completeAttempts).toBe(1);
+      // No silent overwrite: the session's displayed status is still what the server actually holds,
+      // never optimistically flipped to "completed" on the client from a request that the server
+      // rejected.
+      await expect(page.getByText('Завершена', { exact: true })).not.toBeVisible();
+
+      await page.close();
     });
-
-    await login(page, 'instructor');
-    await page.goto('/instructor/checklists');
-    await page.getByRole('tab', { name: 'Проведение' }).click();
-    await page.getByText('Opening shift checklist').click();
-
-    await page.getByRole('button', { name: 'Завершить' }).click();
-
-    await expect(page.getByText('Сессия изменилась в другом месте')).toBeVisible();
-    expect(completeAttempts).toBe(1);
-    // No silent overwrite: the session's displayed status is still what the server actually holds,
-    // never optimistically flipped to "completed" on the client from a request that the server
-    // rejected.
-    await expect(page.getByText('Завершена', { exact: true })).not.toBeVisible();
-
-    await context.close();
   });
 
   test('a session where every criterion was skipped shows an explicit not-scored result, not a blank one (#15)', async ({ browser }) => {
