@@ -558,8 +558,14 @@ version-based conflict detection that already protects against a *different* con
   `ChecklistScoreRevision.newScored` (immutable once written, unlike the instance's own `scored`),
   backfilled per-row from each revision's instance at migration time (not a blanket default, which
   would have wrongly marked every historical not-scored revision as scored) -- the idempotency
-  fallback now re-reads this column by the cached revision's own `id`, correct regardless of what
-  has happened to the instance since.
+  fallback now re-reads this column by the cached revision's own `id` instead of the instance's
+  current (mutable) `scored`, so a replay written *after* this migration is exact. A replay of a
+  legacy cache row whose `newScored` came from the migration's backfill is only as accurate as that
+  backfill: if the instance's `scored` had already changed between the original recalculation and
+  the migration running, the backfilled value reflects the instance's state at migration time, not
+  the original recalculation's outcome -- see `MIGRATION_BACKUP_POLICY.md`'s "Checklist
+  score-revision scored-flag migration" for why that backfill is a best-effort historical
+  approximation, not a guaranteed-exact reconstruction.
 
 ## Observer unavailable / reassignment (PR 302)
 

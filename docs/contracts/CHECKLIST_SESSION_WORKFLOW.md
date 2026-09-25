@@ -10,9 +10,12 @@ per-PR contracts in [`API_CONTRACTS.md`](./API_CONTRACTS.md); it does not restat
 covered there or in the RBAC matrix -- see [`API_RBAC_MATRIX.md`](./API_RBAC_MATRIX.md) for the
 authoritative policy/scope for every endpoint named below.
 
-The whole module is gated behind `ChecklistWorkplaceSettings.moduleEnabled` (tenant-off by
-default) and adds exactly one new top-level nav item across every role, `/manager/checklists` --
-everything else below is a sub-route or contextual dialog of an existing screen.
+`ChecklistWorkplaceSettings.moduleEnabled` (tenant-off by default) is currently a stored/displayed
+preference only -- at this SHA no session route, controller, or nav item reads it to gate access,
+so setting it to `false` does not disable the module for a tenant's users; treat it as a
+not-yet-enforced setting, not an access-control gate, until a guard actually checks it. The module
+adds exactly one new top-level nav item across every role, `/manager/checklists` -- everything else
+below is a sub-route or contextual dialog of an existing screen.
 
 ## Admin (`/admin/checklists/sessions`)
 
@@ -41,10 +44,12 @@ drill-down into their sessions -- all through `GET /checklists/manager-analytics
 
 ## Instructor / observer (`/instructor/checklists`, "Проведение" tab)
 
-The instructor named as a session's `observerId` is the only role that can actually run it
-(`checklistSessionsRun`: start/pause/resume/complete, PR 289/297) and the only one who answers
-criteria during conduct -- checking off/scoring each item live while watching the learner perform
-the task, not the learner self-reporting. Mobile-first conduct screen
+The instructor named as a session's `observerId` is the day-to-day role that runs it through this
+screen and the only one who answers criteria during conduct -- checking off/scoring each item live while watching the learner perform
+the task, not the learner self-reporting. `checklistSessionsRun` (start/pause/resume/complete) is
+`['admin', 'instructor']`, not instructor-only -- admin is unrestricted by session scope and can
+run any session directly via the lifecycle API, this screen is just the instructor's day-to-day
+entry point into the same endpoints. Mobile-first conduct screen
 (`ChecklistSessionConduct`, PR 297): stepped criterion cards (checkbox, scale, or per-item
 `ChecklistScale` when set, PR 293), Skip when `item.allowSkip`, required photo evidence when
 `item.photoRequired`, one-shot geolocation capture on start/end (never continuous tracking, PR
