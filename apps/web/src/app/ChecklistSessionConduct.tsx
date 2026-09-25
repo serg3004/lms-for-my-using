@@ -14,6 +14,7 @@ import type {
   ChecklistInstanceSummary,
   ChecklistItemResultSummary,
   ChecklistItemSummary,
+  ChecklistSession,
   ChecklistSessionSummary,
 } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
@@ -148,7 +149,7 @@ export async function fetchConductData(sessionId: string): Promise<ConductData> 
 }
 
 export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: string; onBack: () => void; t: TFunction }) {
-  const { state, reload } = useAsyncData<ConductData>(
+  const { state, reload, mutate } = useAsyncData<ConductData>(
     () => fetchConductData(sessionId),
     [sessionId],
     {
@@ -165,18 +166,20 @@ export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: s
     return <PageState title={t('checklistSessions.conduct.title', 'Sessions')} message={state.message} variant="error" />;
   }
 
-  return <ConductScreen data={state.data} onBack={onBack} onReload={reload} t={t} />;
+  return <ConductScreen data={state.data} onBack={onBack} onReload={reload} onMutate={mutate} t={t} />;
 }
 
 export function ConductScreen({
   data,
   onBack,
   onReload,
+  onMutate,
   t,
 }: {
   data: ConductData;
   onBack: () => void;
   onReload: () => Promise<void>;
+  onMutate: (updater: (data: ConductData) => ConductData) => void;
   t: TFunction;
 }) {
   const { session, instance } = data;
@@ -196,7 +199,7 @@ export function ConductScreen({
     const idempotencyKey = crypto.randomUUID();
     await runMutation(
       async () => {
-        await transitionChecklistSession(session.id, action, session.version, idempotencyKey);
+        const updatedSession = await transitionChecklistSession(session.id, action, session.version, idempotencyKey);
         if (action === 'start') {
           const outcome = await captureLocationBestEffort(session.id, 'start', session.locationCapturePolicy);
           setGeoNotice(describeGeoNotice(outcome, session.locationCapturePolicy, t));
@@ -205,7 +208,14 @@ export function ConductScreen({
           const outcome = await captureLocationBestEffort(session.id, 'end', session.locationCapturePolicy);
           setGeoNotice(describeGeoNotice(outcome, session.locationCapturePolicy, t));
         }
-        await onReload();
+        // Merges the transition's own response into local state instead of a full onReload() --
+        // a network reload flips the parent's AsyncDataState back to 'loading', which early-returns
+        // and unmounts this whole screen (losing stepIndex, busy, geoNotice) for the split second
+        // the refetch is in flight. Same fix as the criterion-level mutations below. The transition
+        // endpoint returns the bare ChecklistSession row (no joined checklist/learner/observer/
+        // result), so those projected fields -- which a lifecycle transition never changes -- come
+        // from the previous session, not the response.
+        onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }));
       },
       { setBusy, setError, onConflict: () => setConflict(true), fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
@@ -304,7 +314,7 @@ export function ConductScreen({
               setStepIndex={setStepIndex}
               instance={instance}
               editable={editable}
-              onReload={onReload}
+              onInstanceSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
               onConflict={() => setConflict(true)}
               t={t}
             />
@@ -313,7 +323,13 @@ export function ConductScreen({
       )}
 
       {(session.status === 'in_progress' || session.status === 'paused' || session.status === 'completed') && (
-        <StructuredFeedback session={session} busy={busy} onSaved={onReload} onConflict={() => setConflict(true)} t={t} />
+        <StructuredFeedback
+          session={session}
+          busy={busy}
+          onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
+          onConflict={() => setConflict(true)}
+          t={t}
+        />
       )}
 
       {session.status === 'completed' && (
@@ -385,7 +401,7 @@ function CriterionStepper({
   setStepIndex,
   instance,
   editable,
-  onReload,
+  onInstanceSaved,
   onConflict,
   t,
 }: {
@@ -394,11 +410,17 @@ function CriterionStepper({
   setStepIndex: (index: number) => void;
   instance: ChecklistInstanceSummary;
   editable: boolean;
-  onReload: () => Promise<void>;
+  onInstanceSaved: (instance: ChecklistInstanceSummary) => void;
   onConflict: () => void;
   t: TFunction;
 }) {
   const checklist = instance.checklist;
+  // Each response carries a whole instance snapshot, and onInstanceSaved replaces `current.instance`
+  // with it wholesale -- navigating to another criterion while this one's save/upload is still in
+  // flight would let that request's response resolve after the next criterion's and overwrite it
+  // with stale data. Blocking Back/Next while the visible card reports a pending mutation keeps
+  // these requests serialized instead of merging out of order.
+  const [cardBusy, setCardBusy] = useState(false);
   if (!checklist) return null;
   const boundedIndex = Math.min(stepIndex, items.length - 1);
   const item = items[boundedIndex];
@@ -429,7 +451,8 @@ function CriterionStepper({
           scoringMode={checklist.scoringMode}
           scaleLevels={checklist.scaleLevels}
           editable={editable}
-          onSaved={onReload}
+          onSaved={onInstanceSaved}
+          onBusyChange={setCardBusy}
           onConflict={onConflict}
           t={t}
         />
@@ -439,7 +462,7 @@ function CriterionStepper({
         <Button
           type="button"
           variant="secondary"
-          disabled={boundedIndex === 0}
+          disabled={boundedIndex === 0 || cardBusy}
           onClick={() => setStepIndex(boundedIndex - 1)}
           style={{ flex: 1, minHeight: 44 }}
         >
@@ -448,7 +471,7 @@ function CriterionStepper({
         <Button
           type="button"
           variant="secondary"
-          disabled={boundedIndex === items.length - 1}
+          disabled={boundedIndex === items.length - 1 || cardBusy}
           onClick={() => setStepIndex(boundedIndex + 1)}
           style={{ flex: 1, minHeight: 44 }}
         >
@@ -467,6 +490,7 @@ function CriterionCard({
   scaleLevels,
   editable,
   onSaved,
+  onBusyChange,
   onConflict,
   t,
 }: {
@@ -476,25 +500,35 @@ function CriterionCard({
   scoringMode: string;
   scaleLevels: { level: number; label: string; points: number }[] | null;
   editable: boolean;
-  onSaved: () => Promise<void>;
+  onSaved: (instance: ChecklistInstanceSummary) => void;
+  onBusyChange: (busy: boolean) => void;
   onConflict: () => void;
   t: TFunction;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState(result?.comment ?? '');
+  // Combines this card's own save state with the photo upload's (tracked separately below, since
+  // it doesn't go through run()) so the parent stepper can block navigation during either -- see
+  // CriterionStepper's cardBusy comment for why that matters.
+  const busy = saving || uploading;
 
   useEffect(() => {
     setComment(result?.comment ?? '');
   }, [result?.comment, item.id]);
 
-  async function run(fn: () => Promise<unknown>) {
+  useEffect(() => {
+    onBusyChange(busy);
+  }, [busy, onBusyChange]);
+
+  async function run(fn: () => Promise<ChecklistInstanceSummary>) {
     await runMutation(
       async () => {
-        await fn();
-        await onSaved();
+        const updated = await fn();
+        onSaved(updated);
       },
-      { setBusy, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+      { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
   }
 
@@ -595,7 +629,8 @@ function CriterionCard({
           item={item}
           result={result}
           editable={editable}
-          busy={busy}
+          busy={saving}
+          onUploadingChange={setUploading}
           onUploaded={onSaved}
           onError={setError}
           onConflict={onConflict}
@@ -625,6 +660,7 @@ function PhotoAttachment({
   result,
   editable,
   busy,
+  onUploadingChange,
   onUploaded,
   onError,
   onConflict,
@@ -635,7 +671,8 @@ function PhotoAttachment({
   result: ChecklistItemResultSummary | undefined;
   editable: boolean;
   busy: boolean;
-  onUploaded: () => Promise<void>;
+  onUploadingChange: (uploading: boolean) => void;
+  onUploaded: (instance: ChecklistInstanceSummary) => void;
   onError: (message: string) => void;
   onConflict: () => void;
   t: TFunction;
@@ -658,14 +695,16 @@ function PhotoAttachment({
     e.target.value = '';
     if (!file) return;
     setProgress(0);
+    onUploadingChange(true);
     try {
-      await uploadChecklistItemPhotoWithProgress(instanceId, item.id, file, setProgress);
-      await onUploaded();
+      const updated = (await uploadChecklistItemPhotoWithProgress(instanceId, item.id, file, setProgress)) as ChecklistInstanceSummary;
+      onUploaded(updated);
     } catch (err) {
       if (err instanceof ApiClientError && err.status === 409) onConflict();
       else onError(err instanceof ApiClientError ? err.message : t('checklists.photoUploadError', 'Unable to attach this photo.'));
     } finally {
       setProgress(null);
+      onUploadingChange(false);
     }
   }
 
@@ -704,7 +743,9 @@ function StructuredFeedback({
 }: {
   session: ChecklistSessionSummary;
   busy: boolean;
-  onSaved: () => Promise<void>;
+  // The feedback endpoint returns the bare ChecklistSession row (no joined checklist/learner/
+  // observer/result) -- merging those projected fields back in is the caller's job.
+  onSaved: (session: ChecklistSession) => void;
   onConflict: () => void;
   t: TFunction;
 }) {
@@ -725,8 +766,8 @@ function StructuredFeedback({
   async function save() {
     await runMutation(
       async () => {
-        await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
-        await onSaved();
+        const updated = await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
+        onSaved(updated);
       },
       { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );

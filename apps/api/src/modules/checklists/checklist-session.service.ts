@@ -814,9 +814,22 @@ export class ChecklistSessionService {
   async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object, idempotencyKey?: string) {
     const idempotencyScope = 'session.recalculate';
     const { revision, previousPercentage, newPercentage, replayed } = await runSerializableWithRetry(this.prisma, async (tx) => {
-      const cached = await this.findIdempotentResponse<ChecklistScoreRevision>(tx, organizationId, idempotencyScope, idempotencyKey);
+      // `scored` isn't a ChecklistScoreRevision column (it belongs to the instance, not the
+      // revision audit row) but the client needs it in the response to know whether `newPercentage`
+      // is a real score or the placeholder 0 computeInstanceScore() returns for an all-skipped,
+      // not-scored instance -- otherwise it can't tell "recalculated to 0%" from "still not scored"
+      // apart. Stashed alongside the cached idempotent response so a replay returns the same value.
+      const cached = await this.findIdempotentResponse<ChecklistScoreRevision & { scored?: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
       if (cached) {
-        return { revision: cached, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
+        // A cache row written before `scored` was added to this response (any real recalculate
+        // from before this fix shipped) has no such field -- responseBody is raw historical JSON,
+        // never migrated. The instance's own persisted `scored` is authoritative for it: nothing
+        // else can have changed it between the original recalculation and this replay of the exact
+        // same request.
+        const scored = cached.scored ?? (
+          await tx.checklistInstance.findUnique({ where: { id: cached.instanceId }, select: { scored: true } })
+        )?.scored ?? false;
+        return { revision: { ...cached, scored }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
       }
 
       const session = await tx.checklistSession.findFirst({
@@ -864,9 +877,10 @@ export class ChecklistSessionService {
         },
       });
 
-      await this.recordIdempotentResponse(tx, organizationId, idempotencyScope, idempotencyKey, createdRevision);
+      const revisionWithScored = { ...createdRevision, scored };
+      await this.recordIdempotentResponse(tx, organizationId, idempotencyScope, idempotencyKey, revisionWithScored);
 
-      return { revision: createdRevision, previousPercentage: session.instance.percentage, newPercentage: percentage, replayed: false };
+      return { revision: revisionWithScored, previousPercentage: session.instance.percentage, newPercentage: percentage, replayed: false };
     });
 
     // A replayed retry didn't mutate anything the first call hadn't already audited -- recording

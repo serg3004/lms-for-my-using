@@ -747,3 +747,10 @@ export type ChecklistScoreRevision = {
 };
 
 export type RecalculateChecklistScoreInput = { reason: string; idempotencyKey?: string };
+
+// `scored` isn't a persisted ChecklistScoreRevision column (it belongs to the instance, not the
+// revision audit row), so it's only present on a fresh POST /recalculate response, not on rows
+// from listChecklistScoreRevisions()'s history. Without it, a client that recalculates an
+// all-skipped (not-scored) session can't tell "recalculated to 0%" from "still not scored" --
+// computeInstanceScore() returns the same placeholder 0 for both.
+export type RecalculateChecklistScoreResult = ChecklistScoreRevision & { scored: boolean };

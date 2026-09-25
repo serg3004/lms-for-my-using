@@ -261,10 +261,11 @@ describe('ChecklistSessionConduct (loading state)', () => {
 describe('ConductScreen (real hooks)', () => {
   const onBack = vi.fn();
   const onReload = vi.fn().mockResolvedValue(undefined);
+  const onMutate = vi.fn();
 
   it('renders the scheduled state with a Start button and no criterion stepper', () => {
     const html = renderToStaticMarkup(
-      <ConductScreen data={{ session: session({ status: 'scheduled', startedAt: null }), instance: instance() }} onBack={onBack} onReload={onReload} t={t} />,
+      <ConductScreen data={{ session: session({ status: 'scheduled', startedAt: null }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Start session');
     expect(html).not.toContain('Structured feedback');
@@ -272,7 +273,7 @@ describe('ConductScreen (real hooks)', () => {
 
   it('renders the in_progress state with scale/checkbox criteria, photo evidence, skip and feedback', () => {
     const html = renderToStaticMarkup(
-      <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} t={t} />,
+      <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Rate the greeting');
     expect(html).toContain('Great');
@@ -281,7 +282,7 @@ describe('ConductScreen (real hooks)', () => {
 
   it('renders the paused state with a Resume button', () => {
     const html = renderToStaticMarkup(
-      <ConductScreen data={{ session: session({ status: 'paused', pausedAt: '2026-02-01T09:10:00.000Z' }), instance: instance() }} onBack={onBack} onReload={onReload} t={t} />,
+      <ConductScreen data={{ session: session({ status: 'paused', pausedAt: '2026-02-01T09:10:00.000Z' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Resume');
   });
@@ -295,6 +296,7 @@ describe('ConductScreen (real hooks)', () => {
         }}
         onBack={onBack}
         onReload={onReload}
+        onMutate={onMutate}
         t={t}
       />,
     );
@@ -306,7 +308,7 @@ describe('ConductScreen (real hooks)', () => {
     const withPhotoFirst = instance();
     withPhotoFirst.checklist!.items = [...withPhotoFirst.checklist!.items].reverse();
     const html = renderToStaticMarkup(
-      <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: withPhotoFirst }} onBack={onBack} onReload={onReload} t={t} />,
+      <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: withPhotoFirst }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Check the till float');
     expect(html).toContain('Replace');
@@ -319,6 +321,7 @@ describe('ConductScreen (real hooks)', () => {
           data={{ session: session({ status: 'in_progress' }), instance: instance({ checklist: { ...instance().checklist!, items: [] } }) }}
           onBack={onBack}
           onReload={onReload}
+          onMutate={onMutate}
           t={t}
         />,
       ),

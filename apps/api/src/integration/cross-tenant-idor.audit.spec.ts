@@ -7,6 +7,8 @@ import type { PrismaService } from '../database/prisma.service.js';
 import { AssessmentAttemptsService } from '../modules/assessment-attempts/assessment-attempts.service.js';
 import { AssignmentsService } from '../modules/assignments/assignments.service.js';
 import { CertificatesService } from '../modules/certificates/certificates.service.js';
+import { ChecklistSessionService } from '../modules/checklists/checklist-session.service.js';
+import type { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import { CoursesService } from '../modules/courses/courses.service.js';
 import { LessonsService } from '../modules/lessons/lessons.service.js';
 import { UsersService } from '../modules/users/users.service.js';
@@ -107,5 +109,35 @@ describe('Cross-tenant IDOR audit', () => {
       where: expect.objectContaining({ id: foreignResourceId, organizationId }),
     }));
     expect(assignmentCreate).not.toHaveBeenCalled();
+  });
+
+  it('does not return a checklist session UUID unless it belongs to the actor organization', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const service = new ChecklistSessionService(
+      prismaMock({ checklistSession: { findFirst } }),
+      {} as ChecklistsService,
+    );
+
+    await expect(service.get(foreignResourceId, organizationId, {}, { isLearnerOnly: false, feedbackVisibility: 'live' })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: foreignResourceId, organizationId }),
+    }));
+  });
+
+  it('does not return a checklist session\'s event history unless the session itself belongs to the actor organization', async () => {
+    const sessionFindFirst = jest.fn().mockResolvedValue(null);
+    const eventFindMany = jest.fn();
+    const service = new ChecklistSessionService(
+      prismaMock({ checklistSession: { findFirst: sessionFindFirst }, checklistSessionEvent: { findMany: eventFindMany } }),
+      {} as ChecklistsService,
+    );
+
+    await expect(service.listEvents(foreignResourceId, organizationId, {})).rejects.toBeInstanceOf(NotFoundException);
+    expect(sessionFindFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: foreignResourceId, organizationId }),
+    }));
+    expect(eventFindMany).not.toHaveBeenCalled();
   });
 });

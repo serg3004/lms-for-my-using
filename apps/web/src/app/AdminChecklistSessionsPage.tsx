@@ -27,6 +27,7 @@ export function AdminChecklistSessionsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardReloadPending, setWizardReloadPending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
   const [reassignTarget, setReassignTarget] = useState<ChecklistSessionSummary | null>(null);
@@ -212,7 +213,23 @@ export function AdminChecklistSessionsPage() {
         rows={loadState.data.sessions}
       />
       <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={setPage} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
-      <ChecklistSessionWizard onClose={() => setWizardOpen(false)} onCreated={() => void load()} open={wizardOpen} t={t} />
+      <ChecklistSessionWizard
+        onClose={() => {
+          setWizardOpen(false);
+          // `load()` briefly flips `loadState.status` back to 'loading', and this page's own
+          // loading branch (below) full-page-early-returns while that's true -- unmounting the
+          // wizard (and its "Сессии созданы" success screen) mid-display if reloaded immediately
+          // in onCreated. Deferring the reload until the wizard has actually closed lets the user
+          // see the confirmation instead of it being yanked away by their own successful action.
+          if (wizardReloadPending) {
+            setWizardReloadPending(false);
+            void load();
+          }
+        }}
+        onCreated={() => setWizardReloadPending(true)}
+        open={wizardOpen}
+        t={t}
+      />
       <ConfirmDialog
         cancelLabel={t('admin.checklists.cancel', 'Cancel')}
         confirmLabel={t('admin.checklists.sessions.cancel', 'Cancel')}
