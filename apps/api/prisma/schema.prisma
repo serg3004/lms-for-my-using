@@ -1352,6 +1352,12 @@ model ChecklistScoreRevision {
   newPercentage      Int               @map("new_percentage")
   previousPassed     Boolean           @map("previous_passed")
   newPassed          Boolean           @map("new_passed")
+  /// Whether `newPercentage` is a real score or computeInstanceScore()'s all-skipped/not-scored
+  /// placeholder (0). Persisted as an immutable historical fact of this revision -- unlike
+  /// ChecklistInstance.scored (which a later mutation can change), this never changes after the
+  /// row is created, so an idempotency-cache replay of this exact recalculation can always recover
+  /// the correct value by re-reading this row, regardless of what's happened to the instance since.
+  newScored          Boolean           @default(true) @map("new_scored")
   reason             String?
   actorUserId        String?           @map("actor_user_id") @db.Uuid
   createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
