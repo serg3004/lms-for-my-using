@@ -805,9 +805,14 @@ data (Postgres or a full frontend render), not just a logic fix:
 ## E2E, security, accessibility, visual regression (PR 307)
 
 New `apps/e2e/tests/checklist-session-lifecycle.spec.ts` covers 14 of the 15 mandatory E2E
-scenarios from the plan doc's PR 307 section against the real backend and frontend (route-mocked
-per-test data, matching `checklist-review-workflow.spec.ts`'s established pattern -- not a
-fully-mocked frontend-only test): the full admin-creates -> observer-conducts-on-mobile
+scenarios from the plan doc's PR 307 section against the real browser and frontend, with a real
+login/RBAC round-trip -- the checklist-session API itself is route-mocked per test (matching
+`checklist-review-workflow.spec.ts`'s established pattern in this repo), so this is frontend
+integration coverage, not backend E2E coverage; a controller/RBAC/transaction/scoring/persistence
+regression in the checklist-session domain would not fail these tests. That coverage lives
+separately, in `checklist-session-recalculate.database.spec.ts`,
+`checklist-session-idempotency.database.spec.ts`, `checklist-session.service.spec.ts`, and
+`cross-tenant-idor.audit.spec.ts`: the full admin-creates -> observer-conducts-on-mobile
 (`context.setGeolocation()`, a real required photo upload via `setInputFiles`) ->
 employee-sees-result -> admin-report -> recalculate-creates-revision lifecycle; manager scoped
 analytics and drill-down; a checklist edited after scheduling still renders the session's frozen

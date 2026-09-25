@@ -391,8 +391,12 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       const newPercentage = 100;
       revisions.push({ id: 'revision-1', previousPercentage, newPercentage, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' });
       events.push({ id: `evt-${events.length + 1}`, eventType: 'score_recalculated', createdAt: '2026-03-02T11:00:00.000Z' });
-      session = { ...session, result: { ...session.result, percentage: newPercentage, passed: true } };
-      return route.fulfill({ json: { id: 'revision-1', sessionId, previousPercentage, newPercentage, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' } });
+      session = { ...session, result: { ...session.result, percentage: newPercentage, passed: true, scored: true } };
+      // Matches the production RecalculateChecklistScoreResult shape (newPassed + scored, not just
+      // the percentage) -- AdminChecklistSessionReportPage.tsx's onScoreRecalculated writes these
+      // fields straight into session.result, so a fixture missing them would silently regress to
+      // "Not scored" on the Summary tab without this test noticing.
+      return route.fulfill({ json: { id: 'revision-1', sessionId, previousPercentage, newPercentage, newPassed: true, scored: true, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' } });
     });
 
     await test.step('admin opens the session report (#11)', async () => {
@@ -410,6 +414,12 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
 
       await expect.poll(() => revisions.length).toBe(1);
       await expect(adminPage.getByText(`${revisions[0]!.previousPercentage}% → ${revisions[0]!.newPercentage}%`)).toBeVisible();
+
+      // The recalculated score merges into local state via onScoreRecalculated (not a full
+      // reload); switching back to Summary proves the merge produced a real "100% ✓", not a
+      // stale/undefined `scored` silently rendering "Not scored".
+      await adminPage.getByRole('tab', { name: 'Сводка' }).click();
+      await expect(adminPage.getByText('100% ✓')).toBeVisible();
     });
 
     await adminContext.close();
