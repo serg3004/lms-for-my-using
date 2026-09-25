@@ -104,6 +104,25 @@ coordinates и photo evidence, нужен ли separate retention для audit l
 hooks/config/scheduled deletion не реализуются — release blocker для отдельного retention feature, но не для
 PR 304 (audit trail и access scoping не зависят от retention period).
 
+## DEC-CHKS-003 — Workplace-training reminders currently inert in production (blocked on DEC-INFRA-001/DEC-MAIL-001)
+
+**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 308),
+`docs/quality/READINESS_AND_SECURITY_GATES.md` ("Checklist workplace-training production gates" секция).
+
+Live Railway read-back (`reasonable-reprieve`/production, 2026-09-25, подтверждено owner-скриншотом текущих
+сервисов: `api`/`web`/`Postgres`/`minio`/`malware-scanner`, Redis среди них нет) подтвердил: production `api`
+не имеет `REDIS_URL`, поэтому `BackgroundJobsModule` использует `DisabledBackgroundJobBackend` — **все**
+recurring-джобы, включая уже существующий `ChecklistDeadlineWorker` и новый `ChecklistSessionReminderWorker`
+(PR 291), сейчас не исполняются. Отдельно и независимо, ни `CHECKLIST_SESSION_REMINDER_DELIVERY_URL`, ни
+`PASSWORD_RESET_DELIVERY_URL` не сконфигурированы — даже при наличии Redis email не будет уходить.
+
+Owner-решение (осознанно принято на 2026-09-25): пока ничего не менять, жить с этим ограничением. Это не баг и
+не implementation gap этого PR — код и тесты корректны, реальная причина в двух общих, ранее уже открытых
+decision: `DEC-INFRA-001` (Redis обязателен или допустим degraded mode) и `DEC-MAIL-001` (выбор delivery-
+провайдера). Закрывать эту запись имеет смысл только вместе с одним из них — отдельного технического решения
+для checklist-модуля не требуется, только инфраструктурное/продуктовое: провизионинг Redis-сервиса в Railway
+и выбор email-провайдера для delivery webhook.
+
 ## Deferred, не open decisions
 
 Load-test release gate остаётся deferred до появления конкретной цели по нагрузке, dataset, latency/error thresholds и environment. Не считать его implementation obligation без отдельного решения.
