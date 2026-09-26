@@ -5,7 +5,11 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // headroom left on main, not enough for any new page's CSS. The department tree/detail layout
 // added here was kept lean (reusing existing admin-card/Badge/admin-form__hint/admin-membership-list
 // rules instead of introducing parallel ones) before resorting to this bump.
-const maximumCssBytes = 84 * 1024;
+// Bumped 84 KiB -> 88 KiB for UI refresh PR 314 (department tree): PRs 310-313 brought the shell
+// and org-structure pages to the prototypes and left under 800 B of headroom; the tree row, its
+// toolbar and the wrapping manager/action rows needed ~1.1 KB more. A dead-class scan found only
+// .learner-btn--completed (removed); the tree reuses admin-section-card, admin-code and avatars.
+const maximumCssBytes = 88 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 

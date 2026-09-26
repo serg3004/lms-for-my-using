@@ -676,9 +676,7 @@
       "note": "A group is a learning team or cohort, not a staff department. Group membership does not affect managers or the organizational structure."
     },
     "departments": {
-      "eyebrow": "Departments",
       "title": "Departments",
-      "subtitle": "Organization structure as a department tree.",
       "sessionExpired": "Your session expired. Sign in again.",
       "loading": "Loading departments...",
       "loadError": "Unable to load departments.",
@@ -756,7 +754,16 @@
       "managerModeLocal": "Local",
       "managerModeInherit": "Inherit",
       "managerModeMerge": "Merge",
-      "managerModeConflict": "Close current local managers of this type before switching to Inherit."
+      "managerModeConflict": "Close current local managers of this type before switching to Inherit.",
+      "treeSubtitle_one": "{{people}} people · {{count}} department",
+      "treeSubtitle_few": "{{people}} people · {{count}} departments",
+      "treeSubtitle_many": "{{people}} people · {{count}} departments",
+      "treeSubtitle_other": "{{people}} people · {{count}} departments",
+      "treeHeadcount_one": "{{count}} person",
+      "treeHeadcount_few": "{{count}} people",
+      "treeHeadcount_many": "{{count}} people",
+      "treeHeadcount_other": "{{count}} people",
+      "expandAll": "Expand all"
     },
     "positions": {
       "title": "Positions",

@@ -676,9 +676,7 @@
       "note": "Топ — штаттық бөлімше емес, оқу командасы немесе когорта. Топқа мүшелік басшыларға және ұйымдық құрылымға әсер етпейді."
     },
     "departments": {
-      "eyebrow": "Бөлімшелер",
       "title": "Бөлімшелер",
-      "subtitle": "Ұйымдық құрылым бөлімшелер ағашы түрінде.",
       "sessionExpired": "Сессия аяқталды. Қайта кіріңіз.",
       "loading": "Бөлімшелер жүктелуде...",
       "loadError": "Бөлімшелерді жүктеу мүмкін болмады.",
@@ -756,7 +754,16 @@
       "managerModeLocal": "Жергілікті",
       "managerModeInherit": "Мұралау",
       "managerModeMerge": "Біріктіру",
-      "managerModeConflict": "«Мұралауға» ауыстырмас бұрын осы түрдің жергілікті басшыларын жабыңыз."
+      "managerModeConflict": "«Мұралауға» ауыстырмас бұрын осы түрдің жергілікті басшыларын жабыңыз.",
+      "treeSubtitle_one": "{{people}} қызм. · {{count}} бөлімше",
+      "treeSubtitle_few": "{{people}} қызм. · {{count}} бөлімше",
+      "treeSubtitle_many": "{{people}} қызм. · {{count}} бөлімше",
+      "treeSubtitle_other": "{{people}} қызм. · {{count}} бөлімше",
+      "treeHeadcount_one": "{{count}} қызм.",
+      "treeHeadcount_few": "{{count}} қызм.",
+      "treeHeadcount_many": "{{count}} қызм.",
+      "treeHeadcount_other": "{{count}} қызм.",
+      "expandAll": "Барлығын ашу"
     },
     "positions": {
       "title": "Лауазымдар",

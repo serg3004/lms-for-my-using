@@ -33,6 +33,6 @@ Stylelint configuration rejects invalid declarations, duplicate selectors, IDs
 beyond the root-level allowance, and selectors above the agreed specificity
 ceiling. The guard verifies named-layer imports and unique token ownership.
 
-`pnpm --filter @lms/web build` also enforces an 80 KiB emitted-CSS budget. Change
+`pnpm --filter @lms/web build` also enforces an 88 KiB emitted-CSS budget. Change
 the budget only with an explanation of the measured impact in the pull request.
 Responsive Playwright tests remain the visual-regression gate.
