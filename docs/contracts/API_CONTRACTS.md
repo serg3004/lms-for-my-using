@@ -82,6 +82,12 @@ importing a new PRIMARY membership closes the user's existing current primary me
 department) and records that closure as its own `department_membership.closed` event, distinct
 from the `department_membership.created` event for the new row.
 
+`GET /org-structure/counts` returns the section counts for the organization-structure tabs:
+`{ departments, positions, positionCourses, groups, historyEvents }`. Each is a `count()` over the
+caller's own tenant only; departments, positions and PositionCourses count `status = active`, groups
+count `status = active` and not deleted, and `historyEvents` counts every `OrgStructureEvent` of the
+tenant. No rows are loaded.
+
 Archiving a Department is non-destructive and is rejected while it has active children, current
 memberships, current local managers, or active Department assignments. Archiving a Position is
 rejected while a current membership or active PositionCourse uses it. Restore does not reactivate

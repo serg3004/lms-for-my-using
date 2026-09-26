@@ -30,6 +30,12 @@ export class OrgStructureAdminController {
     return this.service.commit(token, user.organizationId, user.id);
   }
 
+  @Get('counts')
+  @Roles(...rolePolicies.departmentsRead)
+  counts(@Req() request: AuthenticatedRequest) {
+    return this.service.counts(request.currentUser!.organizationId);
+  }
+
   @Get('history')
   @Roles(...rolePolicies.departmentsRead)
   history(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
