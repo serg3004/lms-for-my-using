@@ -22,6 +22,7 @@
 | audits | [FRONTEND_MVP_MAINTAINABILITY_AUDIT.md](./audits/FRONTEND_MVP_MAINTAINABILITY_AUDIT.md) | 2026-08-06 | не указаны |
 | audits | [PR_89_102_VERIFICATION.md](./audits/PR_89_102_VERIFICATION.md) | 2026-06-04 | не указан |
 | audits | [DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md](./audits/DOC_12_FINAL_INTEGRITY_AUDIT_2026-08-27.md) | 2026-08-27 | DOC-12 branch/PR SHA + GitHub live read-back recorded inside |
+| audits | [ORG_STRUCTURE_UI_PARITY_AUDIT_2026-09-26.md](./audits/ORG_STRUCTURE_UI_PARITY_AUDIT_2026-09-26.md) | 2026-09-26 | `654908d11ba951937820f61fac78c67d6f7ba54f`; local dev stack |
 | performance | [PAGINATION_QUERY_PERFORMANCE_AUDIT.md](./performance/PAGINATION_QUERY_PERFORMANCE_AUDIT.md) | 2026-08-09 | environment/SHA not recorded as completed measurement |
 | performance | [PR259_FRONTEND_PERFORMANCE_VERIFICATION.md](./performance/PR259_FRONTEND_PERFORMANCE_VERIFICATION.md) | 2026-08-25 | local production build + seeded demo DB; SHA не указан |
 | performance | [PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md](./performance/PR281_ORG_STRUCTURE_PERFORMANCE_VERIFICATION.md) | 2026-09-03 | local disposable PostgreSQL 16; SHA не указан |
