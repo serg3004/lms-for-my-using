@@ -84,7 +84,7 @@ describe('admin shell navigation (UI refresh PR 310)', () => {
 
   function breadcrumbText(html: string) {
     const nav = html.match(/<nav aria-label="[^"]*" class="admin-breadcrumbs">(.*?)<\/nav>/)?.[1] ?? '';
-    return [...nav.matchAll(/<li>(.*?)<\/li>/g)].map((match) => match[1]!.replace(/<[^>]+>/g, ''));
+    return [...nav.matchAll(/<li><(?:a|span)[^>]*>([^<]*)<\/(?:a|span)><\/li>/g)].map((match) => match[1]);
   }
 
   it('renders an icon for every sidebar destination', () => {
