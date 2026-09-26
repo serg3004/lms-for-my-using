@@ -34,6 +34,10 @@ describe('org structure admin CSV import (database)', () => {
 
   afterAll(async () => {
     await prisma.orgStructureEvent.deleteMany({ where: { organizationId: { in: organizationIds } } });
+    await prisma.positionCourse.deleteMany({ where: { organizationId: { in: organizationIds } } });
+    await prisma.position.deleteMany({ where: { organizationId: { in: organizationIds } } });
+    await prisma.course.deleteMany({ where: { organizationId: { in: organizationIds } } });
+    await prisma.group.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.orgStructureImportPreview.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.departmentMembership.deleteMany({ where: { organizationId: { in: organizationIds } } });
     await prisma.department.deleteMany({ where: { organizationId: { in: organizationIds } } });
@@ -152,5 +156,41 @@ describe('org structure admin CSV import (database)', () => {
         expect.objectContaining({ eventType: 'department_membership.created' }),
       ]),
     );
+  });
+
+  it('counts only active org-structure rows of the caller organization', async () => {
+    const organization = await createOrganization('counts');
+    const other = await createOrganization('counts-other');
+    const organizationId = organization.id;
+
+    await createDepartment(organizationId, 'Active');
+    const archived = await createDepartment(organizationId, 'Archived');
+    await prisma.department.update({ where: { id: archived.id }, data: { status: 'archived', archivedAt: new Date() } });
+    await createDepartment(other.id, 'Foreign');
+
+    const position = await prisma.position.create({ data: { organizationId, code: `P-${randomUUID().slice(0, 8)}`, title: 'Active position' } });
+    await prisma.position.create({ data: { organizationId, code: `P-${randomUUID().slice(0, 8)}`, title: 'Archived position', status: 'archived', archivedAt: new Date() } });
+    await prisma.position.create({ data: { organizationId: other.id, code: `P-${randomUUID().slice(0, 8)}`, title: 'Foreign position' } });
+
+    const course = await prisma.course.create({ data: { organizationId, title: `Course ${randomUUID()}`, slug: `course-${randomUUID()}`, status: 'published' } });
+    const archivedCourse = await prisma.course.create({ data: { organizationId, title: `Course ${randomUUID()}`, slug: `course-${randomUUID()}`, status: 'published' } });
+    await prisma.positionCourse.create({ data: { organizationId, positionId: position.id, courseId: course.id } });
+    await prisma.positionCourse.create({ data: { organizationId, positionId: position.id, courseId: archivedCourse.id, status: 'archived', archivedAt: new Date() } });
+
+    await prisma.group.create({ data: { organizationId, name: 'Active group', slug: `g-${randomUUID()}` } });
+    await prisma.group.create({ data: { organizationId, name: 'Archived group', slug: `g-${randomUUID()}`, status: 'archived' } });
+    await prisma.group.create({ data: { organizationId, name: 'Deleted group', slug: `g-${randomUUID()}`, deletedAt: new Date() } });
+    await prisma.group.create({ data: { organizationId: other.id, name: 'Foreign group', slug: `g-${randomUUID()}` } });
+
+    const historyEvents = await prisma.orgStructureEvent.count({ where: { organizationId } });
+
+    await expect(service.counts(organizationId)).resolves.toEqual({
+      departments: 1,
+      positions: 1,
+      positionCourses: 1,
+      groups: 1,
+      historyEvents,
+    });
+    expect(historyEvents).toBeGreaterThan(0);
   });
 });

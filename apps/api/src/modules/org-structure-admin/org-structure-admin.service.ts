@@ -116,6 +116,18 @@ export class OrgStructureAdminService {
     return { items, total, page: query.page, pageSize: query.pageSize };
   }
 
+  /** Section counts for the org-structure tabs: count() only, active rows of this tenant only. */
+  async counts(organizationId: string) {
+    const [departments, positions, positionCourses, groups, historyEvents] = await Promise.all([
+      this.prisma.department.count({ where: { organizationId, status: 'active' } }),
+      this.prisma.position.count({ where: { organizationId, status: 'active' } }),
+      this.prisma.positionCourse.count({ where: { organizationId, status: 'active' } }),
+      this.prisma.group.count({ where: { organizationId, status: 'active', deletedAt: null } }),
+      this.prisma.orgStructureEvent.count({ where: { organizationId } }),
+    ]);
+    return { departments, positions, positionCourses, groups, historyEvents };
+  }
+
   private async validateDepartments(rows: Row[], mode: ImportMode, organizationId: string, db: Prisma.TransactionClient | PrismaService = this.prisma) {
     const errors: ValidationError[] = []; const codes = new Set<string>();
     const existing = await db.department.findMany({ where: { organizationId }, select: { code: true, status: true, parent: { select: { code: true } } } });

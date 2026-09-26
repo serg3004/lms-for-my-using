@@ -12,6 +12,11 @@ export function previewOrgStructureImport(file: File, kind: ImportKind, mode: Im
 export function commitOrgStructureImport(token: string) {
   return apiRequest<{ imported: number; operationId: string }>('/org-structure/imports/commit', { method: 'POST', body: JSON.stringify({ token }) });
 }
+export type OrgStructureCounts = { departments: number; positions: number; positionCourses: number; groups: number; historyEvents: number };
+
+export function getOrgStructureCounts() {
+  return apiRequest<OrgStructureCounts>('/org-structure/counts');
+}
 export const ORG_STRUCTURE_HISTORY_PAGE_SIZE = 25;
 
 export function listOrgStructureHistory(page = 1) {

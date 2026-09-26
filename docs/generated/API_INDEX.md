@@ -182,6 +182,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/org-external-references` | `OrgExternalReferences` | `bearer` |
 | `GET` | `/api/v1/org-external-references/resolve` | `OrgExternalReferences` | `bearer` |
 | `DELETE` | `/api/v1/org-external-references/{id}` | `OrgExternalReferences` | `bearer` |
+| `GET` | `/api/v1/org-structure/counts` | `OrgStructureAdmin` | `bearer` |
 | `GET` | `/api/v1/org-structure/history` | `OrgStructureAdmin` | `bearer` |
 | `POST` | `/api/v1/org-structure/imports/commit` | `OrgStructureAdmin` | `bearer` |
 | `POST` | `/api/v1/org-structure/imports/preview` | `OrgStructureAdmin` | `bearer` |
