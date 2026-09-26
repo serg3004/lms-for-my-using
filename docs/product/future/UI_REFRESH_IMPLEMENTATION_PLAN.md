@@ -7,7 +7,7 @@
 прототип `/admin/organization` архивирован в `docs/archive/old-trackers/`. Правила работы с прототипами —
 `docs/lms-ui-prototypes-complete/README.md`.
 
-**Статус:** реализация начата. PR 309 (API счётчиков разделов оргструктуры) выполнен: `GET /api/v1/org-structure/counts`, клиент `getOrgStructureCounts()`. Остальные PR не начаты.
+**Статус:** реализация начата. PR 309 (API счётчиков разделов оргструктуры) выполнен: `GET /api/v1/org-structure/counts`, клиент `getOrgStructureCounts()`. PR 310 (shell приложения) в работе. Остальные PR не начаты.
 
 **Решения владельца продукта (2026-09-26):**
 - shell (сайдбар и топбар) приводится к прототипу во всём приложении, а не только в оргструктуре;
@@ -118,12 +118,12 @@
   за край (правая граница 462px).
 
 **Критерии готовности:**
-- [ ] все admin-страницы и все четыре роли-workspace получают новый shell;
-- [ ] на 390px ни у одной роли элементы шапки не выходят за экран;
-- [ ] у каждой страницы корректные хлебные крошки на всех 4 локалях (`ru`, `en`, `kk`, `zh`);
-- [ ] фокус с клавиатуры виден на пунктах меню, `pnpm test:a11y` зелёный;
-- [ ] `adminPage.spec.tsx` и `workspaceLayout.spec.tsx` обновлены;
-- [ ] visual baselines обновлены через workflow и просмотрены.
+- [x] все admin-страницы и все четыре роли-workspace получают новый shell — `AdminPageLayout` и `WorkspaceLayout` (instructor и mentor переведены с верхнего меню на сайдбар), общие `shared/navIcons.tsx` и `shared/navigationDrawer.ts`;
+- [x] на 390px ни у одной роли элементы шапки не выходят за экран — замер в браузере для admin, learner, instructor, manager, mentor; у learner заодно исправлена колонка `.learner-app` (`minmax(0, 1fr)`), которая на `main` растягивалась до 430px;
+- [x] у каждой страницы корректные хлебные крошки на всех 4 локалях (`ru`, `en`, `kk`, `zh`) — admin: раздел / пункт меню / вложенная страница из маршрута (`buildAdminBreadcrumbs`), workspace: роль / пункт меню; все подписи из i18n, добавлен ключ `a11y.mainNavigation`;
+- [x] фокус с клавиатуры виден на пунктах меню, `pnpm test:a11y` зелёный для shell — проверки навигации и фокуса проходят; 4 проверки страниц с бейджами статусов падают на локальных данных с сессиями одинаково и на `main` (контраст `.ds-badge--info`/`--success` и `.ui-status-badge` из `tokens.css`), в CI без таких данных не воспроизводится — это отдельный дефект палитры вне этого плана;
+- [x] `adminPage.spec.tsx` и `workspaceLayout.spec.tsx` обновлены;
+- [x] visual baselines обновлены через workflow и просмотрены — 25 эталонов instructor/learner/manager пересняты `update-visual-baselines.yml` и просмотрены попарно: меняется только shell; на 320–375 px остаётся давнее переполнение контента страниц (ряды фильтров instructor/learner, карточки manager), это PR 311/319.
 
 ## PR 311 — Мобильные таблицы на всех экранах
 

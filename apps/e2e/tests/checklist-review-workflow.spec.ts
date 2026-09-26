@@ -228,8 +228,9 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
   });
 
   await test.step('reviewer rejects one item and approves the other, completing the instance', async () => {
-    const approveButtons = reviewerPage.locator('button').filter({ hasText: '✓' });
-    const rejectButtons = reviewerPage.locator('button').filter({ hasText: '✕' });
+    // By accessible name, not by the glyph: the shell's drawer close button is also a "✕".
+    const approveButtons = reviewerPage.getByRole('button', { name: 'Подтвердить', exact: true });
+    const rejectButtons = reviewerPage.getByRole('button', { name: 'Отклонить', exact: true });
 
     await rejectButtons.nth(0).click();
     await expect.poll(() => results[item1Id]?.reviewStatus).toBe('rejected');

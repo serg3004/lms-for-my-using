@@ -63,6 +63,68 @@ describe('admin page toolkit', () => {
   });
 });
 
+describe('admin shell navigation (UI refresh PR 310)', () => {
+  function renderAt(currentPath: string, navItems: readonly { label: string; href: string; isCurrent?: boolean }[] = []) {
+    return renderToStaticMarkup(
+      <AdminPageLayout
+        brandLabel="Admin"
+        currentPath={currentPath}
+        currentUser={{ firstName: 'Admin', lastName: 'Demo', email: 'admin@demo.com' }}
+        navItems={navItems}
+        sidebarLabel="Admin navigation"
+      >
+        <p>Page</p>
+      </AdminPageLayout>,
+    );
+  }
+
+  function activeSidebarHrefs(html: string) {
+    return [...html.matchAll(/aria-current="page" class="admin-nav-link" href="([^"]+)"/g)].map((match) => match[1]);
+  }
+
+  function breadcrumbText(html: string) {
+    const nav = html.match(/<nav aria-label="[^"]*" class="admin-breadcrumbs">(.*?)<\/nav>/)?.[1] ?? '';
+    return [...nav.matchAll(/<li><(?:a|span)[^>]*>([^<]*)<\/(?:a|span)><\/li>/g)].map((match) => match[1]);
+  }
+
+  it('renders an icon for every sidebar destination', () => {
+    const html = renderAt('/admin/users');
+
+    expect(html.match(/class="admin-nav-link"/g)).toHaveLength(13);
+    expect(html.match(/class="nav-icon"/g)).toHaveLength(13);
+  });
+
+  it('keeps Checklists active on nested session routes', () => {
+    expect(activeSidebarHrefs(renderAt('/admin/checklists/sessions'))).toEqual(['/admin/checklists']);
+    expect(activeSidebarHrefs(renderAt('/admin/checklists/sessions/session-1'))).toEqual(['/admin/checklists']);
+  });
+
+  it('marks the dashboard active only on its own route', () => {
+    expect(activeSidebarHrefs(renderAt('/admin'))).toEqual(['/admin']);
+    expect(activeSidebarHrefs(renderAt('/admin/users'))).toEqual(['/admin/users']);
+  });
+
+  it('builds breadcrumbs from the route, not from the page navItems', () => {
+    const builderNavItems = [
+      { label: 'Course builder', href: '/admin/courses' },
+      { label: 'Assessment builder', href: '/admin/assessments' },
+      { label: 'Checklists', href: '/admin/checklists', isCurrent: true },
+    ];
+
+    expect(breadcrumbText(renderAt('/admin/checklists', builderNavItems))).toEqual(['Управление', 'Чек-листы']);
+    expect(breadcrumbText(renderAt('/admin/checklists/sessions'))).toEqual(['Управление', 'Чек-листы', 'Сессии']);
+    expect(breadcrumbText(renderAt('/admin/checklists/sessions/session-1'))).toEqual(['Управление', 'Чек-листы', 'Сессии', 'Отчёт по сессии']);
+    expect(breadcrumbText(renderAt('/admin/positions'))).toEqual(['Настройки', 'Организационная структура', 'Должности']);
+  });
+
+  it('shows the signed-in admin in the sidebar footer', () => {
+    const html = renderAt('/admin/users');
+
+    expect(html).toContain('class="admin-sidebar-user__name">Admin Demo');
+    expect(html).toContain('class="admin-sidebar-user__email">admin@demo.com');
+  });
+});
+
 describe('FormField', () => {
   it('renders label with required asterisk and children', () => {
     const html = renderToStaticMarkup(

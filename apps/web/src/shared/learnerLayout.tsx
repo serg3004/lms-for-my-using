@@ -6,71 +6,9 @@ import { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRe
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
 import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
-import { Avatar } from './ui.js';
 import { supportedLocales } from '../i18n/index.js';
 import { useOptionalSession } from './session.js';
 import { WorkspaceLayout } from './workspaceLayout.js';
-
-export type LearnerNavItem = {
-  label: string;
-  href: string;
-  isCurrent?: boolean;
-};
-
-type LearnerTopNavProps = {
-  brandLabel: string;
-  firstName?: string;
-  lastName?: string;
-  navItems?: LearnerNavItem[];
-  onLogout: () => void;
-  showLanguageSwitcher?: boolean;
-  showAccountSwitcher?: boolean;
-};
-
-export function LearnerTopNav({
-  brandLabel,
-  firstName,
-  lastName,
-  navItems = [],
-  onLogout,
-  showLanguageSwitcher = false,
-  showAccountSwitcher = false,
-}: LearnerTopNavProps) {
-  const { t } = useTranslation();
-  return (
-    <header className="learner-topnav">
-      <a className="learner-topnav__brand" href="/learn">
-        {brandLabel}
-      </a>
-
-      {navItems.length > 0 ? (
-        <nav aria-label="Main navigation" className="learner-topnav__nav">
-          {navItems.map((item) => (
-            <a
-              aria-current={item.isCurrent ? 'page' : undefined}
-              className="learner-topnav__link"
-              href={item.href}
-              key={item.href}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      ) : null}
-
-      <div className="learner-topnav__end">
-        {showAccountSwitcher ? <AccountSwitcher /> : null}
-        {showLanguageSwitcher ? <LanguageSwitcher /> : null}
-        {firstName ? (
-          <Avatar firstName={firstName} lastName={lastName} size="sm" />
-        ) : null}
-        <button className="learner-topnav__logout" type="button" onClick={onLogout}>
-          {t('nav.logout')}
-        </button>
-      </div>
-    </header>
-  );
-}
 
 type LearnerShellProps = {
   children: ReactNode;
@@ -311,28 +249,31 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
   return (
     <WorkspaceLayout
       brandHref="/learn"
-      brandLabel="LMS"
-      brandSubLabel={t('nav.brandSub')}
+      roleLabel={t('admin.roles.options.learner', 'Learner')}
       contentMode="readable"
       firstName={firstName}
       lastName={lastName}
+      email={currentUser?.email}
       mobileNavigation={mobileNavigation}
       navigation={LEARNER_NAV_DEFS.map((item) => ({
         href: item.href,
         label: t(item.key),
         isCurrent: path === item.href || (item.href !== '/learn' && path.startsWith(item.href)),
       }))}
-      navigationLabel="Main navigation"
+      navigationLabel={t('a11y.mainNavigation', 'Main navigation')}
+      breadcrumbLabel={t('a11y.breadcrumb', 'Breadcrumb')}
+      openNavigationLabel={t('a11y.openNav', 'Open navigation')}
+      closeNavigationLabel={t('a11y.closeNav', 'Close navigation')}
       skipLinkLabel={t('a11y.skipToContent')}
-      headerActions={
-        <div className="workspace-role-actions" id="learner-account-controls" tabIndex={-1}>
-            <NotificationBell />
-            <AccountSwitcher />
-            <LanguageSwitcher />
-            <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
-              {t('nav.logout')}
-            </button>
-        </div>
+      headerActions={<NotificationBell />}
+      accountActions={
+        <>
+          <AccountSwitcher />
+          <LanguageSwitcher />
+          <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
+            {t('nav.logout')}
+          </button>
+        </>
       }
     >
       {children}

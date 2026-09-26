@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Avatar, Badge, Button, Card, ConfirmDialog, DataTable, Dialog, InlineFeedback, Input, Menu, Pagination, ProgressBar, SearchInput, Select, SkipLink, Spinner, Textarea, Toast, Toolbar, WizardDialog } from './ui';
 import { EmptyState, PageState, StatusBadge } from './ui';
-import { LearnerTopNav } from './learnerLayout';
 
 function visitElements(node: ReactNode, visit: (element: ReactElement<Record<string, unknown>>) => void) {
   Children.forEach(node, (child) => {
@@ -419,38 +418,5 @@ describe('design system — Pagination', () => {
     const tree = Pagination({ page: 5, pageSize: 20, total: 100, onPage: vi.fn() });
     const [, nextButton] = findButtons(tree);
     expect(nextButton.props.disabled).toBe(true);
-  });
-});
-
-describe('design system — LearnerTopNav', () => {
-  it('renders brand and logout button', () => {
-    const html = renderToStaticMarkup(
-      <LearnerTopNav
-        brandLabel="LMS"
-        firstName="Anna"
-        lastName="Smith"
-        onLogout={vi.fn()}
-      />,
-    );
-    expect(html).toContain('LMS');
-    expect(html).toContain('learner-topnav__brand');
-    expect(html).toContain('learner-topnav__logout');
-  });
-
-  it('renders nav links with aria-current for active item', () => {
-    const html = renderToStaticMarkup(
-      <LearnerTopNav
-        brandLabel="LMS"
-        firstName="Anna"
-        navItems={[
-          { label: 'Courses', href: '/learn/courses', isCurrent: true },
-          { label: 'Profile', href: '/learn/profile' },
-        ]}
-        onLogout={vi.fn()}
-      />,
-    );
-    expect(html).toContain('aria-current="page"');
-    expect(html).toContain('Courses');
-    expect(html).toContain('Profile');
   });
 });

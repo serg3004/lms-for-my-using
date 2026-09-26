@@ -2008,7 +2008,8 @@
     "skipToContent": "Негізгі мазмұнға өту",
     "breadcrumb": "Шолу жолы",
     "openNav": "Навигацияны ашу",
-    "closeNav": "Навигацияны жабу"
+    "closeNav": "Навигацияны жабу",
+    "mainNavigation": "Негізгі навигация"
   },
   "checklists": {
     "navLink": "Чеклистер",
