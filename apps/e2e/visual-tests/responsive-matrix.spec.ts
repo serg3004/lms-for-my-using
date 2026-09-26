@@ -698,6 +698,8 @@ for (const width of widths) {
       // this list had nothing to diff their shared shell/header/table against.
       await expectVisualMatch(page, `admin-checklists-list-${width}`);
 
+      // UI refresh PR 311: at <=860px row actions live in the row's responsive details.
+      if (width <= 860) await page.getByRole('button', { name: /Opening shift checklist$/ }).click();
       await page.getByRole('button', { name: 'Редактировать' }).click();
       await expect(page.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
       // Assert the actual builder surface rendered -- not just the header -- so this test
