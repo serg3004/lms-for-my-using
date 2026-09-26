@@ -1188,6 +1188,109 @@
         "recalculating": "Recalculating...",
         "recalculateError": "Unable to recalculate the score."
       }
+    },
+    "orgTools": {
+      "cardTitle": "Organization structure import",
+      "cardSubtitle": "CSV with departments, positions and managers",
+      "fieldKind": "Import data",
+      "kindDepartments": "Departments",
+      "kindMemberships": "Memberships",
+      "fieldMode": "Mode",
+      "modeCreateOnly": "Create only",
+      "modeUpsert": "Create or update",
+      "fieldFile": "UTF-8 CSV file",
+      "fileHint": "Maximum 5 MiB and 10,000 data rows.",
+      "submit": "Preview import",
+      "submitting": "Validating…",
+      "previewError": "Unable to validate the CSV file.",
+      "previewErrorRow": "Row {{row}}, {{field}}: {{message}}",
+      "commit": "Commit validated import",
+      "committing": "Applying…",
+      "commitError": "Import could not be committed. Preview again and resolve any conflicts.",
+      "historyTitle": "Change history",
+      "historySubtitle": "Every import and manual change to the organization structure.",
+      "sessionExpired": "Your session expired. Sign in again.",
+      "history": {
+        "colDate": "Date",
+        "colChange": "Change",
+        "colEntity": "Entity",
+        "colActor": "Actor",
+        "systemActor": "System",
+        "loading": "Loading history…",
+        "loadError": "Unable to load organization history.",
+        "empty": "No history events yet.",
+        "paginationLabel": "History pages",
+        "entities": {
+          "department": "Department",
+          "department_manager": "Department manager",
+          "department_membership": "Department membership",
+          "department_type": "Department type",
+          "org_external_reference": "External reference",
+          "org_structure_import": "Organization structure import",
+          "position": "Position",
+          "reporting_line": "Reporting line"
+        },
+        "events": {
+          "department": {
+            "created": "Department created",
+            "updated": "Department updated",
+            "archived": "Department archived",
+            "restored": "Department restored",
+            "moved": "Department moved",
+            "manager_modes_updated": "Manager inheritance mode changed",
+            "system_updated": "Department updated by the system"
+          },
+          "department_manager": {
+            "created": "Manager assigned",
+            "closed": "Manager assignment closed"
+          },
+          "department_membership": {
+            "created": "Membership created",
+            "closed": "Membership closed",
+            "transferred": "Employee transferred",
+            "bulk_transferred": "Employees bulk transferred",
+            "legacy_position_migrated": "Position migrated from the legacy field"
+          },
+          "department_type": {
+            "created": "Department type created",
+            "updated": "Department type updated",
+            "archived": "Department type archived",
+            "restored": "Department type restored"
+          },
+          "org_external_reference": {
+            "created": "External reference added",
+            "deleted": "External reference removed"
+          },
+          "org_structure": {
+            "import_committed": "Import committed"
+          },
+          "position": {
+            "created": "Position created",
+            "updated": "Position updated",
+            "archived": "Position archived",
+            "restored": "Position restored"
+          },
+          "reporting_line": {
+            "created": "Reporting line created",
+            "updated": "Reporting line updated",
+            "closed": "Reporting line closed"
+          }
+        },
+        "prev": "← Prev",
+        "next": "Next →"
+      },
+      "previewValid_one": "{{count}} row valid",
+      "previewValid_other": "{{count}} rows valid",
+      "previewInvalid_one": "{{count}} validation error",
+      "previewInvalid_other": "{{count}} validation errors",
+      "commitSuccess_one": "{{count}} row imported.",
+      "commitSuccess_other": "{{count}} rows imported.",
+      "previewValid_few": "{{count}} rows valid",
+      "previewValid_many": "{{count}} rows valid",
+      "previewInvalid_few": "{{count}} validation errors",
+      "previewInvalid_many": "{{count}} validation errors",
+      "commitSuccess_few": "{{count}} rows imported.",
+      "commitSuccess_many": "{{count}} rows imported."
     }
   },
   "notFound": {

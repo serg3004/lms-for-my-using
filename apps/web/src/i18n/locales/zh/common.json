@@ -1188,6 +1188,109 @@
         "recalculating": "正在重新计算...",
         "recalculateError": "无法重新计算分数。"
       }
+    },
+    "orgTools": {
+      "cardTitle": "组织架构导入",
+      "cardSubtitle": "包含部门、职位和负责人的 CSV",
+      "fieldKind": "导入数据",
+      "kindDepartments": "部门",
+      "kindMemberships": "成员关系",
+      "fieldMode": "模式",
+      "modeCreateOnly": "仅创建",
+      "modeUpsert": "创建或更新",
+      "fieldFile": "UTF-8 编码的 CSV 文件",
+      "fileHint": "最大 5 MiB，最多 10,000 行数据。",
+      "submit": "预览导入",
+      "submitting": "正在验证…",
+      "previewError": "无法验证 CSV 文件。",
+      "previewErrorRow": "第 {{row}} 行，{{field}}：{{message}}",
+      "commit": "提交已验证的导入",
+      "committing": "正在应用…",
+      "commitError": "无法提交导入。请重新预览并解决冲突。",
+      "historyTitle": "变更历史",
+      "historySubtitle": "组织架构的每次导入和手动更改。",
+      "sessionExpired": "会话已过期，请重新登录。",
+      "history": {
+        "colDate": "日期",
+        "colChange": "变更",
+        "colEntity": "实体",
+        "colActor": "操作人",
+        "systemActor": "系统",
+        "loading": "正在加载历史记录…",
+        "loadError": "无法加载组织架构历史记录。",
+        "empty": "暂无历史事件。",
+        "paginationLabel": "历史记录页面",
+        "entities": {
+          "department": "部门",
+          "department_manager": "部门负责人",
+          "department_membership": "部门成员关系",
+          "department_type": "部门类型",
+          "org_external_reference": "外部引用",
+          "org_structure_import": "组织架构导入",
+          "position": "职位",
+          "reporting_line": "汇报关系"
+        },
+        "events": {
+          "department": {
+            "created": "部门已创建",
+            "updated": "部门已更新",
+            "archived": "部门已归档",
+            "restored": "部门已恢复",
+            "moved": "部门已移动",
+            "manager_modes_updated": "负责人继承模式已更改",
+            "system_updated": "部门由系统更新"
+          },
+          "department_manager": {
+            "created": "已指派负责人",
+            "closed": "负责人指派已结束"
+          },
+          "department_membership": {
+            "created": "成员关系已创建",
+            "closed": "成员关系已结束",
+            "transferred": "员工已调动",
+            "bulk_transferred": "员工已批量调动",
+            "legacy_position_migrated": "职位已从旧字段迁移"
+          },
+          "department_type": {
+            "created": "部门类型已创建",
+            "updated": "部门类型已更新",
+            "archived": "部门类型已归档",
+            "restored": "部门类型已恢复"
+          },
+          "org_external_reference": {
+            "created": "外部引用已添加",
+            "deleted": "外部引用已移除"
+          },
+          "org_structure": {
+            "import_committed": "导入已应用"
+          },
+          "position": {
+            "created": "职位已创建",
+            "updated": "职位已更新",
+            "archived": "职位已归档",
+            "restored": "职位已恢复"
+          },
+          "reporting_line": {
+            "created": "汇报关系已创建",
+            "updated": "汇报关系已更新",
+            "closed": "汇报关系已结束"
+          }
+        },
+        "prev": "← 上一页",
+        "next": "下一页 →"
+      },
+      "previewValid_other": "{{count}} 行有效",
+      "previewInvalid_other": "{{count}} 个验证错误",
+      "commitSuccess_other": "已导入 {{count}} 行。",
+      "previewValid_one": "{{count}} 行有效",
+      "previewValid_few": "{{count}} 行有效",
+      "previewValid_many": "{{count}} 行有效",
+      "previewInvalid_one": "{{count}} 个验证错误",
+      "previewInvalid_few": "{{count}} 个验证错误",
+      "previewInvalid_many": "{{count}} 个验证错误",
+      "commitSuccess_one": "已导入 {{count}} 行。",
+      "commitSuccess_few": "已导入 {{count}} 行。",
+      "commitSuccess_many": "已导入 {{count}} 行。"
     }
   },
   "notFound": {

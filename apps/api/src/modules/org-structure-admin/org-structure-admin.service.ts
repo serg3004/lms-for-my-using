@@ -108,11 +108,18 @@ export class OrgStructureAdminService {
 
   async history(organizationId: string, query: { entityType?: string; entityId?: string; page: number; pageSize: number }) {
     const where = { organizationId, ...(query.entityType ? { entityType: query.entityType } : {}), ...(query.entityId ? { entityId: query.entityId } : {}) };
-    const [items, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       this.prisma.orgStructureEvent.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize,
-        select: { id: true, actorId: true, entityType: true, entityId: true, eventType: true, operationId: true, metadata: true, createdAt: true } }),
+        select: {
+          id: true, actorId: true, entityType: true, entityId: true, eventType: true, operationId: true, metadata: true, createdAt: true,
+          // Resolved here (not left to the frontend to look up per actorId) so the history table
+          // can show a name instead of a raw UUID even once the actor leaves the organization --
+          // a null actor (system-driven event) or a deleted user both fall back to "System" client-side.
+          actor: { select: { firstName: true, lastName: true } },
+        } }),
       this.prisma.orgStructureEvent.count({ where }),
     ]);
+    const items = rows.map(({ actor, ...event }) => ({ ...event, actorName: actor ? `${actor.firstName} ${actor.lastName}`.trim() : null }));
     return { items, total, page: query.page, pageSize: query.pageSize };
   }
 
