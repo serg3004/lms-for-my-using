@@ -139,6 +139,11 @@ describe('design system — Badge', () => {
     expect(html).toContain('ds-badge--neutral');
   });
 
+  it('renders accent badge', () => {
+    const html = renderToStaticMarkup(<Badge variant="accent">Active</Badge>);
+    expect(html).toContain('ds-badge--accent');
+  });
+
   it('renders published badge', () => {
     const html = renderToStaticMarkup(<Badge variant="published">Published</Badge>);
     expect(html).toContain('ds-badge--published');
@@ -285,6 +290,22 @@ describe('design system — DataTable', () => {
     expect(html).toContain('Alice');
     expect(html).toContain('90');
     expect(html).toContain('Bob');
+  });
+
+  it('marks end-aligned columns on the header and every cell', () => {
+    const html = renderToStaticMarkup(
+      <DataTable
+        label="Assessment results"
+        columns={[columns[0], { ...columns[1], align: 'end' as const }]}
+        rows={[{ id: '1', name: 'Alice', score: 90 }]}
+        keyExtractor={(r) => r.id}
+        responsiveDetails={responsiveDetails}
+      />,
+    );
+
+    expect(html).toContain('<th data-align="end" data-priority="secondary" scope="col">Score</th>');
+    expect(html).toContain('<td data-align="end" data-priority="secondary">90</td>');
+    expect(html).not.toContain('<th data-align="end" data-priority="primary"');
   });
 
   it('renders empty state when rows array is empty', () => {

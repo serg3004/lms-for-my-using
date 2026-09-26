@@ -434,6 +434,33 @@ export function AdminCard({ children }: AdminCardProps) {
   return <article className="admin-card">{children}</article>;
 }
 
+type AdminSectionCardProps = {
+  title: string;
+  subtitle?: string;
+  action?: ReactNode;
+  /** Search and filters, rendered between the header and the content. */
+  toolbar?: ReactNode;
+  children: ReactNode;
+};
+
+/** Titled card holding one table or list, with its primary action in the header (UI refresh PR 313). */
+export function AdminSectionCard({ title, subtitle, action, toolbar, children }: AdminSectionCardProps) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId} className="admin-section-card">
+      <header className="admin-section-card__head">
+        <div>
+          <h2 id={titleId}>{title}</h2>
+          {subtitle ? <p>{subtitle}</p> : null}
+        </div>
+        {action}
+      </header>
+      {toolbar ? <div className="admin-section-card__toolbar">{toolbar}</div> : null}
+      {children}
+    </section>
+  );
+}
+
 // ── FormField ─────────────────────────────────────────────────────────────────
 
 type FormFieldProps = {

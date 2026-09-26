@@ -626,9 +626,7 @@
       }
     },
     "groups": {
-      "eyebrow": "Groups",
       "title": "Groups",
-      "subtitle": "Learning and operational groups, managers and members.",
       "add": "Add group",
       "sessionExpired": "Your session expired. Sign in again.",
       "loading": "Loading groups...",
@@ -669,7 +667,13 @@
       "remove": "Remove",
       "searchPlaceholder": "Search by name or email…",
       "searchError": "Unable to search users.",
-      "noSearchResults": "No matching users."
+      "noSearchResults": "No matching users.",
+      "cardTitle": "Learning groups",
+      "cardSubtitle_one": "{{count}} group · for assigning courses to a cohort",
+      "cardSubtitle_few": "{{count}} groups · for assigning courses to a cohort",
+      "cardSubtitle_many": "{{count}} groups · for assigning courses to a cohort",
+      "cardSubtitle_other": "{{count}} groups · for assigning courses to a cohort",
+      "note": "A group is a learning team or cohort, not a staff department. Group membership does not affect managers or the organizational structure."
     },
     "departments": {
       "eyebrow": "Departments",
@@ -755,9 +759,7 @@
       "managerModeConflict": "Close current local managers of this type before switching to Inherit."
     },
     "positions": {
-      "eyebrow": "Organization structure",
       "title": "Positions",
-      "subtitle": "A tenant-wide catalog of job titles that can be assigned to department memberships.",
       "add": "Add position",
       "sessionExpired": "Your session expired. Sign in again.",
       "loading": "Loading positions...",
@@ -788,12 +790,12 @@
       "create": "Create",
       "save": "Save",
       "cancel": "Cancel",
-      "close": "Close"
+      "close": "Close",
+      "cardTitle": "Position catalog",
+      "cardSubtitle": "One source of positions for every department"
     },
     "positionCourses": {
-      "eyebrow": "Organization structure",
       "title": "Position course requirements",
-      "subtitle": "Courses required or recommended for each position, resolved automatically for anyone holding it.",
       "sessionExpired": "Your session expired. Sign in again.",
       "loading": "Loading position course requirements...",
       "loadError": "Unable to load position course requirements.",
@@ -826,7 +828,9 @@
       "saveError": "Unable to save the requirement.",
       "cancel": "Cancel",
       "saving": "Saving...",
-      "create": "Create"
+      "create": "Create",
+      "cardTitle": "Training requirements by position",
+      "cardSubtitle": "Which courses each position must complete"
     },
     "departmentUsers": {
       "eyebrow": "Department users",
