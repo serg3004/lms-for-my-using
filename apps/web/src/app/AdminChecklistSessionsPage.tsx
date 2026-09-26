@@ -108,7 +108,7 @@ export function AdminChecklistSessionsPage() {
           )}
         </>
       ),
-      priority: 'secondary',
+      priority: 'primary',
     },
     {
       key: 'scheduledAt',
@@ -128,7 +128,7 @@ export function AdminChecklistSessionsPage() {
           {row.overdue && <Badge variant="danger">{t('admin.checklists.sessions.overdue', 'Overdue')}</Badge>}
         </>
       ),
-      priority: 'primary',
+      priority: 'secondary',
     },
     {
       key: 'result',
@@ -166,7 +166,7 @@ export function AdminChecklistSessionsPage() {
           )}
         </>
       ),
-      priority: 'primary',
+      priority: 'secondary',
     },
   ];
 

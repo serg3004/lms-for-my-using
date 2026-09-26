@@ -160,10 +160,11 @@ export function AdminPositionCoursesPage() {
         <DataTable<PositionCourse>
           label={t('admin.positionCourses.title', 'Position course requirements')}
           columns={[
-            { key: 'position', label: t('admin.positionCourses.colPosition', 'Position'), render: (pc) => positionTitle(positions, pc.positionId) },
-            { key: 'course', label: t('admin.positionCourses.colCourse', 'Course'), render: (pc) => courseTitle(courses, pc.courseId) },
+            { key: 'position', label: t('admin.positionCourses.colPosition', 'Position'), priority: 'primary', render: (pc) => positionTitle(positions, pc.positionId) },
+            { key: 'course', label: t('admin.positionCourses.colCourse', 'Course'), priority: 'primary', render: (pc) => courseTitle(courses, pc.courseId) },
             {
               key: 'requirement',
+              priority: 'secondary',
               label: t('admin.positionCourses.colRequirement', 'Requirement'),
               render: (pc) =>
                 pc.requirement === 'REQUIRED'
@@ -172,11 +173,13 @@ export function AdminPositionCoursesPage() {
             },
             {
               key: 'dueDays',
+              priority: 'secondary',
               label: t('admin.positionCourses.colDueDays', 'Due (days)'),
               render: (pc) => pc.dueDays ?? t('admin.positionCourses.noDueDays', '—'),
             },
             {
               key: 'status',
+              priority: 'primary',
               label: t('admin.positionCourses.colStatus', 'Status'),
               render: (pc) =>
                 pc.status === 'archived'
@@ -185,6 +188,7 @@ export function AdminPositionCoursesPage() {
             },
             {
               key: 'actions',
+              priority: 'secondary',
               label: '',
               render: (pc) => (
                 <span className="admin-table-actions">

@@ -260,6 +260,7 @@ export function AdminCoursesPage() {
   const courseColumns: Column<AdminCourseSummary>[] = [
     {
       key: 'course',
+      priority: 'primary',
       label: t('admin.courses.col.course', 'Course'),
       render: (course) => (
         <>
@@ -272,6 +273,7 @@ export function AdminCoursesPage() {
     },
     {
       key: 'status',
+      priority: 'primary',
       label: t('admin.courses.col.status', 'Status'),
       render: (course) => (
         <Badge variant={statusToBadgeVariant(course.status)}>
@@ -283,11 +285,13 @@ export function AdminCoursesPage() {
     },
     {
       key: 'lessons',
+      priority: 'secondary',
       label: t('admin.courses.col.lessons', 'Lessons'),
       render: (course) => course._count.lessons,
     },
     {
       key: 'updated',
+      priority: 'secondary',
       label: t('admin.courses.col.updated', 'Updated'),
       render: (course) => (
         <span style={{ whiteSpace: 'nowrap', color: 'var(--color-text-muted)', fontSize: '13px' }}>
@@ -297,6 +301,7 @@ export function AdminCoursesPage() {
     },
     {
       key: 'actions',
+      priority: 'secondary',
       label: '',
       render: (course) => (
         <div className="td-actions">

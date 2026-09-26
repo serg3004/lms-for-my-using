@@ -308,6 +308,7 @@ export function AdminResultsCertificatesPage() {
         columns={[
           {
             key: 'learner',
+            priority: 'primary',
             label: t('admin.results.col.learner', 'Learner'),
             render: (p) => (
               <>
@@ -316,9 +317,10 @@ export function AdminResultsCertificatesPage() {
               </>
             ),
           },
-          { key: 'course', label: t('admin.results.col.course', 'Course'), render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
+          { key: 'course', label: t('admin.results.col.course', 'Course'), priority: 'secondary', render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
           {
             key: 'progress',
+            priority: 'primary',
             label: t('admin.results.col.progress', 'Progress'),
             render: (p) => (
               <div className="admin-results-bar">
@@ -331,6 +333,7 @@ export function AdminResultsCertificatesPage() {
           },
           {
             key: 'score',
+            priority: 'secondary',
             label: t('admin.results.col.score', 'Score'),
             render: (p) =>
               p.score != null ? (
@@ -351,9 +354,9 @@ export function AdminResultsCertificatesPage() {
           <DataTable<Certificate>
             label={t('admin.results.certificatesReport', 'Issued certificates')}
             columns={[
-              { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (item) => findUserLabel(loadState.data.users, item.userId) },
-              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => findCourseTitle(loadState.data.courses, item.courseId) },
-              { key: 'date', label: t('admin.results.col.date', 'Date'), render: (item) => formatNullableDate(item.issuedAt, '—') },
+              { key: 'learner', label: t('admin.results.col.learner', 'Learner'), priority: 'primary', render: (item) => findUserLabel(loadState.data.users, item.userId) },
+              { key: 'course', label: t('admin.results.col.course', 'Course'), priority: 'primary', render: (item) => findCourseTitle(loadState.data.courses, item.courseId) },
+              { key: 'date', label: t('admin.results.col.date', 'Date'), priority: 'secondary', render: (item) => formatNullableDate(item.issuedAt, '—') },
             ] satisfies Column<Certificate>[]}
             rows={loadState.data.certificates}
             keyExtractor={(item) => item.id}
@@ -365,9 +368,9 @@ export function AdminResultsCertificatesPage() {
           <DataTable<OverdueAssignment>
             label={t('admin.results.overdueReport', 'Overdue assignments')}
             columns={[
-              { key: 'target', label: t('admin.results.col.learnerOrGroup', 'Learner or group'), render: (item) => item.user ? `${item.user.firstName} ${item.user.lastName}`.trim() || item.user.email : item.group?.name ?? '—' },
-              { key: 'course', label: t('admin.results.col.course', 'Course'), render: (item) => item.course.title },
-              { key: 'due', label: t('admin.results.col.dueDate', 'Due date'), render: (item) => formatNullableDate(item.dueAt, '—') },
+              { key: 'target', label: t('admin.results.col.learnerOrGroup', 'Learner or group'), priority: 'primary', render: (item) => item.user ? `${item.user.firstName} ${item.user.lastName}`.trim() || item.user.email : item.group?.name ?? '—' },
+              { key: 'course', label: t('admin.results.col.course', 'Course'), priority: 'primary', render: (item) => item.course.title },
+              { key: 'due', label: t('admin.results.col.dueDate', 'Due date'), priority: 'secondary', render: (item) => formatNullableDate(item.dueAt, '—') },
             ] satisfies Column<OverdueAssignment>[]}
             rows={loadState.data.overdueAssignments}
             keyExtractor={(item) => item.id}
@@ -456,9 +459,9 @@ export function AdminResultsCertificatesPage() {
               <DataTable<AssessmentResult>
                 label={t('admin.results.assessmentReport', 'Assessment results')}
                 columns={[
-                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), render: (r) => findUserLabel(loadState.data.users, r.userId) },
-                  { key: 'score', label: t('admin.results.col.score', 'Score'), render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },
-                  { key: 'status', label: t('admin.results.col.status', 'Status'), render: (r) => <StatusBadge tone={r.passed ? 'success' : 'danger'}>{r.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed')}</StatusBadge> },
+                  { key: 'learner', label: t('admin.results.col.learner', 'Learner'), priority: 'primary', render: (r) => findUserLabel(loadState.data.users, r.userId) },
+                  { key: 'score', label: t('admin.results.col.score', 'Score'), priority: 'secondary', render: (r) => `${r.score}/${r.maxScore} · ${r.percentage}%` },
+                  { key: 'status', label: t('admin.results.col.status', 'Status'), priority: 'primary', render: (r) => <StatusBadge tone={r.passed ? 'success' : 'danger'}>{r.passed ? t('admin.results.passed', 'Passed') : t('admin.results.failed', 'Failed')}</StatusBadge> },
                 ] satisfies Column<AssessmentResult>[]}
                 rows={loadState.data.assessmentResults}
                 keyExtractor={(r) => r.id}

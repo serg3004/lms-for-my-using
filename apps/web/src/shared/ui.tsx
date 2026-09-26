@@ -380,7 +380,7 @@ export type Column<T> = {
   label: string;
   render: (row: T) => ReactNode;
   sortable?: boolean;
-  priority?: 'primary' | 'secondary' | 'tertiary';
+  priority: 'primary' | 'secondary' | 'tertiary';
 };
 
 export type DataTableSort = {
@@ -461,7 +461,9 @@ export function DataTable<T>({
   const selectedRows = selection ? rows.filter((row) => selection.selectedKeys.has(keyExtractor(row))) : [];
   const allSelected = selectableRows.length > 0 && selectableRows.every((row) => selection?.selectedKeys.has(keyExtractor(row)));
   const responsiveColumns = columns.filter((column) => column.priority === 'secondary' || column.priority === 'tertiary');
-  const hasResponsiveDetails = Boolean(responsiveDetails && responsiveColumns.length > 0);
+  // Priority is part of every column's contract, so hidden mobile content must
+  // always remain reachable even when a caller does not need custom labels.
+  const hasResponsiveDetails = responsiveColumns.length > 0;
   const hasExpansion = Boolean(expansion || hasResponsiveDetails);
   const expansionControlClass = `ds-data-table__control${expansion ? '' : ' ds-data-table__details-control'}`;
   const columnSpan = columns.length + (selection ? 1 : 0) + (hasExpansion ? 1 : 0);
@@ -576,7 +578,8 @@ export function DataTable<T>({
                 expanded ? (
                   <tr className="ds-data-table__expanded" key={`${key}-expanded`}>
                     <td colSpan={columnSpan}>
-                      {expansion?.render(row) ?? (
+                      {expansion?.render(row)}
+                      {hasResponsiveDetails ? (
                         <dl className="ds-data-table__responsive-details">
                           {responsiveColumns.map((column) => (
                             <div key={column.key}>
@@ -585,7 +588,7 @@ export function DataTable<T>({
                             </div>
                           ))}
                         </dl>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 ) : null,

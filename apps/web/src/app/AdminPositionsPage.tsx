@@ -233,10 +233,11 @@ export function AdminPositionsPage() {
         <DataTable<Position>
           label={t('admin.positions.title', 'Positions')}
           columns={[
-            { key: 'code', label: t('admin.positions.colCode', 'Code'), render: (p) => p.code },
-            { key: 'title', label: t('admin.positions.colTitle', 'Title'), render: (p) => p.title },
+            { key: 'code', label: t('admin.positions.colCode', 'Code'), priority: 'secondary', render: (p) => p.code },
+            { key: 'title', label: t('admin.positions.colTitle', 'Title'), priority: 'primary', render: (p) => p.title },
             {
               key: 'status',
+              priority: 'primary',
               label: t('admin.positions.colStatus', 'Status'),
               render: (p) =>
                 p.status === 'archived'
@@ -245,6 +246,7 @@ export function AdminPositionsPage() {
             },
             {
               key: 'actions',
+              priority: 'secondary',
               label: '',
               render: (p) => (
                 <span className="admin-table-actions">

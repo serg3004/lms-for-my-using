@@ -233,13 +233,13 @@ export function AdminAssessmentBuilderPage() {
     <DataTable<Assessment>
       label={t('admin.assessmentBuilder.title', 'Assessments')}
       columns={[
-        { key: 'title', label: t('admin.assessmentBuilder.col.title', 'Title'), render: (a) => a.title },
-        { key: 'questions', label: t('admin.assessmentBuilder.col.questions', 'Questions'), render: (a) => rowStats[a.id]?.questionsCount ?? '—' },
-        { key: 'status', label: t('admin.assessmentBuilder.col.status', 'Status'), render: (a) => (
+        { key: 'title', label: t('admin.assessmentBuilder.col.title', 'Title'), priority: 'primary', render: (a) => a.title },
+        { key: 'questions', label: t('admin.assessmentBuilder.col.questions', 'Questions'), priority: 'secondary', render: (a) => rowStats[a.id]?.questionsCount ?? '—' },
+        { key: 'status', label: t('admin.assessmentBuilder.col.status', 'Status'), priority: 'primary', render: (a) => (
           <AdminStatusSelect value={a.status} statuses={ASSESSMENT_STATUSES} labels={statusLabels} onChange={(status) => void updateStatus(a.id, status)} />
         )},
-        { key: 'attempts', label: t('admin.assessmentBuilder.col.attempts', 'Attempts'), render: (a) => rowStats[a.id]?.attemptsCount ?? '—' },
-        { key: 'actions', label: '', render: (a) => (
+        { key: 'attempts', label: t('admin.assessmentBuilder.col.attempts', 'Attempts'), priority: 'secondary', render: (a) => rowStats[a.id]?.attemptsCount ?? '—' },
+        { key: 'actions', label: '', priority: 'secondary', render: (a) => (
           <div className="td-actions">
             {a.status !== 'published' ? (
               <button

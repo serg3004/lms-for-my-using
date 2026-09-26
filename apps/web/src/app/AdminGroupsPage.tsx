@@ -374,10 +374,10 @@ export function AdminGroupsPage() {
         <DataTable<Group>
           label={t('admin.groups.title', 'Groups')}
           columns={[
-            { key: 'name', label: t('admin.groups.colUnit', 'Group'), render: (g) => g.name },
-            { key: 'manager', label: t('admin.groups.colHead', 'Manager'), render: (g) => formatManagerCell(g) },
-            { key: 'members', label: t('admin.groups.colPeople', 'Members'), render: (g) => g._count.members },
-            { key: 'actions', label: '', render: (g) => (
+            { key: 'name', label: t('admin.groups.colUnit', 'Group'), priority: 'primary', render: (g) => g.name },
+            { key: 'manager', label: t('admin.groups.colHead', 'Manager'), priority: 'secondary', render: (g) => formatManagerCell(g) },
+            { key: 'members', label: t('admin.groups.colPeople', 'Members'), priority: 'secondary', render: (g) => g._count.members },
+            { key: 'actions', label: '', priority: 'secondary', render: (g) => (
               <span className="admin-table-actions">
                 <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openMembersDialog(g)}>
                   {t('admin.groups.members', 'Members')}

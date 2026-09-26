@@ -254,16 +254,16 @@ export function AdminAssignmentCompletionPage() {
         <DataTable<Assignment>
           label={t('admin.assignments.listTitle', 'Assignments')}
           columns={[
-            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
-            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (a) => a.userId
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), priority: 'primary', render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
+            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), priority: 'primary', render: (a) => a.userId
               ? findUserLabel(loadState.data.users, a.userId, a.userId)
               : a.groupId
                 ? findGroupLabel(loadState.data.groups, a.groupId, t('admin.assignments.groupAssignment', 'Group'))
                 : `${findDepartmentLabel(loadState.data.departments, a.departmentId ?? null, t('admin.assignments.departmentAssignment', 'Department'))}${a.includeDescendants ? ` (${t('admin.assignments.includeDescendantsShort', '+ sub-departments')})` : ''}` },
-            { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), render: (a) => a.dueAt
+            { key: 'dueAt', label: t('admin.assignments.col.dueAt', 'Due date'), priority: 'secondary', render: (a) => a.dueAt
               ? formatDate(a.dueAt)
               : t('admin.assignments.noDueDate', '—') },
-            { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (a) => (
+            { key: 'status', label: t('admin.assignments.col.status', 'Status'), priority: 'secondary', render: (a) => (
               <select
                 className="admin-status-select"
                 value={a.status}
@@ -286,14 +286,14 @@ export function AdminAssignmentCompletionPage() {
         <DataTable<Progress>
           label={t('admin.assignments.progressListTitle', 'Course progress')}
           columns={[
-            { key: 'course', label: t('admin.assignments.col.course', 'Course'), render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
-            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), render: (p) => findUserLabel(loadState.data.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
-            { key: 'status', label: t('admin.assignments.col.status', 'Status'), render: (p) => (
+            { key: 'course', label: t('admin.assignments.col.course', 'Course'), priority: 'primary', render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
+            { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), priority: 'primary', render: (p) => findUserLabel(loadState.data.users, p.userId, t('admin.assignments.groupAssignment', 'Group')) },
+            { key: 'status', label: t('admin.assignments.col.status', 'Status'), priority: 'secondary', render: (p) => (
               p.status === 'completed'
                 ? t('admin.assignments.completed', 'Completed')
                 : t('admin.assignments.inProgress', 'In progress')
             )},
-            { key: 'score', label: t('admin.assignments.col.score', 'Score'), render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
+            { key: 'score', label: t('admin.assignments.col.score', 'Score'), priority: 'secondary', render: (p) => p.score !== null ? `${p.score}%` : t('admin.assignments.noScore', '—') },
           ] satisfies Column<Progress>[]}
           rows={loadState.data.progressItems}
           keyExtractor={(p) => p.id}

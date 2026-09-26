@@ -259,8 +259,8 @@ describe('design system — DataTable', () => {
   type Item = { id: string; name: string; score: number };
 
   const columns = [
-    { key: 'name', label: 'Name', render: (row: Item) => row.name },
-    { key: 'score', label: 'Score', render: (row: Item) => row.score },
+    { key: 'name', label: 'Name', priority: 'primary' as const, render: (row: Item) => row.name },
+    { key: 'score', label: 'Score', priority: 'secondary' as const, render: (row: Item) => row.score },
   ];
 
   it('renders column headers and row data', () => {
@@ -273,9 +273,9 @@ describe('design system — DataTable', () => {
       <DataTable label="Assessment results" columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
     );
 
-    expect(html).toContain('<th scope="col">Name</th>');
+    expect(html).toContain('<th data-priority="primary" scope="col">Name</th>');
     expect(html).toContain('aria-label="Assessment results"');
-    expect(html).toContain('<th scope="col">Score</th>');
+    expect(html).toContain('<th data-priority="secondary" scope="col">Score</th>');
     expect(html).toContain('Alice');
     expect(html).toContain('90');
     expect(html).toContain('Bob');
@@ -326,6 +326,20 @@ describe('design system — DataTable', () => {
     expect(html).toContain('More details');
   });
 
+  it('always exposes secondary columns through the mobile details control', () => {
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={columns}
+        keyExtractor={(row) => row.id}
+        label="Assessment results"
+        rows={[{ id: '1', name: 'Alice', score: 90 }]}
+      />,
+    );
+
+    expect(html).toContain('ds-data-table__details-control');
+    expect(html).toContain('aria-label="Expand row 1"');
+  });
+
   it('renders controlled selection, batch actions and expanded row content', () => {
     const rows = [{ id: '1', name: 'Alice', score: 90 }, { id: '2', name: 'Bob', score: 75 }];
     const html = renderToStaticMarkup(
@@ -353,6 +367,7 @@ describe('design system — DataTable', () => {
     expect(html).toContain('aria-label="Select Alice"');
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('Details for Alice');
+    expect(html).toContain('<dt>Score</dt>');
     expect(html).toContain('colSpan="4"');
   });
 

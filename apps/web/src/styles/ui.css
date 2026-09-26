@@ -1962,7 +1962,7 @@
 }
 
 .ds-data-table__responsive-details {
-  display: grid;
+  display: none;
   gap: 12px;
   margin: 0;
 }
@@ -2043,6 +2043,15 @@
 
   .ds-data-table .admin-table-wrap table {
     min-width: 0;
+  }
+
+  .ds-data-table__responsive-details {
+    display: grid;
+  }
+
+  .ds-data-table__responsive-details .td-actions,
+  .ds-data-table__responsive-details .admin-table-actions {
+    flex-wrap: wrap;
   }
 
   .edit-layout {
