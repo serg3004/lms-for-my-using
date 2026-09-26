@@ -253,6 +253,8 @@ export type ManagerTreeSummary = {
   primaryName: string | null;
   additionalCount: number;
   isInherited: boolean;
+  /** Up to three DIRECT managers, primary first, for the tree row's initials avatars. */
+  people: Array<{ id: string; firstName: string; lastName: string | null }>;
 };
 
 /** Tree badge summary for DIRECT managers, per plan: primary name + "N more", local/inherited marker. */
@@ -260,14 +262,48 @@ export function summarizeDirectManagers(managers: EffectiveDepartmentManager[]):
   const direct = managersOfType(managers, 'DIRECT');
   if (direct.length === 0) return null;
 
-  const [primary] = sortManagersForDisplay(direct);
+  const sorted = sortManagersForDisplay(direct);
+  const [primary] = sorted;
   if (!primary) return null;
 
   return {
     primaryName: primary.user ? formatManagerUserName(primary.user) : null,
     additionalCount: direct.length - 1,
     isInherited: primary.source === 'INHERITED',
+    people: sorted.flatMap((manager) => (manager.user ? [manager.user] : [])).slice(0, 3)
+      .map(({ id, firstName, lastName }) => ({ id, firstName, lastName })),
   };
+}
+
+/**
+ * "Expand all" for the lazily-loaded tree: walks level by level from the roots, fetching only
+ * the children not loaded yet (one request per unloaded parent, never per leaf), and returns
+ * every id that has children so the caller can expand them in one step.
+ */
+export async function expandAllDepartments(
+  rootIds: string[],
+  nodesById: Record<string, Department>,
+  childrenByParentId: TreeState['childrenByParentId'],
+  fetchChildren: (id: string) => Promise<Department[]>,
+  onChildrenLoaded: (id: string, children: Department[]) => void,
+): Promise<string[]> {
+  const nodes = { ...nodesById };
+  const expandIds: string[] = [];
+  let frontier = rootIds;
+  while (frontier.length > 0) {
+    const parents = frontier.filter((id) => (nodes[id]?._count.children ?? 0) > 0);
+    expandIds.push(...parents);
+    const levels = await Promise.all(parents.map(async (id) => {
+      const loaded = childrenByParentId[id];
+      if (loaded) return loaded;
+      const children = await fetchChildren(id);
+      for (const child of children) nodes[child.id] = child;
+      onChildrenLoaded(id, children);
+      return children.map((child) => child.id);
+    }));
+    frontier = levels.flat();
+  }
+  return expandIds;
 }
 
 export function resolveManagerSaveErrorMessage(status: number | undefined, conflictMessage: string, genericMessage: string): string {

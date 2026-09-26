@@ -347,23 +347,37 @@ export function OrgStructureTabs({ current, counts }: { current: OrgStructureTab
   );
 }
 
-type OrgStructurePageHeaderProps = {
-  current: OrgStructureTabKey;
-  action?: ReactNode;
-};
+export type OrgStructureCountsState = { counts: OrgStructureCounts | undefined; reload: () => void };
 
-/** Shared section identity and navigation for every organizational-structure page. */
-export function OrgStructurePageHeader({ current, action }: OrgStructurePageHeaderProps) {
-  const { t } = useTranslation();
+/** Section counts for the tab pills; `reload` refreshes them after a create/archive/restore. */
+export function useOrgStructureCounts(enabled = true): OrgStructureCountsState {
   const [counts, setCounts] = useState<OrgStructureCounts>();
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
     void getOrgStructureCounts()
       .then((nextCounts) => { if (active) setCounts(nextCounts); })
       .catch(() => { /* Counts are supplementary; navigation remains available on request failure. */ });
     return () => { active = false; };
-  }, []);
+  }, [enabled, version]);
+
+  return { counts, reload: () => setVersion((value) => value + 1) };
+}
+
+type OrgStructurePageHeaderProps = {
+  current: OrgStructureTabKey;
+  action?: ReactNode;
+  /** Pass when the page also shows or refreshes the counts, so they are fetched once. */
+  countsState?: OrgStructureCountsState;
+};
+
+/** Shared section identity and navigation for every organizational-structure page. */
+export function OrgStructurePageHeader({ current, action, countsState }: OrgStructurePageHeaderProps) {
+  const { t } = useTranslation();
+  const ownCounts = useOrgStructureCounts(!countsState);
+  const { counts } = countsState ?? ownCounts;
 
   return (
     <div className="admin-org-section-header">

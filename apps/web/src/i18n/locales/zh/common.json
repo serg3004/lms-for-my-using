@@ -676,9 +676,7 @@
       "note": "小组是学习团队或学员批次，而不是编制部门。小组成员身份不影响经理和组织架构。"
     },
     "departments": {
-      "eyebrow": "部门",
       "title": "部门",
-      "subtitle": "以部门树形式呈现的组织结构。",
       "sessionExpired": "会话已过期。请重新登录。",
       "loading": "正在加载部门...",
       "loadError": "无法加载部门。",
@@ -756,7 +754,16 @@
       "managerModeLocal": "本部门",
       "managerModeInherit": "继承",
       "managerModeMerge": "合并",
-      "managerModeConflict": "切换为“继承”前，请先关闭此类型的本部门负责人。"
+      "managerModeConflict": "切换为“继承”前，请先关闭此类型的本部门负责人。",
+      "treeSubtitle_one": "{{people}} 名员工 · {{count}} 个部门",
+      "treeSubtitle_few": "{{people}} 名员工 · {{count}} 个部门",
+      "treeSubtitle_many": "{{people}} 名员工 · {{count}} 个部门",
+      "treeSubtitle_other": "{{people}} 名员工 · {{count}} 个部门",
+      "treeHeadcount_one": "{{count}} 人",
+      "treeHeadcount_few": "{{count}} 人",
+      "treeHeadcount_many": "{{count}} 人",
+      "treeHeadcount_other": "{{count}} 人",
+      "expandAll": "全部展开"
     },
     "positions": {
       "title": "职位",

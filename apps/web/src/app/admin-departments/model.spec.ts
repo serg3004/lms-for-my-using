@@ -7,6 +7,7 @@ import {
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
   collectLoadedDescendantIds,
+  expandAllDepartments,
   formatManagerUserName,
   initialTreeState,
   managerCandidatesAvailableToAdd,
@@ -101,9 +102,9 @@ describe('treeReducer', () => {
     let state = treeReducer(initialTreeState(), {
       type: 'managerSummaryLoaded',
       id: 'a',
-      summary: { primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false },
+      summary: { primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false, people: [] },
     });
-    expect(state.managerSummaryById.a).toEqual({ primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false });
+    expect(state.managerSummaryById.a).toEqual({ primaryName: 'Ada Lovelace', additionalCount: 1, isInherited: false, people: [] });
     state = treeReducer(state, { type: 'managerSummaryLoaded', id: 'a', summary: null });
     expect(state.managerSummaryById.a).toBeNull();
   });
@@ -112,7 +113,7 @@ describe('treeReducer', () => {
     let state = treeReducer(initialTreeState(), {
       type: 'managerSummaryLoaded',
       id: 'a',
-      summary: { primaryName: 'Ada Lovelace', additionalCount: 0, isInherited: false },
+      summary: { primaryName: 'Ada Lovelace', additionalCount: 0, isInherited: false, people: [] },
     });
     state = treeReducer(state, { type: 'managerDetailsLoaded', id: 'a', managers: [] });
     expect(state.managerSummaryById.a).not.toBeUndefined();
@@ -276,6 +277,12 @@ describe('manager helpers', () => {
     expect(summary?.primaryName).toBe('First Last');
     expect(summary?.additionalCount).toBe(2);
     expect(summary?.isInherited).toBe(false);
+    expect(summary?.people.map((person) => person.id)).toEqual(['u2', 'u1', 'u3']);
+  });
+
+  it('summarizeDirectManagers keeps at most three people for the tree avatars', () => {
+    const managers = ['u1', 'u2', 'u3', 'u4'].map((userId) => manager({ userId, type: 'DIRECT' }));
+    expect(summarizeDirectManagers(managers)?.people).toHaveLength(3);
   });
 
   it('summarizeDirectManagers marks the badge inherited when the primary source is INHERITED', () => {
@@ -299,5 +306,46 @@ describe('manager helpers', () => {
     expect(collectLoadedDescendantIds(childrenByParentId, 'root').sort()).toEqual(['child-a', 'child-b', 'grandchild-a1'].sort());
     expect(collectLoadedDescendantIds(childrenByParentId, 'child-b')).toEqual([]);
     expect(collectLoadedDescendantIds(childrenByParentId, 'unknown')).toEqual([]);
+  });
+});
+
+describe('expandAllDepartments', () => {
+  const nodes = {
+    a: department({ id: 'a', _count: { children: 2 } }),
+    b: department({ id: 'b' }),
+  };
+  const childrenOf: Record<string, Department[]> = {
+    a: [department({ id: 'a1', parentId: 'a', _count: { children: 1 } }), department({ id: 'a2', parentId: 'a' })],
+    a1: [department({ id: 'a1x', parentId: 'a1' })],
+  };
+
+  it('expands every level and fetches only unloaded parents', async () => {
+    const fetched: string[] = [];
+    const loaded: string[] = [];
+    const expandIds = await expandAllDepartments(
+      ['a', 'b'],
+      nodes,
+      {},
+      async (id) => { fetched.push(id); return childrenOf[id] ?? []; },
+      (id) => loaded.push(id),
+    );
+
+    expect(expandIds).toEqual(['a', 'a1']);
+    expect(fetched).toEqual(['a', 'a1']);
+    expect(loaded).toEqual(['a', 'a1']);
+  });
+
+  it('reuses already loaded children instead of refetching them', async () => {
+    const fetched: string[] = [];
+    const expandIds = await expandAllDepartments(
+      ['a'],
+      { ...nodes, a1: childrenOf.a![0]!, a2: childrenOf.a![1]! },
+      { a: ['a1', 'a2'] },
+      async (id) => { fetched.push(id); return childrenOf[id] ?? []; },
+      () => {},
+    );
+
+    expect(expandIds).toEqual(['a', 'a1']);
+    expect(fetched).toEqual(['a1']);
   });
 });

@@ -228,12 +228,6 @@
   opacity: 0.85;
 }
 
-.learner-btn--completed {
-  color: var(--color-success);
-  background: rgb(21 128 61 / 10%);
-  border-color: var(--color-success);
-}
-
 .learner-lessons__list {
   display: grid;
   gap: 12px;

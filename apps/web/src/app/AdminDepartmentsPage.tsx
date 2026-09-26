@@ -32,12 +32,13 @@ import { listUsers } from '../shared/api/users.js';
 import type { UserSummary } from '../shared/api/types.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageLayout, ConfirmDialog, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, AdminSectionCard, ConfirmDialog, FormField, OrgStructurePageHeader, useOrgStructureCounts, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Badge, Button, EmptyState, PageState } from '../shared/ui.js';
 import { DepartmentTree } from './admin-departments/DepartmentTree.js';
 import {
   ancestorIdsToExpand,
+  expandAllDepartments,
   buildCreateDepartmentPayload,
   buildUpdateDepartmentPayload,
   collectLoadedDescendantIds,
@@ -149,6 +150,8 @@ export function AdminDepartmentsPage() {
 
   const [tree, dispatchTree] = useReducer(treeReducer, initialTreeState());
   const [search, setSearchTerm] = useDepartmentSearch();
+  const orgCounts = useOrgStructureCounts();
+  const [expandingAll, setExpandingAll] = useState(false);
 
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const [createParentId, setCreateParentId] = useState<string | null | undefined>(undefined);
@@ -471,6 +474,21 @@ export function AdminDepartmentsPage() {
     setSearchTerm('');
   }
 
+  async function handleExpandAll() {
+    setExpandingAll(true);
+    try {
+      const expandIds = await expandAllDepartments(rootIds, mergedNodesById, tree.childrenByParentId, (id) => getDepartmentChildren(id), (id, children) => {
+        dispatchTree({ type: 'childrenLoaded', id, children });
+        void loadManagerSummaries(children);
+      });
+      dispatchTree({ type: 'expandIds', ids: expandIds });
+    } catch {
+      // Branches loaded before the failure stay expanded; the rest can still be opened one by one.
+    } finally {
+      setExpandingAll(false);
+    }
+  }
+
   function openCreateDialog(parentId: string | null) {
     setCreateParentId(parentId);
     setCreateForm(initialDepartmentFormState());
@@ -490,6 +508,7 @@ export function AdminDepartmentsPage() {
     try {
       await createDepartment(buildCreateDepartmentPayload(loadState.data.organizationId, createParentId, createForm));
       setCreateParentId(undefined);
+      orgCounts.reload();
       await refreshChildrenOf(createParentId);
       if (createParentId) dispatchTree({ type: 'expandIds', ids: [createParentId] });
     } catch (error) {
@@ -602,6 +621,7 @@ export function AdminDepartmentsPage() {
       dispatchTree({ type: 'upsertNode', node: updated });
       setArchiveTarget(null);
       setStatusActionState({ status: 'idle' });
+      orgCounts.reload();
       await refreshChildrenOf(department.parentId);
     } catch {
       setStatusActionState({ status: 'error', message: t('admin.departments.archiveError', 'Unable to archive the department.') });
@@ -614,6 +634,7 @@ export function AdminDepartmentsPage() {
       const updated = await restoreDepartment(department.id);
       dispatchTree({ type: 'upsertNode', node: updated });
       setStatusActionState({ status: 'idle' });
+      orgCounts.reload();
       await refreshChildrenOf(department.parentId);
     } catch {
       setStatusActionState({ status: 'error', message: t('admin.departments.restoreError', 'Unable to restore the department.') });
@@ -710,47 +731,64 @@ export function AdminDepartmentsPage() {
 
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
-      <OrgStructurePageHeader current="departments"
+      <OrgStructurePageHeader current="departments" countsState={orgCounts}
         action={
-          <span className="admin-table-actions">
-            <Button variant="secondary" type="button" onClick={openTypesDialog}>
-              {t('admin.departments.manageTypes', 'Department types')}
-            </Button>
-            <Button variant="primary" type="button" onClick={() => openCreateDialog(null)}>
-              + {t('admin.departments.addRoot', 'Add root department')}
-            </Button>
-          </span>
+          <Button variant="secondary" type="button" onClick={openTypesDialog}>
+            {t('admin.departments.manageTypes', 'Department types')}
+          </Button>
         }
       />
 
       <div className="admin-departments-layout">
-        <div className="admin-card">
-          <div className="admin-form__field">
-            <label htmlFor="department-search">{t('admin.departments.search', 'Search departments')}</label>
-            <input
-              id="department-search"
-              type="search"
-              value={search.term}
-              placeholder={t('admin.departments.searchPlaceholder', 'Search by name or code…')}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {search.term.trim() && search.status !== 'idle' ? (
-            <p className="admin-form__hint">{search.status === 'loading' ? t('admin.departments.searching', 'Searching…') : t('admin.departments.searchError', 'Unable to search departments.')}</p>
-          ) : search.term.trim() && search.results.length > 0 ? (
-            <ul className="admin-membership-list">
-              {search.results.map((result) => (
-                <li key={result.id}>
-                  <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void revealDepartment(result.id)}>
-                    {result.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : search.term.trim() ? (
-            <p className="admin-form__hint">{t('admin.departments.noSearchResults', 'No matching departments.')}</p>
-          ) : null}
-
+        <AdminSectionCard
+          title={t('admin.departments.treeLabel', 'Department tree')}
+          subtitle={orgCounts.counts
+            ? t('admin.departments.treeSubtitle', {
+              count: orgCounts.counts.departments,
+              people: roots.reduce((total, root) => total + root.subtreeUserCount, 0),
+              defaultValue: '{{people}} people · {{count}} departments',
+            })
+            : undefined}
+          action={
+            <Button variant="primary" type="button" onClick={() => openCreateDialog(null)}>
+              + {t('admin.departments.addRoot', 'Add root department')}
+            </Button>
+          }
+          toolbar={
+            <>
+              <div className="admin-departments-toolbar">
+                <div className="admin-form__field">
+                  <label htmlFor="department-search">{t('admin.departments.search', 'Search departments')}</label>
+                  <input
+                    id="department-search"
+                    type="search"
+                    value={search.term}
+                    placeholder={t('admin.departments.searchPlaceholder', 'Search by name or code…')}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <Button variant="secondary" type="button" disabled={expandingAll || rootIds.length === 0} onClick={() => void handleExpandAll()}>
+                  {expandingAll ? t('admin.departments.childrenLoading', 'Loading…') : t('admin.departments.expandAll', 'Expand all')}
+                </Button>
+              </div>
+              {search.term.trim() && search.status !== 'idle' ? (
+                <p className="admin-form__hint">{search.status === 'loading' ? t('admin.departments.searching', 'Searching…') : t('admin.departments.searchError', 'Unable to search departments.')}</p>
+              ) : search.term.trim() && search.results.length > 0 ? (
+                <ul className="admin-membership-list">
+                  {search.results.map((result) => (
+                    <li key={result.id}>
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void revealDepartment(result.id)}>
+                        {result.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : search.term.trim() ? (
+                <p className="admin-form__hint">{t('admin.departments.noSearchResults', 'No matching departments.')}</p>
+              ) : null}
+            </>
+          }
+        >
           {rootIds.length === 0 ? (
             <EmptyState message={t('admin.departments.treeEmpty', 'No departments yet.')} />
           ) : (
@@ -764,7 +802,7 @@ export function AdminDepartmentsPage() {
               t={t}
             />
           )}
-        </div>
+        </AdminSectionCard>
 
         <div className="admin-departments-layout__detail">
           {selected ? (

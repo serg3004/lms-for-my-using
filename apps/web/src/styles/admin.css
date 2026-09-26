@@ -1121,6 +1121,7 @@
 
 .admin-table-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
@@ -1153,17 +1154,32 @@
 .admin-membership-list__empty {
   border-style: dashed;
   color: var(--color-text-muted, var(--color-text));
-  opacity: 0.7;
   justify-content: center;
 }
 
 .admin-membership-add {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
 }
 
+.admin-membership-add > input {
+  flex: 1 1 12rem;
+}
+
+.admin-membership-add label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.admin-membership-add input[type='checkbox'] {
+  width: auto;
+}
+
 .admin-membership-add select {
-  flex: 1;
+  flex: 1 1 10rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.75rem;
@@ -1730,8 +1746,24 @@
   }
 }
 
+.admin-departments-layout__detail .admin-table-actions {
+  margin-bottom: var(--space-4);
+}
+
+.admin-departments-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.admin-departments-toolbar .admin-form__field {
+  flex: 1 1 14rem;
+  margin: 0;
+}
+
 .admin-departments-tree {
-  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
 }
 
 .admin-departments-tree__node {
@@ -1772,36 +1804,74 @@
 }
 
 .admin-departments-tree__twisty {
+  flex: none;
   width: 1.25rem;
   height: 1.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: none;
   background: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: var(--text-xs);
 }
 
-.admin-departments-tree__type {
-  margin-left: auto;
+.admin-departments-tree__twisty svg {
+  width: 1rem;
+  transition: transform var(--motion-duration-fast, 0.15s);
+}
+
+.admin-departments-tree__twisty--open svg {
+  transform: rotate(90deg);
+}
+
+.admin-departments-tree__label {
+  font-weight: 600;
+}
+
+.admin-departments-tree__type,
+.admin-departments-tree__meta {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+.admin-departments-tree__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .admin-departments-tree__manager {
   position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-left: 0.5rem;
+}
+
+.admin-departments-tree__managers {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.admin-departments-tree__managers--inherited {
+  opacity: 0.6;
+}
+
+.admin-departments-tree .ds-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.625rem;
 }
 
 .admin-departments-tree__manager-popover {
   position: absolute;
   top: 100%;
-  left: 0;
+  right: 0;
   z-index: 10;
   min-width: 14rem;
   margin-top: 0.25rem;
@@ -1810,4 +1880,9 @@
   border: 1px solid var(--color-border, #d0d5dd);
   border-radius: var(--radius-sm, 0.375rem);
   box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.12));
+}
+
+.admin-departments-tree__manager-popover,
+.admin-departments-tree__meta .admin-membership-list {
+  white-space: normal;
 }

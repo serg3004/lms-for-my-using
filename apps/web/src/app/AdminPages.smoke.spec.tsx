@@ -169,15 +169,16 @@ describe('admin page smoke rendering', () => {
     expect(renderToStaticMarkup(<AdminDepartmentsPage />)).toContain('role="status"');
 
     // useState call order in AdminDepartmentsPage: 20 form/dialog states (18 declared directly,
-    // plus the search/moveSearch useDepartmentSearch() internal states), then 13 manager-section
+    // plus the search/moveSearch useDepartmentSearch() internal states) and 3 tree-toolbar states
+    // (PR 314: useOrgStructureCounts()'s counts + version, expandingAll), then 13 manager-section
     // states (PR 273: managers, managersState, ancestorNamesById, directMode, functionalMode,
     // modeState, managerActionState, directAddUserId, directAddIsPrimary, directSearch's internal
     // state, functionalAddUserId, functionalAddIsPrimary, functionalSearch's internal state),
-    // then useAsyncData's internal state as call #34. Roots/types themselves are read straight
+    // then useAsyncData's internal state as call #37. Roots/types themselves are read straight
     // from loadState.data, not seeded into a separate reducer via an effect, so this page renders
     // loaded data on the very first pass even though this test file mocks useEffect to a no-op.
     useStateAtCalls({
-      34: {
+      37: {
         status: 'loaded',
         data: {
           organizationId: 'org-1',

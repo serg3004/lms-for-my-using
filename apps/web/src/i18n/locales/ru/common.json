@@ -676,9 +676,7 @@
       "note": "Группа — учебная команда или когорта, а не штатное подразделение. Членство в группе не влияет на руководителей и оргструктуру."
     },
     "departments": {
-      "eyebrow": "Подразделения",
       "title": "Подразделения",
-      "subtitle": "Организационная структура в виде дерева подразделений.",
       "sessionExpired": "Сессия истекла. Войдите снова.",
       "loading": "Загрузка подразделений...",
       "loadError": "Не удалось загрузить подразделения.",
@@ -756,7 +754,16 @@
       "managerModeLocal": "Локальный",
       "managerModeInherit": "Наследовать",
       "managerModeMerge": "Объединить",
-      "managerModeConflict": "Закройте текущих локальных руководителей этого типа перед переключением на «Наследовать»."
+      "managerModeConflict": "Закройте текущих локальных руководителей этого типа перед переключением на «Наследовать».",
+      "treeSubtitle_one": "{{people}} сотр. · {{count}} подразделение",
+      "treeSubtitle_few": "{{people}} сотр. · {{count}} подразделения",
+      "treeSubtitle_many": "{{people}} сотр. · {{count}} подразделений",
+      "treeSubtitle_other": "{{people}} сотр. · {{count}} подразделения",
+      "treeHeadcount_one": "{{count}} сотр.",
+      "treeHeadcount_few": "{{count}} сотр.",
+      "treeHeadcount_many": "{{count}} сотр.",
+      "treeHeadcount_other": "{{count}} сотр.",
+      "expandAll": "Развернуть всё"
     },
     "positions": {
       "title": "Должности",

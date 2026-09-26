@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MutableRefObject 
 import type { TFunction } from 'i18next';
 
 import type { Department } from '../../shared/api/departments.js';
-import { Badge } from '../../shared/ui.js';
+import { Avatar, Badge } from '../../shared/ui.js';
 import { formatManagerUserName, managersOfType, nextVisibleId, previousVisibleId, visibleOrder, type TreeState } from './model.js';
 
 type DepartmentTreeProps = {
@@ -166,70 +166,85 @@ function DepartmentTreeItem({ id, level, state, nodeRefs, onToggleExpand, onSele
         {hasChildren ? (
           <button
             aria-label={isExpanded ? t('admin.departments.collapse', 'Collapse') : t('admin.departments.expand', 'Expand')}
-            className="admin-departments-tree__twisty"
+            className={`admin-departments-tree__twisty${isExpanded ? ' admin-departments-tree__twisty--open' : ''}`}
             onClick={(event) => {
               event.stopPropagation();
               onToggleExpand(node);
             }}
             type="button"
           >
-            {isExpanded ? '▾' : '▸'}
+            <svg aria-hidden="true" fill="none" focusable="false" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M9 6l6 6-6 6" />
+            </svg>
           </button>
         ) : (
           <span aria-hidden="true" className="admin-departments-tree__twisty" />
         )}
         <span className="admin-departments-tree__label">{node.name}</span>
+        {node.code ? <code className="admin-code">{node.code}</code> : null}
         {node.status === 'archived' ? (
           <Badge variant="neutral">{t('admin.departments.archived', 'Archived')}</Badge>
         ) : null}
         {type ? <span className="admin-departments-tree__type">{type}</span> : null}
-        {managerSummary ? (
-          <span className="admin-departments-tree__manager" ref={managerRef}>
-            {/* This badge represents the DepartmentManager relation, not the RBAC "manager" role
-                (see admin.roles.options.manager) -- plain neutral Badge, never StatusBadge. */}
-            <button
-              aria-expanded={managerPopoverOpen}
-              className="admin-btn admin-btn--sm admin-btn--secondary"
-              onClick={(event) => {
-                event.stopPropagation();
-                if (!managerPopoverOpen) onRequestManagerDetails(node);
-                setManagerPopoverOpen((open) => !open);
-              }}
-              type="button"
-            >
-              {managerSummary.primaryName ?? t('admin.departments.managerUnknown', 'Unknown')}
-              {managerSummary.additionalCount > 0 ? ` +${managerSummary.additionalCount}` : ''}
-            </button>
-            <Badge variant="neutral">
-              {managerSummary.isInherited
-                ? t('admin.departments.managerInherited', 'Inherited')
-                : t('admin.departments.managerLocal', 'Local')}
-            </Badge>
-            {managerPopoverOpen ? (
-              <div className="admin-departments-tree__manager-popover" onClick={(event) => event.stopPropagation()} role="group">
-                {managerDetails === undefined ? (
-                  <p className="admin-form__hint" role="status">{t('admin.departments.childrenLoading', 'Loading…')}</p>
-                ) : managerDetails.length === 0 ? (
-                  <p className="admin-form__hint">{t('admin.departments.noManagers', 'No managers assigned.')}</p>
-                ) : (
-                  <ul className="admin-membership-list">
-                    {[...managersOfType(managerDetails, 'DIRECT'), ...managersOfType(managerDetails, 'FUNCTIONAL')].map((m) => (
-                      <li key={m.id}>
-                        <span>
-                          {m.user ? formatManagerUserName(m.user) : t('admin.departments.managerUnknown', 'Unknown')}
-                          {' — '}
-                          {m.type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional')}
-                          {m.isPrimary ? ` (${t('admin.departments.managerPrimary', 'Primary')})` : ''}
-                          {m.source === 'INHERITED' ? ` — ${t('admin.departments.managerInherited', 'Inherited')}` : ''}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ) : null}
+        <span className="admin-departments-tree__meta">
+          {managerSummary ? (
+            <span className="admin-departments-tree__manager" ref={managerRef}>
+              {/* Represents the DepartmentManager relation, not the RBAC "manager" role
+                  (see admin.roles.options.manager). Avatars are decorative; the names and the
+                  local/inherited source are the button's accessible name. */}
+              <button
+                aria-expanded={managerPopoverOpen}
+                className={`admin-departments-tree__managers${managerSummary.isInherited ? ' admin-departments-tree__managers--inherited' : ''}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!managerPopoverOpen) onRequestManagerDetails(node);
+                  setManagerPopoverOpen((open) => !open);
+                }}
+                type="button"
+              >
+                <span aria-hidden="true" className="admin-person-cell__avatars">
+                  {managerSummary.people.map((person) => (
+                    <Avatar firstName={person.firstName} key={person.id} lastName={person.lastName ?? undefined} size="sm" />
+                  ))}
+                </span>
+                <span className="ui-visually-hidden">
+                  {managerSummary.primaryName ?? t('admin.departments.managerUnknown', 'Unknown')}
+                  {managerSummary.additionalCount > 0 ? ` +${managerSummary.additionalCount}` : ''}
+                  {' — '}
+                  {managerSummary.isInherited
+                    ? t('admin.departments.managerInherited', 'Inherited')
+                    : t('admin.departments.managerLocal', 'Local')}
+                </span>
+              </button>
+              {managerPopoverOpen ? (
+                <div className="admin-departments-tree__manager-popover" onClick={(event) => event.stopPropagation()} role="group">
+                  {managerDetails === undefined ? (
+                    <p className="admin-form__hint" role="status">{t('admin.departments.childrenLoading', 'Loading…')}</p>
+                  ) : managerDetails.length === 0 ? (
+                    <p className="admin-form__hint">{t('admin.departments.noManagers', 'No managers assigned.')}</p>
+                  ) : (
+                    <ul className="admin-membership-list">
+                      {[...managersOfType(managerDetails, 'DIRECT'), ...managersOfType(managerDetails, 'FUNCTIONAL')].map((m) => (
+                        <li key={m.id}>
+                          <span>
+                            {m.user ? formatManagerUserName(m.user) : t('admin.departments.managerUnknown', 'Unknown')}
+                            {' — '}
+                            {m.type === 'DIRECT' ? t('admin.departments.managerTypeDirect', 'Direct') : t('admin.departments.managerTypeFunctional', 'Functional')}
+                            {m.isPrimary ? ` (${t('admin.departments.managerPrimary', 'Primary')})` : ''}
+                            {m.source === 'INHERITED' ? ` — ${t('admin.departments.managerInherited', 'Inherited')}` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+            </span>
+          ) : null}
+          <span className="admin-departments-tree__headcount">
+            {t('admin.departments.treeHeadcount', { count: node.subtreeUserCount, defaultValue: '{{count}} people' })}
           </span>
-        ) : null}
+        </span>
       </div>
       {isExpanded && (
         <div role="group">
