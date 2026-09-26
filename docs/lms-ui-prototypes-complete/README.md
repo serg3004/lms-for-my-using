@@ -40,6 +40,22 @@
 5. Сохраняйте текущий визуальный язык и локализацию `RU / EN / KK / ZH`, если задача не меняет design decision.
 6. Расхождения фиксируйте через status/evidence fields; не повышайте `unknown` до проверенного статуса по предположению.
 7. Pixel-parity всех экранов не является blanket requirement. `aligned` ставится только после конкретной проверки конкретной страницы.
+8. У одного `route` не больше одного действующего (не `retired`) прототипа — это проверяет `pnpm docs:prototype:test`. Заменённый прототип переносится в `docs/archive/old-trackers/`, а его запись удаляется из manifest.
+
+## Shell приложения (сайдбар и топбар)
+
+Эталон сайдбара и топбара для всех ролей — `admin/lms-admin-org-structure-refresh.html` (план `docs/product/future/UI_REFRESH_IMPLEMENTATION_PLAN.md`, PR 310). В остальных прототипах эталоном является только контентная часть страницы; их сайдбар и топбар устарели и не переносятся в приложение.
+
+## Прототипы UI refresh
+
+`admin/lms-admin-org-structure-refresh.html` (5 вкладок оргструктуры) и `admin/lms-checklist-sessions-refresh.html` (6 экранов чек-лист-сессий для admin, instructor, learner и manager) обслуживают план `docs/product/future/UI_REFRESH_IMPLEMENTATION_PLAN.md`. Отличия от остальных прототипов:
+
+- один файл покрывает несколько роутов и ролей, поэтому лежит в `admin/`, а записи manifest указывают на него с разными `route`;
+- только русский язык (`languages: ["ru"]`), локализация берётся из `apps/web/src/i18n`;
+- шрифт Manrope подгружается с Google Fonts;
+- тёмная тема на странице — оформление просмотрщика, в приложении её нет.
+
+Каждый PR плана после реализации сравнивает свой экран с прототипом и обновляет запись: `parityStatus: aligned`, `lastComparedAt`, `lastComparedSha`, очищенные `knownDifferences`.
 
 ## Структура
 
