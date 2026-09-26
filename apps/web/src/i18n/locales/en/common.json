@@ -36,6 +36,9 @@
       "auditLog": "Audit log"
     },
     "orgStructure": {
+      "eyebrow": "Settings",
+      "title": "Organizational structure",
+      "subtitle": "Manage departments, positions, training requirements, groups, and data imports.",
       "tabsLabel": "Organizational structure sections"
     },
     "title": "Dashboard",

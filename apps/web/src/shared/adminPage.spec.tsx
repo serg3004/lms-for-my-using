@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { AdminCard, AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField } from './adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, OrgStructurePageHeader, OrgStructureTabs } from './adminPage.js';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin' },
@@ -122,6 +122,31 @@ describe('admin shell navigation (UI refresh PR 310)', () => {
 
     expect(html).toContain('class="admin-sidebar-user__name">Admin Demo');
     expect(html).toContain('class="admin-sidebar-user__email">admin@demo.com');
+  });
+});
+
+describe('organizational structure section header (UI refresh PR 312)', () => {
+  it('uses the shared section identity on every tab', () => {
+    const html = renderToStaticMarkup(<OrgStructurePageHeader current="groups" />);
+
+    expect(html).toContain('Настройки');
+    expect(html).toContain('<h1>Организационная структура</h1>');
+    expect(html).toContain('Управляйте подразделениями');
+    expect(html).toContain('href="/admin/groups"');
+    expect(html).toContain('aria-current="page"');
+    expect(html).not.toContain('admin-org-tabs__count');
+  });
+
+  it('maps all API counts to their tab pills', () => {
+    const html = renderToStaticMarkup(
+      <OrgStructureTabs
+        current="departments"
+        counts={{ departments: 11, positions: 22, positionCourses: 33, groups: 44, historyEvents: 55 }}
+      />,
+    );
+
+    expect(html.match(/admin-org-tabs__count/g)).toHaveLength(5);
+    for (const count of [11, 22, 33, 44, 55]) expect(html).toContain(`>${count}</span>`);
   });
 });
 

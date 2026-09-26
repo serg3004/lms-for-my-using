@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
+import { getOrgStructureCounts, type OrgStructureCounts } from './api/org-structure-admin.js';
 import { LanguageSwitcher, NotificationBell } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { NavIcon, navIconForHref } from './navIcons.js';
@@ -309,8 +310,15 @@ const ORG_STRUCTURE_TABS: readonly { key: OrgStructureTabKey; href: string; labe
 ];
 
 /** In-page tab strip shared by the five pages that make up the "Organizational structure" section. */
-export function OrgStructureTabs({ current }: { current: OrgStructureTabKey }) {
+export function OrgStructureTabs({ current, counts }: { current: OrgStructureTabKey; counts?: OrgStructureCounts }) {
   const { t } = useTranslation();
+  const countByTab: Record<OrgStructureTabKey, number> | undefined = counts ? {
+    departments: counts.departments,
+    positions: counts.positions,
+    positionCourses: counts.positionCourses,
+    groups: counts.groups,
+    importHistory: counts.historyEvents,
+  } : undefined;
   return (
     <nav aria-label={t('admin.orgStructure.tabsLabel', 'Organizational structure sections')} className="admin-org-tabs">
       {ORG_STRUCTURE_TABS.map((tab) => (
@@ -320,10 +328,42 @@ export function OrgStructureTabs({ current }: { current: OrgStructureTabKey }) {
           href={tab.href}
           key={tab.key}
         >
-          {t(tab.labelKey, tab.fallback)}
+          <span>{t(tab.labelKey, tab.fallback)}</span>
+          {countByTab ? <span className="admin-org-tabs__count">{countByTab[tab.key]}</span> : null}
         </a>
       ))}
     </nav>
+  );
+}
+
+type OrgStructurePageHeaderProps = {
+  current: OrgStructureTabKey;
+  action?: ReactNode;
+};
+
+/** Shared section identity and navigation for every organizational-structure page. */
+export function OrgStructurePageHeader({ current, action }: OrgStructurePageHeaderProps) {
+  const { t } = useTranslation();
+  const [counts, setCounts] = useState<OrgStructureCounts>();
+
+  useEffect(() => {
+    let active = true;
+    void getOrgStructureCounts()
+      .then((nextCounts) => { if (active) setCounts(nextCounts); })
+      .catch(() => { /* Counts are supplementary; navigation remains available on request failure. */ });
+    return () => { active = false; };
+  }, []);
+
+  return (
+    <div className="admin-org-section-header">
+      <AdminPageHeader
+        action={action}
+        eyebrow={t('admin.orgStructure.eyebrow', 'Settings')}
+        title={t('admin.orgStructure.title', 'Organizational structure')}
+        subtitle={t('admin.orgStructure.subtitle', 'Manage departments, positions, training requirements, groups, and data imports.')}
+      />
+      <OrgStructureTabs current={current} counts={counts} />
+    </div>
   );
 }
 
