@@ -3,7 +3,19 @@ import { apiRequest } from '../apiClient.js';
 export type ImportKind = 'DEPARTMENTS' | 'MEMBERSHIPS';
 export type ImportMode = 'CREATE_ONLY' | 'UPSERT';
 export type ImportPreview = { valid: boolean; rowCount: number; errors: { row: number; field: string; message: string }[]; token?: string; expiresAt?: string };
-export type OrgStructureEvent = { id: string; actorId: string | null; entityType: string; entityId: string | null; eventType: string; operationId: string; metadata: unknown; createdAt: string };
+export type OrgStructureEvent = {
+  id: string;
+  actorId: string | null;
+  /** Resolved server-side (PR 315) so the history table shows a name instead of a raw UUID;
+   *  null for a system-driven event or an actor who has since left the organization. */
+  actorName: string | null;
+  entityType: string;
+  entityId: string | null;
+  eventType: string;
+  operationId: string;
+  metadata: unknown;
+  createdAt: string;
+};
 
 export function previewOrgStructureImport(file: File, kind: ImportKind, mode: ImportMode) {
   const form = new FormData(); form.append('file', file); form.append('kind', kind); form.append('mode', mode);

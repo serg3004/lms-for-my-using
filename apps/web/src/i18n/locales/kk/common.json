@@ -1188,6 +1188,109 @@
         "recalculating": "Қайта есептелуде...",
         "recalculateError": "Баллды қайта есептеу мүмкін болмады."
       }
+    },
+    "orgTools": {
+      "cardTitle": "Ұйымдық құрылымды импорттау",
+      "cardSubtitle": "Бөлімшелер, лауазымдар және басшылары бар CSV",
+      "fieldKind": "Деректер түрі",
+      "kindDepartments": "Бөлімшелер",
+      "kindMemberships": "Мүшеліктер",
+      "fieldMode": "Режим",
+      "modeCreateOnly": "Тек құру",
+      "modeUpsert": "Құру немесе жаңарту",
+      "fieldFile": "UTF-8 кодтауындағы CSV файл",
+      "fileHint": "Ең көбі 5 МиБ және 10 000 деректер жолы.",
+      "submit": "Импортты алдын ала қарау",
+      "submitting": "Тексерілуде…",
+      "previewError": "CSV файлын тексеру мүмкін болмады.",
+      "previewErrorRow": "{{row}}-жол, {{field}}: {{message}}",
+      "commit": "Тексерілген импортты қолдану",
+      "committing": "Қолданылуда…",
+      "commitError": "Импортты қолдану мүмкін болмады. Қайта тексеріп, қайшылықтарды шешіңіз.",
+      "historyTitle": "Өзгерістер тарихы",
+      "historySubtitle": "Ұйымдық құрылымға жасалған әрбір импорт пен қолмен өзгерту.",
+      "sessionExpired": "Сеанс мерзімі өтті. Қайта кіріңіз.",
+      "history": {
+        "colDate": "Күні",
+        "colChange": "Өзгеріс",
+        "colEntity": "Нысан",
+        "colActor": "Орындаушы",
+        "systemActor": "Жүйе",
+        "loading": "Тарих жүктелуде…",
+        "loadError": "Ұйымдық құрылым тарихын жүктеу мүмкін болмады.",
+        "empty": "Әзірге тарих оқиғалары жоқ.",
+        "paginationLabel": "Тарих беттері",
+        "entities": {
+          "department": "Бөлімше",
+          "department_manager": "Бөлімше басшысы",
+          "department_membership": "Бөлімшедегі мүшелік",
+          "department_type": "Бөлімше түрі",
+          "org_external_reference": "Сыртқы сілтеме",
+          "org_structure_import": "Ұйымдық құрылымды импорттау",
+          "position": "Лауазым",
+          "reporting_line": "Бағыну желісі"
+        },
+        "events": {
+          "department": {
+            "created": "Бөлімше құрылды",
+            "updated": "Бөлімше өзгертілді",
+            "archived": "Бөлімше мұрағатталды",
+            "restored": "Бөлімше қалпына келтірілді",
+            "moved": "Бөлімше жылжытылды",
+            "manager_modes_updated": "Басшыларды мұрагерлеу режимі өзгертілді",
+            "system_updated": "Бөлімшені жүйе өзгертті"
+          },
+          "department_manager": {
+            "created": "Басшы тағайындалды",
+            "closed": "Басшы тағайындауы аяқталды"
+          },
+          "department_membership": {
+            "created": "Мүшелік құрылды",
+            "closed": "Мүшелік аяқталды",
+            "transferred": "Қызметкер ауыстырылды",
+            "bulk_transferred": "Қызметкерлер жаппай ауыстырылды",
+            "legacy_position_migrated": "Лауазым ескі өрістен тасымалданды"
+          },
+          "department_type": {
+            "created": "Бөлімше түрі құрылды",
+            "updated": "Бөлімше түрі өзгертілді",
+            "archived": "Бөлімше түрі мұрағатталды",
+            "restored": "Бөлімше түрі қалпына келтірілді"
+          },
+          "org_external_reference": {
+            "created": "Сыртқы сілтеме қосылды",
+            "deleted": "Сыртқы сілтеме жойылды"
+          },
+          "org_structure": {
+            "import_committed": "Импорт қолданылды"
+          },
+          "position": {
+            "created": "Лауазым құрылды",
+            "updated": "Лауазым өзгертілді",
+            "archived": "Лауазым мұрағатталды",
+            "restored": "Лауазым қалпына келтірілді"
+          },
+          "reporting_line": {
+            "created": "Бағыну желісі құрылды",
+            "updated": "Бағыну желісі өзгертілді",
+            "closed": "Бағыну желісі аяқталды"
+          }
+        },
+        "prev": "← Артқа",
+        "next": "Алға →"
+      },
+      "previewValid_one": "{{count}} жол жарамды",
+      "previewValid_few": "{{count}} жол жарамды",
+      "previewValid_many": "{{count}} жол жарамды",
+      "previewValid_other": "{{count}} жол жарамды",
+      "previewInvalid_one": "{{count}} тексеру қатесі",
+      "previewInvalid_few": "{{count}} тексеру қатесі",
+      "previewInvalid_many": "{{count}} тексеру қатесі",
+      "previewInvalid_other": "{{count}} тексеру қатесі",
+      "commitSuccess_one": "{{count}} жол импортталды.",
+      "commitSuccess_few": "{{count}} жол импортталды.",
+      "commitSuccess_many": "{{count}} жол импортталды.",
+      "commitSuccess_other": "{{count}} жол импортталды."
     }
   },
   "notFound": {

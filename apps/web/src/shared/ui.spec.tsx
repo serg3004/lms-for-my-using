@@ -463,4 +463,17 @@ describe('design system — Pagination', () => {
     const [, nextButton] = findButtons(tree);
     expect(nextButton.props.disabled).toBe(true);
   });
+
+  it('uses prevLabel/nextLabel when given, defaulting to the English text otherwise (PR 315)', () => {
+    const defaultHtml = renderToStaticMarkup(<Pagination page={2} pageSize={20} total={100} onPage={vi.fn()} />);
+    expect(defaultHtml).toContain('← Prev');
+    expect(defaultHtml).toContain('Next →');
+
+    const localizedHtml = renderToStaticMarkup(
+      <Pagination page={2} pageSize={20} total={100} onPage={vi.fn()} prevLabel="← Назад" nextLabel="Далее →" />,
+    );
+    expect(localizedHtml).toContain('← Назад');
+    expect(localizedHtml).toContain('Далее →');
+    expect(localizedHtml).not.toContain('Prev');
+  });
 });

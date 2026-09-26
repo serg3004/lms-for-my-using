@@ -829,9 +829,13 @@ type PaginationProps = {
   total: number;
   onPage: (page: number) => void;
   label?: string;
+  /** Defaults keep every existing caller's (untranslated) English text unchanged; PR 315 passes
+   *  localized text so a ru-RU screen has no English left, without touching other pages. */
+  prevLabel?: string;
+  nextLabel?: string;
 };
 
-export function Pagination({ page, pageSize, total, onPage, label = 'Pagination' }: PaginationProps) {
+export function Pagination({ page, pageSize, total, onPage, label = 'Pagination', prevLabel = '← Prev', nextLabel = 'Next →' }: PaginationProps) {
   const totalPages = Math.ceil(total / pageSize);
   if (totalPages <= 1) return null;
   return (
@@ -842,7 +846,7 @@ export function Pagination({ page, pageSize, total, onPage, label = 'Pagination'
         onClick={() => onPage(page - 1)}
         type="button"
       >
-        ← Prev
+        {prevLabel}
       </button>
       <span aria-atomic="true" aria-live="polite" className="ds-pagination__info">{page} / {totalPages}</span>
       <button
@@ -851,7 +855,7 @@ export function Pagination({ page, pageSize, total, onPage, label = 'Pagination'
         onClick={() => onPage(page + 1)}
         type="button"
       >
-        Next →
+        {nextLabel}
       </button>
     </nav>
   );

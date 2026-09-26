@@ -1188,6 +1188,109 @@
         "recalculating": "Пересчёт...",
         "recalculateError": "Не удалось пересчитать балл."
       }
+    },
+    "orgTools": {
+      "cardTitle": "Импорт оргструктуры",
+      "cardSubtitle": "CSV с подразделениями, должностями и руководителями",
+      "fieldKind": "Тип данных",
+      "kindDepartments": "Подразделения",
+      "kindMemberships": "Членства",
+      "fieldMode": "Режим",
+      "modeCreateOnly": "Только создание",
+      "modeUpsert": "Создание и обновление",
+      "fieldFile": "CSV-файл в кодировке UTF-8",
+      "fileHint": "Максимум 5 МиБ и 10 000 строк данных.",
+      "submit": "Предпросмотр импорта",
+      "submitting": "Проверка…",
+      "previewError": "Не удалось проверить CSV-файл.",
+      "previewErrorRow": "Строка {{row}}, {{field}}: {{message}}",
+      "commit": "Применить проверенный импорт",
+      "committing": "Применение…",
+      "commitError": "Не удалось применить импорт. Проверьте ещё раз и устраните конфликты.",
+      "historyTitle": "История изменений",
+      "historySubtitle": "Каждый импорт и ручное изменение организационной структуры.",
+      "sessionExpired": "Сессия истекла. Войдите снова.",
+      "history": {
+        "colDate": "Дата",
+        "colChange": "Изменение",
+        "colEntity": "Сущность",
+        "colActor": "Автор",
+        "systemActor": "Система",
+        "loading": "Загрузка истории…",
+        "loadError": "Не удалось загрузить историю организационной структуры.",
+        "empty": "Пока нет событий истории.",
+        "paginationLabel": "Страницы истории",
+        "entities": {
+          "department": "Подразделение",
+          "department_manager": "Руководитель подразделения",
+          "department_membership": "Членство в подразделении",
+          "department_type": "Тип подразделения",
+          "org_external_reference": "Внешняя ссылка",
+          "org_structure_import": "Импорт оргструктуры",
+          "position": "Должность",
+          "reporting_line": "Линия подчинения"
+        },
+        "events": {
+          "department": {
+            "created": "Подразделение создано",
+            "updated": "Подразделение изменено",
+            "archived": "Подразделение архивировано",
+            "restored": "Подразделение восстановлено",
+            "moved": "Подразделение перемещено",
+            "manager_modes_updated": "Режим наследования руководителей изменён",
+            "system_updated": "Подразделение изменено системой"
+          },
+          "department_manager": {
+            "created": "Руководитель назначен",
+            "closed": "Назначение руководителя завершено"
+          },
+          "department_membership": {
+            "created": "Членство создано",
+            "closed": "Членство завершено",
+            "transferred": "Сотрудник переведён",
+            "bulk_transferred": "Массовый перевод сотрудников",
+            "legacy_position_migrated": "Должность перенесена из устаревшего поля"
+          },
+          "department_type": {
+            "created": "Тип подразделения создан",
+            "updated": "Тип подразделения изменён",
+            "archived": "Тип подразделения архивирован",
+            "restored": "Тип подразделения восстановлен"
+          },
+          "org_external_reference": {
+            "created": "Внешняя ссылка добавлена",
+            "deleted": "Внешняя ссылка удалена"
+          },
+          "org_structure": {
+            "import_committed": "Импорт применён"
+          },
+          "position": {
+            "created": "Должность создана",
+            "updated": "Должность изменена",
+            "archived": "Должность архивирована",
+            "restored": "Должность восстановлена"
+          },
+          "reporting_line": {
+            "created": "Линия подчинения создана",
+            "updated": "Линия подчинения изменена",
+            "closed": "Линия подчинения завершена"
+          }
+        },
+        "prev": "← Назад",
+        "next": "Далее →"
+      },
+      "previewValid_one": "{{count}} валидная строка",
+      "previewValid_few": "{{count}} валидные строки",
+      "previewValid_many": "{{count}} валидных строк",
+      "previewValid_other": "{{count}} валидной строки",
+      "previewInvalid_one": "{{count}} ошибка валидации",
+      "previewInvalid_few": "{{count}} ошибки валидации",
+      "previewInvalid_many": "{{count}} ошибок валидации",
+      "previewInvalid_other": "{{count}} ошибки валидации",
+      "commitSuccess_one": "Импортирована {{count}} строка",
+      "commitSuccess_few": "Импортировано {{count}} строки",
+      "commitSuccess_many": "Импортировано {{count}} строк",
+      "commitSuccess_other": "Импортировано {{count}} строки"
     }
   },
   "notFound": {

@@ -193,4 +193,36 @@ describe('org structure admin CSV import (database)', () => {
     });
     expect(historyEvents).toBeGreaterThan(0);
   });
+
+  it('resolves the actor to a display name and falls back to null for a system event', async () => {
+    const organization = await createOrganization('history-actor');
+    const actor = await createUser(organization.id, 'Reporter');
+    const department = await createDepartment(organization.id, 'HistoryDept');
+
+    await prisma.orgStructureEvent.create({
+      data: {
+        organizationId: organization.id,
+        actorId: actor.id,
+        entityType: 'department',
+        entityId: department.id,
+        eventType: 'department.updated',
+        operationId: randomUUID(),
+      },
+    });
+    await prisma.orgStructureEvent.create({
+      data: {
+        organizationId: organization.id,
+        actorId: null,
+        entityType: 'department',
+        entityId: department.id,
+        eventType: 'department.system_updated',
+        operationId: randomUUID(),
+      },
+    });
+
+    const { items } = await service.history(organization.id, { page: 1, pageSize: 25 });
+
+    expect(items.find((e) => e.eventType === 'department.updated')?.actorName).toBe('Test Reporter');
+    expect(items.find((e) => e.eventType === 'department.system_updated')?.actorName).toBeNull();
+  });
 });
