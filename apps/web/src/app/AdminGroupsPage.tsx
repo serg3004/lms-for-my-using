@@ -18,7 +18,7 @@ import {
   validateGroupName,
 } from './admin-groups/model.js';
 import { slugify } from '../shared/slugify.js';
-import { AdminPageHeader, AdminPageLayout, FormField, OrgStructureTabs, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { UserSummary } from '../shared/api/types.js';
@@ -349,11 +349,7 @@ export function AdminGroupsPage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
-      <OrgStructureTabs current="groups" />
-      <AdminPageHeader
-        eyebrow={t('admin.groups.eyebrow', 'Groups')}
-        title={t('admin.groups.title', 'Groups')}
-        subtitle={t('admin.groups.subtitle', 'Learning and operational groups, managers and members.')}
+      <OrgStructurePageHeader current="groups"
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
             + {t('admin.groups.add', 'Add group')}

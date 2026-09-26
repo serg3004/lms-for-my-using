@@ -15,7 +15,7 @@ import {
 import { listPositions, type Position } from '../shared/api/positions.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageHeader, AdminPageLayout, FormField, OrgStructureTabs, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
 import type { CourseSummary } from '../shared/api/types.js';
 
@@ -142,11 +142,7 @@ export function AdminPositionCoursesPage() {
 
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
-      <OrgStructureTabs current="positionCourses" />
-      <AdminPageHeader
-        eyebrow={t('admin.positionCourses.eyebrow', 'Organization structure')}
-        title={t('admin.positionCourses.title', 'Position course requirements')}
-        subtitle={t('admin.positionCourses.subtitle', 'Courses required or recommended for each position, resolved automatically for anyone holding it.')}
+      <OrgStructurePageHeader current="positionCourses"
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
             + {t('admin.positionCourses.add', 'Add requirement')}

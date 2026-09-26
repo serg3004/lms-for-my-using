@@ -32,7 +32,7 @@ import { listUsers } from '../shared/api/users.js';
 import type { UserSummary } from '../shared/api/types.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, OrgStructureTabs, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, ConfirmDialog, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Badge, Button, EmptyState, PageState } from '../shared/ui.js';
 import { DepartmentTree } from './admin-departments/DepartmentTree.js';
@@ -710,11 +710,7 @@ export function AdminDepartmentsPage() {
 
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
-      <OrgStructureTabs current="departments" />
-      <AdminPageHeader
-        eyebrow={t('admin.departments.eyebrow', 'Departments')}
-        title={t('admin.departments.title', 'Departments')}
-        subtitle={t('admin.departments.subtitle', 'Organization structure as a department tree.')}
+      <OrgStructurePageHeader current="departments"
         action={
           <span className="admin-table-actions">
             <Button variant="secondary" type="button" onClick={openTypesDialog}>

@@ -13,7 +13,7 @@ import {
 } from '../shared/api/positions.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageHeader, AdminPageLayout, FormField, OrgStructureTabs, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { Button, DataTable, EmptyState, PageState, Pagination, Toolbar, type Column } from '../shared/ui.js';
 
@@ -191,11 +191,7 @@ export function AdminPositionsPage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
-      <OrgStructureTabs current="positions" />
-      <AdminPageHeader
-        eyebrow={t('admin.positions.eyebrow', 'Organization structure')}
-        title={t('admin.positions.title', 'Positions')}
-        subtitle={t('admin.positions.subtitle', 'A tenant-wide catalog of job titles that can be assigned to department memberships.')}
+      <OrgStructurePageHeader current="positions"
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
             + {t('admin.positions.add', 'Add position')}

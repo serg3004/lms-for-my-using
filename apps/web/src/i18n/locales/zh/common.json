@@ -36,6 +36,9 @@
       "auditLog": "审计日志"
     },
     "orgStructure": {
+      "eyebrow": "设置",
+      "title": "组织架构",
+      "subtitle": "管理部门、职位、培训要求、小组和数据导入。",
       "tabsLabel": "组织架构分区"
     },
     "title": "管理面板",
