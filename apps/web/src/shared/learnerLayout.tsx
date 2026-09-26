@@ -311,28 +311,31 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
   return (
     <WorkspaceLayout
       brandHref="/learn"
-      brandLabel="LMS"
-      brandSubLabel={t('nav.brandSub')}
+      roleLabel={t('admin.roles.options.learner', 'Learner')}
       contentMode="readable"
       firstName={firstName}
       lastName={lastName}
+      email={currentUser?.email}
       mobileNavigation={mobileNavigation}
       navigation={LEARNER_NAV_DEFS.map((item) => ({
         href: item.href,
         label: t(item.key),
         isCurrent: path === item.href || (item.href !== '/learn' && path.startsWith(item.href)),
       }))}
-      navigationLabel="Main navigation"
+      navigationLabel={t('a11y.mainNavigation', 'Main navigation')}
+      breadcrumbLabel={t('a11y.breadcrumb', 'Breadcrumb')}
+      openNavigationLabel={t('a11y.openNav', 'Open navigation')}
+      closeNavigationLabel={t('a11y.closeNav', 'Close navigation')}
       skipLinkLabel={t('a11y.skipToContent')}
-      headerActions={
-        <div className="workspace-role-actions" id="learner-account-controls" tabIndex={-1}>
-            <NotificationBell />
-            <AccountSwitcher />
-            <LanguageSwitcher />
-            <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
-              {t('nav.logout')}
-            </button>
-        </div>
+      headerActions={<NotificationBell />}
+      accountActions={
+        <>
+          <AccountSwitcher />
+          <LanguageSwitcher />
+          <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
+            {t('nav.logout')}
+          </button>
+        </>
       }
     >
       {children}

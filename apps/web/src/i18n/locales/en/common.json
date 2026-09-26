@@ -2008,7 +2008,8 @@
     "skipToContent": "Skip to main content",
     "breadcrumb": "Breadcrumb",
     "openNav": "Open navigation",
-    "closeNav": "Close navigation"
+    "closeNav": "Close navigation",
+    "mainNavigation": "Main navigation"
   },
   "checklists": {
     "navLink": "Checklists",

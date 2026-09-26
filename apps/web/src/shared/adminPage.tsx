@@ -1,10 +1,13 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
 import { LanguageSwitcher, NotificationBell } from './learnerLayout.js';
 import { logout } from './logout.js';
+import { NavIcon, navIconForHref } from './navIcons.js';
+import { useNavigationDrawer } from './navigationDrawer.js';
+import { useOptionalSession } from './session.js';
 import { Avatar, SkipLink } from './ui.js';
 
 const BRAND_NAME = 'LearnSpace';
@@ -68,11 +71,65 @@ function getAdminNav(t: TFunction): readonly AdminSidebarSection[] {
   ];
 }
 
+function matchesPath(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/** Active by route: the item's own route or any route nested under it (the dashboard only exactly). */
+function isAdminItemActive(item: AdminSidebarNavItem, pathname: string): boolean {
+  if (item.href === '/admin') return pathname === '/admin';
+  return [item.href, ...(item.activePrefixes ?? [])].some((prefix) => matchesPath(pathname, prefix));
+}
+
+export type AdminBreadcrumb = { label: string; href?: string };
+
+/** Third-level crumbs for routes nested under a sidebar entry, labelled from i18n rather than page props. */
+function nestedAdminCrumbs(t: TFunction, pathname: string): AdminBreadcrumb[] {
+  const orgTab = ORG_STRUCTURE_TABS.find((tab) => matchesPath(pathname, tab.href));
+  if (orgTab) return [{ label: t(orgTab.labelKey, orgTab.fallback), href: orgTab.href }];
+  if (pathname === '/admin/checklists/sessions') {
+    return [{ label: t('admin.checklists.sessions.title', 'Sessions'), href: '/admin/checklists/sessions' }];
+  }
+  if (pathname.startsWith('/admin/checklists/sessions/')) {
+    return [
+      { label: t('admin.checklists.sessions.title', 'Sessions'), href: '/admin/checklists/sessions' },
+      { label: t('admin.checklists.report.eyebrow', 'Session report') },
+    ];
+  }
+  return [];
+}
+
+/**
+ * Breadcrumbs derived from the current route: sidebar section / sidebar entry / nested page. Pages
+ * whose route is outside the sidebar fall back to their own `navItems`.
+ */
+export function buildAdminBreadcrumbs(t: TFunction, pathname: string, navItems: readonly AdminNavItem[]): AdminBreadcrumb[] {
+  for (const section of getAdminNav(t)) {
+    const item = section.items.find((candidate) => isAdminItemActive(candidate, pathname));
+    if (!item) continue;
+    const crumbs: AdminBreadcrumb[] = [{ label: section.label }, { label: item.label, href: item.href }];
+    const nested = nestedAdminCrumbs(t, pathname);
+    if (nested.length) return [...crumbs, ...nested];
+    if (pathname !== item.href) {
+      const page = navItems[navItems.length - 1];
+      if (page && page.label !== item.label) crumbs.push({ label: page.label });
+    }
+    return crumbs;
+  }
+  return navItems.map((item) => ({ label: item.label, href: item.href }));
+}
+
+function fullName(user: { firstName: string; lastName?: string | null }) {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ');
+}
+
 type AdminPageLayoutProps = {
   brandLabel: string;
   sidebarLabel: string;
   navItems: readonly AdminNavItem[];
   currentUser?: { firstName: string; lastName?: string; email: string };
+  /** Route used for active state and breadcrumbs; defaults to `window.location.pathname`. */
+  currentPath?: string;
   children: ReactNode;
 };
 
@@ -80,19 +137,14 @@ export function AdminPageLayout({
   brandLabel,
   sidebarLabel,
   navItems,
-  currentUser,
+  currentUser: currentUserProp,
+  currentPath,
   children,
 }: AdminPageLayoutProps) {
   const { t } = useTranslation();
-  const [isOpen, setIsOpen] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const sidebarRef = useRef<HTMLElement>(null);
-
-  function closeNavigation() {
-    setIsOpen(false);
-    menuButtonRef.current?.focus();
-  }
+  const session = useOptionalSession();
+  const drawer = useNavigationDrawer('860px');
+  const currentUser = currentUserProp ?? session?.currentUser ?? undefined;
 
   async function handleLogout() {
     try {
@@ -103,56 +155,22 @@ export function AdminPageLayout({
     window.location.href = '/login';
   }
 
-  const currentHrefs = new Set(
-    navItems.filter((item) => item.isCurrent).map((item) => item.href),
-  );
-  const currentPathname = typeof window !== 'undefined' ? window.location.pathname : '';
-
-  function isSidebarItemActive(item: AdminSidebarNavItem): boolean {
-    if (currentHrefs.has(item.href)) return true;
-    return (item.activePrefixes ?? []).some(
-      (prefix) => currentPathname === prefix || currentPathname.startsWith(`${prefix}/`),
-    );
-  }
-
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 860px)');
-    const syncViewport = () => {
-      const hidden = media.matches && !isOpen;
-      sidebarRef.current?.toggleAttribute('inert', hidden);
-      if (hidden) sidebarRef.current?.setAttribute('aria-hidden', 'true');
-      else sidebarRef.current?.removeAttribute('aria-hidden');
-    };
-    syncViewport();
-    media.addEventListener('change', syncViewport);
-    return () => media.removeEventListener('change', syncViewport);
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        menuButtonRef.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen]);
+  const pathname = currentPath ?? (typeof window !== 'undefined' ? window.location.pathname : '');
+  const currentHrefs = new Set(navItems.filter((item) => item.isCurrent).map((item) => item.href));
+  const isSidebarItemActive = (item: AdminSidebarNavItem) =>
+    isAdminItemActive(item, pathname) || currentHrefs.has(item.href);
+  const breadcrumbs = buildAdminBreadcrumbs(t, pathname, navItems);
 
   return (
     <div className="admin-layout">
       <SkipLink label={t('a11y.skipToContent')} />
       <div className="admin-mobile-bar">
         <button
-          aria-expanded={isOpen}
+          aria-expanded={drawer.isOpen}
           aria-label={t('a11y.openNav', 'Open navigation')}
           className="admin-hamburger"
-          onClick={() => {
-            setIsOpen(true);
-            requestAnimationFrame(() => closeButtonRef.current?.focus());
-          }}
-          ref={menuButtonRef}
+          onClick={drawer.open}
+          ref={drawer.menuButtonRef}
           type="button"
         >
           ☰
@@ -160,18 +178,18 @@ export function AdminPageLayout({
         <span className="admin-mobile-brand">{BRAND_NAME}</span>
       </div>
 
-      {isOpen && (
+      {drawer.isOpen && (
         <div
           aria-hidden="true"
           className="admin-drawer-backdrop"
-          onClick={closeNavigation}
+          onClick={drawer.close}
         />
       )}
 
       <aside
         aria-label={sidebarLabel}
-        className={`admin-sidebar${isOpen ? ' admin-sidebar--open' : ''}`}
-        ref={sidebarRef}
+        className={`admin-sidebar${drawer.isOpen ? ' admin-sidebar--open' : ''}`}
+        ref={drawer.sidebarRef}
       >
         <div className="admin-sidebar-header">
           <a className="admin-brand" href="/admin">
@@ -184,8 +202,8 @@ export function AdminPageLayout({
           <button
             aria-label={t('a11y.closeNav', 'Close navigation')}
             className="admin-sidebar-close"
-            onClick={closeNavigation}
-            ref={closeButtonRef}
+            onClick={drawer.close}
+            ref={drawer.closeButtonRef}
             type="button"
           >
             ✕
@@ -203,7 +221,8 @@ export function AdminPageLayout({
                   href={item.href}
                   key={item.href}
                 >
-                  {item.label}
+                  <NavIcon name={navIconForHref(item.href)} />
+                  <span>{item.label}</span>
                 </a>
               ))}
             </div>
@@ -213,10 +232,9 @@ export function AdminPageLayout({
         <div className="admin-sidebar-footer">
           {currentUser ? (
             <div className="admin-sidebar-user">
+              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName ?? undefined} size="sm" />
               <div className="admin-sidebar-user__info">
-                <div className="admin-sidebar-user__name">
-                  {[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')}
-                </div>
+                <div className="admin-sidebar-user__name">{fullName(currentUser)}</div>
                 <div className="admin-sidebar-user__email">{currentUser.email}</div>
               </div>
             </div>
@@ -237,16 +255,22 @@ export function AdminPageLayout({
 
       <header className="admin-topheader">
         <nav aria-label={t('a11y.breadcrumb', 'Breadcrumb')} className="admin-breadcrumbs">
-          {navItems.map((item, index) =>
-            index === navItems.length - 1 ? (
-              <span aria-current="page" key={item.href}>{item.label}</span>
-            ) : (
-              <span key={item.href}>
-                <a href={item.href}>{item.label}</a>
-                <span aria-hidden="true"> / </span>
-              </span>
-            ),
-          )}
+          <ol>
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1;
+              return (
+                <li key={`${crumb.label}-${index}`}>
+                  {isLast ? (
+                    <span aria-current="page">{crumb.label}</span>
+                  ) : crumb.href ? (
+                    <a href={crumb.href}>{crumb.label}</a>
+                  ) : (
+                    <span>{crumb.label}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </nav>
         <div className="admin-topheader__actions">
           {/* PR 302 review fix: was a static, non-interactive bell emoji -- admins (the primary
@@ -262,11 +286,6 @@ export function AdminPageLayout({
           >
             {t('nav.logout')}
           </button>
-          {currentUser ? (
-            <span title={`${[currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ')} — ${currentUser.email}`}>
-              <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName} size="sm" />
-            </span>
-          ) : null}
         </div>
       </header>
 

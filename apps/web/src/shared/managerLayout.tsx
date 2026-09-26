@@ -42,19 +42,22 @@ export function ManagerPageLayout({ children, currentPath }: ManagerPageLayoutPr
 
   return <WorkspaceLayout
     brandHref="/manager/dashboard"
-    brandLabel="LMS"
-    brandSubLabel={t('manager.brandSub')}
+    roleLabel={t('admin.roles.options.manager', 'Manager')}
     contentMode="fluid"
     density="compact"
     firstName={firstName}
     lastName={lastName}
+    email={currentUser?.email}
     navigation={MANAGER_NAV_DEFS.map((item) => ({ label: t(item.key), href: item.href, isCurrent: path.startsWith(item.href) }))}
-    navigationLabel="Main navigation"
+    navigationLabel={t('a11y.mainNavigation', 'Main navigation')}
+    breadcrumbLabel={t('a11y.breadcrumb', 'Breadcrumb')}
+    openNavigationLabel={t('a11y.openNav', 'Open navigation')}
+    closeNavigationLabel={t('a11y.closeNav', 'Close navigation')}
     skipLinkLabel={t('a11y.skipToContent')}
-    headerActions={<div className="workspace-role-actions">
+    accountActions={<>
       <AccountSwitcher />
       <LanguageSwitcher />
       <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>{t('nav.logout')}</button>
-    </div>}
+    </>}
   >{children}</WorkspaceLayout>;
 }

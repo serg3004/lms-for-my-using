@@ -43,18 +43,21 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
   return (
     <WorkspaceLayout
         brandHref="/instructor/dashboard"
-        brandLabel="LearnSpace"
+        roleLabel={t('admin.roles.options.instructor', 'Instructor')}
         contentMode="dense"
         firstName={firstName ?? currentUser?.firstName}
         lastName={lastName ?? currentUser?.lastName ?? undefined}
+        email={currentUser?.email}
         navigation={navItems}
-        navigationLabel="Main navigation"
+        navigationLabel={t('a11y.mainNavigation', 'Main navigation')}
+        breadcrumbLabel={t('a11y.breadcrumb', 'Breadcrumb')}
+        openNavigationLabel={t('a11y.openNav', 'Open navigation')}
+        closeNavigationLabel={t('a11y.closeNav', 'Close navigation')}
         skipLinkLabel={t('a11y.skipToContent')}
-        variant="topbar"
-        headerActions={<div className="workspace-role-actions">
+        accountActions={<>
           <AccountSwitcher /><LanguageSwitcher />
           <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>{t('nav.logout')}</button>
-        </div>}
+        </>}
       >{children}</WorkspaceLayout>
   );
 }

@@ -1227,9 +1227,9 @@
 }
 
 .learner-sidebar {
-  background: #111827;
-  color: #fff;
-  padding: 22px 18px;
+  background: var(--admin-sidebar-background, #111827);
+  color: var(--admin-sidebar-text, #fff);
+  padding: 20px 14px 16px;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -1239,22 +1239,41 @@
   gap: 0;
 }
 
+.learner-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 6px 22px;
+}
+
 .learner-sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 8px 28px;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.learner-sidebar__brand:hover {
+  text-decoration: none;
+  opacity: 0.85;
+}
+
+.learner-sidebar__close {
+  display: none;
 }
 
 .learner-sidebar__mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, #818cf8, #4f46e5);
-  font-weight: 800;
-  font-size: 18px;
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 700;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
@@ -1266,8 +1285,11 @@
 
 .learner-sidebar__brand-sub {
   display: block;
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--admin-sidebar-text-muted, #cbd5e1);
 }
 
 .learner-sidebar__section-label {
@@ -1280,24 +1302,131 @@
 
 .learner-sidebar__nav {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+  align-content: start;
+  flex: 1;
 }
 
 .learner-sidebar__link {
-  color: #cbd5e1;
+  color: var(--admin-sidebar-text-muted, #cbd5e1);
   text-decoration: none;
-  padding: 11px 13px;
-  border-radius: 12px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
   font-size: 14px;
+  font-weight: 500;
   transition: background .15s, color .15s;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.learner-sidebar__link:hover,
-.learner-sidebar__link--active {
-  background: rgba(129, 140, 248, .16);
-  color: #fff;
+.learner-sidebar__link:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--admin-sidebar-text, #fff);
   text-decoration: none;
+}
+
+.learner-sidebar__link--active {
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.learner-sidebar__link .nav-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  opacity: 0.85;
+}
+
+.learner-sidebar__link--active .nav-icon {
+  opacity: 1;
+}
+
+.learner-sidebar__link:focus-visible,
+.learner-sidebar__brand:focus-visible,
+.learner-sidebar__close:focus-visible {
+  outline: 2px solid var(--admin-sidebar-text, #fff);
+  outline-offset: 2px;
+}
+
+.learner-sidebar__footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+}
+
+.learner-sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+}
+
+.learner-sidebar__user-info {
+  min-width: 0;
+}
+
+.learner-sidebar__user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-sidebar-text, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.learner-sidebar__user-email {
+  font-size: 11px;
+  color: var(--admin-sidebar-text-muted, #cbd5e1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.learner-sidebar__mobile-actions {
+  display: none;
+}
+
+.learner-header__menu {
+  display: none;
+}
+
+.learner-header__account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.learner-breadcrumbs {
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+.learner-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.learner-breadcrumbs li + li::before {
+  content: "/";
+  margin-right: 8px;
+}
+
+.learner-breadcrumbs [aria-current="page"] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.workspace-drawer-backdrop {
+  display: none;
 }
 
 .learner-content {
@@ -1312,6 +1441,7 @@
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
+  gap: 12px;
   padding: 0 28px;
   position: sticky;
   top: 0;
@@ -1548,9 +1678,82 @@
 
 @media (max-width: 820px) {
   .learner-app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .learner-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    width: min(280px, 85vw);
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .learner-sidebar--open {
+    transform: translateX(0);
+  }
+
+  .learner-sidebar__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: rgb(255 255 255 / 12%);
+    color: var(--admin-sidebar-text, #fff);
+    cursor: pointer;
+  }
+
+  .learner-sidebar__mobile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .learner-sidebar__mobile-actions .learner-topnav__logout {
+    border-color: rgb(255 255 255 / 24%);
+    color: var(--admin-sidebar-text, #fff);
+  }
+
+  .learner-sidebar__mobile-actions .learner-topnav__logout:hover {
+    background: rgb(255 255 255 / 8%);
+    color: var(--admin-sidebar-text, #fff);
+  }
+
+  .workspace-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgb(0 0 0 / 48%);
+  }
+
+  .learner-header {
+    padding: 0 16px;
+  }
+
+  .learner-header__menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 1.25rem;
+    cursor: pointer;
+  }
+
+  .learner-header__account {
     display: none;
   }
 
@@ -1760,10 +1963,6 @@
 
 .workspace-shell--compact {
   padding-top: 24px;
-}
-
-.workspace-role-actions {
-  display: contents;
 }
 
 /* Learner dashboard: actions lead, supporting metrics follow. */
