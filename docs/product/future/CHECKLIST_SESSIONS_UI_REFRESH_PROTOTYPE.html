@@ -1,0 +1,325 @@
+<title>Чек-лист-сессии — концепт редизайна</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Токены = default ThemeSettings проекта (apps/web/src/shared/theme.ts), не выдуманы */
+  :root{
+    --color-background:#f5f7fb; --color-surface:#ffffff; --color-surface-muted:#f8fafc;
+    --color-border:#e3e8ef; --color-text:#172033; --color-text-muted:#667085;
+    --color-primary:#4f46e5; --color-primary-hover:#4338ca; --color-on-primary:#ffffff;
+    --color-danger:#dc2626; --color-success:#0f9f6e; --color-warning:#d97706; --color-info:#0284c7;
+    --color-warning-bg:#fff7e8; --color-success-bg:#e9f8f2; --color-danger-bg:#fee2e2; --color-info-bg:#e0f2fe;
+    --admin-sidebar-background:#111827; --admin-sidebar-text:#ffffff; --admin-sidebar-text-muted:#cbd5e1;
+    --shadow-card:0 8px 24px rgb(23 32 51 / 5%);
+    --radius-sm:6px; --radius-md:11px; --radius-lg:18px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --color-background:#0f1218; --color-surface:#171b23; --color-surface-muted:#1c212b;
+      --color-border:#2b3140; --color-text:#e7eaf1; --color-text-muted:#98a1b5;
+      --color-primary:#6d64f0; --color-primary-hover:#8078f4; --color-on-primary:#0f1218;
+      --color-warning-bg:#2c2110; --color-success-bg:#0f2419; --color-danger-bg:#2b1414; --color-info-bg:#10222c;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --color-background:#0f1218; --color-surface:#171b23; --color-surface-muted:#1c212b;
+    --color-border:#2b3140; --color-text:#e7eaf1; --color-text-muted:#98a1b5;
+    --color-primary:#6d64f0; --color-primary-hover:#8078f4; --color-on-primary:#0f1218;
+    --color-warning-bg:#2c2110; --color-success-bg:#0f2419; --color-danger-bg:#2b1414; --color-info-bg:#10222c;
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--color-background);color:var(--color-text);font-family:"Manrope Variable","Manrope",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:14px;line-height:1.5}
+
+  .concept-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 20px;background:var(--admin-sidebar-background);color:var(--admin-sidebar-text-muted);font-size:12px;border-bottom:1px solid rgb(255 255 255 / 8%)}
+  .concept-banner strong{color:#fff;font-weight:700}
+  .concept-dot{width:6px;height:6px;border-radius:50%;background:var(--color-primary);flex:none}
+
+  .shell{display:flex;min-height:calc(100vh - 34px)}
+  .side{flex:0 0 226px;background:var(--admin-sidebar-background);color:var(--admin-sidebar-text-muted);display:flex;flex-direction:column;padding:16px 12px 18px;gap:5px}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 12px}
+  .brand-mark{width:30px;height:30px;border-radius:8px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex:none}
+  .brand-name{font-weight:700;color:var(--admin-sidebar-text);font-size:15px;line-height:1.2}
+  .brand-sub{font-size:10.5px;color:var(--admin-sidebar-text-muted);text-transform:uppercase;letter-spacing:.04em}
+  .role-pick{padding:6px 8px 12px}
+  .role-pick label{font-size:10px;color:var(--admin-sidebar-text-muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em}
+  .role-pick select{width:100%;background:rgb(255 255 255 / 8%);border:1px solid rgb(255 255 255 / 14%);color:#fff;border-radius:7px;padding:7px 9px;font-size:12.5px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;font-size:13px;color:var(--admin-sidebar-text-muted);border:none;background:none;width:100%;text-align:left;cursor:pointer}
+  .nav-item:hover{background:rgb(255 255 255 / 6%);color:var(--admin-sidebar-text)}
+  .nav-item.is-active{background:var(--color-primary);color:#fff;font-weight:600}
+  .nav-item .ic{width:15px;height:15px;flex:none;opacity:.85}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;min-width:0}
+  .content{padding:24px 28px 56px;max-width:1120px;width:100%;margin:0 auto}
+  .screen{display:none}
+  .screen.is-active{display:block;animation:fade .16s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+
+  .top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap}
+  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-primary);background:color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));display:inline-block;padding:3px 9px;border-radius:100px;margin-bottom:8px}
+  h1{font-size:22px;font-weight:700}
+  .sub{font-size:12.5px;color:var(--color-text-muted);margin-top:3px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);cursor:pointer}
+  .btn.primary{background:var(--color-primary);color:var(--color-on-primary);border-color:transparent}
+  .btn.primary:hover{background:var(--color-primary-hover)}
+  .btn:hover{background:var(--color-surface-muted)}
+  .btn.sm{padding:6px 10px;font-size:11.5px}
+
+  .card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:var(--shadow-card)}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--color-border);margin:14px 0 16px;overflow-x:auto}
+  .tab{border:0;background:none;padding:9px 12px 11px;color:var(--color-text-muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:12.5px;font-weight:600;cursor:pointer}
+  .tab:hover{color:var(--color-text)}
+  .tab.active{color:var(--color-primary);border-color:var(--color-primary)}
+
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .kpi{padding:16px}
+  .kpi .label{font-size:11.5px;color:var(--color-text-muted)}
+  .kpi .v{font-size:28px;font-weight:700;margin:8px 0 2px}
+  .trend{font-size:11px;font-weight:700}
+  .trend.up{color:var(--color-success)}
+  .trend.down{color:var(--color-danger)}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end;padding:13px 15px}
+  .field{display:flex;flex-direction:column;gap:5px}
+  .field label{font-size:10.5px;color:var(--color-text-muted)}
+  input,select{border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);padding:7px 9px;font-size:12.5px;color:var(--color-text);min-height:34px}
+
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-muted);padding:9px 15px;border-bottom:1px solid var(--color-border)}
+  td{padding:11px 15px;border-bottom:1px solid var(--color-border);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .row{cursor:pointer}
+  .row:hover{background:var(--color-surface-muted)}
+  .badge{display:inline-flex;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:700}
+  .badge.amber{background:var(--color-warning-bg);color:var(--color-warning)}
+  .badge.blue{background:var(--color-info-bg);color:var(--color-info)}
+  .badge.green{background:var(--color-success-bg);color:var(--color-success)}
+  .badge.gray{background:var(--color-surface-muted);color:var(--color-text-muted);border:1px solid var(--color-border)}
+
+  .builder{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px}
+  .group{border:1px solid var(--color-border);border-radius:var(--radius-sm);margin:12px;overflow:hidden}
+  .grouphead{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:var(--color-surface-muted);border-bottom:1px solid var(--color-border)}
+  .crow{display:grid;grid-template-columns:30px 1.7fr 130px 90px 75px;gap:8px;align-items:center;padding:10px 13px;border-bottom:1px solid var(--color-border);font-size:12.5px}
+  .crow.head{font-size:10.5px;color:var(--color-text-muted);background:var(--color-surface-muted);text-transform:uppercase;letter-spacing:.04em}
+  .toggle{width:32px;height:19px;background:var(--color-border);border-radius:20px;position:relative;flex:none}
+  .toggle.on{background:var(--color-primary)}
+  .toggle:after{content:"";position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:2px;left:2px}
+  .toggle.on:after{left:15px}
+  .settings-panel{padding:15px}
+  .setting-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border)}
+  .setting-row:last-child{border-bottom:none}
+  .setting-row .txt b{display:block;font-size:12.5px}
+  .setting-row .txt span{font-size:11px;color:var(--color-text-muted)}
+
+  .phone{max-width:380px;margin:0 auto;background:var(--color-surface);border:9px solid var(--admin-sidebar-background);border-radius:30px;overflow:hidden;box-shadow:var(--shadow-card)}
+  .pbar{padding:8px 14px;font-size:11px;color:var(--color-text-muted);display:flex;justify-content:space-between;border-bottom:1px solid var(--color-border)}
+  .phead{padding:9px 14px;text-align:center;font-weight:700;font-size:12.5px;border-bottom:1px solid var(--color-border)}
+  .pbody{padding:14px}
+  .progress{height:6px;background:var(--color-surface-muted);border-radius:99px;overflow:hidden;margin:8px 0}
+  .progress>div{height:100%;background:var(--color-primary)}
+  .ccard{border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:13px;margin-top:10px}
+  .scaleBtns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}
+  .scaleBtns button{border:1px solid var(--color-border);background:var(--color-surface);border-radius:var(--radius-sm);padding:10px;font-weight:700;font-size:13px}
+  .scaleBtns button.sel{background:var(--color-success);color:#fff;border-color:transparent}
+  textarea{width:100%;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:8px 9px;font:inherit;min-height:56px;resize:vertical}
+  .alert{padding:9px 12px;border-radius:var(--radius-sm);font-size:12px;margin-top:8px}
+  .alert.info{background:var(--color-info-bg);color:var(--color-info)}
+
+  .chartrow{display:grid;grid-template-columns:1fr 1.6fr;gap:14px;margin-top:14px}
+  .chart{padding:16px}
+  .donut-wrap{display:flex;align-items:center;gap:16px}
+  .donut{width:120px;height:120px;flex:none}
+  .legend{display:flex;flex-direction:column;gap:7px;font-size:12px}
+  .legend .li{display:flex;align-items:center;gap:7px}
+  .legend .sw{width:9px;height:9px;border-radius:2px;flex:none}
+
+  .timeline .evt{display:grid;grid-template-columns:16px 128px 1fr;gap:8px;margin:12px 0}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--color-primary);margin-top:4px}
+
+  @media(max-width:1080px){.grid4,.grid3{grid-template-columns:repeat(2,1fr)}.builder,.chartrow,.two{grid-template-columns:1fr}}
+  @media(max-width:760px){
+    .shell{flex-direction:column}
+    .side{flex:none;width:100%;flex-direction:row;align-items:center;padding:10px 14px;gap:12px;overflow-x:auto}
+    .side>*{flex:none}
+    .role-pick{display:none}
+    .content{padding:16px 16px 40px}
+    .grid4,.grid3{grid-template-columns:1fr}
+    h1{font-size:19px}
+    .crow{grid-template-columns:24px 1fr 90px}
+    .crow>*:nth-child(4),.crow>*:nth-child(5){display:none}
+  }
+</style>
+
+<div class="concept-banner"><span class="concept-dot"></span><strong>Дизайн-концепт</strong> — только раскладка/навигация. Цвета — настраиваемая org-theme из <code style="color:#fff">apps/web/src/shared/theme.ts</code>, статусные (success/warning/danger/info) — из <code style="color:#fff">apps/web/src/styles/tokens.css</code>, шрифт Manrope — из <code style="color:#fff">apps/web/src/styles/global.css</code>. Тёмная тема здесь — только для удобства чтения макета в этом просмотрщике, в реальном приложении её сейчас нет. Кнопка «+ Новая сессия» на этой странице не открывает визард (это отдельный modal-компонент в реальном приложении, здесь не воспроизведён) — визард сравнивается в аудите PR 310 как диалоговое состояние экрана «Сессии», а не отдельный экран. Весь функционал (визард, билдер критериев, проведение сессии, аналитика руководителя) уже работает в проекте.</div>
+
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark">L</div><div><div class="brand-name">LearnSpace</div><div class="brand-sub">Обучение на месте</div></div></div>
+    <div class="role-pick"><label>Режим просмотра</label><select id="roleSelect"><option value="admin">Администратор</option><option value="manager">Руководитель</option><option value="observer">Наблюдатель</option><option value="employee">Сотрудник</option></select></div>
+    <button class="nav-item is-active" data-screen="sessions"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>Сессии</button>
+    <button class="nav-item" data-screen="builder"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Лист наблюдения</button>
+    <button class="nav-item" data-screen="observer"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>Проведение</button>
+    <button class="nav-item" data-screen="employee"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.3-4 4.3-6 8-6s6.7 2 8 6"/></svg>Мои сессии</button>
+    <button class="nav-item" data-screen="manager"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 20V10M10 20V4M17 20v-7"/></svg>Дашборд руководителя</button>
+    <button class="nav-item" data-screen="report"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h11l5 5v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M14 4v5h5"/></svg>Отчёт</button>
+  </aside>
+
+  <div class="main"><div class="content">
+
+    <section class="screen is-active" id="screen-sessions">
+      <div class="top"><div><span class="eyebrow">Обучение на рабочем месте</span><h1>Обучающие сессии</h1><div class="sub">Планирование, проведение и контроль обучения</div></div><div class="actions"><button class="btn">Настройки модуля</button><button class="btn primary">+ Новая сессия</button></div></div>
+      <div class="tabs"><button class="tab active">Все</button><button class="tab">Запланированные</button><button class="tab">В процессе</button><button class="tab">Завершённые</button><button class="tab">Отменённые</button></div>
+      <div class="card"><div class="filters"><div class="field"><label>Период</label><select><option>Последние 30 дней</option><option>Квартал</option></select></div><div class="field"><label>Наблюдатель</label><select><option>Все</option><option>Ольга Иванова</option></select></div><div class="field" style="flex:1"><label>Поиск</label><input placeholder="Сотрудник или сессия"></div></div></div>
+      <div class="card" style="margin-top:12px;overflow:hidden"><table><thead><tr><th>Сессия</th><th>Сотрудник</th><th>Наблюдатель</th><th>Дата</th><th>Статус</th><th>Результат</th></tr></thead><tbody>
+        <tr class="row"><td><b>Стандарт встречи с клиентом</b></td><td>Иван Петров</td><td>Ольга Иванова</td><td>31.08.2026 10:00</td><td><span class="badge amber">Запланирована</span></td><td>—</td></tr>
+        <tr class="row"><td><b>Работа с возражениями</b></td><td>Мария Сидорова</td><td>Игорь Петров</td><td>31.08.2026 14:30</td><td><span class="badge amber">Запланирована</span></td><td>—</td></tr>
+        <tr class="row"><td><b>Стандарт встречи с клиентом</b></td><td>Алексей Смирнов</td><td>Ольга Иванова</td><td>29.08.2026 10:00</td><td><span class="badge green">Завершена</span></td><td>92%</td></tr>
+        <tr class="row"><td><b>Кассовая дисциплина</b></td><td>Елена Волкова</td><td>Игорь Петров</td><td>28.08.2026 16:00</td><td><span class="badge blue">В процессе</span></td><td>—</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section class="screen" id="screen-builder">
+      <div class="top"><div><span class="eyebrow">Лист наблюдения</span><h1>Стандарт встречи с клиентом</h1><div class="sub"><span class="badge green">Опубликован</span></div></div><div class="actions"><button class="btn">Шкалы оценки</button><button class="btn">Предпросмотр</button></div></div>
+      <div class="builder">
+        <div>
+          <div class="card"><div style="padding:13px;border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center"><div><b style="font-size:13px">Группы и критерии</b><div class="sub">Структура листа наблюдения</div></div><button class="btn sm primary">+ Группа</button></div>
+            <div class="group"><div class="grouphead"><div><b style="font-size:12.5px">Контакт с клиентом</b><div class="sub">2 критерия</div></div><div class="actions"><button class="btn sm">+ Критерий</button></div></div>
+              <div class="crow head"><div></div><div>Критерий</div><div>Шкала</div><div>Обязательный</div><div>Фото</div></div>
+              <div class="crow"><div>⋮⋮</div><div><b>Приветствие и установление контакта</b></div><div>5-балльная</div><div><div class="toggle on"></div></div><div><div class="toggle on"></div></div></div>
+              <div class="crow"><div>⋮⋮</div><div><b>Выявление потребностей клиента</b></div><div>5-балльная</div><div><div class="toggle on"></div></div><div><div class="toggle"></div></div></div>
+            </div>
+            <div class="group"><div class="grouphead"><div><b style="font-size:12.5px">Работа с предложением</b><div class="sub">1 критерий</div></div><div class="actions"><button class="btn sm">+ Критерий</button></div></div>
+              <div class="crow"><div>⋮⋮</div><div><b>Презентация решения</b></div><div>5-балльная</div><div><div class="toggle on"></div></div><div><div class="toggle on"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="card settings-panel">
+          <b style="font-size:13px">Настройки листа</b>
+          <div class="sub" style="margin:6px 0 4px">«Пропустить» и «Фото» — свойства каждого критерия (колонки в таблице слева), не общая настройка листа.</div>
+          <div class="field" style="margin-top:8px"><label>Требование геолокации</label><select><option>По желанию</option><option>Обязательно</option><option>Выключено</option></select></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-observer">
+      <div class="top"><div><span class="eyebrow">Мобильный сценарий</span><h1>Проведение сессии</h1><div class="sub">Наблюдатель: Ольга Иванова</div></div></div>
+      <div class="phone">
+        <div class="pbar"><span>9:41</span><span>Wi-Fi ●</span></div>
+        <div class="phead">Стандарт встречи с клиентом</div>
+        <div class="pbody">
+          <div class="sub">Иван Петров · 00:15:24</div>
+          <div class="progress"><div style="width:64%"></div></div>
+          <div class="sub" style="margin-top:2px">Критерий 2 из 3</div>
+          <div class="alert info">Геопозиция начала: зафиксирована</div>
+          <div class="ccard">
+            <b style="font-size:13.5px">Выявление потребностей клиента</b>
+            <div class="sub">Обязательный · 5-балльная шкала</div>
+            <div class="scaleBtns"><button>1</button><button>2</button><button>3</button><button class="sel">4</button><button>5</button></div>
+            <textarea placeholder="Комментарий"></textarea>
+            <div class="actions" style="margin-top:9px"><button class="btn sm">📷 Добавить фото</button><button class="btn sm">Пропустить</button></div>
+          </div>
+          <div class="actions" style="justify-content:space-between;margin-top:12px"><button class="btn">Назад</button><button class="btn">Пауза</button><button class="btn primary">Далее</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-employee">
+      <div class="top"><div><span class="eyebrow">Мои сессии</span><h1>Обучающие сессии</h1><div class="sub">Назначенные, текущие и завершённые</div></div></div>
+      <div class="tabs"><button class="tab active">Запланированные</button><button class="tab">В процессе</button><button class="tab">Завершённые</button></div>
+      <div class="card"><table><thead><tr><th>Сессия</th><th>Наблюдатель</th><th>Дата</th><th>Результат</th></tr></thead><tbody>
+        <tr class="row"><td><b>Стандарт встречи с клиентом</b></td><td>Ольга Иванова</td><td>31.08.2026 10:00</td><td><span class="badge amber">Запланирована</span></td></tr>
+        <tr class="row"><td><b>Стандарт встречи с клиентом</b></td><td>Ольга Иванова</td><td>29.08.2026 10:00</td><td><span class="badge green">92%</span></td></tr>
+      </tbody></table></div>
+      <div class="card" style="padding:15px;margin-top:12px"><b style="font-size:13px">Предыдущая обратная связь</b><div class="two" style="margin-top:10px"><div><div class="sub">Сильные стороны</div><b style="font-size:13px">Уверенное приветствие, точные вопросы</b></div><div><div class="sub">Зоны развития</div><b style="font-size:13px">Чётче фиксировать следующий шаг</b></div></div></div>
+    </section>
+
+    <section class="screen" id="screen-manager">
+      <div class="top"><div><span class="eyebrow">Аналитика</span><h1>Моя команда</h1><div class="sub">Выполнение стандартов за период</div></div></div>
+      <div class="grid4">
+        <div class="card kpi"><div class="label">Низкое выполнение</div><div class="v" style="color:var(--color-danger)">2</div><div class="sub">порог не задан <span title="lowThreshold не настроен владельцем (DEC-CHKS-001) — бакет определяется по факту прохождения сессии, не по фиксированному %">ⓘ</span></div></div>
+        <div class="card kpi"><div class="label">Высокое выполнение</div><div class="v" style="color:var(--color-success)">18</div><div class="sub">≥90%</div></div>
+        <div class="card kpi"><div class="label">Без сессий за период</div><div class="v">3</div><div class="sub">требуют планирования</div></div>
+        <div class="card kpi"><div class="label">Средний результат</div><div class="v">87%</div></div>
+      </div>
+      <div class="chartrow">
+        <div class="card chart">
+          <b style="font-size:13px">Распределение результатов</b>
+          <div class="donut-wrap" style="margin-top:12px">
+            <svg class="donut" viewBox="0 0 42 42">
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--color-surface-muted)" stroke-width="6"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--color-success)" stroke-width="6" stroke-dasharray="64 36" stroke-dashoffset="25" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--color-warning)" stroke-width="6" stroke-dasharray="29 71" stroke-dashoffset="-39" transform="rotate(-90 21 21)"/>
+              <circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--color-danger)" stroke-width="6" stroke-dasharray="7 93" stroke-dashoffset="-68" transform="rotate(-90 21 21)"/>
+              <text x="21" y="23" text-anchor="middle" font-size="7" font-weight="700" fill="var(--color-text)">87%</text>
+            </svg>
+            <div class="legend">
+              <div class="li"><span class="sw" style="background:var(--color-success)"></span>Высокий (≥90%) — 18</div>
+              <div class="li"><span class="sw" style="background:var(--color-warning)"></span>Средний — 8</div>
+              <div class="li"><span class="sw" style="background:var(--color-danger)"></span>Низкий — 2</div>
+            </div>
+          </div>
+        </div>
+        <div class="card chart">
+          <b style="font-size:13px">Динамика среднего результата</b>
+          <svg viewBox="0 0 600 170" style="width:100%;height:150px;margin-top:8px">
+            <g stroke="var(--color-border)"><line x1="0" y1="30" x2="600" y2="30"/><line x1="0" y1="80" x2="600" y2="80"/><line x1="0" y1="130" x2="600" y2="130"/></g>
+            <polyline fill="none" stroke="var(--color-success)" stroke-width="3.5" points="10,120 100,98 190,102 280,70 370,78 460,52 550,30"/>
+            <circle cx="550" cy="30" r="4.5" fill="var(--color-success)"/>
+          </svg>
+          <div class="sub">Средний результат растёт в выбранном периоде.</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px;overflow:hidden"><table><thead><tr><th>Сотрудник</th><th>Подразделение</th><th>Сессии</th><th>Средний результат</th><th>Тренд</th></tr></thead><tbody>
+        <tr class="row"><td><b>Иван Петров</b></td><td>Отдел продаж</td><td>5</td><td>92%</td><td class="trend up">↑</td></tr>
+        <tr class="row"><td><b>Мария Сидорова</b></td><td>Отдел продаж</td><td>4</td><td>68%</td><td class="trend down">↓</td></tr>
+        <tr class="row"><td><b>Алексей Смирнов</b></td><td>Отдел сервиса</td><td>3</td><td>95%</td><td class="trend up">↑</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <section class="screen" id="screen-report">
+      <div class="top"><div><span class="eyebrow">Отчёт по сессии</span><h1>Стандарт встречи с клиентом</h1><div class="sub">29.08.2026 · Иван Петров</div></div><div class="actions"><span class="badge green">Завершена</span><button class="btn">Печать</button><button class="btn">Пересчитать</button></div></div>
+      <div class="tabs"><button class="tab active">Сводка</button><button class="tab">Участники</button><button class="tab">Критерии</button><button class="tab">Файлы</button><button class="tab">История</button></div>
+      <div class="grid3">
+        <div class="card kpi"><div class="label">Итоговый результат</div><div class="v">92%</div><span class="badge green">Результат сохранён</span></div>
+        <div class="card kpi"><div class="label">Сильные стороны</div><b style="font-size:13px">Уверенное приветствие и точные вопросы</b></div>
+        <div class="card kpi"><div class="label">Зоны развития</div><b style="font-size:13px">Чётче фиксировать следующий шаг</b></div>
+      </div>
+      <div class="card" style="padding:16px;margin-top:12px" id="reportHistory">
+        <b style="font-size:13px">История изменений результата</b>
+        <div class="timeline" style="margin-top:10px">
+          <div class="evt"><div class="dot"></div><div class="sub">29.08 11:02</div><div>Сессия завершена, результат 92%</div></div>
+          <div class="evt"><div class="dot"></div><div class="sub">29.08 10:00</div><div>Сессия начата</div></div>
+        </div>
+      </div>
+    </section>
+
+  </div></div>
+</div>
+
+<script>
+(function(){
+  var items = document.querySelectorAll('.nav-item[data-screen]');
+  var screens = {};
+  items.forEach(function(b){ screens[b.dataset.screen] = document.getElementById('screen-'+b.dataset.screen); });
+  function go(key){
+    items.forEach(function(b){ b.classList.toggle('is-active', b.dataset.screen===key); });
+    Object.keys(screens).forEach(function(k){ screens[k].classList.toggle('is-active', k===key); });
+    try{ localStorage.setItem('checklist-concept-screen', key); }catch(e){}
+  }
+  items.forEach(function(b){ b.addEventListener('click', function(){ go(b.dataset.screen); }); });
+  var roleSelect = document.getElementById('roleSelect');
+  roleSelect.addEventListener('change', function(){
+    var map = { admin:'sessions', manager:'manager', observer:'observer', employee:'employee' };
+    go(map[roleSelect.value] || 'sessions');
+  });
+  var saved=null; try{ saved=localStorage.getItem('checklist-concept-screen'); }catch(e){}
+  if(saved && screens[saved]) go(saved);
+})();
+</script>
