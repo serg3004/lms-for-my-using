@@ -319,8 +319,19 @@ export function OrgStructureTabs({ current, counts }: { current: OrgStructureTab
     groups: counts.groups,
     importHistory: counts.historyEvents,
   } : undefined;
+  const stripRef = useRef<HTMLElement>(null);
+
+  // On narrow screens the strip scrolls horizontally; keep the current tab visible.
+  useEffect(() => {
+    const strip = stripRef.current;
+    const active = strip?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!strip || !active) return;
+    const offset = active.getBoundingClientRect().left - strip.getBoundingClientRect().left + strip.scrollLeft;
+    strip.scrollLeft = offset - (strip.clientWidth - active.offsetWidth) / 2;
+  }, [current, counts]);
+
   return (
-    <nav aria-label={t('admin.orgStructure.tabsLabel', 'Organizational structure sections')} className="admin-org-tabs">
+    <nav aria-label={t('admin.orgStructure.tabsLabel', 'Organizational structure sections')} className="admin-org-tabs" ref={stripRef}>
       {ORG_STRUCTURE_TABS.map((tab) => (
         <a
           aria-current={tab.key === current ? 'page' : undefined}
