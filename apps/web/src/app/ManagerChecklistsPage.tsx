@@ -276,6 +276,7 @@ export function ManagerChecklistsPage() {
             emptyMessage={t('manager.checklists.employeesEmpty', 'No employees in scope for this period.')}
             keyExtractor={(row) => row.userId}
             label={t('manager.checklists.employeesTableLabel', 'Employees')}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${employeeName(row)}`, collapseLabel: (row) => `${t('courses.details')}: ${employeeName(row)}` }}
             rows={state.data.employees}
             expansion={{
               expandedKeys,

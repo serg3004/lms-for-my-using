@@ -390,6 +390,7 @@ export function AdminGroupsPage() {
           ] satisfies Column<Group>[]}
           rows={groups}
           keyExtractor={(g) => g.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (g) => `${t('courses.details')}: ${g.name}`, collapseLabel: (g) => `${t('courses.details')}: ${g.name}` }}
           emptyMessage={t('admin.groups.empty', 'No groups found.')}
         />
       )}

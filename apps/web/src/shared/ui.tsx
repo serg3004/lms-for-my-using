@@ -406,9 +406,9 @@ export type DataTableExpansion<T> = {
 
 export type DataTableResponsiveDetails<T> = {
   /** Accessible name for the column containing the mobile details toggle. */
-  label?: string;
-  expandLabel?: (row: T) => string;
-  collapseLabel?: (row: T) => string;
+  label: string;
+  expandLabel: (row: T) => string;
+  collapseLabel: (row: T) => string;
 };
 
 export type DataTableProps<T> = {
@@ -429,7 +429,7 @@ export type DataTableProps<T> = {
    * Makes secondary and tertiary columns available in an expandable details
    * region when responsive CSS removes them from the table row.
    */
-  responsiveDetails?: DataTableResponsiveDetails<T>;
+  responsiveDetails: DataTableResponsiveDetails<T>;
 };
 
 export function DataTable<T>({

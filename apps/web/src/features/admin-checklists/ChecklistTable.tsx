@@ -23,5 +23,5 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => onDelete(checklist)}>{t('admin.checklists.delete', 'Delete')}</button>
     </div> },
   ] satisfies Column<ChecklistSummary>[];
-  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows} keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} />;
+  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows} keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} responsiveDetails={{ label: t('courses.details'), expandLabel: (checklist) => `${t('courses.details')}: ${checklist.title}`, collapseLabel: (checklist) => `${t('courses.details')}: ${checklist.title}` }} />;
 }

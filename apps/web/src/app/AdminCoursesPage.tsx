@@ -376,6 +376,7 @@ export function AdminCoursesPage() {
         columns={courseColumns}
         rows={filteredCourses}
         keyExtractor={(c) => c.id}
+        responsiveDetails={{ label: t('courses.details'), expandLabel: (c) => `${t('courses.details')}: ${c.title}`, collapseLabel: (c) => `${t('courses.details')}: ${c.title}` }}
         emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
       />
 

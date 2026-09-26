@@ -268,6 +268,7 @@ export function AdminPositionsPage() {
           ] satisfies Column<Position>[]}
           rows={items}
           keyExtractor={(p) => p.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${p.title}`, collapseLabel: (p) => `${t('courses.details')}: ${p.title}` }}
           emptyMessage={t('admin.positions.empty', 'No positions found.')}
         />
       )}

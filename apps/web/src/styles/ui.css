@@ -2032,6 +2032,12 @@
     display: none;
   }
 
+  .ds-data-table th,
+  .ds-data-table td {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
   .ds-data-table .ds-data-table__details-control {
     display: table-cell;
   }

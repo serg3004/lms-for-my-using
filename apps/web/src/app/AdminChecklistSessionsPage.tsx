@@ -210,6 +210,7 @@ export function AdminChecklistSessionsPage() {
         emptyMessage={t('admin.checklists.sessions.empty', 'No sessions match these filters.')}
         keyExtractor={(row) => row.id}
         label={t('admin.checklists.sessions.title', 'Sessions')}
+        responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.checklist.title}`, collapseLabel: (row) => `${t('courses.details')}: ${row.checklist.title}` }}
         rows={loadState.data.sessions}
       />
       <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={setPage} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />

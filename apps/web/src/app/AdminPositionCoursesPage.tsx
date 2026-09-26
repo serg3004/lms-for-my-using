@@ -212,6 +212,7 @@ export function AdminPositionCoursesPage() {
           ] satisfies Column<PositionCourse>[]}
           rows={positionCourses}
           keyExtractor={(pc) => pc.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}`, collapseLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}` }}
           emptyMessage={t('admin.positionCourses.empty', 'No position course requirements found.')}
         />
       )}

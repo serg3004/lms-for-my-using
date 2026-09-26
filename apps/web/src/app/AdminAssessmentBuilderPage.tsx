@@ -261,6 +261,7 @@ export function AdminAssessmentBuilderPage() {
       ] satisfies Column<Assessment>[]}
       rows={filteredAssessments}
       keyExtractor={(a) => a.id}
+      responsiveDetails={{ label: t('courses.details'), expandLabel: (a) => `${t('courses.details')}: ${a.title}`, collapseLabel: (a) => `${t('courses.details')}: ${a.title}` }}
       emptyMessage={t('admin.assessmentBuilder.empty', 'No assessments found.')}
     />
 

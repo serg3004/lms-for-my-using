@@ -345,6 +345,7 @@ export function AdminResultsCertificatesPage() {
         ] satisfies Column<Progress>[]}
         rows={loadState.data.progressItems}
         keyExtractor={(p) => p.id}
+        responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}`, collapseLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}` }}
         emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
       />
 
@@ -360,6 +361,7 @@ export function AdminResultsCertificatesPage() {
             ] satisfies Column<Certificate>[]}
             rows={loadState.data.certificates}
             keyExtractor={(item) => item.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}`, collapseLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}` }}
             emptyMessage={t('admin.results.noCertificates', 'No certificates have been issued yet.')}
           />
         </AdminCard>
@@ -374,6 +376,7 @@ export function AdminResultsCertificatesPage() {
             ] satisfies Column<OverdueAssignment>[]}
             rows={loadState.data.overdueAssignments}
             keyExtractor={(item) => item.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (item) => `${t('courses.details')}: ${item.course.title}`, collapseLabel: (item) => `${t('courses.details')}: ${item.course.title}` }}
             emptyMessage={t('admin.results.noOverdue', 'There are no overdue assignments.')}
           />
         </AdminCard>
@@ -465,6 +468,7 @@ export function AdminResultsCertificatesPage() {
                 ] satisfies Column<AssessmentResult>[]}
                 rows={loadState.data.assessmentResults}
                 keyExtractor={(r) => r.id}
+                responsiveDetails={{ label: t('courses.details'), expandLabel: (r) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, r.userId)}`, collapseLabel: (r) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, r.userId)}` }}
                 emptyMessage={t('admin.results.noResults', 'No assessment results found.')}
               />
             </>

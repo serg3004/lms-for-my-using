@@ -364,6 +364,7 @@ export function AdminDepartmentUsersPage() {
           columns={columns}
           rows={rows}
           keyExtractor={(row) => row.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${formatMembershipUserName(row.user)}`, collapseLabel: (row) => `${t('courses.details')}: ${formatMembershipUserName(row.user)}` }}
           emptyMessage={t('admin.departmentUsers.empty', 'No current users.')}
           selection={{
             selectedKeys,

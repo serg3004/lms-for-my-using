@@ -53,6 +53,7 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
       columns={columns}
       rows={materials}
       keyExtractor={(m) => m.id}
+      responsiveDetails={{ label: t('courses.details'), expandLabel: (m) => `${t('courses.details')}: ${m.title}`, collapseLabel: (m) => `${t('courses.details')}: ${m.title}` }}
       emptyMessage={t('admin.materials.empty', 'No materials found for the selected course.')}
     />
   );

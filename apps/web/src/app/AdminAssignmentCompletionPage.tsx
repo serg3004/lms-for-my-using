@@ -277,6 +277,7 @@ export function AdminAssignmentCompletionPage() {
           ] satisfies Column<Assignment>[]}
           rows={loadState.data.assignments}
           keyExtractor={(a) => a.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (a) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, a.courseId)}`, collapseLabel: (a) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, a.courseId)}` }}
           emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
         />
       </AdminCard>
@@ -297,6 +298,7 @@ export function AdminAssignmentCompletionPage() {
           ] satisfies Column<Progress>[]}
           rows={loadState.data.progressItems}
           keyExtractor={(p) => p.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, p.courseId)}`, collapseLabel: (p) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, p.courseId)}` }}
           emptyMessage={t('admin.assignments.progressEmpty', 'No course progress found.')}
         />
       </AdminCard>
