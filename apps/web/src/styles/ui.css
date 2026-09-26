@@ -1961,6 +1961,10 @@
   animation: ds-row-expand var(--motion-duration-normal) var(--motion-ease-productive);
 }
 
+.ds-data-table__expanded--responsive {
+  display: none;
+}
+
 .ds-data-table__responsive-details {
   display: none;
   gap: 12px;
@@ -2053,6 +2057,10 @@
 
   .ds-data-table__responsive-details {
     display: grid;
+  }
+
+  .ds-data-table__expanded--responsive {
+    display: table-row;
   }
 
   .ds-data-table__responsive-details .td-actions,

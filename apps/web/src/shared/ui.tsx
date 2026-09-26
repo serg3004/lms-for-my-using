@@ -449,6 +449,16 @@ export function DataTable<T>({
   responsiveDetails,
 }: DataTableProps<T>) {
   const [responsiveExpandedKeys, setResponsiveExpandedKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (typeof window === 'undefined' || expansion) return undefined;
+    const mobileTable = window.matchMedia('(max-width: 860px)');
+    const collapseResponsiveRows = (event: MediaQueryListEvent) => {
+      if (!event.matches) setResponsiveExpandedKeys(new Set());
+    };
+    mobileTable.addEventListener('change', collapseResponsiveRows);
+    return () => mobileTable.removeEventListener('change', collapseResponsiveRows);
+  }, [expansion]);
+
   if (loading) {
     return <PageState message={loadingMessage} variant="loading" />;
   }
@@ -576,7 +586,7 @@ export function DataTable<T>({
                   {columns.map((col) => <td data-priority={col.priority} key={col.key}>{col.render(row)}</td>)}
                 </tr>,
                 expanded ? (
-                  <tr className="ds-data-table__expanded" key={`${key}-expanded`}>
+                  <tr className={`ds-data-table__expanded${expansion ? '' : ' ds-data-table__expanded--responsive'}`} key={`${key}-expanded`}>
                     <td colSpan={columnSpan}>
                       {expansion?.render(row)}
                       {hasResponsiveDetails ? (
