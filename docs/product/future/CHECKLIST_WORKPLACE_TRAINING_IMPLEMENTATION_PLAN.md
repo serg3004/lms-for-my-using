@@ -22,6 +22,16 @@
 
 ## 0.1. Прототип и то, как с ним работать
 
+**Исторический статус:** весь модуль (PR 285-308 + follow-up) полностью реализован и смёржен.
+Разделы 0.1/0.2 ниже описывают процесс, которому следовали *во время* реализации — они не
+активная инструкция для будущей работы. Прототип архивирован в `docs/archive/old-trackers/`
+(см. запись в `docs/archive/README.md`) именно потому, что перестал быть design-референцией:
+production UI уже построен и задокументирован в `docs/contracts/API_CONTRACTS.md`,
+`docs/contracts/CHECKLIST_SESSION_WORKFLOW.md` и `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`
+— любая будущая работа над этими экранами (например, layout-рефреш в
+`UI_REFRESH_IMPLEMENTATION_PLAN.md`) сверяется с ними и с реальным рендером, не с этим архивным
+файлом.
+
 Прототип — `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html`, теперь в `docs/archive/old-trackers/` (план полностью реализован, прототип архивирован), изначально лежал в `docs/product/future/`, **не в** `docs/lms-ui-prototypes-complete/`. Это было намеренно:
 
 - Он остаётся **единым файлом на 7 экранов/ролей**, не разбивается на отдельные HTML-файлы по образцу `docs/lms-ui-prototypes-complete/` (`1 файл = 1 экран`). Та конвенция и её manifest/governance (`docs/lms-ui-prototypes-complete/manifest.json`, `scripts/prototype-governance.test.mjs`) здесь **не применяются и не должны применяться** — файл сознательно не регистрируется в этом манифесте.
@@ -42,9 +52,9 @@
 
 Итог: **максимум один новый пункт меню за весь модуль** (`/manager/checklists`). Всё остальное — новые вкладки/под-маршруты внутри уже существующих разделов Checklist в каждой роли.
 
-## 0.2. Visual Product Contract
+## 0.2. Visual Product Contract (историческое, см. пометку выше)
 
-Прототип — основной UX/UI reference: навигация, композиция, плотность, иерархия, wizard, mobile observer, manager dashboard и report.
+Прототип был основным UX/UI reference на момент реализации: навигация, композиция, плотность, иерархия, wizard, mobile observer, manager dashboard и report.
 
 Визуальные правила:
 - переиспользовать shell/sidebar/header, buttons, forms, tables, badges, dialogs и typography проекта;
