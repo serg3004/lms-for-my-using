@@ -18,7 +18,9 @@ test('admin creates a department tree, edits, moves, archives and restores a dep
 
   await loginAsAdmin(page);
   await page.goto('/admin/departments');
-  await expect(page.getByRole('heading', { name: 'Подразделения' })).toBeVisible();
+  // UI refresh PR 312: every org-structure tab shares the section heading; the tab marks the page.
+  await expect(page.getByRole('heading', { name: 'Организационная структура', level: 1 })).toBeVisible();
+  await expect(page.getByRole('link', { name: /^Подразделения/ })).toHaveAttribute('aria-current', 'page');
 
   // Create a root department.
   await page.getByRole('button', { name: /Добавить корневое подразделение/ }).click();
