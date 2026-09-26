@@ -98,6 +98,20 @@ test('prototype manifest v2 separates design, implementation and parity state', 
   }
 });
 
+test('each route has at most one active design reference', () => {
+  const activeByRoute = new Map();
+  for (const page of manifest.pages) {
+    if (page.designStatus === 'retired') continue;
+    const existing = activeByRoute.get(page.route);
+    assert.equal(
+      existing,
+      undefined,
+      `route ${page.route} has two active prototypes: ${existing} and ${page.id}; retire or archive the superseded one`,
+    );
+    activeByRoute.set(page.route, page.id);
+  }
+});
+
 test('prototype governance docs keep design authority separate from implementation authority', () => {
   assert.ok(existsSync(prototypeReadmePath), 'prototype README must exist');
   assert.ok(existsSync(glossaryPath), 'terminology glossary must exist');

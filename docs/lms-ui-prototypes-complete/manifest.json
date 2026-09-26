@@ -107,20 +107,6 @@
       "languages": ["ru", "en", "kk", "zh"]
     },
     {
-      "id": "admin-organization",
-      "role": "admin",
-      "route": "/admin/organization",
-      "prototype": "admin/lms-admin-organization-verified.html",
-      "designStatus": "approved",
-      "implementationStatus": "unknown",
-      "productionRoute": null,
-      "parityStatus": "unknown",
-      "lastComparedAt": null,
-      "lastComparedSha": null,
-      "knownDifferences": [],
-      "languages": ["ru", "en", "kk", "zh"]
-    },
-    {
       "id": "admin-results",
       "role": "admin",
       "route": "/admin/results",
@@ -511,6 +497,187 @@
       "lastComparedSha": null,
       "knownDifferences": [],
       "languages": ["ru", "en", "kk", "zh"]
+    },
+    {
+      "id": "admin-org-departments",
+      "role": "admin",
+      "route": "/admin/departments",
+      "prototype": "admin/lms-admin-org-structure-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/departments",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Нет общей шапки «Организационная структура» и счётчиков на вкладках (PR 312)",
+        "Дерево без кода, аватаров руководителей и численности в строке; действия карточки выходят за край (PR 314)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-org-positions",
+      "role": "admin",
+      "route": "/admin/positions",
+      "prototype": "admin/lms-admin-org-structure-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/positions",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Нет общей шапки «Организационная структура» и счётчиков на вкладках (PR 312)",
+        "Таблица не в карточке прототипа; на mobile колонки сжимаются до букв (PR 311, PR 313)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-org-position-courses",
+      "role": "admin",
+      "route": "/admin/position-courses",
+      "prototype": "admin/lms-admin-org-structure-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/position-courses",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Нет общей шапки «Организационная структура» и счётчиков на вкладках (PR 312)",
+        "Требование и срок не в стиле прототипа; на mobile колонки сжимаются до букв (PR 311, PR 313)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-org-groups",
+      "role": "admin",
+      "route": "/admin/groups",
+      "prototype": "admin/lms-admin-org-structure-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/groups",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Нет общей шапки «Организационная структура» и счётчиков на вкладках (PR 312)",
+        "Нет плашки «Группа — не подразделение»; на mobile колонки сжимаются до букв (PR 311, PR 313)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-org-import-history",
+      "role": "admin",
+      "route": "/admin/org-structure-tools",
+      "prototype": "admin/lms-admin-org-structure-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/org-structure-tools",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Нет общей шапки «Организационная структура» и счётчиков на вкладках (PR 312)",
+        "Экран не локализован, автор истории — UUID (PR 315)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-checklist-sessions",
+      "role": "admin",
+      "route": "/admin/checklists/sessions",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/checklists/sessions",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Select статуса вместо вкладок, нет фильтров периода и наблюдателя, визард с поломанными строками выбора (PR 318)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-checklist-builder",
+      "role": "admin",
+      "route": "/admin/checklists",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/checklists",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Поле текста критерия шириной 0px; критерии не таблицей по группам (PR 317)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "instructor-checklist-conduct",
+      "role": "instructor",
+      "route": "/instructor/checklists",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/instructor/checklists",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Проведение встроено в страницу проверки под KPI; навигация не внизу (PR 319)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "learner-checklist-sessions",
+      "role": "learner",
+      "route": "/learner/checklists",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/learn/checklists",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Карточки и pill-фильтры вместо таблицы с вкладками; нет блока предыдущей обратной связи (PR 320)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "manager-checklist-analytics",
+      "role": "manager",
+      "route": "/manager/checklists",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/manager/checklists",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Одиночная KPI-карточка во втором ряду, подписи KPI отличаются (PR 321)"
+      ],
+      "languages": ["ru"]
+    },
+    {
+      "id": "admin-checklist-session-report",
+      "role": "admin",
+      "route": "/admin/checklists/sessions/:id",
+      "prototype": "admin/lms-checklist-sessions-refresh.html",
+      "designStatus": "approved",
+      "implementationStatus": "implemented",
+      "productionRoute": "/admin/checklists/sessions/:id",
+      "parityStatus": "diverged",
+      "lastComparedAt": "2026-09-26",
+      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "knownDifferences": [
+        "Сводка без KPI-карточек, «Пересчитать» во вкладке «История», нет результата по критериям (PR 322)"
+      ],
+      "languages": ["ru"]
     }
   ]
 }

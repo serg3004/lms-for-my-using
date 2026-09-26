@@ -14,6 +14,7 @@
 - `old-trackers/` — бывшие writable planning/status trackers, retired on DOC-08;
 - `old-trackers/CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` — прототип, служивший "Основанием" для `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`; архивирован после того, как весь 24-PR план (PR 285-308 + follow-up) был полностью реализован и смёржен — прототип больше не активная design-референция, только historical provenance;
 - `old-trackers/lms-admin-workplace-check-builder-verified.html` — прототип старой, отменённой архитектуры отдельной сущности `WorkplaceCheck`/`WorkplaceCheckInstance` (Template/Instance по образцу Assessment), описанной в `docs/archive/remediation/ENTITY_TECHSPEC_UNIMPLEMENTED_PRE_DOC12.md`, раздел 25.2 — этот подход superseded, действующее решение — расширение существующего Checklist-модуля, см. `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`;
+- `old-trackers/lms-admin-organization-verified.html` — прежний прототип `/admin/organization` («Организация / Структура компании»); заменён `docs/lms-ui-prototypes-complete/admin/lms-admin-org-structure-refresh.html` (план `docs/product/future/UI_REFRESH_IMPLEMENTATION_PLAN.md`), запись удалена из manifest;
 - active implementation work после миграции принадлежит GitHub Issues/Project;
 - owner/business decisions принадлежат `docs/status/OPEN_DECISIONS.md`.
 

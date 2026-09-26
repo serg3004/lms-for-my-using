@@ -1,10 +1,11 @@
 # План реализации: визуальный рефреш «Оргструктура» и «Чек-лист-сессии»
 
-**Основание:** прототипы `ORG_STRUCTURE_UI_REFRESH_PROTOTYPE.html` и
-`CHECKLIST_SESSIONS_UI_REFRESH_PROTOTYPE.html` (лежат в этой же папке). Они не зарегистрированы в
-CI-enforced `docs/lms-ui-prototypes-complete/manifest.json`. Это установленная практика для прототипов,
-которые обслуживают один конкретный product-план (так же был оформлен прототип
-`CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`).
+**Основание:** прототипы `docs/lms-ui-prototypes-complete/admin/lms-admin-org-structure-refresh.html`
+(оргструктура и shell приложения) и `docs/lms-ui-prototypes-complete/admin/lms-checklist-sessions-refresh.html`
+(чек-лист-сессии). Они зарегистрированы в `docs/lms-ui-prototypes-complete/manifest.json`: записи
+`admin-org-*` и `*-checklist-*` со статусом `parityStatus: diverged` и известными отличиями. Прежний
+прототип `/admin/organization` архивирован в `docs/archive/old-trackers/`. Правила работы с прототипами —
+`docs/lms-ui-prototypes-complete/README.md`.
 
 **Статус:** не начато. Ни один PR из этого плана ещё не открыт.
 
@@ -23,17 +24,27 @@ CI-enforced `docs/lms-ui-prototypes-complete/manifest.json`. Это устано
   (`apps/web/src/styles/global.css`). Ни один PR не меняет `tokens.css` и `defaultThemeSettings`.
 - Тёмная тема на HTML-страницах прототипов — только оформление просмотрщика. В приложении тёмной темы нет,
   этот план её не вводит.
-- Новый бэкенд — только эндпоинт счётчиков (PR 309). Остальные PR — только `apps/web`.
+- Новый бэкенд — эндпоинт счётчиков (PR 309) и хранение значений `contextFields` (PR 323). Остальные
+  PR — только `apps/web`.
 - Каждый PR меняет shared UI или layout, поэтому по `AGENTS.md` обязательны `pnpm test:visual` и
   `pnpm test:a11y`. Baselines обновляются только через `.github/workflows/update-visual-baselines.yml` из
-  ветки с актуальным `main`, изменённые PNG просматриваются до merge.
+  ветки с актуальным `main`.
+- Проверку изменённых эталонных PNG делает агент, который ведёт PR, а не владелец продукта. После
+  обновления baselines агент подтягивает коммит workflow, открывает каждый изменённый PNG и сравнивает его
+  с прежней версией из `git show HEAD~1:<путь>`. В описании PR он перечисляет, какие экраны изменились
+  и почему. Если изменился экран, который PR не трогал, это регрессия: агент исправляет её до merge, а не
+  принимает новый baseline.
+- После реализации агент сравнивает свои экраны с прототипом и обновляет их записи в
+  `docs/lms-ui-prototypes-complete/manifest.json`: `parityStatus: aligned`, `lastComparedAt`,
+  `lastComparedSha`, очищенные `knownDifferences`. Если отличие осталось сознательно, оно остаётся в
+  `knownDifferences` с причиной.
 
-## 0.1. Известный функциональный пробел вне scope
+## 0.1. Функциональный пробел, который закрывает этот план
 
-`ChecklistBuilder` сохраняет определения `contextFields` листа, но `ChecklistSessionConduct.tsx` их не
-рендерит и не собирает. Это функциональный пробел чек-лист-модуля (уже отмечен в
-`CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`), а не визуальное расхождение. Этот план его не
-закрывает.
+`ChecklistBuilder` сохраняет определения `contextFields` листа («Общая информация»: текст, многострочный
+текст, дата; обязательное или нет), но `ChecklistSessionConduct.tsx` их не рендерит, а значения негде
+хранить. `CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 297) оставил это как gap «для
+будущего PR». Этот план закрывает его в PR 323.
 
 ## 0.2. Текущее состояние оргструктуры (проверено 2026-09-26 на `main` `654908d`)
 
@@ -224,7 +235,7 @@ CI-enforced `docs/lms-ui-prototypes-complete/manifest.json`. Это устано
 
 ## 0.3. Текущее состояние чек-лист-сессий (проверено 2026-09-26 на `main` `654908d`)
 
-Все 6 экранов прототипа `CHECKLIST_SESSIONS_UI_REFRESH_PROTOTYPE.html` отрендерены локально под
+Все 6 экранов прототипа `lms-checklist-sessions-refresh.html` отрендерены локально под
 admin, instructor, learner и manager на тестовом чек-листе с группами критериев и сессиями в статусах
 «запланирована», «в процессе» и «завершена». Визард создания сравнивался как диалог экрана сессий.
 
@@ -396,9 +407,42 @@ Shell (PR 310) и мобильные таблицы (PR 311) покрывают 
 - [ ] пересчёт с причиной работает из шапки, ревизии видны в истории;
 - [ ] `AdminChecklistSessionReportPage.spec.tsx` обновлён.
 
+## PR 323 — Контекстные поля сессии (`contextFields`)
+
+**Цель:** поля «Общая информация» из билдера заполняются при проведении, сохраняются и видны в отчёте.
+
+**Зависимости:** PR 319.
+
+**Что необходимо сделать:**
+- Prisma: хранение значений на сессии, например `ChecklistSession.contextValues Json?` — объект
+  `{ [fieldId]: string }`. Миграция только добавляет nullable-колонку; существующие сессии не трогаются.
+- Определения полей фиксируются на момент старта сессии. Если админ изменит поля листа после начала
+  сессии, сохранённые значения не должны терять подписи. Способ (снэпшот определений в сессии или
+  ссылка по `id` с сохранением подписи) описать в PR.
+- API: `PATCH /checklist-sessions/:id/context` с `version` и тем же 409-контрактом, что у feedback.
+  Разрешено в статусах `in_progress` и `paused`. Проверка: `id` поля существует в листе, значение
+  подходит типу (`date` — ISO-дата), длина ограничена.
+- Завершение сессии (`complete`) отклоняется, если не заполнено обязательное контекстное поле, — на
+  сервере, а не только в UI.
+- RBAC как у проведения (`checklistSessionsRun`). Значения видят те же роли, что видят сессию; для
+  сотрудника — по тому же правилу `feedbackVisibility`.
+- UI проведения: первый шаг «Общая информация» перед критериями, поля по типу, обязательные помечены,
+  «Далее» блокируется, пока обязательные пустые.
+- Отчёт по сессии: блок «Общая информация» во вкладке «Сводка».
+- Обновить `docs/contracts/API_CONTRACTS.md`, `docs/contracts/API_RBAC_MATRIX.md`, перегенерировать
+  `docs/generated` через `pnpm docs:generate`.
+
+**Критерии готовности:**
+- [ ] значения сохраняются и видны в отчёте после перезагрузки;
+- [ ] без обязательного поля `complete` возвращает 400;
+- [ ] stale `version` даёт 409, как у остальных мутаций сессии;
+- [ ] database-тест миграции и сервиса, e2e сценарий проведения с контекстными полями;
+- [ ] `pnpm docs:generate:check` и `pnpm docs:consistency:test` зелёные.
+
 # Definition of Done
 
-- [ ] PR 309–322 смёржены;
+- [ ] PR 309–323 смёржены;
 - [ ] ни один PR не менял `apps/web/src/styles/tokens.css` или `defaultThemeSettings`;
-- [ ] обязательный CI зелёный на каждом PR, visual baselines обновлены через workflow и просмотрены;
+- [ ] обязательный CI зелёный на каждом PR, visual baselines обновлены через workflow и просмотрены агентом;
+- [ ] у всех записей плана в manifest `parityStatus: aligned` или сознательные отличия в `knownDifferences`;
 - [ ] `pnpm docs:consistency:test` зелёный.
