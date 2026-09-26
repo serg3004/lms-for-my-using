@@ -304,10 +304,11 @@ export function AdminDepartmentUsersPage() {
   ];
 
   const columns: Column<DepartmentUserRow>[] = [
-    { key: 'name', label: t('admin.departmentUsers.colName', 'Name'), render: (row) => formatMembershipUserName(row.user) },
+    { key: 'name', label: t('admin.departmentUsers.colName', 'Name'), priority: 'primary', render: (row) => formatMembershipUserName(row.user) },
     { key: 'email', label: t('admin.departmentUsers.colEmail', 'Email'), render: (row) => row.user.email, priority: 'secondary' },
     {
       key: 'membershipType',
+      priority: 'secondary',
       label: t('admin.departmentUsers.colMembership', 'Membership'),
       render: (row) => (
         <Badge variant="neutral">{row.isPrimary ? t('admin.departmentUsers.primary', 'Primary') : t('admin.departmentUsers.additional', 'Additional')}</Badge>
@@ -315,6 +316,7 @@ export function AdminDepartmentUsersPage() {
     },
     {
       key: 'actions',
+      priority: 'secondary',
       label: t('admin.departmentUsers.colActions', 'Actions'),
       render: (row) => (
         <span className="admin-table-actions">
@@ -362,6 +364,7 @@ export function AdminDepartmentUsersPage() {
           columns={columns}
           rows={rows}
           keyExtractor={(row) => row.id}
+          responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${formatMembershipUserName(row.user)}`, collapseLabel: (row) => `${t('courses.details')}: ${formatMembershipUserName(row.user)}` }}
           emptyMessage={t('admin.departmentUsers.empty', 'No current users.')}
           selection={{
             selectedKeys,

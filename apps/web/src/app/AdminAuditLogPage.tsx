@@ -148,6 +148,7 @@ export function AdminAuditLogPage() {
         columns={columns}
         rows={entries}
         keyExtractor={(row) => row.id}
+        responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${getActionLabel(row.action, t)}`, collapseLabel: (row) => `${t('courses.details')}: ${getActionLabel(row.action, t)}` }}
         emptyMessage={t('admin.auditLog.empty', 'No audit events match these filters.')}
       />
 

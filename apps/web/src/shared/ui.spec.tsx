@@ -258,9 +258,15 @@ describe('design system — Spinner', () => {
 describe('design system — DataTable', () => {
   type Item = { id: string; name: string; score: number };
 
+  const responsiveDetails = {
+    label: 'More details',
+    expandLabel: (row: Item) => `More details: ${row.name}`,
+    collapseLabel: (row: Item) => `More details: ${row.name}`,
+  };
+
   const columns = [
-    { key: 'name', label: 'Name', render: (row: Item) => row.name },
-    { key: 'score', label: 'Score', render: (row: Item) => row.score },
+    { key: 'name', label: 'Name', priority: 'primary' as const, render: (row: Item) => row.name },
+    { key: 'score', label: 'Score', priority: 'secondary' as const, render: (row: Item) => row.score },
   ];
 
   it('renders column headers and row data', () => {
@@ -270,12 +276,12 @@ describe('design system — DataTable', () => {
     ];
 
     const html = renderToStaticMarkup(
-      <DataTable label="Assessment results" columns={columns} rows={rows} keyExtractor={(r) => r.id} />,
+      <DataTable label="Assessment results" columns={columns} rows={rows} keyExtractor={(r) => r.id} responsiveDetails={responsiveDetails} />,
     );
 
-    expect(html).toContain('<th scope="col">Name</th>');
+    expect(html).toContain('<th data-priority="primary" scope="col">Name</th>');
     expect(html).toContain('aria-label="Assessment results"');
-    expect(html).toContain('<th scope="col">Score</th>');
+    expect(html).toContain('<th data-priority="secondary" scope="col">Score</th>');
     expect(html).toContain('Alice');
     expect(html).toContain('90');
     expect(html).toContain('Bob');
@@ -283,7 +289,7 @@ describe('design system — DataTable', () => {
 
   it('renders empty state when rows array is empty', () => {
     const html = renderToStaticMarkup(
-      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} emptyMessage="Nothing here." />,
+      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} responsiveDetails={responsiveDetails} emptyMessage="Nothing here." />,
     );
 
     expect(html).toContain('Nothing here.');
@@ -292,7 +298,7 @@ describe('design system — DataTable', () => {
 
   it('uses default empty message when none provided', () => {
     const html = renderToStaticMarkup(
-      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} />,
+      <DataTable label="Assessment results" columns={columns} rows={[]} keyExtractor={(r) => r.id} responsiveDetails={responsiveDetails} />,
     );
 
     expect(html).toContain('No items.');
@@ -308,10 +314,10 @@ describe('design system — DataTable', () => {
         columns={operationalColumns}
         density="dense"
         keyExtractor={(row) => row.id}
+        responsiveDetails={responsiveDetails}
         label="Assessment results"
         onSortChange={vi.fn()}
         rows={[{ id: '1', name: 'Alice', score: 90 }]}
-        responsiveDetails={{ label: 'More details' }}
         sort={{ key: 'name', direction: 'ascending' }}
       />,
     );
@@ -322,8 +328,23 @@ describe('design system — DataTable', () => {
     expect(html).toContain('data-priority="secondary"');
     expect(html).toContain('ds-data-table__sort');
     expect(html).toContain('ds-data-table__details-control');
-    expect(html).toContain('aria-label="Expand row 1"');
+    expect(html).toContain('aria-label="More details: Alice"');
     expect(html).toContain('More details');
+  });
+
+  it('always exposes secondary columns through the mobile details control', () => {
+    const html = renderToStaticMarkup(
+      <DataTable
+        columns={columns}
+        keyExtractor={(row) => row.id}
+        responsiveDetails={responsiveDetails}
+        label="Assessment results"
+        rows={[{ id: '1', name: 'Alice', score: 90 }]}
+      />,
+    );
+
+    expect(html).toContain('ds-data-table__details-control');
+    expect(html).toContain('aria-label="More details: Alice"');
   });
 
   it('renders controlled selection, batch actions and expanded row content', () => {
@@ -338,6 +359,7 @@ describe('design system — DataTable', () => {
           render: (row) => <p>Details for {row.name}</p>,
         }}
         keyExtractor={(row) => row.id}
+        responsiveDetails={responsiveDetails}
         label="Assessment results"
         rows={rows}
         selection={{
@@ -353,12 +375,13 @@ describe('design system — DataTable', () => {
     expect(html).toContain('aria-label="Select Alice"');
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('Details for Alice');
+    expect(html).toContain('<dt>Score</dt>');
     expect(html).toContain('colSpan="4"');
   });
 
   it('uses the shared loading state instead of rendering stale rows', () => {
     const html = renderToStaticMarkup(
-      <DataTable label="Assessment results" columns={columns} rows={[{ id: '1', name: 'Alice', score: 90 }]} keyExtractor={(row) => row.id} loading loadingMessage="Loading results" />,
+      <DataTable label="Assessment results" columns={columns} rows={[{ id: '1', name: 'Alice', score: 90 }]} keyExtractor={(row) => row.id} responsiveDetails={responsiveDetails} loading loadingMessage="Loading results" />,
     );
 
     expect(html).toContain('aria-busy="true"');

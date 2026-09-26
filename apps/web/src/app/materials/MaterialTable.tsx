@@ -36,15 +36,16 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
   const columns: Column<MaterialRow>[] = [
     {
       key: 'title',
+      priority: 'primary',
       label: t('admin.materials.col.title', 'Title'),
       render: (material) => material.fileUrl
         ? <a href={material.fileUrl} target="_blank" rel="noreferrer">{material.title}</a>
         : material.title,
     },
-    { key: 'kind', label: t('admin.materials.col.kind', 'Kind'), render: (m) => <StatusBadge>{kindLabels[m.kind]}</StatusBadge> },
-    { key: 'status', label: t('admin.materials.col.status', 'Status'), render: (m) => <AdminStatusSelect value={m.status} statuses={['active', 'archived']} labels={statusLabels} onChange={(status) => onStatusChange(m.id, status)} /> },
-    { key: 'size', label: t('admin.materials.col.size', 'Size'), render: (m) => formatSize(m.sizeBytes, t('admin.materials.unknownSize', '—')) },
-    { key: 'actions', label: '', render: (m) => <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(m.id)}>{t('admin.materials.edit', 'Edit')}</button> },
+    { key: 'kind', label: t('admin.materials.col.kind', 'Kind'), priority: 'secondary', render: (m) => <StatusBadge>{kindLabels[m.kind]}</StatusBadge> },
+    { key: 'status', label: t('admin.materials.col.status', 'Status'), priority: 'primary', render: (m) => <AdminStatusSelect value={m.status} statuses={['active', 'archived']} labels={statusLabels} onChange={(status) => onStatusChange(m.id, status)} /> },
+    { key: 'size', label: t('admin.materials.col.size', 'Size'), priority: 'secondary', render: (m) => formatSize(m.sizeBytes, t('admin.materials.unknownSize', '—')) },
+    { key: 'actions', label: '', priority: 'secondary', render: (m) => <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(m.id)}>{t('admin.materials.edit', 'Edit')}</button> },
   ];
   return (
     <DataTable
@@ -52,6 +53,7 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
       columns={columns}
       rows={materials}
       keyExtractor={(m) => m.id}
+      responsiveDetails={{ label: t('courses.details'), expandLabel: (m) => `${t('courses.details')}: ${m.title}`, collapseLabel: (m) => `${t('courses.details')}: ${m.title}` }}
       emptyMessage={t('admin.materials.empty', 'No materials found for the selected course.')}
     />
   );

@@ -56,7 +56,7 @@ export function ManagerOverduePage() {
     { key: 'course', label: t('manager.overdue.columnCourse'), priority: 'primary', render: (assignment) => assignment.courseTitle },
     { key: 'dueDate', label: t('manager.overdue.columnDueDate'), priority: 'secondary', render: (assignment) => formatDate(assignment.dueAt) },
     { key: 'status', label: t('manager.overdue.columnStatus'), priority: 'secondary', render: () => <Badge variant="overdue">{t('manager.overdue.status')}</Badge> },
-    { key: 'action', label: t('manager.overdue.columnAction'), priority: 'primary', render: (assignment) => <button disabled={sending} onClick={() => { void remind([assignment.assignmentId]); }} type="button">{sending ? t('manager.overdue.sending') : t('manager.overdue.remind')}</button> },
+    { key: 'action', label: t('manager.overdue.columnAction'), priority: 'secondary', render: (assignment) => <button disabled={sending} onClick={() => { void remind([assignment.assignmentId]); }} type="button">{sending ? t('manager.overdue.sending') : t('manager.overdue.remind')}</button> },
   ];
   return (
     <ManagerPageLayout>

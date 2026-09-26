@@ -14,14 +14,14 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   t: TFunction;
 }) {
   const columns = [
-    { key: 'title', label: t('admin.checklists.col.title', 'Title'), render: (checklist) => checklist.title },
-    { key: 'items', label: t('admin.checklists.col.items', 'Items'), render: (checklist) => checklist.items.length },
-    { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
-    { key: 'status', label: t('admin.checklists.col.status', 'Status'), render: (checklist) => <AdminStatusSelect value={checklist.status} statuses={CHECKLIST_STATUSES} labels={statusLabels} onChange={(status) => void onStatusChange(checklist, status)} /> },
-    { key: 'actions', label: '', render: (checklist) => <div className="td-actions">
+    { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', render: (checklist) => checklist.title },
+    { key: 'items', label: t('admin.checklists.col.items', 'Items'), priority: 'secondary', render: (checklist) => checklist.items.length },
+    { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
+    { key: 'status', label: t('admin.checklists.col.status', 'Status'), priority: 'primary', render: (checklist) => <AdminStatusSelect value={checklist.status} statuses={CHECKLIST_STATUSES} labels={statusLabels} onChange={(status) => void onStatusChange(checklist, status)} /> },
+    { key: 'actions', label: '', priority: 'secondary', render: (checklist) => <div className="td-actions">
       <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(checklist)}>{t('admin.checklists.edit', 'Edit')}</button>
       <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => onDelete(checklist)}>{t('admin.checklists.delete', 'Delete')}</button>
     </div> },
   ] satisfies Column<ChecklistSummary>[];
-  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows} keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} />;
+  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows} keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} responsiveDetails={{ label: t('courses.details'), expandLabel: (checklist) => `${t('courses.details')}: ${checklist.title}`, collapseLabel: (checklist) => `${t('courses.details')}: ${checklist.title}` }} />;
 }
