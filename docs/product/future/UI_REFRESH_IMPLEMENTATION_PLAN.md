@@ -2,12 +2,12 @@
 
 **Основание:** прототипы `ORG_STRUCTURE_UI_REFRESH_PROTOTYPE.html` и
 `CHECKLIST_SESSIONS_UI_REFRESH_PROTOTYPE.html` (лежат в этой же папке); не зарегистрированы в
-CI-enforced `docs/lms-ui-prototypes-complete/manifest.json` — тот же неформальный статус, что и у
-уже существующего в этой же папке `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html`, который
-использовался как "Основание" для полностью выполненного `CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`
-без регистрации в manifest — это установленная практика для прототипов, обслуживающих один
-конкретный product-план, в отличие от manifest'а, который описывает полный набор экранов
-приложения.
+CI-enforced `docs/lms-ui-prototypes-complete/manifest.json` — тот же неформальный статус, что был
+у `CHECKLIST_WORKPLACE_TRAINING_PROTOTYPE_V3.html` (использовался как "Основание" для полностью
+выполненного `CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` без регистрации в manifest;
+теперь архивирован в `docs/archive/old-trackers/` после реализации плана) — это установленная
+практика для прототипов, обслуживающих один конкретный product-план, в отличие от manifest'а,
+который описывает полный набор экранов приложения.
 
 **Статус:** не начато. Ни один PR из этого плана ещё не открыт.
 
