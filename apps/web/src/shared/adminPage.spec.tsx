@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { AdminCard, AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, OrgStructurePageHeader, OrgStructureTabs } from './adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, AdminSectionCard, ConfirmDialog, FormField, OrgStructurePageHeader, OrgStructureTabs } from './adminPage.js';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin' },
@@ -147,6 +147,31 @@ describe('organizational structure section header (UI refresh PR 312)', () => {
 
     expect(html.match(/admin-org-tabs__count/g)).toHaveLength(5);
     for (const count of [11, 22, 33, 44, 55]) expect(html).toContain(`>${count}</span>`);
+  });
+});
+
+describe('AdminSectionCard (UI refresh PR 313)', () => {
+  it('labels the section by its title and renders subtitle, action, toolbar and content', () => {
+    const html = renderToStaticMarkup(
+      <AdminSectionCard title="Position catalog" subtitle="One source" action={<button type="button">Add</button>} toolbar={<input aria-label="Search" />}>
+        <table />
+      </AdminSectionCard>,
+    );
+
+    const titleId = html.match(/<h2 id="([^"]+)">Position catalog<\/h2>/)?.[1];
+    expect(titleId).toBeTruthy();
+    expect(html).toContain(`<section aria-labelledby="${titleId}" class="admin-section-card">`);
+    expect(html).toContain('<p>One source</p>');
+    expect(html).toContain('<button type="button">Add</button>');
+    expect(html).toContain('class="admin-section-card__toolbar"><input aria-label="Search"/>');
+    expect(html).toContain('<table></table>');
+  });
+
+  it('omits the subtitle and toolbar when they are not given', () => {
+    const html = renderToStaticMarkup(<AdminSectionCard title="Groups"><p>Rows</p></AdminSectionCard>);
+
+    expect(html).not.toContain('admin-section-card__toolbar');
+    expect(html).not.toContain('<p></p>');
   });
 });
 

@@ -11,6 +11,7 @@ import {
   computeGroupStats,
   formatManagerCell,
   formatUserName,
+  managerNames,
   initialCreateFormState,
   initialEditFormState,
   resolveGroupSaveErrorMessage,
@@ -18,9 +19,9 @@ import {
   validateGroupName,
 } from './admin-groups/model.js';
 import { slugify } from '../shared/slugify.js';
-import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, AdminSectionCard, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
-import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import { Avatar, Button, DataTable, EmptyState, InlineFeedback, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { UserSummary } from '../shared/api/types.js';
 
 const USER_SEARCH_DEBOUNCE_MS = 300;
@@ -45,6 +46,21 @@ type AdminGroupsData = { organizationId: string; groups: Group[]; employeeCount:
 type UserSearchState = { term: string; status: 'idle' | 'loading' | 'error'; results: UserSummary[] };
 
 const IDLE_USER_SEARCH: UserSearchState = { term: '', status: 'idle', results: [] };
+
+/** Manager initials next to their names; the avatars are decorative because the names are visible. */
+function GroupManagersCell({ group }: { group: Group }) {
+  if (group.managers.length === 0) return <>{formatManagerCell(group)}</>;
+  return (
+    <span className="admin-person-cell">
+      <span aria-hidden="true" className="admin-person-cell__avatars">
+        {group.managers.slice(0, 3).map(({ manager }) => (
+          <Avatar firstName={manager.firstName} key={manager.id} lastName={manager.lastName} size="sm" />
+        ))}
+      </span>
+      <span>{managerNames(group)}</span>
+    </span>
+  );
+}
 
 /** Debounced server-side user search — replaces prefetching the whole org's users into one dropdown. */
 function useUserSearch(): [UserSearchState, (term: string) => void] {
@@ -349,13 +365,9 @@ export function AdminGroupsPage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
-      <OrgStructurePageHeader current="groups"
-        action={
-          <Button variant="primary" type="button" onClick={openCreateDialog}>
-            + {t('admin.groups.add', 'Add group')}
-          </Button>
-        }
-      />
+      <OrgStructurePageHeader current="groups" />
+
+      <InlineFeedback className="admin-org-note">{t('admin.groups.note', 'A group is a learning team or cohort, not a staff department. Group membership does not affect managers or the organizational structure.')}</InlineFeedback>
 
       <StatsGrid>
         <StatCard label={t('admin.groups.statUnits', 'Groups')} value={stats.groups} />
@@ -364,32 +376,42 @@ export function AdminGroupsPage() {
         <StatCard label={t('admin.groups.statLocations', 'Locations')} value={stats.locations} />
       </StatsGrid>
 
-      {groups.length === 0 ? (
-        <EmptyState message={t('admin.groups.empty', 'No groups found.')} />
-      ) : (
-        <DataTable<Group>
-          label={t('admin.groups.title', 'Groups')}
-          columns={[
-            { key: 'name', label: t('admin.groups.colUnit', 'Group'), priority: 'primary', render: (g) => g.name },
-            { key: 'manager', label: t('admin.groups.colHead', 'Manager'), priority: 'secondary', render: (g) => formatManagerCell(g) },
-            { key: 'members', label: t('admin.groups.colPeople', 'Members'), priority: 'secondary', render: (g) => g._count.members },
-            { key: 'actions', label: '', priority: 'secondary', render: (g) => (
-              <span className="admin-table-actions">
-                <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openMembersDialog(g)}>
-                  {t('admin.groups.members', 'Members')}
-                </button>
-                <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(g)}>
-                  {t('admin.groups.edit', 'Edit')}
-                </button>
-              </span>
-            )},
-          ] satisfies Column<Group>[]}
-          rows={groups}
-          keyExtractor={(g) => g.id}
-          responsiveDetails={{ label: t('courses.details'), expandLabel: (g) => `${t('courses.details')}: ${g.name}`, collapseLabel: (g) => `${t('courses.details')}: ${g.name}` }}
-          emptyMessage={t('admin.groups.empty', 'No groups found.')}
-        />
-      )}
+      <AdminSectionCard
+        title={t('admin.groups.cardTitle', 'Learning groups')}
+        subtitle={t('admin.groups.cardSubtitle', { count: groups.length, defaultValue: '{{count}} groups · for assigning courses to a cohort' })}
+        action={
+          <Button variant="primary" type="button" onClick={openCreateDialog}>
+            + {t('admin.groups.add', 'Add group')}
+          </Button>
+        }
+      >
+        {groups.length === 0 ? (
+          <EmptyState message={t('admin.groups.empty', 'No groups found.')} />
+        ) : (
+          <DataTable<Group>
+            label={t('admin.groups.title', 'Groups')}
+            columns={[
+              { key: 'name', label: t('admin.groups.colUnit', 'Group'), priority: 'primary', render: (g) => <strong>{g.name}</strong> },
+              { key: 'members', label: t('admin.groups.colPeople', 'Members'), priority: 'primary', align: 'end', render: (g) => g._count.members },
+              { key: 'manager', label: t('admin.groups.colHead', 'Manager'), priority: 'secondary', render: (g) => <GroupManagersCell group={g} /> },
+              { key: 'actions', label: '', priority: 'secondary', render: (g) => (
+                <span className="admin-table-actions">
+                  <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openMembersDialog(g)}>
+                    {t('admin.groups.members', 'Members')}
+                  </button>
+                  <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(g)}>
+                    {t('admin.groups.edit', 'Edit')}
+                  </button>
+                </span>
+              )},
+            ] satisfies Column<Group>[]}
+            rows={groups}
+            keyExtractor={(g) => g.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (g) => `${t('courses.details')}: ${g.name}`, collapseLabel: (g) => `${t('courses.details')}: ${g.name}` }}
+            emptyMessage={t('admin.groups.empty', 'No groups found.')}
+          />
+        )}
+      </AdminSectionCard>
 
       <dialog ref={createDialogRef} className="admin-dialog" onClose={() => setShowCreate(false)}>
         <header className="admin-dialog__header">

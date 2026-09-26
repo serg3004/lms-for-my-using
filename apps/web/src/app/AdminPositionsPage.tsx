@@ -13,9 +13,9 @@ import {
 } from '../shared/api/positions.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageLayout, AdminSectionCard, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
-import { Button, DataTable, EmptyState, PageState, Pagination, Toolbar, type Column } from '../shared/ui.js';
+import { Badge, Button, DataTable, EmptyState, PageState, Pagination, Toolbar, type Column } from '../shared/ui.js';
 
 const PAGE_SIZE = 20;
 
@@ -191,83 +191,88 @@ export function AdminPositionsPage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
-      <OrgStructurePageHeader current="positions"
+      <OrgStructurePageHeader current="positions" />
+
+      <AdminSectionCard
+        title={t('admin.positions.cardTitle', 'Position catalog')}
+        subtitle={t('admin.positions.cardSubtitle', 'One source of positions for every department')}
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
             + {t('admin.positions.add', 'Add position')}
           </Button>
         }
-      />
-
-      <Toolbar
-        left={
-          <>
-            <label className="admin-users-filter">
-              <span>{t('admin.positions.searchLabel', 'Search')}</span>
-              <input
-                type="search"
-                value={search}
-                placeholder={t('admin.positions.searchPlaceholder', 'Search by code or title…')}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              />
-            </label>
-            <label className="admin-users-filter">
-              <span>{t('admin.positions.statusLabel', 'Status')}</span>
-              <select value={status} onChange={(e) => { setStatus(e.target.value as PositionStatus | ''); setPage(1); }}>
-                <option value="">{t('admin.positions.statusAll', 'All statuses')}</option>
-                <option value="active">{t('admin.positions.statusActive', 'Active')}</option>
-                <option value="archived">{t('admin.positions.statusArchived', 'Archived')}</option>
-              </select>
-            </label>
-          </>
+        toolbar={
+          <Toolbar
+            left={
+              <>
+                <label className="admin-users-filter">
+                  <span>{t('admin.positions.searchLabel', 'Search')}</span>
+                  <input
+                    type="search"
+                    value={search}
+                    placeholder={t('admin.positions.searchPlaceholder', 'Search by code or title…')}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  />
+                </label>
+                <label className="admin-users-filter">
+                  <span>{t('admin.positions.statusLabel', 'Status')}</span>
+                  <select value={status} onChange={(e) => { setStatus(e.target.value as PositionStatus | ''); setPage(1); }}>
+                    <option value="">{t('admin.positions.statusAll', 'All statuses')}</option>
+                    <option value="active">{t('admin.positions.statusActive', 'Active')}</option>
+                    <option value="archived">{t('admin.positions.statusArchived', 'Archived')}</option>
+                  </select>
+                </label>
+              </>
+            }
+          />
         }
-      />
-
-      {items.length === 0 ? (
-        <EmptyState message={t('admin.positions.empty', 'No positions found.')} />
-      ) : (
-        <DataTable<Position>
-          label={t('admin.positions.title', 'Positions')}
-          columns={[
-            { key: 'code', label: t('admin.positions.colCode', 'Code'), priority: 'secondary', render: (p) => p.code },
-            { key: 'title', label: t('admin.positions.colTitle', 'Title'), priority: 'primary', render: (p) => p.title },
-            {
-              key: 'status',
-              priority: 'primary',
-              label: t('admin.positions.colStatus', 'Status'),
-              render: (p) =>
-                p.status === 'archived'
-                  ? t('admin.positions.statusArchived', 'Archived')
-                  : t('admin.positions.statusActive', 'Active'),
-            },
-            {
-              key: 'actions',
-              priority: 'secondary',
-              label: '',
-              render: (p) => (
-                <span className="admin-table-actions">
-                  <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(p)}>
-                    {t('admin.positions.edit', 'Edit')}
-                  </button>
-                  {p.status === 'active' ? (
-                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleArchive(p)}>
-                      {t('admin.positions.archive', 'Archive')}
+      >
+        {items.length === 0 ? (
+          <EmptyState message={t('admin.positions.empty', 'No positions found.')} />
+        ) : (
+          <DataTable<Position>
+            label={t('admin.positions.title', 'Positions')}
+            columns={[
+              { key: 'title', label: t('admin.positions.colTitle', 'Title'), priority: 'primary', render: (p) => <strong>{p.title}</strong> },
+              { key: 'code', label: t('admin.positions.colCode', 'Code'), priority: 'secondary', render: (p) => <code className="admin-code">{p.code}</code> },
+              {
+                key: 'status',
+                priority: 'primary',
+                label: t('admin.positions.colStatus', 'Status'),
+                render: (p) =>
+                  p.status === 'archived'
+                    ? <Badge variant="neutral">{t('admin.positions.statusArchived', 'Archived')}</Badge>
+                    : <Badge variant="accent">{t('admin.positions.statusActive', 'Active')}</Badge>,
+              },
+              {
+                key: 'actions',
+                priority: 'secondary',
+                label: '',
+                render: (p) => (
+                  <span className="admin-table-actions">
+                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEditDialog(p)}>
+                      {t('admin.positions.edit', 'Edit')}
                     </button>
-                  ) : (
-                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleRestore(p)}>
-                      {t('admin.positions.restore', 'Restore')}
-                    </button>
-                  )}
-                </span>
-              ),
-            },
-          ] satisfies Column<Position>[]}
-          rows={items}
-          keyExtractor={(p) => p.id}
-          responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${p.title}`, collapseLabel: (p) => `${t('courses.details')}: ${p.title}` }}
-          emptyMessage={t('admin.positions.empty', 'No positions found.')}
-        />
-      )}
+                    {p.status === 'active' ? (
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleArchive(p)}>
+                        {t('admin.positions.archive', 'Archive')}
+                      </button>
+                    ) : (
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleRestore(p)}>
+                        {t('admin.positions.restore', 'Restore')}
+                      </button>
+                    )}
+                  </span>
+                ),
+              },
+            ] satisfies Column<Position>[]}
+            rows={items}
+            keyExtractor={(p) => p.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${p.title}`, collapseLabel: (p) => `${t('courses.details')}: ${p.title}` }}
+            emptyMessage={t('admin.positions.empty', 'No positions found.')}
+          />
+        )}
+      </AdminSectionCard>
 
       <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
 

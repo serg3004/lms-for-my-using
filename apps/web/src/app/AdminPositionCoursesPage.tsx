@@ -15,8 +15,8 @@ import {
 import { listPositions, type Position } from '../shared/api/positions.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminPageLayout, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
-import { Button, DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
+import { AdminPageLayout, AdminSectionCard, FormField, OrgStructurePageHeader, type AdminNavItem } from '../shared/adminPage.js';
+import { Badge, Button, DataTable, EmptyState, PageState, type Column } from '../shared/ui.js';
 import type { CourseSummary } from '../shared/api/types.js';
 
 type AdminPositionCoursesData = { positionCourses: PositionCourse[]; positions: Position[]; courses: CourseSummary[] };
@@ -142,76 +142,81 @@ export function AdminPositionCoursesPage() {
 
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
-      <OrgStructurePageHeader current="positionCourses"
+      <OrgStructurePageHeader current="positionCourses" />
+
+      <AdminSectionCard
+        title={t('admin.positionCourses.cardTitle', 'Training requirements by position')}
+        subtitle={t('admin.positionCourses.cardSubtitle', 'Which courses each position must complete')}
         action={
           <Button variant="primary" type="button" onClick={openCreateDialog}>
             + {t('admin.positionCourses.add', 'Add requirement')}
           </Button>
         }
-      />
-
-      {positionCourses.length === 0 ? (
-        <EmptyState message={t('admin.positionCourses.empty', 'No position course requirements found.')} />
-      ) : (
-        <DataTable<PositionCourse>
-          label={t('admin.positionCourses.title', 'Position course requirements')}
-          columns={[
-            { key: 'position', label: t('admin.positionCourses.colPosition', 'Position'), priority: 'primary', render: (pc) => positionTitle(positions, pc.positionId) },
-            { key: 'course', label: t('admin.positionCourses.colCourse', 'Course'), priority: 'primary', render: (pc) => courseTitle(courses, pc.courseId) },
-            {
-              key: 'requirement',
-              priority: 'secondary',
-              label: t('admin.positionCourses.colRequirement', 'Requirement'),
-              render: (pc) =>
-                pc.requirement === 'REQUIRED'
-                  ? t('admin.positionCourses.required', 'Required')
-                  : t('admin.positionCourses.optional', 'Optional'),
-            },
-            {
-              key: 'dueDays',
-              priority: 'secondary',
-              label: t('admin.positionCourses.colDueDays', 'Due (days)'),
-              render: (pc) => pc.dueDays ?? t('admin.positionCourses.noDueDays', '—'),
-            },
-            {
-              key: 'status',
-              priority: 'primary',
-              label: t('admin.positionCourses.colStatus', 'Status'),
-              render: (pc) =>
-                pc.status === 'archived'
-                  ? t('admin.positionCourses.statusArchived', 'Archived')
-                  : t('admin.positionCourses.statusActive', 'Active'),
-            },
-            {
-              key: 'actions',
-              priority: 'secondary',
-              label: '',
-              render: (pc) => (
-                <span className="admin-table-actions">
-                  <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleToggleRequirement(pc)}>
-                    {pc.requirement === 'REQUIRED'
-                      ? t('admin.positionCourses.makeOptional', 'Make optional')
-                      : t('admin.positionCourses.makeRequired', 'Make required')}
-                  </button>
-                  {pc.status === 'active' ? (
-                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleArchive(pc)}>
-                      {t('admin.positionCourses.archive', 'Archive')}
+      >
+        {positionCourses.length === 0 ? (
+          <EmptyState message={t('admin.positionCourses.empty', 'No position course requirements found.')} />
+        ) : (
+          <DataTable<PositionCourse>
+            label={t('admin.positionCourses.title', 'Position course requirements')}
+            columns={[
+              { key: 'position', label: t('admin.positionCourses.colPosition', 'Position'), priority: 'primary', render: (pc) => <strong>{positionTitle(positions, pc.positionId)}</strong> },
+              { key: 'course', label: t('admin.positionCourses.colCourse', 'Course'), priority: 'primary', render: (pc) => courseTitle(courses, pc.courseId) },
+              {
+                key: 'requirement',
+                priority: 'secondary',
+                label: t('admin.positionCourses.colRequirement', 'Requirement'),
+                render: (pc) =>
+                  pc.requirement === 'REQUIRED'
+                    ? <Badge variant="accent">{t('admin.positionCourses.required', 'Required')}</Badge>
+                    : <Badge variant="neutral">{t('admin.positionCourses.optional', 'Optional')}</Badge>,
+              },
+              {
+                key: 'dueDays',
+                priority: 'secondary',
+                align: 'end',
+                label: t('admin.positionCourses.colDueDays', 'Due (days)'),
+                render: (pc) => pc.dueDays ?? t('admin.positionCourses.noDueDays', '—'),
+              },
+              {
+                key: 'status',
+                priority: 'secondary',
+                label: t('admin.positionCourses.colStatus', 'Status'),
+                render: (pc) =>
+                  pc.status === 'archived'
+                    ? <Badge variant="neutral">{t('admin.positionCourses.statusArchived', 'Archived')}</Badge>
+                    : <Badge variant="accent">{t('admin.positionCourses.statusActive', 'Active')}</Badge>,
+              },
+              {
+                key: 'actions',
+                priority: 'secondary',
+                label: '',
+                render: (pc) => (
+                  <span className="admin-table-actions">
+                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleToggleRequirement(pc)}>
+                      {pc.requirement === 'REQUIRED'
+                        ? t('admin.positionCourses.makeOptional', 'Make optional')
+                        : t('admin.positionCourses.makeRequired', 'Make required')}
                     </button>
-                  ) : (
-                    <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleRestore(pc)}>
-                      {t('admin.positionCourses.restore', 'Restore')}
-                    </button>
-                  )}
-                </span>
-              ),
-            },
-          ] satisfies Column<PositionCourse>[]}
-          rows={positionCourses}
-          keyExtractor={(pc) => pc.id}
-          responsiveDetails={{ label: t('courses.details'), expandLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}`, collapseLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}` }}
-          emptyMessage={t('admin.positionCourses.empty', 'No position course requirements found.')}
-        />
-      )}
+                    {pc.status === 'active' ? (
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleArchive(pc)}>
+                        {t('admin.positionCourses.archive', 'Archive')}
+                      </button>
+                    ) : (
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void handleRestore(pc)}>
+                        {t('admin.positionCourses.restore', 'Restore')}
+                      </button>
+                    )}
+                  </span>
+                ),
+              },
+            ] satisfies Column<PositionCourse>[]}
+            rows={positionCourses}
+            keyExtractor={(pc) => pc.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}`, collapseLabel: (pc) => `${t('courses.details')}: ${positionTitle(positions, pc.positionId)} — ${courseTitle(courses, pc.courseId)}` }}
+            emptyMessage={t('admin.positionCourses.empty', 'No position course requirements found.')}
+          />
+        )}
+      </AdminSectionCard>
 
       <dialog ref={createDialogRef} className="admin-dialog" onClose={() => createDialogRef.current?.close()}>
         <header className="admin-dialog__header">

@@ -626,9 +626,7 @@
       }
     },
     "groups": {
-      "eyebrow": "小组",
       "title": "小组",
-      "subtitle": "学习和运营小组、负责人和成员。",
       "add": "添加小组",
       "sessionExpired": "会话已过期。请重新登录。",
       "loading": "正在加载小组...",
@@ -669,7 +667,13 @@
       "remove": "移除",
       "searchPlaceholder": "按姓名或邮箱搜索…",
       "searchError": "无法搜索用户。",
-      "noSearchResults": "没有匹配的用户。"
+      "noSearchResults": "没有匹配的用户。",
+      "cardTitle": "学习小组",
+      "cardSubtitle_one": "{{count}} 个小组 · 用于向一批人员分配课程",
+      "cardSubtitle_few": "{{count}} 个小组 · 用于向一批人员分配课程",
+      "cardSubtitle_many": "{{count}} 个小组 · 用于向一批人员分配课程",
+      "cardSubtitle_other": "{{count}} 个小组 · 用于向一批人员分配课程",
+      "note": "小组是学习团队或学员批次，而不是编制部门。小组成员身份不影响经理和组织架构。"
     },
     "departments": {
       "eyebrow": "部门",
@@ -755,9 +759,7 @@
       "managerModeConflict": "切换为“继承”前，请先关闭此类型的本部门负责人。"
     },
     "positions": {
-      "eyebrow": "组织架构",
       "title": "职位",
-      "subtitle": "可分配给部门成员的组织级职位目录。",
       "add": "添加职位",
       "sessionExpired": "会话已过期,请重新登录。",
       "loading": "正在加载职位...",
@@ -788,12 +790,12 @@
       "create": "创建",
       "save": "保存",
       "cancel": "取消",
-      "close": "关闭"
+      "close": "关闭",
+      "cardTitle": "职位目录",
+      "cardSubtitle": "所有部门统一的职位来源"
     },
     "positionCourses": {
-      "eyebrow": "组织架构",
       "title": "职位课程要求",
-      "subtitle": "为每个职位设定必修或推荐课程,自动应用于担任该职位的所有人。",
       "sessionExpired": "会话已过期,请重新登录。",
       "loading": "正在加载职位课程要求...",
       "loadError": "无法加载职位课程要求。",
@@ -826,7 +828,9 @@
       "saveError": "无法保存要求。",
       "cancel": "取消",
       "saving": "保存中...",
-      "create": "创建"
+      "create": "创建",
+      "cardTitle": "按职位的培训要求",
+      "cardSubtitle": "每个职位必须完成哪些课程"
     },
     "departmentUsers": {
       "eyebrow": "部门员工",

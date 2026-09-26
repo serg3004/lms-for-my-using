@@ -787,6 +787,11 @@
   background: var(--color-surface-muted);
 }
 
+.ds-badge--accent {
+  color: var(--color-primary);
+  background: var(--color-accent-muted);
+}
+
 .ds-badge--published {
   color: var(--color-success);
   background: var(--color-success-bg);
@@ -1905,6 +1910,11 @@
 .ds-data-table__batch-actions + .admin-table-wrap {
   border-start-start-radius: 0;
   border-start-end-radius: 0;
+}
+
+.ds-data-table [data-align='end'] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-visually-hidden {

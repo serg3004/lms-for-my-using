@@ -131,7 +131,7 @@ export function Button({ variant = 'primary', size = 'md', className, children, 
 // as `done`/`new`/`overdue` above, but named by tone rather than by checklist-template semantics
 // so other status families (e.g. ChecklistInstance/ChecklistSession lifecycle status, see
 // apps/web/src/shared/checklistStatus.ts) can reuse them without borrowing a template-specific name.
-export type BadgeVariant = 'neutral' | 'published' | 'draft' | 'overdue' | 'done' | 'new' | 'warning' | 'success' | 'info' | 'danger';
+export type BadgeVariant = 'neutral' | 'accent' | 'published' | 'draft' | 'overdue' | 'done' | 'new' | 'warning' | 'success' | 'info' | 'danger';
 
 type BadgeProps = {
   variant?: BadgeVariant;
@@ -381,6 +381,8 @@ export type Column<T> = {
   render: (row: T) => ReactNode;
   sortable?: boolean;
   priority: 'primary' | 'secondary' | 'tertiary';
+  /** `end` right-aligns numeric columns (counts, days) with tabular figures. */
+  align?: 'end';
 };
 
 export type DataTableSort = {
@@ -530,7 +532,7 @@ export function DataTable<T>({
                 </th>
               ) : null}
               {columns.map((col) => (
-                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-priority={col.priority} key={col.key} scope="col">
+                <th aria-sort={col.sortable && sort?.key === col.key ? sort.direction : undefined} data-align={col.align} data-priority={col.priority} key={col.key} scope="col">
                   {col.sortable ? (
                     <button
                       className="ds-data-table__sort"
@@ -583,7 +585,7 @@ export function DataTable<T>({
                       </button>
                     </td>
                   ) : null}
-                  {columns.map((col) => <td data-priority={col.priority} key={col.key}>{col.render(row)}</td>)}
+                  {columns.map((col) => <td data-align={col.align} data-priority={col.priority} key={col.key}>{col.render(row)}</td>)}
                 </tr>,
                 expanded ? (
                   <tr className={`ds-data-table__expanded${expansion ? '' : ' ds-data-table__expanded--responsive'}`} key={`${key}-expanded`}>
