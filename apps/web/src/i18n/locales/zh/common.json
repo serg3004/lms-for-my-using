@@ -1022,7 +1022,7 @@
       "tabsLabel": "检查清单栏目",
       "sessions": {
         "title": "会话",
-        "subtitle": "安排并跟踪现场培训检查清单会话。",
+        "subtitle": "规划、开展和跟踪培训。",
         "loadError": "无法加载会话。",
         "loading": "正在加载会话...",
         "create": "新建会话",
@@ -1097,7 +1097,19 @@
           "unavailableReason": "已报告不可用",
           "search": "查找观察员"
         },
-        "observerUnavailable": "不可用"
+        "observerUnavailable": "不可用",
+        "eyebrow": "现场培训",
+        "pageTitle": "培训会话",
+        "periodLabel": "时间段",
+        "period": {
+          "all": "全部时间",
+          "last7": "最近 7 天",
+          "last30": "最近 30 天",
+          "quarter": "本季度"
+        },
+        "observerFilterLabel": "观察员",
+        "observerFilterAll": "所有观察员",
+        "searchLabel": "搜索"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -1127,7 +1139,7 @@
         "none": "无内容"
       },
       "settings": {
-        "open": "设置",
+        "open": "模块设置",
         "title": "岗位培训设置",
         "loading": "正在加载设置…",
         "loadError": "无法加载设置。",

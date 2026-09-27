@@ -55,4 +55,16 @@ describe('ChecklistSessionWizard', () => {
     const html = renderToStaticMarkup(<Wrapper />);
     expect(html).not.toContain('Часовой пояс:');
   });
+
+  // PR 318: the picklist row's control used to render centred (global.css's `input { width: 100% }`
+  // stretched the radio/checkbox itself), pushing the participant's name to the row's right edge
+  // and wrapping it. Call 8 is `observerResults` per the useState-order comment above.
+  it('renders each observer picklist row as name and email, not a single wrapped string', () => {
+    useStateAtCalls({ 8: [{ id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'olga@example.invalid', position: null }] });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('ds-wizard-dialog__picklist-name');
+    expect(html).toContain('ds-wizard-dialog__picklist-email');
+    expect(html).toContain('Olga Observer');
+    expect(html).toContain('olga@example.invalid');
+  });
 });

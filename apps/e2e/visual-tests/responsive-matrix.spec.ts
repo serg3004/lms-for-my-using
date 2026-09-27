@@ -720,7 +720,9 @@ for (const width of widths) {
     test('keeps the admin checklist sessions list and wizard responsive', async ({ page }) => {
       await installChecklistSessionsMocks(page);
       await page.goto('/admin/checklists/sessions');
-      await expect(page.getByRole('heading', { name: 'Сессии' })).toBeVisible();
+      // PR 318: the page's own <h1> now reads "Обучающие сессии" ("Training sessions") -- the
+      // breadcrumb/nav-tab strip keep the shorter "Сессии" label.
+      await expect(page.getByRole('heading', { name: 'Обучающие сессии' })).toBeVisible();
       await expect(page.getByText('Opening shift checklist')).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);

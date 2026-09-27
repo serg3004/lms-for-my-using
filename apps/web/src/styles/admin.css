@@ -370,7 +370,12 @@
   flex: none;
   padding: 10px 14px 12px;
   margin-bottom: -1px;
+  /* Reset global.css's `button{border,background,color:#fff}` -- this class is also used on
+     `<button role="tab">` elements (PR 318's session status tabs), not just the `<a>` nav strip
+     it was written for. */
+  border: none;
   border-bottom: 2px solid transparent;
+  background: none;
   color: var(--color-text-muted);
   font-size: var(--text-sm, 0.875rem);
   font-weight: 600;
@@ -398,7 +403,11 @@
   color: var(--color-text);
 }
 
-.admin-org-tabs__tab[aria-current='page'] {
+/* `aria-current="page"` marks the active item of a page-to-page nav strip (ChecklistsTabs);
+   `aria-selected="true"` marks the active item of an in-page `role="tablist"` status filter
+   (PR 318's session status tabs) -- both render the same underline-highlight look. */
+.admin-org-tabs__tab[aria-current='page'],
+.admin-org-tabs__tab[aria-selected='true'] {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
@@ -1255,6 +1264,21 @@
   outline-offset: 1px;
 }
 
+/* ── Session filters card (PR 318) ───────────────────────────────────────── */
+
+.admin-session-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-session-filters__search {
+  flex: 1 1 220px;
+}
+
 .admin-upload {
   display: flex;
   flex-direction: column;
@@ -1720,9 +1744,10 @@
     order: -1;
   }
 
-  /* The order arrows and row menu are icon-only, so their own content never reaches the 44px
-     minimum touch target (global.css's `@media (max-width: 860px)` rule only forces min-height,
-     not min-width) -- widen them explicitly here instead of shrinking the tap target. */
+  /* The order arrows are icon-only, so their own content never reaches the 44px minimum touch
+     target (global.css's `@media (max-width: 860px)` rule only forces min-height, not min-width)
+     -- widen them explicitly here instead of shrinking the tap target. The row menu button gets
+     the same treatment globally, in ui.css's `.ds-menu`. */
   .admin-criteria-row__order {
     flex-direction: row;
     width: auto;
@@ -1730,10 +1755,6 @@
   }
 
   .admin-criteria-row__order button {
-    min-width: 44px;
-  }
-
-  .admin-criteria-row__menu button {
     min-width: 44px;
   }
 }

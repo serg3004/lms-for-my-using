@@ -238,7 +238,10 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
                         onChange={() => setSelectedObserver(participant)}
                         type="radio"
                       />
-                      {formatParticipantName(participant)}
+                      <span className="ds-wizard-dialog__picklist-text">
+                        <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(participant)}</span>
+                        <span className="ds-wizard-dialog__picklist-email">{participant.email}</span>
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -261,7 +264,10 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
                         onChange={() => toggleLearner(participant)}
                         type="checkbox"
                       />
-                      {formatParticipantName(participant)}
+                      <span className="ds-wizard-dialog__picklist-text">
+                        <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(participant)}</span>
+                        <span className="ds-wizard-dialog__picklist-email">{participant.email}</span>
+                      </span>
                     </label>
                   </li>
                 ))}

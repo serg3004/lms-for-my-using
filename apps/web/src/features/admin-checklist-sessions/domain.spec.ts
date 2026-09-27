@@ -10,6 +10,7 @@ import {
   excludeCurrentObserver,
   formatParticipantName,
   partitionBulkCreateResults,
+  resolvePeriodScheduledFrom,
 } from './domain.js';
 import type { BulkCreateChecklistSessionResult, ChecklistSessionStatus } from '../../shared/api/types.js';
 
@@ -100,6 +101,28 @@ describe('canProceedFromScheduleStep', () => {
   it('requires a scheduled time for "later"', () => {
     expect(canProceedFromScheduleStep('later', '')).toBe(false);
     expect(canProceedFromScheduleStep('later', '2026-10-01T09:00')).toBe(true);
+  });
+});
+
+// PR 318: the sessions list's "Period" filter card maps onto the `scheduledFrom` query param
+// GET /checklist-sessions already accepts -- no new backend filter, just a friendlier control.
+describe('resolvePeriodScheduledFrom', () => {
+  const now = new Date('2026-06-15T12:00:00.000Z');
+
+  it('leaves scheduledFrom unset for "all"', () => {
+    expect(resolvePeriodScheduledFrom('all', now)).toBeUndefined();
+  });
+
+  it('resolves "last7" to 7 days before now', () => {
+    expect(resolvePeriodScheduledFrom('last7', now)).toBe('2026-06-08T12:00:00.000Z');
+  });
+
+  it('resolves "last30" to 30 days before now', () => {
+    expect(resolvePeriodScheduledFrom('last30', now)).toBe('2026-05-16T12:00:00.000Z');
+  });
+
+  it('resolves "quarter" to 90 days before now', () => {
+    expect(resolvePeriodScheduledFrom('quarter', now)).toBe('2026-03-17T12:00:00.000Z');
   });
 });
 

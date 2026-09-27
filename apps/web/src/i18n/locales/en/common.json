@@ -1022,7 +1022,7 @@
       "tabsLabel": "Checklist sections",
       "sessions": {
         "title": "Sessions",
-        "subtitle": "Schedule and track workplace-training checklist sessions.",
+        "subtitle": "Planning, running and tracking training.",
         "loadError": "Unable to load sessions.",
         "loading": "Loading sessions...",
         "create": "New session",
@@ -1097,7 +1097,19 @@
           "unavailableReason": "Reported unavailable",
           "search": "Find observer"
         },
-        "observerUnavailable": "Unavailable"
+        "observerUnavailable": "Unavailable",
+        "eyebrow": "Workplace training",
+        "pageTitle": "Training sessions",
+        "periodLabel": "Period",
+        "period": {
+          "all": "All time",
+          "last7": "Last 7 days",
+          "last30": "Last 30 days",
+          "quarter": "Quarter"
+        },
+        "observerFilterLabel": "Observer",
+        "observerFilterAll": "All observers",
+        "searchLabel": "Search"
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -1127,7 +1139,7 @@
         "none": "Nothing"
       },
       "settings": {
-        "open": "Settings",
+        "open": "Module settings",
         "title": "Workplace-training settings",
         "loading": "Loading settings…",
         "loadError": "Unable to load settings.",

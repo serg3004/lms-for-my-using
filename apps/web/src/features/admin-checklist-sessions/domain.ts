@@ -13,6 +13,21 @@ export const CHECKLIST_SESSION_STATUSES: ChecklistSessionStatus[] = ['scheduled'
 export type SessionStatusTab = 'all' | ChecklistSessionStatus;
 export const SESSION_STATUS_TABS: SessionStatusTab[] = ['all', ...CHECKLIST_SESSION_STATUSES];
 
+// ---- PR 318: sessions list filters ("Период"/"Наблюдатель" cards) ----
+
+export type SessionPeriod = 'all' | 'last7' | 'last30' | 'quarter';
+export const SESSION_PERIODS: SessionPeriod[] = ['all', 'last7', 'last30', 'quarter'];
+
+/**
+ * Resolves a period option to the `scheduledFrom` value `GET /checklist-sessions` already
+ * accepts -- no new backend filter, just a friendlier front-end control over an existing one.
+ */
+export function resolvePeriodScheduledFrom(period: SessionPeriod, now: Date = new Date()): string | undefined {
+  const days = period === 'last7' ? 7 : period === 'last30' ? 30 : period === 'quarter' ? 90 : null;
+  if (days === null) return undefined;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 /** Only a still-`scheduled` session can be cancelled -- once it starts, participants are locked in (see ADR). */
 export function canCancelSession(session: Pick<ChecklistSessionSummary, 'status'>) {
   return session.status === 'scheduled';
