@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -15,10 +15,13 @@ import {
 } from '../shared/api/checklistSessions.js';
 import type {
   ChecklistInstanceSummary,
+  ChecklistItemResultSummary,
   ChecklistLocationCapture,
   ChecklistLocationCapturePoint,
   ChecklistLocationCaptureStatus,
+  ChecklistScaleLevel,
   ChecklistScoreRevision,
+  ChecklistScoringMode,
   ChecklistSessionEvent,
   ChecklistSessionSummary,
   RecalculateChecklistScoreResult,
@@ -28,11 +31,38 @@ import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
-import { Badge, PageState } from '../shared/ui.js';
+import { Badge, Dialog, PageState } from '../shared/ui.js';
 import { formatParticipantName } from '../features/admin-checklist-sessions/domain.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
+
+type CriterionResultDisplay =
+  | { kind: 'done'; detail: string }
+  | { kind: 'notDone' }
+  | { kind: 'skipped' };
+
+/**
+ * PR 322: `checked`/`scaleLevel` alone can't tell an explicit "not done" (answered, checked false)
+ * apart from "skipped" (skipChecklistItem, or auto-skipped on completion) -- both leave
+ * `checked: false, scaleLevel: null`. `answerState` (already returned by the API, see types.ts)
+ * disambiguates; a missing result row (item never got a `ChecklistItemResult` at all) is treated
+ * the same as skipped.
+ */
+export function describeCriterionResult(
+  scoringMode: ChecklistScoringMode,
+  scaleLevels: ChecklistScaleLevel[] | null,
+  result: ChecklistItemResultSummary | undefined,
+): CriterionResultDisplay {
+  if (!result || result.answerState === 'skipped') return { kind: 'skipped' };
+  if (scoringMode === 'scale') {
+    if (result.scaleLevel == null) return { kind: 'skipped' };
+    const level = (scaleLevels ?? []).find((candidate) => candidate.level === result.scaleLevel);
+    return { kind: 'done', detail: level ? `${level.label} (${level.points})` : String(result.scaleLevel) };
+  }
+  if (!result.checked) return { kind: 'notDone' };
+  return { kind: 'done', detail: String(result.points) };
+}
 
 type Tab = 'summary' | 'participants' | 'criteria' | 'files' | 'history';
 
@@ -187,8 +217,11 @@ export function LocationOverrideForm({
 
 type HistoryData = { events: ChecklistSessionEvent[]; revisions: ChecklistScoreRevision[] };
 
-export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionId: string; isAdmin: boolean; onRecalculated: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
-  const { state, reload } = useAsyncData<HistoryData>(
+/** PR 322: recalculation now happens from the header's dialog (`RecalculateDialog` below), not an
+ *  embedded form here -- this tab is read-only history. Revisions still show up here because each
+ *  mount re-fetches fresh from the server, and the tab only mounts when selected. */
+export function HistoryTab({ sessionId, t }: { sessionId: string; t: TFunction }) {
+  const { state } = useAsyncData<HistoryData>(
     async () => {
       const [events, revisions] = await Promise.all([listChecklistSessionEvents(sessionId), listChecklistScoreRevisions(sessionId)]);
       return { events, revisions };
@@ -232,9 +265,25 @@ export function HistoryTab({ sessionId, isAdmin, onRecalculated, t }: { sessionI
           ))}
         </ul>
       )}
-
-      {isAdmin && <RecalculateForm sessionId={sessionId} onDone={(revision) => { void reload(); onRecalculated(revision); }} t={t} />}
     </div>
+  );
+}
+
+/** PR 322: wraps the existing `RecalculateForm` in the shared `Dialog` shell, opened from the
+ *  header's "Recalculate" button instead of always sitting embedded at the bottom of the History
+ *  tab. */
+export function RecalculateDialog({ open, onClose, sessionId, onDone, t }: { open: boolean; onClose: () => void; sessionId: string; onDone: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <Dialog initialFocusRef={closeRef} labelledBy={titleId} onClose={onClose} open={open}>
+      <h2 id={titleId}>{t('admin.checklists.report.recalculateDialogTitle', 'Recalculate score')}</h2>
+      <RecalculateForm sessionId={sessionId} onDone={(revision) => { onDone(revision); onClose(); }} t={t} />
+      <div className="ds-dialog__actions">
+        <button className="ds-button ds-button--secondary ds-button--md" onClick={onClose} ref={closeRef} type="button">{t('admin.checklists.report.recalculateDialogClose', 'Close')}</button>
+      </div>
+    </Dialog>
   );
 }
 
@@ -278,6 +327,7 @@ export function SessionReportBody({
   const { currentUser } = useSession();
   const isAdmin = currentUser?.roles.includes('admin') ?? false;
   const [tab, setTab] = useState<Tab>('summary');
+  const [recalcOpen, setRecalcOpen] = useState(false);
 
   const { state: instanceState } = useAsyncData<ChecklistInstanceSummary>(
     () => getChecklistInstance(session.instanceId),
@@ -286,6 +336,14 @@ export function SessionReportBody({
   );
   const { state: locationState, reload: reloadLocations } = useAsyncData<ChecklistLocationCapture[]>(
     () => listChecklistSessionLocationCaptures(session.id),
+    [session.id],
+    { unauthenticated: '', error: t('admin.checklists.report.loadError', 'Unable to load the session report.') },
+  );
+  // PR 322: the summary tab's own compact "result history" timeline -- fetched here (not inside
+  // the Summary-tab render) so `reload` is reachable from the header's recalculate dialog even
+  // when the user recalculates from a different tab.
+  const { state: revisionsState, reload: reloadRevisions } = useAsyncData<ChecklistScoreRevision[]>(
+    () => listChecklistScoreRevisions(session.id),
     [session.id],
     { unauthenticated: '', error: t('admin.checklists.report.loadError', 'Unable to load the session report.') },
   );
@@ -302,30 +360,52 @@ export function SessionReportBody({
     { key: 'history', label: t('admin.checklists.report.tabHistory', 'History') },
   ];
 
+  const result = describeChecklistSessionResult(session.result);
+
   return (
     <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
       <AdminPageHeader
         eyebrow={t('admin.checklists.report.eyebrow', 'Session report')}
         title={session.checklist.title}
-        subtitle={t('admin.checklists.report.subtitle', 'Full record for one workplace-training session.')}
-        action={<button className="admin-btn admin-btn--secondary" onClick={() => window.print()} type="button">{t('admin.checklists.report.print', 'Print')}</button>}
+        subtitle={
+          session.scheduledAt
+            ? t('admin.checklists.report.subtitleDateEmployee', '{{date}} · {{employee}}', {
+                // PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why.
+                date: formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeZone: session.timezone }),
+                employee: formatParticipantName(session.learner),
+              })
+            : formatParticipantName(session.learner)
+        }
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>{t(`checklistSessions.status.${session.status}`, session.status)}</Badge>
+            <button className="admin-btn admin-btn--secondary" onClick={() => window.print()} type="button">{t('admin.checklists.report.print', 'Print')}</button>
+            {isAdmin && (
+              <button className="admin-btn admin-btn--secondary" onClick={() => setRecalcOpen(true)} type="button">{t('admin.checklists.report.recalculateOpen', 'Recalculate')}</button>
+            )}
+          </div>
+        }
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>{t(`checklistSessions.status.${session.status}`, session.status)}</Badge>
-        {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
-        {session.scheduledAt && <span style={{ color: '#6b7280' }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</span>}
-      </div>
 
-      <div role="tablist" aria-label={t('admin.checklists.report.tabsLabel', 'Session report sections')} style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+      {isAdmin && (
+        <RecalculateDialog
+          onClose={() => setRecalcOpen(false)}
+          onDone={(revision) => { onScoreRecalculated(revision); void reloadRevisions(); }}
+          open={recalcOpen}
+          sessionId={session.id}
+          t={t}
+        />
+      )}
+
+      <div aria-label={t('admin.checklists.report.tabsLabel', 'Session report sections')} className="admin-org-tabs" role="tablist">
         {tabs.map(({ key, label }) => (
           <button
-            key={key}
-            type="button"
-            role="tab"
             aria-selected={tab === key}
-            className="admin-btn admin-btn--sm"
+            className="admin-org-tabs__tab"
+            key={key}
             onClick={() => setTab(key)}
-            style={tab === key ? { fontWeight: 700 } : undefined}
+            role="tab"
+            type="button"
           >
             {label}
           </button>
@@ -333,26 +413,56 @@ export function SessionReportBody({
       </div>
 
       {tab === 'summary' && (
-        <div className="admin-card">
-          <p><strong>{t('admin.checklists.report.checklist', 'Checklist')}:</strong> {session.checklist.title}</p>
-          <p>
-            <strong>{t('admin.checklists.report.result', 'Result')}:</strong>{' '}
-            {(() => {
-              const result = describeChecklistSessionResult(session.result);
-              if (result.kind === 'scored') return `${result.percentage}% ${result.passed ? '✓' : '✗'}`;
-              if (result.kind === 'notScored') return t('admin.checklists.report.notScored', 'Not scored (all skipped)');
-              return '—';
-            })()}
-          </p>
-          <p><strong>{t('admin.checklists.report.location', 'Location capture')}:</strong> {describeGeolocationPolicy(session.locationCapturePolicy, t)}</p>
-          {(session.strengths || session.developmentAreas || session.nextSteps) && (
-            <>
-              {session.strengths && <p><strong>{t('checklistSessions.conduct.strengths', 'Strengths')}:</strong> {session.strengths}</p>}
-              {session.developmentAreas && <p><strong>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}:</strong> {session.developmentAreas}</p>}
-              {session.nextSteps && <p><strong>{t('checklistSessions.conduct.nextSteps', 'Next steps')}:</strong> {session.nextSteps}</p>}
-            </>
-          )}
-        </div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <div className="admin-card">
+              <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>{t('admin.checklists.report.finalResult', 'Final result')}</p>
+              <p style={{ margin: '6px 0', fontSize: 27, fontWeight: 700 }}>
+                {result.kind === 'scored' && `${result.percentage}%`}
+                {result.kind === 'notScored' && t('admin.checklists.report.notScored', 'Not scored (all skipped)')}
+                {result.kind === 'pending' && '—'}
+              </p>
+              {result.kind === 'scored' && (
+                <Badge variant={result.passed ? 'success' : 'warning'}>{result.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</Badge>
+              )}
+            </div>
+            <div className="admin-card">
+              <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>{t('checklistSessions.conduct.strengths', 'Strengths')}</p>
+              <p style={{ margin: '6px 0 0', fontWeight: 600 }}>{session.strengths || '—'}</p>
+            </div>
+            <div className="admin-card">
+              <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}</p>
+              <p style={{ margin: '6px 0 0', fontWeight: 600 }}>{session.developmentAreas || '—'}</p>
+            </div>
+          </div>
+
+          <div className="admin-card" style={{ marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>{t('admin.checklists.report.resultHistoryTitle', 'Result history')}</h3>
+            {revisionsState.status === 'loading' && <PageState message={t('admin.checklists.report.loading', 'Loading...')} variant="loading" />}
+            {revisionsState.status === 'loaded' && (
+              revisionsState.data.length === 0 ? (
+                <p>{t('admin.checklists.report.resultHistoryEmpty', 'The score has never been recalculated.')}</p>
+              ) : (
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+                  {revisionsState.data.map((revision) => (
+                    <li key={revision.id} style={{ display: 'flex', gap: 10 }}>
+                      <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)', marginTop: 6, flexShrink: 0 }} />
+                      <div>
+                        <div style={{ color: '#6b7280', fontSize: 12.5 }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                        <div><strong>{revision.previousPercentage}% → {revision.newPercentage}%</strong>{revision.reason ? ` — ${revision.reason}` : ''}</div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+          </div>
+
+          <div className="admin-card" style={{ marginTop: 16 }}>
+            <p><strong>{t('admin.checklists.report.location', 'Location capture')}:</strong> {describeGeolocationPolicy(session.locationCapturePolicy, t)}</p>
+            {session.nextSteps && <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.nextSteps', 'Next steps')}:</strong> {session.nextSteps}</p>}
+          </div>
+        </>
       )}
 
       {tab === 'participants' && (
@@ -374,12 +484,20 @@ export function SessionReportBody({
             ) : (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
                 {instanceState.data.checklist.items.map((item) => {
-                  const result = findResultForItem(instanceState.data.results, item.id);
-                  const done = isChecklistAnswerComplete(item, instanceState.data.checklist!.scoringMode, checklistResultToAnswer(result));
+                  const itemResult = findResultForItem(instanceState.data.results, item.id);
+                  const done = isChecklistAnswerComplete(item, instanceState.data.checklist!.scoringMode, checklistResultToAnswer(itemResult));
+                  const criterionResult = describeCriterionResult(instanceState.data.checklist!.scoringMode, instanceState.data.checklist!.scaleLevels, itemResult);
                   return (
                     <li key={item.id} style={{ border: `1px solid ${done ? '#0f9f6e' : '#e3e8ef'}`, borderRadius: 12, padding: 12 }}>
-                      <p style={{ fontWeight: 600, margin: 0 }}>{item.text}</p>
-                      {result?.comment && <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{result.comment}</p>}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <p style={{ fontWeight: 600, margin: 0 }}>{item.text}</p>
+                        <Badge variant={criterionResult.kind === 'done' ? 'success' : criterionResult.kind === 'notDone' ? 'warning' : 'neutral'}>
+                          {criterionResult.kind === 'done' && t('admin.checklists.report.criterionDone', 'Done ({{detail}})', { detail: criterionResult.detail })}
+                          {criterionResult.kind === 'notDone' && t('admin.checklists.report.criterionNotDone', 'Not done')}
+                          {criterionResult.kind === 'skipped' && t('admin.checklists.report.criterionSkipped', 'Skipped')}
+                        </Badge>
+                      </div>
+                      {itemResult?.comment && <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{itemResult.comment}</p>}
                     </li>
                   );
                 })}
@@ -443,7 +561,7 @@ export function SessionReportBody({
         </div>
       )}
 
-      {tab === 'history' && <HistoryTab sessionId={session.id} isAdmin={isAdmin} onRecalculated={onScoreRecalculated} t={t} />}
+      {tab === 'history' && <HistoryTab sessionId={session.id} t={t} />}
     </AdminPageLayout>
   );
 }

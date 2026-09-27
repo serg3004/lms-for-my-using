@@ -418,6 +418,8 @@ export type ChecklistScaleSummary = {
   levels: ChecklistScaleLevelSummary[];
 };
 
+export type ChecklistItemResultAnswerState = 'unanswered' | 'answered' | 'skipped';
+
 export type ChecklistItemResultSummary = {
   id: string;
   itemId: string;
@@ -431,6 +433,11 @@ export type ChecklistItemResultSummary = {
   reviewComment: string | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
+  // PR 322: already selected/returned by the API (checklists.service.ts's
+  // `instanceWithResultsSelect`) but never typed on the frontend -- the session report's criteria
+  // tab needs it to tell an explicit "not done" (answered, checked false) apart from "skipped"
+  // (skipChecklistItem, or auto-skipped on completion), which `checked`/`scaleLevel` alone cannot.
+  answerState?: ChecklistItemResultAnswerState;
 };
 
 export type ChecklistInstanceSummary = {

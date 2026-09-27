@@ -407,21 +407,24 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await expect(adminPage.getByText(`${session.result.percentage}%`)).toBeVisible();
     });
 
-    await test.step('admin recalculates the score, creating a new revision (#12)', async () => {
-      await adminPage.getByRole('tab', { name: 'История' }).click();
+    await test.step('admin recalculates the score from the header dialog, creating a new revision (#12)', async () => {
+      // PR 322: recalculation moved from an embedded History-tab form to a dialog opened from the
+      // header's "Пересчитать" button; the Summary tab's own "История изменений результата" card
+      // shows the empty state up front, no tab switch needed.
       await expect(adminPage.getByText('Балл ещё ни разу не пересчитывался.')).toBeVisible();
 
+      await adminPage.getByRole('button', { name: 'Пересчитать', exact: true }).click();
       await adminPage.getByLabel('Причина пересчёта').fill('Manual audit correction');
-      await adminPage.getByRole('button', { name: 'Пересчитать балл' }).click();
+      await adminPage.getByRole('dialog').getByRole('button', { name: 'Пересчитать балл' }).click();
 
       await expect.poll(() => revisions.length).toBe(1);
-      await expect(adminPage.getByText(`${revisions[0]!.previousPercentage}% → ${revisions[0]!.newPercentage}%`)).toBeVisible();
 
       // The recalculated score merges into local state via onScoreRecalculated (not a full
-      // reload); switching back to Summary proves the merge produced a real "100% ✓", not a
+      // reload); the Summary tab's KPI card must show the merged "100%" + "Зачёт" badge, not a
       // stale/undefined `scored` silently rendering "Not scored".
-      await adminPage.getByRole('tab', { name: 'Сводка' }).click();
-      await expect(adminPage.getByText('100% ✓')).toBeVisible();
+      await expect(adminPage.getByText('100%', { exact: true })).toBeVisible();
+      await expect(adminPage.getByText('Зачёт')).toBeVisible();
+      await expect(adminPage.getByText(`${revisions[0]!.previousPercentage}% → ${revisions[0]!.newPercentage}%`)).toBeVisible();
     });
 
     await adminContext.close();

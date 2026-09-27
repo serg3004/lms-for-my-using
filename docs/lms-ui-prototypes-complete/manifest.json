@@ -665,12 +665,10 @@
       "designStatus": "approved",
       "implementationStatus": "implemented",
       "productionRoute": "/admin/checklists/sessions/:id",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
-      "knownDifferences": [
-        "Сводка без KPI-карточек, «Пересчитать» во вкладке «История», нет результата по критериям (PR 322)"
-      ],
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "7bd47bd",
+      "knownDifferences": [],
       "languages": ["ru"]
     }
   ]
