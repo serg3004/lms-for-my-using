@@ -2365,7 +2365,14 @@
       "backToList": "My training sessions",
       "resultHidden": "Your result will be visible once the session is completed.",
       "feedbackTitle": "Feedback from your observer",
-      "criteriaTitle": "Criteria"
+      "criteriaTitle": "Criteria",
+      "columns": {
+        "session": "Session",
+        "observer": "Observer",
+        "date": "Date",
+        "result": "Result"
+      },
+      "previousFeedback": "Previous feedback"
     },
     "event": {
       "created": "Session created",

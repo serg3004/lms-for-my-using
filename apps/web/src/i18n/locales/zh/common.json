@@ -2365,7 +2365,14 @@
       "backToList": "我的培训会话",
       "resultHidden": "会话完成后即可查看您的结果。",
       "feedbackTitle": "来自观察员的反馈",
-      "criteriaTitle": "标准"
+      "criteriaTitle": "标准",
+      "columns": {
+        "session": "会话",
+        "observer": "观察员",
+        "date": "日期",
+        "result": "结果"
+      },
+      "previousFeedback": "上次反馈"
     },
     "event": {
       "created": "会话已创建",

@@ -2365,7 +2365,14 @@
       "backToList": "Мои обучающие сессии",
       "resultHidden": "Результат станет виден после завершения сессии.",
       "feedbackTitle": "Обратная связь от наблюдателя",
-      "criteriaTitle": "Критерии"
+      "criteriaTitle": "Критерии",
+      "columns": {
+        "session": "Сессия",
+        "observer": "Наблюдатель",
+        "date": "Дата",
+        "result": "Результат"
+      },
+      "previousFeedback": "Предыдущая обратная связь"
     },
     "event": {
       "created": "Сессия создана",

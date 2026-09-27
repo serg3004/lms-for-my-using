@@ -116,6 +116,72 @@ describe('LearnerChecklistSessions', () => {
     expect(html).toContain('92%');
   });
 
+  it('renders sessions as a table with session/observer/date/result columns', () => {
+    useStateAtCalls({
+      1: 'scheduled',
+      3: { status: 'loaded', data: [makeSession({ id: 'session-1', status: 'scheduled' })] },
+    });
+    const html = renderToStaticMarkup(<LearnerChecklistSessions t={t} />);
+    expect(html).toContain('<table');
+    expect(html).toContain('Session');
+    expect(html).toContain('Observer');
+    expect(html).toContain('Date');
+    expect(html).toContain('Result');
+  });
+
+  it('masks the result column while feedbackVisibility hides it, showing the status badge instead', () => {
+    useStateAtCalls({
+      1: 'active',
+      3: {
+        status: 'loaded',
+        data: [makeSession({ id: 'session-1', status: 'in_progress', result: { instanceStatus: 'in_progress', percentage: null, passed: null, scored: null, visible: false } })],
+      },
+    });
+    const html = renderToStaticMarkup(<LearnerChecklistSessions t={t} />);
+    expect(html).not.toMatch(/ds-badge[^"]*">\s*\d+%/);
+    expect(html).toContain('in_progress');
+  });
+
+  it('shows a "previous feedback" card sourced from the latest completed session with feedback', () => {
+    useStateAtCalls({
+      1: 'done',
+      3: {
+        status: 'loaded',
+        data: [
+          makeSession({
+            id: 'session-1',
+            status: 'completed',
+            strengths: 'Great attention to detail',
+            developmentAreas: 'Speed',
+            updatedAt: '2026-02-01T00:00:00.000Z',
+            result: { instanceStatus: 'completed', percentage: 92, passed: true, scored: true, visible: true },
+          }),
+          makeSession({
+            id: 'session-2',
+            status: 'completed',
+            strengths: 'Older feedback',
+            developmentAreas: 'Older area',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            result: { instanceStatus: 'completed', percentage: 80, passed: true, scored: true, visible: true },
+          }),
+        ],
+      },
+    });
+    const html = renderToStaticMarkup(<LearnerChecklistSessions t={t} />);
+    expect(html).toContain('Previous feedback');
+    expect(html).toContain('Great attention to detail');
+    expect(html).not.toContain('Older feedback');
+  });
+
+  it('omits the "previous feedback" card when no completed session has feedback', () => {
+    useStateAtCalls({
+      1: 'scheduled',
+      3: { status: 'loaded', data: [makeSession({ id: 'session-1', status: 'scheduled' })] },
+    });
+    const html = renderToStaticMarkup(<LearnerChecklistSessions t={t} />);
+    expect(html).not.toContain('Previous feedback');
+  });
+
   it('renders an error state', () => {
     useStateAtCalls({ 3: { status: 'error', message: 'Unable to load your training sessions.' } });
     const html = renderToStaticMarkup(<LearnerChecklistSessions t={t} />);
