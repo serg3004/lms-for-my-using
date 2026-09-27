@@ -1976,10 +1976,10 @@
       "allChecklists": "Барлық чек-парақтар",
       "totalSessions": "Сессиялар",
       "completedSessions": "Аяқталды",
-      "averageScore": "Орташа балл",
-      "highPerformers": "Жоғары нәтиже",
-      "lowPerformers": "Төмен нәтиже",
-      "noCompletion": "Аяқталмаған",
+      "averageScore": "Орташа нәтиже",
+      "highPerformers": "Жоғары орындау",
+      "lowPerformers": "Төмен орындау",
+      "noCompletion": "Кезеңде сессиялар жоқ",
       "distributionTitle": "Нәтижелер үлестірімі",
       "trendTitle": "Орташа балл динамикасы",
       "trendEmpty": "Бұл кезеңде әлі аяқталған сессиялар жоқ.",
@@ -2005,7 +2005,11 @@
       "collapse": "Сессияларды жасыру",
       "employeesEmpty": "Бұл кезеңде сіздің аймағыңызда қызметкерлер жоқ.",
       "employeesTableLabel": "Қызметкерлер",
-      "employeeSessionsEmpty": "Таңдалған кезеңде бұл қызметкерде сессиялар жоқ."
+      "employeeSessionsEmpty": "Таңдалған кезеңде бұл қызметкерде сессиялар жоқ.",
+      "lowThresholdSub": "<{{threshold}}%",
+      "highThresholdSub": "≥{{threshold}}%",
+      "lowThresholdUnset": "шек белгіленбеген",
+      "lowThresholdUnsetHint": "lowThreshold иесі бекітпеген (DEC-CHKS-001) — бакет тіркелген пайыз бойынша емес, сессияның нақты өту фактісі бойынша анықталады"
     }
   },
   "instructor": {

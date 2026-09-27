@@ -651,12 +651,10 @@
       "designStatus": "approved",
       "implementationStatus": "implemented",
       "productionRoute": "/manager/checklists",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
-      "knownDifferences": [
-        "Одиночная KPI-карточка во втором ряду, подписи KPI отличаются (PR 321)"
-      ],
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "6f7920a",
+      "knownDifferences": [],
       "languages": ["ru"]
     },
     {
