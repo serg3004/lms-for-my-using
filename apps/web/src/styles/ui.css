@@ -1667,6 +1667,10 @@
 .ds-menu__content [role^='menuitem'] { display: block; width: 100%; min-height: 44px; border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--color-text); text-align: left; text-decoration: none; cursor: pointer; }
 .ds-menu__content [role^='menuitem']:hover,
 .ds-menu__content [role^='menuitem']:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; background: var(--color-surface-muted); }
+/* global.css's `@media (max-width: 860px)` rule forces every button to a 44px min-height but not
+   min-width, so an icon-only trigger (e.g. a row's "⋮" actions menu) still fails the touch-target
+   minimum on its narrow side. */
+@media (max-width: 860px) { .ds-menu > button { min-width: 44px; } }
 
 @keyframes ds-popover-enter { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
 @keyframes ds-feedback-enter { from { opacity: 0; transform: translateY(4px); } }

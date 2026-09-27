@@ -1744,9 +1744,10 @@
     order: -1;
   }
 
-  /* The order arrows and row menu are icon-only, so their own content never reaches the 44px
-     minimum touch target (global.css's `@media (max-width: 860px)` rule only forces min-height,
-     not min-width) -- widen them explicitly here instead of shrinking the tap target. */
+  /* The order arrows are icon-only, so their own content never reaches the 44px minimum touch
+     target (global.css's `@media (max-width: 860px)` rule only forces min-height, not min-width)
+     -- widen them explicitly here instead of shrinking the tap target. The row menu button gets
+     the same treatment globally, in ui.css's `.ds-menu`. */
   .admin-criteria-row__order {
     flex-direction: row;
     width: auto;
@@ -1754,10 +1755,6 @@
   }
 
   .admin-criteria-row__order button {
-    min-width: 44px;
-  }
-
-  .admin-criteria-row__menu button {
     min-width: 44px;
   }
 }
