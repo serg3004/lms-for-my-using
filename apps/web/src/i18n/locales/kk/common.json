@@ -2365,7 +2365,14 @@
       "backToList": "Менің оқыту сессияларым",
       "resultHidden": "Нәтиже сессия аяқталғаннан кейін көрінеді.",
       "feedbackTitle": "Бақылаушының кері байланысы",
-      "criteriaTitle": "Критерийлер"
+      "criteriaTitle": "Критерийлер",
+      "columns": {
+        "session": "Сессия",
+        "observer": "Бақылаушы",
+        "date": "Күні",
+        "result": "Нәтиже"
+      },
+      "previousFeedback": "Алдыңғы кері байланыс"
     },
     "event": {
       "created": "Сессия құрылды",

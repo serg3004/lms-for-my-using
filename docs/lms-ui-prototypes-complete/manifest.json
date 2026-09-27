@@ -637,12 +637,10 @@
       "designStatus": "approved",
       "implementationStatus": "implemented",
       "productionRoute": "/learn/checklists",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
-      "knownDifferences": [
-        "Карточки и pill-фильтры вместо таблицы с вкладками; нет блока предыдущей обратной связи (PR 320)"
-      ],
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "04948ed",
+      "knownDifferences": [],
       "languages": ["ru"]
     },
     {
