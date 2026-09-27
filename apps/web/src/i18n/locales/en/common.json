@@ -1976,10 +1976,10 @@
       "allChecklists": "All checklists",
       "totalSessions": "Sessions",
       "completedSessions": "Completed",
-      "averageScore": "Average score",
-      "highPerformers": "High performers",
-      "lowPerformers": "Low performers",
-      "noCompletion": "No completion",
+      "averageScore": "Average result",
+      "highPerformers": "High completion",
+      "lowPerformers": "Low completion",
+      "noCompletion": "No sessions in period",
       "distributionTitle": "Result distribution",
       "trendTitle": "Average score trend",
       "trendEmpty": "No completed sessions in this period yet.",
@@ -2005,7 +2005,11 @@
       "collapse": "Hide sessions",
       "employeesEmpty": "No employees in scope for this period.",
       "employeesTableLabel": "Employees",
-      "employeeSessionsEmpty": "No sessions for this employee in the selected period."
+      "employeeSessionsEmpty": "No sessions for this employee in the selected period.",
+      "lowThresholdSub": "<{{threshold}}%",
+      "highThresholdSub": "≥{{threshold}}%",
+      "lowThresholdUnset": "threshold not set",
+      "lowThresholdUnsetHint": "lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage"
     }
   },
   "instructor": {

@@ -257,12 +257,31 @@ export function ManagerChecklistsPage() {
       {state.status === 'loaded' && (
         <>
           <StatsGrid>
-            <StatCard label={t('manager.checklists.totalSessions', 'Sessions')} value={state.data.summary.totalSessions} />
-            <StatCard label={t('manager.checklists.completedSessions', 'Completed')} value={state.data.summary.completedSessions} />
-            <StatCard label={t('manager.checklists.averageScore', 'Average score')} value={`${state.data.summary.averagePercentage}%`} />
-            <StatCard label={t('manager.checklists.highPerformers', 'High performers')} value={state.data.summary.highCount} />
-            <StatCard label={t('manager.checklists.lowPerformers', 'Low performers')} value={state.data.summary.lowCount} />
-            <StatCard label={t('manager.checklists.noCompletion', 'No completion')} value={state.data.summary.noCompletionCount} />
+            <StatCard
+              label={t('manager.checklists.lowPerformers', 'Low completion')}
+              value={state.data.summary.lowCount}
+              valueStyle={{ color: 'var(--color-danger)' }}
+              trend={
+                state.data.thresholds.low === null ? (
+                  <span>
+                    {t('manager.checklists.lowThresholdUnset', 'threshold not set')}{' '}
+                    <span aria-label={t('manager.checklists.lowThresholdUnsetHint', 'lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage')} title={t('manager.checklists.lowThresholdUnsetHint', 'lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage')}>
+                      ⓘ
+                    </span>
+                  </span>
+                ) : (
+                  t('manager.checklists.lowThresholdSub', '<{{threshold}}%', { threshold: state.data.thresholds.low })
+                )
+              }
+            />
+            <StatCard
+              label={t('manager.checklists.highPerformers', 'High completion')}
+              value={state.data.summary.highCount}
+              valueStyle={{ color: 'var(--color-success)' }}
+              trend={t('manager.checklists.highThresholdSub', '≥{{threshold}}%', { threshold: state.data.thresholds.high })}
+            />
+            <StatCard label={t('manager.checklists.noCompletion', 'No sessions in period')} value={state.data.summary.noCompletionCount} />
+            <StatCard label={t('manager.checklists.averageScore', 'Average result')} value={`${state.data.summary.averagePercentage}%`} />
           </StatsGrid>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 16, margin: '20px 0' }}>

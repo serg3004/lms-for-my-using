@@ -476,8 +476,10 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await expect(employeesTable.getByText('Ivy InScope')).toBeVisible();
       // Exactly the one employee the scoped response contains -- no invented/leaked extra row.
       await expect(employeesTable.getByRole('row')).toHaveCount(2); // header + the one employee row
-      const completedCard = page.locator('.stat-card', { hasText: 'Завершено' });
-      await expect(completedCard.locator('.stat-card__value')).toHaveText(String(analytics.summary.completedSessions));
+      // PR 321 reduced the KPI grid to the prototype's 4 cards (no more "Завершено") -- assert
+      // against "Высокое выполнение" instead, still proving the scoped aggregate reaches the page.
+      const highCompletionCard = page.locator('.stat-card', { hasText: 'Высокое выполнение' });
+      await expect(highCompletionCard.locator('.stat-card__value')).toHaveText(String(analytics.summary.highCount));
     });
 
     await test.step('manager drills down into the employee and sees their sessions, consistent with the aggregate (#8)', async () => {

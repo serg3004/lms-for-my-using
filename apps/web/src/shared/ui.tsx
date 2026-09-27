@@ -312,12 +312,13 @@ type StatCardProps = {
   label: string;
   value: string | number;
   trend?: ReactNode;
+  valueStyle?: CSSProperties;
 };
 
-export function StatCard({ label, value, trend }: StatCardProps) {
+export function StatCard({ label, value, trend, valueStyle }: StatCardProps) {
   return (
     <div className="stat-card">
-      <div className="stat-card__value">{value}</div>
+      <div className="stat-card__value" style={valueStyle}>{value}</div>
       <div className="stat-card__label">{label}</div>
       {trend ? <div className="stat-card__trend">{trend}</div> : null}
     </div>

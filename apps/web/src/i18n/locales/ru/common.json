@@ -1976,10 +1976,10 @@
       "allChecklists": "Все чек-листы",
       "totalSessions": "Сессии",
       "completedSessions": "Завершено",
-      "averageScore": "Средний балл",
-      "highPerformers": "Высокие результаты",
-      "lowPerformers": "Низкие результаты",
-      "noCompletion": "Без завершений",
+      "averageScore": "Средний результат",
+      "highPerformers": "Высокое выполнение",
+      "lowPerformers": "Низкое выполнение",
+      "noCompletion": "Без сессий за период",
       "distributionTitle": "Распределение результатов",
       "trendTitle": "Динамика среднего балла",
       "trendEmpty": "За этот период ещё нет завершённых сессий.",
@@ -2005,7 +2005,11 @@
       "collapse": "Скрыть сессии",
       "employeesEmpty": "Нет сотрудников в зоне ответственности за этот период.",
       "employeesTableLabel": "Сотрудники",
-      "employeeSessionsEmpty": "Нет сессий у этого сотрудника за выбранный период."
+      "employeeSessionsEmpty": "Нет сессий у этого сотрудника за выбранный период.",
+      "lowThresholdSub": "<{{threshold}}%",
+      "highThresholdSub": "≥{{threshold}}%",
+      "lowThresholdUnset": "порог не задан",
+      "lowThresholdUnsetHint": "lowThreshold не настроен владельцем (DEC-CHKS-001) — бакет определяется по факту прохождения сессии, не по фиксированному %"
     }
   },
   "instructor": {

@@ -85,6 +85,41 @@ describe('ManagerChecklistsPage', () => {
     expect(html).toContain('Warehouse');
   });
 
+  it('PR 321: shows exactly the four prototype KPI cards with the high/low threshold sub-labels', () => {
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+    const statCardCount = (html.match(/class="stat-card"/g) ?? []).length;
+
+    expect(statCardCount).toBe(4);
+    expect(html).toContain('Низкое выполнение');
+    expect(html).toContain('Высокое выполнение');
+    expect(html).toContain('Без сессий за период');
+    expect(html).toContain('Средний результат');
+    // thresholds: { high: 90, low: 60 } in the fixture -- both sub-labels render the configured %.
+    expect(html).toContain('&lt;60%');
+    expect(html).toContain('≥90%');
+  });
+
+  it('PR 321: shows a threshold-not-set hint instead of a percentage when lowThreshold is unset', () => {
+    const unsetLowFixture: ManagerChecklistAnalytics = { ...analyticsFixture, thresholds: { high: 90, low: null } };
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: unsetLowFixture }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+
+    expect(html).toContain('порог не задан');
+    expect(html).toContain('DEC-CHKS-001');
+    expect(html).not.toContain('&lt;null%');
+  });
+
   it('PR 306 #16: renders a "no data yet" dash, not a crash or a blank cell, for an employee with zero sessions in the period', () => {
     // analyticsFixture mixes a fully-scored employee (Alex Kim) with one who has no sessions in
     // the selected period at all (Mira Lee: sessionsCount 0, averagePercentage/trend/lastSessionAt

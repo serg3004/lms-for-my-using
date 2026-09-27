@@ -1976,10 +1976,10 @@
       "allChecklists": "所有检查表",
       "totalSessions": "会话数",
       "completedSessions": "已完成",
-      "averageScore": "平均分",
-      "highPerformers": "高表现者",
-      "lowPerformers": "低表现者",
-      "noCompletion": "未完成",
+      "averageScore": "平均结果",
+      "highPerformers": "高完成率",
+      "lowPerformers": "低完成率",
+      "noCompletion": "本期无会话",
       "distributionTitle": "结果分布",
       "trendTitle": "平均分趋势",
       "trendEmpty": "此期间尚无已完成的会话。",
@@ -2005,7 +2005,11 @@
       "collapse": "隐藏会话",
       "employeesEmpty": "此期间您的范围内没有员工。",
       "employeesTableLabel": "员工",
-      "employeeSessionsEmpty": "该员工在所选期间没有会话。"
+      "employeeSessionsEmpty": "该员工在所选期间没有会话。",
+      "lowThresholdSub": "<{{threshold}}%",
+      "highThresholdSub": "≥{{threshold}}%",
+      "lowThresholdUnset": "未设置阈值",
+      "lowThresholdUnsetHint": "所有者尚未配置 lowThreshold（DEC-CHKS-001）—— 分类依据会话实际通过情况，而非固定百分比"
     }
   },
   "instructor": {
