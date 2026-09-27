@@ -37,18 +37,21 @@ describe('ReassignObserverDialog', () => {
 
   it('renders the observer picklist step for a target session', () => {
     const html = renderToStaticMarkup(<Wrapper session={makeSession()} />);
-    expect(html).toContain('New observer');
+    // PR 316 added the `admin.checklists.sessions.reassign.stepLabel` ru translation, so the
+    // default ('ru') i18n instance this spec renders under no longer falls back to its English
+    // default text -- assert on the real ru string, not the fallback.
+    expect(html).toContain('Новый наблюдатель');
     expect(html).toContain('ds-wizard-dialog__picklist');
   });
 
   it("surfaces the reported unavailability reason so the admin knows why they're reassigning", () => {
     const html = renderToStaticMarkup(<Wrapper session={makeSession({ observerUnavailableReason: 'Out sick' })} />);
     expect(html).toContain('Out sick');
-    expect(html).toContain('Reported unavailable');
+    expect(html).toContain('Сообщил о недоступности');
   });
 
   it('never shows the unavailability banner when no reason was reported', () => {
     const html = renderToStaticMarkup(<Wrapper session={makeSession({ observerUnavailableReason: null })} />);
-    expect(html).not.toContain('Reported unavailable');
+    expect(html).not.toContain('Сообщил о недоступности');
   });
 });

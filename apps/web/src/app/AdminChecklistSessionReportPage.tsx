@@ -40,6 +40,16 @@ export function findResultForItem(results: ChecklistInstanceSummary['results'], 
   return results.find((result) => result.itemId === itemId);
 }
 
+/** Reuses the same keys as the geolocation policy `<select>` options (e.g.
+ *  ChecklistWorkplaceSettingsDialog) so the report never prints the raw `off`/`optional`/`required`
+ *  enum value (PR 316). Written as three literal translate calls rather than one templated key, so
+ *  the i18n key-coverage test that statically scans this file's source can see all three. */
+function describeGeolocationPolicy(policy: ChecklistSessionSummary['locationCapturePolicy'], t: TFunction) {
+  if (policy === 'required') return t('admin.checklists.settings.geolocationRequired', 'Required');
+  if (policy === 'optional') return t('admin.checklists.settings.geolocationOptional', 'Optional');
+  return t('admin.checklists.settings.geolocationOff', 'Off');
+}
+
 export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
@@ -334,7 +344,7 @@ export function SessionReportBody({
               return '—';
             })()}
           </p>
-          <p><strong>{t('admin.checklists.report.location', 'Location capture')}:</strong> {session.locationCapturePolicy}</p>
+          <p><strong>{t('admin.checklists.report.location', 'Location capture')}:</strong> {describeGeolocationPolicy(session.locationCapturePolicy, t)}</p>
           {(session.strengths || session.developmentAreas || session.nextSteps) && (
             <>
               {session.strengths && <p><strong>{t('checklistSessions.conduct.strengths', 'Strengths')}:</strong> {session.strengths}</p>}

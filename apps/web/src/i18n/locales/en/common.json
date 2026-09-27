@@ -970,7 +970,9 @@
         "weight": "Weight",
         "scale": "Scale",
         "defaultLocationCapturePolicy": "Location requirement",
-        "preSessionVisibility": "Employee sees before the session"
+        "preSessionVisibility": "Employee sees before the session",
+        "isRequired": "Required item",
+        "dueAt": "Due date"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1083,7 +1085,18 @@
           "doneSummary": "{{created}} created, {{skipped}} skipped, {{failed}} failed.",
           "submitError": "Unable to create sessions."
         },
-        "report": "Report"
+        "report": "Report",
+        "reassignObserver": "Reassign observer",
+        "reassign": {
+          "title": "Reassign observer",
+          "error": "Unable to reassign the observer.",
+          "cancel": "Cancel",
+          "save": "Save",
+          "stepLabel": "New observer",
+          "unavailableReason": "Reported unavailable",
+          "search": "Find observer"
+        },
+        "observerUnavailable": "Unavailable"
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -1187,7 +1200,11 @@
         "recalculate": "Recalculate score",
         "recalculating": "Recalculating...",
         "recalculateError": "Unable to recalculate the score."
-      }
+      },
+      "dueAtHint": "Optional. Enter local time; it is stored as UTC.",
+      "requiredItem": "Required",
+      "optionalItem": "Optional",
+      "previewPhotoAttached": "Photo attached"
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
@@ -2156,7 +2173,11 @@
     "photoUploadError": "Unable to attach this photo.",
     "passed": "Passed",
     "notPassed": "Not passed",
-    "awaitingReview": "Submitted — waiting for your instructor to confirm the result."
+    "awaitingReview": "Submitted — waiting for your instructor to confirm the result.",
+    "requiredItem": "Required",
+    "optionalItem": "Optional",
+    "expiredReason": "This checklist expired at its deadline and can no longer be changed.",
+    "requiredProgress": "{{completed}} / {{total}} required"
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",
@@ -2214,7 +2235,20 @@
         "completed": "Review completed",
         "expired": "Expired"
       }
-    }
+    },
+    "required": "Required",
+    "optional": "Optional",
+    "photoLoadError": "Unable to open this photo.",
+    "photoLoading": "Opening photo...",
+    "photoRetry": "Retry photo",
+    "photoOpen": "Open photo",
+    "photoOpenNewTab": "Open photo in a new tab",
+    "photoEvidence": "Checklist photo evidence",
+    "photoRequired": "photo required",
+    "photoOptional": "photo optional",
+    "photoNotAttached": "no photo attached",
+    "learnerComment": "Learner comment",
+    "previousReviewComment": "Review comment"
   },
   "profile": {
     "title": "Profile",
@@ -2277,7 +2311,14 @@
       "strengths": "Strengths",
       "developmentAreas": "Development areas",
       "nextSteps": "Next steps",
-      "saveFeedback": "Save feedback"
+      "saveFeedback": "Save feedback",
+      "markUnavailable": "Can't conduct this",
+      "markUnavailableTitle": "Can't conduct this session",
+      "markedUnavailable": "You've reported you can't conduct this session.",
+      "markUnavailableError": "Unable to report unavailability.",
+      "markUnavailableReason": "Reason",
+      "markUnavailableCancel": "Cancel",
+      "markUnavailableSubmit": "Report"
     },
     "learner": {
       "title": "My training sessions",

@@ -220,9 +220,11 @@ describe('Instructor pages smoke tests', () => {
 
     expect(html).toContain('Прошёл вводный инструктаж');
     expect(html).toContain('evidence.jpg');
-    expect(html).toContain('Open photo');
+    // PR 316 added the `checklistReview.photoOpen` ru translation, so the default ('ru') i18n
+    // instance this spec renders under no longer falls back to its English default text.
+    expect(html).toContain('Открыть фото');
     expect(html).toContain('Done safely');
-    expect(html).not.toContain('photo missing');
+    expect(html).not.toContain('требует вашего подтверждения');
   });
 
   it('renders analytics KPI cards and queue tabs above the review queue', () => {
