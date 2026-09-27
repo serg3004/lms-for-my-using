@@ -26,7 +26,7 @@ vi.mock('../shared/api/checklists.js', async () => {
   return { ...actual, getChecklistInstance: checklistsApiMocks.getChecklistInstance };
 });
 
-import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, runMutation } from './ChecklistSessionConduct.js';
+import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, resolveConductStep, runMutation } from './ChecklistSessionConduct.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary } from '../shared/api/types.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -230,6 +230,27 @@ describe('runMutation', () => {
   });
 });
 
+// PR 319: structured feedback moved from a permanently-visible block to a stepper step after the
+// last criterion. Stepping there needs a real click (this file's convention is renderToStaticMarkup
+// + positional useState mocking, and ConductScreen's tree is too deep for that to stay robust), so
+// the step-selection logic itself is tested here in isolation instead of via a full render.
+describe('resolveConductStep', () => {
+  it('adds one trailing step (feedback) beyond the last criterion', () => {
+    expect(resolveConductStep(2, 0)).toMatchObject({ boundedIndex: 0, totalSteps: 3, isFeedbackStep: false, isLastStep: false });
+    expect(resolveConductStep(2, 1)).toMatchObject({ boundedIndex: 1, totalSteps: 3, isFeedbackStep: false, isLastStep: false });
+    expect(resolveConductStep(2, 2)).toMatchObject({ boundedIndex: 2, totalSteps: 3, isFeedbackStep: true, isLastStep: true });
+  });
+
+  it('clamps a requested index into range on either side', () => {
+    expect(resolveConductStep(2, -1).boundedIndex).toBe(0);
+    expect(resolveConductStep(2, 99).boundedIndex).toBe(2);
+  });
+
+  it('is feedback-only (step 0 is the last step) for a checklist with no items', () => {
+    expect(resolveConductStep(0, 0)).toMatchObject({ boundedIndex: 0, totalSteps: 1, isFeedbackStep: true, isLastStep: true });
+  });
+});
+
 describe('formatElapsed', () => {
   it('formats under an hour as mm:ss', () => {
     expect(formatElapsed(65_000)).toBe('01:05');
@@ -271,13 +292,16 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).not.toContain('Structured feedback');
   });
 
-  it('renders the in_progress state with scale/checkbox criteria, photo evidence, skip and feedback', () => {
+  it('renders the in_progress state on its first criterion, with Back disabled and Next available (feedback is a later step, PR 319)', () => {
     const html = renderToStaticMarkup(
       <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Rate the greeting');
     expect(html).toContain('Great');
-    expect(html).toContain('Structured feedback');
+    expect(html).toContain('Criterion {{index}} / {{total}}');
+    expect(html).not.toContain('Structured feedback');
+    expect(html).toContain('Next');
+    expect(html).not.toContain('Complete');
   });
 
   it('renders the paused state with a Resume button', () => {

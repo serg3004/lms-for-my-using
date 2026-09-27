@@ -136,16 +136,29 @@ export async function runMutation(
 }
 
 /**
- * PR 297: mobile-first "Observer conducts a session" screen, reached from
- * InstructorChecklistReviewsPage's "Проведение" tab (ChecklistSessionsToConduct). A session and
- * its underlying ChecklistInstance are separate id spaces (docs/architecture/adr/
- * ADR_CHECKLIST_SESSION_OVERLAY.md) -- item results/skip/photo all go through the instance, the
- * lifecycle (start/pause/resume/complete) and structured feedback through the session.
+ * PR 297/319: mobile-first "Observer conducts a session" screen, reached from its own route
+ * (`/instructor/checklists/sessions/:id`, PR 319 -- previously embedded as a tab inside
+ * InstructorChecklistReviewsPage). A session and its underlying ChecklistInstance are separate id
+ * spaces (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) -- item results/skip/photo all
+ * go through the instance, the lifecycle (start/pause/resume/complete) and structured feedback
+ * through the session.
  */
 export async function fetchConductData(sessionId: string): Promise<ConductData> {
   const session = await getChecklistSession(sessionId);
   const instance = await getChecklistInstance(session.instanceId);
   return { session, instance };
+}
+
+/**
+ * PR 319: the criterion stepper's step space is every checklist item plus one trailing
+ * "structured feedback" step -- pure and unit-testable on its own so the stepping logic doesn't
+ * need a full interactive render to verify (this file's other components are driven by
+ * `renderToStaticMarkup`, which can't click through steps).
+ */
+export function resolveConductStep(itemCount: number, requestedIndex: number) {
+  const totalSteps = itemCount + 1;
+  const boundedIndex = Math.min(Math.max(requestedIndex, 0), totalSteps - 1);
+  return { boundedIndex, totalSteps, isFeedbackStep: boundedIndex >= itemCount, isLastStep: boundedIndex === totalSteps - 1 };
 }
 
 export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: string; onBack: () => void; t: TFunction }) {
@@ -189,6 +202,10 @@ export function ConductScreen({
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [geoNotice, setGeoNotice] = useState<GeoNotice>(null);
+  // Blocks Back/Pause/Next while the visible step's own save/upload is still in flight -- see the
+  // comment on the old CriterionStepper for why serializing these matters. Lifted up from the
+  // stepper (PR 319) since the bottom nav bar is now a page-level element, not the stepper's own.
+  const [cardBusy, setCardBusy] = useState(false);
 
   if (!checklist) return null;
 
@@ -259,6 +276,11 @@ export function ConductScreen({
         ← {t('checklistSessions.conduct.backToList', 'My sessions')}
       </button>
 
+      <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COLORS.primary }}>
+        {t('checklistSessions.conduct.eyebrow', 'Workplace training')}
+      </p>
+      <h1 style={{ margin: '2px 0 0', fontSize: 20 }}>{t('checklistSessions.conduct.screenTitle', 'Conduct session')}</h1>
+
       <Header session={session} instance={instance} t={t} />
 
       {error && (
@@ -277,52 +299,107 @@ export function ConductScreen({
         </Button>
       )}
 
-      {(session.status === 'in_progress' || session.status === 'paused') && (
-        <>
-          <div style={{ margin: '16px 0' }}>
-            <ProgressBar
-              value={completedRequired}
-              max={requiredCount || 1}
-              label={t('checklistSessions.conduct.progress', '{{completed}} / {{total}} required', { completed: completedRequired, total: requiredCount })}
-            />
-          </div>
+      {(session.status === 'in_progress' || session.status === 'paused') && (() => {
+        // PR 319: the step space is every criterion plus one trailing "structured feedback" step
+        // (prototype has no reference for this -- the plan asks for feedback to be a step after
+        // the last criterion instead of a permanently-visible block under the card). "Next" turns
+        // into "Complete" only on that last step, gated by the same canComplete this screen already
+        // computed for the old standalone Complete button.
+        const { boundedIndex, isFeedbackStep, isLastStep } = resolveConductStep(items.length, stepIndex);
+        return (
+          <>
+            <div style={{ margin: '16px 0' }}>
+              <ProgressBar
+                value={completedRequired}
+                max={requiredCount || 1}
+                label={t('checklistSessions.conduct.progress', '{{completed}} / {{total}} required', { completed: completedRequired, total: requiredCount })}
+              />
+            </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {session.status === 'in_progress' ? (
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('pause')} style={{ flex: 1, minHeight: 44 }}>
-                {t('checklistSessions.conduct.pause', 'Pause')}
-              </Button>
-            ) : (
-              <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('resume')} style={{ flex: 1, minHeight: 44 }}>
-                {t('checklistSessions.conduct.resume', 'Resume')}
-              </Button>
-            )}
-            <Button type="button" disabled={busy || !canComplete} onClick={() => void transition('complete')} style={{ flex: 1, minHeight: 44 }}>
-              {t('checklistSessions.conduct.complete', 'Complete')}
-            </Button>
-          </div>
-          {!canComplete && (
-            <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: -8, marginBottom: 16 }}>
-              {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
+            <p style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, margin: '0 0 8px' }}>
+              {isFeedbackStep
+                ? t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')
+                : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: boundedIndex + 1, total: items.length })}
             </p>
-          )}
 
-          {items.length > 0 && (
-            <CriterionStepper
-              items={items}
-              stepIndex={stepIndex}
-              setStepIndex={setStepIndex}
-              instance={instance}
-              editable={editable}
-              onInstanceSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
-              onConflict={() => setConflict(true)}
-              t={t}
-            />
-          )}
-        </>
-      )}
+            {isFeedbackStep ? (
+              <StructuredFeedback
+                session={session}
+                busy={busy}
+                onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
+                onConflict={() => setConflict(true)}
+                t={t}
+              />
+            ) : (() => {
+              const currentItem = items[boundedIndex]!;
+              const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
+              const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
+              return (
+                <div
+                  style={{
+                    border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
+                    background: isDone ? COLORS.successSoft : COLORS.surface,
+                    borderRadius: 14,
+                    padding: 16,
+                  }}
+                >
+                  <CriterionCard
+                    key={currentItem.id}
+                    instanceId={instance.id}
+                    item={currentItem}
+                    result={currentResult}
+                    scoringMode={checklist.scoringMode}
+                    scaleLevels={checklist.scaleLevels}
+                    editable={editable}
+                    onSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
+                    onBusyChange={setCardBusy}
+                    onConflict={() => setConflict(true)}
+                    t={t}
+                  />
+                </div>
+              );
+            })()}
 
-      {(session.status === 'in_progress' || session.status === 'paused' || session.status === 'completed') && (
+            {!canComplete && isLastStep && (
+              <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
+                {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={boundedIndex === 0 || cardBusy}
+                onClick={() => setStepIndex(boundedIndex - 1)}
+                style={{ flex: 1, minHeight: 44 }}
+              >
+                {t('checklistSessions.conduct.back', 'Back')}
+              </Button>
+              {session.status === 'in_progress' ? (
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('pause')} style={{ flex: 1, minHeight: 44 }}>
+                  {t('checklistSessions.conduct.pause', 'Pause')}
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('resume')} style={{ flex: 1, minHeight: 44 }}>
+                  {t('checklistSessions.conduct.resume', 'Resume')}
+                </Button>
+              )}
+              {isLastStep ? (
+                <Button type="button" disabled={busy || !canComplete} onClick={() => void transition('complete')} style={{ flex: 1, minHeight: 44 }}>
+                  {t('checklistSessions.conduct.complete', 'Complete')}
+                </Button>
+              ) : (
+                <Button type="button" disabled={cardBusy} onClick={() => setStepIndex(boundedIndex + 1)} style={{ flex: 1, minHeight: 44 }}>
+                  {t('checklistSessions.conduct.next', 'Next')}
+                </Button>
+              )}
+            </div>
+          </>
+        );
+      })()}
+
+      {session.status === 'completed' && (
         <StructuredFeedback
           session={session}
           busy={busy}
@@ -393,93 +470,6 @@ export function formatElapsed(ms: number) {
   const seconds = totalSeconds % 60;
   const pad = (n: number) => String(n).padStart(2, '0');
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
-}
-
-function CriterionStepper({
-  items,
-  stepIndex,
-  setStepIndex,
-  instance,
-  editable,
-  onInstanceSaved,
-  onConflict,
-  t,
-}: {
-  items: ChecklistItemSummary[];
-  stepIndex: number;
-  setStepIndex: (index: number) => void;
-  instance: ChecklistInstanceSummary;
-  editable: boolean;
-  onInstanceSaved: (instance: ChecklistInstanceSummary) => void;
-  onConflict: () => void;
-  t: TFunction;
-}) {
-  const checklist = instance.checklist;
-  // Each response carries a whole instance snapshot, and onInstanceSaved replaces `current.instance`
-  // with it wholesale -- navigating to another criterion while this one's save/upload is still in
-  // flight would let that request's response resolve after the next criterion's and overwrite it
-  // with stale data. Blocking Back/Next while the visible card reports a pending mutation keeps
-  // these requests serialized instead of merging out of order.
-  const [cardBusy, setCardBusy] = useState(false);
-  if (!checklist) return null;
-  const boundedIndex = Math.min(stepIndex, items.length - 1);
-  const item = items[boundedIndex];
-  const result = instance.results.find((r) => r.itemId === item.id);
-  const isDone = isChecklistAnswerComplete(item, checklist.scoringMode, checklistResultToAnswer(result));
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
-          {t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: boundedIndex + 1, total: items.length })}
-        </span>
-      </div>
-
-      <div
-        style={{
-          border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
-          background: isDone ? COLORS.successSoft : COLORS.surface,
-          borderRadius: 14,
-          padding: 16,
-        }}
-      >
-        <CriterionCard
-          key={item.id}
-          instanceId={instance.id}
-          item={item}
-          result={result}
-          scoringMode={checklist.scoringMode}
-          scaleLevels={checklist.scaleLevels}
-          editable={editable}
-          onSaved={onInstanceSaved}
-          onBusyChange={setCardBusy}
-          onConflict={onConflict}
-          t={t}
-        />
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={boundedIndex === 0 || cardBusy}
-          onClick={() => setStepIndex(boundedIndex - 1)}
-          style={{ flex: 1, minHeight: 44 }}
-        >
-          {t('checklistSessions.conduct.back', 'Back')}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={boundedIndex === items.length - 1 || cardBusy}
-          onClick={() => setStepIndex(boundedIndex + 1)}
-          style={{ flex: 1, minHeight: 44 }}
-        >
-          {t('checklistSessions.conduct.next', 'Next')}
-        </Button>
-      </div>
-    </div>
-  );
 }
 
 function CriterionCard({

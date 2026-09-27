@@ -1,6 +1,7 @@
 import '../i18n/index.js';
 
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const reactMocks = vi.hoisted(() => ({
@@ -39,7 +40,13 @@ afterEach(() => {
 describe('MentorChecklistReviewsPage smoke tests', () => {
   it('renders without crashing in loading state', () => {
     useLoadingState();
-    expect(() => renderToStaticMarkup(<MentorChecklistReviewsPage />)).not.toThrow();
+    expect(() =>
+      renderToStaticMarkup(
+        <MemoryRouter>
+          <MentorChecklistReviewsPage />
+        </MemoryRouter>,
+      ),
+    ).not.toThrow();
   });
 
   it('renders the review queue under the mentor layout', () => {
@@ -107,7 +114,11 @@ describe('MentorChecklistReviewsPage smoke tests', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<MentorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <MentorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Аттестация наставника');
     expect(html).toContain('href="/mentor"');

@@ -2341,7 +2341,11 @@
       "markUnavailableError": "无法提交不可用报告。",
       "markUnavailableReason": "原因",
       "markUnavailableCancel": "取消",
-      "markUnavailableSubmit": "提交"
+      "markUnavailableSubmit": "提交",
+      "eyebrow": "现场培训",
+      "sessionsTitle": "待开展的会话",
+      "sessionsSubtitle": "您作为观察员的会话。",
+      "screenTitle": "开展会话"
     },
     "learner": {
       "title": "我的培训会话",

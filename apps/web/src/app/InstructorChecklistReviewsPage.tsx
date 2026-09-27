@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import {
   assignChecklistReviewer,
@@ -21,11 +22,9 @@ import { Button, PageState, Pagination, StatCard, StatsGrid, Toolbar } from '../
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
-import { ChecklistSessionConduct } from './ChecklistSessionConduct.js';
-import { ChecklistSessionsToConduct } from './ChecklistSessionsToConduct.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 type ChecklistReviewsLayout = ComponentType<{ children: ReactNode; firstName?: string; lastName?: string }>;
-type QueueTab = 'mine' | 'unassigned' | 'all' | 'sessions';
+type QueueTab = 'mine' | 'unassigned' | 'all';
 
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
   return item.photoRequired && !hasChecklistPhotoEvidence(result);
@@ -61,13 +60,8 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
   const [page, setPage] = useState(1);
   const { state: loadState, reload: load } = useAsyncData<InstructorChecklistReviewsData>(
     async () => {
-      // The "sessions" tab (PR 297) renders its own self-contained sub-component with its own
-      // data load -- it never needs the review-queue call, which doesn't accept 'sessions' as a
-      // valid `assignment` filter anyway.
       const [queue, analytics, currentUser] = await Promise.all([
-        tab === 'sessions'
-          ? Promise.resolve({ items: [] as ChecklistInstanceSummary[], total: 0, pageSize: 20 })
-          : searchChecklistReviewQueue({ assignment: tab, page, pageSize: 20 }),
+        searchChecklistReviewQueue({ assignment: tab, page, pageSize: 20 }),
         getChecklistAnalytics(),
         getCurrentUser(),
       ]);
@@ -88,7 +82,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
       error: t('checklistReview.loadError', 'Unable to load pending reviews.'),
     },
   );
-  const [openSessionId, setOpenSessionId] = useState<string | null>(null);
   if (loadState.status === 'loading') {
     return (
       <Layout>
@@ -121,7 +114,6 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
     { key: 'mine', label: t('checklistReview.tabs.mine', 'Assigned to me') },
     { key: 'unassigned', label: t('checklistReview.tabs.unassigned', 'Unassigned') },
     { key: 'all', label: t('checklistReview.tabs.all', 'All') },
-    { key: 'sessions', label: t('checklistReview.tabs.sessions', 'Conduct') },
   ];
 
   return (
@@ -138,7 +130,7 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
           <StatCard label={t('checklistReview.analytics.awaitingReview', 'Awaiting review')} value={analytics.pendingReview} />
         </StatsGrid>
 
-        {!openInstance && !openSessionId && (
+        {!openInstance && (
           <Toolbar
             left={
               <div role="tablist" aria-label={t('checklistReview.tabs.label', 'Review queue')} style={{ display: 'flex', gap: 8 }}>
@@ -157,16 +149,17 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
                 ))}
               </div>
             }
+            right={
+              // PR 319: conducting a session moved to its own route, no longer a local-state tab
+              // sharing this page's review-queue data load.
+              <Link className="ds-button ds-button--secondary ds-button--sm" to="/instructor/checklists/sessions">
+                {t('checklistReview.tabs.sessions', 'Conduct')}
+              </Link>
+            }
           />
         )}
 
-        {tab === 'sessions' ? (
-          openSessionId ? (
-            <ChecklistSessionConduct sessionId={openSessionId} onBack={() => setOpenSessionId(null)} t={t} />
-          ) : (
-            <ChecklistSessionsToConduct onOpenSession={setOpenSessionId} t={t} />
-          )
-        ) : openInstance ? (
+        {openInstance ? (
           <ReviewDetail
             instance={openInstance}
             currentUserId={currentUserId}

@@ -2341,7 +2341,11 @@
       "markUnavailableError": "Қолжетімсіздік туралы хабарлау мүмкін болмады.",
       "markUnavailableReason": "Себебі",
       "markUnavailableCancel": "Бас тарту",
-      "markUnavailableSubmit": "Хабарлау"
+      "markUnavailableSubmit": "Хабарлау",
+      "eyebrow": "Жұмыс орнындағы оқыту",
+      "sessionsTitle": "Өткізетін сессиялар",
+      "sessionsSubtitle": "Сіз бақылаушы болатын сессиялар.",
+      "screenTitle": "Сессияны өткізу"
     },
     "learner": {
       "title": "Менің оқыту сессияларым",

@@ -2341,7 +2341,11 @@
       "markUnavailableError": "Unable to report unavailability.",
       "markUnavailableReason": "Reason",
       "markUnavailableCancel": "Cancel",
-      "markUnavailableSubmit": "Report"
+      "markUnavailableSubmit": "Report",
+      "eyebrow": "Workplace training",
+      "sessionsTitle": "Sessions to conduct",
+      "sessionsSubtitle": "Sessions where you are the observer.",
+      "screenTitle": "Conduct session"
     },
     "learner": {
       "title": "My training sessions",
