@@ -653,7 +653,7 @@
       "productionRoute": "/manager/checklists",
       "parityStatus": "aligned",
       "lastComparedAt": "2026-09-27",
-      "lastComparedSha": "6f7920a",
+      "lastComparedSha": "234bdca",
       "knownDifferences": [],
       "languages": ["ru"]
     },
