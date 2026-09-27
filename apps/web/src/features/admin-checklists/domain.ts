@@ -137,12 +137,30 @@ export type GroupedItems = { group: ChecklistItemGroup | null; items: ChecklistI
  * always last, so a criterion is never silently dropped from the builder's view.
  */
 export function groupItems(items: ChecklistItemSummary[], groups: ChecklistItemGroup[]): GroupedItems[] {
+  const byOrder = (a: ChecklistItemSummary, b: ChecklistItemSummary) => a.order - b.order;
   const sortedGroups = [...groups].sort((a, b) => a.order - b.order);
-  const buckets: GroupedItems[] = sortedGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id) }));
+  const buckets: GroupedItems[] = sortedGroups.map((group) => ({ group, items: items.filter((item) => item.groupId === group.id).sort(byOrder) }));
   const groupIds = new Set(groups.map((group) => group.id));
-  const ungrouped = items.filter((item) => item.groupId == null || !groupIds.has(item.groupId));
+  const ungrouped = items.filter((item) => item.groupId == null || !groupIds.has(item.groupId)).sort(byOrder);
   if (ungrouped.length > 0 || groups.length === 0) buckets.push({ group: null, items: ungrouped });
   return buckets;
+}
+
+/**
+ * Swaps a criterion with its neighbour within the same group (or the same ungrouped bucket),
+ * returning the two {id, order} pairs to persist -- mirrors moveGroup's up/down contract so the
+ * builder's group and criterion reordering share one interaction pattern (PR 317).
+ */
+export function moveItem(items: ChecklistItemSummary[], itemId: string, direction: 'up' | 'down'): Array<{ id: string; order: number }> {
+  const target = items.find((item) => item.id === itemId);
+  if (!target) return [];
+  const siblings = items.filter((item) => (item.groupId ?? null) === (target.groupId ?? null)).sort((a, b) => a.order - b.order);
+  const index = siblings.findIndex((item) => item.id === itemId);
+  const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= siblings.length) return [];
+  const a = siblings[index]!;
+  const b = siblings[targetIndex]!;
+  return [{ id: a.id, order: b.order }, { id: b.id, order: a.order }];
 }
 
 export function applyGroupPatch(groups: ChecklistItemGroup[], groupId: string, patch: Partial<ChecklistItemGroup>) {

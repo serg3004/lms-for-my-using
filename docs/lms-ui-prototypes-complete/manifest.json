@@ -607,11 +607,11 @@
       "designStatus": "approved",
       "implementationStatus": "implemented",
       "productionRoute": "/admin/checklists",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "6b585cd",
       "knownDifferences": [
-        "Поле текста критерия шириной 0px; критерии не таблицей по группам (PR 317)"
+        "Колонки «Баллы»/«Вес» в таблице критериев — прототип их не показывает вовсе; «Баллы» видна только в режиме «Сумма баллов», «Вес» видна всегда, так как бэкенд применяет её как множитель ко всем трём режимам оценки (PR 317, сознательно)"
       ],
       "languages": ["ru"]
     },

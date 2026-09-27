@@ -972,7 +972,8 @@
         "defaultLocationCapturePolicy": "Location requirement",
         "preSessionVisibility": "Employee sees before the session",
         "isRequired": "Required item",
-        "dueAt": "Due date"
+        "dueAt": "Due date",
+        "criterion": "Criterion"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1204,7 +1205,17 @@
       "dueAtHint": "Optional. Enter local time; it is stored as UTC.",
       "requiredItem": "Required",
       "optionalItem": "Optional",
-      "previewPhotoAttached": "Photo attached"
+      "previewPhotoAttached": "Photo attached",
+      "builderEyebrow": "Observation sheet",
+      "rowActions": "Actions",
+      "criteriaTable": {
+        "required": "Required",
+        "photo": "Photo"
+      },
+      "groupCriterionCount_one": "{{count}} criterion",
+      "groupCriterionCount_few": "{{count}} criteria",
+      "groupCriterionCount_many": "{{count}} criteria",
+      "groupCriterionCount_other": "{{count}} criteria"
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

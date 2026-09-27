@@ -972,7 +972,8 @@
         "defaultLocationCapturePolicy": "位置要求",
         "preSessionVisibility": "员工会话前可见内容",
         "isRequired": "必填项目",
-        "dueAt": "截止日期"
+        "dueAt": "截止日期",
+        "criterion": "标准"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1204,7 +1205,17 @@
       "dueAtHint": "可选。输入本地时间；系统会以 UTC 存储。",
       "requiredItem": "必填",
       "optionalItem": "可选",
-      "previewPhotoAttached": "已附加照片"
+      "previewPhotoAttached": "已附加照片",
+      "builderEyebrow": "观察表",
+      "rowActions": "操作",
+      "criteriaTable": {
+        "required": "必填",
+        "photo": "照片"
+      },
+      "groupCriterionCount_one": "{{count}} 项标准",
+      "groupCriterionCount_few": "{{count}} 项标准",
+      "groupCriterionCount_many": "{{count}} 项标准",
+      "groupCriterionCount_other": "{{count}} 项标准"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

@@ -1465,7 +1465,11 @@
 
 .admin-builder__grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  /* Matches the prototype's `.builder` grid: a flexible left column and a fixed-width settings
+     column, rather than a proportional split -- at this app's (wider, uncapped) admin content
+     width a ratio-based split left too little room for the criteria table and contributed to the
+     "criterion text is unreadably narrow" defect (PR 317). */
+  grid-template-columns: minmax(0, 1fr) 300px;
   gap: 20px;
   align-items: start;
 }
@@ -1503,7 +1507,13 @@
 
 .admin-checklist-item input[type='text'],
 .admin-checklist-item > input:not([type]) {
-  flex: 1;
+  /* `flex: 1` is shorthand for `flex-basis: 0%`, so once a row's fixed-width siblings (points,
+     weight, scale, toggles, delete) overflow the available width, this input's shrink amount is
+     scaled by that zero basis and it collapses to 0px instead of shrinking proportionally like
+     everything else in the row (PR 317 — this was the reported "criterion text is 0px" defect).
+     A non-zero basis with shrink still allowed fixes it. */
+  flex: 1 1 120px;
+  min-width: 0;
   border: none;
   background: transparent;
   font-weight: 600;
@@ -1524,20 +1534,6 @@
   flex: none;
 }
 
-.admin-checklist-item__points,
-.admin-checklist-item__weight,
-.admin-checklist-item__scale {
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px;
-}
-
-.admin-checklist-item__points,
-.admin-checklist-item__weight {
-  width: 52px;
-  text-align: center;
-}
-
 .admin-checklist-item__photo {
   display: inline-flex;
   align-items: center;
@@ -1547,35 +1543,248 @@
   white-space: nowrap;
 }
 
-.admin-checklist-item__scale {
-  max-width: 140px;
+/* ── Groups and criteria table (PR 317) ──────────────────────────────────── */
+
+.admin-builder-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.admin-builder-section-head h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* Each group is its own bordered card nested inside the "Groups and criteria" section card, same
+   nesting the prototype uses (outer card with shadow, `.group` inside it with just a border). */
+.admin-group-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.admin-group-card:first-of-type {
+  margin-top: 12px;
+}
+
+.admin-group-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 13px;
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-group-card__head h4 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.admin-group-card__head input {
+  font-weight: 700;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  padding: 2px 0;
+}
+
+.admin-group-card__count {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+}
+
+.admin-group-card__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.admin-criteria-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-criteria-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12.5px;
+}
+
+.admin-criteria-row:last-child {
+  border-bottom: none;
+}
+
+.admin-criteria-row--head {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* The header's column labels are full words (unlike the compact toggle switches in each data
+   row below them), so they need to wrap instead of the fixed narrow toggle-column width forcing
+   them to overlap the next column. */
+.admin-criteria-row--head .admin-criteria-row__toggle,
+.admin-criteria-row--head .admin-criteria-row__weight {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.admin-criteria-row__order {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 20px;
+}
+
+.admin-criteria-row__order button {
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 0;
+}
+
+.admin-criteria-row__order button:disabled {
+  opacity: .3;
+  cursor: default;
+}
+
+.admin-criteria-row__text {
+  flex: 1 1 200px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.admin-criteria-row__points,
+.admin-criteria-row__weight {
+  flex: none;
+  width: 44px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+.admin-criteria-row__scale {
+  flex: none;
+  width: 120px;
+  max-width: 120px;
   font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px;
 }
 
-/* PR 296 observation-sheet builder: item groups, context fields, scale manager. */
-.admin-item-group {
-  margin-bottom: 16px;
+.admin-criteria-row__toggle {
+  flex: none;
+  width: 46px;
+  display: flex;
+  justify-content: center;
 }
 
-.admin-item-group__header,
+.admin-criteria-row__menu {
+  flex: none;
+}
+
+@media (max-width: 900px) {
+  .admin-criteria-row--head {
+    display: none;
+  }
+
+  .admin-criteria-row {
+    flex-wrap: wrap;
+  }
+
+  .admin-criteria-row__text {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  /* The order arrows and row menu are icon-only, so their own content never reaches the 44px
+     minimum touch target (global.css's `@media (max-width: 860px)` rule only forces min-height,
+     not min-width) -- widen them explicitly here instead of shrinking the tap target. */
+  .admin-criteria-row__order {
+    flex-direction: row;
+    width: auto;
+    gap: 4px;
+  }
+
+  .admin-criteria-row__order button {
+    min-width: 44px;
+  }
+
+  .admin-criteria-row__menu button {
+    min-width: 44px;
+  }
+}
+
+/* A checkbox styled as an on/off pill, matching the prototype's `.toggle` -- kept as a real
+   `<input type="checkbox">` (with an `aria-label`) rather than a decorative div, so it stays
+   keyboard- and screen-reader-accessible. */
+.admin-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 32px;
+  height: 19px;
+  border-radius: 999px;
+  background: var(--color-border);
+  position: relative;
+  flex: none;
+  margin: 0;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+
+.admin-switch::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left .15s ease;
+}
+
+.admin-switch:checked {
+  background: var(--color-primary);
+}
+
+.admin-switch:checked::after {
+  left: 15px;
+}
+
+.admin-switch:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* PR 296 observation-sheet builder: context fields. */
 .admin-context-field-row {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.admin-item-group__header {
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.admin-item-group__header h4 {
-  margin: 0;
-}
-
-.admin-item-group__actions {
-  display: flex;
-  gap: 6px;
 }
 
 .admin-context-fields {

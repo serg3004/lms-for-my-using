@@ -703,12 +703,14 @@ for (const width of widths) {
       await page.getByRole('button', { name: 'Редактировать' }).click();
       await expect(page.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
       // Assert the actual builder surface rendered -- not just the header -- so this test
-      // can't silently degrade into only checking the outer page shell.
-      const itemRows = page.locator('.admin-checklist-item');
+      // can't silently degrade into only checking the outer page shell. PR 317 replaced the old
+      // flex `.admin-checklist-item` rows with a `.admin-criteria-row` table (excluding its own
+      // header row, which shares the base class).
+      const itemRows = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)');
       await expect(itemRows).toHaveCount(3);
-      await expect(itemRows.nth(0).locator('input').first()).toHaveValue('Turn on the lights and equipment');
-      await expect(itemRows.nth(1).locator('input').first()).toHaveValue('Check the temperature log');
-      await expect(itemRows.nth(2).locator('input').first()).toHaveValue('Restock the front counter');
+      await expect(itemRows.nth(0).locator('.admin-criteria-row__text')).toHaveValue('Turn on the lights and equipment');
+      await expect(itemRows.nth(1).locator('.admin-criteria-row__text')).toHaveValue('Check the temperature log');
+      await expect(itemRows.nth(2).locator('.admin-criteria-row__text')).toHaveValue('Restock the front counter');
       await expect(page.getByRole('button', { name: 'Добавить пункт' })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);

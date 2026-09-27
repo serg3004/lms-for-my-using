@@ -38,13 +38,21 @@ function extractTranslationKeys(source: string): string[] {
   return keys;
 }
 
-function hasKey(locale: unknown, key: string): boolean {
+function hasPath(locale: unknown, key: string): boolean {
   let cursor: unknown = locale;
   for (const segment of key.split('.')) {
     if (typeof cursor !== 'object' || cursor === null || !(segment in cursor)) return false;
     cursor = (cursor as Record<string, unknown>)[segment];
   }
   return true;
+}
+
+// i18next's `t(key, ..., { count })` never stores `key` itself for a pluralized entry -- only its
+// CLDR-suffixed variants (`key_one`, `key_few`, ...). A bare `hasPath(locale, key)` would always
+// report those as "missing", so also accept the entry if any plural suffix of it exists.
+const PLURAL_SUFFIXES = ['_zero', '_one', '_two', '_few', '_many', '_other'];
+function hasKey(locale: unknown, key: string): boolean {
+  return hasPath(locale, key) || PLURAL_SUFFIXES.some((suffix) => hasPath(locale, key + suffix));
 }
 
 describe('checklist module i18n key coverage (UI refresh PR 316)', () => {

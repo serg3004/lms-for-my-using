@@ -972,7 +972,8 @@
         "defaultLocationCapturePolicy": "Геолокация талабы",
         "preSessionVisibility": "Сессияға дейін қызметкер көретін ақпарат",
         "isRequired": "Міндетті тармақ",
-        "dueAt": "Мерзімі"
+        "dueAt": "Мерзімі",
+        "criterion": "Критерий"
       },
       "itemsTitle": "Чеклист тармақтары",
       "noItems": "Әзірге тармақтар жоқ.",
@@ -1204,7 +1205,17 @@
       "dueAtHint": "Міндетті емес. Жергілікті уақытты енгізіңіз — ол UTC форматында сақталады.",
       "requiredItem": "Міндетті",
       "optionalItem": "Міндетті емес",
-      "previewPhotoAttached": "Фото тіркелген"
+      "previewPhotoAttached": "Фото тіркелген",
+      "builderEyebrow": "Бақылау парағы",
+      "rowActions": "Әрекеттер",
+      "criteriaTable": {
+        "required": "Міндетті",
+        "photo": "Фото"
+      },
+      "groupCriterionCount_one": "{{count}} критерий",
+      "groupCriterionCount_few": "{{count}} критерий",
+      "groupCriterionCount_many": "{{count}} критерий",
+      "groupCriterionCount_other": "{{count}} критерий"
     },
     "orgTools": {
       "cardTitle": "Ұйымдық құрылымды импорттау",
