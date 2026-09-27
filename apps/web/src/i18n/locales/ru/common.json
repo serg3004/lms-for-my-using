@@ -2341,7 +2341,11 @@
       "markUnavailableError": "Не удалось отправить сообщение о недоступности.",
       "markUnavailableReason": "Причина",
       "markUnavailableCancel": "Отмена",
-      "markUnavailableSubmit": "Отправить"
+      "markUnavailableSubmit": "Отправить",
+      "eyebrow": "Обучение на рабочем месте",
+      "sessionsTitle": "Сессии к проведению",
+      "sessionsSubtitle": "Сессии, где вы наблюдатель.",
+      "screenTitle": "Проведение сессии"
     },
     "learner": {
       "title": "Мои обучающие сессии",

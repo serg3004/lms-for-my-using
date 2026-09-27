@@ -651,9 +651,8 @@ for (const width of widths) {
 
     test('keeps the instructor mobile observer conduct screen responsive', async ({ page }) => {
       await installInstructorConductMocks(page);
-      await page.goto('/instructor/checklists');
+      await page.goto('/instructor/checklists/sessions');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await page.getByRole('tab', { name: 'Проведение' }).click();
       await expect(page.getByText('Opening shift checklist').first()).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);

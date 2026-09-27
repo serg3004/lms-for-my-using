@@ -115,16 +115,15 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
-  test('instructor "Conduct" (mobile observer) tab has an accessible rendered state', async ({ page }, testInfo) => {
+  test('instructor "Conduct" (mobile observer) sessions list has an accessible rendered state', async ({ page }, testInfo) => {
     // Mobile-first screen (PR 297 ADR_CHECKLIST_SESSION_OVERLAY.md) -- audit it at the phone
     // viewport it's actually designed for, not the default desktop one every other test above uses.
+    // PR 319: this moved from a tab embedded in the review-queue page to its own route.
     await page.setViewportSize({ width: 375, height: 812 });
     await loginAs(page, 'instructor');
     await expect(page).toHaveURL(/\/instructor\/dashboard$/);
-    await page.goto('/instructor/checklists');
+    await page.goto('/instructor/checklists/sessions');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await page.getByRole('tab', { name: 'Проведение' }).click();
-    await expect(page.getByRole('tab', { name: 'Проведение' })).toHaveAttribute('aria-selected', 'true');
     await auditAccessibility(page, testInfo);
   });
 

@@ -328,8 +328,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
 
     await test.step('observer opens the session on a mobile viewport and starts it, capturing geolocation (#3, #5)', async () => {
       await login(observerPage, 'instructor');
-      await observerPage.goto('/instructor/checklists');
-      await observerPage.getByRole('tab', { name: 'Проведение' }).click();
+      await observerPage.goto('/instructor/checklists/sessions');
       await observerPage.getByText('Opening shift checklist').click();
 
       await observerPage.getByRole('button', { name: 'Начать сессию' }).click();
@@ -362,6 +361,9 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     });
 
     await test.step('observer completes the session, capturing geolocation again (#5)', async () => {
+      // PR 319: feedback is now the step after the last criterion, so one more "Далее" click
+      // is needed to reach it before "Завершить" becomes available.
+      await observerPage.getByRole('button', { name: 'Далее' }).click();
       await expect(observerPage.getByRole('button', { name: 'Завершить' })).toBeEnabled();
       await observerPage.getByRole('button', { name: 'Завершить' }).click();
       await expect.poll(() => session.status).toBe('completed');
@@ -531,8 +533,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       }));
       await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
 
-      await page.goto('/instructor/checklists');
-      await page.getByRole('tab', { name: 'Проведение' }).click();
+      await page.goto('/instructor/checklists/sessions');
       await page.getByText('Opening shift checklist').click();
 
       await expect(page.getByText(originalItemText)).toBeVisible();
@@ -569,10 +570,13 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
         });
       });
 
-      await page.goto('/instructor/checklists');
-      await page.getByRole('tab', { name: 'Проведение' }).click();
+      await page.goto('/instructor/checklists/sessions');
       await page.getByText('Opening shift checklist').click();
 
+      // PR 319: feedback is the step after the last criterion, so stepping through both
+      // criteria is required before "Завершить" appears.
+      await page.getByRole('button', { name: 'Далее' }).click();
+      await page.getByRole('button', { name: 'Далее' }).click();
       await page.getByRole('button', { name: 'Завершить' }).click();
 
       await expect(page.getByText('Сессия изменилась в другом месте')).toBeVisible();

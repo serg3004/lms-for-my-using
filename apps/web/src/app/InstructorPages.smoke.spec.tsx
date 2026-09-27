@@ -82,7 +82,13 @@ describe('Instructor pages smoke tests', () => {
 
   it('InstructorChecklistReviewsPage renders without crashing in loading state', () => {
     useLoadingState();
-    expect(() => renderToStaticMarkup(<InstructorChecklistReviewsPage />)).not.toThrow();
+    expect(() =>
+      renderToStaticMarkup(
+        <MemoryRouter>
+          <InstructorChecklistReviewsPage />
+        </MemoryRouter>,
+      ),
+    ).not.toThrow();
   });
 
   const emptyAnalytics = {
@@ -152,7 +158,11 @@ describe('Instructor pages smoke tests', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Приёмка нового стажёра');
   });
@@ -216,7 +226,11 @@ describe('Instructor pages smoke tests', () => {
     // ReviewDetail + ChecklistReviewPhotoEvidence add state hooks after that.
     useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Прошёл вводный инструктаж');
     expect(html).toContain('evidence.jpg');
@@ -254,7 +268,11 @@ describe('Instructor pages smoke tests', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('12');
     expect(html).toContain('67%');
@@ -287,7 +305,11 @@ describe('Instructor pages smoke tests', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Без назначения');
     expect(html).toContain('Назначено мне');
@@ -312,7 +334,11 @@ describe('Instructor pages smoke tests', () => {
     };
     useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Назначить себе');
     expect(html).toContain('Загрузка истории');
@@ -336,7 +362,11 @@ describe('Instructor pages smoke tests', () => {
     };
     useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
 
-    const html = renderToStaticMarkup(<InstructorChecklistReviewsPage />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <InstructorChecklistReviewsPage />
+      </MemoryRouter>,
+    );
 
     expect(html).toContain('Назначено другому проверяющему');
     expect(html).not.toContain('Назначить себе');
