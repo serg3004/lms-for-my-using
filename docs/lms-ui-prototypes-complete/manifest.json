@@ -591,11 +591,11 @@
       "designStatus": "approved",
       "implementationStatus": "implemented",
       "productionRoute": "/admin/checklists/sessions",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "c049234",
       "knownDifferences": [
-        "Select статуса вместо вкладок, нет фильтров периода и наблюдателя, визард с поломанными строками выбора (PR 318)"
+        "6-я вкладка статуса «На паузе» сверх 5 вкладок прототипа — реальное состояние сессии, уже доступное в старом select (PR 318, сознательно)"
       ],
       "languages": ["ru"]
     },
