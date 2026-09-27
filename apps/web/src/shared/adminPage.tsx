@@ -422,8 +422,8 @@ export function ChecklistsTabs({ current }: { current: ChecklistsTabKey }) {
 
 type AdminPageHeaderProps = {
   eyebrow?: string;
-  title: string;
-  subtitle?: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   action?: ReactNode;
 };
 

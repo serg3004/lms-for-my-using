@@ -972,7 +972,8 @@
         "defaultLocationCapturePolicy": "Требование геолокации",
         "preSessionVisibility": "Что видит сотрудник до сессии",
         "isRequired": "Обязательный пункт",
-        "dueAt": "Срок"
+        "dueAt": "Срок",
+        "criterion": "Критерий"
       },
       "itemsTitle": "Пункты чек-листа",
       "noItems": "Пока нет пунктов.",
@@ -1204,7 +1205,17 @@
       "dueAtHint": "Необязательно. Введите локальное время — оно будет сохранено в UTC.",
       "requiredItem": "Обязательный",
       "optionalItem": "Необязательный",
-      "previewPhotoAttached": "Фото прикреплено"
+      "previewPhotoAttached": "Фото прикреплено",
+      "builderEyebrow": "Лист наблюдения",
+      "rowActions": "Действия",
+      "criteriaTable": {
+        "required": "Обязательный",
+        "photo": "Фото"
+      },
+      "groupCriterionCount_one": "{{count}} критерий",
+      "groupCriterionCount_few": "{{count}} критерия",
+      "groupCriterionCount_many": "{{count}} критериев",
+      "groupCriterionCount_other": "{{count}} критерия"
     },
     "orgTools": {
       "cardTitle": "Импорт оргструктуры",

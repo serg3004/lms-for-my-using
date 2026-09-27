@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { AdminPageHeader, FormField } from '../../shared/adminPage.js';
-import { Badge, Button, EmptyState } from '../../shared/ui.js';
+import { Badge, Button, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
 import { listUsers } from '../../shared/api/users.js';
 import {
   assignChecklist,
@@ -53,6 +53,7 @@ import {
   formatUserName,
   groupItems,
   moveGroup,
+  moveItem,
   removeContextFieldById,
   removeItemById,
   removeScaleLevelAt,
@@ -62,6 +63,8 @@ import {
   type SaveState,
   applyScaleLevelPatch,
 } from './domain.js';
+
+const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = { draft: 'draft', published: 'published', archived: 'neutral' };
 
 export function ChecklistBuilder({
   checklist,
@@ -145,6 +148,16 @@ export function ChecklistBuilder({
       return next;
     });
     await Promise.all(patches.map((patch) => updateChecklistItemGroup(patch.id, { order: patch.order })));
+  }
+  async function moveItemDirection(itemId: string, direction: 'up' | 'down') {
+    const patches = moveItem(items, itemId, direction);
+    if (patches.length === 0) return;
+    setItems((prev) => {
+      let next = prev;
+      for (const patch of patches) next = applyItemPatch(next, patch.id, { order: patch.order });
+      return next;
+    });
+    await Promise.all(patches.map((patch) => updateChecklistItem(patch.id, { order: patch.order })));
   }
   async function copyGroup(groupId: string) {
     const newGroup = await copyChecklistItemGroup(groupId);
@@ -231,9 +244,9 @@ export function ChecklistBuilder({
         ← {t('admin.checklists.backToList', 'All checklists')}
       </button>
       <AdminPageHeader
-        eyebrow={t('admin.checklists.eyebrow', 'Knowledge control')}
+        eyebrow={t('admin.checklists.builderEyebrow', 'Observation sheet')}
         title={checklist.title}
-        subtitle={statusLabels[checklist.status]}
+        subtitle={<Badge variant={STATUS_BADGE_VARIANT[checklist.status]}>{statusLabels[checklist.status]}</Badge>}
         action={
           <div className="admin-builder__header-actions">
             <Button type="button" variant="secondary" onClick={() => setScaleManagerOpen(true)}>
@@ -322,21 +335,29 @@ export function ChecklistBuilder({
             </Button>
           </ChecklistItemsEditor>
           <ChecklistItemsEditor>
-            <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
+            <div className="admin-builder-section-head">
+              <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
+              <Button type="button" variant="primary" size="sm" onClick={() => void addGroup()}>
+                + {t('admin.checklists.addGroup', 'Group')}
+              </Button>
+            </div>
             {groupItems(items, itemGroups).map(({ group, items: groupedItems }, groupIndex, allGroups) => (
-              <div className="admin-item-group" key={group?.id ?? 'ungrouped'}>
-                <div className="admin-item-group__header">
-                  {group ? (
-                    <input
-                      aria-label={t('admin.checklists.groupTitle', 'Group title')}
-                      onBlur={(e) => void persistGroupTitle(group.id, e.target.value)}
-                      onChange={(e) => renameGroupLocally(group.id, e.target.value)}
-                      value={group.title}
-                    />
-                  ) : (
-                    <h4>{t('admin.checklists.ungroupedItems', 'Ungrouped')}</h4>
-                  )}
-                  <div className="admin-item-group__actions">
+              <div className="admin-group-card" key={group?.id ?? 'ungrouped'}>
+                <div className="admin-group-card__head">
+                  <div>
+                    {group ? (
+                      <input
+                        aria-label={t('admin.checklists.groupTitle', 'Group title')}
+                        onBlur={(e) => void persistGroupTitle(group.id, e.target.value)}
+                        onChange={(e) => renameGroupLocally(group.id, e.target.value)}
+                        value={group.title}
+                      />
+                    ) : (
+                      <h4>{t('admin.checklists.ungroupedItems', 'Ungrouped')}</h4>
+                    )}
+                    <p className="admin-group-card__count">{t('admin.checklists.groupCriterionCount', '{{count}} criteria', { count: groupedItems.length })}</p>
+                  </div>
+                  <div className="admin-group-card__actions">
                     {group && (
                       <>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveUp', 'Move up')}>↑</button>
@@ -349,39 +370,33 @@ export function ChecklistBuilder({
                     </button>
                   </div>
                 </div>
-                <ul className="admin-checklist-items">
-                  {groupedItems.map((item) => {
-                    const index = items.indexOf(item);
-                    return (
-                      <li key={item.id} className="admin-checklist-item">
-                        <span className="admin-checklist-item__index">{index + 1}</span>
+                {groupedItems.length > 0 && (
+                  <div className="admin-criteria-table" role="table" aria-label={t('admin.checklists.groupsTitle', 'Groups and criteria')}>
+                    <div className="admin-criteria-row admin-criteria-row--head" role="row">
+                      <span className="admin-criteria-row__order" aria-hidden="true" />
+                      <span className="admin-criteria-row__text">{t('admin.checklists.field.criterion', 'Criterion')}</span>
+                      <span className="admin-criteria-row__scale">{t('admin.checklists.field.scale', 'Scale')}</span>
+                      {scoringMode === 'sum_points' && <span className="admin-criteria-row__points">{t('admin.checklists.field.points', 'Points')}</span>}
+                      <span className="admin-criteria-row__weight">{t('admin.checklists.field.weight', 'Weight')}</span>
+                      <span className="admin-criteria-row__toggle">{t('admin.checklists.criteriaTable.required', 'Required')}</span>
+                      <span className="admin-criteria-row__toggle">{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
+                      <span className="admin-criteria-row__menu" aria-hidden="true" />
+                    </div>
+                    {groupedItems.map((item, itemIndex) => (
+                      <div className="admin-criteria-row" role="row" key={item.id}>
+                        <div className="admin-criteria-row__order">
+                          <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveUp', 'Move up')}>↑</button>
+                          <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveDown', 'Move down')}>↓</button>
+                        </div>
                         <input
+                          className="admin-criteria-row__text"
                           value={item.text}
                           onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
                           onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
-                        />
-                        {scoringMode === 'sum_points' && (
-                          <input
-                            type="number"
-                            className="admin-checklist-item__points"
-                            value={item.points}
-                            onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
-                            onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
-                            aria-label={t('admin.checklists.field.points', 'Points')}
-                          />
-                        )}
-                        <input
-                          type="number"
-                          className="admin-checklist-item__weight"
-                          min={1}
-                          value={item.weight ?? 1}
-                          onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
-                          onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
-                          aria-label={t('admin.checklists.field.weight', 'Weight')}
-                          title={t('admin.checklists.field.weight', 'Weight')}
+                          aria-label={t('admin.checklists.field.criterion', 'Criterion')}
                         />
                         <select
-                          className="admin-checklist-item__scale"
+                          className="admin-criteria-row__scale"
                           value={item.scaleId ?? ''}
                           onChange={(e) => void persistItem(item.id, { scaleId: e.target.value || null })}
                           aria-label={t('admin.checklists.field.scale', 'Scale')}
@@ -391,38 +406,67 @@ export function ChecklistBuilder({
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
                         </select>
-                        <label className="admin-checklist-item__photo">
+                        {scoringMode === 'sum_points' && (
                           <input
+                            type="number"
+                            className="admin-criteria-row__points"
+                            value={item.points}
+                            onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
+                            onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
+                            aria-label={t('admin.checklists.field.points', 'Points')}
+                          />
+                        )}
+                        <input
+                          type="number"
+                          className="admin-criteria-row__weight"
+                          min={1}
+                          value={item.weight ?? 1}
+                          onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
+                          onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
+                          aria-label={t('admin.checklists.field.weight', 'Weight')}
+                          title={t('admin.checklists.field.weight', 'Weight')}
+                        />
+                        <div className="admin-criteria-row__toggle">
+                          <input
+                            className="admin-switch"
                             type="checkbox"
                             checked={item.isRequired}
                             onChange={(e) => {
                               updateItemLocally(item.id, { isRequired: e.target.checked });
                               void persistItem(item.id, { isRequired: e.target.checked });
                             }}
+                            aria-label={t('admin.checklists.field.isRequired', 'Required item')}
                           />
-                          {t('admin.checklists.field.isRequired', 'Required item')}
-                        </label>
-                        <label className="admin-checklist-item__photo">
+                        </div>
+                        <div className="admin-criteria-row__toggle">
                           <input
+                            className="admin-switch"
                             type="checkbox"
                             checked={item.photoRequired}
                             onChange={(e) => {
                               updateItemLocally(item.id, { photoRequired: e.target.checked });
                               void persistItem(item.id, { photoRequired: e.target.checked });
                             }}
+                            aria-label={t('admin.checklists.field.photoRequired', 'Photo required')}
                           />
-                          {t('admin.checklists.field.photoRequired', 'Photo required')}
-                        </label>
-                        <button type="button" className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeItem(item)}>
-                          {t('admin.checklists.delete', 'Delete')}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        </div>
+                        <Menu
+                          align="end"
+                          buttonClassName="admin-btn admin-btn--sm"
+                          className="admin-criteria-row__menu"
+                          label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
+                        >
+                          <button onClick={() => void removeItem(item)} role="menuitem" type="button">
+                            {t('admin.checklists.delete', 'Delete')}
+                          </button>
+                        </Menu>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {groupedItems.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
               </div>
             ))}
-            {items.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
             <div className="admin-checklist-add-item">
               <input
                 value={newItemText}
@@ -433,9 +477,6 @@ export function ChecklistBuilder({
                 + {t('admin.checklists.addItem', 'Add item')}
               </Button>
             </div>
-            <Button type="button" variant="primary" size="sm" onClick={() => void addGroup()}>
-              + {t('admin.checklists.addGroup', 'Group')}
-            </Button>
           </ChecklistItemsEditor>
         </div>
         <div className="admin-builder__column">
