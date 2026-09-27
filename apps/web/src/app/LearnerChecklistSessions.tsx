@@ -128,14 +128,14 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
       {sessions.length === 0 ? (
         <PageState message={t('checklistSessions.learner.tabEmpty', 'Nothing here yet.')} />
       ) : (
-        <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden', background: COLORS.surface }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, overflowX: 'auto', background: COLORS.surface }}>
+          <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={tableHeadStyle}>{t('checklistSessions.learner.columns.session', 'Session')}</th>
-                <th style={tableHeadStyle}>{t('checklistSessions.learner.columns.observer', 'Observer')}</th>
-                <th style={tableHeadStyle}>{t('checklistSessions.learner.columns.date', 'Date')}</th>
-                <th style={tableHeadStyle}>{t('checklistSessions.learner.columns.result', 'Result')}</th>
+                <th style={{ ...tableHeadStyle, whiteSpace: 'nowrap' }}>{t('checklistSessions.learner.columns.observer', 'Observer')}</th>
+                <th style={{ ...tableHeadStyle, whiteSpace: 'nowrap' }}>{t('checklistSessions.learner.columns.date', 'Date')}</th>
+                <th style={{ ...tableHeadStyle, whiteSpace: 'nowrap' }}>{t('checklistSessions.learner.columns.result', 'Result')}</th>
               </tr>
             </thead>
             <tbody>
@@ -146,11 +146,11 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
                   style={{ cursor: 'pointer', borderTop: `1px solid ${COLORS.border}`, minHeight: 44 }}
                 >
                   <td style={tableCellStyle}><strong>{session.checklist.title}</strong></td>
-                  <td style={tableCellStyle}>{`${session.observer.firstName} ${session.observer.lastName}`}</td>
-                  <td style={{ ...tableCellStyle, color: COLORS.muted, fontSize: 12.5 }}>
+                  <td style={{ ...tableCellStyle, whiteSpace: 'nowrap' }}>{`${session.observer.firstName} ${session.observer.lastName}`}</td>
+                  <td style={{ ...tableCellStyle, color: COLORS.muted, fontSize: 12.5, whiteSpace: 'nowrap' }}>
                     {session.scheduledAt ? formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone }) : '—'}
                   </td>
-                  <td style={tableCellStyle}>{renderResultCell(session, t)}</td>
+                  <td style={{ ...tableCellStyle, whiteSpace: 'nowrap' }}>{renderResultCell(session, t)}</td>
                 </tr>
               ))}
             </tbody>
@@ -160,7 +160,7 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
       {feedbackSession && (
         <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 15, marginTop: 12, background: COLORS.surface }}>
           <strong style={{ fontSize: 13 }}>{t('checklistSessions.learner.previousFeedback', 'Previous feedback')}</strong>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginTop: 10 }}>
             <div>
               <div style={{ color: COLORS.muted, fontSize: 12 }}>{t('checklistSessions.conduct.strengths', 'Strengths')}</div>
               <strong style={{ fontSize: 13 }}>{feedbackSession.strengths || '—'}</strong>
