@@ -572,6 +572,8 @@ export type ChecklistSessionSummary = {
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
+  contextFieldsSnapshot?: ContextField[] | null;
+  contextValues?: Record<string, string> | null;
   // PR 302: an orthogonal business flag (not a lifecycle status) -- non-null reason means the
   // assigned observer reported they can't conduct this session; reassigning the observer clears it.
   observerUnavailableReason: string | null;
@@ -662,6 +664,8 @@ export type ChecklistSession = {
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
+  contextFieldsSnapshot?: ContextField[] | null;
+  contextValues?: Record<string, string> | null;
   observerUnavailableReason: string | null;
   observerUnavailableAt: string | null;
   createdAt: string;
@@ -682,6 +686,11 @@ export type SubmitChecklistSessionFeedbackInput = {
   strengths?: string | null;
   developmentAreas?: string | null;
   nextSteps?: string | null;
+  version: number;
+};
+
+export type SubmitChecklistSessionContextInput = {
+  values: Record<string, string>;
   version: number;
 };
 

@@ -2344,6 +2344,7 @@
       "geoDenied": "此会话的位置访问被拒绝。",
       "geoUnavailable": "无法确定此会话的位置。",
       "geoRequiredHint": "管理员可以代您记录。",
+      "contextTitle": "基本信息",
       "feedbackTitle": "结构化反馈",
       "strengths": "优点",
       "developmentAreas": "待提升领域",

@@ -2344,6 +2344,7 @@
       "geoDenied": "Location access was denied for this session.",
       "geoUnavailable": "Location could not be determined for this session.",
       "geoRequiredHint": "An admin can record it on your behalf.",
+      "contextTitle": "General information",
       "feedbackTitle": "Structured feedback",
       "strengths": "Strengths",
       "developmentAreas": "Development areas",

@@ -285,6 +285,14 @@ export const submitChecklistSessionFeedbackSchema = z
   .strict();
 export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklistSessionFeedbackSchema>;
 
+export const submitChecklistSessionContextSchema = z
+  .object({
+    values: z.record(z.string().uuid(), z.string().max(4000)).refine((values) => Object.keys(values).length <= 20, 'At most 20 context values are allowed'),
+    version: z.number().int().min(1),
+  })
+  .strict();
+export type SubmitChecklistSessionContextInput = z.infer<typeof submitChecklistSessionContextSchema>;
+
 // ---- PR 300: admin-only score recalculation, audited via ChecklistScoreRevision ----
 // `reason` is required (not merely encouraged) -- the plan explicitly calls for a required
 // reason on every recalculation, since it's an admin overriding a learner/observer-facing result.

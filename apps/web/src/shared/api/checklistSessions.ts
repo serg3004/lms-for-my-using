@@ -21,6 +21,7 @@ import type {
   RecalculateChecklistScoreResult,
   SubmitChecklistLocationCaptureInput,
   SubmitChecklistSessionFeedbackInput,
+  SubmitChecklistSessionContextInput,
   UpdateChecklistSessionInput,
 } from './types.js';
 
@@ -66,6 +67,13 @@ export function listChecklistSessionEvents(sessionId: string) {
 
 export function submitChecklistSessionFeedback(sessionId: string, input: SubmitChecklistSessionFeedbackInput) {
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/feedback`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function submitChecklistSessionContext(sessionId: string, input: SubmitChecklistSessionContextInput) {
+  return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/context`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   });
