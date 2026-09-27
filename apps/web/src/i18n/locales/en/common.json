@@ -2404,5 +2404,8 @@
       "score_recalculated": "Score recalculated",
       "observer_marked_unavailable": "Observer marked unavailable"
     }
+  },
+  "common": {
+    "requiredMark": "*"
   }
 }

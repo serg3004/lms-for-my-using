@@ -2404,5 +2404,8 @@
       "score_recalculated": "分数已重新计算",
       "observer_marked_unavailable": "观察员标记为不可用"
     }
+  },
+  "common": {
+    "requiredMark": "*"
   }
 }

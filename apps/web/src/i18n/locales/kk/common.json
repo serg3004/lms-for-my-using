@@ -2404,5 +2404,8 @@
       "score_recalculated": "Балл қайта есептелді",
       "observer_marked_unavailable": "Бақылаушы қолжетімсіздігін белгіледі"
     }
+  },
+  "common": {
+    "requiredMark": "*"
   }
 }

@@ -2404,5 +2404,8 @@
       "score_recalculated": "Балл пересчитан",
       "observer_marked_unavailable": "Наблюдатель отметил недоступность"
     }
+  },
+  "common": {
+    "requiredMark": "*"
   }
 }
