@@ -622,13 +622,11 @@
       "prototype": "admin/lms-checklist-sessions-refresh.html",
       "designStatus": "approved",
       "implementationStatus": "implemented",
-      "productionRoute": "/instructor/checklists",
-      "parityStatus": "diverged",
-      "lastComparedAt": "2026-09-26",
-      "lastComparedSha": "654908d11ba951937820f61fac78c67d6f7ba54f",
-      "knownDifferences": [
-        "Проведение встроено в страницу проверки под KPI; навигация не внизу (PR 319)"
-      ],
+      "productionRoute": "/instructor/checklists/sessions/:sessionId",
+      "parityStatus": "aligned",
+      "lastComparedAt": "2026-09-27",
+      "lastComparedSha": "5fd782f",
+      "knownDifferences": [],
       "languages": ["ru"]
     },
     {
