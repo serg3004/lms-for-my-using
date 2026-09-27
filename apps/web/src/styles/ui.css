@@ -1651,6 +1651,15 @@
 .ds-wizard-dialog__picklist li { border-bottom: 1px solid var(--color-border); }
 .ds-wizard-dialog__picklist li:last-child { border-bottom: none; }
 .ds-wizard-dialog__picklist label { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; cursor: pointer; }
+/* global.css sets `input { width: 100% }` for text fields -- without this override that also
+   stretches the radio/checkbox itself to fill the row, which pushes its visible glyph to the
+   row's centre and squeezes the label text into whatever's left on the right (PR 318: reported
+   as "the control is centred and the name wraps"). */
+.ds-wizard-dialog__picklist input[type='checkbox'],
+.ds-wizard-dialog__picklist input[type='radio'] { width: auto; flex: none; }
+.ds-wizard-dialog__picklist-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+.ds-wizard-dialog__picklist-name { font-weight: 600; white-space: nowrap; }
+.ds-wizard-dialog__picklist-email { color: var(--color-text-muted); font-size: 0.8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-menu { position: relative; display: inline-block; }
 .ds-menu__content { position: absolute; z-index: 100; top: calc(100% + 6px); min-width: 180px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 4px; background: var(--color-surface); box-shadow: var(--shadow-card); transform-origin: top; animation: ds-popover-enter var(--motion-duration-fast) var(--motion-ease-productive); }
 .ds-menu__content--start { left: 0; }
