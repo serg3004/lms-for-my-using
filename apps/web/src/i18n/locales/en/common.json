@@ -1212,7 +1212,17 @@
         "recalculateReason": "Reason for recalculation",
         "recalculate": "Recalculate score",
         "recalculating": "Recalculating...",
-        "recalculateError": "Unable to recalculate the score."
+        "recalculateError": "Unable to recalculate the score.",
+        "subtitleDateEmployee": "{{date}} · {{employee}}",
+        "finalResult": "Final result",
+        "resultHistoryTitle": "Result history",
+        "resultHistoryEmpty": "The score has never been recalculated.",
+        "criterionDone": "Done ({{detail}})",
+        "criterionNotDone": "Not done",
+        "criterionSkipped": "Skipped",
+        "recalculateDialogTitle": "Recalculate score",
+        "recalculateDialogClose": "Close",
+        "recalculateOpen": "Recalculate"
       },
       "dueAtHint": "Optional. Enter local time; it is stored as UTC.",
       "requiredItem": "Required",

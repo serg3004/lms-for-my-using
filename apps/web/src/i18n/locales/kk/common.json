@@ -1212,7 +1212,17 @@
         "recalculateReason": "Қайта есептеу себебі",
         "recalculate": "Баллды қайта есептеу",
         "recalculating": "Қайта есептелуде...",
-        "recalculateError": "Баллды қайта есептеу мүмкін болмады."
+        "recalculateError": "Баллды қайта есептеу мүмкін болмады.",
+        "subtitleDateEmployee": "{{date}} · {{employee}}",
+        "finalResult": "Қорытынды нәтиже",
+        "resultHistoryTitle": "Нәтиже өзгерістерінің тарихы",
+        "resultHistoryEmpty": "Балл әлі ешқашан қайта есептелмеген.",
+        "criterionDone": "Орындалды ({{detail}})",
+        "criterionNotDone": "Орындалмады",
+        "criterionSkipped": "Өткізіп жіберілді",
+        "recalculateDialogTitle": "Баллды қайта есептеу",
+        "recalculateDialogClose": "Жабу",
+        "recalculateOpen": "Қайта есептеу"
       },
       "dueAtHint": "Міндетті емес. Жергілікті уақытты енгізіңіз — ол UTC форматында сақталады.",
       "requiredItem": "Міндетті",

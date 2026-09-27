@@ -747,7 +747,9 @@ for (const width of widths) {
       // The breadcrumb also renders this text but collapses on narrow viewports -- the <h1> is
       // the one guaranteed-visible occurrence at every width.
       await expect(page.getByRole('heading', { level: 1, name: 'Opening shift checklist' })).toBeVisible();
-      await expect(page.getByText('92% ✓')).toBeVisible();
+      // PR 322: the Summary tab's "Final result" KPI card shows the percentage and a
+      // Passed/Not passed badge separately, not "92% ✓" inline.
+      await expect(page.getByText('92%', { exact: true })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-session-report-${width}`);

@@ -1212,7 +1212,17 @@
         "recalculateReason": "Причина пересчёта",
         "recalculate": "Пересчитать балл",
         "recalculating": "Пересчёт...",
-        "recalculateError": "Не удалось пересчитать балл."
+        "recalculateError": "Не удалось пересчитать балл.",
+        "subtitleDateEmployee": "{{date}} · {{employee}}",
+        "finalResult": "Итоговый результат",
+        "resultHistoryTitle": "История изменений результата",
+        "resultHistoryEmpty": "Балл ещё ни разу не пересчитывался.",
+        "criterionDone": "Выполнено ({{detail}})",
+        "criterionNotDone": "Не выполнено",
+        "criterionSkipped": "Пропущено",
+        "recalculateDialogTitle": "Пересчитать балл",
+        "recalculateDialogClose": "Закрыть",
+        "recalculateOpen": "Пересчитать"
       },
       "dueAtHint": "Необязательно. Введите локальное время — оно будет сохранено в UTC.",
       "requiredItem": "Обязательный",

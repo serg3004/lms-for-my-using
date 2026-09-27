@@ -1212,7 +1212,17 @@
         "recalculateReason": "重新计算原因",
         "recalculate": "重新计算分数",
         "recalculating": "正在重新计算...",
-        "recalculateError": "无法重新计算分数。"
+        "recalculateError": "无法重新计算分数。",
+        "subtitleDateEmployee": "{{date}} · {{employee}}",
+        "finalResult": "最终结果",
+        "resultHistoryTitle": "结果变更历史",
+        "resultHistoryEmpty": "分数从未重新计算过。",
+        "criterionDone": "已完成（{{detail}}）",
+        "criterionNotDone": "未完成",
+        "criterionSkipped": "已跳过",
+        "recalculateDialogTitle": "重新计算分数",
+        "recalculateDialogClose": "关闭",
+        "recalculateOpen": "重新计算"
       },
       "dueAtHint": "可选。输入本地时间；系统会以 UTC 存储。",
       "requiredItem": "必填",
