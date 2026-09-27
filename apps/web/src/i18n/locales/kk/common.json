@@ -970,7 +970,9 @@
         "weight": "Салмақ",
         "scale": "Шкала",
         "defaultLocationCapturePolicy": "Геолокация талабы",
-        "preSessionVisibility": "Сессияға дейін қызметкер көретін ақпарат"
+        "preSessionVisibility": "Сессияға дейін қызметкер көретін ақпарат",
+        "isRequired": "Міндетті тармақ",
+        "dueAt": "Мерзімі"
       },
       "itemsTitle": "Чеклист тармақтары",
       "noItems": "Әзірге тармақтар жоқ.",
@@ -1083,7 +1085,18 @@
           "doneSummary": "{{created}} құрылды, {{skipped}} өткізіп жіберілді, {{failed}} сәтсіз аяқталды.",
           "submitError": "Сессияларды құру мүмкін болмады."
         },
-        "report": "Есеп"
+        "report": "Есеп",
+        "reassignObserver": "Бақылаушыны қайта тағайындау",
+        "reassign": {
+          "title": "Бақылаушыны қайта тағайындау",
+          "error": "Бақылаушыны қайта тағайындау мүмкін болмады.",
+          "cancel": "Бас тарту",
+          "save": "Сақтау",
+          "stepLabel": "Жаңа бақылаушы",
+          "unavailableReason": "Қолжетімсіздік туралы хабарланды",
+          "search": "Бақылаушыны табу"
+        },
+        "observerUnavailable": "Қолжетімсіз"
       },
       "newGroupTitle": "Жаңа топ",
       "newCriterionText": "Жаңа критерий",
@@ -1187,7 +1200,11 @@
         "recalculate": "Баллды қайта есептеу",
         "recalculating": "Қайта есептелуде...",
         "recalculateError": "Баллды қайта есептеу мүмкін болмады."
-      }
+      },
+      "dueAtHint": "Міндетті емес. Жергілікті уақытты енгізіңіз — ол UTC форматында сақталады.",
+      "requiredItem": "Міндетті",
+      "optionalItem": "Міндетті емес",
+      "previewPhotoAttached": "Фото тіркелген"
     },
     "orgTools": {
       "cardTitle": "Ұйымдық құрылымды импорттау",
@@ -2156,7 +2173,11 @@
     "photoUploadError": "Фотоны тіркеу мүмкін болмады.",
     "passed": "Есептелді",
     "notPassed": "Есептелмеді",
-    "awaitingReview": "Жіберілді — нұсқаушының растауын күтуде."
+    "awaitingReview": "Жіберілді — нұсқаушының растауын күтуде.",
+    "requiredItem": "Міндетті",
+    "optionalItem": "Міндетті емес",
+    "expiredReason": "Бұл чек-листтің мерзімі өтті, енді өзгертуге болмайды.",
+    "requiredProgress": "{{completed}} / {{total}} міндетті"
   },
   "checklistReview": {
     "title": "Чеклистерді тексеру",
@@ -2214,7 +2235,20 @@
         "completed": "Тексеру аяқталды",
         "expired": "Мерзімі өтті"
       }
-    }
+    },
+    "required": "Міндетті",
+    "optional": "Міндетті емес",
+    "photoLoadError": "Бұл фотоны ашу мүмкін болмады.",
+    "photoLoading": "Фото ашылуда…",
+    "photoRetry": "Фотоны қайта көру",
+    "photoOpen": "Фотоны ашу",
+    "photoOpenNewTab": "Фотоны жаңа қойындыда ашу",
+    "photoEvidence": "Чек-лист фото дәлелі",
+    "photoRequired": "фото міндетті",
+    "photoOptional": "фото міндетті емес",
+    "photoNotAttached": "фото тіркелмеген",
+    "learnerComment": "Қызметкер пікірі",
+    "previousReviewComment": "Тексеру пікірі"
   },
   "profile": {
     "title": "Профиль",
@@ -2277,7 +2311,14 @@
       "strengths": "Күшті жақтары",
       "developmentAreas": "Даму аймақтары",
       "nextSteps": "Келесі қадамдар",
-      "saveFeedback": "Кері байланысты сақтау"
+      "saveFeedback": "Кері байланысты сақтау",
+      "markUnavailable": "Мұны өткізе алмаймын",
+      "markUnavailableTitle": "Бұл сессияны өткізе алмаймын",
+      "markedUnavailable": "Сіз бұл сессияны өткізе алмайтыныңызды хабарладыңыз.",
+      "markUnavailableError": "Қолжетімсіздік туралы хабарлау мүмкін болмады.",
+      "markUnavailableReason": "Себебі",
+      "markUnavailableCancel": "Бас тарту",
+      "markUnavailableSubmit": "Хабарлау"
     },
     "learner": {
       "title": "Менің оқыту сессияларым",

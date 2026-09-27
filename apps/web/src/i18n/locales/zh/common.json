@@ -970,7 +970,9 @@
         "weight": "权重",
         "scale": "量表",
         "defaultLocationCapturePolicy": "位置要求",
-        "preSessionVisibility": "员工会话前可见内容"
+        "preSessionVisibility": "员工会话前可见内容",
+        "isRequired": "必填项目",
+        "dueAt": "截止日期"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1083,7 +1085,18 @@
           "doneSummary": "已创建 {{created}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
           "submitError": "无法创建会话。"
         },
-        "report": "报告"
+        "report": "报告",
+        "reassignObserver": "重新指派观察员",
+        "reassign": {
+          "title": "重新指派观察员",
+          "error": "无法重新指派观察员。",
+          "cancel": "取消",
+          "save": "保存",
+          "stepLabel": "新观察员",
+          "unavailableReason": "已报告不可用",
+          "search": "查找观察员"
+        },
+        "observerUnavailable": "不可用"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -1187,7 +1200,11 @@
         "recalculate": "重新计算分数",
         "recalculating": "正在重新计算...",
         "recalculateError": "无法重新计算分数。"
-      }
+      },
+      "dueAtHint": "可选。输入本地时间；系统会以 UTC 存储。",
+      "requiredItem": "必填",
+      "optionalItem": "可选",
+      "previewPhotoAttached": "已附加照片"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -2156,7 +2173,11 @@
     "photoUploadError": "无法添加照片。",
     "passed": "通过",
     "notPassed": "未通过",
-    "awaitingReview": "已提交——正在等待讲师确认结果。"
+    "awaitingReview": "已提交——正在等待讲师确认结果。",
+    "requiredItem": "必填",
+    "optionalItem": "可选",
+    "expiredReason": "该检查表已过期，无法再修改。",
+    "requiredProgress": "{{completed}} / {{total}} 项必填"
   },
   "checklistReview": {
     "title": "检查清单审核",
@@ -2214,7 +2235,20 @@
         "completed": "审核已完成",
         "expired": "已过期"
       }
-    }
+    },
+    "required": "必填",
+    "optional": "可选",
+    "photoLoadError": "无法打开该照片。",
+    "photoLoading": "正在打开照片…",
+    "photoRetry": "重试照片",
+    "photoOpen": "打开照片",
+    "photoOpenNewTab": "在新标签页中打开照片",
+    "photoEvidence": "检查表照片凭证",
+    "photoRequired": "需要照片",
+    "photoOptional": "照片可选",
+    "photoNotAttached": "未附加照片",
+    "learnerComment": "学员评论",
+    "previousReviewComment": "审核评论"
   },
   "profile": {
     "title": "个人资料",
@@ -2277,7 +2311,14 @@
       "strengths": "优点",
       "developmentAreas": "待提升领域",
       "nextSteps": "后续步骤",
-      "saveFeedback": "保存反馈"
+      "saveFeedback": "保存反馈",
+      "markUnavailable": "无法进行此项",
+      "markUnavailableTitle": "无法进行此次培训",
+      "markedUnavailable": "您已报告无法进行此次培训。",
+      "markUnavailableError": "无法提交不可用报告。",
+      "markUnavailableReason": "原因",
+      "markUnavailableCancel": "取消",
+      "markUnavailableSubmit": "提交"
     },
     "learner": {
       "title": "我的培训会话",

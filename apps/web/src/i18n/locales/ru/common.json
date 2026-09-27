@@ -970,7 +970,9 @@
         "weight": "Вес",
         "scale": "Шкала",
         "defaultLocationCapturePolicy": "Требование геолокации",
-        "preSessionVisibility": "Что видит сотрудник до сессии"
+        "preSessionVisibility": "Что видит сотрудник до сессии",
+        "isRequired": "Обязательный пункт",
+        "dueAt": "Срок"
       },
       "itemsTitle": "Пункты чек-листа",
       "noItems": "Пока нет пунктов.",
@@ -1083,7 +1085,18 @@
           "doneSummary": "Создано {{created}}, пропущено {{skipped}}, ошибок {{failed}}.",
           "submitError": "Не удалось создать сессии."
         },
-        "report": "Отчёт"
+        "report": "Отчёт",
+        "reassignObserver": "Переназначить наблюдателя",
+        "reassign": {
+          "title": "Переназначить наблюдателя",
+          "error": "Не удалось переназначить наблюдателя.",
+          "cancel": "Отмена",
+          "save": "Сохранить",
+          "stepLabel": "Новый наблюдатель",
+          "unavailableReason": "Сообщил о недоступности",
+          "search": "Найти наблюдателя"
+        },
+        "observerUnavailable": "Недоступен"
       },
       "newGroupTitle": "Новая группа",
       "newCriterionText": "Новый критерий",
@@ -1187,7 +1200,11 @@
         "recalculate": "Пересчитать балл",
         "recalculating": "Пересчёт...",
         "recalculateError": "Не удалось пересчитать балл."
-      }
+      },
+      "dueAtHint": "Необязательно. Введите локальное время — оно будет сохранено в UTC.",
+      "requiredItem": "Обязательный",
+      "optionalItem": "Необязательный",
+      "previewPhotoAttached": "Фото прикреплено"
     },
     "orgTools": {
       "cardTitle": "Импорт оргструктуры",
@@ -2156,7 +2173,11 @@
     "photoUploadError": "Не удалось прикрепить фото.",
     "passed": "Зачёт",
     "notPassed": "Не зачтено",
-    "awaitingReview": "Отправлено — ожидает подтверждения инструктора."
+    "awaitingReview": "Отправлено — ожидает подтверждения инструктора.",
+    "requiredItem": "Обязательный",
+    "optionalItem": "Необязательный",
+    "expiredReason": "Срок выполнения этого чек-листа истёк, изменения больше невозможны.",
+    "requiredProgress": "{{completed}} / {{total}} обязательных"
   },
   "checklistReview": {
     "loadError": "Не удалось загрузить список на проверку.",
@@ -2214,7 +2235,20 @@
         "completed": "Проверка завершена",
         "expired": "Срок истёк"
       }
-    }
+    },
+    "required": "Обязательный",
+    "optional": "Необязательный",
+    "photoLoadError": "Не удалось открыть это фото.",
+    "photoLoading": "Открытие фото…",
+    "photoRetry": "Повторить попытку",
+    "photoOpen": "Открыть фото",
+    "photoOpenNewTab": "Открыть фото в новой вкладке",
+    "photoEvidence": "Фотоподтверждение чек-листа",
+    "photoRequired": "фото обязательно",
+    "photoOptional": "фото необязательно",
+    "photoNotAttached": "фото не прикреплено",
+    "learnerComment": "Комментарий сотрудника",
+    "previousReviewComment": "Комментарий проверки"
   },
   "profile": {
     "title": "Профиль",
@@ -2277,7 +2311,14 @@
       "strengths": "Сильные стороны",
       "developmentAreas": "Зоны роста",
       "nextSteps": "Следующие шаги",
-      "saveFeedback": "Сохранить обратную связь"
+      "saveFeedback": "Сохранить обратную связь",
+      "markUnavailable": "Не могу провести",
+      "markUnavailableTitle": "Не могу провести эту сессию",
+      "markedUnavailable": "Вы сообщили, что не можете провести эту сессию.",
+      "markUnavailableError": "Не удалось отправить сообщение о недоступности.",
+      "markUnavailableReason": "Причина",
+      "markUnavailableCancel": "Отмена",
+      "markUnavailableSubmit": "Отправить"
     },
     "learner": {
       "title": "Мои обучающие сессии",
