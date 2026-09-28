@@ -31,8 +31,8 @@
     "prisma:seed": "node prisma/seed.mjs"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1135.0",
-    "@aws-sdk/s3-request-presigner": "^3.1135.0",
+    "@aws-sdk/client-s3": "^3.1140.0",
+    "@aws-sdk/s3-request-presigner": "^3.1140.0",
     "@fontsource/noto-sans": "^5.3.0",
     "@lms/shared": "workspace:*",
     "@nestjs/common": "^11.2.1",
