@@ -414,6 +414,19 @@ export function SessionReportBody({
 
       {tab === 'summary' && (
         <>
+          {session.contextFieldsSnapshot && session.contextFieldsSnapshot.length > 0 && (
+            <div className="admin-card" style={{ marginBottom: 16 }}>
+              <h3 style={{ marginTop: 0 }}>{t('checklistSessions.conduct.contextTitle', 'General information')}</h3>
+              <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, margin: 0 }}>
+                {[...session.contextFieldsSnapshot].sort((a, b) => a.order - b.order).map((field) => (
+                  <div key={field.id}>
+                    <dt style={{ color: '#6b7280', fontSize: 13 }}>{field.label}</dt>
+                    <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{session.contextValues?.[field.id] || '—'}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
             <div className="admin-card">
               <p style={{ margin: 0, color: '#6b7280', fontSize: 13 }}>{t('admin.checklists.report.finalResult', 'Final result')}</p>

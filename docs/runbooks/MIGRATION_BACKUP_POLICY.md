@@ -297,6 +297,16 @@ Migration `20260924100000_add_checklist_idempotency_keys` — новая таб�
 
 Отдельный data backfill сверх описанного выше или backup сверх общей policy не требуется — миграция additive (новая колонка), не destructive.
 
+### Checklist session context fields migration
+
+Migration `20260927120000_add_checklist_session_context` также additive и backward-compatible (PR 323, персистентные builder-defined "General information" поля во время сессии):
+
+- добавляет две nullable колонки без `DEFAULT` на `checklist_sessions` — `context_fields_snapshot JSONB` (замороженные на момент `start` field-определения из `templateSnapshot`/чек-листа) и `context_values JSONB` (per-session ответы); ни одна существующая колонка не меняется;
+- существующие строки `checklist_sessions` получают `context_fields_snapshot = NULL`, `context_values = NULL` — backfill не требуется и не имеет смысла: у сессий, созданных до PR 323, никогда не было snapshot builder-полей, поэтому пустое состояние корректно отражает историю, а не является потерянными данными;
+- допускает overlap со старой версией приложения: старая версия просто не знает о новых колонках и продолжает работать с сессиями как раньше (никогда не читает и не пишет `contextFieldsSnapshot`/`contextValues`).
+
+Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

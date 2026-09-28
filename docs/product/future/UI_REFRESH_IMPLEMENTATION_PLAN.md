@@ -660,11 +660,20 @@ KPI-карточки укладываются 2+1 (нечётное число �
   `docs/generated` через `pnpm docs:generate`.
 
 **Критерии готовности:**
-- [ ] значения сохраняются и видны в отчёте после перезагрузки;
-- [ ] без обязательного поля `complete` возвращает 400;
-- [ ] stale `version` даёт 409, как у остальных мутаций сессии;
-- [ ] database-тест миграции и сервиса, e2e сценарий проведения с контекстными полями;
-- [ ] `pnpm docs:generate:check` и `pnpm docs:consistency:test` зелёные.
+- [x] значения сохраняются и видны в отчёте после перезагрузки;
+- [x] без обязательного поля `complete` возвращает 400;
+- [x] stale `version` даёт 409, как у остальных мутаций сессии;
+- [x] database-тест миграции и сервиса, e2e сценарий проведения с контекстными полями;
+- [x] `pnpm docs:generate:check` и `pnpm docs:consistency:test` зелёные.
+
+**Статус (2026-09-27):** реализовано. При `start` определения полей копируются из immutable
+`ChecklistInstance.templateSnapshot` (для legacy instance без snapshot — из связанного checklist)
+в `ChecklistSession.contextFieldsSnapshot`; ответы хранятся отдельно в `contextValues`. Поэтому
+последующее редактирование листа не меняет подписи в историческом отчёте. API валидирует id, тип
+даты, длину, статус и `version`, а серверный `complete` проверяет обязательные поля. В conduct UI
+«Общая информация» стала первым шагом, и отчёт показывает сохранённый snapshot во вкладке «Сводка».
+Добавлены unit/API/UI и database integration проверки; локальный запуск database suite требует
+Docker и в текущем агентском окружении не выполнялся. Generated API index перегенерирован.
 
 # Definition of Done
 

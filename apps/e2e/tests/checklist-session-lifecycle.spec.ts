@@ -547,6 +547,36 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await page.close();
     });
 
+    test('the observer saves required general information before proceeding to criteria (PR 323)', async () => {
+      const fieldId = '77777777-7777-4777-8777-777777777777';
+      const session = {
+        ...sessionSummary({ status: 'in_progress', version: 2, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' }),
+        contextFieldsSnapshot: [{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }],
+        contextValues: {},
+      };
+      const instance = instanceSummary(checklistSummary(), { status: 'in_progress', results: {} });
+      const page = await sharedContext.newPage();
+      let submittedBody: unknown;
+      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => route.fulfill({ json: session }));
+      await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}/context`, async (route) => {
+        submittedBody = route.request().postDataJSON();
+        return route.fulfill({ json: { ...session, version: 3, contextValues: { [fieldId]: 'A-12' } } });
+      });
+
+      await page.goto('/instructor/checklists/sessions');
+      await page.getByText('Opening shift checklist').click();
+      await expect(page.getByText('Общая информация')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Далее' })).toBeDisabled();
+      await page.getByLabel(/Store number/).fill('A-12');
+      await page.getByRole('button', { name: 'Далее' }).click();
+
+      expect(submittedBody).toEqual({ values: { [fieldId]: 'A-12' }, version: 2 });
+      await expect(page.getByText('Turn on the lights')).toBeVisible();
+      await page.close();
+    });
+
     test('two attempts to complete the same session: the second is routed to a safe reload prompt, not a silent overwrite (#14)', async () => {
       const session = sessionSummary({ status: 'in_progress', version: 5, startedAt: '2026-03-02T09:00:00.000Z', results: {}, locationCapturePolicy: 'off' });
       const instance = instanceSummary(checklistSummary(), {

@@ -164,4 +164,35 @@ describe('checklist session structured feedback — database', () => {
     const cleared = await service.submitFeedback(created.id, organizationId, { strengths: null, version: 3 }, observerId, {});
     expect(cleared.strengths).toBeNull();
   });
+
+  it('persists snapshotted context values and enforces required fields at completion', async () => {
+    const fieldId = randomUUID();
+    await prisma.checklist.update({
+      where: { id: (await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instanceId } })).checklistId },
+      data: { contextFields: [{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }] },
+    });
+    const created = await service.create(organizationId, { instanceId, observerId }, observerId);
+    const started = await service.transition(created.id, organizationId, 'start', 1, observerId, {});
+
+    await expect(service.transition(created.id, organizationId, 'complete', started.version, observerId, {}))
+      .rejects.toThrow('Required context field is missing: Store number');
+
+    const saved = await service.submitContext(
+      created.id,
+      organizationId,
+      { values: { [fieldId]: 'A-12' }, version: started.version },
+      {},
+    );
+    expect(saved.contextValues).toEqual({ [fieldId]: 'A-12' });
+    await expect(service.submitContext(created.id, organizationId, { values: { [fieldId]: 'stale' }, version: started.version }, {}))
+      .rejects.toThrow('Checklist session was modified by someone else — reload and try again');
+
+    await prisma.checklist.update({
+      where: { id: (await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instanceId } })).checklistId },
+      data: { contextFields: [{ id: randomUUID(), label: 'Changed later', type: 'text', required: false, order: 0 }] },
+    });
+    const completed = await service.transition(created.id, organizationId, 'complete', saved.version, observerId, {});
+    expect(completed.status).toBe('completed');
+    expect(completed.contextFieldsSnapshot).toEqual([{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }]);
+  });
 });

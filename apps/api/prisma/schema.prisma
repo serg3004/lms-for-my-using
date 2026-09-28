@@ -1302,6 +1302,10 @@ model ChecklistSession {
   strengths             String?                    @db.Text
   developmentAreas      String?                    @map("development_areas") @db.Text
   nextSteps             String?                    @map("next_steps") @db.Text
+  // PR 323: definitions are frozen when the session starts so later checklist edits cannot
+  // relabel historical answers; values remain a compact field-id -> string object.
+  contextFieldsSnapshot Json?                      @map("context_fields_snapshot")
+  contextValues         Json?                      @map("context_values")
   // PR 302: an orthogonal business flag, not a lifecycle status -- the assigned observer (or an
   // admin on their behalf) reports they can't conduct this session, which surfaces a "Заменить
   // наблюдателя" CTA for admin/manager. Non-null reason is what "unavailable" means; it never
