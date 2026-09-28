@@ -16,6 +16,7 @@ import {
   listPublishedChecklists,
   repeatChecklistSession,
   submitChecklistSessionFeedback,
+  submitChecklistSessionContext,
   transitionChecklistSession,
   updateChecklistSession,
 } from './checklistSessions.js';
@@ -101,6 +102,14 @@ describe('checklist sessions api requests', () => {
     expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/feedback', {
       method: 'PATCH',
       body: JSON.stringify({ strengths: 'Great', version: 2 }),
+    });
+  });
+
+  it('submits session context values', () => {
+    submitChecklistSessionContext('session-1', { values: { '00000000-0000-4000-8000-000000000001': 'A-12' }, version: 2 });
+    expect(mocks.apiRequest).toHaveBeenCalledWith('/checklist-sessions/session-1/context', {
+      method: 'PATCH',
+      body: JSON.stringify({ values: { '00000000-0000-4000-8000-000000000001': 'A-12' }, version: 2 }),
     });
   });
 

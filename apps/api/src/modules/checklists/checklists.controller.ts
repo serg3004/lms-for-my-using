@@ -32,6 +32,7 @@ import {
   submitChecklistItemResultSchema,
   submitChecklistLocationCaptureSchema,
   submitChecklistSessionFeedbackSchema,
+  submitChecklistSessionContextSchema,
   updateChecklistItemGroupSchema,
   updateChecklistItemSchema,
   updateChecklistScaleSchema,
@@ -510,6 +511,15 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.submitFeedback(sessionId, user.organizationId, input, user.id, scope);
+  }
+
+  @Patch('checklist-sessions/:id/context')
+  @Roles(...rolePolicies.checklistSessionsRun)
+  async submitContext(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = submitChecklistSessionContextSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.submitContext(sessionId, user.organizationId, input, scope);
   }
 
   // ---- Geolocation capture (PR 290) ----

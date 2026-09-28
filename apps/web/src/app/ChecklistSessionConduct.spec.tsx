@@ -249,6 +249,12 @@ describe('resolveConductStep', () => {
   it('is feedback-only (step 0 is the last step) for a checklist with no items', () => {
     expect(resolveConductStep(0, 0)).toMatchObject({ boundedIndex: 0, totalSteps: 1, isFeedbackStep: true, isLastStep: true });
   });
+
+  it('places general information before criteria when context fields exist', () => {
+    expect(resolveConductStep(2, 0, true)).toMatchObject({ isContextStep: true, itemIndex: -1, totalSteps: 4 });
+    expect(resolveConductStep(2, 1, true)).toMatchObject({ isContextStep: false, itemIndex: 0, isFeedbackStep: false });
+    expect(resolveConductStep(2, 3, true)).toMatchObject({ isFeedbackStep: true, isLastStep: true });
+  });
 });
 
 describe('formatElapsed', () => {
@@ -309,6 +315,19 @@ describe('ConductScreen (real hooks)', () => {
       <ConductScreen data={{ session: session({ status: 'paused', pausedAt: '2026-02-01T09:10:00.000Z' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
     expect(html).toContain('Resume');
+  });
+
+  it('renders required context fields as the first step and blocks Next while empty', () => {
+    const fieldId = '77777777-7777-4777-8777-777777777777';
+    const html = renderToStaticMarkup(
+      <ConductScreen
+        data={{ session: session({ status: 'in_progress', contextFieldsSnapshot: [{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }] }), instance: instance() }}
+        onBack={onBack} onReload={onReload} onMutate={onMutate} t={t}
+      />,
+    );
+    expect(html).toContain('General information');
+    expect(html).toContain('Store number');
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Next<\/button>/);
   });
 
   it('renders the completed state with a passed result banner and saved feedback', () => {

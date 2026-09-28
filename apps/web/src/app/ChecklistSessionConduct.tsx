@@ -7,6 +7,7 @@ import { getChecklistInstance, skipChecklistItem, submitChecklistItemResult } fr
 import {
   captureChecklistSessionLocation,
   getChecklistSession,
+  submitChecklistSessionContext,
   submitChecklistSessionFeedback,
   transitionChecklistSession,
 } from '../shared/api/checklistSessions.js';
@@ -16,6 +17,7 @@ import type {
   ChecklistItemSummary,
   ChecklistSession,
   ChecklistSessionSummary,
+  ContextField,
 } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
@@ -155,10 +157,18 @@ export async function fetchConductData(sessionId: string): Promise<ConductData> 
  * need a full interactive render to verify (this file's other components are driven by
  * `renderToStaticMarkup`, which can't click through steps).
  */
-export function resolveConductStep(itemCount: number, requestedIndex: number) {
-  const totalSteps = itemCount + 1;
+export function resolveConductStep(itemCount: number, requestedIndex: number, hasContext = false) {
+  const totalSteps = itemCount + 1 + (hasContext ? 1 : 0);
   const boundedIndex = Math.min(Math.max(requestedIndex, 0), totalSteps - 1);
-  return { boundedIndex, totalSteps, isFeedbackStep: boundedIndex >= itemCount, isLastStep: boundedIndex === totalSteps - 1 };
+  const itemIndex = boundedIndex - (hasContext ? 1 : 0);
+  return {
+    boundedIndex,
+    itemIndex,
+    totalSteps,
+    isContextStep: hasContext && boundedIndex === 0,
+    isFeedbackStep: boundedIndex === totalSteps - 1,
+    isLastStep: boundedIndex === totalSteps - 1,
+  };
 }
 
 export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: string; onBack: () => void; t: TFunction }) {
@@ -206,6 +216,10 @@ export function ConductScreen({
   // comment on the old CriterionStepper for why serializing these matters. Lifted up from the
   // stepper (PR 319) since the bottom nav bar is now a page-level element, not the stepper's own.
   const [cardBusy, setCardBusy] = useState(false);
+  const contextFields = [...(session.contextFieldsSnapshot ?? checklist?.contextFields ?? [])].sort((a, b) => a.order - b.order);
+  const [contextValues, setContextValues] = useState<Record<string, string>>(session.contextValues ?? {});
+
+  useEffect(() => setContextValues(session.contextValues ?? {}), [session.contextValues]);
 
   if (!checklist) return null;
 
@@ -240,6 +254,18 @@ export function ConductScreen({
 
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(items, instance.results, checklist.scoringMode);
   const canComplete = session.status === 'in_progress' && completedRequired === requiredCount;
+  const contextComplete = contextFields.every((field) => !field.required || Boolean(contextValues[field.id]?.trim()));
+
+  async function saveContextAndContinue(nextIndex: number) {
+    await runMutation(
+      async () => {
+        const updated = await submitChecklistSessionContext(session.id, { values: contextValues, version: session.version });
+        onMutate((current) => ({ ...current, session: { ...current.session, ...updated } }));
+        setStepIndex(nextIndex);
+      },
+      { setBusy, setError, onConflict: () => setConflict(true), fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+    );
+  }
 
   if (conflict) {
     return (
@@ -305,7 +331,7 @@ export function ConductScreen({
         // the last criterion instead of a permanently-visible block under the card). "Next" turns
         // into "Complete" only on that last step, gated by the same canComplete this screen already
         // computed for the old standalone Complete button.
-        const { boundedIndex, isFeedbackStep, isLastStep } = resolveConductStep(items.length, stepIndex);
+        const { boundedIndex, itemIndex, isContextStep, isFeedbackStep, isLastStep } = resolveConductStep(items.length, stepIndex, contextFields.length > 0);
         return (
           <>
             <div style={{ margin: '16px 0' }}>
@@ -317,12 +343,22 @@ export function ConductScreen({
             </div>
 
             <p style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, margin: '0 0 8px' }}>
-              {isFeedbackStep
+              {isContextStep
+                ? t('checklistSessions.conduct.contextTitle', 'General information')
+                : isFeedbackStep
                 ? t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')
-                : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: boundedIndex + 1, total: items.length })}
+                : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: itemIndex + 1, total: items.length })}
             </p>
 
-            {isFeedbackStep ? (
+            {isContextStep ? (
+              <ContextFields
+                fields={contextFields}
+                values={contextValues}
+                disabled={busy}
+                onChange={(fieldId, value) => setContextValues((current) => ({ ...current, [fieldId]: value }))}
+                t={t}
+              />
+            ) : isFeedbackStep ? (
               <StructuredFeedback
                 session={session}
                 busy={busy}
@@ -331,7 +367,7 @@ export function ConductScreen({
                 t={t}
               />
             ) : (() => {
-              const currentItem = items[boundedIndex]!;
+              const currentItem = items[itemIndex]!;
               const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
               const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
               return (
@@ -390,7 +426,12 @@ export function ConductScreen({
                   {t('checklistSessions.conduct.complete', 'Complete')}
                 </Button>
               ) : (
-                <Button type="button" disabled={cardBusy} onClick={() => setStepIndex(boundedIndex + 1)} style={{ flex: 1, minHeight: 44 }}>
+                <Button
+                  type="button"
+                  disabled={cardBusy || busy || (isContextStep && !contextComplete)}
+                  onClick={() => isContextStep ? void saveContextAndContinue(boundedIndex + 1) : setStepIndex(boundedIndex + 1)}
+                  style={{ flex: 1, minHeight: 44 }}
+                >
                   {t('checklistSessions.conduct.next', 'Next')}
                 </Button>
               )}
@@ -470,6 +511,52 @@ export function formatElapsed(ms: number) {
   const seconds = totalSeconds % 60;
   const pad = (n: number) => String(n).padStart(2, '0');
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
+}
+
+function ContextFields({
+  fields,
+  values,
+  disabled,
+  onChange,
+  t,
+}: {
+  fields: ContextField[];
+  values: Record<string, string>;
+  disabled: boolean;
+  onChange: (fieldId: string, value: string) => void;
+  t: TFunction;
+}) {
+  return (
+    <div className="admin-card" style={{ display: 'grid', gap: 12 }}>
+      {fields.map((field) => (
+        <label key={field.id} style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 600 }}>
+          <span>
+            {field.label}{field.required ? ` ${t('common.requiredMark', '*')}` : ''}
+          </span>
+          {field.type === 'textarea' ? (
+            <textarea
+              disabled={disabled}
+              maxLength={4000}
+              required={field.required}
+              rows={3}
+              value={values[field.id] ?? ''}
+              onChange={(event) => onChange(field.id, event.target.value)}
+              style={{ minHeight: 88, resize: 'vertical' }}
+            />
+          ) : (
+            <input
+              disabled={disabled}
+              maxLength={field.type === 'date' ? undefined : 4000}
+              required={field.required}
+              type={field.type === 'date' ? 'date' : 'text'}
+              value={values[field.id] ?? ''}
+              onChange={(event) => onChange(field.id, event.target.value)}
+            />
+          )}
+        </label>
+      ))}
+    </div>
+  );
 }
 
 function CriterionCard({

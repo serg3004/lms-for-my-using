@@ -277,6 +277,23 @@ describe('ChecklistSessionService', () => {
       );
     });
 
+    it('rejects completion when a required context field is empty', async () => {
+      const fieldId = '77777777-7777-4777-8777-777777777777';
+      const prisma = createPrisma({
+        checklistSession: {
+          findFirst: jest.fn(async () => baseSession({
+            status: 'in_progress',
+            contextFieldsSnapshot: [{ id: fieldId, label: 'Store', type: 'text', required: true, order: 0 }],
+            contextValues: {},
+          })),
+        },
+      });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(service.transition(sessionId, organizationId, 'complete', 1, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
     it('only allows cancel from scheduled', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma);
@@ -481,6 +498,33 @@ describe('ChecklistSessionService', () => {
         ([arg]) => arg.data.eventType,
       );
       expect(eventTypes).toEqual(['feedback_updated']);
+    });
+  });
+
+  describe('submitContext (PR 323)', () => {
+    const fieldId = '77777777-7777-4777-8777-777777777777';
+    const fields = [{ id: fieldId, label: 'Visit date', type: 'date', required: true, order: 0 }];
+
+    it('saves a valid value with optimistic concurrency', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', contextFieldsSnapshot: fields })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {});
+
+      expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ version: 1, status: { in: ['in_progress', 'paused'] } }),
+        data: expect.objectContaining({ contextValues: { [fieldId]: '2026-09-27' }, version: { increment: 1 } }),
+      }));
+    });
+
+    it('rejects unknown fields, invalid dates, and stale versions', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused', version: 2, contextFieldsSnapshot: fields })) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '27/09/2026' }, version: 2 }, {})).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {})).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.submitContext(sessionId, organizationId, { values: { '88888888-8888-4888-8888-888888888888': 'x' }, version: 2 }, {})).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
   });
 
