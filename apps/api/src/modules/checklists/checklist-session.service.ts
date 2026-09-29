@@ -22,7 +22,9 @@ import type {
   ChecklistSessionParticipantsQuery,
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
+  ContextField,
   SubmitChecklistLocationCaptureInput,
+  SubmitChecklistSessionContextInput,
   SubmitChecklistSessionFeedbackInput,
   UpdateChecklistSessionInput,
 } from './checklists.schemas.js';
@@ -65,6 +67,41 @@ const TRANSITIONS: Record<ChecklistSessionAction, Transition> = {
 };
 
 const STALE_WRITE_MESSAGE = 'Checklist session was modified by someone else — reload and try again';
+
+function parseContextFields(value: Prisma.JsonValue | null): ContextField[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((field): field is ContextField => {
+    if (!field || typeof field !== 'object' || Array.isArray(field)) return false;
+    const candidate = field as Record<string, unknown>;
+    return typeof candidate.id === 'string' && typeof candidate.label === 'string' &&
+      (candidate.type === 'text' || candidate.type === 'textarea' || candidate.type === 'date') &&
+      typeof candidate.required === 'boolean' && typeof candidate.order === 'number';
+  });
+}
+
+function parseContextValues(value: Prisma.JsonValue | null): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'));
+}
+
+function contextFieldsFromSessionStart(session: {
+  instance?: { templateSnapshot: Prisma.JsonValue | null; checklist: { contextFields: Prisma.JsonValue | null } };
+}): ContextField[] {
+  const snapshot = session.instance?.templateSnapshot;
+  if (snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)) {
+    const checklist = (snapshot as Record<string, unknown>).checklist;
+    if (checklist && typeof checklist === 'object' && !Array.isArray(checklist)) {
+      return parseContextFields((checklist as Record<string, Prisma.JsonValue>).contextFields ?? null);
+    }
+  }
+  return parseContextFields(session.instance?.checklist.contextFields ?? null);
+}
+
+function isIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 
 export type ChecklistSessionView = ChecklistSession & { overdue: boolean };
 
@@ -122,6 +159,7 @@ function applyFeedbackVisibility<
     strengths: string | null;
     developmentAreas: string | null;
     nextSteps: string | null;
+    contextValues: Prisma.JsonValue | null;
   },
 >(session: T, viewer: ChecklistSessionViewerContext): T {
   if (!viewer.isLearnerOnly || viewer.feedbackVisibility === 'live' || session.result.instanceStatus === 'completed') {
@@ -133,6 +171,7 @@ function applyFeedbackVisibility<
     strengths: null,
     developmentAreas: null,
     nextSteps: null,
+    contextValues: null,
   };
 }
 
@@ -581,12 +620,24 @@ export class ChecklistSessionService {
       const cached = await this.findIdempotentResponse<ChecklistSessionView>(tx, organizationId, idempotencyScope, idempotencyKey);
       if (cached) return cached;
 
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      const session = await tx.checklistSession.findFirst({
+        where: { id: sessionId, organizationId, ...scope },
+        include: { instance: { select: { templateSnapshot: true, checklist: { select: { contextFields: true } } } } },
+      });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (!from.includes(session.status)) {
         throw new BadRequestException(`Cannot ${action} a session in status "${session.status}"`);
       }
       if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      if (action === 'complete') {
+        const fields = parseContextFields(session.contextFieldsSnapshot);
+        const values = parseContextValues(session.contextValues);
+        const missing = fields.find((field) => field.required && !values[field.id]?.trim());
+        if (missing) throw new BadRequestException(`Required context field is missing: ${missing.label}`);
+      }
+
+      const contextFieldsSnapshot = action === 'start' ? contextFieldsFromSessionStart(session) : undefined;
 
       const now = new Date();
       const result = await tx.checklistSession.updateMany({
@@ -597,6 +648,9 @@ export class ChecklistSessionService {
           ...(action === 'start' ? { startedAt: now } : {}),
           ...(action === 'pause' ? { pausedAt: now } : {}),
           ...(action === 'resume' ? { pausedAt: null } : {}),
+          ...(contextFieldsSnapshot !== undefined
+            ? { contextFieldsSnapshot: contextFieldsSnapshot as unknown as Prisma.InputJsonValue }
+            : {}),
         },
       });
       // Belt-and-suspenders: under Serializable isolation a genuine race causes the losing
@@ -654,6 +708,36 @@ export class ChecklistSessionService {
         data: { organizationId, sessionId, eventType: 'feedback_updated', actorUserId: actorId },
       });
 
+      return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+    });
+  }
+
+  async submitContext(sessionId: string, organizationId: string, input: SubmitChecklistSessionContextInput, scope: object) {
+    const { version: expectedVersion, values } = input;
+    return runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.status !== 'in_progress' && session.status !== 'paused') {
+        throw new BadRequestException(`Cannot record context for a session in status "${session.status}"`);
+      }
+      if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      const fields = parseContextFields(session.contextFieldsSnapshot);
+      const byId = new Map(fields.map((field) => [field.id, field]));
+      for (const [fieldId, value] of Object.entries(values)) {
+        const field = byId.get(fieldId);
+        if (!field) throw new BadRequestException(`Unknown context field: ${fieldId}`);
+        if (field.type === 'date' && value !== '' && !isIsoDate(value)) {
+          throw new BadRequestException(`Context field must be an ISO date: ${field.label}`);
+        }
+      }
+
+      const merged = { ...parseContextValues(session.contextValues), ...values };
+      const result = await tx.checklistSession.updateMany({
+        where: { id: sessionId, organizationId, version: expectedVersion, status: { in: ['in_progress', 'paused'] } },
+        data: { contextValues: merged as Prisma.InputJsonValue, version: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
       return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
     });
   }

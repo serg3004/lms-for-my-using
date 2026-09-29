@@ -429,6 +429,17 @@ required and a mismatch is a 409. Every successful save appends a `feedback_upda
 event's metadata (it lives only on the session row), matching how `rescheduled`/`location_override`
 already carry only the parts of a change that aren't already on the row.
 
+**Session context** (`PATCH /checklist-sessions/:id/context`, `checklistSessionsRun`) accepts
+`{ values: { [fieldId]: string }, version }` while a session is `in_progress` or `paused`. The
+server rejects unknown field ids, values longer than 4000 characters, and non-ISO (`YYYY-MM-DD`)
+values for `date` fields; stale versions return 409 under the same optimistic-concurrency contract
+as feedback. Starting the session copies the assignment snapshot's ordered field definitions to
+`ChecklistSession.contextFieldsSnapshot`, while answers are stored separately in
+`ChecklistSession.contextValues`. Reports therefore retain the original labels/types even after a
+checklist is edited. `complete` returns 400 if any snapshotted required field is blank. Context
+values follow the same learner visibility rule as score/feedback: `after_completion` masks them
+until completion, while `live` exposes them immediately.
+
 ## Employee training-session view and feedbackVisibility enforcement (PR 298)
 
 Frontend: "Мои обучающие сессии" (My training sessions), a new additive section appended inside

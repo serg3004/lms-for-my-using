@@ -111,6 +111,18 @@ describe('SessionReportBody', () => {
     expect(html).toContain('Great attention to detail');
   });
 
+  it('renders snapshotted context labels and values in the summary', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    const fieldId = '77777777-7777-4777-8777-777777777777';
+    const html = renderToStaticMarkup(<SessionReportBody session={makeSession({
+      contextFieldsSnapshot: [{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }],
+      contextValues: { [fieldId]: 'A-12' },
+    })} onScoreRecalculated={vi.fn()} t={t} />);
+    expect(html).toContain('General information');
+    expect(html).toContain('Store number');
+    expect(html).toContain('A-12');
+  });
+
   it('shows the header subtitle as "date · employee" and a Recalculate button for an admin', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
