@@ -23,7 +23,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - name: Regenerate combined lockfile
-        run: pnpm install --lockfile-only --no-frozen-lockfile
+        run: |
+          set -euo pipefail
+          pnpm install --lockfile-only --no-frozen-lockfile
+          pnpm update fast-uri --recursive --lockfile-only
       - name: Verify patched fast-uri remains resolved
         run: |
           set -euo pipefail
