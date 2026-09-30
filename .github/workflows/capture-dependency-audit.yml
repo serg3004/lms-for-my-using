@@ -1,4 +1,4 @@
-name: Capture dependency audit diagnostics
+name: Regenerate lockfile for js-yaml audit fix
 
 on:
   push:
@@ -9,41 +9,43 @@ permissions:
   contents: write
 
 jobs:
-  capture:
+  regenerate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
           ref: agent/stage-brace-expansion-audit-20260930
-      - name: Skip if diagnostics already captured
-        id: guard
-        run: |
-          if [ -f .audit-debug.json ]; then
-            echo "captured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "captured=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: pnpm/action-setup@v6
-        if: steps.guard.outputs.captured == 'false'
         with:
           version: 9.15.0
       - uses: actions/setup-node@v7
-        if: steps.guard.outputs.captured == 'false'
         with:
           node-version: 22
           cache: pnpm
-      - name: Install dependencies
-        if: steps.guard.outputs.captured == 'false'
-        run: pnpm install --frozen-lockfile
-      - name: Capture current audit JSON
-        if: steps.guard.outputs.captured == 'false'
-        run: pnpm audit --json --audit-level high > .audit-debug.json || true
-      - name: Commit diagnostics
-        if: steps.guard.outputs.captured == 'false'
+      - name: Regenerate lockfile
+        run: pnpm install --lockfile-only
+      - name: Verify patched js-yaml resolution
         run: |
           set -euo pipefail
+          if grep -q 'js-yaml@5\.2\.3' pnpm-lock.yaml || grep -q 'js-yaml@5\.3\.0' pnpm-lock.yaml; then
+            echo 'Vulnerable js-yaml 5.x resolution is still present'
+            exit 1
+          fi
+      - name: Verify dependency audit
+        run: |
+          pnpm install --frozen-lockfile
+          mkdir -p security-audit-artifacts
+          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json
+          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
+      - name: Commit regenerated lockfile
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo 'pnpm-lock.yaml already up to date'
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .audit-debug.json
-          git commit -m "chore: capture dependency audit diagnostics"
+          git add pnpm-lock.yaml
+          git commit -m "chore: refresh js-yaml transitive resolution"
           git push origin HEAD:agent/stage-brace-expansion-audit-20260930
