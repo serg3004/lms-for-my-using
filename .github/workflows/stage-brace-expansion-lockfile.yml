@@ -1,4 +1,4 @@
-name: Stage brace-expansion lockfile regeneration
+name: Verify brace-expansion audit fix
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - agent/stage-brace-expansion-audit-20260930
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  regenerate-lockfile:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,26 +20,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Regenerate lockfile from updated overrides
-        run: pnpm install --lockfile-only
-      - name: Verify manifests are unchanged
-        run: git diff --exit-code -- package.json apps/*/package.json packages/*/package.json
-      - name: Verify vulnerable brace-expansion resolution is gone
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Agent preflight
+        run: pnpm agent:preflight
+      - name: Collect dependency audit report
         run: |
-          set -euo pipefail
-          if grep -q 'brace-expansion: 5\.0\.9' pnpm-lock.yaml || grep -q 'brace-expansion@5\.0\.9' pnpm-lock.yaml; then
-            echo 'brace-expansion 5.0.9 is still referenced by the dependency graph'
-            exit 1
-          fi
-      - name: Commit regenerated lockfile
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- pnpm-lock.yaml; then
-            echo "pnpm-lock.yaml did not change"
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pnpm-lock.yaml
-          git commit -m "chore: refresh brace-expansion transitive resolution"
-          git push origin HEAD:agent/stage-brace-expansion-audit-20260930
+          mkdir -p security-audit-artifacts
+          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json || true
+      - name: Enforce dependency audit gate
+        run: node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
