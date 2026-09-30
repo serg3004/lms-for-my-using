@@ -14,7 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/stage-brace-expansion-audit-20260930
+          fetch-depth: 0
+      - name: Materialize task branch checkout
+        run: git checkout -B "$GITHUB_REF_NAME" "$GITHUB_SHA"
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
@@ -25,6 +27,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Agent preflight
+        id: preflight
+        continue-on-error: true
         run: pnpm agent:preflight
       - name: Collect dependency audit report
         run: |
@@ -32,3 +36,6 @@ jobs:
           pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json || true
       - name: Enforce dependency audit gate
         run: node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
+      - name: Enforce preflight result
+        if: steps.preflight.outcome != 'success'
+        run: exit 1
