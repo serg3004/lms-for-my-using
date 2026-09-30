@@ -1,0 +1,45 @@
+name: Stage brace-expansion lockfile regeneration
+
+on:
+  push:
+    branches:
+      - agent/stage-brace-expansion-audit-20260930
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Regenerate lockfile from updated overrides
+        run: pnpm install --lockfile-only
+      - name: Verify manifests are unchanged
+        run: git diff --exit-code -- package.json apps/*/package.json packages/*/package.json
+      - name: Verify vulnerable brace-expansion resolution is gone
+        run: |
+          set -euo pipefail
+          if grep -q 'brace-expansion: 5\.0\.9' pnpm-lock.yaml || grep -q 'brace-expansion@5\.0\.9' pnpm-lock.yaml; then
+            echo 'brace-expansion 5.0.9 is still referenced by the dependency graph'
+            exit 1
+          fi
+      - name: Commit regenerated lockfile
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- pnpm-lock.yaml; then
+            echo "pnpm-lock.yaml did not change"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: refresh brace-expansion transitive resolution"
+          git push origin HEAD:agent/stage-brace-expansion-audit-20260930
