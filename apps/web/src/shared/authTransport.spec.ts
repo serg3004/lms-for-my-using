@@ -42,7 +42,7 @@ describe('authenticated fetch transport', () => {
     setAuthAccessToken('access-token');
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
     const authenticatedFetch = createAuthenticatedFetch(fetchImpl);
-    const request = new Request(`${window.location.origin}/api/v1/auth/me`, {
+    const request = new Request('http://localhost/api/v1/auth/me', {
       headers: { 'X-Request-Marker': 'request-header' },
     });
 
