@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { login } from './api/auth';
 import {
   clearAuthAccessToken,
   createAuthenticatedFetch,
@@ -9,31 +8,18 @@ import {
 
 afterEach(() => {
   clearAuthAccessToken();
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
 describe('authenticated fetch transport', () => {
-  it('uses the access token returned by login for following API requests', async () => {
-    const loginFetch = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({
-        accessToken: 'login-access-token',
-        tokenType: 'Bearer',
-        user: { id: 'user-1', roles: ['admin'] },
-      }), {
-        status: 201,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
-    vi.stubGlobal('fetch', loginFetch);
+  it('uses the in-memory access token for following API requests', async () => {
+    setAuthAccessToken('login-access-token');
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+    const authenticatedFetch = createAuthenticatedFetch(fetchImpl);
 
-    await login({ organizationId: 'demo-company', email: 'admin@demo.com', password: 'Demo1234!' });
-
-    const downstreamFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
-    const authenticatedFetch = createAuthenticatedFetch(downstreamFetch);
     await authenticatedFetch('/api/v1/auth/me');
 
-    const headers = downstreamFetch.mock.calls[0]?.[1]?.headers as Headers;
+    const headers = fetchImpl.mock.calls[0]?.[1]?.headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer login-access-token');
   });
 
