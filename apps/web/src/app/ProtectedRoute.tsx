@@ -13,7 +13,7 @@ type ProtectedRouteProps = {
   canAccess?: (user: CurrentUser) => boolean;
 };
 
-type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden';
+type AuthState = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden' | 'error';
 
 export function isProtectedRoutePath(pathname: string, protectedPathPrefixes: readonly string[]) {
   return protectedPathPrefixes.some((pathPrefix) => pathname === pathPrefix || pathname.startsWith(`${pathPrefix}/`));
@@ -28,14 +28,13 @@ export function getProtectedRouteErrorState(error: unknown): AuthState {
     return 'unauthenticated';
   }
 
-  return 'unauthenticated';
+  return 'error';
 }
 
 export function ProtectedRoute({ children, protectedPathPrefixes, canAccess }: ProtectedRouteProps) {
   const location = useLocation();
   const session = useOptionalSession();
   const isProtectedPath = isProtectedRoutePath(location.pathname, protectedPathPrefixes);
-
   if (!session) {
     return (
       <SessionProvider authenticated={isProtectedPath}>
@@ -53,7 +52,7 @@ function ProtectedRouteContent({ children, canAccess, isProtectedPath, location 
   isProtectedPath: boolean;
   location: ReturnType<typeof useLocation>;
 }) {
-  const { currentUser, error, status } = useSession();
+  const { currentUser, error, refreshUser, status } = useSession();
 
   useEffect(() => {
     if (!isProtectedPath) {
@@ -62,7 +61,6 @@ function ProtectedRouteContent({ children, canAccess, isProtectedPath, location 
 
     if (isProtectedPath && currentUser) void syncOrganizationTheme(currentUser.organizationId);
   }, [currentUser, isProtectedPath]);
-
   const authState: AuthState = status === 'authenticated' && currentUser
     ? getProtectedRouteAuthState(currentUser, canAccess)
     : status === 'error'
@@ -87,6 +85,15 @@ function ProtectedRouteContent({ children, canAccess, isProtectedPath, location 
 
   if (authState === 'forbidden') {
     return <ForbiddenPage />;
+  }
+
+  if (authState === 'error') {
+    return (
+      <main>
+        <p role="alert">Unable to load your session. Please try again.</p>
+        <button type="button" onClick={() => void refreshUser()}>Retry</button>
+      </main>
+    );
   }
 
   return <>{children}</>;

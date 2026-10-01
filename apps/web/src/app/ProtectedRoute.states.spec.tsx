@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiClientError } from '../shared/apiClient.js';
+
 const reactState = vi.hoisted(() => ({ value: 'loading' }));
 vi.mock('../shared/session.js', () => ({
   useOptionalSession: () => ({ status: reactState.value }),
@@ -12,7 +14,8 @@ vi.mock('../shared/session.js', () => ({
       : reactState.value === 'forbidden'
         ? { id: 'user-1', organizationId: 'org-1', roles: ['learner'] }
         : null,
-    error: reactState.value === 'unauthenticated' ? new Error('unauthenticated') : null,
+    error: reactState.value === 'unauthenticated' ? new ApiClientError('Unauthorized', 401) : null,
+    refreshUser: vi.fn(),
   }),
   SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

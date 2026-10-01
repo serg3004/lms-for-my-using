@@ -39,7 +39,6 @@ describe('ProtectedRoute', () => {
         </SessionProvider>
       </MemoryRouter>,
     );
-
     expect(html).toContain('role="status"');
     expect(html).toContain('Loading...');
   });
@@ -54,7 +53,6 @@ describe('ProtectedRoute', () => {
         </SessionProvider>
       </MemoryRouter>,
     );
-
     expect(html).toContain('Public content');
   });
 
@@ -82,9 +80,9 @@ describe('ProtectedRoute', () => {
     expect(getProtectedRouteErrorState(new ApiClientError('Unauthorized', 401))).toBe('unauthenticated');
   });
 
-  it('resolves unauthenticated state for network and server failures', () => {
-    expect(getProtectedRouteErrorState(new Error('offline'))).toBe('unauthenticated');
-    expect(getProtectedRouteErrorState(new ApiClientError('Unavailable', 503))).toBe('unauthenticated');
+  it('keeps network and server failures distinct from an unauthenticated session', () => {
+    expect(getProtectedRouteErrorState(new Error('offline'))).toBe('error');
+    expect(getProtectedRouteErrorState(new ApiClientError('Unavailable', 503))).toBe('error');
   });
 
   it('allows authenticated users when no role predicate is supplied', () => {
