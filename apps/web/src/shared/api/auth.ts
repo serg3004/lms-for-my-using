@@ -1,4 +1,5 @@
 import { apiRequest } from '../apiClient.js';
+import { clearAuthAccessToken, setAuthAccessToken } from '../authTransport.js';
 
 import type {
   CurrentUser,
@@ -10,11 +11,14 @@ import type {
   UserPreferencesInput,
 } from './types.js';
 
-export function login(input: LoginInput) {
-  return apiRequest<LoginResponse>('/auth/login', {
+export async function login(input: LoginInput) {
+  clearAuthAccessToken();
+  const response = await apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+  setAuthAccessToken(response.accessToken);
+  return response;
 }
 
 export function getCurrentUser() {
