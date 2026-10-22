@@ -29,9 +29,13 @@ Workflow implementation is owned by `.github/workflows/ci.yml` and `.github/work
 
 Documentation consistency is invoked through `pnpm docs:consistency:test`; generated drift and docs-impact enforcement remain inside that chain.
 
+### Dependency audit semantics
+
+The blocking decision for npm advisories is made by `scripts/check-dependency-audit.mjs`, not by the exit code of `pnpm audit` (which is non-zero for any finding). HIGH/CRITICAL advisories fail the gate unless covered by an unexpired entry in `audit-exceptions.json`; an expired entry lapses and the advisory blocks again. `.github/workflows/dependency-audit.yml` runs daily and opens a PR with `pnpm.overrides` for fixable advisories (`scripts/sync-audit-overrides.mjs`); advisories without a fix need a time-boxed exception. `audit-exceptions.json` applies only to `pnpm audit`, not to Trivy or other scanners.
+
 ### Trivy semantics
 
-When the current workflow uses `--ignore-unfixed`, unfixed findings are excluded from its blocking result. Security-waiver behavior must be described according to the current validator/workflow and must not be generalized to unrelated scanners.
+When the current workflow uses `--ignore-unfixed`, unfixed findings are excluded from its blocking result. Security-waiver behavior must be described according to the current validator/workflow and must not be generalized to unrelated scanners. An expired Trivy waiver is not applied (it is dropped from the generated ignorefile with a warning), so Trivy itself blocks if the finding is still present.
 
 ## Merge enforcement
 
