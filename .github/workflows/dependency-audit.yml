@@ -42,7 +42,7 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
-          pnpm audit --json > "$RUNNER_TEMP/audit.json"
+          pnpm audit --json > "$RUNNER_TEMP/audit.json" || true
           node scripts/check-dependency-audit.mjs "$RUNNER_TEMP/audit.json" audit-exceptions.json
 
       - name: Sync overrides
