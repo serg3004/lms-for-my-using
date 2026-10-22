@@ -127,9 +127,13 @@
       "sourceGlobs": [
         ".github/workflows/ci.yml",
         ".github/workflows/codeql.yml",
+        ".github/workflows/dependency-audit.yml",
         ".github/workflows/staging-smoke.yml",
         "scripts/verify-release-gate.mjs",
         "scripts/validate-security-waivers.mjs",
+        "scripts/check-dependency-audit.mjs",
+        "scripts/sync-audit-overrides.mjs",
+        "audit-exceptions.json",
         "security-waivers.json"
       ],
       "generatedTargets": [],

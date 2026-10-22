@@ -25,6 +25,7 @@ Current `.github/workflows/` содержит:
 
 - `ci.yml` — основной CI pipeline;
 - `codeql.yml` — CodeQL analysis;
+- `dependency-audit.yml` — ежедневный `pnpm audit` + автоматический PR с pnpm overrides для исправимых advisory;
 - `staging-smoke.yml` — manual/environment smoke workflow.
 
 Отдельного Semgrep workflow нет.
@@ -84,7 +85,11 @@ CI выполняет:
 
 `pnpm audit --audit-level high`
 
-Это отдельный step основного `CI / Checks` job.
+Это отдельный step основного `CI / Quality & security` job. Gate (`scripts/check-dependency-audit.mjs`) падает на HIGH/CRITICAL advisory, не покрытом активной записью `audit-exceptions.json`, и печатает каждый блокирующий advisory.
+
+`audit-exceptions.json` — отдельный механизм для advisory без доступного fix (`id` = GHSA/CVE, `owner`, `reason`, `expires`). Просроченная запись перестаёт действовать, и advisory снова блокирует.
+
+`dependency-audit.yml` ежедневно запускает audit на `main`; для исправимых advisory `scripts/sync-audit-overrides.mjs` добавляет `pnpm.overrides` и workflow открывает PR (`security/audit-overrides`). PR, созданный `GITHUB_TOKEN`, не запускает CI автоматически — для проверки нужен ручной re-run/push.
 
 Security waiver mechanism ниже не является waiver для `pnpm audit`.
 
@@ -103,7 +108,7 @@ Current validator проверяет:
 - non-empty `id`, `owner`, `reason`, `expires`;
 - unique IDs;
 - `YYYY-MM-DD` regex;
-- lexical expiry relative to current ISO date.
+- lexical expiry relative to current ISO date: просроченный waiver не применяется (исключается из Trivy ignorefile с предупреждением), а не валит CI.
 
 Current `security-waivers.json` содержит пустой `waivers` array.
 

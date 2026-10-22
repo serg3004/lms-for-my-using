@@ -1,0 +1,72 @@
+name: Dependency audit
+
+# Keeps main free of newly published advisories: audits daily, lifts fixable
+# vulnerable transitive dependencies through pnpm overrides and opens a PR.
+# Unfixable advisories must be listed in audit-exceptions.json (with expiry).
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  audit:
+    name: Audit and sync overrides
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BRANCH: security/audit-overrides
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Audit
+        id: audit
+        continue-on-error: true
+        run: |
+          pnpm audit --json > "$RUNNER_TEMP/audit.json"
+          node scripts/check-dependency-audit.mjs "$RUNNER_TEMP/audit.json" audit-exceptions.json
+
+      - name: Sync overrides
+        if: steps.audit.outcome == 'failure'
+        run: |
+          node scripts/sync-audit-overrides.mjs "$RUNNER_TEMP/audit.json"
+          pnpm install --lockfile-only
+
+      - name: Open or update fix PR
+        if: steps.audit.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet; then
+            echo "::error::Advisories remain with no fix available; add a time-boxed entry to audit-exceptions.json"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git commit -am "build(deps): override vulnerable transitive dependencies"
+          git push --force origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --head "$BRANCH" --base main \
+              --title "build(deps): override vulnerable transitive dependencies" \
+              --body "Automated by .github/workflows/dependency-audit.yml: lifts transitive dependencies with newly published high/critical advisories to their patched versions."
+          fi

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { vulnerabilityCounts } from './check-dependency-audit.mjs';
+import { activeExceptions, blockingAdvisories, vulnerabilityCounts } from './check-dependency-audit.mjs';
+import { overridesFor } from './sync-audit-overrides.mjs';
 import { scanEntries } from './generate-code-hygiene-report.mjs';
 
 test('code hygiene separates informational and blocking findings', () => {
@@ -31,4 +32,32 @@ test('dependency audit normalizes missing severity counts', () => {
 
 test('dependency audit rejects a malformed report', () => {
   assert.throws(() => vulnerabilityCounts({}), /no vulnerability summary/);
+});
+
+const advisory = (module_name, severity, patched_versions, extra = {}) => ({
+  module_name, severity, patched_versions, vulnerable_versions: '<9.9.9', github_advisory_id: `GHSA-${module_name}`, cves: [], ...extra,
+});
+const report = {
+  advisories: {
+    1: advisory('fixable', 'critical', '>=9.9.9'),
+    2: advisory('unfixable', 'high', '<0.0.0'),
+    3: advisory('minor', 'moderate', '>=9.9.9'),
+  },
+};
+
+test('active exceptions cover blocking advisories by GHSA id or CVE until they expire', () => {
+  const policy = { version: 1, exceptions: [{ id: 'GHSA-unfixable', owner: 'o', reason: 'r', expires: '2030-01-01' }] };
+  assert.deepEqual(blockingAdvisories(report, activeExceptions(policy, '2029-12-31')).map((a) => a.module_name), ['fixable']);
+  assert.deepEqual(blockingAdvisories(report, activeExceptions(policy, '2030-01-02')).map((a) => a.module_name), ['fixable', 'unfixable']);
+  const byCve = { advisories: { 1: advisory('x', 'high', '<0.0.0', { cves: ['CVE-1'] }) } };
+  assert.equal(blockingAdvisories(byCve, new Set(['CVE-1'])).length, 0);
+});
+
+test('exception policy rejects malformed entries', () => {
+  assert.throws(() => activeExceptions({ version: 1, exceptions: [{ id: 'x' }] }), /owner/);
+});
+
+test('override sync only targets fixable high/critical advisories', () => {
+  assert.deepEqual(overridesFor(report), { 'fixable@<9.9.9': '>=9.9.9' });
+  assert.deepEqual(overridesFor(report, new Set(['GHSA-fixable'])), {});
 });

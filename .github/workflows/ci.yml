@@ -72,7 +72,7 @@ jobs:
       - name: Enforce dependency and static-security gates
         if: always()
         run: |
-          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
+          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json audit-exceptions.json
           test "${{ steps.dependency-audit.outcome }}" = "success"
           test "${{ steps.code-hygiene.outcome }}" = "success"
 

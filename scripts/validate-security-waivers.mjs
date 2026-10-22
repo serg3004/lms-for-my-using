@@ -17,15 +17,22 @@ for (const [index, waiver] of policy.waivers.entries()) {
       throw new Error(`${label}.${field} must be a non-empty string`);
     }
   }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(waiver.expires) || waiver.expires < today) {
-    throw new Error(`${label}.expires must be today or a future ISO date`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(waiver.expires)) {
+    throw new Error(`${label}.expires must be an ISO date`);
   }
   if (ids.has(waiver.id)) throw new Error(`${label}.id must be unique`);
   ids.add(waiver.id);
 }
 
-if (ignoreFile) {
-  await writeFile(ignoreFile, `${policy.waivers.map(({ id }) => id).join('\n')}\n`);
+// An expired waiver lapses instead of failing unrelated PRs: it is left out of the
+// ignore file, so the scanner itself blocks again only if the finding is still real.
+const active = policy.waivers.filter(({ expires }) => expires >= today);
+for (const waiver of policy.waivers) {
+  if (waiver.expires < today) console.warn(`Security waiver ${waiver.id} expired on ${waiver.expires} and is no longer applied`);
 }
 
-console.log(`Validated ${policy.waivers.length} active security waiver(s)`);
+if (ignoreFile) {
+  await writeFile(ignoreFile, `${active.map(({ id }) => id).join('\n')}\n`);
+}
+
+console.log(`Validated ${active.length} active security waiver(s)`);
