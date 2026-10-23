@@ -56,4 +56,20 @@ describe('NotificationBell', () => {
     expect(html).toContain('Safety Basics');
     expect(html).toContain('notification-bell__item--unread');
   });
+
+  it('includes the visible unread count in the button accessible name (WCAG 2.5.3)', () => {
+    const states: unknown[] = [false, 12];
+    let callIndex = 0;
+    reactMocks.useState.mockImplementation((initial: unknown) => {
+      const value = states[callIndex] ?? initial;
+      callIndex += 1;
+      return [value, vi.fn()];
+    });
+
+    const html = renderToStaticMarkup(<NotificationBell />);
+
+    expect(html).toMatch(/aria-label="[^"]+, 9\+"/);
+    expect(html).toContain('<span class="notification-bell__badge">9+</span>');
+    expect(html).toContain('<span aria-hidden="true">🔔</span>');
+  });
 });
