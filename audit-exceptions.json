@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "exceptions": [
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "braces <=3.0.3 stack-exhaustion DoS on deeply nested patterns (transitive via micromatch, used by build/test tooling only, never on untrusted input). No patched release exists on npm (3.0.3 is latest), so it cannot be fixed by an override. Re-check on expiry; drop this exception as soon as braces publishes a fix.",
+      "expires": "2027-01-20"
+    }
+  ]
+}

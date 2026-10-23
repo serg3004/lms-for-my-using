@@ -49,11 +49,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Collect dependency audit report
-        id: dependency-audit
-        continue-on-error: true
         run: |
           mkdir -p security-audit-artifacts
-          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json
+          # pnpm audit exits non-zero for any finding; the policy decision (including
+          # audit-exceptions.json) is made by check-dependency-audit.mjs, which also
+          # fails on an unusable report.
+          pnpm audit --json --audit-level high > security-audit-artifacts/dependency-audit.json || true
 
       - name: Collect code-hygiene report
         id: code-hygiene
@@ -72,8 +73,7 @@ jobs:
       - name: Enforce dependency and static-security gates
         if: always()
         run: |
-          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json
-          test "${{ steps.dependency-audit.outcome }}" = "success"
+          node scripts/check-dependency-audit.mjs security-audit-artifacts/dependency-audit.json audit-exceptions.json
           test "${{ steps.code-hygiene.outcome }}" = "success"
 
       - name: Validate security waivers

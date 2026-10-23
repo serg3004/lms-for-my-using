@@ -17,6 +17,7 @@
     "agent:preflight:test": "node --test scripts/agent-preflight.test.mjs",
     "security:waivers": "node scripts/validate-security-waivers.mjs",
     "security:artifacts:test": "node --test scripts/security-audit-artifacts.test.mjs",
+    "security:audit:sync": "node scripts/sync-audit-overrides.mjs",
     "security:hygiene": "node scripts/generate-code-hygiene-report.mjs",
     "security:branch-protection:test": "node --test scripts/configure-branch-protection.test.mjs",
     "security:branch-protection:audit": "node scripts/configure-branch-protection.mjs",
@@ -75,7 +76,11 @@
       "nanoid@<3.3.17": ">=3.3.17",
       "@babel/core@<=7.29.0": ">=7.29.6",
       "uuid@<11.1.1": ">=11.1.1",
-      "deepmerge-ts@<8.0.0": ">=8.0.0"
+      "deepmerge-ts@<8.0.0": ">=8.0.0",
+      "handlebars@<4.7.10": ">=4.7.10",
+      "proxy-addr@<2.0.8": ">=2.0.8",
+      "source-map-js@<1.2.2": ">=1.2.2",
+      "vite@>=8.3.0 <8.3.3": ">=8.3.3"
     }
   }
 }
