@@ -121,17 +121,20 @@ export function NotificationBell() {
     }
   }
 
+  // The accessible name must contain the visible badge text (WCAG 2.5.3 Label in Name).
+  const badgeText = unreadCount > 9 ? '9+' : String(unreadCount);
+
   return (
     <div className="notification-bell">
       <button
         className="notification-bell__btn"
         type="button"
         aria-expanded={open}
-        aria-label={t('notifications.bell')}
+        aria-label={unreadCount > 0 ? `${t('notifications.bell')}, ${badgeText}` : t('notifications.bell')}
         onClick={() => { void toggleOpen(); }}
       >
-        🔔
-        {unreadCount > 0 ? <span className="notification-bell__badge">{unreadCount > 9 ? '9+' : unreadCount}</span> : null}
+        <span aria-hidden="true">🔔</span>
+        {unreadCount > 0 ? <span className="notification-bell__badge">{badgeText}</span> : null}
       </button>
       {open ? (
         <div className="notification-bell__menu">
