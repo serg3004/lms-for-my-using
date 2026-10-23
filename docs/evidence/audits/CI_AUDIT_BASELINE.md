@@ -25,7 +25,6 @@ Current `.github/workflows/` содержит:
 
 - `ci.yml` — основной CI pipeline;
 - `codeql.yml` — CodeQL analysis;
-- `dependency-audit.yml` — ежедневный `pnpm audit` + автоматический PR с pnpm overrides для исправимых advisory;
 - `staging-smoke.yml` — manual/environment smoke workflow.
 
 Отдельного Semgrep workflow нет.
@@ -88,8 +87,6 @@ CI выполняет:
 Это отдельный step основного `CI / Quality & security` job. Gate (`scripts/check-dependency-audit.mjs`) падает на HIGH/CRITICAL advisory, не покрытом активной записью `audit-exceptions.json`, и печатает каждый блокирующий advisory.
 
 `audit-exceptions.json` — отдельный механизм для advisory без доступного fix (`id` = GHSA/CVE, `owner`, `reason`, `expires`). Просроченная запись перестаёт действовать, и advisory снова блокирует.
-
-`dependency-audit.yml` ежедневно запускает audit на `main`; для исправимых advisory `scripts/sync-audit-overrides.mjs` добавляет `pnpm.overrides` и workflow открывает PR (`security/audit-overrides`). PR, созданный `GITHUB_TOKEN`, не запускает CI автоматически — для проверки нужен ручной re-run/push.
 
 Security waiver mechanism ниже не является waiver для `pnpm audit`.
 

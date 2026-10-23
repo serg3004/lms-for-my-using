@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { activeExceptions, blockingAdvisories, vulnerabilityCounts } from './check-dependency-audit.mjs';
-import { overridesFor } from './sync-audit-overrides.mjs';
 import { scanEntries } from './generate-code-hygiene-report.mjs';
 
 test('code hygiene separates informational and blocking findings', () => {
@@ -55,9 +54,4 @@ test('active exceptions cover blocking advisories by GHSA id or CVE until they e
 
 test('exception policy rejects malformed entries', () => {
   assert.throws(() => activeExceptions({ version: 1, exceptions: [{ id: 'x' }] }), /owner/);
-});
-
-test('override sync only targets fixable high/critical advisories', () => {
-  assert.deepEqual(overridesFor(report), { 'fixable@<9.9.9': '>=9.9.9' });
-  assert.deepEqual(overridesFor(report, new Set(['GHSA-fixable'])), {});
 });
