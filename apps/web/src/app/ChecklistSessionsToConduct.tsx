@@ -10,6 +10,7 @@ import { useAsyncData } from '../shared/useAsyncData.js';
 
 const COLORS = {
   surface: 'var(--color-surface)',
+  text: 'var(--color-text)',
   muted: 'var(--color-text-muted)',
   border: 'var(--color-border)',
 };
@@ -113,6 +114,10 @@ function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: Check
           textAlign: 'left',
           border: 'none',
           background: 'transparent',
+          // A bare <button> does not inherit text colour; without an explicit token the title
+          // can render in the UA/dark-mode button colour (white on the white card).
+          color: COLORS.text,
+          font: 'inherit',
           padding: 0,
           cursor: 'pointer',
           // >=44px touch target per PR 297's mobile UX criterion.
@@ -143,13 +148,9 @@ function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: Check
             {t('checklistSessions.conduct.markedUnavailable', "You've reported you can't conduct this session.")}
           </p>
         ) : (
-          <button
-            onClick={onMarkUnavailable}
-            style={{ marginTop: 8, minHeight: 44, background: 'transparent', border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '6px 12px', cursor: 'pointer' }}
-            type="button"
-          >
+          <Button variant="secondary" size="md" onClick={onMarkUnavailable} style={{ marginTop: 8, minHeight: 44 }}>
             {t('checklistSessions.conduct.markUnavailable', "Can't conduct this")}
-          </button>
+          </Button>
         )
       )}
     </li>

@@ -141,4 +141,12 @@ describe('ChecklistSessionsToConduct', () => {
     expect(html).toContain("Can&#x27;t conduct this session");
     expect(html).toContain('Reason');
   });
+
+  it('renders the session title and the CTA with design tokens, not inherited button colours (PR 324)', () => {
+    useStateAtCalls({ 1: { status: 'loaded', data: [makeSession({ status: 'scheduled', observerUnavailableReason: null })] } });
+    const html = renderToStaticMarkup(<ChecklistSessionsToConduct onOpenSession={vi.fn()} t={t} />);
+    expect(html).toContain('color:var(--color-text)');
+    expect(html).toContain('ds-button ds-button--secondary');
+    expect(html).not.toMatch(/color:\s*(#fff|#ffffff|white)/i);
+  });
 });
