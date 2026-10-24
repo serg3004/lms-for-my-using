@@ -217,23 +217,23 @@ export function AdminChecklistSessionsPage() {
       // only the rarer ones so the row still fits one line at 1440px.
       render: (row) => (
         <div className="admin-toolbar__right">
-          <Link className="admin-btn admin-btn--sm" to={`/admin/checklists/sessions/${row.id}`}>
+          <Link className="ds-button ds-button--secondary ds-button--sm" to={`/admin/checklists/sessions/${row.id}`}>
             {t('admin.checklists.sessions.open', 'Open')}
           </Link>
           {canRepeatSession(row) && (
-            <button className="admin-btn admin-btn--sm" onClick={() => void repeat(row)} type="button">
+            <Button onClick={() => void repeat(row)} size="sm" type="button" variant="secondary">
               {t('admin.checklists.sessions.repeat', 'Repeat')}
-            </button>
+            </Button>
           )}
           {canCancelSession(row) && (
-            <button className="admin-btn admin-btn--sm" onClick={() => setCancelTarget(row)} type="button">
+            <Button onClick={() => setCancelTarget(row)} size="sm" type="button" variant="secondary">
               {t('admin.checklists.sessions.cancel', 'Cancel')}
-            </button>
+            </Button>
           )}
           {canReassignObserver(row) && (
             <Menu
               align="end"
-              buttonClassName="admin-btn admin-btn--sm"
+              buttonClassName="ds-button ds-button--secondary ds-button--sm"
               label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
             >
               <button onClick={() => setReassignTarget(row)} role="menuitem" type="button">
