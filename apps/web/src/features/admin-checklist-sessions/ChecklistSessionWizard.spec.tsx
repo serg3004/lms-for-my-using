@@ -67,4 +67,45 @@ describe('ChecklistSessionWizard', () => {
     expect(html).toContain('Olga Observer');
     expect(html).toContain('olga@example.invalid');
   });
+
+  // PR 326: 5 selectedLearners (Map), 9 selectedObserver, 18 checklistsLoaded (declared after
+  // submitResult, so it doesn't shift the indices above).
+  const olga = { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'olga@example.invalid', position: null };
+  const leo = { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'leo@example.invalid', position: null };
+
+  it('shows the chosen observer as a card with a change button instead of the radio list (PR 326)', () => {
+    useStateAtCalls({ 8: [olga], 9: olga });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('Olga Observer');
+    expect(html).toContain('Сменить наблюдателя');
+    expect(html).not.toContain('type="radio"');
+  });
+
+  it('never offers the chosen observer as an employee of the same session (PR 326)', () => {
+    useStateAtCalls({ 4: [olga, leo], 9: olga });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('Leo Learner');
+    expect(html.match(/type="checkbox"/g)).toHaveLength(1);
+  });
+
+  it('renders each selected employee as a removable chip with the running count (PR 326)', () => {
+    useStateAtCalls({ 4: [leo], 5: new Map([[leo.id, leo]]) });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('Убрать: Leo Learner');
+    expect(html).toContain('1 из 100');
+  });
+
+  it('disables the remaining checkboxes once the server batch limit is reached (PR 326)', () => {
+    const selected = new Map(Array.from({ length: 100 }, (_, index) => [`l-${index}`, { ...leo, id: `l-${index}` }]));
+    useStateAtCalls({ 4: [leo], 5: selected });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('Достигнут лимит');
+    expect(html).toMatch(/<input[^>]*disabled=""[^>]*type="checkbox"/);
+  });
+
+  it('explains when there are no published checklists instead of an empty list (PR 326)', () => {
+    useStateAtCalls({ 1: 1, 18: true });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('Опубликованных чек-листов пока нет');
+  });
 });

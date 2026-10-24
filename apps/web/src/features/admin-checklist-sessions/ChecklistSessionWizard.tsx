@@ -14,7 +14,7 @@ import type {
   ChecklistSessionParticipant,
   ChecklistSummary,
 } from '../../shared/api/types.js';
-import { InlineFeedback, Input, Select, WizardDialog, type WizardStep } from '../../shared/ui.js';
+import { Badge, Button, Card, InlineFeedback, Input, Select, WizardDialog, type WizardStep } from '../../shared/ui.js';
 import {
   canProceedFromChecklistStep,
   canProceedFromParticipantsStep,
@@ -68,6 +68,8 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitResult, setSubmitResult] = useState<{ created: number; skipped: number; failed: number } | null>(null);
+  // Distinguishes "still loading" from "no published checklists" (an empty result is a real answer).
+  const [checklistsLoaded, setChecklistsLoaded] = useState(false);
 
   useEffect(() => {
     if (!open || step !== 0) return;
@@ -88,13 +90,13 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   }, [open, step, debouncedObserverSearch]);
 
   useEffect(() => {
-    if (!open || step !== 1 || checklists.length > 0) return;
+    if (!open || step !== 1 || checklistsLoaded) return;
     let cancelled = false;
     listPublishedChecklists()
-      .then((result) => { if (!cancelled) setChecklists(result); })
+      .then((result) => { if (!cancelled) { setChecklists(result); setChecklistsLoaded(true); } })
       .catch(() => { if (!cancelled) setChecklists([]); });
     return () => { cancelled = true; };
-  }, [open, step, checklists.length]);
+  }, [open, step, checklistsLoaded]);
 
   function reset() {
     setStep(0);
@@ -105,6 +107,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
     setObserverResults([]);
     setSelectedObserver(null);
     setChecklists([]);
+    setChecklistsLoaded(false);
     setSelectedChecklistId('');
     setScheduleMode('now');
     setScheduledAt('');
@@ -124,6 +127,17 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
       const next = new Map(prev);
       if (next.has(participant.id)) next.delete(participant.id);
       else next.set(participant.id, participant);
+      return next;
+    });
+  }
+
+  // The observer can't also be one of this batch's employees: picking them drops them from the selection.
+  function selectObserver(participant: ChecklistSessionParticipant) {
+    setSelectedObserver(participant);
+    setSelectedLearners((prev) => {
+      if (!prev.has(participant.id)) return prev;
+      const next = new Map(prev);
+      next.delete(participant.id);
       return next;
     });
   }
@@ -186,6 +200,8 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
     { key: 'confirm', label: t('admin.checklists.sessions.wizard.steps.confirm', 'Confirm') },
   ];
 
+  const limitReached = selectedLearners.size >= MAX_BULK_SESSION_LEARNERS;
+  const learnerOptions = learnerResults.filter((participant) => participant.id !== selectedObserver?.id);
   const selectedChecklist = checklists.find((c) => c.id === selectedChecklistId) ?? null;
 
   const nextDisabled = submitResult
@@ -222,30 +238,46 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
           {step === 0 && (
             <div>
               <h3>{t('admin.checklists.sessions.wizard.observerLabel', 'Observer')}</h3>
-              <Input
-                aria-label={t('admin.checklists.sessions.wizard.observerSearch', 'Find observer')}
-                onChange={(e) => setObserverSearch(e.target.value)}
-                placeholder={t('admin.checklists.sessions.wizard.observerSearch', 'Find observer')}
-                value={observerSearch}
-              />
-              <ul className="ds-wizard-dialog__picklist">
-                {observerResults.map((participant) => (
-                  <li key={participant.id}>
-                    <label>
-                      <input
-                        checked={selectedObserver?.id === participant.id}
-                        name="observer"
-                        onChange={() => setSelectedObserver(participant)}
-                        type="radio"
-                      />
-                      <span className="ds-wizard-dialog__picklist-text">
-                        <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(participant)}</span>
-                        <span className="ds-wizard-dialog__picklist-email">{participant.email}</span>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+              {selectedObserver ? (
+                <Card compact>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <span className="ds-wizard-dialog__picklist-text">
+                      <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(selectedObserver)}</span>
+                      <span className="ds-wizard-dialog__picklist-email">{selectedObserver.email}</span>
+                    </span>
+                    <Button onClick={() => setSelectedObserver(null)} size="sm" type="button" variant="secondary">
+                      {t('admin.checklists.sessions.wizard.observerChange', 'Change observer')}
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <>
+                  <Input
+                    aria-label={t('admin.checklists.sessions.wizard.observerSearch', 'Find observer')}
+                    onChange={(e) => setObserverSearch(e.target.value)}
+                    placeholder={t('admin.checklists.sessions.wizard.observerSearch', 'Find observer')}
+                    value={observerSearch}
+                  />
+                  <ul className="ds-wizard-dialog__picklist">
+                    {observerResults.map((participant) => (
+                      <li key={participant.id}>
+                        <label>
+                          <input
+                            checked={false}
+                            name="observer"
+                            onChange={() => selectObserver(participant)}
+                            type="radio"
+                          />
+                          <span className="ds-wizard-dialog__picklist-text">
+                            <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(participant)}</span>
+                            <span className="ds-wizard-dialog__picklist-email">{participant.email}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
               <h3>{t('admin.checklists.sessions.wizard.learnersLabel', 'Employees')}</h3>
               <Input
@@ -254,13 +286,34 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
                 placeholder={t('admin.checklists.sessions.wizard.learnerSearch', 'Find employee')}
                 value={learnerSearch}
               />
-              <p>{t('admin.checklists.sessions.wizard.learnersSelected', '{{count}} of {{max}} selected', { count: selectedLearners.size, max: MAX_BULK_SESSION_LEARNERS })}</p>
+              <p aria-live="polite">{t('admin.checklists.sessions.wizard.learnersSelected', '{{count}} of {{max}} selected', { count: selectedLearners.size, max: MAX_BULK_SESSION_LEARNERS })}</p>
+              {selectedLearners.size > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {[...selectedLearners.values()].map((participant) => (
+                    <Badge key={participant.id} variant="accent">
+                      {formatParticipantName(participant)}
+                      <button
+                        aria-label={t('admin.checklists.sessions.wizard.learnerRemove', 'Remove {{name}}', { name: formatParticipantName(participant) })}
+                        onClick={() => toggleLearner(participant)}
+                        style={{ minWidth: 24, minHeight: 24, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+                        type="button"
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {limitReached && (
+                <p role="status">{t('admin.checklists.sessions.wizard.learnersLimitReached', 'Limit reached: at most {{max}} employees per batch. Remove someone to add another.', { max: MAX_BULK_SESSION_LEARNERS })}</p>
+              )}
               <ul className="ds-wizard-dialog__picklist">
-                {learnerResults.map((participant) => (
+                {learnerOptions.map((participant) => (
                   <li key={participant.id}>
                     <label>
                       <input
                         checked={selectedLearners.has(participant.id)}
+                        disabled={limitReached && !selectedLearners.has(participant.id)}
                         onChange={() => toggleLearner(participant)}
                         type="checkbox"
                       />
@@ -278,6 +331,11 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
           {step === 1 && (
             <div>
               <h3>{t('admin.checklists.sessions.wizard.checklistLabel', 'Checklist')}</h3>
+              {checklistsLoaded && checklists.length === 0 && (
+                <InlineFeedback tone="warning">
+                  {t('admin.checklists.sessions.wizard.checklistsEmpty', 'There are no published checklists yet. Publish a checklist on the "Checklists" tab first, then create a session.')}
+                </InlineFeedback>
+              )}
               <ul className="ds-wizard-dialog__picklist">
                 {checklists.map((checklist) => (
                   <li key={checklist.id}>
