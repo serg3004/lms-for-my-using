@@ -562,6 +562,7 @@
         "checklist.created": "Чек-лист создан",
         "checklist.updated": "Чек-лист изменён",
         "checklist.deleted": "Чек-лист удалён",
+        "checklist.copied": "Чек-лист скопирован",
         "checklist_instance.assigned": "Чек-лист назначен",
         "checklist_item_result.reviewed": "Пункт чек-листа проверен",
         "certificate.issued": "Сертификат выдан"
@@ -943,7 +944,7 @@
       "delete": "Удалить",
       "empty": "Чек-листы не найдены.",
       "deleteTitle": "Удалить чек-лист",
-      "deleteConfirm": "Удалить «{{title}}»? Это действие нельзя отменить.",
+      "deleteConfirm": "Удалить «{{title}}»? Он исчезнет из списка и больше не будет доступен для назначения. Завершённые результаты сохранятся. Чтобы просто скрыть чек-лист, переведите его в архив. Действие нельзя отменить.",
       "cancel": "Отмена",
       "status": {
         "draft": "Черновик",
@@ -1251,7 +1252,16 @@
       "groupCriterionCount_one": "{{count}} критерий",
       "groupCriterionCount_few": "{{count}} критерия",
       "groupCriterionCount_many": "{{count}} критериев",
-      "groupCriterionCount_other": "{{count}} критерия"
+      "groupCriterionCount_other": "{{count}} критерия",
+      "copy": "Копировать",
+      "copyError": "Не удалось скопировать чек-лист.",
+      "deleteBlocked": "Нельзя удалить чек-лист, пока по нему есть назначения или идущие сессии. Завершите их или переведите чек-лист в архив.",
+      "action": {
+        "publish": "Опубликовать",
+        "toDraft": "В черновик",
+        "archive": "В архив",
+        "restore": "Вернуть в черновик"
+      }
     },
     "orgTools": {
       "cardTitle": "Импорт оргструктуры",

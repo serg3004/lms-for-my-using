@@ -562,6 +562,7 @@
         "checklist.created": "创建了检查清单",
         "checklist.updated": "更新了检查清单",
         "checklist.deleted": "删除了检查清单",
+        "checklist.copied": "复制了检查清单",
         "checklist_instance.assigned": "分配了检查清单",
         "checklist_item_result.reviewed": "审核了检查清单项",
         "certificate.issued": "颁发了证书"
@@ -943,7 +944,7 @@
       "delete": "删除",
       "empty": "未找到检查清单。",
       "deleteTitle": "删除检查清单",
-      "deleteConfirm": "删除“{{title}}”？此操作无法撤销。",
+      "deleteConfirm": "删除“{{title}}”？它将从列表中消失且不能再被分配，已完成的结果会保留。若只想隐藏，请改为归档。此操作无法撤销。",
       "cancel": "取消",
       "status": {
         "draft": "草稿",
@@ -1251,7 +1252,16 @@
       "groupCriterionCount_one": "{{count}} 项标准",
       "groupCriterionCount_few": "{{count}} 项标准",
       "groupCriterionCount_many": "{{count}} 项标准",
-      "groupCriterionCount_other": "{{count}} 项标准"
+      "groupCriterionCount_other": "{{count}} 项标准",
+      "copy": "复制",
+      "copyError": "无法复制检查清单。",
+      "deleteBlocked": "存在进行中的分配或会话时无法删除该检查清单。请先完成它们，或改为归档。",
+      "action": {
+        "publish": "发布",
+        "toDraft": "转为草稿",
+        "archive": "归档",
+        "restore": "恢复为草稿"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

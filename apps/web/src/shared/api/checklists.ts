@@ -52,6 +52,10 @@ export function updateChecklist(checklistId: string, input: Record<string, unkno
   });
 }
 
+export function copyChecklist(checklistId: string) {
+  return apiRequest<ChecklistSummary>(`/checklists/${encodeURIComponent(checklistId)}/copy`, { method: 'POST' });
+}
+
 export function deleteChecklist(checklistId: string) {
   return apiRequest<void>(`/checklists/${encodeURIComponent(checklistId)}`, { method: 'DELETE' });
 }

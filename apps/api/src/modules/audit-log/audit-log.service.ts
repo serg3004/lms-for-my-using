@@ -27,6 +27,7 @@ export type AuditLogAction =
   | 'checklist.created'
   | 'checklist.updated'
   | 'checklist.deleted'
+  | 'checklist.copied'
   | 'checklist_instance.assigned'
   | 'checklist_item_result.reviewed'
   | 'checklist_workplace_settings.updated'

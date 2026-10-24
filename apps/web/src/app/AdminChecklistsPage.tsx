@@ -9,6 +9,7 @@ import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import {
+  copyChecklist,
   createChecklist,
   deleteChecklist,
   getChecklist,
@@ -65,6 +66,16 @@ export function AdminChecklistsPage() {
       setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.statusError', 'Unable to update status.'));
     }
   }
+  async function copy(checklist: ChecklistSummary) {
+    setStatusError(null);
+    try {
+      const copied = await copyChecklist(checklist.id);
+      await load();
+      setSelectedId(copied.id);
+    } catch (error) {
+      setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.copyError', 'Unable to copy the checklist.'));
+    }
+  }
   async function confirmDelete() {
     if (!deleteTarget) return;
     try {
@@ -72,7 +83,13 @@ export function AdminChecklistsPage() {
       setDeleteTarget(null);
       await load();
     } catch (error) {
-      setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.deleteError', 'Unable to delete checklist.'));
+      // The only 400 DELETE returns is "an assignment is still in progress" (sessions run on top of
+      // assignments), so explain that and point at archiving instead of surfacing the raw message.
+      setStatusError(error instanceof ApiClientError && error.status === 400
+        ? t('admin.checklists.deleteBlocked', 'This checklist cannot be deleted while it has assignments or sessions in progress. Finish them or archive the checklist instead.')
+        : error instanceof ApiClientError
+          ? error.message
+          : t('admin.checklists.deleteError', 'Unable to delete checklist.'));
       setDeleteTarget(null);
     }
   }
@@ -152,11 +169,11 @@ export function AdminChecklistsPage() {
         }
       />
       <ChecklistTable rows={filtered} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels}
-        onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onDelete={setDeleteTarget} t={t} />
+        onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} t={t} />
       <ConfirmDialog
         open={deleteTarget !== null}
         title={t('admin.checklists.deleteTitle', 'Delete checklist')}
-        message={t('admin.checklists.deleteConfirm', 'Delete "{{title}}"? This action cannot be undone.', { title: deleteTarget?.title ?? '' })}
+        message={t('admin.checklists.deleteConfirm', 'Delete "{{title}}"? It disappears from the list and can no longer be assigned. Completed results are kept. To just hide it, archive it instead. This cannot be undone.', { title: deleteTarget?.title ?? '' })}
         confirmLabel={t('admin.checklists.delete', 'Delete')}
         cancelLabel={t('admin.checklists.cancel', 'Cancel')}
         variant="danger"
