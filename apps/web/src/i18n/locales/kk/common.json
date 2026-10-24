@@ -562,6 +562,7 @@
         "checklist.created": "Чеклист құрылды",
         "checklist.updated": "Чеклист өзгертілді",
         "checklist.deleted": "Чеклист жойылды",
+        "checklist.copied": "Чеклист көшірілді",
         "checklist_instance.assigned": "Чеклист тағайындалды",
         "checklist_item_result.reviewed": "Чеклист тармағы тексерілді",
         "certificate.issued": "Сертификат берілді"
@@ -943,7 +944,7 @@
       "delete": "Жою",
       "empty": "Чеклистер табылмады.",
       "deleteTitle": "Чеклистті жою",
-      "deleteConfirm": "«{{title}}» жойылсын ба? Бұл әрекетті қайтару мүмкін емес.",
+      "deleteConfirm": "«{{title}}» жою керек пе? Ол тізімнен жоғалады және енді тағайындалмайды. Аяқталған нәтижелер сақталады. Жай ғана жасыру үшін мұрағатқа жіберіңіз. Бұл әрекетті болдырмау мүмкін емес.",
       "cancel": "Бас тарту",
       "status": {
         "draft": "Жоба",
@@ -1251,7 +1252,16 @@
       "groupCriterionCount_one": "{{count}} критерий",
       "groupCriterionCount_few": "{{count}} критерий",
       "groupCriterionCount_many": "{{count}} критерий",
-      "groupCriterionCount_other": "{{count}} критерий"
+      "groupCriterionCount_other": "{{count}} критерий",
+      "copy": "Көшіру",
+      "copyError": "Чеклистті көшіру мүмкін болмады.",
+      "deleteBlocked": "Тағайындаулар немесе жүріп жатқан сессиялар болса, чеклистті жоюға болмайды. Оларды аяқтаңыз немесе чеклистті мұрағатқа жіберіңіз.",
+      "action": {
+        "publish": "Жариялау",
+        "toDraft": "Жобаға",
+        "archive": "Мұрағатқа",
+        "restore": "Жоба ретінде қайтару"
+      }
     },
     "orgTools": {
       "cardTitle": "Ұйымдық құрылымды импорттау",

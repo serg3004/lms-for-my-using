@@ -199,3 +199,12 @@ export function createDefaultReusableScaleLevels(t: TFunction): ChecklistScaleLe
     { value: 3, label: t('admin.checklists.scaleManager.defaultHigh', 'High'), score: 100 },
   ];
 }
+
+/**
+ * PR 327: the one "next step" the list offers for a status -- publish a draft, take a published
+ * checklist back to draft, restore an archived one as a draft (never straight to published, so it
+ * is re-checked by the publish rules). Archiving is a separate, secondary action.
+ */
+export function checklistStatusAction(status: ChecklistStatus): ChecklistStatus {
+  return status === 'draft' ? 'published' : 'draft';
+}

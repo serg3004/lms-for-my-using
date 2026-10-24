@@ -252,6 +252,37 @@ describe('checklist session admin API (PR 292) — database', () => {
     await prisma.department.deleteMany({ where: { organizationId } });
   });
 
+  it('copyChecklist: a published checklist becomes an independent draft with its groups and criteria, without assignments (PR 327)', async () => {
+    const group = await prisma.checklistItemGroup.create({ data: { organizationId, checklistId, title: 'Hygiene', order: 0 } });
+    await prisma.checklistItem.createMany({
+      data: [
+        { organizationId, checklistId, groupId: group.id, order: 0, text: 'Wash hands', points: 5, isRequired: true, photoRequired: true, weight: 2, allowSkip: true },
+        { organizationId, checklistId, order: 1, text: 'Ungrouped', points: 3, isRequired: false },
+        { organizationId, checklistId, order: 2, text: 'Removed', points: 1, deletedAt: new Date() },
+      ],
+    });
+    const learner = await prisma.user.create({ data: { organizationId, email: `copy-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'C', lastName: 'Opy' } });
+    await checklistsService.assignChecklist(checklistId, organizationId, { userId: learner.id }, observerId);
+
+    const copy = await checklistsService.copyChecklist(checklistId, organizationId, observerId);
+
+    expect(copy.id).not.toBe(checklistId);
+    expect(copy.title).toBe('Admin API checklist (копия)');
+    expect(copy.status).toBe('draft');
+    expect(copy.createdBy).toBe(observerId);
+    expect(copy.itemGroups).toHaveLength(1);
+    expect(copy.itemGroups[0]).toMatchObject({ title: 'Hygiene', checklistId: copy.id });
+    expect(copy.itemGroups[0]!.id).not.toBe(group.id);
+    expect(copy.items.map((item) => item.text)).toEqual(['Wash hands', 'Ungrouped']);
+    expect(copy.items[0]).toMatchObject({ groupId: copy.itemGroups[0]!.id, points: 5, photoRequired: true, weight: 2, allowSkip: true });
+    expect(copy.items[1]!.groupId).toBeNull();
+    expect(await prisma.checklistInstance.count({ where: { checklistId: copy.id } })).toBe(0);
+    // The source is untouched.
+    expect(await prisma.checklistItem.count({ where: { checklistId, deletedAt: null } })).toBe(2);
+    expect(await prisma.checklistInstance.count({ where: { checklistId } })).toBe(1);
+    await expect(checklistsService.copyChecklist(copy.id, randomUUID(), observerId)).rejects.toThrow('Checklist not found');
+  });
+
   it('participant lookup: observer role returns instructor-role users; learner role is scoped to the manager\'s effective team', async () => {
     const manager = await prisma.user.create({ data: { organizationId, email: `manager-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Manager', lastName: 'User' } });
     await prisma.membership.create({ data: { organizationId, userId: manager.id, role: 'manager' } });

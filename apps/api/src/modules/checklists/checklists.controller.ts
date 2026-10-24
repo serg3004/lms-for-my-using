@@ -124,6 +124,11 @@ export class ChecklistsController {
     const input = updateChecklistSchema.parse(body);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
+  @Post('checklists/:id/copy')
+  @Roles(...rolePolicies.checklistsCreate)
+  copyChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    return this.checklistsService.copyChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
+  }
   @Delete('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)
   deleteChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {

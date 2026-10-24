@@ -315,6 +315,86 @@ export class ChecklistsService {
     return updated;
   }
 
+  /**
+   * PR 327: copies a checklist as a new draft -- settings, groups and (non-deleted) criteria, with
+   * criteria re-pointed at the copied groups. Assignments, instances and sessions are never copied,
+   * and the copy is always a draft so it can't be assigned before someone has looked at it.
+   * One transaction: a copy never exists half-built.
+   */
+  async copyChecklist(checklistId: string, organizationId: string, actorId: string) {
+    const source = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      include: {
+        itemGroups: { orderBy: { order: 'asc' } },
+        items: { where: { deletedAt: null }, orderBy: { order: 'asc' } },
+      },
+    });
+    if (!source) {
+      throw new NotFoundException('Checklist not found');
+    }
+
+    const copyId = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.checklist.create({
+        data: {
+          organizationId,
+          title: `${source.title} (копия)`,
+          description: source.description,
+          status: 'draft',
+          scoringMode: source.scoringMode,
+          passThreshold: source.passThreshold,
+          scaleLevels: source.scaleLevels ?? undefined,
+          requiresReview: source.requiresReview,
+          contextFields: source.contextFields ?? undefined,
+          defaultLocationCapturePolicy: source.defaultLocationCapturePolicy,
+          preSessionVisibility: source.preSessionVisibility,
+          createdBy: actorId,
+        },
+        select: { id: true },
+      });
+
+      const groupIds = new Map<string, string>();
+      for (const group of source.itemGroups) {
+        const createdGroup = await tx.checklistItemGroup.create({
+          data: { organizationId, checklistId: created.id, title: group.title, order: group.order },
+          select: { id: true },
+        });
+        groupIds.set(group.id, createdGroup.id);
+      }
+
+      for (const item of source.items) {
+        await tx.checklistItem.create({
+          data: {
+            organizationId,
+            checklistId: created.id,
+            groupId: item.groupId ? groupIds.get(item.groupId) ?? null : null,
+            order: item.order,
+            text: item.text,
+            points: item.points,
+            isRequired: item.isRequired,
+            photoRequired: item.photoRequired,
+            weight: item.weight,
+            allowSkip: item.allowSkip,
+            autoSkipUnanswered: item.autoSkipUnanswered,
+            scaleId: item.scaleId,
+          },
+        });
+      }
+      return created.id;
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.copied',
+      targetType: 'checklist',
+      targetId: copyId,
+      summary: `Copied checklist ${source.title}`,
+      metadata: { sourceChecklistId: checklistId },
+    });
+
+    return this.prisma.checklist.findFirstOrThrow({ where: { id: copyId, organizationId }, select: checklistWithItemsSelect });
+  }
+
   async deleteChecklist(checklistId: string, organizationId: string, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
