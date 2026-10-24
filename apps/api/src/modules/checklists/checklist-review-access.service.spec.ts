@@ -171,6 +171,19 @@ describe('ChecklistReviewAccessService', () => {
     });
   });
 
+  describe('own session creation (PR 331)', () => {
+    it.each([['instructor'], ['instructor', 'learner']] as const)('pins observer for %j', (...roles) => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+      const user = currentUser([...roles]);
+      expect(() => service.assertSessionCreationObserver(user, user.id)).not.toThrow();
+      expect(() => service.assertSessionCreationObserver(user, 'another-observer')).toThrow(NotFoundException);
+    });
+    it.each([['admin'], ['manager'], ['manager', 'instructor']] as const)('preserves scheduler rights for %j', (...roles) => {
+      const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
+      expect(() => service.assertSessionCreationObserver(currentUser([...roles]), 'another-observer')).not.toThrow();
+    });
+  });
+
   describe('participantLearnerScope (PR 292)', () => {
     it('is tenant-wide for admin', async () => {
       const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());

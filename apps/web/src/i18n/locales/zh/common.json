@@ -2396,6 +2396,13 @@
       "markUnavailableCancel": "取消",
       "markUnavailableSubmit": "提交",
       "eyebrow": "现场培训",
+      "retry": "重试",
+      "checklistsLoading": "正在加载检查表...",
+      "checklistsError": "无法加载检查表。",
+      "ownObserver": "此场次将由您主持。",
+      "participantsLoading": "正在加载员工...",
+      "participantsError": "无法加载员工。",
+      "participantsEmpty": "您的权限范围内未找到员工。请更改搜索条件或联系管理员。",
       "sessionsTitle": "待开展的会话",
       "sessionsSubtitle": "您作为观察员的会话。",
       "screenTitle": "开展会话"

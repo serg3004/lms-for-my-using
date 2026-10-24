@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
+import { useOptionalSession } from '../shared/session.js';
+import { Button } from '../shared/ui.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { ChecklistSessionsToConduct } from './ChecklistSessionsToConduct.js';
 
@@ -12,6 +16,9 @@ import { ChecklistSessionsToConduct } from './ChecklistSessionsToConduct.js';
 export function InstructorChecklistSessionsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const currentUser = useOptionalSession()?.currentUser;
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   return (
     <InstructorPageLayout>
@@ -23,8 +30,17 @@ export function InstructorChecklistSessionsPage() {
         <p style={{ margin: '0 0 20px', color: 'var(--color-text-muted)' }}>
           {t('checklistSessions.conduct.sessionsSubtitle', 'Sessions where you are the observer.')}
         </p>
-        <ChecklistSessionsToConduct onOpenSession={(sessionId) => navigate(`/instructor/checklists/sessions/${sessionId}`)} t={t} />
+        {currentUser?.roles.includes('instructor') && <Button onClick={() => setWizardOpen(true)} style={{ marginBottom: 20, minHeight: 44 }}>
+          {t('admin.checklists.sessions.create', 'New session')}
+        </Button>}
+        <ChecklistSessionsToConduct key={reloadKey} onOpenSession={(sessionId) => navigate(`/instructor/checklists/sessions/${sessionId}`)} t={t} />
       </div>
+      {currentUser?.roles.includes('instructor') && <ChecklistSessionWizard
+        fixedObserver={currentUser}
+        onClose={() => setWizardOpen(false)}
+        onCreated={() => setReloadKey((value) => value + 1)}
+        open={wizardOpen} t={t}
+      />}
     </InstructorPageLayout>
   );
 }

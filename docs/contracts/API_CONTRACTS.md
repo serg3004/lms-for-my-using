@@ -265,12 +265,13 @@ configured or succeeds.
 
 Rounds out the admin surface for `ChecklistSession` (list/detail/create already existed from PR
 289) with bulk create, repeat, participant/checklist lookups for the "new session" wizard, and a
-richer list/detail projection -- no new tables, no new role policies (see
+richer list/detail projection. PR 331 adds own-session creation rights for instructors (see
 [`API_RBAC_MATRIX.md`](./API_RBAC_MATRIX.md), "Role policy vs object scope").
 
 `POST /checklist-sessions/bulk` accepts one `checklistId` + up to 100 `learnerId`s + one shared
 `observerId`/`scheduledAt`/`locationCapturePolicy`/`timezone`, and creates independent
-instance+session pairs per learner -- **not** an all-or-nothing batch. Each recipient is processed
+instance+session pairs per learner. Own-only scope validation is request-wide before writes
+(PR 331, below); otherwise this is **not** an all-or-nothing batch. Each recipient is processed
 individually through the existing `ChecklistsService.assignChecklist` (so per-learner
 active-assignment conflicts surface the same way a single `POST /checklist-instances` would) and
 the response reports per-recipient outcome: `{learnerId, status: 'created'|'skipped'|'failed',
@@ -310,15 +311,25 @@ the *session* does not complete the *instance* (they are independently-lifecycle
 the checklist still fails with the same "already has an active assignment" 400 that a fresh manual
 assignment would. Writes a `checklist_session.repeated` audit-log entry.
 
-`GET /checklist-sessions/participants?role=learner|observer` backs the wizard's people-pickers.
-`role=observer` returns tenant-wide users holding the `instructor` role membership (observers are
-not team-scoped -- any instructor can be assigned to any session, same as today's manual
-`observerId` selection). `role=learner` is scoped by the caller: admin sees the whole tenant, a
-manager sees only their effective team (`ChecklistReviewAccessService.participantLearnerScope`,
-reusing `OrganizationAccessScopeService.user()` -- the same Group ∪ Department ∪ ReportingLine
-union `sessionScope()` already uses), any other caller role gets tenant-wide (mirrors how
-`sessionScope()` treats a non-manager, non-learner caller elsewhere in this module). Supports
-`search` (name substring) and pagination.
+`GET /checklist-sessions/participants?role=learner|observer` backs both wizard entry points.
+Admin/manager may select any active instructor in their tenant as observer. PR 331 adds
+`checklistSessionsCreateOwn` for instructor: a caller without management rights sees only
+themselves in observer lookup and may create only with `observerId === currentUser.id` (404
+otherwise). Learner lookup and single/bulk creation all use `participantLearnerScope()`: active,
+undeleted users in the caller's tenant; manager callers (including manager+instructor) remain
+limited to their effective Group ∪ Department DIRECT ∪ ReportingLine DIRECT scope. Search and
+scope filters are intersected, never overwritten. Search supports name/email substring and
+pagination.
+
+Own-only bulk creation preflights the checklist and every learner UUID. An inaccessible checklist
+or learner returns 404 before writes; existing active assignments still yield per-recipient
+`skipped` outcomes. Admin/manager partial-success behavior is unchanged. Single creation verifies
+the assignment's learner scope before any idempotency replay. Reusing a creation key with another
+assignment or observer returns 409 rather than exposing a different session's response. A fresh
+single creation records `checklist_session.created`; replay does not duplicate that audit entry.
+The transactional `created` session event and existing bulk audit retain the authenticated actor.
+Creation rights do not grant instructor access to PATCH/cancel/repeat or another observer's
+sessions.
 
 `GET /checklists?status=published` (existing route, now accepts an optional `status` query param)
 backs the wizard's checklist picker -- filters out `draft`/`archived` checklists client-side would

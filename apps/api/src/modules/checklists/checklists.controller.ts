@@ -408,19 +408,23 @@ export class ChecklistsController {
 
   // ---- Sessions (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md, PR 289 lifecycle) ----
   @Post('checklist-sessions')
-  @Roles(...rolePolicies.checklistSessionsManage)
-  createSession(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  @Roles(...rolePolicies.checklistSessionsManage, ...rolePolicies.checklistSessionsCreateOwn)
+  async createSession(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = createChecklistSessionSchema.parse(body);
     const user = request.currentUser!;
-    return this.sessions.create(user.organizationId, input, user.id);
+    this.reviewAccess.assertSessionCreationObserver(user, input.observerId);
+    const learnerScope = await this.reviewAccess.participantLearnerScope(user);
+    return this.sessions.create(user.organizationId, input, user.id, learnerScope);
   }
   @Post('checklist-sessions/bulk')
-  @Roles(...rolePolicies.checklistSessionsManage)
+  @Roles(...rolePolicies.checklistSessionsManage, ...rolePolicies.checklistSessionsCreateOwn)
   async bulkCreateSessions(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = bulkCreateChecklistSessionSchema.parse(body);
     const user = request.currentUser!;
     const learnerScope = await this.reviewAccess.participantLearnerScope(user);
-    return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope);
+    this.reviewAccess.assertSessionCreationObserver(user, input.observerId);
+    const createOwn = !rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role));
+    return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope, createOwn);
   }
   @Get('checklist-sessions')
   @Roles(...rolePolicies.checklistSessionsRead)
@@ -433,12 +437,13 @@ export class ChecklistsController {
   // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
   // is never swallowed as a session id.
   @Get('checklist-sessions/participants')
-  @Roles(...rolePolicies.checklistSessionsManage)
+  @Roles(...rolePolicies.checklistSessionsManage, ...rolePolicies.checklistSessionsCreateOwn)
   async listSessionParticipants(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const query = checklistSessionParticipantsQuerySchema.parse(rawQuery);
     const user = request.currentUser!;
     const learnerScope = await this.reviewAccess.participantLearnerScope(user);
-    return this.sessions.listParticipants(user.organizationId, query, learnerScope);
+    const createOwn = !rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role));
+    return this.sessions.listParticipants(user.organizationId, query, learnerScope, createOwn ? user.id : undefined);
   }
   @Get('checklist-sessions/:id')
   @Roles(...rolePolicies.checklistSessionsRead)
