@@ -85,6 +85,27 @@ describe('ManagerChecklistsPage', () => {
     expect(html).toContain('Warehouse');
   });
 
+  it('PR 328: with no completed sessions shows a plain explanation instead of empty KPI cards and charts', () => {
+    const emptyFixture: ManagerChecklistAnalytics = {
+      ...analyticsFixture,
+      summary: { ...analyticsFixture.summary, totalSessions: 0, completedSessions: 0, highCount: 0, lowCount: 0, noCompletionCount: 2 },
+      distribution: [],
+      trend: [],
+    };
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: emptyFixture }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+
+    expect(html).toContain('планирует администратор');
+    expect(html).not.toContain('class="stat-card"');
+    expect(html).not.toContain('Запланировать сессию');
+    expect(html).toContain('Alex Kim');
+  });
+
   it('PR 321: shows exactly the four prototype KPI cards with the high/low threshold sub-labels', () => {
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])

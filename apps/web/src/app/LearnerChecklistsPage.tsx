@@ -77,6 +77,9 @@ export function LearnerChecklistsPage() {
       {loadState.data.instances.length === 0 ? (
         <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
       ) : (
+        <>
+        <h2 style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.selfTitle', 'Self-study checklists')}</h2>
+        <p style={{ color: COLORS.muted }}>{t('checklists.selfHint', 'You fill these in yourself, at your own pace.')}</p>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
           {loadState.data.instances.map((instance) => (
             <li
@@ -112,6 +115,7 @@ export function LearnerChecklistsPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
       <LearnerChecklistSessions t={t} />
     </main>

@@ -96,6 +96,7 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
   return (
     <section style={{ marginTop: 32 }}>
       <h2 style={{ color: COLORS.text, fontSize: 18 }}>{t('checklistSessions.learner.title', 'My training sessions')}</h2>
+      <p style={{ color: COLORS.muted }}>{t('checklistSessions.learner.hint', 'An observer conducts these sessions with you at your workplace. Your result appears after the session is completed.')}</p>
       <div
         role="tablist"
         aria-label={t('checklistSessions.learner.tabs.label', 'Training sessions')}
