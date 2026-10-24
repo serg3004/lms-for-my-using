@@ -295,6 +295,16 @@ describe('learner page smoke rendering', () => {
     const html = renderToStaticMarkup(<LearnerChecklistsPage />);
 
     expect(html).toContain('Приёмка нового стажёра');
+    expect(html).toContain('Самостоятельные чек-листы');
+  });
+
+  it('PR 328: shows the plain empty state and no self-study heading when nothing is assigned', () => {
+    useStateAtCalls({ 2: { status: 'loaded', data: { instances: [] } } });
+
+    const html = renderToStaticMarkup(<LearnerChecklistsPage />);
+
+    expect(html).toContain('Вам пока не назначено ни одного чек-листа.');
+    expect(html).not.toContain('Самостоятельные чек-листы');
   });
 
   it('renders the checklist taking view (scale scoring, photo slot) without crashing', () => {
