@@ -20,7 +20,7 @@
     "@lms/shared": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
     "exceljs": "^4.4.0",
-    "i18next": "^26.5.3",
+    "i18next": "^26.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-i18next": "^17.1.0",
