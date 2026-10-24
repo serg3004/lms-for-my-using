@@ -88,3 +88,10 @@ updates:
           - "patch"
         patterns:
           - "*"
+      # Security updates: one grouped PR for every vulnerable dependency, opened as soon
+      # as GitHub publishes an advisory (independent of the weekly version-update
+      # schedule above). Needs "Dependabot security updates" enabled in repo settings.
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
