@@ -42,6 +42,12 @@
       "owner": "300481afanaskov@gmail.com",
       "reason": "Same root cause as CVE-2026-53612: util-linux fix (2.42.3-r0) not yet available in the Alpine 3.24 apk repository for the nginx:stable-alpine base image.",
       "expires": "2026-10-05"
+    },
+    {
+      "id": "CVE-2023-54404",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "Same advisory as GHSA-mrhx-c7xc-m3w5 in audit-exceptions.json: zod <4.6.6 unbounded issue allocation on huge arrays (DoS). The repo is on zod 3.x and the only patched release is the 4.6.6 major, which needs a dedicated migration PR. Re-check on expiry; drop this waiver once zod 4 lands.",
+      "expires": "2027-01-20"
     }
   ]
 }

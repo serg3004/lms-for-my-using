@@ -6,6 +6,12 @@
       "owner": "300481afanaskov@gmail.com",
       "reason": "braces <=3.0.3 stack-exhaustion DoS on deeply nested patterns (transitive via micromatch, used by build/test tooling only, never on untrusted input). No patched release exists on npm (3.0.3 is latest), so it cannot be fixed by an override. Re-check on expiry; drop this exception as soon as braces publishes a fix.",
       "expires": "2027-01-20"
+    },
+    {
+      "id": "GHSA-mrhx-c7xc-m3w5",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "zod <4.6.6 unbounded issue allocation when validating huge arrays (DoS). The repo is on zod 3.x and the only patched release is 4.6.6, a major upgrade that Dependabot ignores on purpose and that needs its own migration PR. Request bodies are size-limited by the API and most array schemas set .max(). Re-check on expiry; drop this exception once zod 4 lands.",
+      "expires": "2027-01-20"
     }
   ]
 }
