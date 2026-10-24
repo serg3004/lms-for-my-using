@@ -764,23 +764,20 @@ describe('admin checklist sessions page smoke rendering', () => {
   it('renders checklist sessions loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminChecklistSessionsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminChecklistSessionsPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
 
   it('renders checklist sessions happy path without crashing', () => {
-    // useState call order in AdminChecklistSessionsPage: 1 statusTab, 2 period, 3 observerFilter,
-    // 4 observerOptions (PR 318 -- "Period"/"Observer" filter card), 5 search, 6 page, 7 wizardOpen,
-    // 8 wizardReloadPending (PR 307 -- defers the wizard's post-create list reload until it
-    // actually closes, so the success screen isn't yanked away by the reload's own transient
-    // 'loading' state), 9 settingsOpen (PR 305), 10 cancelTarget, 11 reassignTarget (PR 302),
-    // 12 actionError, then useAsyncData's internal loadState is call 13. Later calls belong to
-    // the (open=false, so effects are no-ops) ChecklistSessionWizard child and the closed
-    // ConfirmDialog/ReassignObserverDialog/ChecklistWorkplaceSettingsDialog -- left at their own
-    // defaults.
+    // useState call order in AdminChecklistSessionsPage (PR 325: filters/search/page now live in
+    // the URL, not state): 1 observerOptions, 2 learnerOptions, 3 checklistOptions,
+    // 4 departmentOptions, 5 wizardOpen, 6 wizardReloadPending (PR 307 -- defers the wizard's
+    // post-create list reload until it actually closes), 7 settingsOpen (PR 305), 8 cancelTarget,
+    // 9 reassignTarget (PR 302), 10 actionError, then useAsyncData's internal loadState is call 11.
+    // Later calls belong to the (open=false) ChecklistSessionWizard child and the closed dialogs.
     useStateAtCalls({
-      13: {
+      11: {
         status: 'loaded',
         data: {
           total: 1,

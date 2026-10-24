@@ -306,6 +306,8 @@ export const checklistSessionQuerySchema = z.object({
   observerId: z.string().uuid().optional(),
   checklistId: z.string().uuid().optional(),
   learnerId: z.string().uuid().optional(),
+  // PR 325: the learner's current primary department (same definition as manager analytics).
+  departmentId: z.string().uuid().optional(),
   // Matches the admin sessions list screen's "Период" filter -- against scheduledAt.
   scheduledFrom: z.string().datetime().optional(),
   scheduledTo: z.string().datetime().optional(),

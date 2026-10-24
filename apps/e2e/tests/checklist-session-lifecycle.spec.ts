@@ -242,8 +242,10 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     });
 
     await test.step('the session appears in the admin sessions list (#2)', async () => {
-      await expect(adminPage.getByText('Opening shift checklist')).toBeVisible();
-      await expect(adminPage.getByText('Leo Learner')).toBeVisible();
+      // Scoped to the table: PR 325's filter dropdowns list the same checklist/employee names.
+      const sessionsTable = adminPage.getByRole('table', { name: 'Сессии' });
+      await expect(sessionsTable.getByText('Opening shift checklist')).toBeVisible();
+      await expect(sessionsTable.getByText('Leo Learner')).toBeVisible();
     });
 
     // ---- Observer: conduct the session on a mobile viewport (#3), geolocation start/end (#5), required photo (#4) ----

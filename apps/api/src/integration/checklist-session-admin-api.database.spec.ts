@@ -90,6 +90,8 @@ describe('checklist session admin API (PR 292) — database', () => {
     await prisma.checklistItemResult.deleteMany({ where: { organizationId } });
     await prisma.checklistInstance.deleteMany({ where: { organizationId } });
     await prisma.checklistItem.deleteMany({ where: { organizationId } });
+    await prisma.departmentMembership.deleteMany({ where: { organizationId } });
+    await prisma.department.deleteMany({ where: { organizationId } });
     await prisma.managerGroup.deleteMany({ where: { organizationId } });
     await prisma.groupMember.deleteMany({ where: { organizationId } });
     await prisma.group.deleteMany({ where: { organizationId } });
@@ -209,6 +211,45 @@ describe('checklist session admin API (PR 292) — database', () => {
     const listed = await sessionService.list(organizationId, { page: 1, pageSize: 25 }, {}, adminViewer);
     expect(listed.items).toHaveLength(1);
     expect(listed.items[0]).toMatchObject({ checklist: { title: 'Admin API checklist' } });
+  });
+
+  it('list: department, checklist and learner filters combine and a manager scope still narrows them (PR 325)', async () => {
+    const [deptA, deptB] = await Promise.all([
+      prisma.department.create({ data: { organizationId, name: `Dept A ${randomUUID()}`, code: `A-${randomUUID()}` } }),
+      prisma.department.create({ data: { organizationId, name: `Dept B ${randomUUID()}`, code: `B-${randomUUID()}` } }),
+    ]);
+    const [learnerA, learnerB] = await Promise.all([
+      prisma.user.create({ data: { organizationId, email: `dept-a-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Dept', lastName: 'A' } }),
+      prisma.user.create({ data: { organizationId, email: `dept-b-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Dept', lastName: 'B' } }),
+    ]);
+    await prisma.departmentMembership.createMany({
+      data: [
+        { organizationId, departmentId: deptA.id, userId: learnerA.id, isPrimary: true },
+        { organizationId, departmentId: deptB.id, userId: learnerB.id, isPrimary: true },
+      ],
+    });
+    const otherChecklist = await prisma.checklist.create({ data: { organizationId, title: 'Other checklist', status: 'published' } });
+    const instanceA = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerA.id }, observerId);
+    const instanceB = await checklistsService.assignChecklist(otherChecklist.id, organizationId, { userId: learnerB.id }, observerId);
+    const sessionA = await sessionService.create(organizationId, { instanceId: instanceA.id, observerId }, observerId);
+    const sessionB = await sessionService.create(organizationId, { instanceId: instanceB.id, observerId }, observerId);
+    const viewer = { isLearnerOnly: false, feedbackVisibility: 'after_completion' as const };
+    const ids = async (query: Record<string, unknown>, scope: object = {}) =>
+      (await sessionService.list(organizationId, { page: 1, pageSize: 25, ...query }, scope, viewer)).items.map((item) => item.id);
+
+    expect(await ids({ departmentId: deptA.id })).toEqual([sessionA.id]);
+    expect(await ids({ departmentId: deptB.id })).toEqual([sessionB.id]);
+    expect(await ids({ departmentId: deptA.id, checklistId })).toEqual([sessionA.id]);
+    expect(await ids({ departmentId: deptA.id, checklistId: otherChecklist.id })).toEqual([]);
+    expect(await ids({ departmentId: deptB.id, learnerId: learnerB.id })).toEqual([sessionB.id]);
+
+    // A scope that only exposes learnerA must not be widened by asking for department B.
+    const narrowScope = { instance: { userId: learnerA.id } };
+    expect(await ids({ departmentId: deptB.id }, narrowScope)).toEqual([]);
+    expect(await ids({ departmentId: deptA.id }, narrowScope)).toEqual([sessionA.id]);
+
+    await prisma.departmentMembership.deleteMany({ where: { organizationId } });
+    await prisma.department.deleteMany({ where: { organizationId } });
   });
 
   it('participant lookup: observer role returns instructor-role users; learner role is scoped to the manager\'s effective team', async () => {

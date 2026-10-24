@@ -594,6 +594,7 @@ export type ChecklistSessionQuery = {
   observerId?: string;
   checklistId?: string;
   learnerId?: string;
+  departmentId?: string;
   scheduledFrom?: string;
   scheduledTo?: string;
   search?: string;

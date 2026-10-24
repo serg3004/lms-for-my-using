@@ -429,6 +429,12 @@ export type DataTableProps<T> = {
   batchActions?: ReactNode | ((selectedRows: T[]) => ReactNode);
   expansion?: DataTableExpansion<T>;
   /**
+   * Pointer shortcut for the whole row. Clicks that start on a link, button or form control are
+   * ignored, and the row itself is not focusable: callers must keep a keyboard-reachable control
+   * (e.g. a link in the primary cell) that does the same thing.
+   */
+  onRowClick?: (row: T) => void;
+  /**
    * Makes secondary and tertiary columns available in an expandable details
    * region when responsive CSS removes them from the table row.
    */
@@ -449,6 +455,7 @@ export function DataTable<T>({
   selection,
   batchActions,
   expansion,
+  onRowClick,
   responsiveDetails,
 }: DataTableProps<T>) {
   const [responsiveExpandedKeys, setResponsiveExpandedKeys] = useState<Set<string>>(new Set());
@@ -559,7 +566,14 @@ export function DataTable<T>({
               const selectable = selection?.isRowSelectable?.(row) !== false;
               const expanded = expansion?.expandedKeys.has(key) ?? responsiveExpandedKeys.has(key);
               return [
-                <tr key={key}>
+                <tr
+                  key={key}
+                  style={onRowClick ? { cursor: 'pointer' } : undefined}
+                  onClick={onRowClick ? (event) => {
+                    if ((event.target as HTMLElement).closest('a, button, input, select, textarea, label, [role^="menuitem"]')) return;
+                    onRowClick(row);
+                  } : undefined}
+                >
                   {selection ? (
                     <td className="ds-data-table__control">
                       <input
