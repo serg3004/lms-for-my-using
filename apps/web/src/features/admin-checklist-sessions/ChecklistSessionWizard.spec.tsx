@@ -25,9 +25,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function Wrapper() {
+function Wrapper({ fixedObserver }: { fixedObserver?: { id: string; firstName: string; lastName: string; email: string; position: null } } = {}) {
   const { t } = useTranslation();
-  return <ChecklistSessionWizard onClose={vi.fn()} onCreated={vi.fn()} open={true} t={t} />;
+  return <ChecklistSessionWizard fixedObserver={fixedObserver} onClose={vi.fn()} onCreated={vi.fn()} open={true} t={t} />;
 }
 
 describe('ChecklistSessionWizard', () => {
@@ -79,6 +79,16 @@ describe('ChecklistSessionWizard', () => {
     expect(html).toContain('Olga Observer');
     expect(html).toContain('Сменить наблюдателя');
     expect(html).not.toContain('type="radio"');
+  });
+
+  it('pins the caller as observer without a search or change action in observer mode (PR 331)', () => {
+    useStateAtCalls({ 4: [olga, leo] });
+    const html = renderToStaticMarkup(<Wrapper fixedObserver={olga} />);
+    expect(html).toContain('Olga Observer');
+    expect(html).toContain('Эту сессию проведёте вы.');
+    expect(html).not.toContain('Сменить наблюдателя');
+    expect(html).not.toContain('Найти наблюдателя');
+    expect(html.match(/type="checkbox"/g)).toHaveLength(1);
   });
 
   it('never offers the chosen observer as an employee of the same session (PR 326)', () => {

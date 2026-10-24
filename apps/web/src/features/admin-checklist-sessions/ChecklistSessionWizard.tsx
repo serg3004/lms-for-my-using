@@ -46,6 +46,7 @@ export function useDebounced(value: string) {
 
 type Props = {
   open: boolean;
+  fixedObserver?: ChecklistSessionParticipant;
   onClose: () => void;
   onCreated: () => void;
   t: TFunction;
@@ -72,7 +73,7 @@ function SessionDurationInput({ value, onChange, t }: ScheduleInputProps) {
   />;
 }
 
-export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
+export function ChecklistSessionWizard({ open, fixedObserver, onClose, onCreated, t }: Props) {
   const [step, setStep] = useState(0);
 
   const [learnerSearch, setLearnerSearch] = useState('');
@@ -83,7 +84,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   const [observerSearch, setObserverSearch] = useState('');
   const debouncedObserverSearch = useDebounced(observerSearch);
   const [observerResults, setObserverResults] = useState<ChecklistSessionParticipant[]>([]);
-  const [selectedObserver, setSelectedObserver] = useState<ChecklistSessionParticipant | null>(null);
+  const [observerSelection, setSelectedObserver] = useState<ChecklistSessionParticipant | null>(null);
 
   const [checklists, setChecklists] = useState<ChecklistSummary[]>([]);
   const [selectedChecklistId, setSelectedChecklistId] = useState('');
@@ -101,6 +102,10 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   const [scheduleGrouping, setScheduleGrouping] = useState<'shared' | 'individual'>('shared');
   const [durationMinutes, setDurationMinutes] = useState('');
   const [individualDrafts, setIndividualDrafts] = useState<Record<string, SessionScheduleDraft>>({});
+  const [learnerLookup, setLearnerLookup] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [lookupAttempt, setLookupAttempt] = useState(0);
+  const [checklistLoadError, setChecklistLoadError] = useState(false);
+  const selectedObserver = fixedObserver ?? observerSelection;
 
   const sharedDraft = { scheduledAt, durationMinutes };
   const individualSchedules = buildIndividualSessionSchedules([...selectedLearners.keys()], individualDrafts, sharedDraft, timezone);
@@ -115,27 +120,29 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   useEffect(() => {
     if (!open || step !== 0) return;
     let cancelled = false;
+    setLearnerLookup('loading');
     listChecklistSessionParticipants({ role: 'learner', search: debouncedLearnerSearch || undefined, pageSize: 20 })
-      .then((result) => { if (!cancelled) setLearnerResults(result.items); })
-      .catch(() => { if (!cancelled) setLearnerResults([]); });
+      .then((result) => { if (!cancelled) { setLearnerResults(result.items); setLearnerLookup('ready'); } })
+      .catch(() => { if (!cancelled) { setLearnerResults([]); setLearnerLookup('error'); } });
     return () => { cancelled = true; };
-  }, [open, step, debouncedLearnerSearch]);
+  }, [open, step, debouncedLearnerSearch, lookupAttempt]);
 
   useEffect(() => {
-    if (!open || step !== 0) return;
+    if (!open || step !== 0 || fixedObserver) return;
     let cancelled = false;
     listChecklistSessionParticipants({ role: 'observer', search: debouncedObserverSearch || undefined, pageSize: 20 })
       .then((result) => { if (!cancelled) setObserverResults(result.items); })
       .catch(() => { if (!cancelled) setObserverResults([]); });
     return () => { cancelled = true; };
-  }, [open, step, debouncedObserverSearch]);
+  }, [open, step, debouncedObserverSearch, fixedObserver]);
 
   useEffect(() => {
     if (!open || step !== 1 || checklistsLoaded) return;
     let cancelled = false;
+    setChecklistLoadError(false);
     listPublishedChecklists()
       .then((result) => { if (!cancelled) { setChecklists(result); setChecklistsLoaded(true); } })
-      .catch(() => { if (!cancelled) setChecklists([]); });
+      .catch(() => { if (!cancelled) { setChecklists([]); setChecklistsLoaded(true); setChecklistLoadError(true); } });
     return () => { cancelled = true; };
   }, [open, step, checklistsLoaded]);
 
@@ -149,6 +156,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
     setSelectedObserver(null);
     setChecklists([]);
     setChecklistsLoaded(false);
+    setChecklistLoadError(false);
     setScheduleGrouping('shared');
     setDurationMinutes('');
     setIndividualDrafts({});
@@ -285,13 +293,14 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
               {selectedObserver ? (
                 <Card compact>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <span className="ds-wizard-dialog__picklist-text">
-                      <span className="ds-wizard-dialog__picklist-name">{formatParticipantName(selectedObserver)}</span>
-                      <span className="ds-wizard-dialog__picklist-email">{selectedObserver.email}</span>
+                    <span className="ds-wizard-dialog__picklist-text" style={fixedObserver ? { flexBasis: '100%', flexDirection: 'column', alignItems: 'flex-start', gap: 4 } : undefined}>
+                      <span className="ds-wizard-dialog__picklist-name" style={fixedObserver ? { whiteSpace: 'normal', overflowWrap: 'anywhere' } : undefined}>{formatParticipantName(selectedObserver)}</span>
+                      <span className="ds-wizard-dialog__picklist-email" style={fixedObserver ? { maxWidth: '100%' } : undefined}>{selectedObserver.email}</span>
                     </span>
-                    <Button onClick={() => setSelectedObserver(null)} size="sm" type="button" variant="secondary">
+                    {!fixedObserver && <Button onClick={() => setSelectedObserver(null)} size="sm" type="button" variant="secondary">
                       {t('admin.checklists.sessions.wizard.observerChange', 'Change observer')}
-                    </Button>
+                    </Button>}
+                    {fixedObserver && <span style={{ flexBasis: '100%', color: 'var(--color-text-muted)', fontSize: 13 }}>{t('checklistSessions.conduct.ownObserver', 'You will conduct this session.')}</span>}
                   </div>
                 </Card>
               ) : (
@@ -351,6 +360,12 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
               {limitReached && (
                 <p role="status">{t('admin.checklists.sessions.wizard.learnersLimitReached', 'Limit reached: at most {{max}} employees per batch. Remove someone to add another.', { max: MAX_BULK_SESSION_LEARNERS })}</p>
               )}
+              {learnerLookup === 'loading' && <p role="status">{t('checklistSessions.conduct.participantsLoading', 'Loading employees...')}</p>}
+              {learnerLookup === 'error' && <InlineFeedback tone="error">
+                {t('checklistSessions.conduct.participantsError', 'Unable to load employees.')}
+                <Button variant="secondary" onClick={() => setLookupAttempt((value) => value + 1)}>{t('checklistSessions.conduct.retry', 'Retry')}</Button>
+              </InlineFeedback>}
+              {learnerLookup === 'ready' && learnerOptions.length === 0 && <p role="status">{t('checklistSessions.conduct.participantsEmpty', 'No employees found in your scope. Try another search or contact an administrator.')}</p>}
               <ul className="ds-wizard-dialog__picklist">
                 {learnerOptions.map((participant) => (
                   <li key={participant.id}>
@@ -375,7 +390,12 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
           {step === 1 && (
             <div>
               <h3>{t('admin.checklists.sessions.wizard.checklistLabel', 'Checklist')}</h3>
-              {checklistsLoaded && checklists.length === 0 && (
+              {!checklistsLoaded && <p role="status">{t('checklistSessions.conduct.checklistsLoading', 'Loading checklists...')}</p>}
+              {checklistLoadError && <InlineFeedback tone="error">
+                {t('checklistSessions.conduct.checklistsError', 'Unable to load checklists.')}
+                <Button variant="secondary" onClick={() => setChecklistsLoaded(false)}>{t('checklistSessions.conduct.retry', 'Retry')}</Button>
+              </InlineFeedback>}
+              {checklistsLoaded && !checklistLoadError && checklists.length === 0 && (
                 <InlineFeedback tone="warning">
                   {t('admin.checklists.sessions.wizard.checklistsEmpty', 'There are no published checklists yet. Publish a checklist on the "Checklists" tab first, then create a session.')}
                 </InlineFeedback>

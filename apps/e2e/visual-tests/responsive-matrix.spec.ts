@@ -665,6 +665,21 @@ for (const width of widths) {
       await expectVisualMatch(page, `instructor-checklist-session-conduct-${width}`);
     });
 
+    test('keeps the observer creation wizard responsive with the caller fixed', async ({ page }) => {
+      await installInstructorConductMocks(page);
+      await page.route('**/api/v1/checklist-sessions/participants**', (route) => route.fulfill({
+        json: paginated([{ id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid', position: null }]),
+      }));
+      await page.goto('/instructor/checklists/sessions');
+      await page.getByRole('button', { name: 'Новая сессия', exact: true }).click();
+      await expect(page.getByRole('checkbox', { name: /Leo Learner/ })).toBeVisible();
+      await expect(page.getByRole('dialog')).toContainText('Эту сессию проведёте вы.');
+      await expect(page.getByRole('button', { name: 'Сменить наблюдателя' })).toHaveCount(0);
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `instructor-checklist-sessions-wizard-${width}`);
+    });
+
     test('keeps the admin course builder and its add-lesson dialog responsive', async ({ page }) => {
       await installCourseBuilderMocks(page);
       await page.goto('/admin/courses/course-1');
