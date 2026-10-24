@@ -8,7 +8,9 @@ import { PrismaService } from '../database/prisma.service.js';
 import type { CurrentUser } from '../modules/auth/public.js';
 import { ChecklistReviewAccessService } from '../modules/checklists/checklist-review-access.service.js';
 import { ChecklistSessionService } from '../modules/checklists/checklist-session.service.js';
+import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import { OrganizationAccessScopeService } from '../modules/organization-access-scope/public.js';
+import type { UploadService } from '../modules/upload/public.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
 // PR 302 acceptance criteria, verified against real Postgres: marking the observer unavailable
@@ -37,7 +39,7 @@ describe('checklist session observer unavailable (PR 302) — database', () => {
     assertSafeTestDatabase(process.env.DATABASE_URL, { allowExternalHost: process.env.ALLOW_EXTERNAL_TEST_DATABASE === 'true' });
     prisma = new PrismaService();
     await prisma.$connect();
-    service = new ChecklistSessionService(prisma);
+    service = new ChecklistSessionService(prisma, new ChecklistsService(prisma, {} as UploadService));
     reviewAccess = new ChecklistReviewAccessService(prisma, new OrganizationAccessScopeService(prisma));
   });
 

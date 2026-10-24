@@ -32,7 +32,7 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
     prisma = new PrismaService();
     await prisma.$connect();
     checklistsService = new ChecklistsService(prisma, {} as UploadService);
-    sessionService = new ChecklistSessionService(prisma);
+    sessionService = new ChecklistSessionService(prisma, new ChecklistsService(prisma, {} as UploadService));
   });
 
   afterAll(async () => {
