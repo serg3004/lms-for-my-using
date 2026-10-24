@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { listChecklists } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
@@ -13,6 +13,7 @@ import {
 } from '../shared/api/manager.js';
 import type { ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
+import { useOptionalSession } from '../shared/session.js';
 import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
@@ -180,6 +181,7 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: str
 
 export function ManagerChecklistsPage() {
   const { t } = useTranslation();
+  const canSchedule = useOptionalSession()?.currentUser?.roles.includes('admin') ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const period = (searchParams.get('period') as Period | null) ?? 'month';
   const checklistId = searchParams.get('checklistId') ?? '';
@@ -256,6 +258,21 @@ export function ManagerChecklistsPage() {
       )}
       {state.status === 'loaded' && (
         <>
+          {state.data.summary.completedSessions === 0 ? (
+            <PageState
+              message={
+                canSchedule
+                  ? t('manager.checklists.noSessionsAdmin', 'No completed sessions in this period yet. Results appear here once an observer completes a training session.')
+                  : t('manager.checklists.noSessions', 'No completed sessions in this period yet. Training sessions are scheduled by an administrator; results appear here once an observer completes them.')
+              }
+              action={canSchedule ? (
+                <Link className="ds-button ds-button--primary ds-button--md" to="/admin/checklists/sessions">
+                  {t('manager.checklists.scheduleSession', 'Schedule a session')}
+                </Link>
+              ) : undefined}
+            />
+          ) : (
+          <>
           <StatsGrid>
             <StatCard
               label={t('manager.checklists.lowPerformers', 'Low completion')}
@@ -288,6 +305,8 @@ export function ManagerChecklistsPage() {
             <DistributionDonut distribution={state.data.distribution} t={t} />
             <TrendLine trend={state.data.trend} t={t} />
           </div>
+          </>
+          )}
 
           <DataTable
             columns={columns}

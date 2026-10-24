@@ -2017,6 +2017,9 @@
       "distributionTitle": "结果分布",
       "trendTitle": "平均分趋势",
       "trendEmpty": "此期间尚无已完成的会话。",
+      "noSessionsAdmin": "此期间尚无已完成的会话。观察员完成培训会话后，结果将显示在这里。",
+      "noSessions": "此期间尚无已完成的会话。培训会话由管理员安排；观察员完成后，结果将显示在这里。",
+      "scheduleSession": "安排会话",
       "viewAsTable": "以表格查看",
       "viewAsChart": "以图表查看",
       "bucket": "分组",
@@ -2214,6 +2217,8 @@
     "loading": "正在加载检查清单...",
     "subtitle": "分配给您的检查清单——请完成并在需要的地方附上照片。",
     "empty": "您目前没有分配到的检查清单。",
+    "selfTitle": "自主完成的清单",
+    "selfHint": "这些清单由您自己按自己的节奏填写。",
     "status": {
       "assigned": "已分配",
       "in_progress": "进行中",
@@ -2398,6 +2403,7 @@
         "done": "已完成"
       },
       "tabEmpty": "这里还没有内容。",
+      "hint": "这些会话由观察员在您的工作岗位上与您一起进行。会话完成后将显示结果。",
       "observer": "观察员：{{name}}",
       "percentage": "{{percentage}}%",
       "notScored": "未评分——所有项目均已跳过",
