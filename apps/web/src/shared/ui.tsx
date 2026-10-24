@@ -567,8 +567,8 @@ export function DataTable<T>({
               const expanded = expansion?.expandedKeys.has(key) ?? responsiveExpandedKeys.has(key);
               return [
                 <tr
-                  className={onRowClick ? 'ds-data-table__row--clickable' : undefined}
                   key={key}
+                  style={onRowClick ? { cursor: 'pointer' } : undefined}
                   onClick={onRowClick ? (event) => {
                     if ((event.target as HTMLElement).closest('a, button, input, select, textarea, label, [role^="menuitem"]')) return;
                     onRowClick(row);

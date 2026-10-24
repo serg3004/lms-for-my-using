@@ -216,7 +216,7 @@ export function AdminChecklistSessionsPage() {
       // PR 325: the main actions (open, repeat, cancel) are always visible; PR 318's menu keeps
       // only the rarer ones so the row still fits one line at 1440px.
       render: (row) => (
-        <div className="admin-session-row-actions">
+        <div className="admin-toolbar__right">
           <Link className="admin-btn admin-btn--sm" to={`/admin/checklists/sessions/${row.id}`}>
             {t('admin.checklists.sessions.open', 'Open')}
           </Link>
@@ -329,18 +329,19 @@ export function AdminChecklistSessionsPage() {
         </div>
       </div>
       {activeFilterKeys.length > 0 && (
-        <div aria-label={t('admin.checklists.sessions.activeFilters', 'Active filters')} className="admin-filter-chips" role="group">
+        <div aria-label={t('admin.checklists.sessions.activeFilters', 'Active filters')} className="admin-toolbar" role="group">
           {activeFilterKeys.map((key) => (
-            <span className="admin-filter-chip" key={key}>
+            <Badge key={key} variant="accent">
               {chipLabel(key)}
               <button
                 aria-label={t('admin.checklists.sessions.removeFilter', 'Remove filter: {{filter}}', { filter: chipLabel(key) })}
                 onClick={() => changeFilter({ [key]: '' })}
+                style={{ minWidth: 24, minHeight: 24, border: 0, background: 'transparent', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
                 type="button"
               >
                 <span aria-hidden="true">×</span>
               </button>
-            </span>
+            </Badge>
           ))}
           <Button onClick={() => setSearchParams(statusTab === 'all' ? {} : { status: statusTab }, { replace: true })} size="sm" type="button" variant="ghost">
             {t('admin.checklists.sessions.resetFilters', 'Reset filters')}
