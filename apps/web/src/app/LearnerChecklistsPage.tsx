@@ -256,6 +256,7 @@ function ChecklistTaking({
                   instanceId={instance.id}
                   item={item}
                   result={result}
+                  cameraOnly={checklist.forbidGalleryPhotos === true}
                   editable={editable}
                   busy={submitting === item.id}
                   onSelectFile={(file) => void uploadPhoto(item, file)}
@@ -293,6 +294,7 @@ function PhotoAttachment({
   instanceId,
   item,
   result,
+  cameraOnly,
   editable,
   busy,
   onSelectFile,
@@ -301,6 +303,7 @@ function PhotoAttachment({
   instanceId: string;
   item: ChecklistItemSummary;
   result: ChecklistItemResultSummary | undefined;
+  cameraOnly: boolean;
   editable: boolean;
   busy: boolean;
   onSelectFile: (file: File) => void;
@@ -339,6 +342,7 @@ function PhotoAttachment({
         ref={inputRef}
         type="file"
         accept="image/*"
+        {...(cameraOnly ? { capture: 'environment' as const } : {})}
         onChange={handleChange}
         disabled={!canAct}
         style={{ display: 'none' }}
