@@ -40,6 +40,7 @@ function makeSession(overrides: Partial<ChecklistSessionSummary>): ChecklistSess
     status: 'scheduled',
     version: 1,
     scheduledAt: '2026-02-01T09:00:00.000Z',
+    durationMinutes: null,
     startedAt: null,
     pausedAt: null,
     locationCapturePolicy: 'off',

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   activeSessionFilterKeys,
@@ -7,6 +7,7 @@ import {
   canProceedFromChecklistStep,
   canProceedFromParticipantsStep,
   canProceedFromScheduleStep,
+  buildIndividualSessionSchedules,
   canReassignObserver,
   canRepeatSession,
   excludeCurrentObserver,
@@ -14,6 +15,7 @@ import {
   parseSessionFilters,
   partitionBulkCreateResults,
   resolvePeriodScheduledFrom,
+  toSessionScheduledAt,
 } from './domain.js';
 import type { BulkCreateChecklistSessionResult, ChecklistSessionStatus } from '../../shared/api/types.js';
 
@@ -104,6 +106,46 @@ describe('canProceedFromScheduleStep', () => {
   it('requires a scheduled time for "later"', () => {
     expect(canProceedFromScheduleStep('later', '')).toBe(false);
     expect(canProceedFromScheduleStep('later', '2026-10-01T09:00')).toBe(true);
+  });
+
+  it('rejects invalid dates and durations, while preserving optional duration', () => {
+    expect(canProceedFromScheduleStep('later', '2026-02-30T09:00')).toBe(false);
+    expect(canProceedFromScheduleStep('later', 'not-a-date')).toBe(false);
+    for (const duration of ['0', '-1', '1.5', '1441']) expect(canProceedFromScheduleStep('now', '', duration)).toBe(false);
+    expect(canProceedFromScheduleStep('now', '', '1440')).toBe(true);
+  });
+});
+
+describe('individual schedules', () => {
+  it('matches schedules by selected employee and ignores stale drafts for removed employees', () => {
+    const result = buildIndividualSessionSchedules(['b', 'a'], {
+      a: { scheduledAt: '2026-10-01T09:00', durationMinutes: '20' },
+      removed: { scheduledAt: 'invalid', durationMinutes: '-1' },
+    }, { scheduledAt: '2026-10-02T11:00', durationMinutes: '' }, 'Asia/Almaty');
+    expect(result).toEqual([
+      { learnerId: 'b', scheduledAt: new Date('2026-10-02T11:00').toISOString(), durationMinutes: null, timezone: 'Asia/Almaty' },
+      { learnerId: 'a', scheduledAt: new Date('2026-10-01T09:00').toISOString(), durationMinutes: 20, timezone: 'Asia/Almaty' },
+    ]);
+  });
+
+  it('requires a valid appointment for every selected employee', () => {
+    const fallback = { scheduledAt: '', durationMinutes: '' };
+    expect(buildIndividualSessionSchedules([], {}, fallback, 'UTC')).toBeNull();
+    expect(buildIndividualSessionSchedules(['a', 'b'], { a: { scheduledAt: '2026-10-01T09:00', durationMinutes: '30' } }, fallback, 'UTC')).toBeNull();
+    expect(buildIndividualSessionSchedules(['a'], { a: { scheduledAt: '2026-10-01T09:00', durationMinutes: '0' } }, fallback, 'UTC')).toBeNull();
+  });
+
+  it('rejects a nonexistent DST wall time instead of silently scheduling a different hour', () => {
+    vi.stubEnv('TZ', 'America/New_York');
+    try {
+      expect(toSessionScheduledAt('2026-03-08T01:30')).toBe('2026-03-08T06:30:00.000Z');
+      expect(toSessionScheduledAt('2026-03-08T02:30')).toBeNull();
+      expect(toSessionScheduledAt('2026-03-08T03:30')).toBe('2026-03-08T07:30:00.000Z');
+      // The ambiguous autumn hour keeps the browser's existing, earlier-offset behavior.
+      expect(toSessionScheduledAt('2026-11-01T01:30')).toBe('2026-11-01T05:30:00.000Z');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 

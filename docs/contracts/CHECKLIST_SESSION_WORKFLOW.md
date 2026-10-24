@@ -30,6 +30,20 @@ submits a required-location override with a reason when an observer couldn't cap
 entries for exactly which actions that unlocks (e.g. overriding a session outside the admin's own
 assigned-observer relationship).
 
+The schedule step supports **Same for everyone** and **Set each separately** (PR 329). A shared
+schedule keeps the existing Start now / Schedule for later behavior and accepts an optional
+duration. Individual scheduling requires a date/time for every selected employee and allows an
+optional duration for each (1–1440 minutes). Switching modes or navigating back/forward preserves
+edits; removed employees are excluded from the submitted schedule. The confirmation step shows
+each employee's appointment and duration before creation. Individual appointments are created as
+scheduled sessions and are never auto-started, even if the shared mode was previously Start now.
+
+The displayed timezone is the browser's IANA timezone, as in PR 303. Local datetime inputs are
+converted to absolute UTC instants; invalid dates and nonexistent local times at a spring DST
+transition block progression instead of silently moving the appointment. An ambiguous autumn
+hour retains the browser's existing earlier-offset behavior. Session reads and reminders retain
+each session's declared timezone/instant; see the PR 329 bulk contract in `API_CONTRACTS.md`.
+
 ## Manager (`/manager/checklists`, and the admin session screens scoped to their team)
 
 Manager shares the admin session-list/wizard/report screens (`checklistSessionsManage`:

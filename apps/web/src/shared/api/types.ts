@@ -562,6 +562,7 @@ export type ChecklistSessionSummary = {
   status: ChecklistSessionStatus;
   version: number;
   scheduledAt: string | null;
+  durationMinutes: number | null;
   startedAt: string | null;
   pausedAt: string | null;
   locationCapturePolicy: ChecklistGeolocationPolicy;
@@ -614,6 +615,7 @@ export type CreateChecklistSessionInput = {
   instanceId: string;
   observerId: string;
   scheduledAt?: string | null;
+  durationMinutes?: number | null;
   locationCapturePolicy?: ChecklistGeolocationPolicy;
   timezone?: string;
   idempotencyKey?: string;
@@ -624,7 +626,16 @@ export type BulkCreateChecklistSessionInput = {
   learnerIds: string[];
   observerId: string;
   scheduledAt?: string | null;
+  durationMinutes?: number | null;
+  schedules?: ChecklistSessionRecipientSchedule[];
   locationCapturePolicy?: ChecklistGeolocationPolicy;
+  timezone?: string;
+};
+
+export type ChecklistSessionRecipientSchedule = {
+  learnerId: string;
+  scheduledAt: string;
+  durationMinutes?: number | null;
   timezone?: string;
 };
 
@@ -640,6 +651,7 @@ export type BulkCreateChecklistSessionResult = {
 export type UpdateChecklistSessionInput = {
   observerId?: string;
   scheduledAt?: string | null;
+  durationMinutes?: number | null;
   locationCapturePolicy?: ChecklistGeolocationPolicy;
   timezone?: string;
   version: number;
@@ -657,6 +669,7 @@ export type ChecklistSession = {
   status: ChecklistSessionStatus;
   version: number;
   scheduledAt: string | null;
+  durationMinutes: number | null;
   startedAt: string | null;
   pausedAt: string | null;
   locationCapturePolicy: ChecklistGeolocationPolicy;

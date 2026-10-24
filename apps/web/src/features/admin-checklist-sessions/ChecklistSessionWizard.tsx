@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
+import { formatDate } from '../../shared/formatDate.js';
 import {
   bulkCreateChecklistSessions,
   getChecklistSession,
@@ -19,13 +20,19 @@ import {
   canProceedFromChecklistStep,
   canProceedFromParticipantsStep,
   canProceedFromScheduleStep,
+  buildIndividualSessionSchedules,
   formatParticipantName,
+  isSessionDurationValid,
   MAX_BULK_SESSION_LEARNERS,
   partitionBulkCreateResults,
+  toSessionScheduledAt,
   type ScheduleMode,
+  type SessionScheduleDraft,
 } from './domain.js';
 
 const SEARCH_DEBOUNCE_MS = 300;
+const SCHEDULE_OPTION_STYLE = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' } as const;
+const SCHEDULE_RADIO_STYLE = { width: 16, height: 16, minHeight: 16, margin: 0, flexShrink: 0 } as const;
 
 /** Shared with ReassignObserverDialog.tsx (PR 302) -- same debounced-search pattern, same delay. */
 export function useDebounced(value: string) {
@@ -43,6 +50,27 @@ type Props = {
   onCreated: () => void;
   t: TFunction;
 };
+
+type ScheduleInputProps = { value: string; onChange: (value: string) => void; t: TFunction };
+
+function SessionTimeInput({ value, onChange, t }: ScheduleInputProps) {
+  return <Input
+    label={t('admin.checklists.sessions.wizard.scheduledAt', 'Date and time')}
+    error={value && !toSessionScheduledAt(value) ? t('admin.checklists.sessions.wizard.invalidLocalTime', 'This time is invalid or does not exist. Choose another date or time.') : undefined}
+    onChange={(event) => onChange(event.target.value)}
+    required type="datetime-local" value={value}
+  />;
+}
+
+function SessionDurationInput({ value, onChange, t }: ScheduleInputProps) {
+  const hint = t('admin.checklists.sessions.wizard.durationHint', 'From 1 to 1440 minutes. Leave blank if the duration is not known yet.');
+  return <Input
+    label={t('admin.checklists.sessions.wizard.durationMinutes', 'Duration in minutes (optional)')}
+    hint={hint} error={isSessionDurationValid(value) ? undefined : hint}
+    min={1} max={1440} step={1} type="number"
+    onChange={(event) => onChange(event.target.value)} value={value}
+  />;
+}
 
 export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   const [step, setStep] = useState(0);
@@ -70,6 +98,19 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   const [submitResult, setSubmitResult] = useState<{ created: number; skipped: number; failed: number } | null>(null);
   // Distinguishes "still loading" from "no published checklists" (an empty result is a real answer).
   const [checklistsLoaded, setChecklistsLoaded] = useState(false);
+  const [scheduleGrouping, setScheduleGrouping] = useState<'shared' | 'individual'>('shared');
+  const [durationMinutes, setDurationMinutes] = useState('');
+  const [individualDrafts, setIndividualDrafts] = useState<Record<string, SessionScheduleDraft>>({});
+
+  const sharedDraft = { scheduledAt, durationMinutes };
+  const individualSchedules = buildIndividualSessionSchedules([...selectedLearners.keys()], individualDrafts, sharedDraft, timezone);
+  const scheduleValid = scheduleGrouping === 'individual'
+    ? individualSchedules !== null
+    : canProceedFromScheduleStep(scheduleMode, scheduledAt, durationMinutes);
+
+  function updateIndividualSchedule(learnerId: string, patch: Partial<SessionScheduleDraft>) {
+    setIndividualDrafts((previous) => ({ ...previous, [learnerId]: { ...(previous[learnerId] ?? sharedDraft), ...patch } }));
+  }
 
   useEffect(() => {
     if (!open || step !== 0) return;
@@ -108,6 +149,9 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
     setSelectedObserver(null);
     setChecklists([]);
     setChecklistsLoaded(false);
+    setScheduleGrouping('shared');
+    setDurationMinutes('');
+    setIndividualDrafts({});
     setSelectedChecklistId('');
     setScheduleMode('now');
     setScheduledAt('');
@@ -143,7 +187,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
   }
 
   async function submit() {
-    if (!selectedObserver || selectedLearners.size === 0) return;
+    if (!selectedObserver || selectedLearners.size === 0 || !scheduleValid) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -151,11 +195,13 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
         checklistId: selectedChecklistId,
         learnerIds: [...selectedLearners.keys()],
         observerId: selectedObserver.id,
-        scheduledAt: scheduleMode === 'later' ? new Date(scheduledAt).toISOString() : null,
+        ...(scheduleGrouping === 'individual'
+          ? { schedules: individualSchedules! }
+          : { scheduledAt: scheduleMode === 'later' ? toSessionScheduledAt(scheduledAt) : null, durationMinutes: durationMinutes.trim() ? Number(durationMinutes) : null }),
         locationCapturePolicy: locationPolicy,
         timezone,
       });
-      if (scheduleMode === 'now') {
+      if (scheduleGrouping === 'shared' && scheduleMode === 'now') {
         const createdIds = result.results.filter((r) => r.status === 'created' && r.sessionId).map((r) => r.sessionId!);
         await Promise.all(createdIds.map(async (sessionId) => {
           try {
@@ -186,7 +232,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
       setStep(1);
     } else if (step === 1 && canProceedFromChecklistStep(selectedChecklistId)) {
       setStep(2);
-    } else if (step === 2 && canProceedFromScheduleStep(scheduleMode, scheduledAt)) {
+    } else if (step === 2 && scheduleValid) {
       setStep(3);
     } else if (step === 3) {
       void submit();
@@ -210,9 +256,7 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
       ? !canProceedFromParticipantsStep([...selectedLearners.keys()], selectedObserver?.id ?? '')
       : step === 1
         ? !canProceedFromChecklistStep(selectedChecklistId)
-        : step === 2
-          ? !canProceedFromScheduleStep(scheduleMode, scheduledAt)
-          : false;
+        : !scheduleValid;
 
   return (
     <WizardDialog
@@ -356,26 +400,58 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
 
           {step === 2 && (
             <div>
-              <label>
-                <input checked={scheduleMode === 'now'} name="scheduleMode" onChange={() => setScheduleMode('now')} type="radio" />
-                {t('admin.checklists.sessions.wizard.startNow', 'Start now')}
-              </label>
-              <label>
-                <input checked={scheduleMode === 'later'} name="scheduleMode" onChange={() => setScheduleMode('later')} type="radio" />
-                {t('admin.checklists.sessions.wizard.scheduleLater', 'Schedule for later')}
-              </label>
-              {scheduleMode === 'later' && (
+              <fieldset style={{ margin: '0 0 16px', border: 0, padding: 0 }}>
+                <legend>{t('admin.checklists.sessions.wizard.scheduleGrouping', 'Employee schedules')}</legend>
+                <label style={SCHEDULE_OPTION_STYLE}>
+                  <input style={SCHEDULE_RADIO_STYLE} checked={scheduleGrouping === 'shared'} name="scheduleGrouping" onChange={() => setScheduleGrouping('shared')} type="radio" />
+                  {t('admin.checklists.sessions.wizard.scheduleShared', 'Same for everyone')}
+                </label>
+                <label style={SCHEDULE_OPTION_STYLE}>
+                  <input style={SCHEDULE_RADIO_STYLE} checked={scheduleGrouping === 'individual'} name="scheduleGrouping" onChange={() => setScheduleGrouping('individual')} type="radio" />
+                  {t('admin.checklists.sessions.wizard.scheduleIndividual', 'Set each separately')}
+                </label>
+              </fieldset>
+              {scheduleGrouping === 'shared' ? (
                 <>
-                  <Input
-                    label={t('admin.checklists.sessions.wizard.scheduledAt', 'Date and time')}
-                    onChange={(e) => setScheduledAt(e.target.value)}
-                    type="datetime-local"
-                    value={scheduledAt}
-                  />
-                  {/* PR 303: only shown when there's an actual future instant to disambiguate --
-                      "Start now" has nothing for a timezone to clarify. */}
-                  <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
+                  <label style={SCHEDULE_OPTION_STYLE}>
+                    <input style={SCHEDULE_RADIO_STYLE} checked={scheduleMode === 'now'} name="scheduleMode" onChange={() => setScheduleMode('now')} type="radio" />
+                    {t('admin.checklists.sessions.wizard.startNow', 'Start now')}
+                  </label>
+                  <label style={SCHEDULE_OPTION_STYLE}>
+                    <input style={SCHEDULE_RADIO_STYLE} checked={scheduleMode === 'later'} name="scheduleMode" onChange={() => setScheduleMode('later')} type="radio" />
+                    {t('admin.checklists.sessions.wizard.scheduleLater', 'Schedule for later')}
+                  </label>
+                  {scheduleMode === 'later' && (
+                    <>
+                      <SessionTimeInput onChange={setScheduledAt} t={t} value={scheduledAt} />
+                      {/* PR 303: only shown when there's an actual future instant to disambiguate --
+                          "Start now" has nothing for a timezone to clarify. */}
+                      <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
+                    </>
+                  )}
+                  <SessionDurationInput onChange={setDurationMinutes} t={t} value={durationMinutes} />
                 </>
+              ) : (
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <p>{t('admin.checklists.sessions.wizard.individualHint', 'Set a date and time for every employee. Duration is optional, from 1 to 1440 minutes.')}</p>
+                  <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
+                  {[...selectedLearners.values()].map((learner) => {
+                    const draft = individualDrafts[learner.id] ?? sharedDraft;
+                    return (
+                      <fieldset key={learner.id} style={{ display: 'grid', gap: 12, border: '1px solid var(--color-border)', borderRadius: 8, padding: 12, minWidth: 0 }}>
+                        <legend>{formatParticipantName(learner)}</legend>
+                        <SessionTimeInput
+                          onChange={(value) => updateIndividualSchedule(learner.id, { scheduledAt: value })}
+                          t={t} value={draft.scheduledAt}
+                        />
+                        <SessionDurationInput
+                          onChange={(value) => updateIndividualSchedule(learner.id, { durationMinutes: value })}
+                          t={t} value={draft.durationMinutes}
+                        />
+                      </fieldset>
+                    );
+                  })}
+                </div>
               )}
               <Select
                 label={t('admin.checklists.sessions.wizard.locationPolicy', 'Location capture')}
@@ -399,9 +475,31 @@ export function ChecklistSessionWizard({ open, onClose, onCreated, t }: Props) {
                 <dd>{selectedLearners.size}</dd>
                 <dt>{t('admin.checklists.sessions.wizard.checklistLabel', 'Checklist')}</dt>
                 <dd>{selectedChecklist?.title ?? '—'}</dd>
-                <dt>{t('admin.checklists.sessions.wizard.whenLabel', 'When')}</dt>
-                <dd>{scheduleMode === 'now' ? t('admin.checklists.sessions.wizard.startNow', 'Start now') : scheduledAt}</dd>
+                {scheduleGrouping === 'shared' && (
+                  <>
+                    <dt>{t('admin.checklists.sessions.wizard.whenLabel', 'When')}</dt>
+                    <dd>{scheduleMode === 'now' ? t('admin.checklists.sessions.wizard.startNow', 'Start now') : formatDate(toSessionScheduledAt(scheduledAt)!, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: timezone })}</dd>
+                    <dt>{t('admin.checklists.sessions.wizard.durationMinutes', 'Duration in minutes (optional)')}</dt>
+                    <dd>{durationMinutes || t('admin.checklists.sessions.wizard.durationNotSet', 'Not specified')}</dd>
+                  </>
+                )}
               </dl>
+              {scheduleGrouping === 'individual' && (
+                <>
+                  <p>{t('admin.checklists.sessions.wizard.timezone', 'Timezone: {{timezone}}', { timezone })}</p>
+                  <ul>
+                    {individualSchedules?.map((schedule) => (
+                      <li key={schedule.learnerId}>
+                        <strong>{formatParticipantName(selectedLearners.get(schedule.learnerId)!)}</strong>{' — '}
+                        {formatDate(schedule.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: schedule.timezone })}{' · '}
+                        {schedule.durationMinutes === null
+                          ? t('admin.checklists.sessions.wizard.durationNotSet', 'Not specified')
+                          : t('admin.checklists.sessions.wizard.durationValue', '{{minutes}} min', { minutes: schedule.durationMinutes })}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           )}
         </>

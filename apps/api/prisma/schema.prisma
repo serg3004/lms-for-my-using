@@ -1292,6 +1292,7 @@ model ChecklistSession {
   // Optimistic concurrency for PR 289's conditional transitions (stale write -> 409).
   version               Int                        @default(1)
   scheduledAt           DateTime?                  @map("scheduled_at") @db.Timestamptz
+  durationMinutes       Int?                       @map("duration_minutes")
   startedAt             DateTime?                  @map("started_at") @db.Timestamptz
   pausedAt              DateTime?                  @map("paused_at") @db.Timestamptz
   locationCapturePolicy ChecklistGeolocationPolicy @default(off) @map("location_capture_policy")

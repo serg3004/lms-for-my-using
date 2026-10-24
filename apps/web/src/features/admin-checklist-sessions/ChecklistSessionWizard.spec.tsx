@@ -108,4 +108,16 @@ describe('ChecklistSessionWizard', () => {
     const html = renderToStaticMarkup(<Wrapper />);
     expect(html).toContain('Опубликованных чек-листов пока нет');
   });
+
+  it('shows an independently labelled appointment and duration for each selected employee', () => {
+    const second = { ...leo, id: 'learner-2', firstName: 'Mira' };
+    useStateAtCalls({ 1: 2, 5: new Map([[leo.id, leo], [second.id, second]]), 19: 'individual' });
+    const html = renderToStaticMarkup(<Wrapper />);
+    expect(html).toContain('<legend>Leo Learner</legend>');
+    expect(html).toContain('<legend>Mira Learner</legend>');
+    expect(html.match(/type="datetime-local"/g)).toHaveLength(2);
+    expect(html.match(/type="number"/g)).toHaveLength(2);
+    expect(html).toContain('Часовой пояс:');
+    expect(html).not.toContain('name="scheduleMode"');
+  });
 });

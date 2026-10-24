@@ -11,6 +11,7 @@ function makeSession(overrides: Partial<ChecklistSessionSummary> = {}): Checklis
   return {
     id: 'session-1', organizationId: 'org-1', instanceId: 'instance-1', observerId: 'observer-1',
     status: 'scheduled', version: 3, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: null,
+    durationMinutes: null,
     pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
     strengths: null, developmentAreas: null, nextSteps: null,
     observerUnavailableReason: null, observerUnavailableAt: null,

@@ -233,12 +233,14 @@ export const checklistSessionStatusSchema = z.enum(['scheduled', 'in_progress', 
 // omitting it just means no replay protection beyond the DB-level guards that already exist
 // (the instance-scoped unique constraint, optimistic-concurrency version checks).
 const idempotencyKeySchema = z.string().trim().min(1).max(200).optional();
+const sessionDurationMinutesSchema = z.number().int().min(1).max(1440).nullable().optional();
 
 export const createChecklistSessionSchema = z
   .object({
     instanceId: z.string().uuid(),
     observerId: z.string().uuid(),
     scheduledAt: z.string().datetime().nullable().optional(),
+    durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
     timezone: z.string().trim().min(1).max(64).optional(),
     idempotencyKey: idempotencyKeySchema,
@@ -251,6 +253,7 @@ export const updateChecklistSessionSchema = z
   .object({
     observerId: z.string().uuid().optional(),
     scheduledAt: z.string().datetime().nullable().optional(),
+    durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
     timezone: z.string().trim().min(1).max(64).optional(),
     version: z.number().int().min(1),
@@ -353,6 +356,13 @@ export type SubmitChecklistLocationCaptureInput = z.infer<typeof submitChecklist
 
 export const MAX_BULK_CHECKLIST_SESSION_RECIPIENTS = 100;
 
+const recipientSessionScheduleSchema = z.object({
+  learnerId: z.string().uuid(),
+  scheduledAt: z.string().datetime(),
+  durationMinutes: sessionDurationMinutesSchema,
+  timezone: z.string().trim().min(1).max(64).optional(),
+}).strict();
+
 // Bulk create is intentionally NOT a variant of the single-create schema: each recipient becomes
 // an independent (ChecklistInstance, ChecklistSession) pair, so this always takes checklistId +
 // learnerIds, never a pre-existing instanceId (single create still requires one).
@@ -362,10 +372,26 @@ export const bulkCreateChecklistSessionSchema = z
     learnerIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS),
     observerId: z.string().uuid(),
     scheduledAt: z.string().datetime().nullable().optional(),
+    durationMinutes: sessionDurationMinutesSchema,
+    schedules: z.array(recipientSessionScheduleSchema).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS).optional(),
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
     timezone: z.string().trim().min(1).max(64).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((input, context) => {
+    if (!input.schedules) return;
+    const learners = new Set(input.learnerIds);
+    const scheduledLearners = new Set(input.schedules.map((schedule) => schedule.learnerId));
+    if (scheduledLearners.size !== input.schedules.length ||
+        scheduledLearners.size !== learners.size ||
+        input.schedules.some((schedule) => !learners.has(schedule.learnerId))) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['schedules'],
+        message: 'Provide exactly one schedule for each selected learner, without duplicates or additional learners',
+      });
+    }
+  });
 export type BulkCreateChecklistSessionInput = z.infer<typeof bulkCreateChecklistSessionSchema>;
 
 export const checklistSessionParticipantRoleSchema = z.enum(['learner', 'observer']);

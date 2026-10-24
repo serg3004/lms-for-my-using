@@ -280,8 +280,27 @@ batch); an unknown/invalid learner is `failed` (404); anything else propagates a
 aborts the remaining batch. One `checklist_session.bulk_created` audit-log entry is written per
 call, summarizing total/created counts.
 
+PR 329 adds optional `durationMinutes` (integer 1–1440, or `null`/omitted when unknown) to
+single create, bulk create, versioned PATCH, and session responses. Existing rows remain `null`;
+duration is planning information and does not change the lifecycle timer or scoring.
+Bulk requests may additionally provide `schedules: [{learnerId, scheduledAt, durationMinutes?,
+timezone?}]`. When present, the array must contain exactly one entry for every selected
+`learnerId`, with no duplicates or extra recipients; malformed schedules fail validation before
+any assignment is created. Entries are matched by ID, not position. Each entry requires an
+absolute UTC `scheduledAt`; it overrides the shared instant. Duration and timezone inherit the
+shared values unless overridden; an explicit per-recipient `durationMinutes: null` clears the
+shared duration. The original bulk format remains valid without any new fields.
+
+Each recipient's assignment/session pair now runs through `runSerializableWithRetry`; an
+active assignment discovered on a concurrent retry remains a per-recipient `skipped` outcome.
+Scope failures and the remaining recipients' partial success are unchanged. Single-create and
+lifecycle idempotency keys continue to replay their original responses, including duration.
+Every created session's pending `pre_start` reminder is based on that session's own instant,
+exactly 24 elapsed hours earlier. Rescheduling moves only its pending reminder; changing duration
+alone does not move it. This arithmetic remains UTC-based across DST boundaries.
+
 `POST /checklist-sessions/:id/repeat` creates a **fresh** `ChecklistInstance` + `ChecklistSession`
-pair for the same learner/checklist, copying `observerId`/`locationCapturePolicy`/`timezone` from
+pair for the same learner/checklist, copying `observerId`/`locationCapturePolicy`/`timezone`/`durationMinutes` from
 the original -- it never reopens or mutates the original session/instance (both are terminal by
 then). Only callable when the original session's own status is `completed` or `cancelled` (400
 otherwise, e.g. a session still `in_progress`); because `ChecklistSession` is a 1:1 overlay,

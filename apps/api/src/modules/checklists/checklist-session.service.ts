@@ -207,6 +207,7 @@ export class ChecklistSessionService {
           instanceId: input.instanceId,
           observerId: input.observerId,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+          durationMinutes: input.durationMinutes,
           locationCapturePolicy: input.locationCapturePolicy,
           timezone: input.timezone,
           actorId,
@@ -243,7 +244,7 @@ export class ChecklistSessionService {
     });
     const allowedLearnerIds = new Set(allowedLearners.map((u) => u.id));
 
-    const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
+    const schedules = new Map(input.schedules?.map((schedule) => [schedule.learnerId, schedule]));
     const results: Array<{ learnerId: string; status: 'created' | 'skipped' | 'failed'; sessionId?: string; reason?: string }> = [];
 
     for (const learnerId of input.learnerIds) {
@@ -252,15 +253,20 @@ export class ChecklistSessionService {
         continue;
       }
       try {
-        const session = await this.prisma.$transaction(async (tx) => {
+        const schedule = schedules.get(learnerId);
+        const scheduledAt = schedule?.scheduledAt ?? input.scheduledAt;
+        // Retry each atomic assignment/session pair independently. Concurrent retries must
+        // observe the winning active assignment rather than create a second one.
+        const session = await runSerializableWithRetry(this.prisma, async (tx) => {
           const instance = await this.checklistsService.assignChecklist(input.checklistId, organizationId, { userId: learnerId }, actorId, tx);
           return this.createSessionInTransaction(tx, {
             organizationId,
             instanceId: instance.id,
             observerId: input.observerId,
-            scheduledAt,
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+            durationMinutes: schedule?.durationMinutes !== undefined ? schedule.durationMinutes : input.durationMinutes,
             locationCapturePolicy: input.locationCapturePolicy,
-            timezone: input.timezone,
+            timezone: schedule?.timezone ?? input.timezone,
             actorId,
           });
         });
@@ -318,6 +324,7 @@ export class ChecklistSessionService {
         status: true,
         observerId: true,
         locationCapturePolicy: true,
+        durationMinutes: true,
         timezone: true,
         instance: { select: { checklistId: true, userId: true } },
       },
@@ -340,6 +347,7 @@ export class ChecklistSessionService {
         instanceId: instance.id,
         observerId: original.observerId,
         scheduledAt: null,
+        durationMinutes: original.durationMinutes,
         locationCapturePolicy: original.locationCapturePolicy,
         timezone: original.timezone,
         actorId,
@@ -517,6 +525,7 @@ export class ChecklistSessionService {
               { observerId: changes.observerId, observerUnavailableReason: null, observerUnavailableAt: null }
             : {}),
           ...(changes.scheduledAt !== undefined ? { scheduledAt: changes.scheduledAt ? new Date(changes.scheduledAt) : null } : {}),
+          ...(changes.durationMinutes !== undefined ? { durationMinutes: changes.durationMinutes } : {}),
           ...(changes.locationCapturePolicy !== undefined ? { locationCapturePolicy: changes.locationCapturePolicy } : {}),
           ...(changes.timezone !== undefined ? { timezone: changes.timezone } : {}),
           version: { increment: 1 },
@@ -1008,6 +1017,7 @@ export class ChecklistSessionService {
       instanceId: string;
       observerId: string;
       scheduledAt: Date | null;
+      durationMinutes?: number | null;
       locationCapturePolicy?: CreateChecklistSessionInput['locationCapturePolicy'];
       timezone?: string;
       actorId: string;
@@ -1021,6 +1031,7 @@ export class ChecklistSessionService {
         instanceId: input.instanceId,
         observerId: input.observerId,
         scheduledAt: input.scheduledAt ?? undefined,
+        durationMinutes: input.durationMinutes,
         locationCapturePolicy: input.locationCapturePolicy,
         timezone: input.timezone,
       },
