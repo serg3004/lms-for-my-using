@@ -28,6 +28,69 @@ export function resolvePeriodScheduledFrom(period: SessionPeriod, now: Date = ne
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+// ---- PR 325: sessions list filters live in the URL ----
+
+export type SessionFilters = {
+  status: SessionStatusTab;
+  period: SessionPeriod;
+  observerId: string;
+  checklistId: string;
+  learnerId: string;
+  departmentId: string;
+  search: string;
+  page: number;
+};
+
+export type SessionFilterKey = Exclude<keyof SessionFilters, 'page'>;
+
+const SESSION_FILTER_DEFAULTS: Record<SessionFilterKey, string> = {
+  status: 'all',
+  period: 'all',
+  observerId: '',
+  checklistId: '',
+  learnerId: '',
+  departmentId: '',
+  search: '',
+};
+
+/** Reads filters from the query string; unknown enum values and bad page numbers fall back to defaults. */
+export function parseSessionFilters(params: URLSearchParams): SessionFilters {
+  const status = params.get('status') as SessionStatusTab | null;
+  const period = params.get('period') as SessionPeriod | null;
+  const page = Number(params.get('page'));
+  return {
+    status: status && SESSION_STATUS_TABS.includes(status) ? status : 'all',
+    period: period && SESSION_PERIODS.includes(period) ? period : 'all',
+    observerId: params.get('observerId') ?? '',
+    checklistId: params.get('checklistId') ?? '',
+    learnerId: params.get('learnerId') ?? '',
+    departmentId: params.get('departmentId') ?? '',
+    search: params.get('search') ?? '',
+    page: Number.isInteger(page) && page >= 1 ? page : 1,
+  };
+}
+
+/** Applies a filter change to the query string: defaults are dropped and any filter change resets paging. */
+export function applySessionFilterChange(params: URLSearchParams, change: Partial<Record<SessionFilterKey, string>> | { page: number }): URLSearchParams {
+  const next = new URLSearchParams(params);
+  if ('page' in change) {
+    if (change.page > 1) next.set('page', String(change.page)); else next.delete('page');
+    return next;
+  }
+  for (const [key, value] of Object.entries(change) as Array<[SessionFilterKey, string]>) {
+    if (!value || value === SESSION_FILTER_DEFAULTS[key]) next.delete(key); else next.set(key, value);
+  }
+  next.delete('page');
+  return next;
+}
+
+/** Filters (other than the status tabs) that are currently narrowing the list, for the removable chips. */
+export function activeSessionFilterKeys(filters: SessionFilters): Array<Exclude<SessionFilterKey, 'status'>> {
+  return (['period', 'checklistId', 'departmentId', 'learnerId', 'observerId', 'search'] as const).filter(
+    (key) => filters[key] !== SESSION_FILTER_DEFAULTS[key],
+  );
+}
+
 /** Only a still-`scheduled` session can be cancelled -- once it starts, participants are locked in (see ADR). */
 export function canCancelSession(session: Pick<ChecklistSessionSummary, 'status'>) {
   return session.status === 'scheduled';

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  activeSessionFilterKeys,
+  applySessionFilterChange,
   canCancelSession,
   canProceedFromChecklistStep,
   canProceedFromParticipantsStep,
@@ -9,6 +11,7 @@ import {
   canRepeatSession,
   excludeCurrentObserver,
   formatParticipantName,
+  parseSessionFilters,
   partitionBulkCreateResults,
   resolvePeriodScheduledFrom,
 } from './domain.js';
@@ -143,5 +146,32 @@ describe('partitionBulkCreateResults', () => {
     expect(partitioned.skipped).toHaveLength(1);
     expect(partitioned.failed).toHaveLength(1);
     expect(partitioned.created[0].learnerId).toBe('l-1');
+  });
+});
+
+describe('session list URL filters (PR 325)', () => {
+  it('parses filters from the query string and falls back to defaults for bad values', () => {
+    const filters = parseSessionFilters(new URLSearchParams('status=paused&period=bogus&checklistId=c1&departmentId=d1&learnerId=l1&observerId=o1&search=ann&page=3'));
+    expect(filters).toEqual({ status: 'paused', period: 'all', checklistId: 'c1', departmentId: 'd1', learnerId: 'l1', observerId: 'o1', search: 'ann', page: 3 });
+    expect(parseSessionFilters(new URLSearchParams('page=-2&status=nope')).page).toBe(1);
+    expect(parseSessionFilters(new URLSearchParams('page=abc')).status).toBe('all');
+  });
+
+  it('sets a filter, drops defaults and resets paging on any filter change', () => {
+    const base = new URLSearchParams('status=scheduled&page=4');
+    expect(applySessionFilterChange(base, { checklistId: 'c1' }).toString()).toBe('status=scheduled&checklistId=c1');
+    expect(applySessionFilterChange(new URLSearchParams('checklistId=c1&page=2'), { checklistId: '' }).toString()).toBe('');
+    expect(applySessionFilterChange(new URLSearchParams('status=paused'), { status: 'all' }).toString()).toBe('');
+  });
+
+  it('changes only the page when paging', () => {
+    expect(applySessionFilterChange(new URLSearchParams('checklistId=c1'), { page: 3 }).toString()).toBe('checklistId=c1&page=3');
+    expect(applySessionFilterChange(new URLSearchParams('checklistId=c1&page=3'), { page: 1 }).toString()).toBe('checklistId=c1');
+  });
+
+  it('lists active non-status filters for the chips', () => {
+    const filters = parseSessionFilters(new URLSearchParams('status=paused&learnerId=l1&period=last7'));
+    expect(activeSessionFilterKeys(filters)).toEqual(['period', 'learnerId']);
+    expect(activeSessionFilterKeys(parseSessionFilters(new URLSearchParams('status=paused')))).toEqual([]);
   });
 });

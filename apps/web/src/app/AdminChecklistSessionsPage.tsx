@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -9,21 +9,27 @@ import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, Button, DataTable, Menu, PageState, Pagination, SearchInput, type Column } from '../shared/ui.js';
+import { listChecklists } from '../shared/api/checklists.js';
+import { listDepartments } from '../shared/api/departments.js';
 import { listChecklistSessionParticipants, listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
-import type { ChecklistSessionParticipant, ChecklistSessionStatus, ChecklistSessionSummary } from '../shared/api/types.js';
+import type { ChecklistSessionParticipant, ChecklistSessionStatus, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
+import type { Department } from '../shared/api/departments.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
 import { ChecklistWorkplaceSettingsDialog } from '../features/admin-checklist-sessions/ChecklistWorkplaceSettingsDialog.js';
 import { ReassignObserverDialog } from '../features/admin-checklist-sessions/ReassignObserverDialog.js';
 import {
+  activeSessionFilterKeys,
+  applySessionFilterChange,
   canCancelSession,
   canReassignObserver,
   canRepeatSession,
   formatParticipantName,
+  parseSessionFilters,
   resolvePeriodScheduledFrom,
   SESSION_PERIODS,
   SESSION_STATUS_TABS,
+  type SessionFilterKey,
   type SessionPeriod,
-  type SessionStatusTab,
 } from '../features/admin-checklist-sessions/domain.js';
 
 const PAGE_SIZE = 20;
@@ -33,12 +39,14 @@ type AdminChecklistSessionsData = { sessions: ChecklistSessionSummary[]; total: 
 export function AdminChecklistSessionsPage() {
   const { t } = useTranslation();
   const { currentUser } = useSession();
-  const [statusTab, setStatusTab] = useState<SessionStatusTab>('all');
-  const [period, setPeriod] = useState<SessionPeriod>('all');
-  const [observerFilter, setObserverFilter] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { status: statusTab, period, observerId: observerFilter, checklistId: checklistFilter, learnerId: learnerFilter, departmentId: departmentFilter, search, page } = parseSessionFilters(searchParams);
+  const isAdmin = currentUser?.roles.includes('admin') ?? false;
   const [observerOptions, setObserverOptions] = useState<ChecklistSessionParticipant[]>([]);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
+  const [learnerOptions, setLearnerOptions] = useState<ChecklistSessionParticipant[]>([]);
+  const [checklistOptions, setChecklistOptions] = useState<ChecklistSummary[]>([]);
+  const [departmentOptions, setDepartmentOptions] = useState<Department[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardReloadPending, setWizardReloadPending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -46,11 +54,29 @@ export function AdminChecklistSessionsPage() {
   const [reassignTarget, setReassignTarget] = useState<ChecklistSessionSummary | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Filter option lists are best-effort: a failed lookup only empties that dropdown, it never
+  // blocks the sessions list itself.
   useEffect(() => {
     listChecklistSessionParticipants({ role: 'observer', pageSize: 200 })
       .then((result) => setObserverOptions(result.items))
       .catch(() => setObserverOptions([]));
-  }, []);
+    listChecklistSessionParticipants({ role: 'learner', pageSize: 200 })
+      .then((result) => setLearnerOptions(result.items))
+      .catch(() => setLearnerOptions([]));
+    listChecklists()
+      .then((items) => setChecklistOptions(items))
+      .catch(() => setChecklistOptions([]));
+    // GET /departments is admin-only (rolePolicies.departmentsRead); managers don't get this filter.
+    if (isAdmin) {
+      listDepartments({ pageSize: 100, status: 'active' })
+        .then((result) => setDepartmentOptions(result.items))
+        .catch(() => setDepartmentOptions([]));
+    }
+  }, [isAdmin]);
+
+  function changeFilter(change: Partial<Record<SessionFilterKey, string>>) {
+    setSearchParams(applySessionFilterChange(searchParams, change), { replace: true });
+  }
 
   const statusLabels: Record<ChecklistSessionStatus, string> = {
     scheduled: t('admin.checklists.sessions.status.scheduled', 'Scheduled'),
@@ -67,12 +93,15 @@ export function AdminChecklistSessionsPage() {
         search: search.trim() || undefined,
         scheduledFrom: resolvePeriodScheduledFrom(period),
         observerId: observerFilter || undefined,
+        checklistId: checklistFilter || undefined,
+        learnerId: learnerFilter || undefined,
+        departmentId: departmentFilter || undefined,
         page,
         pageSize: PAGE_SIZE,
       });
       return { sessions: result.items, total: result.total };
     },
-    [statusTab, period, observerFilter, search, page, t],
+    [statusTab, period, observerFilter, checklistFilter, learnerFilter, departmentFilter, search, page, t],
     {
       unauthenticated: t('admin.checklists.sessionExpired', 'Your session has expired. Please sign in again.'),
       error: t('admin.checklists.sessions.loadError', 'Unable to load sessions.'),
@@ -110,13 +139,29 @@ export function AdminChecklistSessionsPage() {
     return <main className="admin-state"><PageState title={t('admin.checklists.sessions.title', 'Sessions')} message={loadState.message} variant="error" /></main>;
   }
 
+  const activeFilterKeys = activeSessionFilterKeys({ status: statusTab, period, observerId: observerFilter, checklistId: checklistFilter, learnerId: learnerFilter, departmentId: departmentFilter, search, page });
+  const participantName = (options: ChecklistSessionParticipant[], id: string) => {
+    const match = options.find((option) => option.id === id);
+    return match ? formatParticipantName(match) : id;
+  };
+  function chipLabel(key: Exclude<SessionFilterKey, 'status'>) {
+    switch (key) {
+      case 'period': return `${t('admin.checklists.sessions.periodLabel', 'Period')}: ${t(`admin.checklists.sessions.period.${period}`, period)}`;
+      case 'checklistId': return `${t('admin.checklists.sessions.checklistFilterLabel', 'Checklist')}: ${checklistOptions.find((c) => c.id === checklistFilter)?.title ?? checklistFilter}`;
+      case 'departmentId': return `${t('admin.checklists.sessions.departmentFilterLabel', 'Department')}: ${departmentOptions.find((d) => d.id === departmentFilter)?.name ?? departmentFilter}`;
+      case 'learnerId': return `${t('admin.checklists.sessions.learnerFilterLabel', 'Employee')}: ${participantName(learnerOptions, learnerFilter)}`;
+      case 'observerId': return `${t('admin.checklists.sessions.observerFilterLabel', 'Observer')}: ${participantName(observerOptions, observerFilter)}`;
+      case 'search': return `${t('admin.checklists.sessions.searchLabel', 'Search')}: ${search}`;
+    }
+  }
+
   const navItems: AdminNavItem[] = [
     { label: t('admin.checklists.title', 'Checklists'), href: '/admin/checklists' },
     { label: t('admin.checklists.sessions.title', 'Sessions'), href: '/admin/checklists/sessions', isCurrent: true },
   ];
 
   const columns: Column<ChecklistSessionSummary>[] = [
-    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => row.checklist.title, priority: 'primary' },
+    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => <Link to={`/admin/checklists/sessions/${row.id}`}>{row.checklist.title}</Link>, priority: 'primary' },
     { key: 'learner', label: t('admin.checklists.sessions.columns.learner', 'Employee'), render: (row) => formatParticipantName(row.learner), priority: 'primary' },
     {
       key: 'observer',
@@ -168,33 +213,35 @@ export function AdminChecklistSessionsPage() {
     {
       key: 'actions',
       label: t('admin.checklists.sessions.columns.actions', 'Actions'),
-      // PR 318: one menu instead of up to 4 separate buttons, so the row never wraps to a second
-      // line at 1440px.
+      // PR 325: the main actions (open, repeat, cancel) are always visible; PR 318's menu keeps
+      // only the rarer ones so the row still fits one line at 1440px.
       render: (row) => (
-        <Menu
-          align="end"
-          buttonClassName="admin-btn admin-btn--sm"
-          label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
-        >
-          <Link role="menuitem" to={`/admin/checklists/sessions/${row.id}`}>
-            {t('admin.checklists.sessions.report', 'Report')}
+        <div className="admin-session-row-actions">
+          <Link className="admin-btn admin-btn--sm" to={`/admin/checklists/sessions/${row.id}`}>
+            {t('admin.checklists.sessions.open', 'Open')}
           </Link>
           {canRepeatSession(row) && (
-            <button onClick={() => void repeat(row)} role="menuitem" type="button">
+            <button className="admin-btn admin-btn--sm" onClick={() => void repeat(row)} type="button">
               {t('admin.checklists.sessions.repeat', 'Repeat')}
             </button>
           )}
-          {canReassignObserver(row) && (
-            <button onClick={() => setReassignTarget(row)} role="menuitem" type="button">
-              {t('admin.checklists.sessions.reassignObserver', 'Reassign observer')}
-            </button>
-          )}
           {canCancelSession(row) && (
-            <button onClick={() => setCancelTarget(row)} role="menuitem" type="button">
+            <button className="admin-btn admin-btn--sm" onClick={() => setCancelTarget(row)} type="button">
               {t('admin.checklists.sessions.cancel', 'Cancel')}
             </button>
           )}
-        </Menu>
+          {canReassignObserver(row) && (
+            <Menu
+              align="end"
+              buttonClassName="admin-btn admin-btn--sm"
+              label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
+            >
+              <button onClick={() => setReassignTarget(row)} role="menuitem" type="button">
+                {t('admin.checklists.sessions.reassignObserver', 'Reassign observer')}
+              </button>
+            </Menu>
+          )}
+        </div>
       ),
       priority: 'primary',
     },
@@ -226,7 +273,7 @@ export function AdminChecklistSessionsPage() {
             aria-selected={statusTab === tab}
             className="admin-org-tabs__tab"
             key={tab}
-            onClick={() => { setStatusTab(tab); setPage(1); }}
+            onClick={() => changeFilter({ status: tab })}
             role="tab"
             type="button"
           >
@@ -236,14 +283,40 @@ export function AdminChecklistSessionsPage() {
       </div>
       <div className="admin-card admin-session-filters">
         <FormField id="sessions-filter-period" label={t('admin.checklists.sessions.periodLabel', 'Period')}>
-          <select id="sessions-filter-period" onChange={(e) => { setPeriod(e.target.value as SessionPeriod); setPage(1); }} value={period}>
+          <select id="sessions-filter-period" onChange={(e) => changeFilter({ period: e.target.value as SessionPeriod })} value={period}>
             {SESSION_PERIODS.map((option) => (
               <option key={option} value={option}>{t(`admin.checklists.sessions.period.${option}`, option)}</option>
             ))}
           </select>
         </FormField>
+        <FormField id="sessions-filter-checklist" label={t('admin.checklists.sessions.checklistFilterLabel', 'Checklist')}>
+          <select id="sessions-filter-checklist" onChange={(e) => changeFilter({ checklistId: e.target.value })} value={checklistFilter}>
+            <option value="">{t('admin.checklists.sessions.checklistFilterAll', 'All checklists')}</option>
+            {checklistOptions.map((checklist) => (
+              <option key={checklist.id} value={checklist.id}>{checklist.title}</option>
+            ))}
+          </select>
+        </FormField>
+        {isAdmin && (
+          <FormField id="sessions-filter-department" label={t('admin.checklists.sessions.departmentFilterLabel', 'Department')}>
+            <select id="sessions-filter-department" onChange={(e) => changeFilter({ departmentId: e.target.value })} value={departmentFilter}>
+              <option value="">{t('admin.checklists.sessions.departmentFilterAll', 'All departments')}</option>
+              {departmentOptions.map((department) => (
+                <option key={department.id} value={department.id}>{department.name}</option>
+              ))}
+            </select>
+          </FormField>
+        )}
+        <FormField id="sessions-filter-learner" label={t('admin.checklists.sessions.learnerFilterLabel', 'Employee')}>
+          <select id="sessions-filter-learner" onChange={(e) => changeFilter({ learnerId: e.target.value })} value={learnerFilter}>
+            <option value="">{t('admin.checklists.sessions.learnerFilterAll', 'All employees')}</option>
+            {learnerOptions.map((learner) => (
+              <option key={learner.id} value={learner.id}>{formatParticipantName(learner)}</option>
+            ))}
+          </select>
+        </FormField>
         <FormField id="sessions-filter-observer" label={t('admin.checklists.sessions.observerFilterLabel', 'Observer')}>
-          <select id="sessions-filter-observer" onChange={(e) => { setObserverFilter(e.target.value); setPage(1); }} value={observerFilter}>
+          <select id="sessions-filter-observer" onChange={(e) => changeFilter({ observerId: e.target.value })} value={observerFilter}>
             <option value="">{t('admin.checklists.sessions.observerFilterAll', 'All observers')}</option>
             {observerOptions.map((observer) => (
               <option key={observer.id} value={observer.id}>{formatParticipantName(observer)}</option>
@@ -252,18 +325,38 @@ export function AdminChecklistSessionsPage() {
         </FormField>
         <div className="admin-form__field admin-session-filters__search">
           <label>{t('admin.checklists.sessions.searchLabel', 'Search')}</label>
-          <SearchInput onChange={(value) => { setSearch(value); setPage(1); }} placeholder={t('admin.checklists.sessions.searchPlaceholder', 'Find session')} value={search} />
+          <SearchInput onChange={(value) => changeFilter({ search: value })} placeholder={t('admin.checklists.sessions.searchPlaceholder', 'Find session')} value={search} />
         </div>
       </div>
+      {activeFilterKeys.length > 0 && (
+        <div aria-label={t('admin.checklists.sessions.activeFilters', 'Active filters')} className="admin-filter-chips" role="group">
+          {activeFilterKeys.map((key) => (
+            <span className="admin-filter-chip" key={key}>
+              {chipLabel(key)}
+              <button
+                aria-label={t('admin.checklists.sessions.removeFilter', 'Remove filter: {{filter}}', { filter: chipLabel(key) })}
+                onClick={() => changeFilter({ [key]: '' })}
+                type="button"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </span>
+          ))}
+          <Button onClick={() => setSearchParams(statusTab === 'all' ? {} : { status: statusTab }, { replace: true })} size="sm" type="button" variant="ghost">
+            {t('admin.checklists.sessions.resetFilters', 'Reset filters')}
+          </Button>
+        </div>
+      )}
       <DataTable
         columns={columns}
         emptyMessage={t('admin.checklists.sessions.empty', 'No sessions match these filters.')}
         keyExtractor={(row) => row.id}
         label={t('admin.checklists.sessions.title', 'Sessions')}
         responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.checklist.title}`, collapseLabel: (row) => `${t('courses.details')}: ${row.checklist.title}` }}
+        onRowClick={(row) => navigate(`/admin/checklists/sessions/${row.id}`)}
         rows={loadState.data.sessions}
       />
-      <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={setPage} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
+      <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={(nextPage) => setSearchParams(applySessionFilterChange(searchParams, { page: nextPage }), { replace: true })} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
       <ChecklistSessionWizard
         onClose={() => {
           setWizardOpen(false);

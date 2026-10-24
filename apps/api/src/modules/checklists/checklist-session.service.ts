@@ -436,6 +436,9 @@ export class ChecklistSessionService {
         query.observerId ? { observerId: query.observerId } : {},
         query.checklistId ? { instance: { checklistId: query.checklistId } } : {},
         query.learnerId ? { instance: { userId: query.learnerId } } : {},
+        query.departmentId
+          ? { instance: { user: { departmentMemberships: { some: { organizationId, departmentId: query.departmentId, isPrimary: true, effectiveTo: null } } } } }
+          : {},
         overdueClause,
         scheduledClause,
         searchClause,

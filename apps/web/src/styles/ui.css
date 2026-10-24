@@ -1891,6 +1891,10 @@
   background: var(--color-surface-muted);
 }
 
+.ds-data-table__row--clickable {
+  cursor: pointer;
+}
+
 .ds-data-table--compact th,
 .ds-data-table--compact td {
   padding-block: 10px;
