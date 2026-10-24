@@ -1089,7 +1089,16 @@
           "whenLabel": "时间",
           "doneTitle": "会话已创建",
           "doneSummary": "已创建 {{created}} 个，跳过 {{skipped}} 个，失败 {{failed}} 个。",
-          "submitError": "无法创建会话。"
+          "submitError": "无法创建会话。",
+          "scheduleGrouping": "员工日程",
+          "scheduleShared": "所有人使用相同日程",
+          "scheduleIndividual": "分别设置",
+          "durationMinutes": "时长（分钟，可选）",
+          "durationHint": "1 至 1440 分钟。如果尚不确定时长，请留空。",
+          "individualHint": "为每位员工设置日期和时间。时长为可选项，范围为 1 至 1440 分钟。",
+          "durationNotSet": "未指定",
+          "durationValue": "{{minutes}} 分钟",
+          "invalidLocalTime": "此时间无效或不存在。请选择其他日期或时间。"
         },
         "report": "报告",
         "reassignObserver": "重新指派观察员",

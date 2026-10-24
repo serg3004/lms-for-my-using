@@ -40,6 +40,7 @@ function session(overrides: Partial<ChecklistSessionSummary> = {}): ChecklistSes
     status: 'in_progress',
     version: 2,
     scheduledAt: '2026-02-01T09:00:00.000Z',
+    durationMinutes: null,
     startedAt: '2026-02-01T09:05:00.000Z',
     pausedAt: null,
     locationCapturePolicy: 'off',

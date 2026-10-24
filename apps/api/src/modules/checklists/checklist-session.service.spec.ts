@@ -24,6 +24,7 @@ function baseSession(overrides: Partial<Record<string, unknown>> = {}) {
     status: 'scheduled',
     version: 1,
     scheduledAt: null,
+    durationMinutes: null,
     startedAt: null,
     pausedAt: null,
     locationCapturePolicy: 'off',

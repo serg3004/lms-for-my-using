@@ -128,9 +128,89 @@ describe('checklist session admin API (PR 292) — database', () => {
     const sessions = await prisma.checklistSession.findMany({ where: { organizationId } });
     expect(sessions).toHaveLength(1);
     expect(sessions[0]?.instanceId).not.toBeNull();
+    expect(sessions[0]?.durationMinutes).toBeNull();
 
     const auditEntries = await prisma.auditLog.findMany({ where: { organizationId, action: 'checklist_session.bulk_created' } });
     expect(auditEntries).toHaveLength(1);
+  });
+
+  it('individual schedules persist their own instants/durations and move reminders across DST (PR 329)', async () => {
+    const [learnerA, learnerB] = await Promise.all(['a', 'b'].map((name) => prisma.user.create({
+      data: { organizationId, email: `schedule-${name}-${randomUUID()}@example.test`, passwordHash: 'x', firstName: name, lastName: 'Learner' },
+    })));
+    const beforeDst = '2026-03-08T06:30:00.000Z';
+    const afterDst = '2026-03-08T07:30:00.000Z';
+    const result = await sessionService.bulkCreate(organizationId, {
+      checklistId, observerId, learnerIds: [learnerA.id, learnerB.id],
+      scheduledAt: '2026-01-01T12:00:00.000Z', durationMinutes: 30, timezone: 'America/New_York',
+      // Deliberately reversed: schedules are matched by learner, never array position.
+      schedules: [
+        { learnerId: learnerB.id, scheduledAt: afterDst, durationMinutes: 45, timezone: 'Europe/Berlin' },
+        { learnerId: learnerA.id, scheduledAt: beforeDst },
+      ],
+    }, observerId, {});
+    expect(result).toMatchObject({ created: 2, skipped: 0, failed: 0 });
+    const sessions = await prisma.checklistSession.findMany({ where: { organizationId }, include: { instance: true } });
+    const sessionA = sessions.find((session) => session.instance.userId === learnerA.id)!;
+    const sessionB = sessions.find((session) => session.instance.userId === learnerB.id)!;
+    expect(sessionA).toMatchObject({ scheduledAt: new Date(beforeDst), durationMinutes: 30, timezone: 'America/New_York' });
+    expect(sessionB).toMatchObject({ scheduledAt: new Date(afterDst), durationMinutes: 45, timezone: 'Europe/Berlin' });
+    for (const session of sessions) {
+      const reminders = await prisma.checklistSessionReminder.findMany({ where: { sessionId: session.id } });
+      expect(reminders).toHaveLength(1);
+      expect(reminders[0]).toMatchObject({ reminderType: 'pre_start', status: 'pending', scheduledFor: new Date(session.scheduledAt!.getTime() - 86_400_000) });
+    }
+
+    // The repeated local hour in New York is represented by an unambiguous UTC instant.
+    const rescheduledAt = '2026-11-01T06:30:00.000Z';
+    const updated = await sessionService.update(sessionA.id, organizationId, {
+      version: sessionA.version, scheduledAt: rescheduledAt, durationMinutes: 60,
+    }, observerId, {});
+    expect(updated).toMatchObject({ scheduledAt: new Date(rescheduledAt), durationMinutes: 60, version: 2 });
+    const reminder = await prisma.checklistSessionReminder.findUniqueOrThrow({ where: { sessionId_reminderType: { sessionId: sessionA.id, reminderType: 'pre_start' } } });
+    expect(reminder.scheduledFor.toISOString()).toBe('2026-10-31T06:30:00.000Z');
+    const cleared = await sessionService.update(sessionA.id, organizationId, { version: updated.version, durationMinutes: null }, observerId, {});
+    expect(cleared.durationMinutes).toBeNull();
+    expect(cleared.scheduledAt).toEqual(new Date(rescheduledAt));
+    expect(await prisma.checklistSessionReminder.count({ where: { sessionId: sessionA.id } })).toBe(1);
+  });
+
+  it('individual schedules retain per-recipient skips and scope failures (PR 329)', async () => {
+    const [active, allowed, outside] = await Promise.all(['active', 'allowed', 'outside'].map((name) => prisma.user.create({
+      data: { organizationId, email: `partial-${name}-${randomUUID()}@example.test`, passwordHash: 'x', firstName: name, lastName: 'Learner' },
+    })));
+    await checklistsService.assignChecklist(checklistId, organizationId, { userId: active.id }, observerId);
+    const result = await sessionService.bulkCreate(organizationId, {
+      checklistId, observerId, learnerIds: [active.id, allowed.id, outside.id], durationMinutes: 30,
+      schedules: [outside, allowed, active].map((learner) => ({ learnerId: learner.id, scheduledAt: '2026-11-10T10:00:00.000Z', durationMinutes: null })),
+    }, observerId, { id: { in: [active.id, allowed.id] } });
+    expect(result).toMatchObject({ created: 1, skipped: 1, failed: 1 });
+    expect(result.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({ learnerId: active.id, status: 'skipped' }),
+      expect.objectContaining({ learnerId: allowed.id, status: 'created' }),
+      expect.objectContaining({ learnerId: outside.id, status: 'failed' }),
+    ]));
+    const sessions = await prisma.checklistSession.findMany({ where: { organizationId }, include: { instance: true } });
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]).toMatchObject({ durationMinutes: null, instance: { userId: allowed.id } });
+    expect(await prisma.checklistInstance.count({ where: { organizationId, userId: outside.id } })).toBe(0);
+  });
+
+  it('concurrent individual batches create one assignment/session pair for the same employee (PR 329)', async () => {
+    const learner = await prisma.user.create({ data: { organizationId, email: `race-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Race', lastName: 'Learner' } });
+    const input = {
+      checklistId, observerId, learnerIds: [learner.id],
+      schedules: [{ learnerId: learner.id, scheduledAt: '2026-11-10T10:00:00.000Z', durationMinutes: 20 }],
+    };
+    const results = await Promise.all([
+      sessionService.bulkCreate(organizationId, input, observerId, {}),
+      sessionService.bulkCreate(organizationId, input, observerId, {}),
+    ]);
+    expect(results.reduce((count, result) => count + result.created, 0)).toBe(1);
+    expect(results.reduce((count, result) => count + result.skipped, 0)).toBe(1);
+    expect(await prisma.checklistInstance.count({ where: { organizationId } })).toBe(1);
+    expect(await prisma.checklistSession.count({ where: { organizationId } })).toBe(1);
+    expect(await prisma.checklistSessionReminder.count({ where: { organizationId } })).toBe(1);
   });
 
   // PR 306 anomaly #4: the admin's create-session wizard loads the published-checklist picker up

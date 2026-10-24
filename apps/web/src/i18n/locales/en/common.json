@@ -1089,7 +1089,16 @@
           "whenLabel": "When",
           "doneTitle": "Sessions created",
           "doneSummary": "{{created}} created, {{skipped}} skipped, {{failed}} failed.",
-          "submitError": "Unable to create sessions."
+          "submitError": "Unable to create sessions.",
+          "scheduleGrouping": "Employee schedules",
+          "scheduleShared": "Same for everyone",
+          "scheduleIndividual": "Set each separately",
+          "durationMinutes": "Duration in minutes (optional)",
+          "durationHint": "From 1 to 1440 minutes. Leave blank if the duration is not known yet.",
+          "individualHint": "Set a date and time for every employee. Duration is optional, from 1 to 1440 minutes.",
+          "durationNotSet": "Not specified",
+          "durationValue": "{{minutes}} min",
+          "invalidLocalTime": "This time is invalid or does not exist. Choose another date or time."
         },
         "report": "Report",
         "reassignObserver": "Reassign observer",

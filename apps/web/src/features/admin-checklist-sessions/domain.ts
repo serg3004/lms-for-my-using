@@ -2,6 +2,7 @@ import { formatUserName } from '../admin-checklists/domain.js';
 import type {
   BulkCreateChecklistSessionResult,
   ChecklistSessionParticipant,
+  ChecklistSessionRecipientSchedule,
   ChecklistSessionStatus,
   ChecklistSessionSummary,
 } from '../../shared/api/types.js';
@@ -136,9 +137,44 @@ export function canProceedFromChecklistStep(checklistId: string) {
 }
 
 export type ScheduleMode = 'now' | 'later';
+export type SessionScheduleDraft = { scheduledAt: string; durationMinutes: string };
 
-export function canProceedFromScheduleStep(mode: ScheduleMode, scheduledAt: string) {
-  return mode === 'now' || scheduledAt.trim().length > 0;
+/** A datetime-local value denotes browser wall time. Reject invalid dates and DST gaps
+ * instead of silently normalizing them to a different appointment time. */
+export function toSessionScheduledAt(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const parts = [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()];
+  const inputParts = value.split(/[-T:]/).map(Number);
+  return parts.every((part, index) => part === inputParts[index]) ? date.toISOString() : null;
+}
+
+export function isSessionDurationValid(value: string): boolean {
+  if (value.trim() === '') return true;
+  const minutes = Number(value);
+  return Number.isInteger(minutes) && minutes >= 1 && minutes <= 1440;
+}
+
+export function canProceedFromScheduleStep(mode: ScheduleMode, scheduledAt: string, durationMinutes = '') {
+  return isSessionDurationValid(durationMinutes) && (mode === 'now' || toSessionScheduledAt(scheduledAt) !== null);
+}
+
+export function buildIndividualSessionSchedules(
+  learnerIds: readonly string[],
+  drafts: Readonly<Record<string, SessionScheduleDraft>>,
+  fallback: SessionScheduleDraft,
+  timezone: string,
+): ChecklistSessionRecipientSchedule[] | null {
+  if (learnerIds.length === 0) return null;
+  const schedules: ChecklistSessionRecipientSchedule[] = [];
+  for (const learnerId of learnerIds) {
+    const draft = drafts[learnerId] ?? fallback;
+    const scheduledAt = toSessionScheduledAt(draft.scheduledAt);
+    if (!scheduledAt || !isSessionDurationValid(draft.durationMinutes)) return null;
+    schedules.push({ learnerId, scheduledAt, durationMinutes: draft.durationMinutes.trim() ? Number(draft.durationMinutes) : null, timezone });
+  }
+  return schedules;
 }
 
 export function partitionBulkCreateResults(result: BulkCreateChecklistSessionResult) {

@@ -99,8 +99,10 @@ describe('checklist session idempotency (PR 301) — database', () => {
     const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
     const key = randomUUID();
 
-    const first = await sessionService.create(organizationId, { instanceId: instance.id, observerId, idempotencyKey: key }, observerId);
-    const retry = await sessionService.create(organizationId, { instanceId: instance.id, observerId, idempotencyKey: key }, observerId);
+    const first = await sessionService.create(organizationId, { instanceId: instance.id, observerId, durationMinutes: 30, idempotencyKey: key }, observerId);
+    const retry = await sessionService.create(organizationId, { instanceId: instance.id, observerId, durationMinutes: 30, idempotencyKey: key }, observerId);
+    expect(first.durationMinutes).toBe(30);
+    expect(retry.durationMinutes).toBe(30);
 
     expect(asJson(retry)).toEqual(asJson(first));
     const sessions = await prisma.checklistSession.findMany({ where: { organizationId, instanceId: instance.id } });
