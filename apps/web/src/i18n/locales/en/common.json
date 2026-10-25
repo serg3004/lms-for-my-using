@@ -2401,6 +2401,13 @@
       "markUnavailableCancel": "Cancel",
       "markUnavailableSubmit": "Report",
       "eyebrow": "Workplace training",
+      "retry": "Retry",
+      "checklistsLoading": "Loading checklists...",
+      "checklistsError": "Unable to load checklists.",
+      "ownObserver": "You will conduct this session.",
+      "participantsLoading": "Loading employees...",
+      "participantsError": "Unable to load employees.",
+      "participantsEmpty": "No employees found in your scope. Try another search or contact an administrator.",
       "sessionsTitle": "Sessions to conduct",
       "sessionsSubtitle": "Sessions where you are the observer.",
       "screenTitle": "Conduct session"

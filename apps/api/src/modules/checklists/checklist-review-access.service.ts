@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import type { CurrentUser } from '../auth/public.js';
+import { rolePolicies, type CurrentUser } from '../auth/public.js';
 import { isManagerTeamScoped } from '../manager-team-scope/public.js';
 import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
 
@@ -88,12 +88,20 @@ export class ChecklistReviewAccessService {
     return user.roles.includes('admin') ? {} : { observerId: user.id };
   }
 
+  /** Creation is narrower than read access: only schedulers may select another observer. */
+  assertSessionCreationObserver(user: CurrentUser, observerId: string): void {
+    if (!rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role)) && observerId !== user.id) {
+      throw new NotFoundException('Observer not found');
+    }
+  }
+
   /**
    * Admin API participant lookup (PR 292): who a manager may pick as a session's learner when
    * scheduling. Tenant-wide for admin, effective team scope (same union as everywhere else) for
    * manager -- reuses `OrganizationAccessScopeService.user()` directly (a plain `User` filter,
    * not nested under an `instance`/`user` relation) since the lookup queries `User` rows, not
-   * `ChecklistInstance` rows.
+   * `ChecklistInstance` rows. Instructors without manager/admin permissions may pick active
+   * learners in their tenant; creation separately pins observerId to the caller.
    */
   async participantLearnerScope(user: CurrentUser): Promise<Prisma.UserWhereInput> {
     return isManagerTeamScoped(user) ? this.organizationScope.user(user) : {};

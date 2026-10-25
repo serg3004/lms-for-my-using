@@ -58,6 +58,16 @@ drill-down into their sessions -- all through `GET /checklists/manager-analytics
 
 ## Instructor / observer (`/instructor/checklists`, "Проведение" tab)
 
+The observer's session list at `/instructor/checklists/sessions` includes “New session” (PR 331).
+It opens the shared mobile wizard with the signed-in instructor fixed as observer and no change
+or observer-search control. Employee lookup has loading, empty and retryable error states;
+published-sheet lookup also distinguishes loading, failure and an empty library. Scheduling,
+individual appointments and optional duration use the same controls as the admin wizard.
+“Start now” creates and starts the observer's own session; scheduled sessions remain scheduled.
+Creation refreshes the observer list. Server validation is authoritative: `checklistSessionsCreateOwn`
+allows creation only for oneself, within the tenant/manager learner scope described in
+`API_RBAC_MATRIX.md`, without granting general scheduling management rights.
+
 The instructor named as a session's `observerId` is the day-to-day role that runs it through this
 screen and the only one who answers criteria during conduct -- checking off/scoring each item live while watching the learner perform
 the task, not the learner self-reporting. `checklistSessionsRun` (start/pause/resume/complete) is

@@ -111,6 +111,30 @@ describe('Cross-tenant IDOR audit', () => {
     expect(assignmentCreate).not.toHaveBeenCalled();
   });
 
+  it('rejects foreign assignments before own-session creation or idempotency replay (PR 331)', async () => {
+    const findFirst = jest.fn().mockResolvedValue(null);
+    const transaction = jest.fn();
+    const service = new ChecklistSessionService(prismaMock({ checklistInstance: { findFirst }, $transaction: transaction }), {} as ChecklistsService);
+    const teamScope = { id: { in: ['allowed-learner'] } };
+    await expect(service.create(organizationId, { instanceId: foreignResourceId, observerId: actor.id, idempotencyKey: 'known-key' }, actor.id, teamScope)).rejects.toBeInstanceOf(NotFoundException);
+    expect(findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      id: foreignResourceId, organizationId, user: expect.objectContaining({ organizationId, AND: [teamScope] }),
+    }) }));
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects a foreign learner batch before any assignment is written (PR 331)', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const transaction = jest.fn();
+    const service = new ChecklistSessionService(prismaMock({
+      user: { findFirst: jest.fn().mockResolvedValue({ id: actor.id }), findMany },
+      checklist: { findFirst: jest.fn().mockResolvedValue({ id: 'checklist-a' }) }, $transaction: transaction,
+    }), {} as ChecklistsService);
+    await expect(service.bulkCreate(organizationId, { checklistId: 'checklist-a', learnerIds: [foreignResourceId], observerId: actor.id }, actor.id, {}, true)).rejects.toBeInstanceOf(NotFoundException);
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId, deletedAt: null, status: 'active' }) }));
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
   it('does not return a checklist session UUID unless it belongs to the actor organization', async () => {
     const findFirst = jest.fn().mockResolvedValue(null);
     const service = new ChecklistSessionService(

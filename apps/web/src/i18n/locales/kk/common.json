@@ -2401,6 +2401,13 @@
       "markUnavailableCancel": "Бас тарту",
       "markUnavailableSubmit": "Хабарлау",
       "eyebrow": "Жұмыс орнындағы оқыту",
+      "retry": "Қайталау",
+      "checklistsLoading": "Парақтар жүктелуде...",
+      "checklistsError": "Парақтарды жүктеу мүмкін болмады.",
+      "ownObserver": "Бұл сессияны сіз өткізесіз.",
+      "participantsLoading": "Қызметкерлер жүктелуде...",
+      "participantsError": "Қызметкерлерді жүктеу мүмкін болмады.",
+      "participantsEmpty": "Сіздің аймағыңызда қызметкерлер табылмады. Іздеуді өзгертіңіз немесе әкімшіге хабарласыңыз.",
       "sessionsTitle": "Өткізетін сессиялар",
       "sessionsSubtitle": "Сіз бақылаушы болатын сессиялар.",
       "screenTitle": "Сессияны өткізу"

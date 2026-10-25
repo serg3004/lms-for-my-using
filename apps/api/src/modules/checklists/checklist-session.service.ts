@@ -190,17 +190,22 @@ export class ChecklistSessionService {
    * relying solely on the instance-scoped unique constraint below, which only ever produces a
    * 409 -- not the original success payload -- on a second attempt.
    */
-  async create(organizationId: string, input: CreateChecklistSessionInput, actorId: string) {
+  async create(organizationId: string, input: CreateChecklistSessionInput, actorId: string, learnerScope: Prisma.UserWhereInput = {}) {
     const instance = await this.prisma.checklistInstance.findFirst({
-      where: { id: input.instanceId, organizationId, deletedAt: null },
+      where: { id: input.instanceId, organizationId, deletedAt: null, user: { organizationId, deletedAt: null, status: 'active', AND: [learnerScope] } },
       select: { id: true },
     });
     if (!instance) throw new NotFoundException('Checklist assignment not found');
 
     try {
-      return await runSerializableWithRetry(this.prisma, async (tx) => {
+      const { session: result, created } = await runSerializableWithRetry(this.prisma, async (tx) => {
         const cached = await this.findIdempotentResponse<ChecklistSessionView>(tx, organizationId, 'session.create', input.idempotencyKey);
-        if (cached) return cached;
+        if (cached) {
+          if (cached.instanceId !== input.instanceId || cached.observerId !== input.observerId) {
+            throw new ConflictException('Idempotency key belongs to another session creation');
+          }
+          return { session: cached, created: false };
+        }
 
         const session = await this.createSessionInTransaction(tx, {
           organizationId,
@@ -215,8 +220,14 @@ export class ChecklistSessionService {
 
         const presented = present(session);
         await this.recordIdempotentResponse(tx, organizationId, 'session.create', input.idempotencyKey, presented);
-        return presented;
+        return { session: presented, created: true };
       });
+      if (created) {
+        await this.auditLog.record({ organizationId, actorId, action: 'checklist_session.created',
+          targetType: 'checklist_session', targetId: result.id, summary: 'Created checklist session',
+          metadata: { instanceId: input.instanceId, observerId: input.observerId } });
+      }
+      return result;
     } catch (error) {
       if (this.isUniqueConstraintViolation(error, 'instance_id')) {
         throw new ConflictException('This checklist assignment already has a session');
@@ -235,14 +246,24 @@ export class ChecklistSessionService {
    * Each recipient's instance+session pair is created in one transaction so a session-creation
    * failure never leaves an orphaned active assignment behind.
    */
-  async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string, learnerScope: object) {
+  async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string, learnerScope: Prisma.UserWhereInput, requireAllLearnersInScope = false) {
     await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+    if (requireAllLearnersInScope && !await this.prisma.checklist.findFirst({
+      where: { id: input.checklistId, organizationId, deletedAt: null }, select: { id: true },
+    })) {
+      throw new NotFoundException('Checklist not found');
+    }
 
     const allowedLearners = await this.prisma.user.findMany({
-      where: { organizationId, id: { in: input.learnerIds }, ...learnerScope },
+      where: { organizationId, id: { in: input.learnerIds }, deletedAt: null, status: 'active', AND: [learnerScope] },
       select: { id: true },
     });
     const allowedLearnerIds = new Set(allowedLearners.map((u) => u.id));
+
+    // Own-create requests must not create a partial batch when any UUID is inaccessible.
+    if (requireAllLearnersInScope && input.learnerIds.some((id) => !allowedLearnerIds.has(id))) {
+      throw new NotFoundException('Learner not found');
+    }
 
     const schedules = new Map(input.schedules?.map((schedule) => [schedule.learnerId, schedule]));
     const results: Array<{ learnerId: string; status: 'created' | 'skipped' | 'failed'; sessionId?: string; reason?: string }> = [];
@@ -373,7 +394,7 @@ export class ChecklistSessionService {
    * for manager) so a manager can't schedule a session for someone outside their team; `observer`
    * is any active user holding the `instructor` role, tenant-wide (observers aren't team-scoped).
    */
-  async listParticipants(organizationId: string, query: ChecklistSessionParticipantsQuery, learnerScope: object) {
+  async listParticipants(organizationId: string, query: ChecklistSessionParticipantsQuery, learnerScope: object, ownObserverId?: string) {
     const searchClause: Prisma.UserWhereInput = query.search
       ? {
           OR: [
@@ -388,8 +409,9 @@ export class ChecklistSessionService {
       organizationId,
       deletedAt: null,
       status: 'active',
-      ...searchClause,
-      ...(query.role === 'observer' ? { memberships: { some: { role: 'instructor', organizationId } } } : learnerScope),
+      AND: [searchClause, query.role === 'observer'
+        ? { memberships: { some: { role: 'instructor', organizationId } }, ...(ownObserverId ? { id: ownObserverId } : {}) }
+        : learnerScope],
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -1097,6 +1119,7 @@ export class ChecklistSessionService {
         id: observerId,
         organizationId,
         deletedAt: null,
+        status: 'active',
         memberships: { some: { role: 'instructor', organizationId } },
       },
       select: { id: true },

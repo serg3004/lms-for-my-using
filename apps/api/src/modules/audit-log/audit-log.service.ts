@@ -31,6 +31,7 @@ export type AuditLogAction =
   | 'checklist_instance.assigned'
   | 'checklist_item_result.reviewed'
   | 'checklist_workplace_settings.updated'
+  | 'checklist_session.created'
   | 'checklist_session.bulk_created'
   | 'checklist_session.repeated'
   | 'checklist_scale.created'

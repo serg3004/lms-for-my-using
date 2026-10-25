@@ -38,6 +38,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `checklistManagerAnalyticsRead` | `admin`, `manager` |
 | `checklistReviewWrite` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistScoreRecalculate` | `admin` |
+| `checklistSessionsCreateOwn` | `instructor` |
 | `checklistSessionsManage` | `admin`, `manager` |
 | `checklistSessionsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `checklistSessionsRun` | `admin`, `instructor` |

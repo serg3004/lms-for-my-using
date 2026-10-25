@@ -52,6 +52,7 @@ function createPrisma(overrides: {
   notification?: Partial<Record<'createMany', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
+    auditLog: { create: jest.fn(async () => ({})) },
     checklistSession: {
       findFirst: jest.fn(async () => baseSession()),
       findUniqueOrThrow: jest.fn(async () => baseSession()),
@@ -163,7 +164,7 @@ describe('ChecklistSessionService', () => {
     });
 
     it('replays the stored response for a retry carrying the same idempotencyKey, without creating a second session', async () => {
-      const cachedResponse = { id: sessionId, status: 'scheduled', overdue: false, replayed: true };
+      const cachedResponse = { instanceId, observerId, id: sessionId, status: 'scheduled', overdue: false, replayed: true };
       const prisma = createPrisma({
         checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: cachedResponse })) },
       });
@@ -172,6 +173,15 @@ describe('ChecklistSessionService', () => {
       const result = await service.create(organizationId, { instanceId, observerId, idempotencyKey: 'retry-key-1' }, actorId);
 
       expect(result).toEqual(cachedResponse);
+      expect(prisma.checklistSession.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects reuse of another observer's creation key without returning their cached response (PR 331)", async () => {
+      const prisma = createPrisma({ checklistIdempotencyKey: {
+        findUnique: jest.fn(async () => ({ responseBody: { ...baseSession(), observerId: 'other-observer' } })),
+      } });
+      const service = new ChecklistSessionService(prisma);
+      await expect(service.create(organizationId, { instanceId, observerId, idempotencyKey: 'known-key' }, actorId)).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.create).not.toHaveBeenCalled();
     });
 
@@ -1046,7 +1056,7 @@ describe('ChecklistSessionService', () => {
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ memberships: { some: { role: 'instructor', organizationId } } }),
+          where: expect.objectContaining({ AND: expect.arrayContaining([{ memberships: { some: { role: 'instructor', organizationId } } }]) }),
         }),
       );
       const call = (prisma.user.findMany as jest.Mock).mock.calls[0]?.[0] as { where: Record<string, unknown> };
@@ -1061,7 +1071,7 @@ describe('ChecklistSessionService', () => {
       await service.listParticipants(organizationId, { role: 'learner', page: 1, pageSize: 25 }, learnerScope);
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining(learnerScope) }),
+        expect.objectContaining({ where: expect.objectContaining({ AND: expect.arrayContaining([learnerScope]) }) }),
       );
     });
 
@@ -1074,7 +1084,7 @@ describe('ChecklistSessionService', () => {
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            OR: expect.arrayContaining([expect.objectContaining({ firstName: expect.objectContaining({ contains: 'ivan' }) })]),
+            AND: expect.arrayContaining([expect.objectContaining({ OR: expect.arrayContaining([expect.objectContaining({ firstName: expect.objectContaining({ contains: 'ivan' }) })]) })]),
           }),
         }),
       );
