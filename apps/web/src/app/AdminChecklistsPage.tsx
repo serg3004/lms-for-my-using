@@ -31,7 +31,6 @@ export function AdminChecklistsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
   // The draft created by "Create checklist" in this visit. It exists only so the builder has an id;
   // if the author leaves without entering anything it is discarded instead of piling up as "New checklist".
   const freshDraftId = useRef<string | null>(null);
@@ -70,6 +69,8 @@ export function AdminChecklistsPage() {
       error: t('admin.checklists.loadError', 'Unable to load checklists.'),
     },
   );
+  // Declared after useAsyncData so the smoke spec's positional useState mocks keep their numbering.
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
