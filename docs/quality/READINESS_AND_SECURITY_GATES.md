@@ -100,7 +100,7 @@ prior work already confirmed it. Fresh Railway read-back (`serg3004/lms-for-my-u
   both delivery webhook URLs are absent from the production `api` service's variables, which the
   code treats as an intentional no-op rather than a startup failure. No SLA exists to evaluate
   because no provider is wired up.
-- **Обновление (PR 337, 2026-10-25).** Владелец решил: Redis обязателен, почта через Resend. В код добавлена прямая отправка через Resend (`RESEND_API_KEY`, `MAIL_FROM`) для сброса пароля и писем по сессиям. Redis-сервис добавлен в Railway 2026-10-25 (`REDIS_URL`, `BACKGROUND_JOBS_RUN_WORKER=true` у `api`; деплой `SUCCESS`, соединения `api` → Redis:6379 видны в network-flow) -- `LIVE-VERIFIED` подключение. Ключ Resend ещё не задан -- `[НЕ ПРОВЕРЕНО]`: живая доставка письма и выполнение первого due-напоминания.
+- **Обновление (PR 337, 2026-10-25).** Владелец решил: Redis обязателен, почта через Resend. В код добавлена прямая отправка через Resend (`RESEND_API_KEY`, `MAIL_FROM`) для сброса пароля и писем по сессиям. Redis-сервис добавлен в Railway 2026-10-25 (`REDIS_URL`, `BACKGROUND_JOBS_RUN_WORKER=true` у `api`; деплой `SUCCESS`, соединения `api` → Redis:6379 видны в network-flow) -- `LIVE-VERIFIED` подключение. Для случая без своего домена в PR 342 добавлен SMTP обычного ящика (`SMTP_HOST`/`SMTP_USER`/`SMTP_PASS`). Ключ Resend ещё не задан -- `[НЕ ПРОВЕРЕНО]`: живая доставка письма и выполнение первого due-напоминания.
 - **Geolocation retention/legal policy -- not a gap to close here.** Already tracked as an
   explicit open owner decision, `docs/status/OPEN_DECISIONS.md` DEC-CHKS-002: retention/deletion
   is deliberately unimplemented pending an owner decision on period/mechanism, documented as a

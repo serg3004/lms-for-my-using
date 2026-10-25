@@ -264,7 +264,10 @@ valid no-op -- the in-app `Notification` is already durable regardless of whethe
 configured or succeeds. PR 337: when `RESEND_API_KEY` and `MAIL_FROM` are set, both this delivery and
 `PasswordResetDelivery` send the email directly through Resend (`common/mail/resend.ts`, recipient
 looked up inside the organization) and the webhook is not used; a missing address is skipped, a
-provider failure is counted in the delivery-error metric and never blocks the workflow.
+provider failure is counted in the delivery-error metric and never blocks the workflow. PR 342: when
+Resend is not configured but `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` are, the same two deliveries
+send through SMTP instead (`common/mail/smtp.ts`; `MAIL_FROM` defaults to `SMTP_USER`); Resend wins
+if both are set, and a server rejection (auth, sender, recipient) counts as `http_error`.
 
 ## Checklist session admin API (PR 292)
 
