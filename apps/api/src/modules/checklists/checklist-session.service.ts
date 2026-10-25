@@ -10,6 +10,7 @@ import type {
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, sessionExportRows } from './checklist-report-csv.js';
 import { runSerializableWithRetry } from '../departments/public.js';
 import {
   createIncompleteAfterStartReminder,
@@ -430,7 +431,7 @@ export class ChecklistSessionService {
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
-  async list(organizationId: string, query: ChecklistSessionQuery, scope: object, viewer: ChecklistSessionViewerContext) {
+  private buildListWhere(organizationId: string, query: ChecklistSessionQuery, scope: object): Prisma.ChecklistSessionWhereInput {
     const overdueClause: Prisma.ChecklistSessionWhereInput =
       query.overdueOnly === 'true'
         ? { status: 'scheduled', scheduledAt: { lt: new Date() } }
@@ -460,7 +461,7 @@ export class ChecklistSessionService {
     // key (checklistId/learnerId filters) silently *replace* rather than narrow it, letting a
     // manager read outside-team sessions by supplying either filter. Combine every clause under
     // `AND` instead so nested `instance`/`OR` keys from different clauses compose, not overwrite.
-    const where: Prisma.ChecklistSessionWhereInput = {
+    return {
       AND: [
         { organizationId, deletedAt: null },
         scope,
@@ -477,6 +478,10 @@ export class ChecklistSessionService {
         searchClause,
       ],
     };
+  }
+
+  async list(organizationId: string, query: ChecklistSessionQuery, scope: object, viewer: ChecklistSessionViewerContext) {
+    const where = this.buildListWhere(organizationId, query, scope);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.checklistSession.findMany({
@@ -495,6 +500,34 @@ export class ChecklistSessionService {
       pageSize: query.pageSize,
       total,
     };
+  }
+
+  /**
+   * PR 336: CSV of the sessions the caller's own list shows for these filters (same `where`, same
+   * scope), capped so a runaway export cannot exhaust memory. The export is audited with the filters
+   * and the row count, never with the rows themselves.
+   */
+  async exportCsv(organizationId: string, query: ChecklistSessionQuery, scope: object, actor: { id: string; locale: string | null }) {
+    const where = this.buildListWhere(organizationId, query, scope);
+    const items = await this.prisma.checklistSession.findMany({
+      where,
+      include: sessionProjectionInclude,
+      orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
+      take: MAX_EXPORT_ROWS + 1,
+    });
+    if (items.length > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} sessions. Narrow the filters.`);
+    }
+    const csv = serializeReportCsv(sessionExportRows(items.map(presentProjected), exportLocale(actor.locale)));
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'checklist_report.exported',
+      targetType: 'checklist_report',
+      summary: `Exported ${items.length} checklist sessions to CSV`,
+      metadata: { kind: 'sessions', rowCount: items.length, filters: { ...query, page: undefined, pageSize: undefined } },
+    });
+    return { filename: `checklist-sessions-${new Date().toISOString().slice(0, 10)}.csv`, csv, rowCount: items.length };
   }
 
   async get(sessionId: string, organizationId: string, scope: object, viewer: ChecklistSessionViewerContext) {

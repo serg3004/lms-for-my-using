@@ -4,11 +4,13 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
+import { employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import {
   AssignChecklistInput,
   ChecklistScoreFormula,
   BulkAssignChecklistInput,
   ChecklistAnalyticsQuery,
+  ChecklistManagerAnalyticsExportQuery,
   ChecklistManagerAnalyticsQuery,
   ChecklistListQuery,
   ChecklistQueueQuery,
@@ -1095,6 +1097,36 @@ export class ChecklistsService {
         noCompletionCount: row.employees.size - row.completedEmployees.size,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /**
+   * PR 336: CSV of the dashboard's employees table. Runs through getManagerAnalytics() so the scope
+   * (participantLearnerScope) and period/checklist/department filters are the dashboard's own, then
+   * applies the same search / toggle / sort the page applies. Audited with filters and row count.
+   */
+  async exportManagerAnalytics(
+    organizationId: string,
+    query: ChecklistManagerAnalyticsExportQuery,
+    userScope: Prisma.UserWhereInput,
+    thresholds: { high: number; low: number | null },
+    actor: { id: string; locale: string | null },
+  ) {
+    const { q, noCompletion, sort, dir, ...analyticsQuery } = query;
+    const analytics = await this.getManagerAnalytics(organizationId, analyticsQuery, userScope, thresholds);
+    const rows = viewEmployees(analytics.employees, { q, noCompletion, sort, dir });
+    if (rows.length > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} employees. Narrow the filters.`);
+    }
+    const csv = serializeReportCsv(employeeExportRows(rows, exportLocale(actor.locale)));
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'checklist_report.exported',
+      targetType: 'checklist_report',
+      summary: `Exported ${rows.length} employees of the checklist dashboard to CSV`,
+      metadata: { kind: 'manager_employees', rowCount: rows.length, filters: query },
+    });
+    return { filename: `checklist-employees-${new Date().toISOString().slice(0, 10)}.csv`, csv, rowCount: rows.length };
   }
 
   private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {

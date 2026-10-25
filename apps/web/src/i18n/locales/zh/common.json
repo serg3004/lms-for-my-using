@@ -1158,7 +1158,9 @@
           "cancel": "取消",
           "error": "无法发送消息。",
           "sent": "消息已发送。"
-        }
+        },
+        "exportCsv": "下载 CSV",
+        "exportError": "无法导出会话。"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -1233,7 +1235,7 @@
         "tabHistory": "历史",
         "checklist": "检查表",
         "result": "结果",
-        "notScored": "未评分（全部项目已跳过）",
+        "notScored": "未评分",
         "location": "位置采集",
         "criteriaEmpty": "此检查表没有标准项。",
         "photosTitle": "照片证据",
@@ -1263,7 +1265,6 @@
         "formulaCriteria": "按标准（已标记 / 总数）",
         "formulaHint": "各标准权重相同。跳过的标准不计入；已选量表等级视为已标记。被拒绝的回答不计为已标记。",
         "recalculated": "分数已重新计算",
-        "notScored": "未评分",
         "recalculateReason": "重新计算原因",
         "recalculate": "重新计算分数",
         "recalculating": "正在重新计算...",
@@ -2098,7 +2099,9 @@
       "onlyNoCompletion": "仅显示无已完成会话",
       "departmentsTitle": "按部门",
       "employeesNoMatch": "没有符合筛选条件的员工。",
-      "sessionCreated": "会话已安排。"
+      "sessionCreated": "会话已安排。",
+      "exportCsv": "下载 CSV",
+      "exportError": "无法导出表格。"
     }
   },
   "instructor": {

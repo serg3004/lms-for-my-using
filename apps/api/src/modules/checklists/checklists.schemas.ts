@@ -197,6 +197,15 @@ export const checklistManagerAnalyticsQuerySchema = z.object({
 });
 export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
 
+// PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
+export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
+  q: z.string().trim().min(1).max(120).optional(),
+  noCompletion: z.enum(['true', 'false']).optional(),
+  sort: z.enum(['employee', 'department', 'sessions', 'average']).optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
+});
+export type ChecklistManagerAnalyticsExportQuery = z.infer<typeof checklistManagerAnalyticsExportQuerySchema>;
+
 // ---- Workplace-training session settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
 // checklistGeolocationPolicySchema itself is declared near the top of this file (reused by the
 // PR 296 checklist-level defaultLocationCapturePolicy field above).

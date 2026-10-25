@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
+import { downloadCsvFile } from '../shared/downloadCsv.js';
 import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -11,7 +12,7 @@ import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult 
 import { Badge, Button, DataTable, Menu, PageState, Pagination, SearchInput, type Column } from '../shared/ui.js';
 import { listChecklists } from '../shared/api/checklists.js';
 import { listDepartments } from '../shared/api/departments.js';
-import { deleteChecklistSession, listChecklistSessionParticipants, listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
+import { deleteChecklistSession, exportChecklistSessions, listChecklistSessionParticipants, listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionParticipant, ChecklistSessionStatus, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
 import type { Department } from '../shared/api/departments.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
@@ -113,6 +114,29 @@ export function AdminChecklistSessionsPage() {
       error: t('admin.checklists.sessions.loadError', 'Unable to load sessions.'),
     },
   );
+
+  const exporting = useRef(false);
+  async function exportCsv() {
+    if (exporting.current) return;
+    exporting.current = true;
+    setActionError(null);
+    try {
+      const file = await exportChecklistSessions({
+        status: statusTab === 'all' ? undefined : statusTab,
+        search: search.trim() || undefined,
+        scheduledFrom: resolvePeriodScheduledFrom(period),
+        observerId: observerFilter || undefined,
+        checklistId: checklistFilter || undefined,
+        learnerId: learnerFilter || undefined,
+        departmentId: departmentFilter || undefined,
+      });
+      downloadCsvFile(file.filename, file.csv);
+    } catch (error) {
+      setActionError(error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.exportError', 'Unable to export the sessions.'));
+    } finally {
+      exporting.current = false;
+    }
+  }
 
   async function confirmCancel() {
     if (!cancelTarget) return;
@@ -286,6 +310,7 @@ export function AdminChecklistSessionsPage() {
         subtitle={t('admin.checklists.sessions.subtitle', 'Planning, running and tracking training.')}
         action={
           <>
+            <Button onClick={() => void exportCsv()} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>
             <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>

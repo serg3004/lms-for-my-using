@@ -1158,7 +1158,9 @@
           "cancel": "Cancel",
           "error": "Unable to send the message.",
           "sent": "Message sent."
-        }
+        },
+        "exportCsv": "Download CSV",
+        "exportError": "Unable to export the sessions."
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -1233,7 +1235,7 @@
         "tabHistory": "History",
         "checklist": "Checklist",
         "result": "Result",
-        "notScored": "Not scored (all skipped)",
+        "notScored": "Not scored",
         "location": "Location capture",
         "criteriaEmpty": "This checklist has no criteria.",
         "photosTitle": "Photo evidence",
@@ -1263,7 +1265,6 @@
         "formulaCriteria": "By criteria (marked / total)",
         "formulaHint": "Criteria have equal weight. Skipped criteria are excluded; a selected scale level counts as a mark. Rejected answers do not count as marked.",
         "recalculated": "Score recalculated",
-        "notScored": "Not scored",
         "recalculateReason": "Reason for recalculation",
         "recalculate": "Recalculate score",
         "recalculating": "Recalculating...",
@@ -2098,7 +2099,9 @@
       "onlyNoCompletion": "Only without completed sessions",
       "departmentsTitle": "By department",
       "employeesNoMatch": "No employees match the filters.",
-      "sessionCreated": "Session scheduled."
+      "sessionCreated": "Session scheduled.",
+      "exportCsv": "Download CSV",
+      "exportError": "Unable to export the table."
     }
   },
   "instructor": {

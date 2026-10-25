@@ -507,6 +507,22 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await expect(page.getByRole('dialog').getByText('Ivy InScope').first()).toBeVisible();
     });
 
+    await test.step('PR 336: manager downloads the table as CSV with the current view', async () => {
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toBeHidden();
+      let exportUrl = '';
+      await page.route('**/api/v1/checklists/manager-analytics/export*', (route) => {
+        exportUrl = route.request().url();
+        return route.fulfill({ json: { filename: 'checklist-employees-2026-03-01.csv', csv: '\uFEFF"Сотрудник"\r\n"Ivy InScope"\r\n', rowCount: 1 } });
+      });
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: 'Скачать CSV' }).click(),
+      ]);
+      expect(download.suggestedFilename()).toBe('checklist-employees-2026-03-01.csv');
+      expect(new URL(exportUrl).searchParams.get('q')).toBe('Ivy');
+    });
+
     await context.close();
   });
 
