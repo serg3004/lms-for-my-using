@@ -5,6 +5,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
 import { employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
+import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
   AssignChecklistInput,
   ChecklistScoreFormula,
@@ -415,6 +416,70 @@ export class ChecklistsService {
     });
 
     return this.prisma.checklist.findFirstOrThrow({ where: { id: copyId, organizationId }, select: checklistWithItemsSelect });
+  }
+
+  /**
+   * PR 341: creates a draft from a built-in template (checklist-templates.ts). Same shape as a copy:
+   * one transaction, always a draft, nothing shared with other checklists afterwards.
+   */
+  async createFromTemplate(templateKey: string, locale: string | undefined, organizationId: string, actorId: string) {
+    const template = findTemplate(templateKey);
+    if (!template) {
+      throw new NotFoundException('Checklist template not found');
+    }
+    const rendered = renderTemplate(template, locale);
+    const pointsPerItem = rendered.scoringMode === 'sum_points' ? 10 : 0;
+
+    const checklistId = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.checklist.create({
+        data: {
+          organizationId,
+          title: rendered.title,
+          description: rendered.description,
+          status: 'draft',
+          scoringMode: rendered.scoringMode,
+          passThreshold: rendered.passThreshold,
+          scaleLevels: rendered.scaleLevels ?? undefined,
+          contextFields: rendered.contextFields,
+          createdBy: actorId,
+        },
+        select: { id: true },
+      });
+      let order = 0;
+      for (const group of rendered.groups) {
+        const createdGroup = await tx.checklistItemGroup.create({
+          data: { organizationId, checklistId: created.id, title: group.title, order: group.order },
+          select: { id: true },
+        });
+        for (const entry of group.items) {
+          await tx.checklistItem.create({
+            data: {
+              organizationId,
+              checklistId: created.id,
+              groupId: createdGroup.id,
+              order: order++,
+              text: entry.text,
+              points: pointsPerItem,
+              isRequired: true,
+              photoRequired: entry.photoRequired,
+            },
+          });
+        }
+      }
+      return created.id;
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.created_from_template',
+      targetType: 'checklist',
+      targetId: checklistId,
+      summary: `Created checklist from template ${template.key}`,
+      metadata: { templateKey: template.key, locale: templateLocale(locale) },
+    });
+
+    return this.prisma.checklist.findFirstOrThrow({ where: { id: checklistId, organizationId }, select: checklistWithItemsSelect });
   }
 
   async deleteChecklist(checklistId: string, organizationId: string, actorId: string | null = null) {

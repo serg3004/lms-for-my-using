@@ -56,6 +56,16 @@ export function copyChecklist(checklistId: string) {
   return apiRequest<ChecklistSummary>(`/checklists/${encodeURIComponent(checklistId)}/copy`, { method: 'POST' });
 }
 
+export type ChecklistTemplateSummary = { key: string; title: string; description: string; groupCount: number; itemCount: number };
+
+export function listChecklistTemplates(locale: string) {
+  return apiRequest<{ items: ChecklistTemplateSummary[] }>(`/checklist-templates?locale=${encodeURIComponent(locale)}`);
+}
+
+export function createChecklistFromTemplate(templateKey: string, locale: string) {
+  return apiRequest<ChecklistSummary>('/checklists/from-template', { method: 'POST', body: JSON.stringify({ templateKey, locale }) });
+}
+
 export function deleteChecklist(checklistId: string) {
   return apiRequest<void>(`/checklists/${encodeURIComponent(checklistId)}`, { method: 'DELETE' });
 }

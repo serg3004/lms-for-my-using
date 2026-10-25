@@ -5,6 +5,7 @@ import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
+import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
@@ -23,13 +24,14 @@ import type {
 } from '../shared/api/types.js';
 type AdminChecklistsData = { checklists: ChecklistSummary[] };
 export function AdminChecklistsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { currentUser } = useSession();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ChecklistStatus>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   // The draft created by "Create checklist" in this visit. It exists only so the builder has an id;
   // if the author leaves without entering anything it is discarded instead of piling up as "New checklist".
   const freshDraftId = useRef<string | null>(null);
@@ -152,6 +154,10 @@ export function AdminChecklistsPage() {
         title={t('admin.checklists.title', 'Checklists')}
         subtitle={t('admin.checklists.subtitle', 'Configurable checklists with points or a custom scale, photo confirmation, and automatic or manual grading.')}
         action={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" type="button" onClick={() => setTemplatesOpen(true)}>
+            {t('admin.checklists.templates.open', 'From template')}
+          </Button>
           <Button
             variant="primary"
             type="button"
@@ -169,6 +175,7 @@ export function AdminChecklistsPage() {
           >
             + {t('admin.checklists.create', 'Create checklist')}
           </Button>
+          </div>
         }
       />
       <ChecklistsTabs current="checklists" />
@@ -191,6 +198,13 @@ export function AdminChecklistsPage() {
       />
       <ChecklistTable rows={filtered} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels}
         onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} t={t} />
+      <ChecklistTemplateDialog
+        open={templatesOpen}
+        locale={(i18n.language ?? 'en').slice(0, 2)}
+        onClose={() => setTemplatesOpen(false)}
+        onCreated={(created) => { setTemplatesOpen(false); void load().then(() => setSelectedId(created.id)); }}
+        t={t}
+      />
       <ConfirmDialog
         open={deleteTarget !== null}
         title={t('admin.checklists.deleteTitle', 'Delete checklist')}

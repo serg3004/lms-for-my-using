@@ -51,6 +51,15 @@ export const createChecklistSchema = z.object({
 });
 export type CreateChecklistInput = z.infer<typeof createChecklistSchema>;
 
+export const checklistTemplatesQuerySchema = z.object({
+  locale: z.string().trim().max(10).optional(),
+});
+
+export const createChecklistFromTemplateSchema = z.object({
+  templateKey: z.string().trim().min(1).max(80),
+  locale: z.string().trim().max(10).optional(),
+});
+
 export const updateChecklistSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
