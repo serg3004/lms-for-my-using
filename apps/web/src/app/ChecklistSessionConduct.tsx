@@ -145,6 +145,11 @@ export async function runMutation(
  * go through the instance, the lifecycle (start/pause/resume/complete) and structured feedback
  * through the session.
  */
+/** Complete is open once every required criterion is answered, or always on a checklist that allows finishing incomplete (PR 330). */
+export function canCompleteSession(status: string, allowFinishIncomplete: boolean, completedRequired: number, requiredCount: number) {
+  return status === 'in_progress' && (allowFinishIncomplete || completedRequired === requiredCount);
+}
+
 export async function fetchConductData(sessionId: string): Promise<ConductData> {
   const session = await getChecklistSession(sessionId);
   const instance = await getChecklistInstance(session.instanceId);
@@ -253,7 +258,10 @@ export function ConductScreen({
   }
 
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(items, instance.results, checklist.scoringMode);
-  const canComplete = session.status === 'in_progress' && completedRequired === requiredCount;
+  // PR 330: on a checklist that allows finishing incomplete the client doesn't block Complete; the
+  // server records the unanswered criteria as skipped.
+  const allowFinishIncomplete = checklist.allowFinishIncomplete === true;
+  const canComplete = canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount);
   const contextComplete = contextFields.every((field) => !field.required || Boolean(contextValues[field.id]?.trim()));
 
   async function saveContextAndContinue(nextIndex: number) {
@@ -386,6 +394,7 @@ export function ConductScreen({
                     result={currentResult}
                     scoringMode={checklist.scoringMode}
                     scaleLevels={checklist.scaleLevels}
+                    cameraOnly={checklist.forbidGalleryPhotos === true}
                     editable={editable}
                     onSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
                     onBusyChange={setCardBusy}
@@ -399,6 +408,11 @@ export function ConductScreen({
             {!canComplete && isLastStep && (
               <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
                 {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
+              </p>
+            )}
+            {allowFinishIncomplete && editable && isLastStep && completedRequired < requiredCount && (
+              <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
+                {t('checklistSessions.conduct.skipUnansweredHint', 'Criteria you have not answered will be recorded as skipped and left out of the result.')}
               </p>
             )}
 
@@ -565,6 +579,7 @@ function CriterionCard({
   result,
   scoringMode,
   scaleLevels,
+  cameraOnly,
   editable,
   onSaved,
   onBusyChange,
@@ -576,6 +591,7 @@ function CriterionCard({
   result: ChecklistItemResultSummary | undefined;
   scoringMode: string;
   scaleLevels: { level: number; label: string; points: number }[] | null;
+  cameraOnly: boolean;
   editable: boolean;
   onSaved: (instance: ChecklistInstanceSummary) => void;
   onBusyChange: (busy: boolean) => void;
@@ -705,6 +721,7 @@ function CriterionCard({
           instanceId={instanceId}
           item={item}
           result={result}
+          cameraOnly={cameraOnly}
           editable={editable}
           busy={saving}
           onUploadingChange={setUploading}
@@ -735,6 +752,7 @@ function PhotoAttachment({
   instanceId,
   item,
   result,
+  cameraOnly,
   editable,
   busy,
   onUploadingChange,
@@ -746,6 +764,7 @@ function PhotoAttachment({
   instanceId: string;
   item: ChecklistItemSummary;
   result: ChecklistItemResultSummary | undefined;
+  cameraOnly: boolean;
   editable: boolean;
   busy: boolean;
   onUploadingChange: (uploading: boolean) => void;
@@ -789,7 +808,7 @@ function PhotoAttachment({
 
   return (
     <div style={{ marginTop: 12 }}>
-      <input ref={inputRef} type="file" accept="image/*" onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" {...(cameraOnly ? { capture: 'environment' as const } : {})} onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div
           style={{

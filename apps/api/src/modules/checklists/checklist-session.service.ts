@@ -671,6 +671,13 @@ export class ChecklistSessionService {
         if (missing) throw new BadRequestException(`Required context field is missing: ${missing.label}`);
       }
 
+      // PR 330: on a checklist that allows finishing incomplete, unanswered criteria are recorded as
+      // skipped before the session closes. It runs after every check above that can still reject the
+      // request, so a refused completion never skips anything; recording a skip is idempotent.
+      if (action === 'complete') {
+        await this.checklistsService.finishIncompleteInstance(session.instanceId, organizationId);
+      }
+
       const contextFieldsSnapshot = action === 'start' ? contextFieldsFromSessionStart(session) : undefined;
 
       const now = new Date();

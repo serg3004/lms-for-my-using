@@ -14,6 +14,7 @@ module.exports = {
     '/src/integration/checklist-session-reminders\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-admin-api\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-observer-create\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-finish-incomplete\\.database\\.spec\\.ts$',
     '/src/integration/checklist-manager-analytics\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-recalculate\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-idempotency\\.database\\.spec\\.ts$',

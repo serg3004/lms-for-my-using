@@ -36,7 +36,7 @@ describe('checklist session reminders — database', () => {
     prisma = new PrismaService();
     await prisma.$connect();
     checklistsService = new ChecklistsService(prisma, {} as UploadService);
-    sessionService = new ChecklistSessionService(prisma);
+    sessionService = new ChecklistSessionService(prisma, new ChecklistsService(prisma, {} as UploadService));
     const backgroundJobs = new BackgroundJobsService(new DisabledBackgroundJobBackend());
     const outbox = new OutboxService(prisma, backgroundJobs);
     // No CHECKLIST_SESSION_REMINDER_DELIVERY_URL is set in this test environment -- exercises the

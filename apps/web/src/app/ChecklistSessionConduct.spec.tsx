@@ -26,7 +26,7 @@ vi.mock('../shared/api/checklists.js', async () => {
   return { ...actual, getChecklistInstance: checklistsApiMocks.getChecklistInstance };
 });
 
-import { captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, resolveConductStep, runMutation } from './ChecklistSessionConduct.js';
+import { canCompleteSession, captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, resolveConductStep, runMutation } from './ChecklistSessionConduct.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary } from '../shared/api/types.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -358,6 +358,19 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).toContain('Replace');
   });
 
+  it('PR 330: opens the camera directly for photos only when the checklist forbids gallery photos', () => {
+    const photoFirst = (forbidGalleryPhotos: boolean) => {
+      const data = instance();
+      data.checklist!.items = [...data.checklist!.items].reverse();
+      data.checklist!.forbidGalleryPhotos = forbidGalleryPhotos;
+      return renderToStaticMarkup(
+        <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: data }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
+      );
+    };
+    expect(photoFirst(true)).toContain('capture="environment"');
+    expect(photoFirst(false)).not.toContain('capture=');
+  });
+
   it('renders a checklist with no items without crashing', () => {
     expect(() =>
       renderToStaticMarkup(
@@ -370,5 +383,21 @@ describe('ConductScreen (real hooks)', () => {
         />,
       ),
     ).not.toThrow();
+  });
+});
+
+describe('canCompleteSession (PR 330)', () => {
+  it('needs every required criterion answered on a strict checklist', () => {
+    expect(canCompleteSession('in_progress', false, 1, 2)).toBe(false);
+    expect(canCompleteSession('in_progress', false, 2, 2)).toBe(true);
+  });
+
+  it('does not block Complete on a checklist that allows finishing incomplete', () => {
+    expect(canCompleteSession('in_progress', true, 0, 2)).toBe(true);
+  });
+
+  it('never opens Complete outside an in-progress session', () => {
+    expect(canCompleteSession('paused', true, 2, 2)).toBe(false);
+    expect(canCompleteSession('scheduled', true, 0, 2)).toBe(false);
   });
 });

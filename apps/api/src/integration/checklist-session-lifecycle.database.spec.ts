@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { ChecklistSessionService } from '../modules/checklists/checklist-session.service.js';
+import { ChecklistsService } from '../modules/checklists/checklists.service.js';
+import type { UploadService } from '../modules/upload/public.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
 // Exercises the PR 289 session-lifecycle state machine against a real Postgres instance. The
@@ -25,7 +27,7 @@ describe('checklist session lifecycle — database', () => {
     });
     prisma = new PrismaService();
     await prisma.$connect();
-    service = new ChecklistSessionService(prisma);
+    service = new ChecklistSessionService(prisma, new ChecklistsService(prisma, {} as UploadService));
   });
 
   afterAll(async () => {

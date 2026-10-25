@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE } from './checklists.service.js';
+import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, type ChecklistsService } from './checklists.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -259,7 +259,8 @@ describe('ChecklistSessionService', () => {
     it('pauses an in-progress session, resumes it, then completes it — the full lifecycle', async () => {
       let status = 'in_progress';
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status })) } });
-      const service = new ChecklistSessionService(prisma);
+      const checklistsService = { finishIncompleteInstance: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService as unknown as ChecklistsService);
 
       await service.transition(sessionId, organizationId, 'pause', 1, actorId, {});
       expect(prisma.checklistSession.updateMany).toHaveBeenLastCalledWith(
@@ -273,10 +274,13 @@ describe('ChecklistSessionService', () => {
       );
 
       status = 'in_progress';
+      expect(checklistsService.finishIncompleteInstance).not.toHaveBeenCalled();
       await service.transition(sessionId, organizationId, 'complete', 1, actorId, {});
       expect(prisma.checklistSession.updateMany).toHaveBeenLastCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) }),
       );
+      // PR 330: completing is the one transition that lets the checklist skip unanswered criteria.
+      expect(checklistsService.finishIncompleteInstance).toHaveBeenCalledWith(instanceId, organizationId);
     });
 
     it('rejects completing a paused session directly (must resume first, per the ADR diagram)', async () => {
@@ -854,7 +858,7 @@ describe('ChecklistSessionService', () => {
 
     it('suppresses pending reminders when a session completes', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, { finishIncompleteInstance: jest.fn() } as unknown as ChecklistsService);
 
       await service.transition(sessionId, organizationId, 'complete', 1, actorId, {});
 

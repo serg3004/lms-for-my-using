@@ -1089,6 +1089,12 @@ model Checklist {
   contextFields               Json?                          @map("context_fields")
   defaultLocationCapturePolicy ChecklistGeolocationPolicy?   @map("default_location_capture_policy")
   preSessionVisibility        ChecklistPreSessionVisibility  @default(structure_only) @map("pre_session_visibility")
+  // PR 330: strictness settings. allowFinishIncomplete lets a session be completed with unanswered
+  // criteria (they are recorded as skipped); forbidGalleryPhotos is a client-side camera-only hint
+  // for the photo input -- the server cannot verify where a photo came from. Both are frozen into
+  // the instance snapshot on assignment like the other builder settings.
+  allowFinishIncomplete       Boolean                        @default(false) @map("allow_finish_incomplete")
+  forbidGalleryPhotos         Boolean                        @default(false) @map("forbid_gallery_photos")
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
