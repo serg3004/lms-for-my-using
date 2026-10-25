@@ -446,13 +446,15 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     // renders exactly the employees its own scoped API response contains -- no more (no
     // client-side leakage beyond what the manager's own scope returned) and no fewer (the drilldown
     // and the aggregate totals stay consistent with each other for the same response).
-    const inScopeEmployee = { userId: 'scoped-emp-1', firstName: 'Ivy', lastName: 'InScope', department: 'Warehouse', sessionsCount: 2, completedCount: 2, averagePercentage: 88, trend: 'up' as const, lastSessionAt: '2026-03-01T00:00:00.000Z' };
+    const inScopeEmployee = { userId: 'scoped-emp-1', firstName: 'Ivy', lastName: 'InScope', email: 'ivy@example.invalid', department: 'Warehouse', departmentId: 'scoped-dept-1', sessionsCount: 2, completedCount: 2, averagePercentage: 88, trend: 'up' as const, lastSessionAt: '2026-03-01T00:00:00.000Z' };
     const analytics = {
       summary: { totalEmployees: 1, totalSessions: 2, completedSessions: 2, averagePercentage: 88, lowCount: 0, highCount: 1, noCompletionCount: 0 },
       thresholds: { high: 90, low: 60 },
       distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: 0 }, { bucket: 'high', count: 1 }],
       trend: [{ date: '2026-02-25', averagePercentage: 88, count: 2 }],
       employees: [inScopeEmployee],
+      departments: [{ departmentId: 'scoped-dept-1', name: 'Warehouse', employeesCount: 1, sessionsCount: 2, completedCount: 2, averagePercentage: 88, noCompletionCount: 0 }],
+      departmentOptions: [{ id: 'scoped-dept-1', name: 'Warehouse' }],
     };
     const drilldownSessions = [{
       id: 'drilldown-session-1', organizationId: 'lifecycle-org', instanceId: 'drilldown-instance-1', observerId,
