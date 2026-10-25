@@ -448,13 +448,15 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     // renders exactly the employees its own scoped API response contains -- no more (no
     // client-side leakage beyond what the manager's own scope returned) and no fewer (the drilldown
     // and the aggregate totals stay consistent with each other for the same response).
-    const inScopeEmployee = { userId: 'scoped-emp-1', firstName: 'Ivy', lastName: 'InScope', department: 'Warehouse', sessionsCount: 2, completedCount: 2, averagePercentage: 88, trend: 'up' as const, lastSessionAt: '2026-03-01T00:00:00.000Z' };
+    const inScopeEmployee = { userId: 'scoped-emp-1', firstName: 'Ivy', lastName: 'InScope', email: 'ivy@example.invalid', department: 'Warehouse', departmentId: 'scoped-dept-1', sessionsCount: 2, completedCount: 2, averagePercentage: 88, trend: 'up' as const, lastSessionAt: '2026-03-01T00:00:00.000Z' };
     const analytics = {
       summary: { totalEmployees: 1, totalSessions: 2, completedSessions: 2, averagePercentage: 88, lowCount: 0, highCount: 1, noCompletionCount: 0 },
       thresholds: { high: 90, low: 60 },
       distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: 0 }, { bucket: 'high', count: 1 }],
       trend: [{ date: '2026-02-25', averagePercentage: 88, count: 2 }],
       employees: [inScopeEmployee],
+      departments: [{ departmentId: 'scoped-dept-1', name: 'Warehouse', employeesCount: 1, sessionsCount: 2, completedCount: 2, averagePercentage: 88, noCompletionCount: 0 }],
+      departmentOptions: [{ id: 'scoped-dept-1', name: 'Warehouse' }],
     };
     const drilldownSessions = [{
       id: 'drilldown-session-1', organizationId: 'lifecycle-org', instanceId: 'drilldown-instance-1', observerId,
@@ -494,6 +496,15 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await test.step('manager drills down into the employee and sees their sessions, consistent with the aggregate (#8)', async () => {
       await page.getByRole('button', { name: /Показать сессии — Ivy InScope/ }).click();
       await expect(page.locator('.ds-data-table__expanded').getByText('Opening shift checklist')).toBeVisible();
+    });
+
+    await test.step('PR 334: manager searches the table and opens scheduling for the employee', async () => {
+      const search = page.getByLabel('Поиск сотрудников');
+      await search.fill('zzz-nobody');
+      await expect(page.getByText('Нет сотрудников, подходящих под фильтры.')).toBeVisible();
+      await search.fill('Ivy');
+      await page.getByRole('button', { name: 'Запланировать: Ivy InScope' }).click();
+      await expect(page.getByRole('dialog').getByText('Ivy InScope').first()).toBeVisible();
     });
 
     await context.close();

@@ -45,12 +45,24 @@ export type ManagerAnalyticsEmployeeRow = {
   userId: string;
   firstName: string;
   lastName: string;
+  email: string;
   department: string | null;
+  departmentId: string | null;
   sessionsCount: number;
   completedCount: number;
   averagePercentage: number | null;
   trend: 'up' | 'down' | 'flat' | null;
   lastSessionAt: string | null;
+};
+
+export type ManagerAnalyticsDepartmentRow = {
+  departmentId: string;
+  name: string;
+  employeesCount: number;
+  sessionsCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
+  noCompletionCount: number;
 };
 
 const checklistSelect = {
@@ -919,26 +931,33 @@ export class ChecklistsService {
     const to = new Date(query.to);
     const previousFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
 
-    const departmentWhere: Prisma.UserWhereInput = query.departmentId
-      ? { departmentMemberships: { some: { organizationId, departmentId: query.departmentId, isPrimary: true, effectiveTo: null } } }
-      : {};
-    const employees = await this.prisma.user.findMany({
-      where: { organizationId, deletedAt: null, ...userScope, ...departmentWhere },
+    // Departments are derived from the already scoped employees (participantLearnerScope), so a manager
+    // only ever sees departments of their own zone and never gains admin-level org structure access.
+    const scopedEmployees = await this.prisma.user.findMany({
+      where: { organizationId, deletedAt: null, ...userScope },
       select: {
-        id: true, firstName: true, lastName: true,
-        departmentMemberships: { where: { isPrimary: true, effectiveTo: null }, select: { department: { select: { name: true } } }, take: 1 },
+        id: true, firstName: true, lastName: true, email: true,
+        departmentMemberships: { where: { isPrimary: true, effectiveTo: null }, select: { department: { select: { id: true, name: true } } }, take: 1 },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
-    const employeeIds = employees.map((employee) => employee.id);
+    const departmentOf = (employee: (typeof scopedEmployees)[number]) => employee.departmentMemberships[0]?.department ?? null;
+    const employees = query.departmentId ? scopedEmployees.filter((employee) => departmentOf(employee)?.id === query.departmentId) : scopedEmployees;
+    const departmentOptions = [...new Map(scopedEmployees.flatMap((employee) => { const department = departmentOf(employee); return department ? [[department.id, department.name] as const] : []; })).entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const scopedIds = scopedEmployees.map((employee) => employee.id);
+    const visibleIds = new Set(employees.map((employee) => employee.id));
     const emptyResult = {
       summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
       thresholds,
       distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: 0 }, { bucket: 'high', count: 0 }],
       trend: [] as { date: string; averagePercentage: number; count: number }[],
       employees: [] as ManagerAnalyticsEmployeeRow[],
+      departments: [] as ManagerAnalyticsDepartmentRow[],
+      departmentOptions,
     };
-    if (employeeIds.length === 0) return emptyResult;
+    if (scopedIds.length === 0) return emptyResult;
 
     const sessionSelect = {
       scheduledAt: true,
@@ -946,13 +965,17 @@ export class ChecklistsService {
     } as const;
     const sessionWhere = (range: { gte: Date; lte: Date }): Prisma.ChecklistSessionWhereInput => ({
       organizationId,
+      deletedAt: null,
       scheduledAt: range,
-      instance: { deletedAt: null, userId: { in: employeeIds }, ...(query.checklistId ? { checklistId: query.checklistId } : {}) },
+      instance: { deletedAt: null, userId: { in: scopedIds }, ...(query.checklistId ? { checklistId: query.checklistId } : {}) },
     });
-    const [currentSessions, previousSessions] = await Promise.all([
+    const [allCurrentSessions, allPreviousSessions] = await Promise.all([
       this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: from, lte: to }), select: sessionSelect }),
       this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: previousFrom, lte: from }), select: sessionSelect }),
     ]);
+    const currentSessions = allCurrentSessions.filter((session) => visibleIds.has(session.instance.userId));
+    const previousSessions = allPreviousSessions.filter((session) => visibleIds.has(session.instance.userId));
+    if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(scopedEmployees, allCurrentSessions) };
 
     const bucketOf = (percentage: number, passed: boolean): 'low' | 'mid' | 'high' => {
       if (percentage >= thresholds.high) return 'high';
@@ -1002,7 +1025,9 @@ export class ChecklistsService {
         userId: employee.id,
         firstName: employee.firstName,
         lastName: employee.lastName,
-        department: employee.departmentMemberships[0]?.department.name ?? null,
+        email: employee.email,
+        department: departmentOf(employee)?.name ?? null,
+        departmentId: departmentOf(employee)?.id ?? null,
         sessionsCount: current?.sessionsCount ?? 0,
         completedCount: current?.completed.length ?? 0,
         averagePercentage: currentAverage,
@@ -1029,7 +1054,47 @@ export class ChecklistsService {
       ],
       trend,
       employees: employeeRows,
+      departments: this.departmentBreakdown(scopedEmployees, allCurrentSessions),
+      departmentOptions,
     };
+  }
+
+  /** Per-department roll-up over the whole scoped zone (independent of the selected department filter). */
+  private departmentBreakdown(
+    scopedEmployees: { id: string; departmentMemberships: { department: { id: string; name: string } }[] }[],
+    sessions: { instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
+  ): ManagerAnalyticsDepartmentRow[] {
+    const rows = new Map<string, { name: string; employees: Set<string>; sessionsCount: number; completed: number[]; completedEmployees: Set<string> }>();
+    const departmentByUser = new Map<string, { id: string; name: string }>();
+    for (const employee of scopedEmployees) {
+      const department = employee.departmentMemberships[0]?.department;
+      if (!department) continue;
+      departmentByUser.set(employee.id, department);
+      const row = rows.get(department.id) ?? { name: department.name, employees: new Set<string>(), sessionsCount: 0, completed: [], completedEmployees: new Set<string>() };
+      row.employees.add(employee.id);
+      rows.set(department.id, row);
+    }
+    for (const session of sessions) {
+      const department = departmentByUser.get(session.instance.userId);
+      const row = department ? rows.get(department.id) : undefined;
+      if (!row) continue;
+      row.sessionsCount += 1;
+      if (session.instance.status === 'completed' && session.instance.scored) {
+        row.completed.push(session.instance.percentage);
+        row.completedEmployees.add(session.instance.userId);
+      }
+    }
+    return [...rows.entries()]
+      .map(([departmentId, row]) => ({
+        departmentId,
+        name: row.name,
+        employeesCount: row.employees.size,
+        sessionsCount: row.sessionsCount,
+        completedCount: row.completed.length,
+        averagePercentage: row.completed.length ? Math.round(row.completed.reduce((sum, value) => sum + value, 0) / row.completed.length) : null,
+        noCompletionCount: row.employees.size - row.completedEmployees.size,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {

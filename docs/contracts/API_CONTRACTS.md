@@ -531,6 +531,16 @@ new `/manager/checklists` dashboard -- the workstream's single new nav item. Req
 `OrganizationAccessScopeService.user()` filter used by the review queue and session scoping
 elsewhere in this module, not a bare Group-only filter) -- `{}` for admin, tenant-wide.
 
+PR 334 extends the response without widening the scope: `departmentOptions[]` (the departments of the
+employees already in scope -- a manager never gets the org-structure list, so no admin-level access
+is implied), `departments[]` (per-department roll-up of the whole zone, independent of the
+`departmentId` filter) and `employees[].departmentId`/`email`. `departmentId` filters rows in memory over
+the scoped employees, so a department outside the zone returns an honest empty result. Soft-deleted
+sessions (`deletedAt`) are excluded. Search, sort and the «no completed sessions» toggle are
+client-side over the scoped rows (URL params `q`, `sort`/`dir`, `noCompletion`). A breakdown by
+«руководителей» is not provided: the repo has no stable one-manager-per-employee relation
+(`ManagerGroup` and `DepartmentManager` are many-to-many and mode-dependent).
+
 Aggregation is employee-first over `ChecklistSession` (the workplace-training overlay), not every
 async `ChecklistInstance`: every employee in scope appears in `employees[]` even with zero sessions
 in the period, so a manager can see who has completed nothing (`summary.noCompletionCount`). Low/mid/
