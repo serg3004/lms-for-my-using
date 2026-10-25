@@ -24,6 +24,7 @@ module.exports = {
     '/src/integration/checklist-session-observer-unavailable\\.database\\.spec\\.ts$',
     '/src/integration/checklist-evaluation-scales\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-templates\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
     '/src/integration/reports-summary\\.database\\.spec\\.ts$',

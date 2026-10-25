@@ -11,6 +11,7 @@ import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
+import { listTemplates } from './checklist-templates.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
@@ -18,6 +19,8 @@ import {
   bulkAssignChecklistSchema,
   bulkCreateChecklistSessionSchema,
   checklistListQuerySchema,
+  checklistTemplatesQuerySchema,
+  createChecklistFromTemplateSchema,
   checklistLocationCapturePointSchema,
   checklistSessionParticipantsQuerySchema,
   createChecklistItemGroupSchema,
@@ -122,6 +125,19 @@ export class ChecklistsController {
       { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
       { id: user.id, locale: user.locale },
     );
+  }
+
+  @Get('checklist-templates')
+  @Roles(...rolePolicies.checklistsCreate)
+  listChecklistTemplates(@Query() rawQuery: unknown) {
+    return { items: listTemplates(checklistTemplatesQuerySchema.parse(rawQuery).locale) };
+  }
+
+  @Post('checklists/from-template')
+  @Roles(...rolePolicies.checklistsCreate)
+  createChecklistFromTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = createChecklistFromTemplateSchema.parse(body);
+    return this.checklistsService.createFromTemplate(input.templateKey, input.locale, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
   @Get('checklists/:id')

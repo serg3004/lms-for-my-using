@@ -1321,7 +1321,16 @@
       "scaleLevelsCriterionHint": "可在标准表格中为单条标准选择现成量表；未选择时使用上方的清单等级。",
       "advancedTitle": "更多设置",
       "unsavedChanges": "有未保存的更改。",
-      "allSaved": "所有更改均已保存。"
+      "allSaved": "所有更改均已保存。",
+      "templates": {
+        "open": "从模板创建",
+        "title": "从模板创建",
+        "hint": "模板会生成可自由编辑的草稿。若要以自己的清单为基础，请使用列表中的“复制”。",
+        "use": "使用",
+        "summary": "{{groups}} 个分组 · {{items}} 条标准",
+        "loadError": "无法加载模板。",
+        "createError": "无法从模板创建清单。"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

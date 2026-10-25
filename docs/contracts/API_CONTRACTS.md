@@ -449,6 +449,12 @@ of the original from that point on. `groupId` is a `SetNull` foreign key (not `C
 `Restrict`): a future group-delete endpoint, if one is ever added, should ungroup surviving items
 rather than silently delete them.
 
+**Templates** (`GET /checklist-templates?locale=`, `POST /checklists/from-template` with
+`{ templateKey, locale }`; both `checklistsCreate`): a small set of built-in starter sheets kept in
+code. `locale` is `ru`, `en`, `kk` or `zh`; anything else gets English. Creation is one transaction
+that yields an independent draft (settings, groups, criteria; context fields get fresh ids) and
+audit event `checklist.created_from_template`; an unknown `templateKey` is 404.
+
 Snapshot integration: `contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` are
 resolved into `ChecklistInstance.templateSnapshot` at assignment time exactly like `scaleLevels`
 (PR 293's pattern) -- a later edit to the live checklist can never retroactively change what an

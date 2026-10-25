@@ -1321,7 +1321,16 @@
       "scaleLevelsCriterionHint": "A criterion can use its own ready-made scale, chosen in the criteria table; without one, the levels above apply.",
       "advancedTitle": "Additional settings",
       "unsavedChanges": "There are unsaved changes.",
-      "allSaved": "All changes are saved."
+      "allSaved": "All changes are saved.",
+      "templates": {
+        "open": "From template",
+        "title": "Create from template",
+        "hint": "A template creates a draft you can edit freely. To start from one of your own sheets, use \"Copy\" in the list.",
+        "use": "Use",
+        "summary": "{{groups}} groups · {{items}} criteria",
+        "loadError": "Unable to load templates.",
+        "createError": "Unable to create a checklist from the template."
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

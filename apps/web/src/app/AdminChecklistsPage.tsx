@@ -5,6 +5,7 @@ import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
+import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
@@ -23,7 +24,7 @@ import type {
 } from '../shared/api/types.js';
 type AdminChecklistsData = { checklists: ChecklistSummary[] };
 export function AdminChecklistsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { currentUser } = useSession();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ChecklistStatus>('all');
@@ -68,6 +69,8 @@ export function AdminChecklistsPage() {
       error: t('admin.checklists.loadError', 'Unable to load checklists.'),
     },
   );
+  // Declared after useAsyncData so the smoke spec's positional useState mocks keep their numbering.
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
@@ -152,6 +155,10 @@ export function AdminChecklistsPage() {
         title={t('admin.checklists.title', 'Checklists')}
         subtitle={t('admin.checklists.subtitle', 'Configurable checklists with points or a custom scale, photo confirmation, and automatic or manual grading.')}
         action={
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button variant="secondary" type="button" onClick={() => setTemplatesOpen(true)}>
+            {t('admin.checklists.templates.open', 'From template')}
+          </Button>
           <Button
             variant="primary"
             type="button"
@@ -169,6 +176,7 @@ export function AdminChecklistsPage() {
           >
             + {t('admin.checklists.create', 'Create checklist')}
           </Button>
+          </div>
         }
       />
       <ChecklistsTabs current="checklists" />
@@ -191,6 +199,13 @@ export function AdminChecklistsPage() {
       />
       <ChecklistTable rows={filtered} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels}
         onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} t={t} />
+      <ChecklistTemplateDialog
+        open={templatesOpen}
+        locale={(i18n.language ?? 'en').slice(0, 2)}
+        onClose={() => setTemplatesOpen(false)}
+        onCreated={(created) => { setTemplatesOpen(false); void load().then(() => setSelectedId(created.id)); }}
+        t={t}
+      />
       <ConfirmDialog
         open={deleteTarget !== null}
         title={t('admin.checklists.deleteTitle', 'Delete checklist')}

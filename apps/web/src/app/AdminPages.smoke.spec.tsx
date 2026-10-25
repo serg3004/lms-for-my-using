@@ -539,7 +539,7 @@ describe('admin page smoke rendering', () => {
 
   it('renders checklists happy path without crashing', () => {
     // useState call order in AdminChecklistsPage: 1 search, 2 statusFilter, 3 selectedId,
-    // 4 deleteTarget, 5 statusError, then useAsyncData's internal loadState is call 6.
+    // 4 deleteTarget, 5 statusError, then useAsyncData's internal loadState is call 6 (templatesOpen follows it).
     useStateAtCalls({
       6: {
         status: 'loaded',
