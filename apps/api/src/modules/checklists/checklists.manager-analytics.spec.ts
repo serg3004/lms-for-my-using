@@ -6,7 +6,7 @@ import { ChecklistsService } from './checklists.service.js';
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const thresholds = { high: 90, low: 60 };
 
-type Employee = { id: string; firstName: string; lastName: string; departmentName?: string | null };
+type Employee = { id: string; firstName: string; lastName: string; departmentName?: string | null; departmentId?: string };
 type SessionRow = {
   userId: string;
   scheduledAt: string;
@@ -42,7 +42,8 @@ function createHarness(options: { employees: Employee[]; currentSessions?: Sessi
         id: employee.id,
         firstName: employee.firstName,
         lastName: employee.lastName,
-        departmentMemberships: employee.departmentName === undefined ? [] : [{ department: { name: employee.departmentName } }],
+        email: `${employee.id}@example.test`,
+        departmentMemberships: employee.departmentName === undefined ? [] : [{ department: { id: employee.departmentId ?? `dept-${employee.departmentName}`, name: employee.departmentName } }],
       }))),
     },
     checklistSession: { findMany },
@@ -160,7 +161,7 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     expect(trendByUser).toEqual({ 'u-up': 'up', 'u-down': 'down', 'u-flat': 'flat' });
   });
 
-  it('applies the manager scope and department filter to the employee lookup', async () => {
+  it('applies the manager scope to the employee lookup and never widens it by department', async () => {
     const { service, prisma } = createHarness({ employees: [] });
     const findManyUsers = jest.spyOn(prisma.user, 'findMany');
     const managerScope = { id: { in: ['a', 'b'] } };
@@ -168,13 +169,43 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     await service.getManagerAnalytics(organizationId, { ...query, departmentId: 'dept-1' }, managerScope, thresholds);
 
     expect(findManyUsers).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        organizationId,
-        deletedAt: null,
-        ...managerScope,
-        departmentMemberships: { some: { organizationId, departmentId: 'dept-1', isPrimary: true, effectiveTo: null } },
-      }),
+      where: expect.objectContaining({ organizationId, deletedAt: null, ...managerScope }),
     }));
+  });
+
+  it('filters rows by department but keeps the department options and breakdown of the whole zone', async () => {
+    const { service } = createHarness({
+      employees: [
+        { id: 'u1', firstName: 'A', lastName: 'One', departmentName: 'Кухня' },
+        { id: 'u2', firstName: 'B', lastName: 'Two', departmentName: 'Зал' },
+        { id: 'u3', firstName: 'C', lastName: 'Three' },
+      ],
+      currentSessions: [
+        { userId: 'u1', scheduledAt: '2026-02-10T00:00:00.000Z', percentage: 80, passed: true },
+        { userId: 'u2', scheduledAt: '2026-02-11T00:00:00.000Z', percentage: 40, passed: false },
+      ],
+    });
+
+    const result = await service.getManagerAnalytics(organizationId, { ...query, departmentId: 'dept-Кухня' }, {}, thresholds);
+
+    expect(result.employees.map((row) => row.userId)).toEqual(['u1']);
+    expect(result.summary.totalEmployees).toBe(1);
+    expect(result.summary.totalSessions).toBe(1);
+    expect(result.departmentOptions).toEqual([{ id: 'dept-Зал', name: 'Зал' }, { id: 'dept-Кухня', name: 'Кухня' }]);
+    expect(result.departments).toEqual([
+      { departmentId: 'dept-Зал', name: 'Зал', employeesCount: 1, sessionsCount: 1, completedCount: 1, averagePercentage: 40, noCompletionCount: 0 },
+      { departmentId: 'dept-Кухня', name: 'Кухня', employeesCount: 1, sessionsCount: 1, completedCount: 1, averagePercentage: 80, noCompletionCount: 0 },
+    ]);
+  });
+
+  it('returns null averages for departments without completed sessions', async () => {
+    const { service } = createHarness({ employees: [{ id: 'u1', firstName: 'A', lastName: 'One', departmentName: 'Склад' }] });
+
+    const result = await service.getManagerAnalytics(organizationId, query, {}, thresholds);
+
+    expect(result.departments).toEqual([
+      { departmentId: 'dept-Склад', name: 'Склад', employeesCount: 1, sessionsCount: 0, completedCount: 0, averagePercentage: null, noCompletionCount: 1 },
+    ]);
   });
 
   it('reports a deterministic day-bucketed trend time series ordered chronologically', async () => {

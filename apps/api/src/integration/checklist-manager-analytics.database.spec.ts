@@ -166,4 +166,49 @@ describe('manager checklist analytics (PR 299) — database', () => {
     expect(result.distribution.every((bucket) => bucket.count === 0)).toBe(true);
     expect(result.trend).toEqual([]);
   });
+
+  // PR 334: department filter, breakdown and options must stay inside participantLearnerScope().
+  it('PR 334: lists only departments of the manager zone, filters by department and rolls up per department', async () => {
+    const [zoneDepartment, foreignDepartment] = await Promise.all([
+      prisma.department.create({ data: { organizationId, name: 'Zone dept', code: `Z-${randomUUID()}` } }),
+      prisma.department.create({ data: { organizationId, name: 'Foreign dept', code: `F-${randomUUID()}` } }),
+    ]);
+    await prisma.departmentMembership.create({ data: { organizationId, departmentId: zoneDepartment.id, userId: managedEmployeeId, isPrimary: true } });
+    await prisma.departmentMembership.create({ data: { organizationId, departmentId: foreignDepartment.id, userId: unmanagedEmployeeId, isPrimary: true } });
+    await createSession(managedEmployeeId, { scheduledAt: new Date('2026-01-10T00:00:00.000Z'), percentage: 80, passed: true });
+    await createSession(unmanagedEmployeeId, { scheduledAt: new Date('2026-01-11T00:00:00.000Z'), percentage: 30, passed: false });
+
+    try {
+      const managerScope = await reviewAccess.participantLearnerScope(currentUser(managerId, ['manager']));
+      const result = await checklistsService.getManagerAnalytics(organizationId, query, managerScope, thresholds);
+      expect(result.departmentOptions).toEqual([{ id: zoneDepartment.id, name: 'Zone dept' }]);
+      expect(result.departments).toEqual([
+        { departmentId: zoneDepartment.id, name: 'Zone dept', employeesCount: 1, sessionsCount: 1, completedCount: 1, averagePercentage: 80, noCompletionCount: 0 },
+      ]);
+      expect(result.employees[0]).toMatchObject({ userId: managedEmployeeId, departmentId: zoneDepartment.id, department: 'Zone dept' });
+
+      // A department outside the zone yields an honest empty result, not the foreign employees.
+      const foreign = await checklistsService.getManagerAnalytics(organizationId, { ...query, departmentId: foreignDepartment.id }, managerScope, thresholds);
+      expect(foreign.employees).toEqual([]);
+      expect(foreign.summary.totalEmployees).toBe(0);
+
+      const adminScope = await reviewAccess.participantLearnerScope(currentUser('admin-user', ['admin']));
+      const filtered = await checklistsService.getManagerAnalytics(organizationId, { ...query, departmentId: foreignDepartment.id }, adminScope, thresholds);
+      expect(filtered.employees.map((row) => row.userId)).toEqual([unmanagedEmployeeId]);
+      expect(filtered.departmentOptions.map((option) => option.name)).toEqual(['Foreign dept', 'Zone dept']);
+    } finally {
+      await prisma.departmentMembership.deleteMany({ where: { organizationId } });
+      await prisma.department.deleteMany({ where: { organizationId } });
+    }
+  });
+
+  it('PR 334: ignores soft-deleted sessions in the analytics', async () => {
+    const session = await createSession(managedEmployeeId, { scheduledAt: new Date('2026-01-10T00:00:00.000Z'), percentage: 80, passed: true });
+    await prisma.checklistSession.update({ where: { id: session.id }, data: { deletedAt: new Date() } });
+
+    const managerScope = await reviewAccess.participantLearnerScope(currentUser(managerId, ['manager']));
+    const result = await checklistsService.getManagerAnalytics(organizationId, query, managerScope, thresholds);
+
+    expect(result.summary.totalSessions).toBe(0);
+  });
 });

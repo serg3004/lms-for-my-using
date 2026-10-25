@@ -58,12 +58,24 @@ export type ManagerChecklistAnalyticsEmployeeRow = {
   userId: string;
   firstName: string;
   lastName: string;
+  email: string;
   department: string | null;
+  departmentId: string | null;
   sessionsCount: number;
   completedCount: number;
   averagePercentage: number | null;
   trend: 'up' | 'down' | 'flat' | null;
   lastSessionAt: string | null;
+};
+
+export type ManagerChecklistAnalyticsDepartmentRow = {
+  departmentId: string;
+  name: string;
+  employeesCount: number;
+  sessionsCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
+  noCompletionCount: number;
 };
 
 export type ManagerChecklistAnalytics = {
@@ -80,6 +92,10 @@ export type ManagerChecklistAnalytics = {
   distribution: { bucket: 'low' | 'mid' | 'high'; count: number }[];
   trend: { date: string; averagePercentage: number; count: number }[];
   employees: ManagerChecklistAnalyticsEmployeeRow[];
+  /** Roll-up of the whole zone per department (independent of the department filter). */
+  departments: ManagerChecklistAnalyticsDepartmentRow[];
+  /** Departments of the caller's zone for the filter; never wider than the employee scope. */
+  departmentOptions: { id: string; name: string }[];
 };
 
 function buildQueryString(params: Record<string, unknown>) {

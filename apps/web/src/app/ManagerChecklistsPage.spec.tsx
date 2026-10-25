@@ -21,7 +21,7 @@ vi.mock('../shared/api/manager.js', async () => {
 vi.mock('../shared/api/checklists.js', () => ({ listChecklists: apiMocks.listChecklists }));
 vi.mock('../shared/api/checklistSessions.js', () => ({ listChecklistSessions: apiMocks.listChecklistSessions }));
 
-import { DistributionDonut, EmployeeSessionsDrilldown, ManagerChecklistsPage, resolvePeriodRange, TrendLine } from './ManagerChecklistsPage.js';
+import { DistributionDonut, EmployeeSessionsDrilldown, filterAndSortEmployees, ManagerChecklistsPage, resolvePeriodRange, TrendLine } from './ManagerChecklistsPage.js';
 
 const t = ((key: string, fallback?: string, params?: Record<string, unknown>) => {
   const text = fallback ?? key;
@@ -58,9 +58,11 @@ const analyticsFixture: ManagerChecklistAnalytics = {
   distribution: [{ bucket: 'low', count: 1 }, { bucket: 'mid', count: 1 }, { bucket: 'high', count: 2 }],
   trend: [{ date: '2026-02-05', averagePercentage: 70, count: 1 }, { date: '2026-02-10', averagePercentage: 86, count: 2 }],
   employees: [
-    { userId: 'u1', firstName: 'Alex', lastName: 'Kim', department: 'Warehouse', sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up', lastSessionAt: '2026-02-10T00:00:00.000Z' },
-    { userId: 'u2', firstName: 'Mira', lastName: 'Lee', department: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
+    { userId: 'u1', firstName: 'Alex', lastName: 'Kim', email: 'alex@example.test', department: 'Warehouse', departmentId: 'd1', sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up', lastSessionAt: '2026-02-10T00:00:00.000Z' },
+    { userId: 'u2', firstName: 'Mira', lastName: 'Lee', email: 'mira@example.test', department: null, departmentId: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
   ],
+  departments: [{ departmentId: 'd1', name: 'Warehouse', employeesCount: 1, sessionsCount: 3, completedCount: 3, averagePercentage: 85, noCompletionCount: 0 }],
+  departmentOptions: [{ id: 'd1', name: 'Warehouse' }],
 };
 
 describe('ManagerChecklistsPage', () => {
@@ -73,6 +75,10 @@ describe('ManagerChecklistsPage', () => {
   it('renders summary cards, distribution, trend, and the employee table once loaded', () => {
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
@@ -94,21 +100,29 @@ describe('ManagerChecklistsPage', () => {
     };
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: emptyFixture }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
 
     const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
 
-    expect(html).toContain('планирует администратор');
+    expect(html).toContain('наблюдатель завершит');
     expect(html).not.toContain('class="stat-card"');
-    expect(html).not.toContain('Запланировать сессию');
+    expect(html).toContain('Запланировать сессию');
     expect(html).toContain('Alex Kim');
   });
 
   it('PR 321: shows exactly the four prototype KPI cards with the high/low threshold sub-labels', () => {
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
@@ -130,6 +144,10 @@ describe('ManagerChecklistsPage', () => {
     const unsetLowFixture: ManagerChecklistAnalytics = { ...analyticsFixture, thresholds: { high: 90, low: null } };
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: unsetLowFixture }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
@@ -149,6 +167,10 @@ describe('ManagerChecklistsPage', () => {
     // the DOM or the row being silently dropped.
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
@@ -171,9 +193,15 @@ describe('ManagerChecklistsPage', () => {
       distribution: [],
       trend: [],
       employees: [],
+      departments: [],
+      departmentOptions: [],
     };
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: emptyAnalytics }, vi.fn()])
       .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
       .mockImplementation((initial: unknown) => [initial, vi.fn()]);
@@ -189,6 +217,50 @@ describe('ManagerChecklistsPage', () => {
       <MemoryRouter initialEntries={['/manager/checklists?period=custom']}><ManagerChecklistsPage /></MemoryRouter>,
     );
     expect(html).toContain('type="date"');
+  });
+});
+
+describe('PR 334: department breakdown, search and sort', () => {
+  it('renders the department filter, the per-department table and the schedule quick action', () => {
+    reactMocks.useState
+      .mockReturnValueOnce([new Set(), vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([false, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([null, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: analyticsFixture }, vi.fn()])
+      .mockReturnValueOnce([{ status: 'loaded', data: [] }, vi.fn()])
+      .mockImplementation((initial: unknown) => [initial, vi.fn()]);
+
+    const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
+
+    expect(html).toContain('Все подразделения');
+    expect(html).toContain('По подразделениям');
+    expect(html).toContain('Запланировать: Alex Kim');
+    expect(html).not.toContain('null');
+    expect(html).not.toContain('undefined');
+  });
+
+  const rows = analyticsFixture.employees;
+
+  it('searches by name, email and department, case-insensitively', () => {
+    const options = { onlyNoCompletion: false, sort: null };
+    expect(filterAndSortEmployees(rows, { ...options, query: 'ALEX' }).map((row) => row.userId)).toEqual(['u1']);
+    expect(filterAndSortEmployees(rows, { ...options, query: 'mira@' }).map((row) => row.userId)).toEqual(['u2']);
+    expect(filterAndSortEmployees(rows, { ...options, query: 'warehouse' }).map((row) => row.userId)).toEqual(['u1']);
+    expect(filterAndSortEmployees(rows, { ...options, query: 'nobody' })).toEqual([]);
+  });
+
+  it('keeps only employees without completed sessions when the toggle is on', () => {
+    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: true, sort: null }).map((row) => row.userId)).toEqual(['u2']);
+  });
+
+  it('sorts with empty values last in both directions', () => {
+    const ascending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'average', direction: 'ascending' } });
+    const descending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'average', direction: 'descending' } });
+    expect(ascending.map((row) => row.userId)).toEqual(['u1', 'u2']);
+    expect(descending.map((row) => row.userId)).toEqual(['u1', 'u2']);
+    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'employee', direction: 'descending' } }).map((row) => row.userId)).toEqual(['u2', 'u1']);
   });
 });
 

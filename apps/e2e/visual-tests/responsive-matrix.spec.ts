@@ -228,10 +228,12 @@ async function installManagerChecklistsAnalyticsMocks(page: Page) {
         { date: '2026-02-19', averagePercentage: 88, count: 1 },
       ],
       employees: [
-        { userId: 'visual-user-1', firstName: 'Responsive', lastName: 'One', department: 'Warehouse', sessionsCount: 3, completedCount: 3, averagePercentage: 88, trend: 'up', lastSessionAt: '2026-02-19T00:00:00.000Z' },
-        { userId: 'visual-user-2', firstName: 'Responsive', lastName: 'Two', department: 'Warehouse', sessionsCount: 2, completedCount: 2, averagePercentage: 55, trend: 'down', lastSessionAt: '2026-02-12T00:00:00.000Z' },
-        { userId: 'visual-user-3', firstName: 'Responsive', lastName: 'Three', department: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
+        { userId: 'visual-user-1', firstName: 'Responsive', lastName: 'One', email: 'one@example.invalid', department: 'Warehouse', departmentId: 'visual-dept-1', sessionsCount: 3, completedCount: 3, averagePercentage: 88, trend: 'up', lastSessionAt: '2026-02-19T00:00:00.000Z' },
+        { userId: 'visual-user-2', firstName: 'Responsive', lastName: 'Two', email: 'two@example.invalid', department: 'Warehouse', departmentId: 'visual-dept-1', sessionsCount: 2, completedCount: 2, averagePercentage: 55, trend: 'down', lastSessionAt: '2026-02-12T00:00:00.000Z' },
+        { userId: 'visual-user-3', firstName: 'Responsive', lastName: 'Three', email: 'three@example.invalid', department: null, departmentId: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
       ],
+      departments: [{ departmentId: 'visual-dept-1', name: 'Warehouse', employeesCount: 2, sessionsCount: 5, completedCount: 5, averagePercentage: 74, noCompletionCount: 0 }],
+      departmentOptions: [{ id: 'visual-dept-1', name: 'Warehouse' }],
     },
   }));
 }

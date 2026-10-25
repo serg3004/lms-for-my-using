@@ -2051,8 +2051,7 @@
       "distributionTitle": "Result distribution",
       "trendTitle": "Average score trend",
       "trendEmpty": "No completed sessions in this period yet.",
-      "noSessionsAdmin": "No completed sessions in this period yet. Results appear here once an observer completes a training session.",
-      "noSessions": "No completed sessions in this period yet. Training sessions are scheduled by an administrator; results appear here once an observer completes them.",
+      "noSessions": "No completed sessions in this period yet. Results appear here once an observer completes a training session.",
       "scheduleSession": "Schedule a session",
       "viewAsTable": "View as table",
       "viewAsChart": "View as chart",
@@ -2080,7 +2079,20 @@
       "lowThresholdSub": "<{{threshold}}%",
       "highThresholdSub": "≥{{threshold}}%",
       "lowThresholdUnset": "threshold not set",
-      "lowThresholdUnsetHint": "lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage"
+      "lowThresholdUnsetHint": "lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage",
+      "write": "Write",
+      "actions": "Actions",
+      "schedule": "Schedule",
+      "employees": "Employees",
+      "noCompletionShort": "No completed sessions",
+      "departmentFilter": "Department",
+      "allDepartments": "All departments",
+      "searchLabel": "Search employees",
+      "searchPlaceholder": "Name, email or department",
+      "onlyNoCompletion": "Only without completed sessions",
+      "departmentsTitle": "By department",
+      "employeesNoMatch": "No employees match the filters.",
+      "sessionCreated": "Session scheduled."
     }
   },
   "instructor": {

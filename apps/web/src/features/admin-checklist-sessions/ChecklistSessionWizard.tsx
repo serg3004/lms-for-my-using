@@ -47,6 +47,8 @@ export function useDebounced(value: string) {
 type Props = {
   open: boolean;
   fixedObserver?: ChecklistSessionParticipant;
+  /** PR 334: preselects one participant (the manager dashboard's «Запланировать» quick action). */
+  initialLearner?: ChecklistSessionParticipant | null;
   onClose: () => void;
   onCreated: () => void;
   t: TFunction;
@@ -73,7 +75,7 @@ function SessionDurationInput({ value, onChange, t }: ScheduleInputProps) {
   />;
 }
 
-export function ChecklistSessionWizard({ open, fixedObserver, onClose, onCreated, t }: Props) {
+export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, onClose, onCreated, t }: Props) {
   const [step, setStep] = useState(0);
 
   const [learnerSearch, setLearnerSearch] = useState('');
@@ -116,6 +118,10 @@ export function ChecklistSessionWizard({ open, fixedObserver, onClose, onCreated
   function updateIndividualSchedule(learnerId: string, patch: Partial<SessionScheduleDraft>) {
     setIndividualDrafts((previous) => ({ ...previous, [learnerId]: { ...(previous[learnerId] ?? sharedDraft), ...patch } }));
   }
+
+  useEffect(() => {
+    if (open && initialLearner) setSelectedLearners(new Map([[initialLearner.id, initialLearner]]));
+  }, [open, initialLearner]);
 
   useEffect(() => {
     if (!open || step !== 0) return;

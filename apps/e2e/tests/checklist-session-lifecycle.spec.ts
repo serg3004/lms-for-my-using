@@ -494,6 +494,15 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await expect(page.locator('.ds-data-table__expanded').getByText('Opening shift checklist')).toBeVisible();
     });
 
+    await test.step('PR 334: manager searches the table and opens scheduling for the employee', async () => {
+      const search = page.getByLabel('Поиск сотрудников');
+      await search.fill('zzz-nobody');
+      await expect(page.getByText('Нет сотрудников, подходящих под фильтры.')).toBeVisible();
+      await search.fill('Ivy');
+      await page.getByRole('button', { name: 'Запланировать: Ivy InScope' }).click();
+      await expect(page.getByRole('dialog').getByText('Ivy InScope').first()).toBeVisible();
+    });
+
     await context.close();
   });
 
