@@ -92,6 +92,7 @@ export function ChecklistBuilder({
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
   const [items, setItems] = useState<ChecklistItemSummary[]>(checklist.items);
@@ -121,6 +122,7 @@ export function ChecklistBuilder({
     try {
       await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos }));
       setSaveState({ status: 'idle' });
+      setSavedAt(new Date());
       await onReload();
     } catch (error) {
       setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.') });
@@ -248,7 +250,16 @@ export function ChecklistBuilder({
       <AdminPageHeader
         eyebrow={t('admin.checklists.builderEyebrow', 'Observation sheet')}
         title={checklist.title}
-        subtitle={<Badge variant={STATUS_BADGE_VARIANT[checklist.status]}>{statusLabels[checklist.status]}</Badge>}
+        subtitle={
+          <>
+            <Badge variant={STATUS_BADGE_VARIANT[checklist.status]}>{statusLabels[checklist.status]}</Badge>
+            {savedAt && (
+              <span role="status" style={{ marginLeft: 8, fontSize: '0.95rem' }}>
+                {t('admin.checklists.savedAt', 'Saved at {{time}}', { time: savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
+              </span>
+            )}
+          </>
+        }
         action={
           <div className="admin-builder__header-actions">
             <Button type="button" variant="secondary" onClick={() => setScaleManagerOpen(true)}>
@@ -258,6 +269,7 @@ export function ChecklistBuilder({
               type="button"
               variant="secondary"
               disabled={items.length === 0}
+              aria-describedby={items.length === 0 ? 'checklist-needs-items' : undefined}
               onClick={() => {
                 setPreviewAnswers({});
                 setPreviewOpen(true);
@@ -270,6 +282,7 @@ export function ChecklistBuilder({
                 variant="primary"
                 type="button"
                 disabled={items.length === 0}
+                aria-describedby={items.length === 0 ? 'checklist-needs-items' : undefined}
                 title={items.length === 0 ? t('admin.checklists.publishNoItems', 'Add at least one item before publishing.') : undefined}
                 onClick={() => void publish()}
               >
@@ -279,6 +292,11 @@ export function ChecklistBuilder({
           </div>
         }
       />
+      {items.length === 0 && (
+        <p id="checklist-needs-items" role="note" className="admin-form__hint">
+          {t('admin.checklists.needItemsHint', 'Preview and Publish become available after you add at least one criterion.')}
+        </p>
+      )}
       <div className="admin-builder__grid">
         <div className="admin-builder__column">
           <ChecklistSettingsForm>

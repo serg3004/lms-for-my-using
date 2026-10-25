@@ -24,6 +24,18 @@ export const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_require
 export type PreviewAnswer = ChecklistAnswerState;
 export type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
+/** An untouched draft: the default title and nothing entered. Safe to discard when the author leaves without typing. */
+export function isUntouchedDraft(checklist: ChecklistSummary, defaultTitle: string) {
+  return (
+    checklist.status === 'draft' &&
+    checklist.title === defaultTitle &&
+    !(checklist.description ?? '').trim() &&
+    checklist.items.length === 0 &&
+    (checklist.itemGroups ?? []).length === 0 &&
+    (checklist.contextFields ?? []).length === 0
+  );
+}
+
 export function filterChecklists(checklists: ChecklistSummary[], search: string, statusFilter: 'all' | ChecklistStatus) {
   return checklists.filter((checklist) => {
     if (statusFilter !== 'all' && checklist.status !== statusFilter) return false;

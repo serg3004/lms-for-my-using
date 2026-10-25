@@ -87,3 +87,29 @@ describe('ChecklistBuilder (real hooks)', () => {
     expect(html).toContain('Move down');
   });
 });
+
+describe('ChecklistBuilder without criteria', () => {
+  const render = (items: typeof checklist.items) => renderToStaticMarkup(
+    <ChecklistBuilder
+      checklist={{ ...checklist, items }}
+      statusLabels={statusLabels}
+      scoringModeLabels={scoringModeLabels}
+      onBack={() => {}}
+      onReload={async () => {}}
+      t={((key: string, fallback?: string) => fallback ?? key) as never}
+    />,
+  );
+
+  it('explains why Preview and Publish are unavailable and links the hint to both buttons', () => {
+    const html = render([]);
+    expect(html).toContain('id="checklist-needs-items"');
+    expect(html).toContain('Preview and Publish become available after you add at least one criterion.');
+    expect(html.match(/aria-describedby="checklist-needs-items"/g)).toHaveLength(2);
+  });
+
+  it('hides the hint once a criterion exists', () => {
+    const html = render(checklist.items);
+    expect(html).not.toContain('id="checklist-needs-items"');
+  });
+});
+
