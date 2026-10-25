@@ -249,6 +249,12 @@ export class ChecklistsController {
     const user = request.currentUser!;
     return this.scales.archive(scaleId, user.organizationId, user.id);
   }
+  @Delete('checklist-scales/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  async deleteScale(@Param('id') scaleId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.scales.remove(scaleId, user.organizationId, user.id);
+  }
 
   // ---- Assignment / instances ----
   @Post('checklists/:checklistId/instances')

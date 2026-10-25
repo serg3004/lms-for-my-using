@@ -367,7 +367,7 @@ checklist title, case-insensitive) query filters, alongside the existing `status
 
 ## Checklist evaluation scales (PR 293)
 
-Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH
+Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH/DELETE
 /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) -- coexists with, and never touches,
 the pre-existing per-checklist `scoringMode='scale'` + `Checklist.scaleLevels` JSON mechanism.
 A `ChecklistScale` has ordered `ChecklistScaleLevel` rows (`value`/`label`/`score`); a
@@ -377,8 +377,10 @@ replace the full level set (never a partial per-level patch -- levels have no id
 can address individually); a scale needs at least 2 levels, and level `value`s must be unique
 within the scale.
 
-Lifecycle is create/edit/archive only -- there is no delete endpoint, and `ChecklistItem.scaleId`
-is a `RESTRICT` foreign key that can never actually block a deletion because none exists. `PATCH
+Lifecycle is create/edit/archive, plus `DELETE /checklist-scales/:id` (204) only while no
+`ChecklistItem` in any checklist references the scale; otherwise 409 and the caller must archive
+instead (`ChecklistItem.scaleId` is a `RESTRICT` foreign key as a second line of defence; sessions
+and instances keep their own immutable snapshot). `PATCH
 /checklist-scales/:id` is rejected (400) once the scale is already archived, or once it is "used"
 -- defined as: at least one `ChecklistInstance` exists for a checklist that has an item referencing
 this scale. This is a deliberately conservative proxy for "already captured in an assignment-time

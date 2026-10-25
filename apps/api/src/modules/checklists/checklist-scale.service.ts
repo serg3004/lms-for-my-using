@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -19,8 +19,8 @@ const scaleSelect = {
 } as const;
 
 /**
- * Tenant-scoped, reusable evaluation scale library (PR 293) -- create/edit/archive only, no hard
- * delete (a ChecklistItem.scaleId FK must never be able to dangle). Coexists with the existing
+ * Tenant-scoped, reusable evaluation scale library (PR 293) -- create/edit/archive, plus hard delete
+ * only for a scale no checklist item references (a ChecklistItem.scaleId FK must never be able to dangle). Coexists with the existing
  * checklist-level scoringMode='scale'/Checklist.scaleLevels mechanism; this service never touches
  * either (see ADR_CHECKLIST_SESSION_OVERLAY.md and CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md PR 293).
  */
@@ -141,6 +141,41 @@ export class ChecklistScaleService {
     }
 
     return this.get(scaleId, organizationId);
+  }
+
+  /**
+   * Hard delete -- allowed only while no ChecklistItem (in any checklist, draft or archived)
+   * references the scale. Sessions/instances keep their own immutable templateSnapshot, so they
+   * cannot dangle; the FK is `onDelete: Restrict` as a second line of defence. A scale that is in
+   * use must be archived instead (non-destructive).
+   */
+  async remove(scaleId: string, organizationId: string, actorId: string) {
+    const scale = await this.prisma.checklistScale.findFirst({
+      where: { id: scaleId, organizationId },
+      select: { id: true, name: true },
+    });
+    if (!scale) throw new NotFoundException('Evaluation scale not found');
+
+    const item = await this.prisma.checklistItem.findFirst({
+      where: { organizationId, scaleId },
+      select: { id: true },
+    });
+    if (item) {
+      throw new ConflictException(
+        'Cannot delete an evaluation scale used by checklist criteria -- archive it instead',
+      );
+    }
+
+    await this.prisma.checklistScale.delete({ where: { id: scaleId, organizationId } });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_scale.deleted',
+      targetType: 'checklist_scale',
+      targetId: scaleId,
+      summary: `Deleted evaluation scale ${scale.name}`,
+    });
   }
 
   /**
