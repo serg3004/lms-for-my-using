@@ -1368,7 +1368,7 @@ describe('ChecklistSessionService', () => {
     });
 
     it('replays the stored revision for a retry with the same idempotencyKey, without writing a second revision or audit entry (PR 301)', async () => {
-      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80, scored: true, formula: 'snapshot' };
+      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80, scored: true, newScored: true, formula: 'snapshot' };
       const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma();
       (prisma.checklistIdempotencyKey.findUnique as jest.Mock).mockResolvedValueOnce({ responseBody: cachedRevision });
       const auditLog = { record: jest.fn(async () => undefined) };
@@ -1394,7 +1394,7 @@ describe('ChecklistSessionService', () => {
 
       const result = await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {}, 'retry-key-legacy');
 
-      expect(result).toEqual({ ...cachedRevision, scored: true, formula: 'snapshot' });
+      expect(result).toEqual({ ...cachedRevision, scored: true, newScored: true, formula: 'snapshot' });
       expect(revisionFindUnique).toHaveBeenCalledWith({ where: { id: 'revision-1' }, select: { newScored: true, formula: true } });
     });
 

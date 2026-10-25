@@ -186,10 +186,10 @@ describe('checklist session recalculate (PR 300) — database', () => {
     const first = await sessionService.recalculateScore(sessionId, organizationId, 'All skipped', adminId, {}, key, 'criteria');
     expect(first).toMatchObject({ formula: 'criteria', scored: false, newPercentage: 0 });
     const legacy = { ...first } as Record<string, unknown>;
-    delete legacy.formula; delete legacy.scored;
+    delete legacy.formula; delete legacy.scored; delete legacy.newScored;
     await prisma.checklistIdempotencyKey.update({ where: { organizationId_scope_key: { organizationId, scope: 'session.recalculate', key } }, data: { responseBody: JSON.parse(JSON.stringify(legacy)) } });
     await prisma.checklistInstance.update({ where: { id: instanceId }, data: { scored: true, percentage: 100 } });
-    expect(await sessionService.recalculateScore(sessionId, organizationId, 'Retry', adminId, {}, key)).toMatchObject({ id: first.id, formula: 'criteria', scored: false, newPercentage: 0 });
+    expect(await sessionService.recalculateScore(sessionId, organizationId, 'Retry', adminId, {}, key)).toMatchObject({ id: first.id, formula: 'criteria', scored: false, newScored: false, newPercentage: 0 });
     expect(await prisma.checklistScoreRevision.count({ where: { instanceId } })).toBe(1);
   });
 

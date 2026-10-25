@@ -1058,7 +1058,7 @@ export class ChecklistSessionService {
           : null;
         const scored = cached.scored ?? historical?.newScored ?? false;
         const replayFormula = cached.formula ?? historical?.formula ?? 'snapshot';
-        return { revision: { ...cached, scored, formula: replayFormula }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
+        return { revision: { ...cached, scored, newScored: cached.newScored ?? scored, formula: replayFormula }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
       }
 
       const session = await tx.checklistSession.findFirst({
