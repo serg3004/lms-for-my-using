@@ -463,6 +463,7 @@ export class ChecklistSessionService {
         { organizationId },
         scope,
         query.status ? { status: query.status } : {},
+        query.excludeSessionId ? { id: { not: query.excludeSessionId } } : {},
         query.observerId ? { observerId: query.observerId } : {},
         query.checklistId ? { instance: { checklistId: query.checklistId } } : {},
         query.learnerId ? { instance: { userId: query.learnerId } } : {},
@@ -479,7 +480,7 @@ export class ChecklistSessionService {
       this.prisma.checklistSession.findMany({
         where,
         include: sessionProjectionInclude,
-        orderBy: [{ scheduledAt: 'asc' }, { id: 'asc' }],
+        orderBy: query.sort === 'recent' ? [{ startedAt: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }] : [{ scheduledAt: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),

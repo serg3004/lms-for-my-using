@@ -297,6 +297,7 @@ describe('ConductScreen (real hooks)', () => {
     );
     expect(html).toContain('Start session');
     expect(html).not.toContain('Structured feedback');
+    expect(html).toContain('Past sessions');
   });
 
   it('renders the in_progress state on its first criterion, with Back disabled and Next available (feedback is a later step, PR 319)', () => {
@@ -307,6 +308,7 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).toContain('Great');
     expect(html).toContain('Criterion {{index}} / {{total}}');
     expect(html).not.toContain('Structured feedback');
+    expect(html).not.toContain('Past sessions');
     expect(html).toContain('Next');
     expect(html).not.toContain('Complete');
   });

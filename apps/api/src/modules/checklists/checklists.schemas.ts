@@ -321,6 +321,11 @@ export const checklistSessionQuerySchema = z.object({
   // Matches the admin sessions list screen's free-text search -- employee name or checklist title.
   search: z.string().trim().min(1).max(120).optional(),
   overdueOnly: z.enum(['true', 'false']).optional(),
+  // PR 332: `recent` lists newest-started first (the observer's "past sessions" block); the default
+  // keeps the schedule order every other screen relies on.
+  sort: z.enum(['scheduled', 'recent']).default('scheduled'),
+  // PR 332: leave the session currently open out of its own history.
+  excludeSessionId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });

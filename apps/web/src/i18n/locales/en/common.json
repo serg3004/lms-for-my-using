@@ -2364,7 +2364,14 @@
       "empty": "No checklist sessions are assigned to you yet.",
       "toConduct": "To conduct",
       "toConductEmpty": "Nothing scheduled right now.",
-      "history": "History",
+      "history": {
+        "title": "Past sessions",
+        "loading": "Loading past sessions...",
+        "error": "Unable to load past sessions.",
+        "empty": "No completed sessions with this employee on this sheet yet.",
+        "notScored": "Not scored",
+        "noFeedback": "No feedback was recorded."
+      },
       "backToList": "My sessions",
       "start": "Start session",
       "pause": "Pause",

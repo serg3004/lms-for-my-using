@@ -603,6 +603,8 @@ export type ChecklistSessionQuery = {
   scheduledTo?: string;
   search?: string;
   overdueOnly?: 'true' | 'false';
+  sort?: 'scheduled' | 'recent';
+  excludeSessionId?: string;
   page?: number;
   pageSize?: number;
 };

@@ -2364,7 +2364,14 @@
       "empty": "尚未分配任何会话。",
       "toConduct": "待开展",
       "toConductEmpty": "目前没有安排。",
-      "history": "历史记录",
+      "history": {
+        "title": "过往会话",
+        "loading": "正在加载过往会话...",
+        "error": "无法加载过往会话。",
+        "empty": "该员工在此清单上还没有已完成的会话。",
+        "notScored": "未评分",
+        "noFeedback": "未记录反馈。"
+      },
       "backToList": "我的会话",
       "start": "开始会话",
       "pause": "暂停",

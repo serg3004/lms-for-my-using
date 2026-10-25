@@ -22,6 +22,7 @@ import type {
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { PastSessions } from './ChecklistSessionHistory.js';
 import { checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 const COLORS = {
@@ -332,6 +333,8 @@ export function ConductScreen({
           {t('checklistSessions.conduct.start', 'Start session')}
         </Button>
       )}
+
+      {session.status === 'scheduled' && <PastSessions session={session} t={t} />}
 
       {(session.status === 'in_progress' || session.status === 'paused') && (() => {
         // PR 319: the step space is every criterion plus one trailing "structured feedback" step
