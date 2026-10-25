@@ -1136,7 +1136,7 @@
           "open": "修改时间或观察员",
           "title": "编辑会话",
           "stepLabel": "时间和观察员",
-          "scheduledAt": "日期和时间",
+          "scheduledAt": "会话时间",
           "observer": "观察员",
           "searchHint": "查找其他观察员（可选）",
           "save": "保存",

@@ -1136,7 +1136,7 @@
           "open": "Edit time or observer",
           "title": "Edit session",
           "stepLabel": "Time and observer",
-          "scheduledAt": "Date and time",
+          "scheduledAt": "Session time",
           "observer": "Observer",
           "searchHint": "Find another observer (optional)",
           "save": "Save",

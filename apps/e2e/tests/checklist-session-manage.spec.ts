@@ -78,7 +78,7 @@ test.describe('manage a scheduled session (PR 333)', () => {
     await page.getByRole('menuitem', { name: 'Изменить время или наблюдателя' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
-    await dialog.getByLabel('Дата и время', { exact: true }).fill('2026-03-09T10:00');
+    await dialog.getByLabel('Время проведения', { exact: true }).fill('2026-03-09T10:00');
     await dialog.getByRole('radio', { name: /Nina Newobserver/ }).check();
     await dialog.getByRole('button', { name: 'Сохранить' }).click();
     await expect.poll(() => calls.patched).toEqual({
