@@ -103,6 +103,7 @@ export type ManagerChecklistEmployeesExportQuery = ManagerChecklistAnalyticsQuer
   noCompletion?: 'true' | 'false';
   sort?: 'employee' | 'department' | 'sessions' | 'average';
   dir?: 'asc' | 'desc';
+  format?: 'csv' | 'xlsx';
 };
 
 function buildQueryString(params: Record<string, unknown>) {
@@ -116,5 +117,5 @@ export function getManagerChecklistAnalytics(query: ManagerChecklistAnalyticsQue
 
 /** PR 336: CSV of the employees table with the dashboard's own filters and view (built and audited server-side). */
 export function exportManagerChecklistEmployees(query: ManagerChecklistEmployeesExportQuery) {
-  return apiRequest<{ filename: string; csv: string; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString(query)}`);
+  return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString(query)}`);
 }

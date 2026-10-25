@@ -10,8 +10,11 @@ export function neutralizeCsvCell(value: string): string {
 const UTF8_BOM = String.fromCharCode(0xfeff);
 
 /** RFC-4180 quoting, CRLF rows, UTF-8 BOM so Excel opens Cyrillic/Chinese text correctly. */
-export function serializeReportCsv(rows: string[][]): string {
-  const body = rows.map((row) => row.map((cell) => `"${neutralizeCsvCell(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+export type ReportCell = string | number;
+export type ReportFormat = 'csv' | 'xlsx';
+
+export function serializeReportCsv(rows: ReportCell[][]): string {
+  const body = rows.map((row) => row.map((cell) => `"${neutralizeCsvCell(String(cell)).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   return `${UTF8_BOM}${body}\r\n`;
 }
 
@@ -87,14 +90,14 @@ export function viewEmployees<T extends EmployeeRowLike>(rows: T[], view: Employ
 
 const TREND_ARROW = { up: '▲', down: '▼', flat: '▬' } as const;
 
-export function employeeExportRows(rows: EmployeeRowLike[], locale: Locale): string[][] {
+export function employeeExportRows(rows: EmployeeRowLike[], locale: Locale): ReportCell[][] {
   return [
     [...EXPORT_HEADERS.employees[locale]],
     ...rows.map((row) => [
       employeeName(row),
       row.department ?? '',
-      String(row.sessionsCount),
-      row.averagePercentage === null ? '' : String(row.averagePercentage),
+      row.sessionsCount,
+      row.averagePercentage ?? '',
       row.trend ? TREND_ARROW[row.trend] : '',
     ]),
   ];
@@ -112,7 +115,7 @@ type SessionRowLike = {
 };
 
 /** No feedback text, no geolocation, no e-mail: only what the sessions table already shows. */
-export function sessionExportRows(rows: SessionRowLike[], locale: Locale): string[][] {
+export function sessionExportRows(rows: SessionRowLike[], locale: Locale): ReportCell[][] {
   return [
     [...EXPORT_HEADERS.sessions[locale]],
     ...rows.map((row) => [
@@ -122,8 +125,8 @@ export function sessionExportRows(rows: SessionRowLike[], locale: Locale): strin
       row.status,
       row.scheduledAt ? new Date(row.scheduledAt).toISOString() : '',
       row.timezone,
-      row.durationMinutes === null ? '' : String(row.durationMinutes),
-      row.result.visible && row.result.scored && row.result.percentage !== null ? String(row.result.percentage) : '',
+      row.durationMinutes ?? '',
+      row.result.visible && row.result.scored && row.result.percentage !== null ? row.result.percentage : '',
     ]),
   ];
 }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
-import { downloadCsvFile } from '../shared/downloadCsv.js';
+import { downloadCsvFile, downloadXlsxFile } from '../shared/downloadCsv.js';
 import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -116,7 +116,7 @@ export function AdminChecklistSessionsPage() {
   );
 
   const exporting = useRef(false);
-  async function exportCsv() {
+  async function exportReport(format: 'csv' | 'xlsx') {
     if (exporting.current) return;
     exporting.current = true;
     setActionError(null);
@@ -129,8 +129,10 @@ export function AdminChecklistSessionsPage() {
         checklistId: checklistFilter || undefined,
         learnerId: learnerFilter || undefined,
         departmentId: departmentFilter || undefined,
+        format,
       });
-      downloadCsvFile(file.filename, file.csv);
+      if (format === 'xlsx') await downloadXlsxFile(file.filename, file.rows, t('admin.checklists.sessions.pageTitle', 'Training sessions'));
+      else downloadCsvFile(file.filename, file.csv);
     } catch (error) {
       setActionError(error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.exportError', 'Unable to export the sessions.'));
     } finally {
@@ -310,7 +312,8 @@ export function AdminChecklistSessionsPage() {
         subtitle={t('admin.checklists.sessions.subtitle', 'Planning, running and tracking training.')}
         action={
           <>
-            <Button onClick={() => void exportCsv()} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
+            <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
+            <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
             <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>
             <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>

@@ -1160,7 +1160,8 @@
           "sent": "Message sent."
         },
         "exportCsv": "Download CSV",
-        "exportError": "Unable to export the sessions."
+        "exportError": "Unable to export the sessions.",
+        "exportXlsx": "Download Excel"
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -2101,7 +2102,8 @@
       "employeesNoMatch": "No employees match the filters.",
       "sessionCreated": "Session scheduled.",
       "exportCsv": "Download CSV",
-      "exportError": "Unable to export the table."
+      "exportError": "Unable to export the table.",
+      "exportXlsx": "Download Excel"
     }
   },
   "instructor": {

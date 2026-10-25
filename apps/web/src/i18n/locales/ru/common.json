@@ -1160,7 +1160,8 @@
           "sent": "Сообщение отправлено."
         },
         "exportCsv": "Скачать CSV",
-        "exportError": "Не удалось выгрузить сессии."
+        "exportError": "Не удалось выгрузить сессии.",
+        "exportXlsx": "Скачать Excel"
       },
       "newGroupTitle": "Новая группа",
       "newCriterionText": "Новый критерий",
@@ -2101,7 +2102,8 @@
       "employeesNoMatch": "Нет сотрудников, подходящих под фильтры.",
       "sessionCreated": "Сессия запланирована.",
       "exportCsv": "Скачать CSV",
-      "exportError": "Не удалось выгрузить таблицу."
+      "exportError": "Не удалось выгрузить таблицу.",
+      "exportXlsx": "Скачать Excel"
     }
   },
   "instructor": {

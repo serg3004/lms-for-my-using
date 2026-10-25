@@ -541,8 +541,9 @@ client-side over the scoped rows (URL params `q`, `sort`/`dir`, `noCompletion`).
 «руководителей» is not provided: the repo has no stable one-manager-per-employee relation
 (`ManagerGroup` and `DepartmentManager` are many-to-many and mode-dependent).
 
-PR 336 adds two CSV exports, both JSON `{ filename, csv, rowCount }` so the existing authenticated
-client downloads them without a second transport: `GET /checklists/manager-analytics/export`
+PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the same rows as CSV and as typed cells for the
+browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing
+authenticated client downloads them without a second transport: `GET /checklists/manager-analytics/export`
 (`checklistManagerAnalyticsRead`; the analytics filters plus the table view `q`, `noCompletion`,
 `sort`, `dir`) and `GET /checklist-sessions/export` (`checklistSessionsManage`: `admin`/`manager`;
 the `GET /checklist-sessions` filters without paging). Both reuse the caller's own scope

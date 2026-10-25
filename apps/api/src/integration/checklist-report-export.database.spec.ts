@@ -99,6 +99,8 @@ describe('checklist report CSV export (PR 336) — database', () => {
     const result = await controller.exportSessions({}, await request(manager, 'exportSessions'));
 
     expect(result.rowCount).toBe(1);
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows[1]).toEqual(expect.arrayContaining(['=Managed Employee', 80]));
     expect(result.filename).toMatch(/^checklist-sessions-\d{4}-\d{2}-\d{2}\.csv$/);
     expect(result.csv).toContain(`"'=Managed Employee"`);
     expect(result.csv).not.toContain('Outsider');
@@ -106,6 +108,13 @@ describe('checklist report CSV export (PR 336) — database', () => {
     expect(result.csv).not.toMatch(/null|undefined/);
     expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_report.exported', actorId: manager.id } }))
       .toMatchObject({ metadata: expect.objectContaining({ kind: 'sessions', rowCount: 1 }) });
+  });
+
+  it('records the requested format in the audit entry', async () => {
+    await session(managed.id);
+    await controller.exportSessions({ format: 'xlsx' }, await request(admin, 'exportSessions'));
+    expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_report.exported', actorId: admin.id } }))
+      .toMatchObject({ summary: expect.stringContaining('XLSX'), metadata: expect.objectContaining({ format: 'xlsx', kind: 'sessions' }) });
   });
 
   it('gives an admin the whole tenant and honours the same filters as the list', async () => {

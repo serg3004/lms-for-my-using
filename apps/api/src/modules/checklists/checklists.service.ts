@@ -1111,22 +1111,22 @@ export class ChecklistsService {
     thresholds: { high: number; low: number | null },
     actor: { id: string; locale: string | null },
   ) {
-    const { q, noCompletion, sort, dir, ...analyticsQuery } = query;
+    const { q, noCompletion, sort, dir, format = 'csv', ...analyticsQuery } = query;
     const analytics = await this.getManagerAnalytics(organizationId, analyticsQuery, userScope, thresholds);
     const rows = viewEmployees(analytics.employees, { q, noCompletion, sort, dir });
     if (rows.length > MAX_EXPORT_ROWS) {
       throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} employees. Narrow the filters.`);
     }
-    const csv = serializeReportCsv(employeeExportRows(rows, exportLocale(actor.locale)));
+    const table = employeeExportRows(rows, exportLocale(actor.locale));
     await this.auditLog.record({
       organizationId,
       actorId: actor.id,
       action: 'checklist_report.exported',
       targetType: 'checklist_report',
-      summary: `Exported ${rows.length} employees of the checklist dashboard to CSV`,
-      metadata: { kind: 'manager_employees', rowCount: rows.length, filters: query },
+      summary: `Exported ${rows.length} employees of the checklist dashboard to ${format.toUpperCase()}`,
+      metadata: { kind: 'manager_employees', format, rowCount: rows.length, filters: analyticsQuery },
     });
-    return { filename: `checklist-employees-${new Date().toISOString().slice(0, 10)}.csv`, csv, rowCount: rows.length };
+    return { filename: `checklist-employees-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount: rows.length };
   }
 
   private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {

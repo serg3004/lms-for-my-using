@@ -518,16 +518,17 @@ export class ChecklistSessionService {
     if (items.length > MAX_EXPORT_ROWS) {
       throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} sessions. Narrow the filters.`);
     }
-    const csv = serializeReportCsv(sessionExportRows(items.map(presentProjected), exportLocale(actor.locale)));
+    const table = sessionExportRows(items.map(presentProjected), exportLocale(actor.locale));
+    const format = query.format ?? 'csv';
     await this.auditLog.record({
       organizationId,
       actorId: actor.id,
       action: 'checklist_report.exported',
       targetType: 'checklist_report',
-      summary: `Exported ${items.length} checklist sessions to CSV`,
-      metadata: { kind: 'sessions', rowCount: items.length, filters: { ...query, page: undefined, pageSize: undefined } },
+      summary: `Exported ${items.length} checklist sessions to ${format.toUpperCase()}`,
+      metadata: { kind: 'sessions', format, rowCount: items.length, filters: { ...query, format: undefined, page: undefined, pageSize: undefined } },
     });
-    return { filename: `checklist-sessions-${new Date().toISOString().slice(0, 10)}.csv`, csv, rowCount: items.length };
+    return { filename: `checklist-sessions-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount: items.length };
   }
 
   async get(sessionId: string, organizationId: string, scope: object, viewer: ChecklistSessionViewerContext) {

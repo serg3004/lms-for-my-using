@@ -22,7 +22,7 @@ describe('report CSV (PR 336)', () => {
 
   it('exports honest empty cells instead of null/undefined for employees without data', () => {
     const rows = employeeExportRows([row({ department: null, averagePercentage: null, trend: null, sessionsCount: 0, completedCount: 0 })], 'en');
-    expect(rows[1]).toEqual(['Alex Kim', '', '0', '', '']);
+    expect(rows[1]).toEqual(['Alex Kim', '', 0, '', '']);
     expect(serializeReportCsv(rows)).not.toMatch(/null|undefined/);
   });
 
@@ -49,7 +49,7 @@ describe('report CSV (PR 336)', () => {
       { ...base, result: { visible: true, scored: false, percentage: 0 } },
     ], 'en');
     expect(rows[0]).toHaveLength(8);
-    expect(rows.slice(1).map((r) => r[7])).toEqual(['80', '', '']);
+    expect(rows.slice(1).map((r) => r[7])).toEqual([80, '', '']);
     expect(rows[1]![4]).toBe('2026-02-10T09:00:00.000Z');
     expect(serializeReportCsv(rows)).toContain(`"'=HYPERLINK(""x"")"`);
   });

@@ -34,10 +34,11 @@ export function listChecklistSessions(query: ChecklistSessionQuery = {}) {
   return apiRequest<PaginatedResponse<ChecklistSessionSummary>>(`/checklist-sessions${buildQueryString(query)}`);
 }
 
-export type ChecklistReportExport = { filename: string; csv: string; rowCount: number };
+export type ChecklistReportExport = { filename: string; csv: string; rows: (string | number)[][]; rowCount: number };
+export type ChecklistReportFormat = 'csv' | 'xlsx';
 
 /** PR 336: the same filters as the list, minus paging; the server builds, scopes and audits the file. */
-export function exportChecklistSessions(query: Omit<ChecklistSessionQuery, 'page' | 'pageSize'> = {}) {
+export function exportChecklistSessions(query: Omit<ChecklistSessionQuery, 'page' | 'pageSize'> & { format?: ChecklistReportFormat } = {}) {
   return apiRequest<ChecklistReportExport>(`/checklist-sessions/export${buildQueryString(query)}`);
 }
 

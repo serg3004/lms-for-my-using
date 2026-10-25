@@ -1160,7 +1160,8 @@
           "sent": "Хабарлама жіберілді."
         },
         "exportCsv": "CSV жүктеу",
-        "exportError": "Сессияларды жүктеу мүмкін болмады."
+        "exportError": "Сессияларды жүктеу мүмкін болмады.",
+        "exportXlsx": "Excel жүктеу"
       },
       "newGroupTitle": "Жаңа топ",
       "newCriterionText": "Жаңа критерий",
@@ -2101,7 +2102,8 @@
       "employeesNoMatch": "Сүзгілерге сәйкес қызметкер жоқ.",
       "sessionCreated": "Сессия жоспарланды.",
       "exportCsv": "CSV жүктеу",
-      "exportError": "Кестені жүктеу мүмкін болмады."
+      "exportError": "Кестені жүктеу мүмкін болмады.",
+      "exportXlsx": "Excel жүктеу"
     }
   },
   "instructor": {

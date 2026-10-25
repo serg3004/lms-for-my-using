@@ -1160,7 +1160,8 @@
           "sent": "消息已发送。"
         },
         "exportCsv": "下载 CSV",
-        "exportError": "无法导出会话。"
+        "exportError": "无法导出会话。",
+        "exportXlsx": "下载 Excel"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -2101,7 +2102,8 @@
       "employeesNoMatch": "没有符合筛选条件的员工。",
       "sessionCreated": "会话已安排。",
       "exportCsv": "下载 CSV",
-      "exportError": "无法导出表格。"
+      "exportError": "无法导出表格。",
+      "exportXlsx": "下载 Excel"
     }
   },
   "instructor": {

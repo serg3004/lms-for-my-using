@@ -8,7 +8,7 @@ import { canMessageParticipant } from '../features/admin-checklist-sessions/doma
 
 import { listChecklists } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
-import { downloadCsvFile } from '../shared/downloadCsv.js';
+import { downloadCsvFile, downloadXlsxFile } from '../shared/downloadCsv.js';
 import { formatDate } from '../shared/formatDate.js';
 import { describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import {
@@ -269,7 +269,7 @@ export function ManagerChecklistsPage() {
   if (state.status === 'loaded') departmentOptions.current = state.data.departmentOptions;
 
   const exporting = useRef(false);
-  async function exportCsv() {
+  async function exportReport(format: 'csv' | 'xlsx') {
     if (exporting.current) return;
     exporting.current = true;
     try {
@@ -281,8 +281,10 @@ export function ManagerChecklistsPage() {
         noCompletion: onlyNoCompletion ? 'true' : undefined,
         sort: sort ? (sort.key as EmployeeSortKey) : undefined,
         dir: sort ? (sort.direction === 'descending' ? 'desc' : 'asc') : undefined,
+        format,
       });
-      downloadCsvFile(file.filename, file.csv);
+      if (format === 'xlsx') await downloadXlsxFile(file.filename, file.rows, t('manager.checklists.employeesTableLabel', 'Employees'));
+      else downloadCsvFile(file.filename, file.csv);
     } catch {
       setNotice(t('manager.checklists.exportError', 'Unable to export the table.'));
     } finally {
@@ -445,8 +447,9 @@ export function ManagerChecklistsPage() {
             </section>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-            <Button onClick={() => void exportCsv()} size="sm" type="button" variant="secondary">{t('manager.checklists.exportCsv', 'Download CSV')}</Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+            <Button onClick={() => void exportReport('csv')} size="sm" type="button" variant="secondary">{t('manager.checklists.exportCsv', 'Download CSV')}</Button>
+            <Button onClick={() => void exportReport('xlsx')} size="sm" type="button" variant="secondary">{t('manager.checklists.exportXlsx', 'Download Excel')}</Button>
           </div>
           <DataTable
             columns={columns}

@@ -523,6 +523,21 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       expect(new URL(exportUrl).searchParams.get('q')).toBe('Ivy');
     });
 
+    await test.step('PR 336: manager downloads the same table as an Excel file', async () => {
+      await page.unroute('**/api/v1/checklists/manager-analytics/export*');
+      let format = '';
+      await page.route('**/api/v1/checklists/manager-analytics/export*', (route) => {
+        format = new URL(route.request().url()).searchParams.get('format') ?? '';
+        return route.fulfill({ json: { filename: 'checklist-employees-2026-03-01.csv', csv: '', rows: [['Сотрудник', 'Сессии'], ['Ivy InScope', 2]], rowCount: 1 } });
+      });
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByRole('button', { name: 'Скачать Excel' }).click(),
+      ]);
+      expect(download.suggestedFilename()).toBe('checklist-employees-2026-03-01.xlsx');
+      expect(format).toBe('xlsx');
+    });
+
     await context.close();
   });
 
