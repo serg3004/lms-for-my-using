@@ -117,7 +117,7 @@ ALLOW_IN_MEMORY_RATE_LIMIT=true
 
 ### Email (Resend)
 
-Решение владельца (DEC-MAIL-001, 2026-10-25): провайдер — Resend. У `api` задаются `RESEND_API_KEY` и `MAIL_FROM` (адрес на домене, подтверждённом в Resend, например `LMS <no-reply@your-domain>`). При обеих переменных письма сброса пароля и сессий наблюдения уходят напрямую через Resend; без них работают webhook-переменные `PASSWORD_RESET_DELIVERY_URL` и `CHECKLIST_SESSION_REMINDER_DELIVERY_URL` или безопасный no-op. Живая доставка `[НЕ ПРОВЕРЕНО]` до настройки переменных.
+Решение владельца (DEC-MAIL-001, 2026-10-25): провайдер — Resend. У `api` задаются `RESEND_API_KEY` и `MAIL_FROM` (адрес на домене, подтверждённом в Resend, например `LMS <no-reply@your-domain>`). При обеих переменных письма сброса пароля и сессий наблюдения уходят напрямую через Resend; без них работают webhook-переменные `PASSWORD_RESET_DELIVERY_URL` и `CHECKLIST_SESSION_REMINDER_DELIVERY_URL` или безопасный no-op. Без своего домена вместо Resend можно использовать обычный ящик по SMTP (PR 342): `SMTP_HOST` (например `smtp.yandex.ru`), `SMTP_PORT` (465 — TLS, 587 — STARTTLS), `SMTP_USER`, `SMTP_PASS` (пароль приложения, не пароль от ящика) и при необходимости `MAIL_FROM` (по умолчанию `SMTP_USER`). Resend приоритетнее, если заданы оба варианта. Живая доставка `[НЕ ПРОВЕРЕНО]` до настройки переменных.
 
 ### Storage
 

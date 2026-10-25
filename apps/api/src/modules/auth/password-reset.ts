@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
-import { isResendConfigured, ResendHttpError, sendResendEmail } from '../../common/mail/resend.js';
+import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { ResendHttpError } from '../../common/mail/resend.js';
+import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { passwordResetDeliveryErrors } from '../../common/observability/metrics.js';
 
 export const passwordResetLifetimeMs = 60 * 60 * 1000;
@@ -33,7 +35,7 @@ class PasswordResetDeliveryHttpError extends Error {
 }
 
 function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
-  if (error instanceof PasswordResetDeliveryHttpError || error instanceof ResendHttpError) return 'http_error';
+  if (error instanceof PasswordResetDeliveryHttpError || error instanceof ResendHttpError || error instanceof SmtpRejectedError) return 'http_error';
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
   return 'network_error';
 }
@@ -50,14 +52,14 @@ export class PasswordResetDelivery {
    * but failing" without duplicating the env var check.
    */
   checkReadiness(): 'ok' | 'disabled' {
-    return isResendConfigured() || process.env['PASSWORD_RESET_DELIVERY_URL'] ? 'ok' : 'disabled';
+    return isMailConfigured() || process.env['PASSWORD_RESET_DELIVERY_URL'] ? 'ok' : 'disabled';
   }
 
   async send(message: PasswordResetMessage): Promise<void> {
-    if (isResendConfigured()) {
+    if (isMailConfigured()) {
       try {
         const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
-        await sendResendEmail({
+        await sendMail({
           to: message.email,
           subject: 'Восстановление пароля',
           text: `Чтобы задать новый пароль, перейдите по ссылке (действует 1 час):\n${frontend}/password-reset?token=${message.token}\n\nЕсли вы не запрашивали восстановление, просто проигнорируйте это письмо.`,

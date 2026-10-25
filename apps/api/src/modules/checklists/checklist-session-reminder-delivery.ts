@@ -2,7 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 
-import { isResendConfigured, ResendHttpError, sendResendEmail } from '../../common/mail/resend.js';
+import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { ResendHttpError } from '../../common/mail/resend.js';
+import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { checklistSessionReminderDeliveryErrors } from '../../common/observability/metrics.js';
 
 export type ChecklistSessionReminderMessage = {
@@ -31,7 +33,7 @@ class ChecklistSessionReminderDeliveryHttpError extends Error {
 }
 
 function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
-  if (error instanceof ChecklistSessionReminderDeliveryHttpError || error instanceof ResendHttpError) return 'http_error';
+  if (error instanceof ChecklistSessionReminderDeliveryHttpError || error instanceof ResendHttpError || error instanceof SmtpRejectedError) return 'http_error';
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
   return 'network_error';
 }
@@ -52,11 +54,11 @@ export class ChecklistSessionReminderDelivery {
   constructor(private readonly prisma: PrismaService) {}
 
   checkReadiness(): 'ok' | 'disabled' {
-    return isResendConfigured() || process.env['CHECKLIST_SESSION_REMINDER_DELIVERY_URL'] ? 'ok' : 'disabled';
+    return isMailConfigured() || process.env['CHECKLIST_SESSION_REMINDER_DELIVERY_URL'] ? 'ok' : 'disabled';
   }
 
   async send(message: ChecklistSessionReminderMessage): Promise<void> {
-    if (isResendConfigured()) {
+    if (isMailConfigured()) {
       const session = await this.prisma.checklistSession.findFirst({
         where: { id: message.sessionId, organizationId: message.organizationId },
         select: { scheduledAt: true, instance: { select: { checklist: { select: { title: true } }, user: { select: { firstName: true, lastName: true } } } } },
@@ -76,7 +78,7 @@ export class ChecklistSessionReminderDelivery {
 
   /** PR 333: same endpoint, distinguished by `kind`; the in-app Notification is already durable. */
   async sendMessage(message: ChecklistSessionParticipantMessage): Promise<void> {
-    if (isResendConfigured()) {
+    if (isMailConfigured()) {
       await this.email(message.recipientId, message.organizationId, `Сообщение по сессии «${message.checklistTitle}»`, message.message);
       return;
     }
@@ -88,7 +90,7 @@ export class ChecklistSessionReminderDelivery {
     const user = await this.prisma.user.findFirst({ where: { id: userId, organizationId }, select: { email: true } });
     if (!user?.email) return;
     try {
-      await sendResendEmail({ to: user.email, subject, text });
+      await sendMail({ to: user.email, subject, text });
     } catch (error) {
       const reason = classifyDeliveryFailure(error);
       checklistSessionReminderDeliveryErrors.inc({ reason });
