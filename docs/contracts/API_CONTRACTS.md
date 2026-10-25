@@ -134,7 +134,9 @@ duplicates score or snapshot fields already owned by the instance. Observer is t
 `instructor` role, never `manager`.
 
 Endpoints: `POST /checklist-sessions` (create), `GET /checklist-sessions` (list, paginated, filters
-by `status`/`observerId`/`overdueOnly`), `GET /checklist-sessions/:id`, `GET
+by `status`/`observerId`/`overdueOnly`; `sort=recent` orders newest-started first and `excludeSessionId` leaves one
+session out -- the observer's "past sessions" block (PR 332) uses `status=completed&learnerId&checklistId&sort=recent`
+inside the usual `sessionScope()`), `GET /checklist-sessions/:id`, `GET
 /checklist-sessions/:id/events` (append-only lifecycle audit trail), `PATCH /checklist-sessions/:id`
 (reschedule), and one POST-action route per transition: `:id/start`, `:id/pause`, `:id/resume`,
 `:id/complete`, `:id/cancel`.

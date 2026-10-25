@@ -665,6 +665,35 @@ for (const width of widths) {
       await expectVisualMatch(page, `instructor-checklist-session-conduct-${width}`);
     });
 
+    test('keeps the observer pre-start screen with past sessions responsive', async ({ page }) => {
+      await installInstructorConductMocks(page);
+      const scheduledSession: Record<string, unknown> = {
+        id: 'session-2', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'visual-instructor', status: 'scheduled', version: 1,
+        scheduledAt: '2026-02-10T09:00:00.000Z', durationMinutes: null, startedAt: null, pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
+        strengths: null, developmentAreas: null, nextSteps: null, observerUnavailableReason: null, observerUnavailableAt: null,
+        createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+        checklist: { id: 'checklist-1', title: 'Opening shift checklist' },
+        learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+        observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
+        result: { instanceStatus: 'assigned', percentage: null, passed: null, scored: null, visible: true },
+      };
+      const pastSession: Record<string, unknown> = {
+        ...scheduledSession, id: 'session-0', status: 'completed', version: 4, scheduledAt: '2026-01-10T09:00:00.000Z', startedAt: '2026-01-10T09:05:00.000Z',
+        strengths: 'Чётко проводит передачу смены', developmentAreas: 'Скорость работы на кассе',
+        result: { instanceStatus: 'completed', percentage: 85, passed: true, scored: true, visible: true },
+      };
+      await page.route('**/api/v1/checklist-sessions/session-2', (route) => route.fulfill({ json: scheduledSession }));
+      await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
+        json: paginated(route.request().url().includes('status=completed') ? [pastSession] : [scheduledSession]),
+      }));
+      await page.goto('/instructor/checklists/sessions/session-2');
+      await expect(page.getByRole('heading', { name: 'Прошлые сессии' })).toBeVisible();
+      await expect(page.getByText('Скорость работы на кассе')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `instructor-checklist-session-prestart-${width}`);
+    });
+
     test('keeps the observer creation wizard responsive with the caller fixed', async ({ page }) => {
       await installInstructorConductMocks(page);
       await page.route('**/api/v1/checklist-sessions/participants**', (route) => route.fulfill({
