@@ -2,14 +2,15 @@ import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
-import { createChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
+import { archiveChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
+import { ConfirmDialog } from '../../shared/adminPage.js';
 import { Button, Dialog, Input } from '../../shared/ui.js';
 import { createDefaultReusableScaleLevels } from './domain.js';
 
 /**
  * "Оценочные шкалы" -- a secondary/contextual dialog reached from the builder (not a top-level
- * nav item), matching the prototype's minimal `#scaleModal`: a list of scales and inline rename.
+ * nav item), matching the prototype's minimal `#scaleModal`: a list of scales with inline rename, archive and (unused scales only) delete.
  * Level *editing* beyond a quick-create default stays out of scope here, same as the prototype's
  * own `editScale()` (a bare rename prompt) -- a full level editor is a documented future gap.
  */
@@ -18,6 +19,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [scaleToDelete, setScaleToDelete] = useState<ChecklistScaleSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,30 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
     }
   }
 
+  async function removeScale(scale: ChecklistScaleSummary) {
+    setError(null);
+    try {
+      await deleteChecklistScale(scale.id);
+      await reload();
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiClientError && e.status === 409
+        ? t('admin.checklists.scaleManager.inUse', 'This scale is used by checklist criteria and cannot be deleted. Archive it instead.')
+        : e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+    }
+  }
+
+  async function archiveScale(scaleId: string) {
+    setError(null);
+    try {
+      await archiveChecklistScale(scaleId);
+      await reload();
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+    }
+  }
+
   return (
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{t('admin.checklists.scaleManager.title', 'Evaluation scales')}</h2>
@@ -79,6 +105,14 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
                 >
                   {t('admin.checklists.scaleManager.rename', 'Rename')}
                 </Button>
+                {scale.status !== 'archived' && (
+                  <Button onClick={() => void archiveScale(scale.id)} type="button" variant="secondary">
+                    {t('admin.checklists.scaleManager.archive', 'Archive')}
+                  </Button>
+                )}
+                <Button onClick={() => setScaleToDelete(scale)} type="button" variant="secondary">
+                  {t('admin.checklists.scaleManager.delete', 'Delete')}
+                </Button>
               </>
             )}
           </li>
@@ -89,6 +123,20 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
         <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.close', 'Close')}</Button>
         <Button onClick={() => void addScale()} type="button" variant="primary">+ {t('admin.checklists.scaleManager.addScale', 'New scale')}</Button>
       </div>
+      <ConfirmDialog
+        open={scaleToDelete !== null}
+        title={t('admin.checklists.scaleManager.deleteTitle', 'Delete scale')}
+        message={t('admin.checklists.scaleManager.deleteConfirm', 'Delete the scale "{{name}}"? This cannot be undone. If the scale is used by checklist criteria the deletion is rejected; archive it instead.', { name: scaleToDelete?.name ?? '' })}
+        confirmLabel={t('admin.checklists.scaleManager.delete', 'Delete')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => {
+          const target = scaleToDelete;
+          setScaleToDelete(null);
+          if (target) void removeScale(target);
+        }}
+        onCancel={() => setScaleToDelete(null)}
+      />
     </Dialog>
   );
 }
