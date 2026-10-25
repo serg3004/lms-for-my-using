@@ -348,8 +348,8 @@ export function ManagerChecklistsPage() {
           {t('manager.checklists.searchLabel', 'Search employees')}
           <input className="ds-input" type="search" value={searchQuery} onChange={(event) => updateParam('q', event.target.value)} placeholder={t('manager.checklists.searchPlaceholder', 'Name, email or department')} />
         </label>
-        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}>
-          <input type="checkbox" checked={onlyNoCompletion} onChange={(event) => updateParam('noCompletion', event.target.checked ? '1' : '')} />
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, minHeight: 44 }}>
+          <input type="checkbox" style={{ width: 20, height: 20, flex: 'none' }} checked={onlyNoCompletion} onChange={(event) => updateParam('noCompletion', event.target.checked ? '1' : '')} />
           {t('manager.checklists.onlyNoCompletion', 'Only without completed sessions')}
         </label>
       </Card>
