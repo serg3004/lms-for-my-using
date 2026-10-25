@@ -261,7 +261,10 @@ codebase. Email delivery is a separate, best-effort async step triggered by that
 `apps/api/src/modules/auth/password-reset.ts`) POSTs to a configured provider-neutral webhook
 (`CHECKLIST_SESSION_REMINDER_DELIVERY_URL`/`_TOKEN`); an unconfigured endpoint is a documented,
 valid no-op -- the in-app `Notification` is already durable regardless of whether email delivery is
-configured or succeeds.
+configured or succeeds. PR 337: when `RESEND_API_KEY` and `MAIL_FROM` are set, both this delivery and
+`PasswordResetDelivery` send the email directly through Resend (`common/mail/resend.ts`, recipient
+looked up inside the organization) and the webhook is not used; a missing address is skipped, a
+provider failure is counted in the delivery-error metric and never blocks the workflow.
 
 ## Checklist session admin API (PR 292)
 

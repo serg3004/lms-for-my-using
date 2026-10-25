@@ -41,7 +41,7 @@ describe('checklist session reminders — database', () => {
     const outbox = new OutboxService(prisma, backgroundJobs);
     // No CHECKLIST_SESSION_REMINDER_DELIVERY_URL is set in this test environment -- exercises the
     // real "email only at production capability" no-op path, not a mocked one.
-    const delivery = new ChecklistSessionReminderDelivery();
+    const delivery = new ChecklistSessionReminderDelivery(prisma);
     worker = new ChecklistSessionReminderWorker(prisma, backgroundJobs, outbox, delivery);
   });
 

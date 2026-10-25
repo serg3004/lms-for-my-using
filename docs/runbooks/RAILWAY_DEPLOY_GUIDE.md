@@ -105,7 +105,7 @@ Canonical inventory — `.env.production.example` + current env validation.
 
 ### Redis
 
-Preferred production mode — configured Redis.
+Preferred production mode — configured Redis. Решение владельца (DEC-INFRA-001, 2026-10-25): Redis обязателен; без него recurring-джобы (в т.ч. напоминания чек-листов) не исполняются. Нужны сервис Redis в Railway и `REDIS_URL` у `api`.
 
 Если Redis отсутствует, production startup допускается только через explicit emergency flag:
 
@@ -114,6 +114,10 @@ ALLOW_IN_MEMORY_RATE_LIMIT=true
 ```
 
 Это degraded per-process rate limiting, а не эквивалент distributed Redis protection.
+
+### Email (Resend)
+
+Решение владельца (DEC-MAIL-001, 2026-10-25): провайдер — Resend. У `api` задаются `RESEND_API_KEY` и `MAIL_FROM` (адрес на домене, подтверждённом в Resend, например `LMS <no-reply@your-domain>`). При обеих переменных письма сброса пароля и сессий наблюдения уходят напрямую через Resend; без них работают webhook-переменные `PASSWORD_RESET_DELIVERY_URL` и `CHECKLIST_SESSION_REMINDER_DELIVERY_URL` или безопасный no-op. Живая доставка `[НЕ ПРОВЕРЕНО]` до настройки переменных.
 
 ### Storage
 
