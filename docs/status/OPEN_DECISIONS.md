@@ -26,7 +26,7 @@ Current admin-created user flow существует. Требуется реш�
 
 ## DEC-INFRA-001 — Redis requirement / degraded-mode policy
 
-**Решено владельцем 2026-10-25:** Redis обязателен в production. Осталось провизионировать сервис в Railway и задать `REDIS_URL` (`[НЕ ПРОВЕРЕНО]` на живом деплое).
+**Решено владельцем 2026-10-25:** Redis обязателен в production. Выполнено 2026-10-25: сервис Redis в Railway, `REDIS_URL` и `BACKGROUND_JOBS_RUN_WORKER=true` у `api`.
 
 **Источник:** `TV-032`, historical Redis concern/hardening item.
 
