@@ -54,7 +54,7 @@ describe('localized checklist defaults', () => {
 });
 
 describe('ChecklistBuilder (real hooks)', () => {
-  it('renders required/photo item controls, scale config and assignment section without crashing', () => {
+  it('renders required/photo item controls and scale config without crashing', () => {
     const html = renderToStaticMarkup(
       <ChecklistBuilder
         checklist={checklist}
@@ -72,7 +72,7 @@ describe('ChecklistBuilder (real hooks)', () => {
     expect(html).toContain('Отлично');
     expect(html).toContain('Required item');
     expect(html).toContain('Photo required');
-    expect(html).toContain('Select an employee');
+    expect(html).not.toContain('Select an employee');
     // PR 296 observation-sheet builder: context fields, item groups, ungrouped bucket, scale manager.
     expect(html).toContain('Номер магазина');
     expect(html).toContain('Приветствие');
@@ -154,6 +154,40 @@ describe('ChecklistBuilder criteria editor (PR 339)', () => {
     const html = render({});
     expect(html).toContain('aria-label="Move down: Работа с кассой"');
     expect(html).toContain('aria-label="Move up: Без группы"');
+  });
+});
+
+describe('ChecklistBuilder settings column (PR 340)', () => {
+  const html = renderToStaticMarkup(
+    <ChecklistBuilder
+      checklist={checklist}
+      statusLabels={statusLabels}
+      scoringModeLabels={scoringModeLabels}
+      onBack={() => {}}
+      onReload={async () => {}}
+      t={((key: string, fallback?: string) => fallback ?? key) as never}
+    />,
+  );
+
+  it('no longer carries the assignment block; assignment lives in Sessions', () => {
+    expect(html).not.toContain('Assignment');
+    expect(html).not.toContain('checklist-assign-user');
+    expect(html).not.toContain('planned next');
+  });
+
+  it('keeps secondary settings in a collapsed "Additional settings" section', () => {
+    expect(html).toContain('<details><summary>Additional settings</summary>');
+    const advanced = html.slice(html.indexOf('<details>'), html.indexOf('</details>'));
+    expect(advanced).toContain('Require an instructor to confirm');
+    expect(advanced).toContain('Location requirement');
+    expect(advanced).toContain('Employee sees before the session');
+    expect(html.slice(0, html.indexOf('<details>'))).not.toContain('Location requirement');
+  });
+
+  it('explains the active scoring mode and shows the save status', () => {
+    expect(html).toContain('role="note"');
+    expect(html).toContain('A criterion can also use its own ready-made scale');
+    expect(html).toContain('<p role="status" class="admin-form__hint">All changes are saved.</p>');
   });
 });
 
