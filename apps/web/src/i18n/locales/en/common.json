@@ -1303,7 +1303,9 @@
         "toDraft": "Move to draft",
         "archive": "Archive",
         "restore": "Restore as draft"
-      }
+      },
+      "savedAt": "Saved at {{time}}",
+      "needItemsHint": "Preview and Publish become available after you add at least one criterion."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

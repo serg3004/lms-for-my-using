@@ -5,6 +5,7 @@ import {
   applyContextFieldPatch,
   applyGroupPatch,
   groupItems,
+  isUntouchedDraft,
   moveGroup,
   moveItem,
   removeContextFieldById,
@@ -148,5 +149,21 @@ describe('context field helpers', () => {
   it('removeContextFieldById drops only the matching field', () => {
     const other: ContextField = { id: 'f-2', label: 'Shift', type: 'textarea', required: false, order: 1 };
     expect(removeContextFieldById([field, other], 'f-1')).toEqual([other]);
+  });
+});
+
+describe('isUntouchedDraft', () => {
+  const base = { status: 'draft', title: 'New checklist', description: null, items: [], itemGroups: [], contextFields: [] } as unknown as Parameters<typeof isUntouchedDraft>[0];
+
+  it('is true for a draft that still has the default title and nothing entered', () => {
+    expect(isUntouchedDraft(base, 'New checklist')).toBe(true);
+  });
+
+  it('is false once anything was entered or the draft was renamed or published', () => {
+    expect(isUntouchedDraft({ ...base, title: 'Cash desk' }, 'New checklist')).toBe(false);
+    expect(isUntouchedDraft({ ...base, description: ' text ' }, 'New checklist')).toBe(false);
+    expect(isUntouchedDraft({ ...base, items: [{ id: 'i1' }] } as never, 'New checklist')).toBe(false);
+    expect(isUntouchedDraft({ ...base, itemGroups: [{ id: 'g1' }] } as never, 'New checklist')).toBe(false);
+    expect(isUntouchedDraft({ ...base, status: 'published' }, 'New checklist')).toBe(false);
   });
 });

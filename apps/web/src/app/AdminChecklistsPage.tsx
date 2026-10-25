@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { useSession } from '../shared/session.js';
@@ -6,7 +6,7 @@ import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
-import { CHECKLIST_STATUSES, filterChecklists } from '../features/admin-checklists/domain.js';
+import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import {
   copyChecklist,
@@ -30,6 +30,23 @@ export function AdminChecklistsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSummary | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // The draft created by "Create checklist" in this visit. It exists only so the builder has an id;
+  // if the author leaves without entering anything it is discarded instead of piling up as "New checklist".
+  const freshDraftId = useRef<string | null>(null);
+  const newChecklistTitle = t('admin.checklists.newChecklistTitle', 'New checklist');
+  const discardFreshDraft = useCallback(async () => {
+    const id = freshDraftId.current;
+    freshDraftId.current = null;
+    if (!id) return;
+    try {
+      if (isUntouchedDraft(await getChecklist(id), newChecklistTitle)) await deleteChecklist(id);
+    } catch {
+      // Best effort: a draft that cannot be checked or removed stays as a normal draft.
+    }
+  }, [newChecklistTitle]);
+  const discardRef = useRef(discardFreshDraft);
+  discardRef.current = discardFreshDraft;
+  useEffect(() => () => { void discardRef.current(); }, []);
   const statusLabels: Record<ChecklistStatus, string> = {
     draft: t('admin.checklists.status.draft', 'Draft'),
     published: t('admin.checklists.status.published', 'Published'),
@@ -117,7 +134,10 @@ export function AdminChecklistsPage() {
           checklist={checklist}
           statusLabels={statusLabels}
           scoringModeLabels={scoringModeLabels}
-          onBack={() => setSelectedId(null)}
+          onBack={() => {
+            setSelectedId(null);
+            void discardFreshDraft().then(() => load());
+          }}
           onReload={() => refreshChecklist(checklist.id)}
           t={t}
         />
@@ -137,11 +157,12 @@ export function AdminChecklistsPage() {
             type="button"
             onClick={async () => {
               const created = await createChecklist(currentUser!.organizationId, {
-                title: t('admin.checklists.newChecklistTitle', 'New checklist'),
+                title: newChecklistTitle,
                 scoringMode: 'sum_points',
                 passThreshold: 80,
                 requiresReview: false,
               });
+              freshDraftId.current = created.id;
               await load();
               setSelectedId(created.id);
             }}

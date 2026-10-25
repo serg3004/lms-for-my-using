@@ -1303,7 +1303,9 @@
         "toDraft": "转为草稿",
         "archive": "归档",
         "restore": "恢复为草稿"
-      }
+      },
+      "savedAt": "已于 {{time}} 保存",
+      "needItemsHint": "添加至少一条标准后，才能预览和发布。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
