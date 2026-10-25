@@ -74,6 +74,11 @@ services:
       # anti-enumeration response, but no reset email is delivered.
       PASSWORD_RESET_DELIVERY_URL: ${PASSWORD_RESET_DELIVERY_URL:-}
       PASSWORD_RESET_DELIVERY_TOKEN: ${PASSWORD_RESET_DELIVERY_TOKEN:-}
+      CHECKLIST_SESSION_REMINDER_DELIVERY_URL: ${CHECKLIST_SESSION_REMINDER_DELIVERY_URL:-}
+      CHECKLIST_SESSION_REMINDER_DELIVERY_TOKEN: ${CHECKLIST_SESSION_REMINDER_DELIVERY_TOKEN:-}
+      # Optional. When both are set, email goes straight through Resend.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     networks:
       - lms_internal
     depends_on:

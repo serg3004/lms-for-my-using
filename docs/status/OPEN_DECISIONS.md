@@ -26,6 +26,8 @@ Current admin-created user flow существует. Требуется реш�
 
 ## DEC-INFRA-001 — Redis requirement / degraded-mode policy
 
+**Решено владельцем 2026-10-25:** Redis обязателен в production. Осталось провизионировать сервис в Railway и задать `REDIS_URL` (`[НЕ ПРОВЕРЕНО]` на живом деплое).
+
 **Источник:** `TV-032`, historical Redis concern/hardening item.
 
 Код поддерживает Redis-backed rate limiting и explicit in-memory degraded mode. Требуется определить acceptable production policy: Redis обязателен или degraded mode допустим при явном operational acceptance. Фактическое live Redis state проверяется отдельно.
@@ -37,6 +39,8 @@ Current admin-created user flow существует. Требуется реш�
 Notifications уже реализованы. Требуется только owner decision по их product/MVP classification.
 
 ## DEC-MAIL-001 — Delivery provider and delivery requirements
+
+**Решено владельцем 2026-10-25:** провайдер — Resend. Код: `RESEND_API_KEY` + `MAIL_FROM` (домен должен быть подтверждён в Resend). SLA не задан; живая отправка `[НЕ ПРОВЕРЕНО]`.
 
 **Источник:** `TV-048`.
 

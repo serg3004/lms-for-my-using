@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
+import { isResendConfigured, ResendHttpError, sendResendEmail } from '../../common/mail/resend.js';
 import { passwordResetDeliveryErrors } from '../../common/observability/metrics.js';
 
 export const passwordResetLifetimeMs = 60 * 60 * 1000;
@@ -32,7 +33,7 @@ class PasswordResetDeliveryHttpError extends Error {
 }
 
 function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
-  if (error instanceof PasswordResetDeliveryHttpError) return 'http_error';
+  if (error instanceof PasswordResetDeliveryHttpError || error instanceof ResendHttpError) return 'http_error';
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
   return 'network_error';
 }
@@ -49,10 +50,26 @@ export class PasswordResetDelivery {
    * but failing" without duplicating the env var check.
    */
   checkReadiness(): 'ok' | 'disabled' {
-    return process.env['PASSWORD_RESET_DELIVERY_URL'] ? 'ok' : 'disabled';
+    return isResendConfigured() || process.env['PASSWORD_RESET_DELIVERY_URL'] ? 'ok' : 'disabled';
   }
 
   async send(message: PasswordResetMessage): Promise<void> {
+    if (isResendConfigured()) {
+      try {
+        const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+        await sendResendEmail({
+          to: message.email,
+          subject: 'Восстановление пароля',
+          text: `Чтобы задать новый пароль, перейдите по ссылке (действует 1 час):\n${frontend}/password-reset?token=${message.token}\n\nЕсли вы не запрашивали восстановление, просто проигнорируйте это письмо.`,
+        });
+      } catch (error) {
+        const reason = classifyDeliveryFailure(error);
+        passwordResetDeliveryErrors.inc({ reason });
+        this.logger.warn(`Password reset delivery failed (${reason})`);
+        throw error;
+      }
+      return;
+    }
     const endpoint = process.env['PASSWORD_RESET_DELIVERY_URL'];
     if (!endpoint) {
       this.logger.warn('Password reset requested but PASSWORD_RESET_DELIVERY_URL is not configured');
