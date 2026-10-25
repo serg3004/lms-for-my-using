@@ -1105,13 +1105,7 @@
           "invalidLocalTime": "This time is invalid or does not exist. Choose another date or time."
         },
         "report": "Report",
-        "reassignObserver": "Reassign observer",
         "reassign": {
-          "title": "Reassign observer",
-          "error": "Unable to reassign the observer.",
-          "cancel": "Cancel",
-          "save": "Save",
-          "stepLabel": "New observer",
           "unavailableReason": "Reported unavailable",
           "search": "Find observer"
         },
@@ -1137,7 +1131,34 @@
         "activeFilters": "Active filters",
         "removeFilter": "Remove filter: {{filter}}",
         "resetFilters": "Reset filters",
-        "searchLabel": "Search"
+        "searchLabel": "Search",
+        "edit": {
+          "open": "Edit time or observer",
+          "title": "Edit session",
+          "stepLabel": "Time and observer",
+          "scheduledAt": "Date and time",
+          "observer": "Observer",
+          "searchHint": "Find another observer (optional)",
+          "save": "Save",
+          "cancel": "Cancel",
+          "error": "Unable to save the session."
+        },
+        "delete": "Delete",
+        "deleteTitle": "Delete session",
+        "deleteConfirm": "Delete this session? It has not started, so nothing is lost except the plan. The employee will no longer see it.",
+        "deleteError": "Unable to delete the session.",
+        "message": {
+          "open": "Write to the participant",
+          "title": "Write to the participant",
+          "stepLabel": "Message",
+          "to": "To: {{name}}",
+          "label": "Message",
+          "hint": "The employee sees this text and the checklist name. Feedback and location are never included.",
+          "send": "Send",
+          "cancel": "Cancel",
+          "error": "Unable to send the message.",
+          "sent": "Message sent."
+        }
       },
       "newGroupTitle": "New group",
       "newCriterionText": "New criterion",
@@ -2204,6 +2225,10 @@
       "checklist_session_incomplete_after_start_reminder": {
         "title": "Session still in progress",
         "message": "A checklist session you're observing hasn't been completed yet."
+      },
+      "checklist_session_message": {
+        "title": "Message about a session",
+        "message": "{{message}} (checklist: {{checklistTitle}})"
       }
     },
     "centerTitle": "Notification Center",

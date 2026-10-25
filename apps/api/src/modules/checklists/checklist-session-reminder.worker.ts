@@ -5,6 +5,7 @@ import { BackgroundJobsService } from '../background-jobs/public.js';
 import type { BackgroundJob } from '../background-jobs/public.js';
 import { OutboxService } from '../outbox/public.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
+import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB } from './checklist-session-message.js';
 
 export const CHECKLIST_SESSION_REMINDER_JOB = 'checklists.session-reminders-due';
 export const CHECKLIST_SESSION_REMINDER_SCHEDULER = 'checklists-session-reminders-due-v1';
@@ -61,6 +62,9 @@ export class ChecklistSessionReminderWorker implements OnModuleInit {
     this.backgroundJobs.registerHandler(CHECKLIST_SESSION_REMINDER_NOTIFY_JOB, async (job) => {
       await this.deliverEmail(job);
     });
+    this.backgroundJobs.registerHandler(CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, async (job) => {
+      await this.deliverMessageEmail(job);
+    });
   }
 
   async processDue(now = new Date()): Promise<number> {
@@ -92,13 +96,13 @@ export class ChecklistSessionReminderWorker implements OnModuleInit {
   private async processOne(reminder: DueReminder, now: Date): Promise<boolean> {
     const session = await this.prisma.checklistSession.findUnique({
       where: { id: reminder.sessionId },
-      select: { id: true, observerId: true, status: true },
+      select: { id: true, observerId: true, status: true, deletedAt: true },
     });
 
     // No session (cascade-deleted -- shouldn't normally race with a pending reminder, but this
     // guards it) or a terminal session: suppress rather than send. Never a silent drop -- the row
     // still records that this reminder was resolved, just not by sending.
-    if (!session || TERMINAL_SESSION_STATUSES.has(session.status)) {
+    if (!session || session.deletedAt || TERMINAL_SESSION_STATUSES.has(session.status)) {
       await this.prisma.checklistSessionReminder.updateMany({
         where: { id: reminder.id, status: 'pending' },
         data: { status: 'suppressed' },
@@ -167,5 +171,20 @@ export class ChecklistSessionReminderWorker implements OnModuleInit {
       return;
     }
     await this.delivery.send({ organizationId, sessionId, observerId, reminderType });
+  }
+
+  private async deliverMessageEmail(job: BackgroundJob) {
+    const { organizationId, sessionId, recipientId, checklistTitle, message } = job.data;
+    if (
+      typeof organizationId !== 'string' ||
+      typeof sessionId !== 'string' ||
+      typeof recipientId !== 'string' ||
+      typeof checklistTitle !== 'string' ||
+      typeof message !== 'string'
+    ) {
+      this.logger.warn('Dropping malformed checklist session message notify payload');
+      return;
+    }
+    await this.delivery.sendMessage({ organizationId, sessionId, recipientId, checklistTitle, message });
   }
 }

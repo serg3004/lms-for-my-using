@@ -272,6 +272,10 @@ export const checklistSessionTransitionSchema = z
   .strict();
 export type ChecklistSessionTransitionInput = z.infer<typeof checklistSessionTransitionSchema>;
 
+// ---- PR 333: message to the session participant ----
+export const sendChecklistSessionMessageSchema = z.object({ message: z.string().trim().min(1).max(500) }).strict();
+export type SendChecklistSessionMessageInput = z.infer<typeof sendChecklistSessionMessageSchema>;
+
 // ---- PR 302: observer unavailable -- an orthogonal business flag, not a lifecycle transition ----
 export const markChecklistSessionObserverUnavailableSchema = z
   .object({ reason: z.string().trim().min(1).max(500), version: z.number().int().min(1) })

@@ -26,6 +26,7 @@ import {
   createChecklistSchema,
   createChecklistSessionSchema,
   checklistSessionQuerySchema,
+  sendChecklistSessionMessageSchema,
   checklistSessionTransitionSchema,
   reviewChecklistItemResultSchema,
   skipChecklistItemSchema,
@@ -466,6 +467,22 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
     return this.sessions.update(sessionId, user.organizationId, input, user.id, scope);
+  }
+  @Delete('checklist-sessions/:id')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async deleteSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    await this.sessions.deleteSession(sessionId, user.organizationId, user.id, scope);
+    return { deleted: true as const };
+  }
+  @Post('checklist-sessions/:id/message')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async messageSessionParticipant(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = sendChecklistSessionMessageSchema.parse(body);
+    const user = request.currentUser!;
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.sendMessageToParticipant(sessionId, user.organizationId, input.message, user.id, scope);
   }
   @Post('checklist-sessions/:id/start')
   @Roles(...rolePolicies.checklistSessionsRun)

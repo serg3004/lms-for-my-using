@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { BackgroundJobsService } from '../background-jobs/public.js';
 import { OutboxService } from '../outbox/public.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
+import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB } from './checklist-session-message.js';
 import {
   CHECKLIST_SESSION_REMINDER_JOB,
   CHECKLIST_SESSION_REMINDER_NOTIFY_JOB,
@@ -72,7 +73,7 @@ function createHarness(overrides: {
     ),
   };
 
-  const delivery = { send: jest.fn(async () => undefined) };
+  const delivery = { send: jest.fn(async () => undefined), sendMessage: jest.fn(async () => undefined) };
 
   const worker = new ChecklistSessionReminderWorker(
     prisma as unknown as PrismaService,
@@ -140,6 +141,17 @@ describe('ChecklistSessionReminderWorker', () => {
       expect(prisma.notification.create).not.toHaveBeenCalled();
     });
 
+    it('suppresses a reminder whose session was soft-deleted (PR 333)', async () => {
+      const { worker, prisma, outbox } = createHarness({ session: { id: sessionId, observerId, status: 'scheduled', deletedAt: new Date() } });
+
+      expect(await worker.processDue()).toBe(0);
+      expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith({
+        where: { id: reminderId, status: 'pending' },
+        data: { status: 'suppressed' },
+      });
+      expect(outbox.runInTransaction).not.toHaveBeenCalled();
+    });
+
     it('suppresses a reminder whose session has been cancelled', async () => {
       const { worker, prisma } = createHarness({ session: { id: sessionId, observerId, status: 'cancelled' } });
 
@@ -197,6 +209,21 @@ describe('ChecklistSessionReminderWorker', () => {
       });
 
       expect(delivery.send).toHaveBeenCalledWith({ organizationId, sessionId, observerId, reminderType: 'pre_start' });
+    });
+
+    it('forwards a participant message to the delivery adapter and drops a malformed one (PR 333)', async () => {
+      const { worker, backgroundJobs, delivery } = createHarness();
+      worker.onModuleInit();
+      const handler = backgroundJobs.handlers.get(CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB)!;
+      const base = { id: 'job-2', name: CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, attemptsMade: 0 };
+      const payload = { organizationId, sessionId, recipientId: observerId, checklistTitle: 'Opening shift', message: 'Bring your badge' };
+
+      await handler({ ...base, data: { ...payload, notificationId: 'n1' } });
+      expect(delivery.sendMessage).toHaveBeenCalledWith(payload);
+
+      delivery.sendMessage.mockClear();
+      await handler({ ...base, data: { organizationId, sessionId } });
+      expect(delivery.sendMessage).not.toHaveBeenCalled();
     });
 
     it('drops a malformed payload without calling the delivery adapter (absence of email must not break the workflow)', async () => {

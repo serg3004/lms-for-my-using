@@ -9,6 +9,14 @@ export type ChecklistSessionReminderMessage = {
   reminderType: 'pre_start' | 'incomplete_after_start';
 };
 
+export type ChecklistSessionParticipantMessage = {
+  organizationId: string;
+  sessionId: string;
+  recipientId: string;
+  checklistTitle: string;
+  message: string;
+};
+
 type DeliveryFailureReason = 'http_error' | 'timeout' | 'network_error';
 
 /** Thrown for a non-2xx delivery provider response; distinguishes it from network/timeout failures without inspecting error messages that could contain the endpoint URL. */
@@ -43,9 +51,18 @@ export class ChecklistSessionReminderDelivery {
   }
 
   async send(message: ChecklistSessionReminderMessage): Promise<void> {
+    await this.post({ ...message }, 'reminder');
+  }
+
+  /** PR 333: same endpoint, distinguished by `kind`; the in-app Notification is already durable. */
+  async sendMessage(message: ChecklistSessionParticipantMessage): Promise<void> {
+    await this.post({ kind: 'participant_message', ...message }, 'participant message');
+  }
+
+  private async post(body: Record<string, unknown>, label: string): Promise<void> {
     const endpoint = process.env['CHECKLIST_SESSION_REMINDER_DELIVERY_URL'];
     if (!endpoint) {
-      this.logger.debug('Checklist session reminder due but CHECKLIST_SESSION_REMINDER_DELIVERY_URL is not configured');
+      this.logger.debug(`Checklist session ${label} due but CHECKLIST_SESSION_REMINDER_DELIVERY_URL is not configured`);
       return;
     }
 
@@ -58,7 +75,7 @@ export class ChecklistSessionReminderDelivery {
             ? { authorization: `Bearer ${process.env['CHECKLIST_SESSION_REMINDER_DELIVERY_TOKEN']}` }
             : {}),
         },
-        body: JSON.stringify(message),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(5_000),
       });
 
@@ -67,7 +84,7 @@ export class ChecklistSessionReminderDelivery {
       // Never log error.message or the endpoint: fetch/TypeError messages can embed the URL.
       const reason = classifyDeliveryFailure(error);
       checklistSessionReminderDeliveryErrors.inc({ reason });
-      this.logger.warn(`Checklist session reminder delivery failed (${reason})`);
+      this.logger.warn(`Checklist session ${label} delivery failed (${reason})`);
       throw error;
     }
   }

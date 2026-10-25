@@ -50,6 +50,16 @@ export function updateChecklistSession(sessionId: string, input: UpdateChecklist
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 
+/** PR 333: soft delete of a session that has not started. */
+export function deleteChecklistSession(sessionId: string) {
+  return apiRequest<{ deleted: true }>(`/checklist-sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
+
+/** PR 333: in-app message (plus best-effort email) to the session's participant. */
+export function sendChecklistSessionMessage(sessionId: string, message: string) {
+  return apiRequest<{ sent: true }>(`/checklist-sessions/${encodeURIComponent(sessionId)}/message`, { method: 'POST', body: JSON.stringify({ message }) });
+}
+
 export function transitionChecklistSession(sessionId: string, action: ChecklistSessionAction, version: number, idempotencyKey?: string) {
   return apiRequest<ChecklistSession>(`/checklist-sessions/${encodeURIComponent(sessionId)}/${action}`, {
     method: 'POST',

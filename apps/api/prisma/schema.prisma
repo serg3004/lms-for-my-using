@@ -253,6 +253,11 @@ enum ChecklistSessionEventType {
   /// with a Notification to every org admin so someone can reassign via the existing
   /// `PATCH .../checklist-sessions/:id` observerId change, which clears the flag.
   observer_marked_unavailable
+  /// PR 333: a not-yet-started session was deleted (soft delete); the row and its events are kept.
+  deleted
+  /// PR 333: a manager sent the participant a message (metadata carries who, never the text's
+  /// location/feedback context).
+  message_sent
 }
 
 enum ChecklistSessionReminderType {
@@ -1295,6 +1300,9 @@ model ChecklistSession {
   instanceId            String                     @unique @map("instance_id") @db.Uuid
   observerId            String                     @map("observer_id") @db.Uuid
   status                ChecklistSessionStatus     @default(scheduled)
+  // PR 333: soft delete of a not-yet-started session. Hidden from every read; the event history
+  // and audit rows stay (append-only), the paired instance is soft-deleted in the same transaction.
+  deletedAt             DateTime?                  @map("deleted_at") @db.Timestamptz
   // Optimistic concurrency for PR 289's conditional transitions (stale write -> 409).
   version               Int                        @default(1)
   scheduledAt           DateTime?                  @map("scheduled_at") @db.Timestamptz

@@ -5,6 +5,7 @@ import type {
   ChecklistSessionRecipientSchedule,
   ChecklistSessionStatus,
   ChecklistSessionSummary,
+  UpdateChecklistSessionInput,
 } from '../../shared/api/types.js';
 
 export { formatUserName };
@@ -137,6 +138,51 @@ export function canProceedFromChecklistStep(checklistId: string) {
 }
 
 export type ScheduleMode = 'now' | 'later';
+/** PR 333: only a session that has not started can be edited or deleted. */
+export function canDeleteSession(session: Pick<ChecklistSessionSummary, 'status'>) {
+  return session.status === 'scheduled';
+}
+
+/** PR 333: a message about a finished session has nothing to act on. */
+export function canMessageParticipant(session: Pick<ChecklistSessionSummary, 'status'>) {
+  return session.status !== 'completed' && session.status !== 'cancelled';
+}
+
+/** ISO instant -> `datetime-local` value in browser wall time (the same convention `toSessionScheduledAt` reads back). */
+export function toDatetimeLocalValue(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * PR 333: one PATCH for the unified edit dialog. Only what actually changed is sent; `null` means
+ * "nothing to save" (or an unreadable date), which keeps Save disabled. A changed time always
+ * carries the browser timezone so the stored wall time and the stored zone never disagree.
+ */
+export function buildSessionUpdatePayload(
+  session: Pick<ChecklistSessionSummary, 'version' | 'scheduledAt' | 'observerId'>,
+  draft: { scheduledAt: string; observerId: string },
+  timezone: string,
+): UpdateChecklistSessionInput | null {
+  const payload: UpdateChecklistSessionInput = { version: session.version };
+  let changed = false;
+  if (draft.scheduledAt && draft.scheduledAt !== toDatetimeLocalValue(session.scheduledAt)) {
+    const iso = toSessionScheduledAt(draft.scheduledAt);
+    if (!iso) return null;
+    payload.scheduledAt = iso;
+    payload.timezone = timezone;
+    changed = true;
+  }
+  if (draft.observerId && draft.observerId !== session.observerId) {
+    payload.observerId = draft.observerId;
+    changed = true;
+  }
+  return changed ? payload : null;
+}
+
 export type SessionScheduleDraft = { scheduledAt: string; durationMinutes: string };
 
 /** A datetime-local value denotes browser wall time. Reject invalid dates and DST gaps

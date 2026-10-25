@@ -75,6 +75,8 @@ The PR 331 cross-tenant/IDOR matrix is exercised by `checklist-session-observer-
 | Learner/mentor calls creation or participant lookup | 403 from membership guard |
 | Instructor calls PATCH, repeat or cancel | 403 from membership guard |
 
+Delete and participant message (PR 333: `DELETE /checklist-sessions/:id`, `POST /checklist-sessions/:id/message`) reuse `checklistSessionsManage` (admin/manager) with the parent `sessionScope()`; no new policy and no access for instructor or learner, so an observer cannot delete or message on a session even if they created it under `checklistSessionsCreateOwn`. A session outside the caller's tenant or team, or one already deleted, answers 404. Delete is rejected (400) once a session has left `scheduled`; the message is rejected (400) for a completed or cancelled session and throttled (429) at 3 per session per 10 minutes. The recipient is always the session's own employee, taken server-side, never from the request body.
+
 `POST /checklist-sessions/:id/repeat` continues to require `checklistSessionsManage` and the existing parent `sessionScope()`. `GET /checklists?status=published` retains `checklistsRead` for the shared wizard's sheet picker.
 
 Evaluation scale library (PR 293: `GET/POST /checklist-scales`, `GET/PATCH /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) reuses `checklistsRead` (list/get) and `checklistsCreate` (create/update/archive) rather than adding new policies -- managing a reusable scale library is the same class of action as managing checklists/items themselves, which already use exactly these two policies. There is no row-level scoping beyond tenant (`organizationId`): a scale is a tenant-wide library resource, not owned by an individual manager's team.

@@ -1105,13 +1105,7 @@
           "invalidLocalTime": "此时间无效或不存在。请选择其他日期或时间。"
         },
         "report": "报告",
-        "reassignObserver": "重新指派观察员",
         "reassign": {
-          "title": "重新指派观察员",
-          "error": "无法重新指派观察员。",
-          "cancel": "取消",
-          "save": "保存",
-          "stepLabel": "新观察员",
           "unavailableReason": "已报告不可用",
           "search": "查找观察员"
         },
@@ -1137,7 +1131,34 @@
         "activeFilters": "已启用的筛选",
         "removeFilter": "移除筛选：{{filter}}",
         "resetFilters": "重置筛选",
-        "searchLabel": "搜索"
+        "searchLabel": "搜索",
+        "edit": {
+          "open": "修改时间或观察员",
+          "title": "编辑会话",
+          "stepLabel": "时间和观察员",
+          "scheduledAt": "日期和时间",
+          "observer": "观察员",
+          "searchHint": "查找其他观察员（可选）",
+          "save": "保存",
+          "cancel": "取消",
+          "error": "无法保存会话。"
+        },
+        "delete": "删除",
+        "deleteTitle": "删除会话",
+        "deleteConfirm": "删除此会话？它尚未开始，只会丢失计划。员工将不再看到它。",
+        "deleteError": "无法删除会话。",
+        "message": {
+          "open": "给参与者留言",
+          "title": "给参与者留言",
+          "stepLabel": "消息",
+          "to": "收件人：{{name}}",
+          "label": "消息",
+          "hint": "员工会看到这段文字和清单名称，不会包含反馈和位置信息。",
+          "send": "发送",
+          "cancel": "取消",
+          "error": "无法发送消息。",
+          "sent": "消息已发送。"
+        }
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -2204,6 +2225,10 @@
       "checklist_session_incomplete_after_start_reminder": {
         "title": "环节尚未完成",
         "message": "您负责观察的检查表环节尚未完成。"
+      },
+      "checklist_session_message": {
+        "title": "关于会话的消息",
+        "message": "{{message}}（清单：{{checklistTitle}}）"
       }
     },
     "centerTitle": "通知中心",

@@ -5,25 +5,26 @@ import { ApiClientError } from '../../shared/apiClient.js';
 import { listChecklistSessionParticipants, updateChecklistSession } from '../../shared/api/checklistSessions.js';
 import type { ChecklistSessionParticipant, ChecklistSessionSummary } from '../../shared/api/types.js';
 import { InlineFeedback, Input, WizardDialog } from '../../shared/ui.js';
-import { excludeCurrentObserver, formatParticipantName } from './domain.js';
+import { buildSessionUpdatePayload, excludeCurrentObserver, formatParticipantName, toDatetimeLocalValue } from './domain.js';
 import { useDebounced } from './ChecklistSessionWizard.js';
 
 type Props = {
   /** `null` closes the dialog -- same "controlled by the target row" pattern as ConfirmDialog's cancelTarget. */
   session: ChecklistSessionSummary | null;
   onClose: () => void;
-  onReassigned: () => void;
+  onSaved: () => void;
   t: TFunction;
 };
 
 /**
- * PR 302: the admin/manager CTA for a session whose observer reported they're unavailable (or
- * just any scheduled session's observer, unavailable-flagged or not -- reassignment isn't gated on
- * the flag, only on the session still being `scheduled`). Reuses `WizardDialog` as a single-step
- * shell, per ADR_CHECKLIST_SESSION_OVERLAY.md's "no third modal implementation" rule, and the same
- * debounced observer-search picklist as `ChecklistSessionWizard`'s participants step.
+ * PR 333: one dialog for everything a manager changes on a scheduled session -- the time and,
+ * optionally, the observer (PR 302's reassignment, which used to be its own dialog). Both go out
+ * as a single PATCH so the version check and the audit trail see one coherent edit. Reuses
+ * `WizardDialog` as a single-step shell, per ADR_CHECKLIST_SESSION_OVERLAY.md's "no third modal
+ * implementation" rule, and the same debounced observer-search picklist as the creation wizard.
  */
-export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Props) {
+export function EditSessionDialog({ session, onClose, onSaved, t }: Props) {
+  const [scheduledAt, setScheduledAt] = useState('');
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search);
   const [results, setResults] = useState<ChecklistSessionParticipant[]>([]);
@@ -32,11 +33,12 @@ export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Pr
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setScheduledAt(toDatetimeLocalValue(session?.scheduledAt ?? null));
     setSearch('');
     setResults([]);
     setSelected(null);
     setError(null);
-  }, [session?.id]);
+  }, [session?.id, session?.scheduledAt]);
 
   useEffect(() => {
     if (!session) return;
@@ -49,16 +51,20 @@ export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Pr
     return () => { cancelled = true; };
   }, [session, debounced]);
 
+  const payload = session
+    ? buildSessionUpdatePayload(session, { scheduledAt, observerId: selected?.id ?? '' }, Intl.DateTimeFormat().resolvedOptions().timeZone)
+    : null;
+
   async function submit() {
-    if (!session || !selected) return;
+    if (!session || !payload) return;
     setBusy(true);
     setError(null);
     try {
-      await updateChecklistSession(session.id, { observerId: selected.id, version: session.version });
-      onReassigned();
+      await updateChecklistSession(session.id, payload);
+      onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.sessions.reassign.error', 'Unable to reassign the observer.'));
+      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.sessions.edit.error', 'Unable to save the session.'));
     } finally {
       setBusy(false);
     }
@@ -67,27 +73,36 @@ export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Pr
   return (
     <WizardDialog
       busy={busy}
-      cancelLabel={t('admin.checklists.sessions.reassign.cancel', 'Cancel')}
+      cancelLabel={t('admin.checklists.sessions.edit.cancel', 'Cancel')}
       currentStep={0}
-      nextDisabled={!selected}
-      nextLabel={t('admin.checklists.sessions.reassign.save', 'Save')}
+      nextDisabled={!payload}
+      nextLabel={t('admin.checklists.sessions.edit.save', 'Save')}
       onBack={onClose}
       onClose={onClose}
       onNext={() => { void submit(); }}
       open={session !== null}
-      steps={[{ key: 'observer', label: t('admin.checklists.sessions.reassign.stepLabel', 'New observer') }]}
-      title={t('admin.checklists.sessions.reassign.title', 'Reassign observer')}
+      steps={[{ key: 'edit', label: t('admin.checklists.sessions.edit.stepLabel', 'Time and observer') }]}
+      title={t('admin.checklists.sessions.edit.title', 'Edit session')}
     >
-      {error && <InlineFeedback title={t('admin.checklists.sessions.reassign.error', 'Unable to reassign the observer.')} tone="error">{error}</InlineFeedback>}
+      {error && <InlineFeedback title={t('admin.checklists.sessions.edit.error', 'Unable to save the session.')} tone="error">{error}</InlineFeedback>}
+      <Input
+        label={t('admin.checklists.sessions.edit.scheduledAt', 'Date and time')}
+        onChange={(e) => setScheduledAt(e.target.value)}
+        type="datetime-local"
+        value={scheduledAt}
+      />
       {session?.observerUnavailableReason && (
         <InlineFeedback title={t('admin.checklists.sessions.reassign.unavailableReason', 'Reported unavailable')} tone="warning">
           {session.observerUnavailableReason}
         </InlineFeedback>
       )}
+      <p style={{ margin: '12px 0 4px', fontWeight: 600 }}>
+        {t('admin.checklists.sessions.edit.observer', 'Observer')}: {session ? formatParticipantName(session.observer) : ''}
+      </p>
       <Input
         aria-label={t('admin.checklists.sessions.reassign.search', 'Find observer')}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('admin.checklists.sessions.reassign.search', 'Find observer')}
+        placeholder={t('admin.checklists.sessions.edit.searchHint', 'Find another observer (optional)')}
         value={search}
       />
       <ul className="ds-wizard-dialog__picklist">
@@ -96,7 +111,7 @@ export function ReassignObserverDialog({ session, onClose, onReassigned, t }: Pr
             <label>
               <input
                 checked={selected?.id === participant.id}
-                name="reassign-observer"
+                name="edit-session-observer"
                 onChange={() => setSelected(participant)}
                 type="radio"
               />
