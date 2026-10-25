@@ -30,6 +30,15 @@ submits a required-location override with a reason when an observer couldn't cap
 entries for exactly which actions that unlocks (e.g. overriding a session outside the admin's own
 assigned-observer relationship).
 
+The recalculation dialog (PR 335) offers **Checklist settings** (the assignment's original points
+and weights, also the default for older clients) and **By criteria** (marked / non-skipped total,
+equal weight). A selected scale level counts as a mark; rejected answers earn nothing. A reason
+is required. After saving, the dialog shows the actual before/after; close it to return to the
+report. Summary and History show each immutable revision's formula. Retrying an unchanged failed
+request reuses its idempotency key; changing the formula/reason starts a new operation. The
+original revision is returned on replay and never rewritten. See `API_CONTRACTS.md` for skip,
+not-scored, scale and snapshot semantics.
+
 The schedule step supports **Same for everyone** and **Set each separately** (PR 329). A shared
 schedule keeps the existing Start now / Schedule for later behavior and accepts an optional
 duration. Individual scheduling requires a date/time for every selected employee and allows an

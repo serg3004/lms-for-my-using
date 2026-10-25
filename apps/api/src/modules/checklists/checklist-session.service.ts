@@ -21,6 +21,7 @@ import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checkli
 import type {
   BulkCreateChecklistSessionInput,
   ChecklistSessionParticipantsQuery,
+  ChecklistScoreFormula,
   ChecklistSessionQuery,
   CreateChecklistSessionInput,
   ContextField,
@@ -1037,7 +1038,7 @@ export class ChecklistSessionService {
    * revision. `idempotencyKey` is checked first and, on a hit, replays the first call's revision
    * without touching the audit log a second time.
    */
-  async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object, idempotencyKey?: string) {
+  async recalculateScore(sessionId: string, organizationId: string, reason: string, actorId: string, scope: object, idempotencyKey?: string, formula: ChecklistScoreFormula = 'snapshot') {
     const idempotencyScope = 'session.recalculate';
     const { revision, previousPercentage, newPercentage, replayed } = await runSerializableWithRetry(this.prisma, async (tx) => {
       // The client needs to know whether `newPercentage` is a real score or the placeholder 0
@@ -1050,12 +1051,14 @@ export class ChecklistSessionService {
       // matter how much has happened to the instance since, and also covers cache rows written
       // before this response started including `scored` at all (raw historical JSON, never
       // migrated): those fall back to the same lookup.
-      const cached = await this.findIdempotentResponse<ChecklistScoreRevision & { scored?: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
+      const cached = await this.findIdempotentResponse<Omit<ChecklistScoreRevision, 'formula'> & { formula?: ChecklistScoreFormula; scored?: boolean }>(tx, organizationId, idempotencyScope, idempotencyKey);
       if (cached) {
-        const scored = cached.scored ?? (
-          await tx.checklistScoreRevision.findUnique({ where: { id: cached.id }, select: { newScored: true } })
-        )?.newScored ?? false;
-        return { revision: { ...cached, scored }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
+        const historical = cached.scored === undefined || cached.formula === undefined
+          ? await tx.checklistScoreRevision.findUnique({ where: { id: cached.id }, select: { newScored: true, formula: true } })
+          : null;
+        const scored = cached.scored ?? historical?.newScored ?? false;
+        const replayFormula = cached.formula ?? historical?.formula ?? 'snapshot';
+        return { revision: { ...cached, scored, newScored: cached.newScored ?? scored, formula: replayFormula }, previousPercentage: cached.previousPercentage, newPercentage: cached.newPercentage, replayed: true };
       }
 
       const session = await tx.checklistSession.findFirst({
@@ -1072,6 +1075,7 @@ export class ChecklistSessionService {
         session.instanceId,
         organizationId,
         tx,
+        formula,
       );
       const passed = scored && session.instance.status === 'completed' && percentage >= passThreshold;
 
@@ -1079,6 +1083,7 @@ export class ChecklistSessionService {
         data: {
           organizationId,
           instanceId: session.instanceId,
+          formula,
           previousPercentage: session.instance.percentage,
           newPercentage: percentage,
           previousPassed: session.instance.passed,
@@ -1100,7 +1105,7 @@ export class ChecklistSessionService {
           sessionId,
           eventType: 'score_recalculated',
           actorUserId: actorId,
-          metadata: { revisionId: createdRevision.id, previousPercentage: session.instance.percentage, newPercentage: percentage },
+          metadata: { revisionId: createdRevision.id, formula, previousPercentage: session.instance.percentage, newPercentage: percentage },
         },
       });
 
@@ -1120,7 +1125,7 @@ export class ChecklistSessionService {
         targetType: 'checklist_instance',
         targetId: revision.instanceId,
         summary: `Recalculated checklist score (${previousPercentage}% -> ${newPercentage}%)`,
-        metadata: { sessionId, reason },
+        metadata: { sessionId, reason, formula },
       });
     }
 

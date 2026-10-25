@@ -799,6 +799,13 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-session-report-${width}`);
+      await page.getByRole('button', { name: 'Пересчитать', exact: true }).click();
+      const recalculate = page.getByRole('dialog');
+      await recalculate.getByRole('combobox', { name: 'Формула', exact: true }).selectOption('criteria');
+      await recalculate.getByLabel('Причина пересчёта').fill('Проверка формулы по критериям');
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `admin-checklist-recalculate-formula-${width}`);
     });
   });
 }

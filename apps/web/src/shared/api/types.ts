@@ -768,7 +768,11 @@ export type ChecklistLocationCapture = {
 
 // ---- Score revisions (PR 300 admin session report + auditable recalculate) ----
 
+export type ChecklistScoreFormula = 'snapshot' | 'criteria';
+
 export type ChecklistScoreRevision = {
+  formula: ChecklistScoreFormula;
+  newScored: boolean;
   id: string;
   organizationId: string;
   instanceId: string;
@@ -781,11 +785,7 @@ export type ChecklistScoreRevision = {
   createdAt: string;
 };
 
-export type RecalculateChecklistScoreInput = { reason: string; idempotencyKey?: string };
+export type RecalculateChecklistScoreInput = { reason: string; formula?: ChecklistScoreFormula; idempotencyKey?: string };
 
-// `scored` isn't a persisted ChecklistScoreRevision column (it belongs to the instance, not the
-// revision audit row), so it's only present on a fresh POST /recalculate response, not on rows
-// from listChecklistScoreRevisions()'s history. Without it, a client that recalculates an
-// all-skipped (not-scored) session can't tell "recalculated to 0%" from "still not scored" --
-// computeInstanceScore() returns the same placeholder 0 for both.
+// POST keeps the historical scored alias; revisions persist the same fact as newScored.
 export type RecalculateChecklistScoreResult = ChecklistScoreRevision & { scored: boolean };

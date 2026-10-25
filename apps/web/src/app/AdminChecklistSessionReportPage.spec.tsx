@@ -223,6 +223,24 @@ describe('RecalculateDialog', () => {
 });
 
 describe('RecalculateForm', () => {
+  it('offers snapshot and equal criteria formulas with the snapshot selected by default', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    const html = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
+    expect(html).toContain('value="snapshot" selected=""');
+    expect(html).toContain('By criteria (marked / total)');
+    expect(html).not.toContain('Skipped criteria are excluded');
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial === 'snapshot' ? 'criteria' : initial, vi.fn()]);
+    const criteria = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
+    expect(criteria).toContain('Skipped criteria are excluded');
+  });
+  it('shows the returned before/after and actual formula, including an unscored outcome', () => {
+    let call = 0;
+    reactMocks.useState.mockImplementation((initial: unknown) => [++call === 5 ? { previousPercentage: 95, newPercentage: 0, scored: false, formula: 'criteria' } : initial, vi.fn()]);
+    const html = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
+    expect(html).toContain('95% → Not scored');
+    expect(html).toContain('Score recalculated');
+    expect(html).not.toContain('95% → 0%');
+  });
   it('disables submit until a reason is entered', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
@@ -275,7 +293,7 @@ describe('HistoryTab', () => {
           status: 'loaded',
           data: {
             events: [{ id: 'e1', organizationId: 'org-1', sessionId: 'session-1', eventType: 'score_recalculated', actorUserId: 'admin-1', metadata: null, createdAt: '2026-02-01T09:00:00.000Z' }],
-            revisions: [{ id: 'r1', organizationId: 'org-1', instanceId: 'instance-1', previousPercentage: 60, newPercentage: 90, previousPassed: false, newPassed: true, reason: 'Fixing a bug', actorUserId: 'admin-1', createdAt: '2026-02-01T09:00:00.000Z' }],
+            revisions: [{ id: 'r1', organizationId: 'org-1', instanceId: 'instance-1', formula: 'snapshot', newScored: true, previousPercentage: 60, newPercentage: 90, previousPassed: false, newPassed: true, reason: 'Fixing a bug', actorUserId: 'admin-1', createdAt: '2026-02-01T09:00:00.000Z' }],
           },
         }, vi.fn()];
       }
@@ -284,5 +302,6 @@ describe('HistoryTab', () => {
     const html = renderToStaticMarkup(<HistoryTab sessionId="session-1" t={t} />);
     expect(html).toContain('60% → 90%');
     expect(html).toContain('Fixing a bug');
+    expect(html).toContain('Checklist settings (points and weights)');
   });
 });

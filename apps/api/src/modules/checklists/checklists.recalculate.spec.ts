@@ -3,6 +3,7 @@ import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { UploadService } from '../upload/public.js';
+import { recalculateChecklistScoreSchema } from './checklists.schemas.js';
 import { ChecklistsService } from './checklists.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -96,5 +97,46 @@ describe('ChecklistsService.computeInstanceScore (PR 300)', () => {
     const result = await service.computeInstanceScore(instanceId, organizationId);
 
     expect(result).toMatchObject({ totalScore: 0, maxScore: 0, scored: false, percentage: 0 });
+  });
+});
+
+describe('criteria formula (PR 335)', () => {
+  const answered = (itemId: string, patch: Record<string, unknown> = {}) => ({
+    itemId, checked: true, scaleLevel: null, points: 0, photoObjectKey: null,
+    reviewStatus: 'approved', answerState: 'answered', ...patch,
+  });
+  it.each([
+    { name: 'equal weights despite points', results: [answered(itemAId, { points: 90 }), answered(itemBId, { checked: false })], total: 1, max: 2 },
+    { name: 'missing answers in denominator', results: [answered(itemAId)], total: 1, max: 2 },
+    { name: 'skips excluded even if checked', results: [answered(itemAId, { answerState: 'skipped' }), answered(itemBId)], total: 1, max: 1 },
+    { name: 'rejected answers earn nothing', results: [answered(itemAId, { reviewStatus: 'rejected' }), answered(itemBId)], total: 1, max: 2 },
+    { name: 'all skipped is not scored', results: [answered(itemAId, { answerState: 'skipped' }), answered(itemBId, { answerState: 'skipped' })], total: 0, max: 0 },
+  ])('$name', async ({ results, total, max }) => {
+    const frozen = { ...snapshot, checklist: { ...snapshot.checklist, items: snapshot.checklist.items.map((item, index) => ({ ...item, weight: index === 0 ? 9 : 1 })) } };
+    const service = createService({
+      checklistInstance: { findFirst: jest.fn(async () => instanceRow({ templateSnapshot: frozen })) },
+      checklistItemResult: { findMany: jest.fn(async () => results) },
+    });
+    expect(await service.computeInstanceScore(instanceId, organizationId, undefined, 'criteria')).toEqual({
+      totalScore: total, maxScore: max, scored: max > 0, percentage: max ? Math.round(total / max * 100) : 0, passThreshold: 80,
+    });
+  });
+  it('counts a selected scale level as a mark, including level zero; no selection earns zero', async () => {
+    const service = createService({
+      checklistInstance: { findFirst: jest.fn(async () => instanceRow({ templateSnapshot: { ...snapshot, checklist: { ...snapshot.checklist, scoringMode: 'scale', scaleLevels: [{ level: 0, label: 'Zero', points: 0 }, { level: 1, label: 'Full', points: 100 }] } } })) },
+      checklistItemResult: { findMany: jest.fn(async () => [answered(itemAId, { checked: false, scaleLevel: 0 }), answered(itemBId, { checked: false })]) },
+    });
+    expect(await service.computeInstanceScore(instanceId, organizationId, undefined, 'criteria')).toMatchObject({ percentage: 50, totalScore: 1, maxScore: 2, scored: true });
+  });
+});
+
+describe('recalculate formula validation (PR 335)', () => {
+  it('accepts legacy bodies and both formulas, keeping a mandatory reason', () => {
+    expect(recalculateChecklistScoreSchema.parse({ reason: ' audit ' })).toEqual({ reason: 'audit' });
+    for (const formula of ['snapshot', 'criteria']) {
+      expect(recalculateChecklistScoreSchema.parse({ reason: 'audit', formula })).toMatchObject({ formula });
+      expect(recalculateChecklistScoreSchema.safeParse({ formula, reason: '  ' }).success).toBe(false);
+    }
+    expect(recalculateChecklistScoreSchema.safeParse({ reason: 'audit', formula: 'unknown' }).success).toBe(false);
   });
 });

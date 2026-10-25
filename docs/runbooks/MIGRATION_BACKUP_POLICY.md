@@ -331,6 +331,29 @@ Migration `20261025120000_add_checklist_session_delete_and_message` также a
 
 ---
 
+### Checklist recalculation formula migration
+
+Migration `20261025090000_add_checklist_score_formula` (PR 335) is additive. Existing score
+revisions receive `snapshot`, the only formula available when they were written; no stored
+score, result, reason or timestamp is recalculated. There is no separate data-conversion job.
+On supported PostgreSQL versions the constant column default avoids a table rewrite, but
+`ALTER TABLE` still needs a short exclusive lock: check long-running transactions before deploy.
+
+Apply with the existing API-startup `prisma migrate deploy` process before starting the new API.
+Older API versions ignore the added column; older web clients may omit `formula` and retain
+snapshot scoring. Deploy the new API before the new web UI: the old strict request schema does
+not accept the new field. For application rollback retain the enum/column and revision history;
+do not drop or rewrite criteria revisions. Use a forward fix for schema problems. General
+backup/PITR requirements still apply; no destructive operation or extra backfill backup is needed.
+
+Verification covers clean migration replay and real-PostgreSQL scoring/history/concurrent-retry
+integration tests (`checklist-session-recalculate.database.spec.ts`). After deployment check
+Prisma migration status, absence of null formulas and a known historical revision's `snapshot`
+formula, then verify both recalculation choices and their audit entries. Production locks,
+backup state and production-data rehearsal remain `LIVE-VERIFY`; local tests do not prove them.
+
+---
+
 ## 5. Drift handling
 
 Dedicated external production drift gate в repository не подтверждён.

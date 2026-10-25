@@ -175,7 +175,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     const events: { id: string; eventType: string; createdAt: string }[] = [
       { id: 'evt-1', eventType: 'created', createdAt: '2026-03-01T00:00:00.000Z' },
     ];
-    const revisions: { id: string; previousPercentage: number; newPercentage: number; reason: string; createdAt: string }[] = [];
+    const revisions: { id: string; previousPercentage: number; newPercentage: number; formula: string; newScored: boolean; reason: string; createdAt: string }[] = [];
     const locationCaptures: { id: string; capturePoint: 'start' | 'end'; status: string }[] = [];
 
     // ---- Admin: create the session via the wizard (#1), see it in the list (#2) ----
@@ -395,14 +395,14 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       const body = route.request().postDataJSON() as { reason: string };
       const previousPercentage = session.result.percentage ?? 0;
       const newPercentage = 100;
-      revisions.push({ id: 'revision-1', previousPercentage, newPercentage, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' });
+      revisions.push({ formula: 'snapshot', newScored: true, id: 'revision-1', previousPercentage, newPercentage, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' });
       events.push({ id: `evt-${events.length + 1}`, eventType: 'score_recalculated', createdAt: '2026-03-02T11:00:00.000Z' });
       session = { ...session, result: { ...session.result, percentage: newPercentage, passed: true, scored: true } };
       // Matches the production RecalculateChecklistScoreResult shape (newPassed + scored, not just
       // the percentage) -- AdminChecklistSessionReportPage.tsx's onScoreRecalculated writes these
       // fields straight into session.result, so a fixture missing them would silently regress to
       // "Not scored" on the Summary tab without this test noticing.
-      return route.fulfill({ json: { id: 'revision-1', sessionId, previousPercentage, newPercentage, newPassed: true, scored: true, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' } });
+      return route.fulfill({ json: { formula: 'snapshot', newScored: true, id: 'revision-1', sessionId, previousPercentage, newPercentage, newPassed: true, scored: true, reason: body.reason, createdAt: '2026-03-02T11:00:00.000Z' } });
     });
 
     await test.step('admin opens the session report (#11)', async () => {
@@ -422,6 +422,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await adminPage.getByRole('dialog').getByRole('button', { name: 'Пересчитать балл' }).click();
 
       await expect.poll(() => revisions.length).toBe(1);
+      await expect(adminPage.getByRole('dialog')).toContainText('Балл пересчитан');
+      await adminPage.getByRole('dialog').getByRole('button', { name: 'Закрыть', exact: true }).click();
 
       // The recalculated score merges into local state via onScoreRecalculated (not a full
       // reload); the Summary tab's KPI card must show the merged "100%" + "Зачёт" badge, not a

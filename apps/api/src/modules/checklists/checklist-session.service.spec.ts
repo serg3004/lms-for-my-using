@@ -1241,7 +1241,7 @@ describe('ChecklistSessionService', () => {
       const idempotencyKeyFindUnique = jest.fn(async () => null);
       const idempotencyKeyCreate = jest.fn(async () => ({}));
 
-      const revisionFindUnique = jest.fn(async () => ({ newScored: true }));
+      const revisionFindUnique = jest.fn(async () => ({ newScored: true, formula: 'snapshot' }));
 
       const base: Record<string, unknown> = {
         checklistSession: { findFirst: jest.fn(async () => session) },
@@ -1286,6 +1286,7 @@ describe('ChecklistSessionService', () => {
           previousPassed: false,
           newPassed: true,
           newScored: true,
+          formula: 'snapshot',
           reason: 'Fixing a scoring bug',
           actorUserId: actorId,
         },
@@ -1300,6 +1301,17 @@ describe('ChecklistSessionService', () => {
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ organizationId, actorId, action: 'checklist_score_revision.created', targetId: instanceId }),
       );
+    });
+
+    it('forwards the chosen formula and stores it in the revision, event and audit (PR 335)', async () => {
+      const { prisma, checklistsService, scoreRevisionCreate, sessionEventCreate } = createRecalculatePrisma();
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, checklistsService, auditLog as never);
+      await service.recalculateScore(sessionId, organizationId, 'Equal weighting', actorId, {}, 'formula-key', 'criteria');
+      expect(checklistsService.computeInstanceScore).toHaveBeenCalledWith(instanceId, organizationId, expect.anything(), 'criteria');
+      expect(scoreRevisionCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ formula: 'criteria' }) }));
+      expect(sessionEventCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadata: expect.objectContaining({ formula: 'criteria' }) }) }));
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ formula: 'criteria' }) }));
     });
 
     it('still records a revision when the recalculation produces no change', async () => {
@@ -1356,7 +1368,7 @@ describe('ChecklistSessionService', () => {
     });
 
     it('replays the stored revision for a retry with the same idempotencyKey, without writing a second revision or audit entry (PR 301)', async () => {
-      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80, scored: true };
+      const cachedRevision = { id: 'revision-1', instanceId, previousPercentage: 70, newPercentage: 80, scored: true, newScored: true, formula: 'snapshot' };
       const { prisma, checklistsService, scoreRevisionCreate } = createRecalculatePrisma();
       (prisma.checklistIdempotencyKey.findUnique as jest.Mock).mockResolvedValueOnce({ responseBody: cachedRevision });
       const auditLog = { record: jest.fn(async () => undefined) };
@@ -1382,8 +1394,8 @@ describe('ChecklistSessionService', () => {
 
       const result = await service.recalculateScore(sessionId, organizationId, 'Fixing a scoring bug', actorId, {}, 'retry-key-legacy');
 
-      expect(result).toEqual({ ...cachedRevision, scored: true });
-      expect(revisionFindUnique).toHaveBeenCalledWith({ where: { id: 'revision-1' }, select: { newScored: true } });
+      expect(result).toEqual({ ...cachedRevision, scored: true, newScored: true, formula: 'snapshot' });
+      expect(revisionFindUnique).toHaveBeenCalledWith({ where: { id: 'revision-1' }, select: { newScored: true, formula: true } });
     });
 
     it('stores the response under the given idempotencyKey on a fresh (first) recalculate', async () => {
