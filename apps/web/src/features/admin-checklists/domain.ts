@@ -54,6 +54,8 @@ export function buildChecklistSettingsPayload(form: {
   scaleLevels: ChecklistScaleLevel[];
   defaultLocationCapturePolicy: ChecklistGeolocationPolicy | '';
   preSessionVisibility: ChecklistPreSessionVisibility;
+  allowFinishIncomplete: boolean;
+  forbidGalleryPhotos: boolean;
 }) {
   return {
     title: form.title,
@@ -64,6 +66,8 @@ export function buildChecklistSettingsPayload(form: {
     scaleLevels: form.scoringMode === 'scale' ? form.scaleLevels : null,
     defaultLocationCapturePolicy: form.defaultLocationCapturePolicy || null,
     preSessionVisibility: form.preSessionVisibility,
+    allowFinishIncomplete: form.allowFinishIncomplete,
+    forbidGalleryPhotos: form.forbidGalleryPhotos,
   };
 }
 

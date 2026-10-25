@@ -307,6 +307,17 @@ Migration `20260927120000_add_checklist_session_context` также additive и 
 
 Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist strictness settings migration
+
+Migration `20261024130000_add_checklist_strictness_settings` также additive и backward-compatible (PR 330, настройки строгости на уровне чек-листа):
+
+- добавляет две колонки `checklists.allow_finish_incomplete BOOLEAN NOT NULL DEFAULT false` и `checklists.forbid_gallery_photos BOOLEAN NOT NULL DEFAULT false`; ни одна существующая колонка не изменена;
+- `NOT NULL DEFAULT false` на PostgreSQL 11+ не переписывает таблицу (значение по умолчанию хранится в каталоге), поэтому блокировка короткая; существующие чек-листы получают `false`, то есть прежнее строгое поведение — backfill не нужен;
+- `CHECKLIST_SNAPSHOT_VERSION` **не увеличена**: настройки добавлены в `ChecklistRuntime` как строго опциональные поля, старые `templateSnapshot` парсятся без изменений и читаются как `false`, а ответ API берёт их только из снапшота;
+- допускает overlap со старой версией приложения: старая версия не знает о новых колонках и работает с чек-листами как раньше.
+
+Миграция написана вручную; `prisma migrate diff` от схемы после `migrate deploy` не показывает расхождений по таблице `checklists`. Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

@@ -46,6 +46,8 @@ export const createChecklistSchema = z.object({
   contextFields: z.array(contextFieldSchema).max(20).optional(),
   defaultLocationCapturePolicy: checklistGeolocationPolicySchema.optional(),
   preSessionVisibility: checklistPreSessionVisibilitySchema.default('structure_only'),
+  allowFinishIncomplete: z.boolean().default(false),
+  forbidGalleryPhotos: z.boolean().default(false),
 });
 export type CreateChecklistInput = z.infer<typeof createChecklistSchema>;
 
@@ -61,6 +63,8 @@ export const updateChecklistSchema = z
     contextFields: z.array(contextFieldSchema).max(20).nullable(),
     defaultLocationCapturePolicy: checklistGeolocationPolicySchema.nullable(),
     preSessionVisibility: checklistPreSessionVisibilitySchema,
+    allowFinishIncomplete: z.boolean(),
+    forbidGalleryPhotos: z.boolean(),
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;

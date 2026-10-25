@@ -66,6 +66,8 @@ const checklistSelect = {
   contextFields: true,
   defaultLocationCapturePolicy: true,
   preSessionVisibility: true,
+  allowFinishIncomplete: true,
+  forbidGalleryPhotos: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -199,6 +201,9 @@ type ChecklistRuntime = {
   contextFields?: ContextField[] | null;
   defaultLocationCapturePolicy?: string | null;
   preSessionVisibility?: string;
+  // PR 330 -- optional for the same reason: older snapshots never had them and read as false.
+  allowFinishIncomplete?: boolean;
+  forbidGalleryPhotos?: boolean;
   items: ChecklistSnapshotItem[];
 };
 type ChecklistTemplateSnapshot = {
@@ -347,6 +352,8 @@ export class ChecklistsService {
           contextFields: source.contextFields ?? undefined,
           defaultLocationCapturePolicy: source.defaultLocationCapturePolicy,
           preSessionVisibility: source.preSessionVisibility,
+          allowFinishIncomplete: source.allowFinishIncomplete,
+          forbidGalleryPhotos: source.forbidGalleryPhotos,
           createdBy: actorId,
         },
         select: { id: true },
@@ -1518,6 +1525,8 @@ export class ChecklistsService {
       contextFields?: Prisma.JsonValue | null;
       defaultLocationCapturePolicy?: string | null;
       preSessionVisibility?: string;
+      allowFinishIncomplete?: boolean;
+      forbidGalleryPhotos?: boolean;
     },
     items: ChecklistSnapshotItem[],
   ): ChecklistRuntime {
@@ -1534,6 +1543,8 @@ export class ChecklistsService {
       contextFields: checklist.contextFields as ContextField[] | null | undefined,
       defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy,
       preSessionVisibility: checklist.preSessionVisibility,
+      allowFinishIncomplete: checklist.allowFinishIncomplete,
+      forbidGalleryPhotos: checklist.forbidGalleryPhotos,
       items: items.map((item) => ({ ...item })),
     };
   }
@@ -1632,6 +1643,8 @@ export class ChecklistsService {
           contextFields: true,
           defaultLocationCapturePolicy: true,
           preSessionVisibility: true,
+          allowFinishIncomplete: true,
+          forbidGalleryPhotos: true,
         },
       }),
       this.prisma.checklistItem.findMany({
@@ -1659,8 +1672,16 @@ export class ChecklistsService {
 
   private presentInstance(instance: SnapshotInstance) {
     const snapshot = this.getStoredSnapshot(instance);
+    // PR 330: the strictness settings come from the frozen snapshot only (a snapshot taken before
+    // they existed reads as false), never from the live checklist, so editing a checklist later
+    // can't change how an already-assigned instance behaves.
     const checklist = snapshot
-      ? { ...instance.checklist, ...snapshot.checklist }
+      ? {
+          ...instance.checklist,
+          ...snapshot.checklist,
+          allowFinishIncomplete: snapshot.checklist.allowFinishIncomplete ?? false,
+          forbidGalleryPhotos: snapshot.checklist.forbidGalleryPhotos ?? false,
+        }
       : instance.checklist;
 
     return {
@@ -1787,7 +1808,18 @@ export class ChecklistsService {
     return { totalScore: Math.round(totalScore), maxScore: Math.round(maxScore), scored: maxScore > 0 };
   }
 
-  private async recomputeInstance(instanceId: string, organizationId: string) {
+  /**
+   * PR 330: called when an observer completes a session on a checklist whose frozen snapshot has
+   * `allowFinishIncomplete`. Every criterion still without an answer is recorded as skipped (the
+   * same persisted `answerState='skipped'` row auto-skip writes, so scoring v1 leaves it out of
+   * both numerator and denominator) and the instance is recomputed. A no-op when the snapshot
+   * does not allow it, so a stricter checklist still needs every required criterion answered.
+   */
+  async finishIncompleteInstance(instanceId: string, organizationId: string) {
+    return this.recomputeInstance(instanceId, organizationId, { skipAllUnanswered: true });
+  }
+
+  private async recomputeInstance(instanceId: string, organizationId: string, options: { skipAllUnanswered?: boolean } = {}) {
     const instance = await this.prisma.checklistInstance.findFirstOrThrow({
       where: { id: instanceId, organizationId },
       select: {
@@ -1829,8 +1861,9 @@ export class ChecklistsService {
     // Auto-skip: an item with autoSkipUnanswered=true that has no valid answer on file resolves
     // itself as skipped -- persisted as a real ChecklistItemResult row (not just a computed
     // value) so it shows up in the audit trail the same way an explicit skip does.
+    const skipAllUnanswered = options.skipAllUnanswered === true && checklist.allowFinishIncomplete === true;
     const autoSkipCandidates = checklist.items.filter((item) => {
-      if (!item.autoSkipUnanswered) return false;
+      if (!item.autoSkipUnanswered && !skipAllUnanswered) return false;
       const result = resultByItemId.get(item.id);
       if (result?.answerState === 'skipped') return false;
       return !this.hasValidAnswer(checklist.scoringMode, result);

@@ -394,6 +394,18 @@ which governs when *feedback* becomes visible after a session; this one governs 
 *structure* beforehand. Not yet consumed by any employee-facing screen -- storage only in this
 PR, consumption is PR 298's scope).
 
+**Strictness settings (PR 330)** (same checklist create/update routes): `allowFinishIncomplete`
+(boolean, default `false`) -- when the instance's snapshot has it, `POST /checklist-sessions/:id/transition`
+with `complete` first records every criterion that still has no answer as `answerState='skipped'`
+(the same persisted row auto-skip writes, so scoring v1 leaves it out of numerator and denominator)
+and recomputes the instance; the server never rejects a completion for unanswered criteria on any
+checklist -- the strict behaviour is the client keeping Complete disabled. `forbidGalleryPhotos`
+(boolean, default `false`) is a **client-side policy only**: the photo input uses the camera
+(`capture`) and the server neither verifies nor enforces where a photo came from. Both are frozen
+into `templateSnapshot` at assignment (an older snapshot reads as `false`, and the API response
+takes them from the snapshot, never the live checklist), so editing a checklist affects only
+sessions assigned afterwards.
+
 **Item groups** (`GET/POST /checklists/:checklistId/groups`, `PATCH /checklist-item-groups/:id`,
 `POST /checklist-item-groups/:id/copy`): named, ordered `ChecklistItemGroup` rows a `ChecklistItem`
 can optionally belong to via `groupId` (also added to `POST /checklists/:checklistId/items` and

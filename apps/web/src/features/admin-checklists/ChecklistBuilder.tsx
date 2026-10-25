@@ -86,6 +86,8 @@ export function ChecklistBuilder({
   const [scoringMode, setScoringMode] = useState<ChecklistScoringMode>(checklist.scoringMode);
   const [passThreshold, setPassThreshold] = useState(checklist.passThreshold);
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
+  const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
+  const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
   // Defaults are system copy and follow the locale at creation time. Existing labels are authored
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
@@ -117,7 +119,7 @@ export function ChecklistBuilder({
   async function saveSettings() {
     setSaveState({ status: 'saving' });
     try {
-      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility }));
+      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos }));
       setSaveState({ status: 'idle' });
       await onReload();
     } catch (error) {
@@ -541,6 +543,24 @@ export function ChecklistBuilder({
             <p className="admin-form__hint">
               {t('admin.checklists.requiresReviewHint', 'When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.')}
             </p>
+            <label className="admin-checkbox-field">
+              <input type="checkbox" checked={allowFinishIncomplete} onChange={(e) => setAllowFinishIncomplete(e.target.checked)} />
+              {t('admin.checklists.field.allowFinishIncomplete', 'Allow finishing a session with unanswered criteria')}
+            </label>
+            <p className="admin-form__hint">
+              {t('admin.checklists.allowFinishIncompleteHint', 'The observer can complete the session without answering every criterion. Unanswered criteria are recorded as skipped and are not counted in the result. Applies to sessions assigned after you save.')}
+            </p>
+            {(items.some((item) => item.photoRequired) || forbidGalleryPhotos) && (
+              <>
+                <label className="admin-checkbox-field">
+                  <input type="checkbox" checked={forbidGalleryPhotos} onChange={(e) => setForbidGalleryPhotos(e.target.checked)} />
+                  {t('admin.checklists.field.forbidGalleryPhotos', 'Photos only from the camera, not from the gallery')}
+                </label>
+                <p className="admin-form__hint">
+                  {t('admin.checklists.forbidGalleryPhotosHint', 'The photo button opens the camera on phones. This is a convenience for the person filling in the checklist, not protection: the system cannot check where a photo was taken from. Applies to sessions assigned after you save.')}
+                </p>
+              </>
+            )}
             <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')} hint={t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}>
               <select
                 id="checklist-default-location-policy"

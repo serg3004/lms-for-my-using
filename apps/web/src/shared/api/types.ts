@@ -393,6 +393,9 @@ export type ChecklistSummary = {
   contextFields?: ContextField[] | null;
   defaultLocationCapturePolicy?: ChecklistGeolocationPolicy | null;
   preSessionVisibility?: ChecklistPreSessionVisibility;
+  // PR 330 strictness settings -- optional because older payloads never carried them (read as false).
+  allowFinishIncomplete?: boolean;
+  forbidGalleryPhotos?: boolean;
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   createdAt: string;
