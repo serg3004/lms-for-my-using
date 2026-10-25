@@ -1312,7 +1312,16 @@
       "contextFieldRequired": "必填",
       "contextFieldActions": "字段操作：{{name}}",
       "contextFieldDeleteTitle": "删除字段",
-      "contextFieldDeleteConfirm": "删除字段“{{name}}”？此后分配的会话将不再询问该字段；已开始的会话保留。"
+      "contextFieldDeleteConfirm": "删除字段“{{name}}”？此后分配的会话将不再询问该字段；已开始的会话保留。",
+      "scoringModeInfo": {
+        "sum_points": "每条标准设有分值，结果为得分占满分的百分比。示例：3条标准各10分，完成2条，即30分中的20分，67%。",
+        "all_required": "只有完成所有必填标准，清单才算通过。示例：5条标准中4条必填；漏掉一条必填标准则不通过。",
+        "scale": "观察者为每条标准选择量表等级，例如从“很差”到“优秀”。结果为所选等级分值之和。示例：“良好”75分，“优秀”100分。"
+      },
+      "scaleLevelsCriterionHint": "可在标准表格中为单条标准选择现成量表；未选择时使用上方的清单等级。",
+      "advancedTitle": "更多设置",
+      "unsavedChanges": "有未保存的更改。",
+      "allSaved": "所有更改均已保存。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

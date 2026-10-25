@@ -3,9 +3,7 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { AdminPageHeader, ConfirmDialog, FormField } from '../../shared/adminPage.js';
 import { Badge, Button, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
-import { listUsers } from '../../shared/api/users.js';
 import {
-  assignChecklist,
   copyChecklistItemGroup,
   createChecklistItem,
   createChecklistItemGroup,
@@ -13,14 +11,12 @@ import {
   getChecklist,
   listChecklistItemGroups,
   listChecklistScales,
-  listInstancesForChecklist,
   updateChecklist,
   updateChecklistItem,
   updateChecklistItemGroup,
 } from '../../shared/api/checklists.js';
 import type {
   ChecklistGeolocationPolicy,
-  ChecklistInstanceSummary,
   ChecklistItemGroup,
   ChecklistItemSummary,
   ChecklistPreSessionVisibility,
@@ -30,11 +26,7 @@ import type {
   ChecklistStatus,
   ChecklistSummary,
   ContextField,
-  UserSummary,
 } from '../../shared/api/types.js';
-import { ChecklistDeadlineMeta } from '../../app/ChecklistDeadlineMeta.js';
-import { localDateTimeToUtcIso } from '../../app/checklistDeadline.js';
-import { ChecklistAssignmentPanel } from './ChecklistAssignmentPanel.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
@@ -46,18 +38,14 @@ import {
   appendContextField,
   appendScaleLevel,
   buildChecklistSettingsPayload,
-  canAssignChecklist,
   computePreviewResult,
   createDefaultScale,
-  filterAssignableUsers,
-  formatUserName,
   groupItems,
   moveGroup,
   moveItem,
   removeContextFieldById,
   removeItemById,
   removeScaleLevelAt,
-  resolveUserName,
   SCORING_MODES,
   type PreviewAnswer,
   type SaveState,
@@ -93,15 +81,15 @@ export function ChecklistBuilder({
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(buildChecklistSettingsPayload({
+    title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
+    requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
+    preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
+  })));
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
   const [items, setItems] = useState<ChecklistItemSummary[]>(checklist.items);
   const [contextFieldToDelete, setContextFieldToDelete] = useState<ContextField | null>(null);
-  const [instances, setInstances] = useState<ChecklistInstanceSummary[]>([]);
-  const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
-  const [assignUserId, setAssignUserId] = useState('');
-  const [assignDueAt, setAssignDueAt] = useState('');
-  const [assignError, setAssignError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, PreviewAnswer>>({});
   // PR 296 observation-sheet builder state.
@@ -112,15 +100,16 @@ export function ChecklistBuilder({
   const [defaultLocationCapturePolicy, setDefaultLocationCapturePolicy] = useState<ChecklistGeolocationPolicy | ''>(checklist.defaultLocationCapturePolicy ?? '');
   const [preSessionVisibility, setPreSessionVisibility] = useState<ChecklistPreSessionVisibility>(checklist.preSessionVisibility ?? 'structure_only');
   useEffect(() => {
-    listInstancesForChecklist(checklist.id).then(setInstances).catch(() => setInstances([]));
-    listUsers({ page: 1, pageSize: 200 }).then((result) => setOrgUsers(result.items)).catch(() => setOrgUsers([]));
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos });
+  const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
     try {
-      await updateChecklist(checklist.id, buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos }));
+      await updateChecklist(checklist.id, settingsPayload);
+      setSavedSnapshot(JSON.stringify(settingsPayload));
       setSaveState({ status: 'idle' });
       setSavedAt(new Date());
       await onReload();
@@ -221,20 +210,6 @@ export function ChecklistBuilder({
   function removeScaleLevel(index: number) {
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
-  async function assign() {
-    setAssignError(null);
-    if (!assignUserId) return;
-    try {
-      await assignChecklist(checklist.id, assignUserId, localDateTimeToUtcIso(assignDueAt));
-      setAssignUserId('');
-      setAssignDueAt('');
-      const updated = await listInstancesForChecklist(checklist.id);
-      setInstances(updated);
-    } catch (error) {
-      setAssignError(error instanceof ApiClientError ? error.message : t('admin.checklists.assignError', 'Unable to assign this checklist.'));
-    }
-  }
-  const assignableUsers = filterAssignableUsers(orgUsers, instances);
   const previewResult = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, previewAnswers);
   return (
     <div className="admin-builder">
@@ -508,6 +483,9 @@ export function ChecklistBuilder({
                 </button>
               ))}
             </div>
+            <p className="admin-form__hint" role="note">
+              {t(`admin.checklists.scoringModeInfo.${scoringMode}`, scoringMode)}
+            </p>
             {scoringMode === 'scale' && (
               <div className="admin-scale-levels">
                 <label>{t('admin.checklists.scaleLevelsTitle', 'Scale levels')}</label>
@@ -536,6 +514,7 @@ export function ChecklistBuilder({
                   + {t('admin.checklists.addScaleLevel', 'Add level')}
                 </Button>
                 <p className="admin-form__hint">{t('admin.checklists.scaleLevelsHint', 'Label, description and points are freely editable — the number of levels is not limited to 5.')}</p>
+                <p className="admin-form__hint">{t('admin.checklists.scaleLevelsCriterionHint', 'A criterion can also use its own ready-made scale, chosen in the criteria table; without one, the levels above apply.')}</p>
               </div>
             )}
             <FormField id="checklist-threshold" label={t('admin.checklists.field.passThreshold', 'Pass threshold, %')}>
@@ -548,6 +527,8 @@ export function ChecklistBuilder({
                 onChange={(e) => setPassThreshold(Number(e.target.value))}
               />
             </FormField>
+            <details>
+              <summary>{t('admin.checklists.advancedTitle', 'Additional settings')}</summary>
             <label className="admin-checkbox-field">
               <input type="checkbox" checked={requiresReview} onChange={(e) => setRequiresReview(e.target.checked)} />
               {t('admin.checklists.field.requiresReview', 'Require an instructor to confirm the result before it counts')}
@@ -596,49 +577,17 @@ export function ChecklistBuilder({
                 <option value="none">{t('admin.checklists.preSessionVisibility.none', 'Nothing')}</option>
               </select>
             </FormField>
+            </details>
             {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}</p>}
+            <p role="status" className="admin-form__hint">
+              {hasUnsavedChanges
+                ? t('admin.checklists.unsavedChanges', 'There are unsaved changes.')
+                : t('admin.checklists.allSaved', 'All changes are saved.')}
+            </p>
             <Button type="button" variant="primary" disabled={saveState.status === 'saving'} onClick={() => void saveSettings()}>
               {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
             </Button>
           </ChecklistSettingsForm>
-          <ChecklistAssignmentPanel>
-            <h3>{t('admin.checklists.assignmentTitle', 'Assignment')}</h3>
-            <FormField id="checklist-assign-user" label={t('admin.checklists.field.assignUser', 'Employee')} hint={t('admin.checklists.assignUserHint', 'Manual assignment for now — automatic and scheduled triggers are planned next.')}>
-              <select id="checklist-assign-user" value={assignUserId} onChange={(e) => setAssignUserId(e.target.value)}>
-                <option value="">{t('admin.checklists.selectUser', 'Select an employee…')}</option>
-                {assignableUsers.map((u) => (
-                  <option value={u.id} key={u.id}>{formatUserName(u)}</option>
-                ))}
-              </select>
-            </FormField>
-            <FormField id="checklist-assign-due-at" label={t('admin.checklists.field.dueAt', 'Due date')} hint={t('admin.checklists.dueAtHint', 'Optional. Enter local time; it is stored as UTC.')}>
-              <input
-                id="checklist-assign-due-at"
-                type="datetime-local"
-                value={assignDueAt}
-                onChange={(e) => setAssignDueAt(e.target.value)}
-              />
-            </FormField>
-            {assignError && <p className="learner-quiz__submit-error" role="alert">{assignError}</p>}
-            <Button type="button" variant="secondary" disabled={!canAssignChecklist(checklist.status, assignUserId)} onClick={() => void assign()}>
-              {t('admin.checklists.assign', 'Assign')}
-            </Button>
-            <h4>{t('admin.checklists.instancesTitle', 'Assignments')} <Badge variant="neutral">{instances.length}</Badge></h4>
-            {instances.length === 0 ? (
-              <EmptyState message={t('admin.checklists.noInstances', 'Not assigned to anyone yet.')} />
-            ) : (
-              <ul className="admin-checklist-instances">
-                {instances.map((instance) => (
-                  <li key={instance.id}>
-                    <span>{resolveUserName(orgUsers, instance.userId)}</span>
-                    <Badge variant="neutral">{t(`admin.checklists.instanceStatus.${instance.status}`, instance.status)}</Badge>
-                    <span>{instance.totalScore}/{instance.maxScore} ({instance.percentage}%)</span>
-                    <ChecklistDeadlineMeta instance={instance} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </ChecklistAssignmentPanel>
         </div>
       </div>
       <ConfirmDialog
