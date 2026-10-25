@@ -47,7 +47,7 @@ async function report(page: Page, failFirst = false) {
 }
 
 for (const width of [320, 390]) {
-  test(`formula choice and retry keep one revision and show before/after at ${width}px`, async ({ page }, testInfo) => {
+  test(`failed retries replay once and successful recalculations start new operations at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
     const { calls, revisions } = await report(page, true);
     const dialog = page.getByRole('dialog');
@@ -69,6 +69,12 @@ for (const width of [320, 390]) {
     expect(calls[0]).toEqual(calls[1]);
     expect(calls[0]).toMatchObject({ reason: 'Equal criteria audit', formula: 'criteria' });
     expect(revisions).toHaveLength(1);
+    // A completed calculation is a new intent even if the reason/formula are unchanged.
+    await dialog.getByLabel('Причина пересчёта').fill('Equal criteria audit');
+    await dialog.getByRole('button', { name: 'Пересчитать балл' }).click();
+    await expect(dialog).toContainText('50% → 50%');
+    expect(calls[2]!.idempotencyKey).not.toBe(calls[0]!.idempotencyKey);
+    expect(revisions).toHaveLength(2);
     await dialog.getByRole('button', { name: 'Закрыть', exact: true }).click();
     await expect(page.getByText('95% → 50%', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'История изменений результата' }).locator('..')).toContainText('По критериям (отмечено / всего)');
@@ -77,8 +83,8 @@ for (const width of [320, 390]) {
     await dialog.getByLabel('Причина пересчёта').fill('Restore snapshot formula');
     await dialog.getByRole('button', { name: 'Пересчитать балл' }).click();
     await expect(dialog).toContainText('50% → 95%');
-    expect(calls[2]!.idempotencyKey).not.toBe(calls[0]!.idempotencyKey);
-    expect(revisions).toHaveLength(2);
+    expect(calls[3]!.idempotencyKey).not.toBe(calls[2]!.idempotencyKey);
+    expect(revisions).toHaveLength(3);
     expect(revisions[0]).toMatchObject({ formula: 'criteria', previousPercentage: 95, newPercentage: 50 });
   });
 }

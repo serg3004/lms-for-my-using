@@ -110,6 +110,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
       setResult(revision);
       setStatus('idle');
       onDone(revision);
+      retry.current = null;
     } catch (err) {
       setStatus('error');
       setError(err instanceof ApiClientError ? err.message : t('admin.checklists.report.recalculateError', 'Unable to recalculate the score.'));
