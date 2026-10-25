@@ -155,6 +155,12 @@ enum ChecklistScoringMode {
   scale
 }
 
+/// Formula used for an explicit score revision; normal scoring keeps the assignment snapshot.
+enum ChecklistScoreFormula {
+  snapshot
+  criteria
+}
+
 enum ChecklistInstanceStatus {
   assigned
   in_progress
@@ -1364,25 +1370,26 @@ model ChecklistSessionEvent {
 /// Append-only audit trail of re-scoring events on ChecklistInstance (the score itself stays on
 /// ChecklistInstance; this table only records the before/after of an explicit revision).
 model ChecklistScoreRevision {
-  id                 String            @id @default(uuid()) @db.Uuid
-  organizationId     String            @map("organization_id") @db.Uuid
-  instanceId         String            @map("instance_id") @db.Uuid
-  previousPercentage Int               @map("previous_percentage")
-  newPercentage      Int               @map("new_percentage")
-  previousPassed     Boolean           @map("previous_passed")
-  newPassed          Boolean           @map("new_passed")
+  id                  String                 @id @default(uuid()) @db.Uuid
+  organizationId      String                 @map("organization_id") @db.Uuid
+  instanceId          String                 @map("instance_id") @db.Uuid
+  formula             ChecklistScoreFormula  @default(snapshot)
+  previousPercentage  Int                    @map("previous_percentage")
+  newPercentage       Int                    @map("new_percentage")
+  previousPassed      Boolean                @map("previous_passed")
+  newPassed           Boolean                @map("new_passed")
   /// Whether `newPercentage` is a real score or computeInstanceScore()'s all-skipped/not-scored
   /// placeholder (0). Persisted as an immutable historical fact of this revision -- unlike
   /// ChecklistInstance.scored (which a later mutation can change), this never changes after the
   /// row is created, so an idempotency-cache replay of this exact recalculation can always recover
   /// the correct value by re-reading this row, regardless of what's happened to the instance since.
-  newScored          Boolean           @default(true) @map("new_scored")
-  reason             String?
-  actorUserId        String?           @map("actor_user_id") @db.Uuid
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  instance           ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  actor              User?             @relation("ChecklistScoreRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  newScored           Boolean                @default(true) @map("new_scored")
+  reason              String?
+  actorUserId         String?                @map("actor_user_id") @db.Uuid
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance            ChecklistInstance      @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor               User?                  @relation("ChecklistScoreRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([instanceId, createdAt, id])
   @@index([organizationId, createdAt])

@@ -130,6 +130,69 @@ describe('checklist session recalculate (PR 300) — database', () => {
     expect(revisions[0]?.instanceId).toBe(instanceId);
   });
 
+  async function unequalCriteriaSession() {
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { points: 90, weight: 2 } });
+    const second = await prisma.checklistItem.create({ data: { organizationId, checklistId, order: 1, text: 'Second', points: 10, isRequired: false } });
+    const skipped = await prisma.checklistItem.create({ data: { organizationId, checklistId, order: 2, text: 'Skipped', points: 100, allowSkip: true, isRequired: false } });
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, adminId);
+    await prisma.checklistItemResult.createMany({ data: [
+      { organizationId, instanceId: instance.id, itemId, checked: true, points: 90, answerState: 'answered', reviewStatus: 'approved' },
+      { organizationId, instanceId: instance.id, itemId: second.id, checked: false, points: 0, answerState: 'answered' },
+      { organizationId, instanceId: instance.id, itemId: skipped.id, checked: false, points: 0, answerState: 'skipped' },
+    ] });
+    await prisma.checklistInstance.update({ where: { id: instance.id }, data: { status: 'completed' } });
+    const session = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, adminId);
+    return { instanceId: instance.id, sessionId: session.id };
+  }
+
+  it('chooses equal criteria or frozen points, preserves old revisions and replays the original formula after later changes (PR 335)', async () => {
+    const { instanceId, sessionId } = await unequalCriteriaSession();
+    const resultsBefore = await prisma.checklistItemResult.findMany({ where: { instanceId }, orderBy: { id: 'asc' } });
+    const original = await sessionService.recalculateScore(sessionId, organizationId, 'Check original', adminId, {});
+    expect(original).toMatchObject({ formula: 'snapshot', newPercentage: 95, newPassed: true });
+    const originalRow = await prisma.checklistScoreRevision.findUniqueOrThrow({ where: { id: original.id } });
+    // Live edits must not change the denominator or pass threshold from the assignment snapshot.
+    await prisma.checklist.update({ where: { id: checklistId }, data: { passThreshold: 10 } });
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { points: 1000, weight: 100 } });
+    const key = randomUUID();
+    const criteria = await sessionService.recalculateScore(sessionId, organizationId, 'Equal criteria', adminId, {}, key, 'criteria');
+    expect(criteria).toMatchObject({ formula: 'criteria', previousPercentage: 95, newPercentage: 50, newPassed: false, scored: true });
+    expect(await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instanceId } })).toMatchObject({ totalScore: 1, maxScore: 2, percentage: 50, status: 'completed', passed: false });
+    await sessionService.recalculateScore(sessionId, organizationId, 'Original formula again', adminId, {}, randomUUID(), 'snapshot');
+    const replay = await sessionService.recalculateScore(sessionId, organizationId, 'Equal criteria', adminId, {}, key, 'snapshot');
+    expect(replay).toMatchObject({ id: criteria.id, formula: 'criteria', newPercentage: 50 });
+    expect(await prisma.checklistScoreRevision.count({ where: { instanceId } })).toBe(3);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_score_revision.created' } })).toBe(3);
+    expect(await prisma.checklistScoreRevision.findUniqueOrThrow({ where: { id: original.id } })).toEqual(originalRow);
+    expect(await prisma.checklistItemResult.findMany({ where: { instanceId }, orderBy: { id: 'asc' } })).toEqual(resultsBefore);
+    expect(await prisma.checklistSessionEvent.findFirst({ where: { sessionId, eventType: 'score_recalculated', metadata: { path: ['revisionId'], equals: criteria.id } } })).toMatchObject({ metadata: expect.objectContaining({ formula: 'criteria' }) });
+    expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_score_revision.created', metadata: { path: ['formula'], equals: 'criteria' } } })).not.toBeNull();
+  });
+
+  it('serializes concurrent retries to one criteria revision and one audit entry (PR 335)', async () => {
+    const { sessionId, instanceId } = await unequalCriteriaSession();
+    const key = randomUUID();
+    const revisions = await Promise.all([1, 2].map(() => sessionService.recalculateScore(sessionId, organizationId, 'Concurrent retry', adminId, {}, key, 'criteria')));
+    expect(revisions[0]?.id).toBe(revisions[1]?.id);
+    expect(revisions[0]).toMatchObject({ formula: 'criteria', newPercentage: 50 });
+    expect(await prisma.checklistScoreRevision.count({ where: { instanceId } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_score_revision.created' } })).toBe(1);
+  });
+
+  it('recovers formula and not-scored from an immutable revision for pre-formula idempotency JSON (PR 335)', async () => {
+    const { instanceId, sessionId } = await unequalCriteriaSession();
+    await prisma.checklistItemResult.updateMany({ where: { instanceId }, data: { answerState: 'skipped', checked: false, points: 0 } });
+    const key = randomUUID();
+    const first = await sessionService.recalculateScore(sessionId, organizationId, 'All skipped', adminId, {}, key, 'criteria');
+    expect(first).toMatchObject({ formula: 'criteria', scored: false, newPercentage: 0 });
+    const legacy = { ...first } as Record<string, unknown>;
+    delete legacy.formula; delete legacy.scored;
+    await prisma.checklistIdempotencyKey.update({ where: { organizationId_scope_key: { organizationId, scope: 'session.recalculate', key } }, data: { responseBody: JSON.parse(JSON.stringify(legacy)) } });
+    await prisma.checklistInstance.update({ where: { id: instanceId }, data: { scored: true, percentage: 100 } });
+    expect(await sessionService.recalculateScore(sessionId, organizationId, 'Retry', adminId, {}, key)).toMatchObject({ id: first.id, formula: 'criteria', scored: false, newPercentage: 0 });
+    expect(await prisma.checklistScoreRevision.count({ where: { instanceId } })).toBe(1);
+  });
+
   it("denies recalculating a session outside a manager's effective team scope", async () => {
     const { sessionId } = await completeInstanceAndSession();
 

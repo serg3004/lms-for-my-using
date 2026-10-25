@@ -21,6 +21,7 @@ import type {
   ChecklistLocationCaptureStatus,
   ChecklistScaleLevel,
   ChecklistScoreRevision,
+  ChecklistScoreFormula,
   ChecklistScoringMode,
   ChecklistSessionEvent,
   ChecklistSessionSummary,
@@ -31,7 +32,7 @@ import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
-import { Badge, Dialog, PageState } from '../shared/ui.js';
+import { Badge, Dialog, InlineFeedback, PageState } from '../shared/ui.js';
 import { formatParticipantName } from '../features/admin-checklist-sessions/domain.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
@@ -80,20 +81,33 @@ function describeGeolocationPolicy(policy: ChecklistSessionSummary['locationCapt
   return t('admin.checklists.settings.geolocationOff', 'Off');
 }
 
+export function describeScoreFormula(formula: ChecklistScoreFormula | undefined, t: TFunction) {
+  return formula === 'criteria'
+    ? t('admin.checklists.report.formulaCriteria', 'By criteria (marked / total)')
+    : t('admin.checklists.report.formulaSnapshot', 'Checklist settings (points and weights)');
+}
+
 export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; onDone: (revision: RecalculateChecklistScoreResult) => void; t: TFunction }) {
   const [reason, setReason] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [formula, setFormula] = useState<ChecklistScoreFormula>('snapshot');
+  const [result, setResult] = useState<RecalculateChecklistScoreResult | null>(null);
+  const retry = useRef<{ reason: string; formula: ChecklistScoreFormula; key: string } | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const trimmed = reason.trim();
-    if (!trimmed) return;
+    if (!trimmed || status === 'saving') return;
+    if (!retry.current || retry.current.reason !== trimmed || retry.current.formula !== formula) {
+      retry.current = { reason: trimmed, formula, key: crypto.randomUUID() };
+    }
     setStatus('saving');
     setError(null);
     try {
-      const revision = await recalculateChecklistSessionScore(sessionId, { reason: trimmed, idempotencyKey: crypto.randomUUID() });
+      const revision = await recalculateChecklistSessionScore(sessionId, { reason: trimmed, formula, idempotencyKey: retry.current.key });
       setReason('');
+      setResult(revision);
       setStatus('idle');
       onDone(revision);
     } catch (err) {
@@ -105,8 +119,20 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
   return (
     <form onSubmit={(event) => { void submit(event); }} style={{ display: 'grid', gap: 8, marginTop: 16, maxWidth: 480 }}>
       <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+        {t('admin.checklists.report.formulaLabel', 'Formula')}
+        <select className="admin-input" disabled={status === 'saving'} value={formula} onChange={(event) => setFormula(event.target.value as ChecklistScoreFormula)}>
+          <option value="snapshot">{describeScoreFormula('snapshot', t)}</option>
+          <option value="criteria">{describeScoreFormula('criteria', t)}</option>
+        </select>
+      </label>
+      <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>{t('admin.checklists.report.formulaHint', 'Criteria have equal weight. Skipped criteria are excluded; a selected scale level counts as a mark. Rejected answers do not count as marked.')}</p>
+      {result && <InlineFeedback tone="success" title={t('admin.checklists.report.recalculated', 'Score recalculated')}>
+        <strong>{result.previousPercentage}% → {result.scored ? `${result.newPercentage}%` : t('admin.checklists.report.notScored', 'Not scored')}</strong>
+        <p>{describeScoreFormula(result.formula, t)}</p>
+      </InlineFeedback>}
+      <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
         {t('admin.checklists.report.recalculateReason', 'Reason for recalculation')}
-        <textarea className="admin-input" onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
+        <textarea className="admin-input" disabled={status === 'saving'} maxLength={500} onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
       </label>
       {error && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={status === 'saving' || reason.trim().length === 0} type="submit">
@@ -257,9 +283,10 @@ export function HistoryTab({ sessionId, t }: { sessionId: string; t: TFunction }
           {state.data.revisions.map((revision) => (
             <li key={revision.id} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <strong>{revision.previousPercentage}% → {revision.newPercentage}%</strong>
+                <strong>{revision.previousPercentage}% → {revision.newScored === false ? t('admin.checklists.report.notScored', 'Not scored') : `${revision.newPercentage}%`}</strong>
                 <span style={{ color: '#6b7280' }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
               </div>
+              <p style={{ margin: '4px 0' }}>{describeScoreFormula(revision.formula, t)}</p>
               {revision.reason && <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{revision.reason}</p>}
             </li>
           ))}
@@ -279,7 +306,7 @@ export function RecalculateDialog({ open, onClose, sessionId, onDone, t }: { ope
   return (
     <Dialog initialFocusRef={closeRef} labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{t('admin.checklists.report.recalculateDialogTitle', 'Recalculate score')}</h2>
-      <RecalculateForm sessionId={sessionId} onDone={(revision) => { onDone(revision); onClose(); }} t={t} />
+      <RecalculateForm key={open ? 'open' : 'closed'} sessionId={sessionId} onDone={onDone} t={t} />
       <div className="ds-dialog__actions">
         <button className="ds-button ds-button--secondary ds-button--md" onClick={onClose} ref={closeRef} type="button">{t('admin.checklists.report.recalculateDialogClose', 'Close')}</button>
       </div>
@@ -462,7 +489,8 @@ export function SessionReportBody({
                       <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)', marginTop: 6, flexShrink: 0 }} />
                       <div>
                         <div style={{ color: '#6b7280', fontSize: 12.5 }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
-                        <div><strong>{revision.previousPercentage}% → {revision.newPercentage}%</strong>{revision.reason ? ` — ${revision.reason}` : ''}</div>
+                        <div><strong>{revision.previousPercentage}% → {revision.newScored === false ? t('admin.checklists.report.notScored', 'Not scored') : `${revision.newPercentage}%`}</strong>{revision.reason ? ` — ${revision.reason}` : ''}</div>
+                        <div>{describeScoreFormula(revision.formula, t)}</div>
                       </div>
                     </li>
                   ))}

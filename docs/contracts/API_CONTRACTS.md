@@ -569,13 +569,32 @@ stored one, since "an admin explicitly re-checked this score" is itself worth au
 /checklist-sessions/:id/score-revisions` (`checklistSessionsRead`, same object scope as every other
 session read) lists the full revision history for the session's underlying instance.
 
-Not implemented in this PR (honest gap, doesn't block the rest of the workstream): the accessibility
-test suite doesn't cover this specific screen with a real login, because the demo environment has no
-seeded `ChecklistSession` and creating one through the multi-step wizard from an a11y test was judged
-not worth the added flakiness risk without a live run to verify selectors -- unit tests (loading/
-summary/participants/criteria/history/recalculate branches), a real-Postgres integration test, and a
-mocked visual-regression test cover the screen instead.
+PR 335 adds optional `formula: 'snapshot' | 'criteria'` to the same endpoint; omission keeps
+`snapshot` for backwards compatibility. `snapshot` uses the assignment-time scoring mode,
+points, weights and pass threshold. `criteria` computes `round(marked / total * 100)` with unit
+weight for each frozen criterion: `checked=true` for checkbox modes or any selected scale level
+(including a zero-point level) for scale mode. Rejected answers never count as marked. Explicitly
+skipped criteria are excluded from numerator and denominator; missing answers remain in the
+denominator. An empty/all-skipped denominator yields `scored=false`, never a misleading 0% grade.
+The stored `totalScore`/`maxScore` use counts in criteria mode and points in snapshot mode.
+Both formulas retain the existing completed-only pass rule and immutable snapshot threshold.
+This is a formula for this explicit revision, not a change to normal submit/review/skip scoring.
 
+`ChecklistScoreRevision.formula` records the actual formula as an enum; existing rows receive
+`snapshot` through an additive migration, because that was the only prior behavior. Revisions
+remain append-only, including their persisted `newScored` fact; later recalculations update only
+the instance's current score and append another revision. The session event and AuditLog metadata
+also record the formula. A repeated idempotency key returns its original formula and outcome,
+even after another recalculation or if a retry supplies a different formula. A new calculation
+needs a new key. Historical idempotency JSON without formula/scored recovers those facts from
+its own revision, never from today's mutable instance score.
+
+The admin dialog defaults to checklist settings, offers the two formulas and requires a reason.
+It stays open after success to display the server's before/after and actual formula; both history
+views show the formula per revision and distinguish an unscored result. An unchanged request
+retried after a transport/API error reuses its key; a changed reason/formula or a newly opened
+dialog starts a new operation. Browser tests exercise mobile layout, axe and the lost-response
+retry; report fixtures also have controlled visual baselines.
 ## Checklist session concurrency and idempotency (PR 301)
 
 Every ChecklistSession mutation the ADR already required version/status optimistic concurrency for

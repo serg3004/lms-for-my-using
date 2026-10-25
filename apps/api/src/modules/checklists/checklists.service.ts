@@ -6,6 +6,7 @@ import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
 import {
   AssignChecklistInput,
+  ChecklistScoreFormula,
   BulkAssignChecklistInput,
   ChecklistAnalyticsQuery,
   ChecklistManagerAnalyticsQuery,
@@ -1091,7 +1092,7 @@ export class ChecklistsService {
    * the results under the same Serializable isolation as its own write, closing the race with a
    * concurrent item-result submission.
    */
-  async computeInstanceScore(instanceId: string, organizationId: string, client: Prisma.TransactionClient = this.prisma) {
+  async computeInstanceScore(instanceId: string, organizationId: string, client: Prisma.TransactionClient = this.prisma, formula: ChecklistScoreFormula = 'snapshot') {
     const instance = await client.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
       select: { checklistId: true, templateSnapshot: true, snapshotVersion: true },
@@ -1107,7 +1108,15 @@ export class ChecklistsService {
     const relevantResults = results.filter((result) => itemIds.has(result.itemId));
     const resultByItemId = new Map<string, CompletionResult>(relevantResults.map((result) => [result.itemId, result]));
 
-    const { totalScore, maxScore, scored } = this.computeAggregateScore(checklist.items, checklist.scoringMode, checklist.scaleLevels, resultByItemId);
+    // Criteria mode counts valid marks equally: checkbox=true or a selected scale level.
+    // Missing answers stay in the denominator; explicit skips do not. Rejected answers earn 0.
+    const criteria = checklist.items.filter((item) => resultByItemId.get(item.id)?.answerState !== 'skipped');
+    const { totalScore, maxScore, scored } = formula === 'criteria'
+      ? { totalScore: criteria.filter((item) => {
+          const result = resultByItemId.get(item.id);
+          return result?.reviewStatus !== 'rejected' && this.hasValidAnswer(checklist.scoringMode, result);
+        }).length, maxScore: criteria.length, scored: criteria.length > 0 }
+      : this.computeAggregateScore(checklist.items, checklist.scoringMode, checklist.scaleLevels, resultByItemId);
     const percentage = scored ? Math.round((totalScore / maxScore) * 100) : 0;
     return { totalScore, maxScore, scored, percentage, passThreshold: checklist.passThreshold };
   }

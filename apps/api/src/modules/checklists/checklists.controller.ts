@@ -579,7 +579,7 @@ export class ChecklistsController {
     const input = recalculateChecklistScoreSchema.parse(body);
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.recalculateScore(sessionId, user.organizationId, input.reason, user.id, scope, input.idempotencyKey);
+    return this.sessions.recalculateScore(sessionId, user.organizationId, input.reason, user.id, scope, input.idempotencyKey, input.formula);
   }
   @Get('checklist-sessions/:id/score-revisions')
   @Roles(...rolePolicies.checklistSessionsRead)

@@ -81,6 +81,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistPreSessionVisibility` | `full`, `structure_only`, `none` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
 | `ChecklistScaleStatus` | `active`, `archived` |
+| `ChecklistScoreFormula` | `snapshot`, `criteria` |
 | `ChecklistScoringMode` | `sum_points`, `all_required`, `scale` |
 | `ChecklistSessionEventType` | `created`, `rescheduled`, `started`, `paused`, `resumed`, `completed`, `cancelled`, `observer_reassigned`, `reminder_sent`, `location_override`, `feedback_updated`, `score_recalculated`, `observer_marked_unavailable`, `deleted`, `message_sent` |
 | `ChecklistSessionReminderStatus` | `pending`, `sent`, `suppressed`, `failed` |
