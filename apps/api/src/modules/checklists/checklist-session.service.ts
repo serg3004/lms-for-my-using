@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   ChecklistLocationCapturePoint,
   ChecklistScoreRevision,
@@ -16,6 +16,7 @@ import {
   suppressPendingReminders,
   upsertPreStartReminder,
 } from './checklist-session-reminders.js';
+import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_MESSAGE_WINDOW_MS } from './checklist-session-message.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
   BulkCreateChecklistSessionInput,
@@ -340,7 +341,7 @@ export class ChecklistSessionService {
    */
   async repeatSession(sessionId: string, organizationId: string, actorId: string, scope: object) {
     const original = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: {
         status: true,
         observerId: true,
@@ -460,7 +461,7 @@ export class ChecklistSessionService {
     // `AND` instead so nested `instance`/`OR` keys from different clauses compose, not overwrite.
     const where: Prisma.ChecklistSessionWhereInput = {
       AND: [
-        { organizationId },
+        { organizationId, deletedAt: null },
         scope,
         query.status ? { status: query.status } : {},
         query.excludeSessionId ? { id: { not: query.excludeSessionId } } : {},
@@ -497,7 +498,7 @@ export class ChecklistSessionService {
 
   async get(sessionId: string, organizationId: string, scope: object, viewer: ChecklistSessionViewerContext) {
     const session = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       include: sessionProjectionInclude,
     });
     if (!session) throw new NotFoundException('Checklist session not found');
@@ -506,7 +507,7 @@ export class ChecklistSessionService {
 
   async listEvents(sessionId: string, organizationId: string, scope: object) {
     const exists = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: { id: true },
     });
     if (!exists) throw new NotFoundException('Checklist session not found');
@@ -520,7 +521,7 @@ export class ChecklistSessionService {
     const { version: expectedVersion, ...changes } = input;
 
     return runSerializableWithRetry(this.prisma, async (tx) => {
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'scheduled') {
         throw new BadRequestException('Only a scheduled session can be updated or rescheduled');
@@ -584,6 +585,105 @@ export class ChecklistSessionService {
   }
 
   /**
+   * PR 333: soft-deletes a session that has not started. Started/completed/cancelled sessions are
+   * never deleted (400) -- their results and lifecycle history are the record. The row, its events
+   * and the audit entry stay (append-only); only `deletedAt` is set, and the untouched paired
+   * assignment is soft-deleted in the same transaction so the employee is not left with an orphan
+   * assignment. Pending reminders are suppressed so nothing fires for a deleted session.
+   */
+  async deleteSession(sessionId: string, organizationId: string, actorId: string, scope: object) {
+    await runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({
+        where: { id: sessionId, organizationId, deletedAt: null, ...scope },
+        select: { id: true, status: true, instanceId: true },
+      });
+      if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.status !== 'scheduled') {
+        throw new BadRequestException('Only a session that has not started can be deleted');
+      }
+
+      const now = new Date();
+      const result = await tx.checklistSession.updateMany({
+        where: { id: sessionId, organizationId, status: 'scheduled', deletedAt: null },
+        data: { deletedAt: now, version: { increment: 1 } },
+      });
+      if (result.count !== 1) throw new ConflictException(STALE_WRITE_MESSAGE);
+
+      await tx.checklistInstance.updateMany({
+        where: { id: session.instanceId, organizationId, status: 'assigned', deletedAt: null },
+        data: { deletedAt: now },
+      });
+      await suppressPendingReminders(tx, { organizationId, sessionId });
+      await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: 'deleted', actorUserId: actorId } });
+    });
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_session.deleted',
+      targetType: 'checklist_session',
+      targetId: sessionId,
+      summary: 'Deleted checklist session',
+    });
+  }
+
+  /**
+   * PR 333: "Write to the participant" -- an in-app Notification for the employee plus an outbox
+   * event for best-effort email, both in one transaction. The notification carries only the
+   * checklist title and the manager's text: never the observer's location captures, scores or
+   * feedback. Capped per session so the button cannot be used to spam an employee.
+   */
+  async sendMessageToParticipant(sessionId: string, organizationId: string, message: string, actorId: string, scope: object) {
+    const sent = await runSerializableWithRetry(this.prisma, async (tx) => {
+      const session = await tx.checklistSession.findFirst({
+        where: { id: sessionId, organizationId, deletedAt: null, ...scope },
+        select: { id: true, status: true, instance: { select: { userId: true, checklist: { select: { title: true } } } } },
+      });
+      if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.status === 'completed' || session.status === 'cancelled') {
+        throw new BadRequestException('A message cannot be sent about a completed or cancelled session');
+      }
+
+      const recent = await tx.checklistSessionEvent.count({
+        where: { organizationId, sessionId, eventType: 'message_sent', createdAt: { gte: new Date(Date.now() - SESSION_MESSAGE_WINDOW_MS) } },
+      });
+      if (recent >= SESSION_MESSAGE_LIMIT) {
+        throw new HttpException('Too many messages for this session, try again later', HttpStatus.TOO_MANY_REQUESTS);
+      }
+
+      const recipientId = session.instance.userId;
+      const notification = await tx.notification.create({
+        data: {
+          organizationId,
+          userId: recipientId,
+          type: 'checklist_session_message',
+          data: { sessionId, checklistTitle: session.instance.checklist.title, message },
+          link: '/learn/checklists',
+        },
+      });
+      await tx.checklistSessionEvent.create({
+        data: { organizationId, sessionId, eventType: 'message_sent', actorUserId: actorId, metadata: { notificationId: notification.id } },
+      });
+      await tx.outboxEvent.create({
+        data: {
+          topic: CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB,
+          payload: { notificationId: notification.id, organizationId, sessionId, recipientId, checklistTitle: session.instance.checklist.title, message },
+        },
+      });
+      return { notificationId: notification.id, recipientId };
+    });
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_session.message_sent',
+      targetType: 'checklist_session',
+      targetId: sessionId,
+      summary: 'Sent a message to the session participant',
+      metadata: { recipientId: sent.recipientId },
+    });
+    return { sent: true as const };
+  }
+
+  /**
    * PR 302: the assigned observer (or an admin on their behalf, via `checklistSessionsRun`) reports
    * they can't conduct this session. An orthogonal business flag, not a lifecycle transition -- it
    * never touches `status` and so never blocks start/pause/resume/complete/cancel; it only surfaces
@@ -598,7 +698,7 @@ export class ChecklistSessionService {
    */
   async markObserverUnavailable(sessionId: string, organizationId: string, reason: string, expectedVersion: number, actorId: string, scope: object) {
     return runSerializableWithRetry(this.prisma, async (tx) => {
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'scheduled') {
         throw new BadRequestException('Only a scheduled session\'s observer can be marked unavailable');
@@ -656,7 +756,7 @@ export class ChecklistSessionService {
       if (cached) return cached;
 
       const session = await tx.checklistSession.findFirst({
-        where: { id: sessionId, organizationId, ...scope },
+        where: { id: sessionId, organizationId, deletedAt: null, ...scope },
         include: { instance: { select: { templateSnapshot: true, checklist: { select: { contextFields: true } } } } },
       });
       if (!session) throw new NotFoundException('Checklist session not found');
@@ -728,7 +828,7 @@ export class ChecklistSessionService {
     const { version: expectedVersion, ...changes } = input;
 
     return runSerializableWithRetry(this.prisma, async (tx) => {
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.status === 'scheduled' || session.status === 'cancelled') {
         throw new BadRequestException(`Cannot record feedback for a session in status "${session.status}"`);
@@ -757,7 +857,7 @@ export class ChecklistSessionService {
   async submitContext(sessionId: string, organizationId: string, input: SubmitChecklistSessionContextInput, scope: object) {
     const { version: expectedVersion, values } = input;
     return runSerializableWithRetry(this.prisma, async (tx) => {
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, ...scope } });
+      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'in_progress' && session.status !== 'paused') {
         throw new BadRequestException(`Cannot record context for a session in status "${session.status}"`);
@@ -804,7 +904,7 @@ export class ChecklistSessionService {
     scope: object,
   ) {
     const session = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: { id: true, observerId: true, locationCapturePolicy: true },
     });
     if (!session) throw new NotFoundException('Checklist session not found');
@@ -883,7 +983,7 @@ export class ChecklistSessionService {
    */
   async listLocationCaptures(sessionId: string, organizationId: string, scope: object, actorId: string, isAdmin: boolean) {
     const session = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: { id: true, observerId: true },
     });
     if (!session) throw new NotFoundException('Checklist session not found');
@@ -959,7 +1059,7 @@ export class ChecklistSessionService {
       }
 
       const session = await tx.checklistSession.findFirst({
-        where: { id: sessionId, organizationId, ...scope },
+        where: { id: sessionId, organizationId, deletedAt: null, ...scope },
         select: {
           id: true,
           instanceId: true,
@@ -1029,7 +1129,7 @@ export class ChecklistSessionService {
 
   async listScoreRevisions(sessionId: string, organizationId: string, scope: object) {
     const session = await this.prisma.checklistSession.findFirst({
-      where: { id: sessionId, organizationId, ...scope },
+      where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: { instanceId: true },
     });
     if (!session) throw new NotFoundException('Checklist session not found');

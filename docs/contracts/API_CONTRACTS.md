@@ -313,6 +313,22 @@ the *session* does not complete the *instance* (they are independently-lifecycle
 the checklist still fails with the same "already has an active assignment" 400 that a fresh manual
 assignment would. Writes a `checklist_session.repeated` audit-log entry.
 
+`DELETE /checklist-sessions/:id` (`checklistSessionsManage`, scoped by `sessionScope()`) soft-deletes a
+session that has not started (`deletedAt`); a started, completed or cancelled session answers 400 and is
+untouched, an unknown/out-of-scope/already-deleted one 404. In one transaction it suppresses the pending
+reminders, soft-deletes the paired `ChecklistInstance` when it is still `assigned`, and appends a `deleted`
+event; a `checklist_session.deleted` audit entry follows. Deleted sessions are hidden from every read
+(`GET`, list, events, transitions, analytics); the event history stays append-only.
+
+`POST /checklist-sessions/:id/message` (`checklistSessionsManage`, same scope) with `{ message }` (1..500
+characters after trimming) writes the participant an in-app `Notification` (`checklist_session_message`,
+data: `sessionId`, `checklistTitle`, `message` -- never feedback, scores or location) and an outbox event
+`checklists.session-message-notify` for best-effort email through the same provider-neutral endpoint as
+reminders (`kind: participant_message`; an unconfigured endpoint is a no-op). It appends a `message_sent` event
+and a `checklist_session.message_sent` audit entry. A completed/cancelled session answers 400; more than 3
+messages per session in 10 minutes answer 429. Editing time and observer stays `PATCH /checklist-sessions/:id`;
+the admin UI now sends both in one request.
+
 `GET /checklist-sessions/participants?role=learner|observer` backs both wizard entry points.
 Admin/manager may select any active instructor in their tenant as observer. PR 331 adds
 `checklistSessionsCreateOwn` for instructor: a caller without management rights sees only

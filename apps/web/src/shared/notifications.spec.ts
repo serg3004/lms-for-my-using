@@ -55,13 +55,14 @@ describe('checklist session notification types resolve in every supported locale
     'checklist_session_observer_unavailable',
     'checklist_session_pre_start_reminder',
     'checklist_session_incomplete_after_start_reminder',
+    'checklist_session_message',
   ] as const;
 
   for (const locale of supportedLocales) {
     for (const type of types) {
       it(`${type} has a non-empty title and message in ${locale}`, () => {
         const t = i18next.getFixedT(locale);
-        const notification: NotificationSummary = { id: 'n1', type, data: { sessionId: 's1', reason: 'Out sick' }, link: null, readAt: null, createdAt: '2026-01-01T00:00:00.000Z' };
+        const notification: NotificationSummary = { id: 'n1', type, data: { sessionId: 's1', reason: 'Out sick', message: 'Bring your badge', checklistTitle: 'Opening shift' }, link: null, readAt: null, createdAt: '2026-01-01T00:00:00.000Z' };
         const { title, message } = describeNotification(notification, t);
         expect(title).not.toBe(type);
         expect(title.length).toBeGreaterThan(0);

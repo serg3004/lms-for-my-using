@@ -11,16 +11,19 @@ import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult 
 import { Badge, Button, DataTable, Menu, PageState, Pagination, SearchInput, type Column } from '../shared/ui.js';
 import { listChecklists } from '../shared/api/checklists.js';
 import { listDepartments } from '../shared/api/departments.js';
-import { listChecklistSessionParticipants, listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
+import { deleteChecklistSession, listChecklistSessionParticipants, listChecklistSessions, repeatChecklistSession, transitionChecklistSession } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionParticipant, ChecklistSessionStatus, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
 import type { Department } from '../shared/api/departments.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
 import { ChecklistWorkplaceSettingsDialog } from '../features/admin-checklist-sessions/ChecklistWorkplaceSettingsDialog.js';
-import { ReassignObserverDialog } from '../features/admin-checklist-sessions/ReassignObserverDialog.js';
+import { EditSessionDialog } from '../features/admin-checklist-sessions/EditSessionDialog.js';
+import { MessageParticipantDialog } from '../features/admin-checklist-sessions/MessageParticipantDialog.js';
 import {
   activeSessionFilterKeys,
   applySessionFilterChange,
   canCancelSession,
+  canDeleteSession,
+  canMessageParticipant,
   canReassignObserver,
   canRepeatSession,
   formatParticipantName,
@@ -51,7 +54,10 @@ export function AdminChecklistSessionsPage() {
   const [wizardReloadPending, setWizardReloadPending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
-  const [reassignTarget, setReassignTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [editTarget, setEditTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [messageTarget, setMessageTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Filter option lists are best-effort: a failed lookup only empties that dropdown, it never
@@ -118,6 +124,19 @@ export function AdminChecklistSessionsPage() {
     } catch (error) {
       setActionError(error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.cancelError', 'Unable to cancel the session.'));
       setCancelTarget(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setActionError(null);
+    try {
+      await deleteChecklistSession(deleteTarget.id);
+      setDeleteTarget(null);
+      await load();
+    } catch (error) {
+      setActionError(error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.deleteError', 'Unable to delete the session.'));
+      setDeleteTarget(null);
     }
   }
 
@@ -230,15 +249,27 @@ export function AdminChecklistSessionsPage() {
               {t('admin.checklists.sessions.cancel', 'Cancel')}
             </Button>
           )}
-          {canReassignObserver(row) && (
+          {(canReassignObserver(row) || canMessageParticipant(row) || canDeleteSession(row)) && (
             <Menu
               align="end"
               buttonClassName="ds-button ds-button--secondary ds-button--sm"
               label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
             >
-              <button onClick={() => setReassignTarget(row)} role="menuitem" type="button">
-                {t('admin.checklists.sessions.reassignObserver', 'Reassign observer')}
-              </button>
+              {canReassignObserver(row) && (
+                <button onClick={() => setEditTarget(row)} role="menuitem" type="button">
+                  {t('admin.checklists.sessions.edit.open', 'Edit time or observer')}
+                </button>
+              )}
+              {canMessageParticipant(row) && (
+                <button onClick={() => setMessageTarget(row)} role="menuitem" type="button">
+                  {t('admin.checklists.sessions.message.open', 'Write to the participant')}
+                </button>
+              )}
+              {canDeleteSession(row) && (
+                <button onClick={() => setDeleteTarget(row)} role="menuitem" type="button">
+                  {t('admin.checklists.sessions.delete', 'Delete')}
+                </button>
+              )}
             </Menu>
           )}
         </div>
@@ -265,6 +296,12 @@ export function AdminChecklistSessionsPage() {
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">
           <p>{actionError}</p>
           <button aria-label={t('admin.checklists.close', 'Close')} className="admin-inline-banner__close" onClick={() => setActionError(null)} type="button">×</button>
+        </div>
+      )}
+      {notice && (
+        <div className="admin-inline-banner" role="status">
+          <p>{notice}</p>
+          <button aria-label={t('admin.checklists.close', 'Close')} className="admin-inline-banner__close" onClick={() => setNotice(null)} type="button">×</button>
         </div>
       )}
       <div aria-label={t('admin.checklists.sessions.statusFilter', 'Status')} className="admin-org-tabs" role="tablist">
@@ -385,7 +422,23 @@ export function AdminChecklistSessionsPage() {
         title={t('admin.checklists.sessions.cancelTitle', 'Cancel session')}
         variant="danger"
       />
-      <ReassignObserverDialog onClose={() => setReassignTarget(null)} onReassigned={() => void load()} session={reassignTarget} t={t} />
+      <ConfirmDialog
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        confirmLabel={t('admin.checklists.sessions.delete', 'Delete')}
+        message={t('admin.checklists.sessions.deleteConfirm', 'Delete this session? It has not started, so nothing is lost except the plan. The employee will no longer see it.')}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+        open={deleteTarget !== null}
+        title={t('admin.checklists.sessions.deleteTitle', 'Delete session')}
+        variant="danger"
+      />
+      <EditSessionDialog onClose={() => setEditTarget(null)} onSaved={() => void load()} session={editTarget} t={t} />
+      <MessageParticipantDialog
+        onClose={() => setMessageTarget(null)}
+        onSent={() => setNotice(t('admin.checklists.sessions.message.sent', 'Message sent.'))}
+        session={messageTarget}
+        t={t}
+      />
       <ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />
     </AdminPageLayout>
   );

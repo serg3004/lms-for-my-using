@@ -318,6 +318,17 @@ Migration `20261024130000_add_checklist_strictness_settings` также additive
 
 Миграция написана вручную; `prisma migrate diff` от схемы после `migrate deploy` не показывает расхождений по таблице `checklists`. Отдельный data backfill или backup сверх общей policy не требуется.
 
+### Checklist session delete and message migration
+
+Migration `20261025120000_add_checklist_session_delete_and_message` также additive и backward-compatible (PR 333, удаление не начатой сессии и сообщение участнику):
+
+- добавляет nullable колонку `checklist_sessions.deleted_at TIMESTAMPTZ` без default; существующие строки получают `NULL`, то есть остаются «живыми» — backfill не нужен, таблица не переписывается;
+- добавляет два значения enum `ChecklistSessionEventType` (`deleted`, `message_sent`) через `ALTER TYPE ... ADD VALUE`; значения не используются в той же миграции, существующие строки событий не затрагиваются;
+- удаление мягкое: строка сессии, её события и audit-записи сохраняются (append-only), а парный `ChecklistInstance` без прогресса получает `deleted_at`; жёсткого удаления нет, поэтому откат — это обнуление `deleted_at`;
+- допускает overlap со старой версией приложения: старая версия не читает `deleted_at`, поэтому на время выката мягко удалённые сессии могут быть видны старым инстансам — данные при этом не теряются.
+
+Миграция написана вручную; `prisma migrate diff` от схемы после `migrate deploy` не показывает расхождений по таблице `checklist_sessions`. Отдельный data backfill или backup сверх общей policy не требуется.
+
 ---
 
 ## 5. Drift handling

@@ -8,7 +8,11 @@ import {
   canProceedFromParticipantsStep,
   canProceedFromScheduleStep,
   buildIndividualSessionSchedules,
+  buildSessionUpdatePayload,
+  canDeleteSession,
+  canMessageParticipant,
   canReassignObserver,
+  toDatetimeLocalValue,
   canRepeatSession,
   excludeCurrentObserver,
   formatParticipantName,
@@ -215,5 +219,41 @@ describe('session list URL filters (PR 325)', () => {
     const filters = parseSessionFilters(new URLSearchParams('status=paused&learnerId=l1&period=last7'));
     expect(activeSessionFilterKeys(filters)).toEqual(['period', 'learnerId']);
     expect(activeSessionFilterKeys(parseSessionFilters(new URLSearchParams('status=paused')))).toEqual([]);
+  });
+});
+
+describe('session edit/delete/message guards (PR 333)', () => {
+  it('only a scheduled session can be deleted; only an unfinished one can be messaged', () => {
+    expect(canDeleteSession({ status: 'scheduled' })).toBe(true);
+    for (const status of ['in_progress', 'paused', 'completed', 'cancelled'] as const) expect(canDeleteSession({ status })).toBe(false);
+    for (const status of ['scheduled', 'in_progress', 'paused'] as const) expect(canMessageParticipant({ status })).toBe(true);
+    for (const status of ['completed', 'cancelled'] as const) expect(canMessageParticipant({ status })).toBe(false);
+  });
+
+  it('round-trips a session time through the datetime-local value', () => {
+    const iso = new Date(2026, 1, 3, 9, 30).toISOString();
+    expect(toDatetimeLocalValue(iso)).toBe('2026-02-03T09:30');
+    expect(toDatetimeLocalValue(null)).toBe('');
+    expect(toDatetimeLocalValue('not a date')).toBe('');
+  });
+
+  describe('buildSessionUpdatePayload', () => {
+    const iso = new Date(2026, 1, 3, 9, 30).toISOString();
+    const session = { version: 4, scheduledAt: iso, observerId: 'observer-1' };
+
+    it('has nothing to save while the draft equals the session', () => {
+      expect(buildSessionUpdatePayload(session, { scheduledAt: '2026-02-03T09:30', observerId: '' }, 'Asia/Almaty')).toBeNull();
+      expect(buildSessionUpdatePayload(session, { scheduledAt: '', observerId: 'observer-1' }, 'Asia/Almaty')).toBeNull();
+    });
+
+    it('sends a changed time together with the timezone, and the version', () => {
+      const payload = buildSessionUpdatePayload(session, { scheduledAt: '2026-02-04T10:00', observerId: '' }, 'Asia/Almaty');
+      expect(payload).toEqual({ version: 4, scheduledAt: new Date(2026, 1, 4, 10, 0).toISOString(), timezone: 'Asia/Almaty' });
+    });
+
+    it('sends time and observer in one payload, and only the observer when only it changed', () => {
+      expect(buildSessionUpdatePayload(session, { scheduledAt: '2026-02-04T10:00', observerId: 'observer-2' }, 'UTC')).toMatchObject({ observerId: 'observer-2', timezone: 'UTC' });
+      expect(buildSessionUpdatePayload(session, { scheduledAt: '2026-02-03T09:30', observerId: 'observer-2' }, 'UTC')).toEqual({ version: 4, observerId: 'observer-2' });
+    });
   });
 });

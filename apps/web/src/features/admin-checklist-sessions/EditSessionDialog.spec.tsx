@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { useTranslation } from 'react-i18next';
 
-import { ReassignObserverDialog } from './ReassignObserverDialog.js';
+import { EditSessionDialog } from './EditSessionDialog.js';
 import type { ChecklistSessionSummary } from '../../shared/api/types.js';
 
 function makeSession(overrides: Partial<ChecklistSessionSummary> = {}): ChecklistSessionSummary {
@@ -26,22 +26,21 @@ function makeSession(overrides: Partial<ChecklistSessionSummary> = {}): Checklis
 
 function Wrapper({ session }: { session: ChecklistSessionSummary | null }) {
   const { t } = useTranslation();
-  return <ReassignObserverDialog onClose={vi.fn()} onReassigned={vi.fn()} session={session} t={t} />;
+  return <EditSessionDialog onClose={vi.fn()} onSaved={vi.fn()} session={session} t={t} />;
 }
 
-describe('ReassignObserverDialog', () => {
+describe('EditSessionDialog (PR 333)', () => {
   it('renders a closed dialog shell when no target session is set', () => {
     const html = renderToStaticMarkup(<Wrapper session={null} />);
     expect(html).toContain('<dialog');
     expect(html).toContain('ds-wizard-dialog');
   });
 
-  it('renders the observer picklist step for a target session', () => {
+  it('renders one step with the time field, the current observer and the picklist for another one', () => {
     const html = renderToStaticMarkup(<Wrapper session={makeSession()} />);
-    // PR 316 added the `admin.checklists.sessions.reassign.stepLabel` ru translation, so the
-    // default ('ru') i18n instance this spec renders under no longer falls back to its English
-    // default text -- assert on the real ru string, not the fallback.
-    expect(html).toContain('Новый наблюдатель');
+    expect(html).toContain('Время и наблюдатель');
+    expect(html).toContain('type="datetime-local"');
+    expect(html).toContain('Olga');
     expect(html).toContain('ds-wizard-dialog__picklist');
   });
 
