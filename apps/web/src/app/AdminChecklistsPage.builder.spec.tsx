@@ -113,3 +113,47 @@ describe('ChecklistBuilder without criteria', () => {
   });
 });
 
+describe('ChecklistBuilder criteria editor (PR 339)', () => {
+  const render = (overrides: Partial<typeof checklist>) => renderToStaticMarkup(
+    <ChecklistBuilder
+      checklist={{ ...checklist, ...overrides }}
+      statusLabels={statusLabels}
+      scoringModeLabels={scoringModeLabels}
+      onBack={() => {}}
+      onReload={async () => {}}
+      t={((key: string, fallback?: string, options?: Record<string, string>) => (fallback ?? key).replace('{{name}}', options?.['name'] ?? '')) as never}
+    />,
+  );
+
+  it('offers a single way to add a criterion: the button in the group, no separate text row', () => {
+    const html = render({});
+    expect(html).not.toContain('New item text');
+    expect(html).not.toContain('Add item');
+    expect(html).toContain('Criterion');
+  });
+
+  it('does not show the "Ungrouped" caption while groups are not used', () => {
+    const html = render({ itemGroups: [], items: checklist.items.map((item) => ({ ...item, groupId: null })) });
+    expect(html).not.toContain('Ungrouped');
+  });
+
+  it('keeps a button to add the first criterion on an empty checklist without groups', () => {
+    const html = render({ itemGroups: [], items: [] });
+    expect(html).toContain('+ Criterion');
+  });
+
+  it('labels the general-information field controls visibly and moves delete into a menu', () => {
+    const html = render({});
+    expect(html).toContain('<span>Field label</span>');
+    expect(html).toContain('<span>Field type</span>');
+    expect(html).toContain('Номер магазина');
+    expect(html).toContain('Field actions: Номер магазина');
+  });
+
+  it('names the criterion and group in the reorder buttons', () => {
+    const html = render({});
+    expect(html).toContain('aria-label="Move down: Работа с кассой"');
+    expect(html).toContain('aria-label="Move up: Без группы"');
+  });
+});
+

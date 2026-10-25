@@ -1305,7 +1305,14 @@
         "restore": "恢复为草稿"
       },
       "savedAt": "已于 {{time}} 保存",
-      "needItemsHint": "添加至少一条标准后，才能预览和发布。"
+      "needItemsHint": "添加至少一条标准后，才能预览和发布。",
+      "moveNamedUp": "上移：{{name}}",
+      "moveNamedDown": "下移：{{name}}",
+      "contextFieldTypeLabel": "字段类型",
+      "contextFieldRequired": "必填",
+      "contextFieldActions": "字段操作：{{name}}",
+      "contextFieldDeleteTitle": "删除字段",
+      "contextFieldDeleteConfirm": "删除字段“{{name}}”？此后分配的会话将不再询问该字段；已开始的会话保留。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
-import { AdminPageHeader, FormField } from '../../shared/adminPage.js';
+import { AdminPageHeader, ConfirmDialog, FormField } from '../../shared/adminPage.js';
 import { Badge, Button, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
 import { listUsers } from '../../shared/api/users.js';
 import {
@@ -96,7 +96,7 @@ export function ChecklistBuilder({
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
   const [items, setItems] = useState<ChecklistItemSummary[]>(checklist.items);
-  const [newItemText, setNewItemText] = useState('');
+  const [contextFieldToDelete, setContextFieldToDelete] = useState<ContextField | null>(null);
   const [instances, setInstances] = useState<ChecklistInstanceSummary[]>([]);
   const [orgUsers, setOrgUsers] = useState<UserSummary[]>([]);
   const [assignUserId, setAssignUserId] = useState('');
@@ -196,12 +196,6 @@ export function ChecklistBuilder({
     } catch (error) {
       setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.publishError', 'Unable to publish checklist.') });
     }
-  }
-  async function addItem() {
-    if (!newItemText.trim()) return;
-    const created = await createChecklistItem(checklist.id, { text: newItemText.trim(), points: 10, isRequired: true, photoRequired: false });
-    setItems((prev) => [...prev, created]);
-    setNewItemText('');
   }
 
   function updateItemLocally(itemId: string, patch: Partial<ChecklistItemSummary>) {
@@ -313,26 +307,30 @@ export function ChecklistBuilder({
             <div className="admin-context-fields">
               {contextFields.map((field) => (
                 <div className="admin-context-field-row" key={field.id}>
-                  <input
-                    aria-label={t('admin.checklists.contextFieldLabel', 'Field label')}
-                    onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
-                    onChange={(e) => updateContextFieldLocally(field.id, { label: e.target.value })}
-                    placeholder={t('admin.checklists.contextFieldLabel', 'Field label')}
-                    type="text"
-                    value={field.label}
-                  />
-                  <select
-                    onChange={(e) => {
-                      const type = e.target.value as ContextField['type'];
-                      updateContextFieldLocally(field.id, { type });
-                      void persistContextFields(applyContextFieldPatch(contextFields, field.id, { type }));
-                    }}
-                    value={field.type}
-                  >
-                    <option value="text">{t('admin.checklists.contextFieldType.text', 'Text')}</option>
-                    <option value="textarea">{t('admin.checklists.contextFieldType.textarea', 'Multiline text')}</option>
-                    <option value="date">{t('admin.checklists.contextFieldType.date', 'Date')}</option>
-                  </select>
+                  <label style={{ display: 'grid', gap: 4 }}>
+                    <span>{t('admin.checklists.contextFieldLabel', 'Field label')}</span>
+                    <input
+                      onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
+                      onChange={(e) => updateContextFieldLocally(field.id, { label: e.target.value })}
+                      type="text"
+                      value={field.label}
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: 4 }}>
+                    <span>{t('admin.checklists.contextFieldTypeLabel', 'Field type')}</span>
+                    <select
+                      onChange={(e) => {
+                        const type = e.target.value as ContextField['type'];
+                        updateContextFieldLocally(field.id, { type });
+                        void persistContextFields(applyContextFieldPatch(contextFields, field.id, { type }));
+                      }}
+                      value={field.type}
+                    >
+                      <option value="text">{t('admin.checklists.contextFieldType.text', 'Text')}</option>
+                      <option value="textarea">{t('admin.checklists.contextFieldType.textarea', 'Multiline text')}</option>
+                      <option value="date">{t('admin.checklists.contextFieldType.date', 'Date')}</option>
+                    </select>
+                  </label>
                   <label className="admin-checklist-item__photo">
                     <input
                       checked={field.required}
@@ -342,11 +340,17 @@ export function ChecklistBuilder({
                       }}
                       type="checkbox"
                     />
-                    {t('admin.checklists.field.isRequired', 'Required item')}
+                    {t('admin.checklists.contextFieldRequired', 'Required')}
                   </label>
-                  <button className="admin-btn admin-btn--sm admin-btn--danger" onClick={() => void removeContextField(field.id)} type="button">
-                    {t('admin.checklists.delete', 'Delete')}
-                  </button>
+                  <Menu
+                    align="end"
+                    buttonClassName="admin-btn admin-btn--sm"
+                    label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.contextFieldActions', 'Field actions: {{name}}', { name: field.label || t('admin.checklists.contextFieldLabel', 'Field label') })}</span></>}
+                  >
+                    <button onClick={() => setContextFieldToDelete(field)} role="menuitem" type="button">
+                      {t('admin.checklists.delete', 'Delete')}
+                    </button>
+                  </Menu>
                 </div>
               ))}
             </div>
@@ -372,16 +376,16 @@ export function ChecklistBuilder({
                         onChange={(e) => renameGroupLocally(group.id, e.target.value)}
                         value={group.title}
                       />
-                    ) : (
+                    ) : itemGroups.length > 0 ? (
                       <h4>{t('admin.checklists.ungroupedItems', 'Ungrouped')}</h4>
-                    )}
+                    ) : null}
                     <p className="admin-group-card__count">{t('admin.checklists.groupCriterionCount', '{{count}} criteria', { count: groupedItems.length })}</p>
                   </div>
                   <div className="admin-group-card__actions">
                     {group && (
                       <>
-                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveUp', 'Move up')}>↑</button>
-                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveDown', 'Move down')}>↓</button>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: group.title })}>↑</button>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: group.title })}>↓</button>
                         <button className="admin-btn admin-btn--sm" onClick={() => void copyGroup(group.id)} type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
                       </>
                     )}
@@ -405,8 +409,8 @@ export function ChecklistBuilder({
                     {groupedItems.map((item, itemIndex) => (
                       <div className="admin-criteria-row" role="row" key={item.id}>
                         <div className="admin-criteria-row__order">
-                          <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveUp', 'Move up')}>↑</button>
-                          <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveDown', 'Move down')}>↓</button>
+                          <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: item.text })}>↑</button>
+                          <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: item.text })}>↓</button>
                         </div>
                         <input
                           className="admin-criteria-row__text"
@@ -487,16 +491,6 @@ export function ChecklistBuilder({
                 {groupedItems.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
               </div>
             ))}
-            <div className="admin-checklist-add-item">
-              <input
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-                placeholder={t('admin.checklists.addItemPlaceholder', 'New item text')}
-              />
-              <Button type="button" variant="secondary" onClick={() => void addItem()}>
-                + {t('admin.checklists.addItem', 'Add item')}
-              </Button>
-            </div>
           </ChecklistItemsEditor>
         </div>
         <div className="admin-builder__column">
@@ -647,6 +641,20 @@ export function ChecklistBuilder({
           </ChecklistAssignmentPanel>
         </div>
       </div>
+      <ConfirmDialog
+        open={contextFieldToDelete !== null}
+        title={t('admin.checklists.contextFieldDeleteTitle', 'Delete field')}
+        message={t('admin.checklists.contextFieldDeleteConfirm', 'Delete the field "{{name}}"? Sessions assigned from now on will no longer ask for it; sessions already started keep it.', { name: contextFieldToDelete?.label ?? '' })}
+        confirmLabel={t('admin.checklists.delete', 'Delete')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => {
+          const target = contextFieldToDelete;
+          setContextFieldToDelete(null);
+          if (target) void removeContextField(target.id);
+        }}
+        onCancel={() => setContextFieldToDelete(null)}
+      />
       {previewOpen && (
         <ChecklistPreviewDialog label={t('admin.checklists.previewTitle', 'Preview')}>
           <div className="admin-preview-panel">
