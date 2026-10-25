@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -31,9 +31,10 @@ function baseScale(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 function createPrisma(overrides: {
-  checklistScale?: Partial<Record<'findFirst' | 'findMany' | 'create' | 'update', jest.Mock>>;
+  checklistScale?: Partial<Record<'findFirst' | 'findMany' | 'create' | 'update' | 'delete', jest.Mock>>;
   checklistScaleLevel?: Partial<Record<'createMany' | 'deleteMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
+  checklistItem?: Partial<Record<'findFirst', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     checklistScale: {
@@ -41,6 +42,7 @@ function createPrisma(overrides: {
       findMany: jest.fn(async () => [baseScale()]),
       create: jest.fn(async () => baseScale()),
       update: jest.fn(async () => baseScale()),
+      delete: jest.fn(async () => baseScale()),
       ...overrides.checklistScale,
     },
     checklistScaleLevel: {
@@ -51,6 +53,10 @@ function createPrisma(overrides: {
     checklistInstance: {
       findFirst: jest.fn(async () => null),
       ...overrides.checklistInstance,
+    },
+    checklistItem: {
+      findFirst: jest.fn(async () => null),
+      ...overrides.checklistItem,
     },
   };
   base['$transaction'] = jest.fn(async (arg: unknown) => (arg as (tx: unknown) => unknown)(base));
@@ -179,6 +185,36 @@ describe('ChecklistScaleService', () => {
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
       await expect(service.archive(scaleId, organizationId, actorId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes an unreferenced scale and audits it', async () => {
+      const prisma = createPrisma();
+      const auditLog = fakeAuditLog();
+      const service = new ChecklistScaleService(prisma, auditLog);
+
+      await service.remove(scaleId, organizationId, actorId);
+
+      expect(prisma.checklistScale.delete).toHaveBeenCalledWith({ where: { id: scaleId, organizationId } });
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_scale.deleted' }));
+    });
+
+    it('rejects deleting a scale used by checklist criteria (archive instead)', async () => {
+      const prisma = createPrisma({ checklistItem: { findFirst: jest.fn(async () => ({ id: 'item-1' })) } });
+      const auditLog = fakeAuditLog();
+      const service = new ChecklistScaleService(prisma, auditLog);
+
+      await expect(service.remove(scaleId, organizationId, actorId)).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.checklistScale.delete).not.toHaveBeenCalled();
+      expect(auditLog.record).not.toHaveBeenCalled();
+    });
+
+    it('throws 404 for a scale outside the caller organization', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => null) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await expect(service.remove(scaleId, organizationId, actorId)).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });

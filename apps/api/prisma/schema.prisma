@@ -1468,8 +1468,8 @@ model ChecklistLocationCapture {
 
 /// Tenant-scoped, reusable evaluation scale. Coexists with Checklist.scaleLevels (the existing
 /// ad-hoc per-checklist JSON scale) rather than replacing it — see PR 293/ADR. Referenced by
-/// ChecklistItem.scaleId (per-criterion, not per-checklist); never hard-deleted, only archived
-/// (status), so an item's scaleId FK never actually blocks a real row deletion.
+/// ChecklistItem.scaleId (per-criterion, not per-checklist); hard-deleted only while no item references it,
+/// otherwise archived (status), so an item's scaleId FK never dangles.
 model ChecklistScale {
   id             String                @id @default(uuid()) @db.Uuid
   organizationId String                @map("organization_id") @db.Uuid
