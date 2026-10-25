@@ -541,6 +541,19 @@ client-side over the scoped rows (URL params `q`, `sort`/`dir`, `noCompletion`).
 «руководителей» is not provided: the repo has no stable one-manager-per-employee relation
 (`ManagerGroup` and `DepartmentManager` are many-to-many and mode-dependent).
 
+PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the same rows as CSV and as typed cells for the
+browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing
+authenticated client downloads them without a second transport: `GET /checklists/manager-analytics/export`
+(`checklistManagerAnalyticsRead`; the analytics filters plus the table view `q`, `noCompletion`,
+`sort`, `dir`) and `GET /checklist-sessions/export` (`checklistSessionsManage`: `admin`/`manager`;
+the `GET /checklist-sessions` filters without paging). Both reuse the caller's own scope
+(`participantLearnerScope()` / `sessionScope()`), so the file equals what the screen shows. Columns
+are only those of the tables (no e-mail, feedback text or geolocation), headers follow the user's
+locale (ru/en/kk/zh, English fallback). Cells that start with `=`, `+`, `-`, `@`, TAB or CR get a
+leading apostrophe (CSV/formula injection). More than 5000 rows is rejected with 400 instead of a
+silent truncation. Every export writes `AuditLog` `checklist_report.exported` with the kind, filters
+and row count (never the rows).
+
 Aggregation is employee-first over `ChecklistSession` (the workplace-training overlay), not every
 async `ChecklistInstance`: every employee in scope appears in `employees[]` even with zero sessions
 in the period, so a manager can see who has completed nothing (`summary.noCompletionCount`). Low/mid/

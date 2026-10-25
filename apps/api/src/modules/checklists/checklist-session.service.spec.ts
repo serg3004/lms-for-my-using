@@ -1411,4 +1411,13 @@ describe('ChecklistSessionService', () => {
       );
     });
   });
+
+  describe('exportCsv (PR 336)', () => {
+    it('rejects an export above the row cap instead of truncating it silently', async () => {
+      const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => Array.from({ length: 5001 }, () => ({}))) } });
+      const service = new ChecklistSessionService(prisma);
+
+      await expect(service.exportCsv(organizationId, { page: 1, pageSize: 25, sort: 'scheduled' }, {}, { id: actorId, locale: 'en' })).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
 });

@@ -237,6 +237,8 @@ describe('PR 334: department breakdown, search and sort', () => {
     expect(html).toContain('Все подразделения');
     expect(html).toContain('По подразделениям');
     expect(html).toContain('Запланировать: Alex Kim');
+    expect(html).toContain('Скачать CSV');
+    expect(html).toContain('Скачать Excel');
     expect(html).not.toContain('null');
     expect(html).not.toContain('undefined');
   });

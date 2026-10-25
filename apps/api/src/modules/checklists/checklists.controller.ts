@@ -41,6 +41,7 @@ import {
   updateChecklistSessionSchema,
   updateChecklistWorkplaceSettingsSchema,
   checklistAnalyticsQuerySchema,
+  checklistManagerAnalyticsExportQuerySchema,
   checklistManagerAnalyticsQuerySchema,
   checklistQueueQuerySchema,
   recalculateChecklistScoreSchema,
@@ -103,6 +104,23 @@ export class ChecklistsController {
       checklistManagerAnalyticsQuerySchema.parse(rawQuery),
       scope,
       { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
+    );
+  }
+
+  @Get('checklists/manager-analytics/export')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async exportManagerAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const [scope, settings] = await Promise.all([
+      this.reviewAccess.participantLearnerScope(user),
+      this.workplaceSettings.getSettings(user.organizationId),
+    ]);
+    return this.checklistsService.exportManagerAnalytics(
+      user.organizationId,
+      checklistManagerAnalyticsExportQuerySchema.parse(rawQuery),
+      scope,
+      { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
+      { id: user.id, locale: user.locale },
     );
   }
 
@@ -434,6 +452,15 @@ export class ChecklistsController {
     const query = checklistSessionQuerySchema.parse(rawQuery);
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
     return this.sessions.list(user.organizationId, query, scope, viewer);
+  }
+  // PR 336: registered before ':id' so 'export' is never swallowed as a session id.
+  @Get('checklist-sessions/export')
+  @Roles(...rolePolicies.checklistSessionsManage)
+  async exportSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const query = checklistSessionQuerySchema.parse(rawQuery);
+    const scope = await this.reviewAccess.sessionScope(user);
+    return this.sessions.exportCsv(user.organizationId, query, scope, { id: user.id, locale: user.locale });
   }
   // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
   // is never swallowed as a session id.

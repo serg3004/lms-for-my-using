@@ -197,6 +197,17 @@ export const checklistManagerAnalyticsQuerySchema = z.object({
 });
 export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
 
+// PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
+export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
+  q: z.string().trim().min(1).max(120).optional(),
+  noCompletion: z.enum(['true', 'false']).optional(),
+  sort: z.enum(['employee', 'department', 'sessions', 'average']).optional(),
+  dir: z.enum(['asc', 'desc']).optional(),
+  // Only recorded in the audit entry: the client builds the .xlsx from the same `rows`.
+  format: z.enum(['csv', 'xlsx']).default('csv'),
+});
+export type ChecklistManagerAnalyticsExportQuery = z.infer<typeof checklistManagerAnalyticsExportQuerySchema>;
+
 // ---- Workplace-training session settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
 // checklistGeolocationPolicySchema itself is declared near the top of this file (reused by the
 // PR 296 checklist-level defaultLocationCapturePolicy field above).
@@ -332,6 +343,8 @@ export const checklistSessionQuerySchema = z.object({
   sort: z.enum(['scheduled', 'recent']).default('scheduled'),
   // PR 332: leave the session currently open out of its own history.
   excludeSessionId: z.string().uuid().optional(),
+  // PR 336: only the export route reads it (audit); lists ignore it.
+  format: z.enum(['csv', 'xlsx']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });

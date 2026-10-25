@@ -98,6 +98,14 @@ export type ManagerChecklistAnalytics = {
   departmentOptions: { id: string; name: string }[];
 };
 
+export type ManagerChecklistEmployeesExportQuery = ManagerChecklistAnalyticsQuery & {
+  q?: string;
+  noCompletion?: 'true' | 'false';
+  sort?: 'employee' | 'department' | 'sessions' | 'average';
+  dir?: 'asc' | 'desc';
+  format?: 'csv' | 'xlsx';
+};
+
 function buildQueryString(params: Record<string, unknown>) {
   const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== '');
   return entries.length ? `?${new URLSearchParams(Object.fromEntries(entries.map(([key, value]) => [key, String(value)]))).toString()}` : '';
@@ -105,4 +113,9 @@ function buildQueryString(params: Record<string, unknown>) {
 
 export function getManagerChecklistAnalytics(query: ManagerChecklistAnalyticsQuery) {
   return apiRequest<ManagerChecklistAnalytics>(`/checklists/manager-analytics${buildQueryString(query)}`);
+}
+
+/** PR 336: CSV of the employees table with the dashboard's own filters and view (built and audited server-side). */
+export function exportManagerChecklistEmployees(query: ManagerChecklistEmployeesExportQuery) {
+  return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString(query)}`);
 }
