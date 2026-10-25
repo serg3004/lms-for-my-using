@@ -1,6 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+
+import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
+import { MessageParticipantDialog } from '../features/admin-checklist-sessions/MessageParticipantDialog.js';
+import { canMessageParticipant } from '../features/admin-checklist-sessions/domain.js';
 
 import { listChecklists } from '../shared/api/checklists.js';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
@@ -9,12 +13,12 @@ import { describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import {
   getManagerChecklistAnalytics,
   type ManagerChecklistAnalytics,
+  type ManagerChecklistAnalyticsDepartmentRow,
   type ManagerChecklistAnalyticsEmployeeRow,
 } from '../shared/api/manager.js';
-import type { ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
+import type { ChecklistSessionParticipant, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
-import { useOptionalSession } from '../shared/session.js';
-import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import { Button, Card, DataTable, PageState, StatCard, StatsGrid, type Column, type DataTableSort } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -29,6 +33,43 @@ export function resolvePeriodRange(period: Period, now: Date, customFrom: string
   if (period === 'custom' && customFrom && customTo) return { from: new Date(customFrom).toISOString(), to: new Date(customTo).toISOString() };
   const days = period === 'custom' ? PERIOD_DAYS.month : PERIOD_DAYS[period];
   return { from: new Date(now.getTime() - days * DAY_MS).toISOString(), to: now.toISOString() };
+}
+
+const SORT_KEYS = ['employee', 'department', 'sessions', 'average'] as const;
+type EmployeeSortKey = (typeof SORT_KEYS)[number];
+
+/**
+ * Exported for unit tests: client-side search / «no completed sessions» filter / sort of the (already
+ * server-scoped) employee rows. Rows without a value always sort last, in either direction.
+ */
+export function filterAndSortEmployees(
+  rows: ManagerChecklistAnalyticsEmployeeRow[],
+  options: { query: string; onlyNoCompletion: boolean; sort: DataTableSort | null },
+): ManagerChecklistAnalyticsEmployeeRow[] {
+  const needle = options.query.trim().toLocaleLowerCase();
+  const filtered = rows.filter((row) => {
+    if (options.onlyNoCompletion && row.completedCount > 0) return false;
+    if (!needle) return true;
+    return [employeeName(row), row.email, row.department ?? ''].some((value) => value.toLocaleLowerCase().includes(needle));
+  });
+  if (!options.sort) return filtered;
+  const { key, direction } = options.sort;
+  const factor = direction === 'ascending' ? 1 : -1;
+  const valueOf = (row: ManagerChecklistAnalyticsEmployeeRow): string | number | null => {
+    if (key === 'employee') return employeeName(row).toLocaleLowerCase();
+    if (key === 'department') return row.department?.toLocaleLowerCase() ?? null;
+    if (key === 'sessions') return row.sessionsCount;
+    if (key === 'average') return row.averagePercentage;
+    return null;
+  };
+  return [...filtered].sort((a, b) => {
+    const left = valueOf(a);
+    const right = valueOf(b);
+    if (left === null && right === null) return 0;
+    if (left === null) return 1;
+    if (right === null) return -1;
+    return left < right ? -factor : left > right ? factor : 0;
+  });
 }
 
 function employeeName(row: { firstName: string; lastName: string }) {
@@ -146,7 +187,7 @@ export function TrendLine({ trend, t }: { trend: ManagerChecklistAnalytics['tren
   );
 }
 
-export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: string; from: string; to: string; t: (key: string, fallback: string) => string }) {
+export function EmployeeSessionsDrilldown({ userId, from, to, t, onMessage }: { userId: string; from: string; to: string; t: (key: string, fallback: string) => string; onMessage?: (session: ChecklistSessionSummary) => void }) {
   const { state } = useAsyncData<ChecklistSessionSummary[]>(
     async () => (await listChecklistSessions({ learnerId: userId, scheduledFrom: from, scheduledTo: to, pageSize: 50 })).items,
     [userId, from, to],
@@ -173,6 +214,15 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: str
               return '—';
             })()}
           </span>
+          {onMessage && canMessageParticipant(session) && (
+            <Button
+              aria-label={`${t('manager.checklists.write', 'Write')}: ${session.checklist.title}`}
+              onClick={() => onMessage(session)}
+              size="sm" type="button" variant="secondary"
+            >
+              {t('manager.checklists.write', 'Write')}
+            </Button>
+          )}
         </li>
       ))}
     </ul>
@@ -181,13 +231,23 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t }: { userId: str
 
 export function ManagerChecklistsPage() {
   const { t } = useTranslation();
-  const canSchedule = useOptionalSession()?.currentUser?.roles.includes('admin') ?? false;
   const [searchParams, setSearchParams] = useSearchParams();
   const period = (searchParams.get('period') as Period | null) ?? 'month';
   const checklistId = searchParams.get('checklistId') ?? '';
   const customFrom = searchParams.get('from') ?? '';
   const customTo = searchParams.get('to') ?? '';
+  const departmentId = searchParams.get('departmentId') ?? '';
+  const searchQuery = searchParams.get('q') ?? '';
+  const onlyNoCompletion = searchParams.get('noCompletion') === '1';
+  const sortKey = searchParams.get('sort') as EmployeeSortKey | null;
+  const sort: DataTableSort | null = sortKey && SORT_KEYS.includes(sortKey) ? { key: sortKey, direction: searchParams.get('dir') === 'desc' ? 'descending' : 'ascending' } : null;
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [wizardLearner, setWizardLearner] = useState<ChecklistSessionParticipant | null>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [messageTarget, setMessageTarget] = useState<ChecklistSessionSummary | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // The filter must not vanish while a department change reloads the analytics.
+  const departmentOptions = useRef<{ id: string; name: string }[]>([]);
 
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
 
@@ -198,19 +258,44 @@ export function ManagerChecklistsPage() {
   }
 
   const { state } = useAsyncData<ManagerChecklistAnalytics>(
-    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined }),
-    [from, to, checklistId],
+    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined }),
+    [from, to, checklistId, departmentId],
     { unauthenticated: t('manager.checklists.loadError', 'Unable to load analytics.'), error: t('manager.checklists.loadError', 'Unable to load analytics.') },
   );
   const { state: checklistsState } = useAsyncData<ChecklistSummary[]>(listChecklists, [], { unauthenticated: '', error: '' });
   const checklists = checklistsState.status === 'loaded' ? checklistsState.data : [];
+  if (state.status === 'loaded') departmentOptions.current = state.data.departmentOptions;
+
+  function openWizard(learner: ChecklistSessionParticipant | null) {
+    setWizardLearner(learner);
+    setWizardOpen(true);
+  }
+  const toParticipant = (row: ManagerChecklistAnalyticsEmployeeRow): ChecklistSessionParticipant => ({ id: row.userId, firstName: row.firstName, lastName: row.lastName, email: row.email, position: null });
+  const rows = state.status === 'loaded' ? filterAndSortEmployees(state.data.employees, { query: searchQuery, onlyNoCompletion, sort }) : [];
 
   const columns: Column<ManagerChecklistAnalyticsEmployeeRow>[] = [
-    { key: 'employee', label: t('manager.checklists.employee', 'Employee'), priority: 'primary', render: employeeName },
-    { key: 'department', label: t('manager.checklists.department', 'Department'), priority: 'secondary', render: (row) => row.department ?? '—' },
+    { key: 'employee', label: t('manager.checklists.employee', 'Employee'), priority: 'primary', sortable: true, render: employeeName },
+    { key: 'department', label: t('manager.checklists.department', 'Department'), priority: 'secondary', sortable: true, render: (row) => row.department ?? '—' },
+    { key: 'sessions', label: t('manager.checklists.sessions', 'Sessions'), priority: 'secondary', sortable: true, render: (row) => row.sessionsCount },
+    { key: 'average', label: t('manager.checklists.average', 'Average'), priority: 'primary', sortable: true, render: (row) => (row.averagePercentage === null ? '—' : `${row.averagePercentage}%`) },
+    { key: 'trend', label: t('manager.checklists.trend', 'Trend'), priority: 'secondary', render: (row) => (row.trend ? <span aria-label={t(`manager.checklists.trend.${row.trend}`, row.trend)}>{TREND_ARROW[row.trend]}</span> : '—') },
+    {
+      key: 'actions',
+      label: t('manager.checklists.actions', 'Actions'),
+      priority: 'secondary',
+      render: (row) => (
+        <Button aria-label={`${t('manager.checklists.schedule', 'Schedule')}: ${employeeName(row)}`} onClick={() => openWizard(toParticipant(row))} size="sm" type="button" variant="secondary">
+          {t('manager.checklists.schedule', 'Schedule')}
+        </Button>
+      ),
+    },
+  ];
+  const departmentColumns: Column<ManagerChecklistAnalyticsDepartmentRow>[] = [
+    { key: 'department', label: t('manager.checklists.department', 'Department'), priority: 'primary', render: (row) => row.name },
+    { key: 'employees', label: t('manager.checklists.employees', 'Employees'), priority: 'secondary', render: (row) => row.employeesCount },
     { key: 'sessions', label: t('manager.checklists.sessions', 'Sessions'), priority: 'secondary', render: (row) => row.sessionsCount },
     { key: 'average', label: t('manager.checklists.average', 'Average'), priority: 'primary', render: (row) => (row.averagePercentage === null ? '—' : `${row.averagePercentage}%`) },
-    { key: 'trend', label: t('manager.checklists.trend', 'Trend'), priority: 'secondary', render: (row) => (row.trend ? <span aria-label={t(`manager.checklists.trend.${row.trend}`, row.trend)}>{TREND_ARROW[row.trend]}</span> : '—') },
+    { key: 'noCompletion', label: t('manager.checklists.noCompletionShort', 'No completed sessions'), priority: 'secondary', render: (row) => row.noCompletionCount },
   ];
 
   return (
@@ -250,7 +335,25 @@ export function ManagerChecklistsPage() {
             {checklists.map((checklist) => <option key={checklist.id} value={checklist.id}>{checklist.title}</option>)}
           </select>
         </label>
+        {departmentOptions.current.length > 0 && (
+          <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+            {t('manager.checklists.departmentFilter', 'Department')}
+            <select className="ds-input" value={departmentId} onChange={(event) => updateParam('departmentId', event.target.value)}>
+              <option value="">{t('manager.checklists.allDepartments', 'All departments')}</option>
+              {departmentOptions.current.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+            </select>
+          </label>
+        )}
+        <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+          {t('manager.checklists.searchLabel', 'Search employees')}
+          <input className="ds-input" type="search" value={searchQuery} onChange={(event) => updateParam('q', event.target.value)} placeholder={t('manager.checklists.searchPlaceholder', 'Name, email or department')} />
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, minHeight: 44 }}>
+          <input type="checkbox" style={{ width: 20, height: 20, flex: 'none' }} checked={onlyNoCompletion} onChange={(event) => updateParam('noCompletion', event.target.checked ? '1' : '')} />
+          {t('manager.checklists.onlyNoCompletion', 'Only without completed sessions')}
+        </label>
       </Card>
+      {notice && <div role="status" style={{ marginBottom: 12 }}>{notice}</div>}
 
       {state.status === 'loading' && <PageState message={t('manager.checklists.loading', 'Loading...')} variant="loading" />}
       {(state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') && (
@@ -260,16 +363,12 @@ export function ManagerChecklistsPage() {
         <>
           {state.data.summary.completedSessions === 0 ? (
             <PageState
-              message={
-                canSchedule
-                  ? t('manager.checklists.noSessionsAdmin', 'No completed sessions in this period yet. Results appear here once an observer completes a training session.')
-                  : t('manager.checklists.noSessions', 'No completed sessions in this period yet. Training sessions are scheduled by an administrator; results appear here once an observer completes them.')
-              }
-              action={canSchedule ? (
-                <Link className="ds-button ds-button--primary ds-button--md" to="/admin/checklists/sessions">
+              message={t('manager.checklists.noSessions', 'No completed sessions in this period yet. Results appear here once an observer completes a training session.')}
+              action={(
+                <Button onClick={() => openWizard(null)} type="button">
                   {t('manager.checklists.scheduleSession', 'Schedule a session')}
-                </Link>
-              ) : undefined}
+                </Button>
+              )}
             />
           ) : (
           <>
@@ -308,24 +407,58 @@ export function ManagerChecklistsPage() {
           </>
           )}
 
+          {state.data.departments.length > 0 && (
+            <section aria-labelledby="manager-checklists-departments" style={{ marginBottom: 20 }}>
+              <h2 id="manager-checklists-departments" style={{ fontSize: 16 }}>{t('manager.checklists.departmentsTitle', 'By department')}</h2>
+              <DataTable
+                columns={departmentColumns}
+                density="dense"
+                keyExtractor={(row) => row.departmentId}
+                label={t('manager.checklists.departmentsTitle', 'By department')}
+                responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.name}`, collapseLabel: (row) => `${t('courses.details')}: ${row.name}` }}
+                rows={state.data.departments}
+              />
+            </section>
+          )}
+
           <DataTable
             columns={columns}
             density="dense"
-            emptyMessage={t('manager.checklists.employeesEmpty', 'No employees in scope for this period.')}
+            emptyMessage={searchQuery || onlyNoCompletion ? t('manager.checklists.employeesNoMatch', 'No employees match the filters.') : t('manager.checklists.employeesEmpty', 'No employees in scope for this period.')}
+            onSortChange={(next) => {
+              const params = new URLSearchParams(searchParams);
+              params.set('sort', next.key);
+              params.set('dir', next.direction === 'descending' ? 'desc' : 'asc');
+              setSearchParams(params, { replace: true });
+            }}
+            sort={sort ?? undefined}
             keyExtractor={(row) => row.userId}
             label={t('manager.checklists.employeesTableLabel', 'Employees')}
             responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${employeeName(row)}`, collapseLabel: (row) => `${t('courses.details')}: ${employeeName(row)}` }}
-            rows={state.data.employees}
+            rows={rows}
             expansion={{
               expandedKeys,
               onChange: setExpandedKeys,
-              render: (row) => <EmployeeSessionsDrilldown userId={row.userId} from={from} to={to} t={t} />,
+              render: (row) => <EmployeeSessionsDrilldown userId={row.userId} from={from} to={to} t={t} onMessage={setMessageTarget} />,
               expandLabel: (row) => t('manager.checklists.expand', 'View sessions') + ` — ${employeeName(row)}`,
               collapseLabel: (row) => t('manager.checklists.collapse', 'Hide sessions') + ` — ${employeeName(row)}`,
             }}
           />
         </>
       )}
+      <ChecklistSessionWizard
+        initialLearner={wizardLearner}
+        onClose={() => setWizardOpen(false)}
+        onCreated={() => setNotice(t('manager.checklists.sessionCreated', 'Session scheduled.'))}
+        open={wizardOpen}
+        t={t}
+      />
+      <MessageParticipantDialog
+        onClose={() => setMessageTarget(null)}
+        onSent={() => setNotice(t('admin.checklists.sessions.message.sent', 'Message sent.'))}
+        session={messageTarget}
+        t={t}
+      />
     </ManagerPageLayout>
   );
 }
