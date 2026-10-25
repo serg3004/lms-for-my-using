@@ -17,7 +17,7 @@ import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder'
 const checklist = {
   id: 'c1', organizationId: 'org-1', title: 'Касса', description: null, status: 'draft' as const, scoringMode: 'sum_points' as const,
   passThreshold: 80, requiresReview: false, createdBy: 'u1', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
-  items: [], itemGroups: [], contextFields: [],
+  scaleLevels: null, items: [], itemGroups: [], contextFields: [],
 };
 
 let root: ReturnType<typeof createRoot> | undefined;
