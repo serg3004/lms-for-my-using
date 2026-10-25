@@ -228,7 +228,10 @@ describe('RecalculateForm', () => {
     const html = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
     expect(html).toContain('value="snapshot" selected=""');
     expect(html).toContain('By criteria (marked / total)');
-    expect(html).toContain('Skipped criteria are excluded');
+    expect(html).not.toContain('Skipped criteria are excluded');
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial === 'snapshot' ? 'criteria' : initial, vi.fn()]);
+    const criteria = renderToStaticMarkup(<RecalculateForm sessionId="session-1" onDone={vi.fn()} t={t} />);
+    expect(criteria).toContain('Skipped criteria are excluded');
   });
   it('shows the returned before/after and actual formula, including an unscored outcome', () => {
     let call = 0;

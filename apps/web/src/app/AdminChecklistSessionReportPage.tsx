@@ -125,7 +125,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
           <option value="criteria">{describeScoreFormula('criteria', t)}</option>
         </select>
       </label>
-      <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>{t('admin.checklists.report.formulaHint', 'Criteria have equal weight. Skipped criteria are excluded; a selected scale level counts as a mark. Rejected answers do not count as marked.')}</p>
+      {formula === 'criteria' && <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: 13 }}>{t('admin.checklists.report.formulaHint', 'Criteria have equal weight. Skipped criteria are excluded; a selected scale level counts as a mark. Rejected answers do not count as marked.')}</p>}
       {result && <InlineFeedback tone="success" title={t('admin.checklists.report.recalculated', 'Score recalculated')}>
         <strong>{result.previousPercentage}% → {result.scored ? `${result.newPercentage}%` : t('admin.checklists.report.notScored', 'Not scored')}</strong>
         <p>{describeScoreFormula(result.formula, t)}</p>
