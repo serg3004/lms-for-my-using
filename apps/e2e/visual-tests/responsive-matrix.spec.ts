@@ -756,7 +756,7 @@ for (const width of widths) {
       await expect(itemRows.nth(0).locator('.admin-criteria-row__text')).toHaveValue('Turn on the lights and equipment');
       await expect(itemRows.nth(1).locator('.admin-criteria-row__text')).toHaveValue('Check the temperature log');
       await expect(itemRows.nth(2).locator('.admin-criteria-row__text')).toHaveValue('Restock the front counter');
-      await expect(page.getByRole('button', { name: 'Добавить пункт' })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Критерий/ }).first()).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-builder-${width}`);

@@ -1305,7 +1305,14 @@
         "restore": "Restore as draft"
       },
       "savedAt": "Saved at {{time}}",
-      "needItemsHint": "Preview and Publish become available after you add at least one criterion."
+      "needItemsHint": "Preview and Publish become available after you add at least one criterion.",
+      "moveNamedUp": "Move up: {{name}}",
+      "moveNamedDown": "Move down: {{name}}",
+      "contextFieldTypeLabel": "Field type",
+      "contextFieldRequired": "Required",
+      "contextFieldActions": "Field actions: {{name}}",
+      "contextFieldDeleteTitle": "Delete field",
+      "contextFieldDeleteConfirm": "Delete the field \"{{name}}\"? Sessions assigned from now on will no longer ask for it; sessions already started keep it."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
