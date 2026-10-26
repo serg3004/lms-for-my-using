@@ -2,57 +2,130 @@ import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
-import { archiveChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
+import { archiveChecklistScale, copyChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
 import { ConfirmDialog } from '../../shared/adminPage.js';
 import { Button, Dialog, Input } from '../../shared/ui.js';
-import { createDefaultReusableScaleLevels } from './domain.js';
+import {
+  SCALE_MAX_LEVELS,
+  SCALE_MIN_LEVELS,
+  createScaleLevelDraft,
+  moveScaleLevelDraft,
+  newScaleLevelDrafts,
+  scaleDraftToInput,
+  scaleLevelDraftsFromLevels,
+  validateScaleDraft,
+  type ScaleDraftError,
+  type ScaleLevelDraft,
+} from './domain.js';
+
+type EditorState = {
+  /** null while creating a new scale. */
+  scaleId: string | null;
+  /** The scale is used by an assigned checklist: shown read-only, "Make a copy" is the way to change it. */
+  readOnly: boolean;
+  name: string;
+  levels: ScaleLevelDraft[];
+};
+
+function newEditor(): EditorState {
+  return { scaleId: null, readOnly: false, name: '', levels: newScaleLevelDrafts() };
+}
+
+function editorFor(scale: ChecklistScaleSummary): EditorState {
+  return { scaleId: scale.id, readOnly: scale.inUse || scale.status === 'archived', name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
+}
+
+function draftErrorText(error: ScaleDraftError, t: TFunction) {
+  switch (error) {
+    case 'name':
+      return t('admin.checklists.scaleManager.errorName', 'Enter a scale name.');
+    case 'tooFewLevels':
+      return t('admin.checklists.scaleManager.errorMinLevels', 'A scale needs at least {{count}} levels.', { count: SCALE_MIN_LEVELS });
+    case 'tooManyLevels':
+      return t('admin.checklists.scaleManager.errorMaxLevels', 'A scale can have at most {{count}} levels.', { count: SCALE_MAX_LEVELS });
+    case 'label':
+      return t('admin.checklists.scaleManager.errorLabel', 'Every level needs a name.');
+    case 'score':
+      return t('admin.checklists.scaleManager.errorScore', 'Points must be a whole number from 0 to 1000.');
+  }
+}
 
 /**
  * "Оценочные шкалы" -- a secondary/contextual dialog reached from the builder (not a top-level
- * nav item), matching the prototype's minimal `#scaleModal`: a list of scales with inline rename, archive and (unused scales only) delete.
- * Level *editing* beyond a quick-create default stays out of scope here, same as the prototype's
- * own `editScale()` (a bare rename prompt) -- a full level editor is a documented future gap.
+ * nav item): a list of scales with archive and (unused scales only) delete, and (PR 343) a full
+ * editor for the name and the levels (name + points each). A scale already used by an assigned
+ * checklist is read-only -- the server refuses to change it -- and offers "Make a copy" instead.
+ * `startCreating` opens the editor for a new scale straight away (the builder's "Create scale"
+ * option); `onSaved` hands the saved scale back to the caller.
  */
-export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: boolean; onClose: () => void; onChanged: () => void; t: TFunction }) {
+export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCreating = false, t }: {
+  open: boolean;
+  onClose: () => void;
+  onChanged: () => void;
+  onSaved?: (scale: ChecklistScaleSummary) => void;
+  startCreating?: boolean;
+  t: TFunction;
+}) {
   const titleId = useId();
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
+  const [editor, setEditor] = useState<EditorState | null>(null);
   const [scaleToDelete, setScaleToDelete] = useState<ChecklistScaleSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
+    setEditor(startCreating ? newEditor() : null);
     listChecklistScales().then(setScales).catch(() => setScales([]));
-  }, [open]);
+  }, [open, startCreating]);
 
   async function reload() {
     const result = await listChecklistScales().catch(() => scales);
     setScales(result);
   }
 
-  async function addScale() {
+  function failure(e: unknown) {
+    setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+  }
+
+  async function saveEditor() {
+    if (!editor || editor.readOnly) return;
+    const invalid = validateScaleDraft(editor.name, editor.levels);
+    if (invalid) {
+      setError(draftErrorText(invalid, t));
+      return;
+    }
     setError(null);
+    setSaving(true);
     try {
-      await createChecklistScale({ name: t('admin.checklists.scaleManager.newScaleName', 'New scale'), levels: createDefaultReusableScaleLevels(t) });
+      const input = scaleDraftToInput(editor.name, editor.levels);
+      const saved = editor.scaleId ? await updateChecklistScale(editor.scaleId, input) : await createChecklistScale(input);
+      setEditor(null);
       await reload();
       onChanged();
+      onSaved?.(saved);
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+      failure(e);
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function saveRename(scaleId: string) {
-    if (!renameValue.trim()) return;
+  async function makeCopy() {
+    if (!editor?.scaleId) return;
     setError(null);
+    setSaving(true);
     try {
-      await updateChecklistScale(scaleId, { name: renameValue.trim() });
-      setRenamingId(null);
+      const copy = await copyChecklistScale(editor.scaleId, t('admin.checklists.scaleManager.copyName', '{{name}} (copy)', { name: editor.name }));
+      setEditor(editorFor(copy));
       await reload();
       onChanged();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+      failure(e);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -76,8 +149,120 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
       await reload();
       onChanged();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+      failure(e);
     }
+  }
+
+  function patchLevel(key: string, patch: Partial<ScaleLevelDraft>) {
+    setEditor((current) => current && { ...current, levels: current.levels.map((level) => (level.key === key ? { ...level, ...patch } : level)) });
+  }
+
+  if (editor) {
+    return (
+      <Dialog labelledBy={titleId} onClose={onClose} open={open}>
+        <h2 id={titleId}>
+          {editor.scaleId === null
+            ? t('admin.checklists.scaleManager.newTitle', 'New scale')
+            : t('admin.checklists.scaleManager.editTitle', 'Edit scale')}
+        </h2>
+        {editor.readOnly && (
+          <p className="admin-form__hint" role="note">
+            {t('admin.checklists.scaleManager.readOnlyNote', 'This scale is already used by an assigned checklist, so it cannot be changed. Make a copy and edit the copy.')}
+          </p>
+        )}
+        {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
+        <Input
+          disabled={editor.readOnly}
+          label={t('admin.checklists.scaleManager.name', 'Scale name')}
+          maxLength={120}
+          onChange={(e) => setEditor({ ...editor, name: e.target.value })}
+          value={editor.name}
+        />
+        <h3>{t('admin.checklists.scaleManager.levels', 'Levels')}</h3>
+        <ol className="admin-checklist-instances">
+          {editor.levels.map((level, index) => {
+            const n = index + 1;
+            return (
+              <li key={level.key}>
+                <Input
+                  aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
+                  disabled={editor.readOnly}
+                  maxLength={80}
+                  onChange={(e) => patchLevel(level.key, { label: e.target.value })}
+                  value={level.label}
+                />
+                <Input
+                  aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
+                  disabled={editor.readOnly}
+                  inputMode="numeric"
+                  onChange={(e) => patchLevel(level.key, { score: e.target.value })}
+                  value={level.score}
+                />
+                {!editor.readOnly && (
+                  <>
+                    <Button
+                      aria-label={t('admin.checklists.scaleManager.moveLevelUp', 'Move level {{n}} up', { n })}
+                      disabled={index === 0}
+                      onClick={() => setEditor({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'up') })}
+                      type="button"
+                      variant="secondary"
+                    >
+                      ↑
+                    </Button>
+                    <Button
+                      aria-label={t('admin.checklists.scaleManager.moveLevelDown', 'Move level {{n}} down', { n })}
+                      disabled={index === editor.levels.length - 1}
+                      onClick={() => setEditor({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'down') })}
+                      type="button"
+                      variant="secondary"
+                    >
+                      ↓
+                    </Button>
+                    <Button
+                      aria-label={t('admin.checklists.scaleManager.removeLevel', 'Remove level {{n}}', { n })}
+                      disabled={editor.levels.length <= SCALE_MIN_LEVELS}
+                      onClick={() => setEditor({ ...editor, levels: editor.levels.filter((l) => l.key !== level.key) })}
+                      type="button"
+                      variant="secondary"
+                    >
+                      ✕
+                    </Button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        {!editor.readOnly && (
+          <Button
+            disabled={editor.levels.length >= SCALE_MAX_LEVELS}
+            onClick={() => setEditor({ ...editor, levels: [...editor.levels, createScaleLevelDraft()] })}
+            type="button"
+            variant="secondary"
+          >
+            + {t('admin.checklists.scaleManager.addLevel', 'Add level')}
+          </Button>
+        )}
+        <p className="admin-form__hint">
+          {t('admin.checklists.scaleManager.appliesToNew', 'Changes apply to new and not yet started sessions; sessions already started keep their own copy.')}
+        </p>
+        <div className="ds-dialog__actions">
+          <Button disabled={saving} onClick={() => { setError(null); if (startCreating && editor.scaleId === null) onClose(); else setEditor(null); }} type="button" variant="secondary">
+            {t('admin.checklists.cancel', 'Cancel')}
+          </Button>
+          {editor.readOnly && editor.scaleId && (
+            <Button disabled={saving} onClick={() => void makeCopy()} type="button" variant="primary">
+              {t('admin.checklists.scaleManager.makeCopy', 'Make a copy')}
+            </Button>
+          )}
+          {!editor.readOnly && (
+            <Button disabled={saving} onClick={() => void saveEditor()} type="button" variant="primary">
+              {editor.scaleId === null ? t('admin.checklists.scaleManager.create', 'Create') : t('admin.checklists.save', 'Save')}
+            </Button>
+          )}
+        </div>
+      </Dialog>
+    );
   }
 
   return (
@@ -87,41 +272,32 @@ export function ScaleManagerDialog({ open, onClose, onChanged, t }: { open: bool
       <ul className="admin-checklist-instances">
         {scales.map((scale) => (
           <li key={scale.id}>
-            {renamingId === scale.id ? (
-              <>
-                <Input aria-label={t('admin.checklists.scaleManager.name', 'Scale name')} onChange={(e) => setRenameValue(e.target.value)} value={renameValue} />
-                <Button onClick={() => void saveRename(scale.id)} type="button" variant="primary">{t('admin.checklists.save', 'Save')}</Button>
-              </>
-            ) : (
-              <>
-                <div>
-                  <b>{scale.name}</b>
-                  <span className="admin-form__hint"> {t('admin.checklists.scaleManager.levelsCount', '{{count}} levels', { count: scale.levels.length })}{scale.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived', 'Archived')}` : ''}</span>
-                </div>
-                <Button
-                  onClick={() => { setRenamingId(scale.id); setRenameValue(scale.name); }}
-                  type="button"
-                  variant="secondary"
-                >
-                  {t('admin.checklists.scaleManager.rename', 'Rename')}
-                </Button>
-                {scale.status !== 'archived' && (
-                  <Button onClick={() => void archiveScale(scale.id)} type="button" variant="secondary">
-                    {t('admin.checklists.scaleManager.archive', 'Archive')}
-                  </Button>
-                )}
-                <Button onClick={() => setScaleToDelete(scale)} type="button" variant="secondary">
-                  {t('admin.checklists.scaleManager.delete', 'Delete')}
-                </Button>
-              </>
+            <div>
+              <b>{scale.name}</b>
+              <span className="admin-form__hint">
+                {' '}{t('admin.checklists.scaleManager.levelsCount', '{{count}} levels', { count: scale.levels.length })}
+                {scale.inUse ? ` · ${t('admin.checklists.scaleManager.usedBadge', 'In use')}` : ''}
+                {scale.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived', 'Archived')}` : ''}
+              </span>
+            </div>
+            <Button aria-label={`${scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}: ${scale.name}`} onClick={() => setEditor(editorFor(scale))} type="button" variant="secondary">
+              {scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}
+            </Button>
+            {scale.status !== 'archived' && (
+              <Button onClick={() => void archiveScale(scale.id)} type="button" variant="secondary">
+                {t('admin.checklists.scaleManager.archive', 'Archive')}
+              </Button>
             )}
+            <Button onClick={() => setScaleToDelete(scale)} type="button" variant="secondary">
+              {t('admin.checklists.scaleManager.delete', 'Delete')}
+            </Button>
           </li>
         ))}
       </ul>
       {scales.length === 0 && <p className="admin-form__hint">{t('admin.checklists.scaleManager.empty', 'No evaluation scales yet.')}</p>}
       <div className="ds-dialog__actions">
         <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.close', 'Close')}</Button>
-        <Button onClick={() => void addScale()} type="button" variant="primary">+ {t('admin.checklists.scaleManager.addScale', 'New scale')}</Button>
+        <Button onClick={() => setEditor(newEditor())} type="button" variant="primary">+ {t('admin.checklists.scaleManager.addScale', 'New scale')}</Button>
       </div>
       <ConfirmDialog
         open={scaleToDelete !== null}

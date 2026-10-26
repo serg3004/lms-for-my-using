@@ -208,12 +208,69 @@ export function removeContextFieldById(fields: ContextField[], fieldId: string) 
 
 // ---- PR 293/296: reusable evaluation scale library (scale-manager builder UI) ----
 
-export function createDefaultReusableScaleLevels(t: TFunction): ChecklistScaleLevelSummary[] {
-  return [
-    { value: 1, label: t('admin.checklists.scaleManager.defaultLow', 'Low'), score: 0 },
-    { value: 2, label: t('admin.checklists.scaleManager.defaultMedium', 'Medium'), score: 50 },
-    { value: 3, label: t('admin.checklists.scaleManager.defaultHigh', 'High'), score: 100 },
-  ];
+export const SCALE_MIN_LEVELS = 2;
+export const SCALE_MAX_LEVELS = 20;
+export const SCALE_MAX_SCORE = 1000;
+
+/** One editable row of the scale editor. `score` stays a string so a half-typed number is not lost. */
+export type ScaleLevelDraft = { key: string; label: string; score: string };
+
+let scaleLevelKeySeed = 0;
+function nextScaleLevelKey() {
+  scaleLevelKeySeed += 1;
+  return `scale-level-${scaleLevelKeySeed}`;
+}
+
+export function createScaleLevelDraft(label = '', score = ''): ScaleLevelDraft {
+  return { key: nextScaleLevelKey(), label, score };
+}
+
+/** A new scale starts with two empty levels worth 0 and 100 points. */
+export function newScaleLevelDrafts(): ScaleLevelDraft[] {
+  return [createScaleLevelDraft('', '0'), createScaleLevelDraft('', '100')];
+}
+
+export function scaleLevelDraftsFromLevels(levels: ChecklistScaleLevelSummary[]): ScaleLevelDraft[] {
+  return [...levels]
+    .sort((a, b) => a.value - b.value)
+    .map((level) => createScaleLevelDraft(level.label, String(level.score)));
+}
+
+export type ScaleDraftError = 'name' | 'tooFewLevels' | 'tooManyLevels' | 'label' | 'score';
+
+export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): ScaleDraftError | null {
+  if (!name.trim()) return 'name';
+  if (levels.length < SCALE_MIN_LEVELS) return 'tooFewLevels';
+  if (levels.length > SCALE_MAX_LEVELS) return 'tooManyLevels';
+  if (levels.some((level) => !level.label.trim())) return 'label';
+  const validScore = (value: string) => /^\d+$/.test(value.trim()) && Number(value) <= SCALE_MAX_SCORE;
+  if (levels.some((level) => !validScore(level.score))) return 'score';
+  return null;
+}
+
+/** Level numbers are always 1..n in row order, so they stay unique whatever the user adds, removes or moves. */
+export function scaleDraftToInput(name: string, levels: ScaleLevelDraft[]) {
+  return {
+    name: name.trim(),
+    levels: levels.map((level, index) => ({ value: index + 1, label: level.label.trim(), score: Number(level.score) })),
+  };
+}
+
+export function moveScaleLevelDraft(levels: ScaleLevelDraft[], index: number, direction: 'up' | 'down') {
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || target >= levels.length) return levels;
+  const next = [...levels];
+  const [moved] = next.splice(index, 1);
+  next.splice(target, 0, moved!);
+  return next;
+}
+
+/** Plain-text summary of a scale's levels for a tooltip, e.g. "Yes (100), No (0)". */
+export function describeScaleLevels(levels: ChecklistScaleLevelSummary[]) {
+  return [...levels]
+    .sort((a, b) => a.value - b.value)
+    .map((level) => `${level.label} (${level.score})`)
+    .join(', ');
 }
 
 /**

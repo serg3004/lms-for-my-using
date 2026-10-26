@@ -419,6 +419,8 @@ export type ChecklistScaleSummary = {
   name: string;
   status: ChecklistScaleStatus;
   levels: ChecklistScaleLevelSummary[];
+  /** PR 343: used by an assigned checklist, so its levels are frozen (archive it or make a copy). */
+  inUse: boolean;
 };
 
 export type ChecklistItemResultAnswerState = 'unanswered' | 'answered' | 'skipped';

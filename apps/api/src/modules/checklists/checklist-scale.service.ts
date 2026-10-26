@@ -31,12 +31,17 @@ export class ChecklistScaleService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
-  list(organizationId: string) {
-    return this.prisma.checklistScale.findMany({
+  async list(organizationId: string) {
+    const scales = await this.prisma.checklistScale.findMany({
       where: { organizationId },
       orderBy: [{ status: 'asc' }, { name: 'asc' }],
       select: scaleSelect,
     });
+    const usedIds = await this.findUsedScaleIds(
+      organizationId,
+      scales.map((scale) => scale.id),
+    );
+    return scales.map((scale) => ({ ...scale, inUse: usedIds.has(scale.id) }));
   }
 
   async get(scaleId: string, organizationId: string) {
@@ -45,7 +50,8 @@ export class ChecklistScaleService {
       select: scaleSelect,
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
-    return scale;
+    const usedIds = await this.findUsedScaleIds(organizationId, [scale.id]);
+    return { ...scale, inUse: usedIds.has(scale.id) };
   }
 
   async create(organizationId: string, input: CreateChecklistScaleInput, actorId: string) {
@@ -113,6 +119,48 @@ export class ChecklistScaleService {
     });
 
     return this.get(scaleId, organizationId);
+  }
+
+  /**
+   * PR 343: an in-use scale cannot be edited (see `assertNotUsed`), so "Make a copy" is the way to
+   * change it: a new, active, independent scale with the same levels. The copy never inherits the
+   * source's usage, so it is editable until a checklist using it is assigned.
+   */
+  async copy(scaleId: string, organizationId: string, name: string | undefined, actorId: string) {
+    const source = await this.prisma.checklistScale.findFirst({
+      where: { id: scaleId, organizationId },
+      select: scaleSelect,
+    });
+    if (!source) throw new NotFoundException('Evaluation scale not found');
+
+    const copyName = (name ?? `${source.name} (copy)`).slice(0, 120);
+    const created = await this.prisma.$transaction(async (tx) => {
+      const scale = await tx.checklistScale.create({
+        data: { organizationId, name: copyName, createdBy: actorId },
+      });
+      await tx.checklistScaleLevel.createMany({
+        data: source.levels.map((level) => ({
+          organizationId,
+          scaleId: scale.id,
+          value: level.value,
+          label: level.label,
+          score: level.score,
+        })),
+      });
+      return scale;
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist_scale.copied',
+      targetType: 'checklist_scale',
+      targetId: created.id,
+      summary: `Copied evaluation scale ${source.name}`,
+      metadata: { sourceScaleId: scaleId, levelCount: source.levels.length },
+    });
+
+    return this.get(created.id, organizationId);
   }
 
   /**
@@ -187,6 +235,17 @@ export class ChecklistScaleService {
    * err in (a false "used" only costs the caller an archive+recreate, never risks corrupting a
    * snapshot already taken).
    */
+  /** Same "used" definition as `assertNotUsed`, answered for many scales in one query. */
+  private async findUsedScaleIds(organizationId: string, scaleIds: string[]) {
+    if (scaleIds.length === 0) return new Set<string>();
+    const items = await this.prisma.checklistItem.findMany({
+      where: { organizationId, scaleId: { in: scaleIds }, checklist: { instances: { some: { organizationId } } } },
+      select: { scaleId: true },
+      distinct: ['scaleId'],
+    });
+    return new Set(items.flatMap((item) => (item.scaleId ? [item.scaleId] : [])));
+  }
+
   private async assertNotUsed(scaleId: string, organizationId: string) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { organizationId, checklist: { items: { some: { scaleId } } } },

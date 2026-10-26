@@ -483,3 +483,8 @@ export const updateChecklistScaleSchema = z
   .strict()
   .refine((input) => !input.levels || hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE);
 export type UpdateChecklistScaleInput = z.infer<typeof updateChecklistScaleSchema>;
+
+// PR 343: "Make a copy" of a scale (the way to change an in-use one). The client sends the localized
+// copy name; without it the server falls back to "<name> (copy)".
+export const copyChecklistScaleSchema = z.object({ name: z.string().trim().min(1).max(120).optional() }).strict();
+export type CopyChecklistScaleInput = z.infer<typeof copyChecklistScaleSchema>;
