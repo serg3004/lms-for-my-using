@@ -68,7 +68,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^25.9.9",
     "@types/nodemailer": "^8.0.2",
-    "@types/pdfkit": "^0.17.5",
+    "@types/pdfkit": "^0.17.7",
     "eslint": "^10.13.0",
     "jest": "^30.5.2",
     "pino-pretty": "^13.2.0",
