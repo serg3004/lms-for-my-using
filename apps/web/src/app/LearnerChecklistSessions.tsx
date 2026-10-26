@@ -1,11 +1,11 @@
 import { useState, type CSSProperties } from 'react';
 import type { TFunction } from 'i18next';
 import { getChecklistInstance } from '../shared/api/checklists.js';
-import { listChecklistSessions } from '../shared/api/checklistSessions.js';
+import { getChecklistSession, listChecklistSessions } from '../shared/api/checklistSessions.js';
 import { formatDate } from '../shared/formatDate.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary, ChecklistSessionStatus } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
-import { Badge, PageState } from '../shared/ui.js';
+import { Badge, Button, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 
@@ -60,7 +60,7 @@ export async function fetchLearnerSessions(): Promise<ChecklistSessionSummary[]>
  * filter is needed here to get "my sessions". Isolated into its own component (own hooks) so it
  * never shifts LearnerChecklistsPage's existing `useStateAtCalls`-tested hook order.
  */
-export function LearnerChecklistSessions({ t }: { t: TFunction }) {
+export function LearnerChecklistSessions({ t, linkedSessionId, onLinkedSessionBack }: { t: TFunction; linkedSessionId?: string | null; onLinkedSessionBack?: () => void }) {
   const [tab, setTab] = useState<SessionTab>('scheduled');
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
   const { state } = useAsyncData<ChecklistSessionSummary[]>(
@@ -71,6 +71,8 @@ export function LearnerChecklistSessions({ t }: { t: TFunction }) {
       error: t('checklistSessions.learner.loadError', 'Unable to load your training sessions.'),
     },
   );
+
+  if (linkedSessionId) return <LinkedLearnerSession sessionId={linkedSessionId} onBack={onLinkedSessionBack ?? (() => undefined)} t={t} />;
 
   if (state.status === 'loading') {
     return <PageState message={t('checklistSessions.learner.loading', 'Loading your training sessions...')} variant="loading" />;
@@ -204,6 +206,20 @@ function renderResultCell(session: ChecklistSessionSummary, t: TFunction) {
       {t(`checklistSessions.status.${session.status}`, session.status)}
     </Badge>
   );
+}
+
+/** A notification may reference a completed session outside the first page of the list. */
+export function LinkedLearnerSession({ sessionId, onBack, t }: { sessionId: string; onBack: () => void; t: TFunction }) {
+  const { state } = useAsyncData<ChecklistSessionSummary>(() => getChecklistSession(sessionId), [sessionId], {
+    unauthenticated: t('checklistSessions.learner.sessionExpired', 'Your session expired. Sign in again.'),
+    notFound: t('checklistSessions.learner.sessionNotFound', 'This session is no longer available.'),
+    error: t('checklistSessions.learner.loadError', 'Unable to load your training sessions.'),
+  });
+  if (state.status === 'loaded') return <LearnerSessionDetail session={state.data} onBack={onBack} t={t} />;
+  return <section>
+    <Button variant="secondary" onClick={onBack} style={{ minHeight: 44 }}>{t('checklistSessions.learner.backToList', 'My training sessions')}</Button>
+    <PageState message={state.status === 'loading' ? t('checklistSessions.learner.loading', 'Loading your training sessions...') : state.message} variant={state.status === 'loading' ? 'loading' : 'error'} />
+  </section>;
 }
 
 export function LearnerSessionDetail({ session, onBack, t }: { session: ChecklistSessionSummary; onBack: () => void; t: TFunction }) {

@@ -2304,6 +2304,22 @@
       "checklist_session_message": {
         "title": "关于会话的消息",
         "message": "{{message}}（清单：{{checklistTitle}}）"
+      },
+      "checklist_session_scheduled": {
+        "title": "已安排观察场次",
+        "message": "已为您安排在岗培训。请打开场次列表查看详情。"
+      },
+      "checklist_session_rescheduled": {
+        "title": "观察场次已更改",
+        "message": "场次的时间或参与者已更改。请打开场次列表查看安排。"
+      },
+      "checklist_session_deleted": {
+        "title": "观察场次已删除",
+        "message": "尚未开始的场次已删除，您无需再参加。"
+      },
+      "checklist_session_completed": {
+        "title": "观察场次已完成",
+        "message": "场次已完成。请打开场次查看您有权查看的反馈。"
       }
     },
     "centerTitle": "通知中心",
@@ -2521,6 +2537,7 @@
     },
     "learner": {
       "title": "我的培训会话",
+      "sessionNotFound": "此场次已不可用。",
       "sessionExpired": "会话已过期，请重新登录。",
       "loadError": "无法加载培训会话。",
       "loading": "正在加载培训会话…",

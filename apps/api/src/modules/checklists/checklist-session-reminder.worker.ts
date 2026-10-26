@@ -5,6 +5,7 @@ import { BackgroundJobsService } from '../background-jobs/public.js';
 import type { BackgroundJob } from '../background-jobs/public.js';
 import { OutboxService } from '../outbox/public.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
+import { CHECKLIST_SESSION_CHANGE_NOTIFY_JOB } from './checklist-session-notifications.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB } from './checklist-session-message.js';
 
 export const CHECKLIST_SESSION_REMINDER_JOB = 'checklists.session-reminders-due';
@@ -61,6 +62,14 @@ export class ChecklistSessionReminderWorker implements OnModuleInit {
     );
     this.backgroundJobs.registerHandler(CHECKLIST_SESSION_REMINDER_NOTIFY_JOB, async (job) => {
       await this.deliverEmail(job);
+    });
+    this.backgroundJobs.registerHandler(CHECKLIST_SESSION_CHANGE_NOTIFY_JOB, async (job) => {
+      const { organizationId, notificationId } = job.data;
+      if (typeof organizationId !== 'string' || typeof notificationId !== 'string') {
+        this.logger.warn('Dropping malformed checklist session change notify payload');
+        return;
+      }
+      await this.delivery.sendChange({ organizationId, notificationId });
     });
     this.backgroundJobs.registerHandler(CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, async (job) => {
       await this.deliverMessageEmail(job);

@@ -4,6 +4,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { BackgroundJobsService } from '../background-jobs/public.js';
 import { OutboxService } from '../outbox/public.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
+import { CHECKLIST_SESSION_CHANGE_NOTIFY_JOB } from './checklist-session-notifications.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB } from './checklist-session-message.js';
 import {
   CHECKLIST_SESSION_REMINDER_JOB,
@@ -73,7 +74,7 @@ function createHarness(overrides: {
     ),
   };
 
-  const delivery = { send: jest.fn(async () => undefined), sendMessage: jest.fn(async () => undefined) };
+  const delivery = { sendChange: jest.fn(async () => undefined), send: jest.fn(async () => undefined), sendMessage: jest.fn(async () => undefined) };
 
   const worker = new ChecklistSessionReminderWorker(
     prisma as unknown as PrismaService,
@@ -209,6 +210,18 @@ describe('ChecklistSessionReminderWorker', () => {
       });
 
       expect(delivery.send).toHaveBeenCalledWith({ organizationId, sessionId, observerId, reminderType: 'pre_start' });
+    });
+
+    it('delivers changes using only durable identifiers and propagates failures for retry (PR 345)', async () => {
+      const { worker, backgroundJobs, delivery } = createHarness(); worker.onModuleInit();
+      const handler = backgroundJobs.handlers.get(CHECKLIST_SESSION_CHANGE_NOTIFY_JOB)!;
+      const base = { id: 'change-job', name: CHECKLIST_SESSION_CHANGE_NOTIFY_JOB, attemptsMade: 0 };
+      await handler({ ...base, data: { organizationId, notificationId: 'notice', recipientId: 'forged-recipient', message: 'ignored' } });
+      expect(delivery.sendChange).toHaveBeenCalledWith({ organizationId, notificationId: 'notice' });
+      await handler({ ...base, data: { organizationId } });
+      expect(delivery.sendChange).toHaveBeenCalledTimes(1);
+      delivery.sendChange.mockRejectedValueOnce(new Error('transient mail failure'));
+      await expect(handler({ ...base, data: { organizationId, notificationId: 'notice' } })).rejects.toThrow('transient mail failure');
     });
 
     it('forwards a participant message to the delivery adapter and drops a malformed one (PR 333)', async () => {

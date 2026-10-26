@@ -1054,3 +1054,42 @@ Production provider/deployment/protection state is live evidence, not API contra
 - [`AUTH_SESSION_STORE_DESIGN.md`](./AUTH_SESSION_STORE_DESIGN.md)
 - [`../product/MVP_SCOPE_LOCK.md`](../product/MVP_SCOPE_LOCK.md)
 - [`../runbooks/RELEASE_GATE.md`](../runbooks/RELEASE_GATE.md)
+
+## Checklist session change notifications (PR 345)
+
+Authorized single creation, bulk creation and repeat create `checklist_session_scheduled` for
+both the assigned employee and observer. A bulk call creates at most one notice per recipient:
+the shared observer's notice references the first successfully committed session and opens their
+session list. Skipped/failed entries produce no notices. Partial-success transactions remain
+independent; the batch deduplication set advances only after commit.
+
+A versioned PATCH that changes the start instant, duration, timezone or observer creates
+`checklist_session_rescheduled` for the employee and current observer; reassignment also notifies
+the previous observer. A schedule no-op or geolocation-policy-only edit produces no change notice.
+Deleting a scheduled session creates `checklist_session_deleted` for both participants. Completion
+creates `checklist_session_completed` for the employee only. Overlapping roles/participant IDs are
+deduplicated. Recipients are resolved from the session/assignment and must be active, undeleted
+users in the same organization; the request cannot supply notification recipients.
+
+Each notice and its `checklists.session-change-notify` outbox event are inserted in the domain
+mutation's Serializable transaction. Rollback removes all three writes. Existing keyed create and
+lifecycle replay returns the cached response without new notices; competing versioned edits have
+one winner. Bulk retains its active-assignment conflict behavior, with no new idempotency-key API.
+The notification data contains only `sessionId`; the outbox contains only `organizationId` and
+`notificationId`. Titles, names, feedback, scores, location and other people's addresses are never
+copied into these change notices or their mail bodies.
+
+Learner links open `/learn/checklists?sessionId=...` through the scoped detail API, including
+sessions beyond the first list page. Existing result/feedback masking remains authoritative.
+Observers open their existing detail screen; former observers and deleted-session notices open
+the appropriate own list because detail access has ended. Unavailable learner detail returns a
+localized error with a back action. Generic portal and email copy supports RU/EN/KK/ZH.
+
+Mail uses the existing `ChecklistSessionReminderDelivery` and common Resend/SMTP capability
+(or the existing delivery hook with `kind: session_change`). Without either configured capability,
+delivery is a no-op and the portal notice remains durable. Failures propagate for queue retry and
+do not roll back the domain operation; SMTP delivery is best effort, not exactly once. Before
+sending, the adapter rechecks the notification, recipient organization/status and session deletion.
+Deleted sessions suppress queued creation/change/completion mail, reminders and participant
+messages. The deletion notice itself is permitted and links to the list. A deletion that occurs
+while a provider request is already in flight cannot retract that request.

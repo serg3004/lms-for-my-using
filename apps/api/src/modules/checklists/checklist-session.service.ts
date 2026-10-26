@@ -18,6 +18,7 @@ import {
   upsertPreStartReminder,
 } from './checklist-session-reminders.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_MESSAGE_WINDOW_MS } from './checklist-session-message.js';
+import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
   BulkCreateChecklistSessionInput,
@@ -271,6 +272,10 @@ export class ChecklistSessionService {
     const schedules = new Map(input.schedules?.map((schedule) => [schedule.learnerId, schedule]));
     const results: Array<{ learnerId: string; status: 'created' | 'skipped' | 'failed'; sessionId?: string; reason?: string }> = [];
 
+    // Only advance this set after a recipient transaction commits: a Serializable retry must
+    // never remember notifications whose transaction rolled back. The observer gets one notice
+    // for the batch, anchored to its first successfully created session and linking to the list.
+    const alreadyNotified = new Set<string>();
     for (const learnerId of input.learnerIds) {
       if (!allowedLearnerIds.has(learnerId)) {
         results.push({ learnerId, status: 'failed', reason: 'Learner is outside your scope' });
@@ -292,8 +297,10 @@ export class ChecklistSessionService {
             locationCapturePolicy: input.locationCapturePolicy,
             timezone: schedule?.timezone ?? input.timezone,
             actorId,
-          });
+          }, { bulk: true, alreadyNotified });
         });
+        alreadyNotified.add(learnerId);
+        alreadyNotified.add(input.observerId);
         results.push({ learnerId, status: 'created', sessionId: session.id });
       } catch (error) {
         // Only the per-recipient active-assignment conflict is skippable -- any other
@@ -615,7 +622,15 @@ export class ChecklistSessionService {
         });
       }
 
-      return present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
+      const updated = await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } });
+      const scheduleChanged = changes.scheduledAt !== undefined &&
+        (session.scheduledAt?.getTime() ?? null) !== (changes.scheduledAt ? new Date(changes.scheduledAt).getTime() : null);
+      const durationChanged = changes.durationMinutes !== undefined && changes.durationMinutes !== session.durationMinutes;
+      const timezoneChanged = changes.timezone !== undefined && changes.timezone !== session.timezone;
+      if (scheduleChanged || durationChanged || timezoneChanged || changes.observerId) {
+        await notifySessionChange(tx, updated, 'checklist_session_rescheduled', { previousObserverId: changes.observerId ? session.observerId : undefined });
+      }
+      return present(updated);
     });
   }
 
@@ -630,7 +645,7 @@ export class ChecklistSessionService {
     await runSerializableWithRetry(this.prisma, async (tx) => {
       const session = await tx.checklistSession.findFirst({
         where: { id: sessionId, organizationId, deletedAt: null, ...scope },
-        select: { id: true, status: true, instanceId: true },
+        select: { id: true, status: true, instanceId: true, observerId: true },
       });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'scheduled') {
@@ -650,6 +665,7 @@ export class ChecklistSessionService {
       });
       await suppressPendingReminders(tx, { organizationId, sessionId });
       await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: 'deleted', actorUserId: actorId } });
+      await notifySessionChange(tx, { ...session, organizationId }, 'checklist_session_deleted');
     });
     await this.auditLog.record({
       organizationId,
@@ -844,6 +860,8 @@ export class ChecklistSessionService {
       }
 
       await tx.checklistSessionEvent.create({ data: { organizationId, sessionId, eventType: event, actorUserId: actorId } });
+
+      if (action === 'complete') await notifySessionChange(tx, session, 'checklist_session_completed');
 
       const presented = present(await tx.checklistSession.findUniqueOrThrow({ where: { id: sessionId } }));
       await this.recordIdempotentResponse(tx, organizationId, idempotencyScope, idempotencyKey, presented);
@@ -1191,6 +1209,7 @@ export class ChecklistSessionService {
       timezone?: string;
       actorId: string;
     },
+    notificationOptions: { bulk?: boolean; alreadyNotified?: ReadonlySet<string> } = {},
   ) {
     await this.assertValidObserver(tx, input.observerId, input.organizationId);
 
@@ -1214,6 +1233,7 @@ export class ChecklistSessionService {
       await upsertPreStartReminder(tx, { organizationId: input.organizationId, sessionId: created.id, scheduledAt: created.scheduledAt });
     }
 
+    await notifySessionChange(tx, created, 'checklist_session_scheduled', notificationOptions);
     return created;
   }
 
