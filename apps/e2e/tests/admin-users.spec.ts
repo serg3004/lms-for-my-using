@@ -54,6 +54,9 @@ test('admin creates, filters, edits, deactivates and reactivates a user', async 
   await expect(page.getByRole('row').filter({ hasText: 'Updated admin user' })).toBeVisible();
 
   await row.getByRole('button', { name: 'Деактивировать' }).click();
+  const deactivateDialog = page.getByRole('dialog', { name: 'Деактивировать пользователя' });
+  await expect(deactivateDialog).toContainText('Пользователь потеряет доступ к системе.');
+  await deactivateDialog.getByRole('button', { name: 'Деактивировать', exact: true }).click();
   await expect(row.getByText('Заблокирован')).toBeVisible();
   await row.getByRole('button', { name: 'Активировать' }).click();
   await expect(row.getByText('Активен')).toBeVisible();
