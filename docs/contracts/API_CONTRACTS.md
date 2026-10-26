@@ -473,10 +473,15 @@ resolved into `ChecklistInstance.templateSnapshot` at assignment time exactly li
 (PR 293's pattern) -- a later edit to the live checklist can never retroactively change what an
 already-assigned instance's snapshot says. `CHECKLIST_SNAPSHOT_VERSION` is **not** bumped: these
 are added as strictly optional fields on the runtime type, so a pre-PR-296 snapshot (which never
-had them) still parses as valid. Item `groupId` itself is *not* embedded in the snapshot -- it is
-purely an authoring-time (builder) concept in this PR; PR 297 (observer session-taking), which
-does not depend on PR 296 per the implementation plan, may add it to the snapshot later if the
-mobile session screen ends up needing to render group headers.
+had them) still parses as valid. PR 347 additionally freezes `itemGroups: [{id, checklistId,
+title, order}]` and each item's `groupId` for the conduct overview. Both single and bulk
+assignment capture this metadata; session creation/repeat use the same assignment path. Renaming,
+reordering or deleting live groups does not change an existing assignment's group labels/order
+or membership. These fields are optional additions to snapshot version 1, without a migration or
+rewrite of stored snapshots. A stored snapshot without group metadata returns `itemGroups: []`
+and renders its criteria under “Other criteria”; the reader never fills historical groups from
+today's live checklist. A null pre-snapshot assignment retains its existing live-template fallback.
+Grouping does not change scoring or completion validation.
 
 ## Observer conduct screen and structured feedback (PR 297)
 

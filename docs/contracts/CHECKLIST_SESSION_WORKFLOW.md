@@ -98,7 +98,9 @@ that action deliberately enforces.
 “Sheet overview” opens the assignment snapshot's groups and criteria, with text labels for
 answered, skipped and unanswered states and an addressed/total counter. Native buttons jump to
 the criterion's original step and move keyboard focus to its heading. Unknown or absent group
-IDs appear in “Other criteria”; filtering never changes step identities.
+IDs appear in “Other criteria”; filtering never changes step identities. New single/bulk
+assignments freeze group names/order and criterion membership. Older stored snapshots without
+groups use the common list, rather than borrowing group names from the current live checklist.
 
 “Hide answered” shows only unanswered criteria in the overview and skips answered/explicitly
 skipped criteria on **Next**. A marked criterion still missing its required photo remains
@@ -118,7 +120,8 @@ Before Complete, the feedback step reports the number of unanswered criteria (in
 ones) and offers a jump to the first. With `allowFinishIncomplete`, it explains that unanswered
 criteria will be recorded as skipped. The existing required-progress calculation and
 `canCompleteSession` gate remain authoritative for the button; these navigation states introduce
-no scoring, API, RBAC or server-validation changes.
+no scoring, RBAC or server-validation changes. The existing assignment API carries the frozen
+group metadata described in `API_CONTRACTS.md`.
 
 ## Learner / employee (`/learn/checklists`)
 

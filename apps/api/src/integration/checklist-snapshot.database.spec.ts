@@ -89,6 +89,7 @@ describe('checklist assignment snapshots — database', () => {
     await prisma.checklistItemResult.deleteMany({ where: { organizationId } });
     await prisma.checklistInstance.deleteMany({ where: { organizationId } });
     await prisma.checklistItem.deleteMany({ where: { organizationId } });
+    await prisma.checklistItemGroup.deleteMany({ where: { organizationId } });
     await prisma.checklist.deleteMany({ where: { organizationId } });
     await prisma.membership.deleteMany({ where: { organizationId } });
     await prisma.user.deleteMany({ where: { organizationId } });
@@ -176,4 +177,35 @@ describe('checklist assignment snapshots — database', () => {
     expect(newView.checklist.items).toHaveLength(2);
     expect(next.maxScore).toBe(120);
   });
+
+  it('keeps overview groups frozen after rename, reassignment and deletion, including bulk assignments (PR 347)', async () => {
+    const service = new ChecklistsService(prisma, {} as UploadService);
+    const group = await prisma.checklistItemGroup.create({ data: { organizationId, checklistId, title: 'Original group', order: 0 } });
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { groupId: group.id } });
+    const original = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    const before = await prisma.checklistInstance.findUniqueOrThrow({ where: { id: original.id }, select: { templateSnapshot: true } });
+    expect(before.templateSnapshot).toMatchObject({ checklist: { itemGroups: [{ id: group.id, title: 'Original group', order: 0 }], items: [{ groupId: group.id }] } });
+
+    await prisma.checklistItemGroup.update({ where: { id: group.id }, data: { title: 'Renamed group', order: 5 } });
+    const oldView = await service.getInstance(original.id, organizationId);
+    expect(oldView.checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Original group', order: 0 }]);
+    expect(oldView.checklist.items[0]).toMatchObject({ id: itemId, groupId: group.id });
+    await service.submitItemResult(original.id, itemId, organizationId, learnerId, false, { checked: true });
+    const next = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    expect((await service.getInstance(next.id, organizationId)).checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Renamed group', order: 5 }]);
+    await service.submitItemResult(next.id, itemId, organizationId, learnerId, false, { checked: true });
+
+    await prisma.checklistItemGroup.delete({ where: { id: group.id } });
+    expect((await service.getInstance(original.id, organizationId)).checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Original group' }]);
+    const replacement = await prisma.checklistItemGroup.create({ data: { organizationId, checklistId, title: 'Bulk group', order: 0 } });
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { groupId: replacement.id } });
+    const bulk = await service.bulkAssignChecklist(checklistId, organizationId, { targets: [{ type: 'user', id: learnerId }] }, assignerId, ['admin']);
+    expect(bulk.created).toBe(1);
+    const bulkRow = await prisma.checklistInstance.findFirstOrThrow({ where: { organizationId, userId: learnerId, status: 'assigned' } });
+    expect(bulkRow.templateSnapshot).toMatchObject({ checklist: { itemGroups: [{ id: replacement.id, title: 'Bulk group' }], items: [{ groupId: replacement.id }] } });
+    await prisma.checklistItemGroup.update({ where: { id: replacement.id }, data: { title: 'Bulk renamed' } });
+    expect((await service.getInstance(bulkRow.id, organizationId)).checklist.itemGroups).toMatchObject([{ title: 'Bulk group' }]);
+    expect((await prisma.checklistInstance.findUniqueOrThrow({ where: { id: original.id } })).templateSnapshot).toEqual(before.templateSnapshot);
+  });
+
 });
