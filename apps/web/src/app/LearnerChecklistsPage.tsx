@@ -37,7 +37,7 @@ const COLORS = {
 };
 
 type LearnerChecklistsData = { instances: ChecklistInstanceSummary[] };
-export function LearnerChecklistsPage() {
+export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: { linkedSessionId?: string | null; onLinkedSessionBack?: () => void } = {}) {
   const { t } = useTranslation();
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
 
@@ -117,7 +117,7 @@ export function LearnerChecklistsPage() {
         </ul>
         </>
       )}
-      <LearnerChecklistSessions t={t} />
+      <LearnerChecklistSessions linkedSessionId={linkedSessionId} onLinkedSessionBack={onLinkedSessionBack} t={t} />
     </main>
   );
 }

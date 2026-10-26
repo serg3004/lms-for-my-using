@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from 'react';
-import { Outlet, Route, useParams } from 'react-router-dom';
+import { Outlet, Route, useParams, useSearchParams } from 'react-router-dom';
 
 import { NotFoundPage } from '../NotFoundPage.js';
 import { LearnerPageLayout } from '../../shared/learnerLayout.js';
@@ -33,6 +33,13 @@ function LearnerLayoutRoute() {
   return <LearnerPageLayout><Outlet /></LearnerPageLayout>;
 }
 
+function LearnerChecklistsRoute() {
+  const [params, setParams] = useSearchParams();
+  return <LearnerChecklistsPage linkedSessionId={params.get('sessionId')} onLinkedSessionBack={() => {
+    const next = new URLSearchParams(params); next.delete('sessionId'); setParams(next);
+  }} />;
+}
+
 export function LearnerRoutes() {
   return (
     <Route element={<LearnerLayoutRoute />}>
@@ -41,7 +48,7 @@ export function LearnerRoutes() {
       <Route path="/learn/progress" element={<LearnerProgressPage />} />
       <Route path="/learn/assignments" element={<LearnerAssignmentsPage />} />
       <Route path="/learn/assessments" element={<LearnerAssessmentsPage />} />
-      <Route path="/learn/checklists" element={<LearnerChecklistsPage />} />
+      <Route path="/learn/checklists" element={<LearnerChecklistsRoute />} />
       <Route path="/learn/certificates" element={<LearnerCertificatesPage />} />
       <Route path="/learn/notifications" element={<LearnerNotificationsPage />} />
       <Route path="/learn/profile" element={<LearnerProfilePage />} />

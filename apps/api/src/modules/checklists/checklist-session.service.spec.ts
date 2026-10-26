@@ -49,9 +49,10 @@ function createPrisma(overrides: {
   checklistIdempotencyKey?: Partial<Record<'findUnique' | 'create', jest.Mock>>;
   user?: Partial<Record<'findFirst' | 'findMany' | 'count', jest.Mock>>;
   membership?: Partial<Record<'findMany', jest.Mock>>;
-  notification?: Partial<Record<'createMany', jest.Mock>>;
+  notification?: Partial<Record<'create' | 'createMany', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
+    outboxEvent: { create: jest.fn(async () => ({ id: 'outbox-1' })) },
     auditLog: { create: jest.fn(async () => ({})) },
     checklistSession: {
       findFirst: jest.fn(async () => baseSession()),
@@ -79,7 +80,7 @@ function createPrisma(overrides: {
       ...overrides.checklistLocationCapture,
     },
     checklistInstance: {
-      findFirst: jest.fn(async () => ({ id: instanceId })),
+      findFirst: jest.fn(async () => ({ id: instanceId, userId: actorId })),
       ...overrides.checklistInstance,
     },
     checklistIdempotencyKey: {
@@ -102,6 +103,7 @@ function createPrisma(overrides: {
       ...overrides.membership,
     },
     notification: {
+      create: jest.fn(async () => ({ id: 'notification-1' })),
       createMany: jest.fn(async () => ({ count: 0 })),
       ...overrides.notification,
     },

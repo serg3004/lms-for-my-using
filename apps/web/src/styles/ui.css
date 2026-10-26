@@ -2477,7 +2477,7 @@
 .notification-center__list li.notification-center__row--unread { border-color: #c7d2fe; background: #eef2ff; }
 .notification-center__list button { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; padding: 18px 20px; border: 0; background: transparent; color: var(--color-text); text-align: left; cursor: pointer; }
 .notification-center__copy { display: grid; gap: 5px; }
-.notification-center__copy time { color: var(--color-text-muted); font-size: 12px; }
+.notification-center__copy time { color: #596579; font-size: 12px; }
 .notification-center__status { flex-shrink: 0; color: var(--color-primary); font-size: 12px; font-weight: 700; }
 .notification-bell__empty span { display: block; margin-bottom: 10px; }
 .notification-bell__retry { padding: 7px 10px; font-size: 12px; }

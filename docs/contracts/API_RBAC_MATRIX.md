@@ -121,3 +121,25 @@ When authorization changes:
 3. regenerate/check derived RBAC docs;
 4. review human contract semantics here if behavior changed;
 5. verify frontend visibility only as UX consistency, not as enforcement evidence.
+
+### Session change notification recipients (PR 345)
+
+No new endpoint or role policy is introduced. Notification creation follows the authorized domain
+mutation and uses server-derived session/assignment identities; notification list/read access stays
+restricted to the signed-in recipient. `checklist-session-notifications.database.spec.ts` covers:
+
+| Caller / attempted access | Expected result / notification effect |
+| --- | --- |
+| Own-tenant admin creates, changes or deletes an accessible session | Own-tenant employee/current observer; reassignment also previous observer; completion employee only |
+| Foreign-tenant admin updates a known session UUID | 404; no notice/outbox write |
+| Learner attempts a management PATCH | Membership guard 403; no notice |
+| Manager deletes a session outside their effective team | 404; no notice |
+| Bulk request includes a foreign learner | That recipient fails; no cross-tenant notice |
+| Body injects `recipientId` into create | Strict schema rejects it; no notice |
+| Employee and observer are the same user | One notice, not one per role |
+| Former observer or deleted-session notification is opened | Own list link; no bypass of detail scope |
+
+Recipients must be active and undeleted within the authenticated organization. Version conflicts,
+keyed replay and transaction rollback cannot leave extra participant notices. A learner's direct
+notification link uses the existing scoped detail read and does not grant access to another
+employee's session or unmask feedback/results.

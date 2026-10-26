@@ -120,7 +120,7 @@ describe('checklist session reminders — database', () => {
     expect(updatedReminder.status).toBe('sent');
     expect(updatedReminder.sentAt).not.toBeNull();
 
-    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId } });
+    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId, type: { in: ['checklist_session_pre_start_reminder', 'checklist_session_incomplete_after_start_reminder'] } } });
     expect(notifications).toHaveLength(1);
     expect(notifications[0]?.type).toBe('checklist_session_pre_start_reminder');
 
@@ -196,7 +196,7 @@ describe('checklist session reminders — database', () => {
       where: { sessionId_reminderType: { sessionId: session.id, reminderType: 'pre_start' } },
     });
     expect(reminder.status).toBe('suppressed');
-    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId } });
+    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId, type: { in: ['checklist_session_pre_start_reminder', 'checklist_session_incomplete_after_start_reminder'] } } });
     expect(notifications).toHaveLength(0);
   });
 
@@ -207,7 +207,7 @@ describe('checklist session reminders — database', () => {
     const [firstCount, secondCount] = await Promise.all([worker.processDue(now), worker.processDue(now)]);
     expect(firstCount + secondCount).toBe(1);
 
-    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId } });
+    const notifications = await prisma.notification.findMany({ where: { organizationId, userId: observerId, type: { in: ['checklist_session_pre_start_reminder', 'checklist_session_incomplete_after_start_reminder'] } } });
     expect(notifications).toHaveLength(1);
     const events = await prisma.checklistSessionEvent.findMany({ where: { sessionId: session.id, eventType: 'reminder_sent' } });
     expect(events).toHaveLength(1);

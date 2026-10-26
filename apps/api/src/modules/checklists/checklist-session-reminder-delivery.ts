@@ -7,6 +7,9 @@ import { ResendHttpError } from '../../common/mail/resend.js';
 import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { checklistSessionReminderDeliveryErrors } from '../../common/observability/metrics.js';
 
+import { CHECKLIST_SESSION_CHANGE_TYPES, type ChecklistSessionChangeType } from './checklist-session-notifications.js';
+import { sessionChangeText } from './checklist-session-notification-text.js';
+
 export type ChecklistSessionReminderMessage = {
   organizationId: string;
   sessionId: string;
@@ -39,13 +42,9 @@ function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
 }
 
 /**
- * Provider-neutral delivery adapter for checklist session reminder emails, mirroring
- * `PasswordResetDelivery` (`apps/api/src/modules/auth/password-reset.ts`): the configured HTTPS
- * endpoint owns actual email delivery, and this never invents its own SMTP/provider integration.
- * PR 291's "email только при production capability" criterion: an unconfigured endpoint is a
- * valid, documented no-op, not a failure — the in-app `Notification` row (created before this
- * runs, in the same transaction as the reminder) is the workflow's source of truth regardless of
- * whether email delivery is configured or succeeds.
+ * Best-effort mail for reminders, participant messages and session changes. Reuses the common
+ * Resend/SMTP capability, with the existing HTTPS delivery hook as a fallback. An unconfigured
+ * adapter is a no-op; the transactional in-app Notification remains the source of truth.
  */
 @Injectable()
 export class ChecklistSessionReminderDelivery {
@@ -58,6 +57,12 @@ export class ChecklistSessionReminderDelivery {
   }
 
   async send(message: ChecklistSessionReminderMessage): Promise<void> {
+    if (this.checkReadiness() === 'disabled') return;
+    const current = await this.prisma.checklistSession.findFirst({
+      where: { id: message.sessionId, organizationId: message.organizationId, observerId: message.observerId, deletedAt: null, status: { in: ['scheduled', 'in_progress', 'paused'] } },
+      select: { id: true },
+    });
+    if (!current) return;
     if (isMailConfigured()) {
       const session = await this.prisma.checklistSession.findFirst({
         where: { id: message.sessionId, organizationId: message.organizationId },
@@ -78,6 +83,11 @@ export class ChecklistSessionReminderDelivery {
 
   /** PR 333: same endpoint, distinguished by `kind`; the in-app Notification is already durable. */
   async sendMessage(message: ChecklistSessionParticipantMessage): Promise<void> {
+    if (this.checkReadiness() === 'disabled') return;
+    const current = await this.prisma.checklistSession.findFirst({
+      where: { id: message.sessionId, organizationId: message.organizationId, deletedAt: null, instance: { userId: message.recipientId, organizationId: message.organizationId } }, select: { id: true },
+    });
+    if (!current) return;
     if (isMailConfigured()) {
       await this.email(message.recipientId, message.organizationId, `Сообщение по сессии «${message.checklistTitle}»`, message.message);
       return;
@@ -85,9 +95,44 @@ export class ChecklistSessionReminderDelivery {
     await this.post({ kind: 'participant_message', ...message }, 'participant message');
   }
 
+  /** PR 345: queued changes are rechecked at delivery, so deleting a session suppresses stale mail. */
+  async sendChange(message: { organizationId: string; notificationId: string }): Promise<void> {
+    if (this.checkReadiness() === 'disabled') return;
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: message.notificationId, organizationId: message.organizationId, type: { in: [...CHECKLIST_SESSION_CHANGE_TYPES] } },
+      select: { type: true, userId: true, data: true, link: true },
+    });
+    if (!notification || !CHECKLIST_SESSION_CHANGE_TYPES.includes(notification.type as ChecklistSessionChangeType)) return;
+    const data = notification.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data['sessionId'] !== 'string') return;
+    const type = notification.type as ChecklistSessionChangeType;
+    const session = await this.prisma.checklistSession.findFirst({
+      where: { id: data['sessionId'], organizationId: message.organizationId,
+        deletedAt: type === 'checklist_session_deleted' ? { not: null } : null,
+        instance: { organizationId: message.organizationId } },
+      select: { id: true },
+    });
+    if (!session) return;
+    const recipient = await this.prisma.user.findFirst({
+      where: { id: notification.userId, organizationId: message.organizationId, deletedAt: null, status: 'active' }, select: { locale: true },
+    });
+    if (!recipient) return;
+    // Only server-authored relative session links are allowed in email, never job-supplied URLs.
+    const link = notification.link;
+    if (!link || !/^\/(?:learn\/checklists|instructor\/checklists\/sessions)(?:[/?][^\s]*)?$/.test(link)) return;
+    if (isMailConfigured()) {
+      const text = sessionChangeText(type, recipient.locale);
+      const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+      await this.email(notification.userId, message.organizationId, text.title, `${text.message}\n${frontend}${link}`);
+      return;
+    }
+    await this.post({ kind: 'session_change', organizationId: message.organizationId, sessionId: session.id,
+      recipientId: notification.userId, type, link, locale: recipient.locale }, 'session change');
+  }
+
   /** Resolves the recipient inside the organization; a user without an address is skipped, never a failure. */
   private async email(userId: string, organizationId: string, subject: string, text: string): Promise<void> {
-    const user = await this.prisma.user.findFirst({ where: { id: userId, organizationId }, select: { email: true } });
+    const user = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null, status: 'active' }, select: { email: true } });
     if (!user?.email) return;
     try {
       await sendMail({ to: user.email, subject, text });

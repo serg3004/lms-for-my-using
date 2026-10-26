@@ -2304,6 +2304,22 @@
       "checklist_session_message": {
         "title": "Message about a session",
         "message": "{{message}} (checklist: {{checklistTitle}})"
+      },
+      "checklist_session_scheduled": {
+        "title": "Training session scheduled",
+        "message": "Workplace training has been scheduled for you. Open your sessions for details."
+      },
+      "checklist_session_rescheduled": {
+        "title": "Training session changed",
+        "message": "The time or participants of a session have changed. Open your sessions to check the schedule."
+      },
+      "checklist_session_deleted": {
+        "title": "Training session deleted",
+        "message": "A session that had not started was deleted. Participation is no longer required."
+      },
+      "checklist_session_completed": {
+        "title": "Training session completed",
+        "message": "The session is complete. Open it to view the feedback available to you."
       }
     },
     "centerTitle": "Notification Center",
@@ -2521,6 +2537,7 @@
     },
     "learner": {
       "title": "My training sessions",
+      "sessionNotFound": "This session is no longer available.",
       "sessionExpired": "Your session expired. Sign in again.",
       "loadError": "Unable to load your training sessions.",
       "loading": "Loading your training sessions...",

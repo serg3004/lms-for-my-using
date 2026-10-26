@@ -120,3 +120,20 @@ never a blank or misleading `0%`.
   since it is already covered by the existing `checklist_item_result.reviewed` entry. Retention/
   deletion policy is an intentionally open owner decision, `docs/status/OPEN_DECISIONS.md`
   DEC-CHKS-002 -- not yet implemented.
+
+## Changes delivered to participants (PR 345)
+
+The existing notification center shows localized notices when a session is assigned, rescheduled
+(including duration/timezone changes) or deleted. Both participants receive them; replacing an
+observer also notifies the former observer. Bulk scheduling sends each recipient one notice for
+the call, including one for a shared observer. Completion notifies the employee, with a link to
+that session in `/learn/checklists`; the link works even when the session is outside the first
+list page. Detail access and feedback visibility are still enforced by the API. Deleted sessions
+and former observers link back to their own list. An unavailable employee session shows a back
+action instead of silently opening an unrelated session.
+
+Notice and mail text is generic: it contains no feedback, scores, location or other people's
+email addresses. Mail is optional and uses the existing configured delivery capability; portal
+notices are persisted with the change regardless of mail availability. Queued mail about an old
+change is suppressed after deletion; the deletion notice itself remains deliverable. The
+transaction/replay and delivery contract is specified in `API_CONTRACTS.md`.

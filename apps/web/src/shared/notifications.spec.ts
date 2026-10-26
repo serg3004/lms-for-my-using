@@ -56,6 +56,10 @@ describe('checklist session notification types resolve in every supported locale
     'checklist_session_pre_start_reminder',
     'checklist_session_incomplete_after_start_reminder',
     'checklist_session_message',
+    'checklist_session_scheduled',
+    'checklist_session_rescheduled',
+    'checklist_session_deleted',
+    'checklist_session_completed',
   ] as const;
 
   for (const locale of supportedLocales) {
