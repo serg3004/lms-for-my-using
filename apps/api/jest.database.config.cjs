@@ -14,6 +14,7 @@ module.exports = {
     '<rootDir>/src/integration/checklist-session-history.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-delete-message.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-notifications.database.spec.ts',
+    '<rootDir>/src/integration/checklist-observer-deactivation.database.spec.ts',
     '<rootDir>/src/integration/checklist-report-export.database.spec.ts',
     '<rootDir>/src/integration/checklist-finish-incomplete.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-recalculate.database.spec.ts',

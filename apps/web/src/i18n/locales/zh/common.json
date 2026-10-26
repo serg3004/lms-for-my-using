@@ -201,7 +201,11 @@
         "invited": "已邀请",
         "suspended": "已暂停",
         "archived": "已归档"
-      }
+      },
+      "deactivateTitle": "停用用户",
+      "deactivateConfirm": "停用 {{name}}？该用户将无法访问系统。",
+      "deactivateSessionsWarning": "该用户有未完成的观察场次：{{sessions}}。停用后请为这些场次指派其他观察员。",
+      "deactivateSessionsUnknown": "无法检查该用户未完成的观察场次。"
     },
     "lessons": {
       "eyebrow": "学习内容",
@@ -2320,6 +2324,10 @@
       "checklist_session_completed": {
         "title": "观察场次已完成",
         "message": "场次已完成。请打开场次查看您有权查看的反馈。"
+      },
+      "checklist_session_observer_deactivated": {
+        "title": "观察员已被停用",
+        "message": "已停用的观察员仍有未完成的场次。请打开列表并指派其他观察员。"
       }
     },
     "centerTitle": "通知中心",

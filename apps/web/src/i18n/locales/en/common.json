@@ -201,7 +201,11 @@
         "invited": "Invited",
         "suspended": "Suspended",
         "archived": "Archived"
-      }
+      },
+      "deactivateTitle": "Deactivate user",
+      "deactivateConfirm": "Deactivate {{name}}? The user will lose access to the system.",
+      "deactivateSessionsWarning": "The user has unfinished observation sessions: {{sessions}}. After deactivation, assign another observer to them.",
+      "deactivateSessionsUnknown": "Could not check the unfinished observation sessions of this user."
     },
     "lessons": {
       "eyebrow": "Learning content",
@@ -2320,6 +2324,10 @@
       "checklist_session_completed": {
         "title": "Training session completed",
         "message": "The session is complete. Open it to view the feedback available to you."
+      },
+      "checklist_session_observer_deactivated": {
+        "title": "Observer blocked",
+        "message": "A blocked observer still has unfinished sessions. Open the list and assign another observer."
       }
     },
     "centerTitle": "Notification Center",

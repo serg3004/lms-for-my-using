@@ -143,3 +143,18 @@ Recipients must be active and undeleted within the authenticated organization. V
 keyed replay and transaction rollback cannot leave extra participant notices. A learner's direct
 notification link uses the existing scoped detail read and does not grant access to another
 employee's session or unmask feedback/results.
+
+### Observer deactivation notices (PR 346)
+
+No new role policy: `GET /users/{id}/status-impact` and the extended `PATCH /users/{id}/status`
+both use `usersCreate` with the manager team scope. `checklist-observer-deactivation.database.spec.ts`
+covers:
+
+| Caller / attempted access | Expected result / notification effect |
+| --- | --- |
+| Admin deactivates an active observer with unfinished sessions | One notice per active admin of the same organization |
+| Admin deactivates a user with no unfinished, or only completed or deleted, sessions | No notice |
+| Same status repeated, or user activated | No new notice |
+| Admin of another organization | Never a recipient; status or impact request for a foreign user is 404 |
+| Manager outside the user's team | 404 from the existing team scope; no notice |
+| Deactivated user is also an admin | Not notified about their own deactivation |

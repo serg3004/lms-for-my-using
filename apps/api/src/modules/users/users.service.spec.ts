@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -331,36 +332,46 @@ describe('UsersService updateUser role changes', () => {
 describe('UsersService updateUserStatus', () => {
   const actor = unrestrictedActor(organizationId);
 
+  function statusHarness(options: { previous?: string; next: string; openSessions?: number; admins?: string[] }) {
+    const tx = {
+      user: { update: jest.fn(async () => ({ id: userId, status: options.next })) },
+      checklistSession: { count: jest.fn(async () => options.openSessions ?? 0) },
+      membership: { findMany: jest.fn(async () => (options.admins ?? []).map((id) => ({ userId: id }))) },
+      notification: { create: jest.fn(async () => ({ id: 'notice' })) },
+      outboxEvent: { create: jest.fn(async () => ({})) },
+    };
+    const prisma = {
+      user: { findFirst: async () => ({ id: userId, status: options.previous ?? 'active' }) },
+      course: { findMany: async () => [] },
+      $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+    } as unknown as PrismaService;
+    return { tx, service: new UsersService(prisma) };
+  }
+
   it('returns no orphaned courses when the user stays active', async () => {
     const prisma = {
       user: {
-        findFirst: async () => ({ id: userId }),
+        findFirst: async () => ({ id: userId, status: 'active' }),
         update: async () => ({ id: userId, status: 'active' }),
       },
       course: { findMany: async () => [{ id: 'course-1', title: 'Safety', instructors: [{ instructorId: userId }] }] },
+      $transaction: async (run: (client: unknown) => Promise<unknown>) => run({ user: { update: async () => ({ id: userId, status: 'active' }) } }),
     } as unknown as PrismaService;
     const service = new UsersService(prisma);
 
     await expect(service.updateUserStatus(userId, actor, 'active')).resolves.toMatchObject({
       status: 'active',
       orphanedCourses: [],
+      observerSessions: 0,
     });
   });
 
   it('lists courses left without another active instructor when deactivated', async () => {
-    const prisma = {
-      user: {
-        findFirst: async () => ({ id: userId }),
-        update: async () => ({ id: userId, status: 'suspended' }),
-      },
-      course: {
-        findMany: async () => [
-          { id: 'course-1', title: 'Safety Basics', instructors: [{ instructorId: userId }] },
-          { id: 'course-2', title: 'Co-taught', instructors: [{ instructorId: userId }, { instructorId: 'other-instructor' }] },
-        ],
-      },
-    } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const { service } = statusHarness({ next: 'suspended' });
+    (service as unknown as { prisma: { course: { findMany: unknown } } }).prisma.course.findMany = async () => [
+      { id: 'course-1', title: 'Safety Basics', instructors: [{ instructorId: userId }] },
+      { id: 'course-2', title: 'Co-taught', instructors: [{ instructorId: userId }, { instructorId: 'other-instructor' }] },
+    ];
 
     await expect(service.updateUserStatus(userId, actor, 'suspended')).resolves.toMatchObject({
       status: 'suspended',
@@ -368,11 +379,50 @@ describe('UsersService updateUserStatus', () => {
     });
   });
 
+  it('notifies each admin once when an observer with open sessions is deactivated (PR 346)', async () => {
+    const { tx, service } = statusHarness({ next: 'suspended', openSessions: 3, admins: ['admin-1', 'admin-2', 'admin-1'] });
+
+    await expect(service.updateUserStatus(userId, actor, 'suspended')).resolves.toMatchObject({ observerSessions: 3 });
+    expect(tx.notification.create).toHaveBeenCalledTimes(2);
+    expect(tx.notification.create).toHaveBeenCalledWith({ data: {
+      organizationId, userId: 'admin-1', type: 'checklist_session_observer_deactivated',
+      data: { observerId: userId, sessionCount: 3 }, link: `/admin/checklists/sessions?observerId=${userId}`,
+    } });
+    expect(tx.outboxEvent.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not notify without open sessions, on a repeated status or on activation (PR 346)', async () => {
+    const none = statusHarness({ next: 'suspended', openSessions: 0, admins: ['admin-1'] });
+    await none.service.updateUserStatus(userId, actor, 'suspended');
+    expect(none.tx.notification.create).not.toHaveBeenCalled();
+
+    const repeated = statusHarness({ previous: 'suspended', next: 'suspended', openSessions: 2, admins: ['admin-1'] });
+    await expect(repeated.service.updateUserStatus(userId, actor, 'suspended')).resolves.toMatchObject({ observerSessions: 2 });
+    expect(repeated.tx.notification.create).not.toHaveBeenCalled();
+
+    const activation = statusHarness({ previous: 'suspended', next: 'active', openSessions: 2, admins: ['admin-1'] });
+    await activation.service.updateUserStatus(userId, actor, 'active');
+    expect(activation.tx.checklistSession.count).not.toHaveBeenCalled();
+    expect(activation.tx.notification.create).not.toHaveBeenCalled();
+  });
+
   it('throws NotFoundException when the user does not exist', async () => {
     const prisma = { user: { findFirst: async () => null } } as unknown as PrismaService;
     const service = new UsersService(prisma);
 
     await expect(service.updateUserStatus(userId, actor, 'suspended')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('UsersService getObserverSessionImpact', () => {
+  it('counts only open sessions of an in-scope user and 404s for others (PR 346)', async () => {
+    const count = jest.fn(async () => 4);
+    const prisma = { user: { findFirst: async () => ({ id: userId }) }, checklistSession: { count } } as unknown as PrismaService;
+    await expect(new UsersService(prisma).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).resolves.toEqual({ observerSessions: 4 });
+    expect(count).toHaveBeenCalledWith({ where: { organizationId, observerId: userId, deletedAt: null, status: { in: ['scheduled', 'in_progress', 'paused'] } } });
+
+    const missing = { user: { findFirst: async () => null } } as unknown as PrismaService;
+    await expect(new UsersService(missing).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).rejects.toThrow(NotFoundException);
   });
 });
 

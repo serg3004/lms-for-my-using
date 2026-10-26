@@ -49,5 +49,14 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
-  return { isSaving, saveUser, toggleStatus };
+  /** PR 346: unfinished observer sessions of the user; `null` when the check itself fails. */
+  async function loadObserverSessions(user: AdminUserSummary): Promise<number | null> {
+    try {
+      return (await apiRequest<{ observerSessions: number }>(`/users/${user.id}/status-impact`)).observerSessions;
+    } catch {
+      return null;
+    }
+  }
+
+  return { isSaving, saveUser, toggleStatus, loadObserverSessions };
 }
