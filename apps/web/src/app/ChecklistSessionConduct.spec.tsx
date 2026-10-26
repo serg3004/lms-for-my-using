@@ -27,6 +27,8 @@ vi.mock('../shared/api/checklists.js', async () => {
 });
 
 import { canCompleteSession, captureLocationBestEffort, ChecklistSessionConduct, ConductScreen, describeGeoNotice, fetchConductData, formatElapsed, resolveConductStep, runMutation } from './ChecklistSessionConduct.js';
+import { conductAnswerState, conductCriteria, conductOverviewGroups, nextConductStep } from './checklistConductOverview.js';
+import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import type { ChecklistInstanceSummary, ChecklistSessionSummary } from '../shared/api/types.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -401,5 +403,75 @@ describe('canCompleteSession (PR 330)', () => {
   it('never opens Complete outside an in-progress session', () => {
     expect(canCompleteSession('paused', true, 2, 2)).toBe(false);
     expect(canCompleteSession('scheduled', true, 0, 2)).toBe(false);
+  });
+});
+
+
+describe('conduct sheet overview and navigation (PR 347)', () => {
+  it('uses explicit answer state, including a negative answer and a skip', () => {
+    const item = instance().checklist!.items[0]!;
+    const result = instance().results[0]!;
+    expect(conductAnswerState(item, { ...result, checked: false, scaleLevel: null, answerState: 'answered' }, 'sum_points')).toBe('answered');
+    expect(conductAnswerState(item, { ...result, answerState: 'skipped' }, 'sum_points')).toBe('skipped');
+    expect(conductAnswerState(item, { ...result, checked: true, answerState: 'unanswered' }, 'sum_points')).toBe('unanswered');
+    expect(conductAnswerState(item, undefined, 'sum_points')).toBe('unanswered');
+  });
+
+  it('recognizes legacy checkbox and zero-valued scale answers without altering completion rules', () => {
+    const item = { ...instance().checklist!.items[0]!, scale: null };
+    const result = instance().results[0]!;
+    expect(conductAnswerState(item, { ...result, checked: true }, 'sum_points')).toBe('answered');
+    expect(conductAnswerState(item, { ...result, checked: false, scaleLevel: null }, 'sum_points')).toBe('unanswered');
+    expect(conductAnswerState(item, { ...result, scaleLevel: 0 }, 'scale')).toBe('answered');
+    expect(conductAnswerState(instance().checklist!.items[0]!, { ...result, scaleLevel: 0 }, 'sum_points')).toBe('answered');
+    expect(canCompleteSession('in_progress', false, 0, 1)).toBe(false);
+  });
+
+  it('keeps a marked criterion with missing required photo unanswered and visible', () => {
+    const item = { ...instance().checklist!.items[1]!, groupId: null };
+    const result = { ...instance().results[1]!, checked: true, photoUrl: null, photoFileName: null, answerState: 'answered' as const };
+    expect(conductAnswerState(item, result, 'sum_points')).toBe('unanswered');
+    expect(conductAnswerState(item, { ...result, photoFileName: 'evidence.jpg' }, 'sum_points')).toBe('answered');
+    expect(conductAnswerState(item, { ...result, answerState: 'skipped' }, 'sum_points')).toBe('skipped');
+  });
+
+  it('groups snapshot criteria in group order, retains original step indices, and handles legacy/orphan groups', () => {
+    const data = instance();
+    const first = { ...data.checklist!.items[0]!, groupId: 'second' };
+    const other = { ...data.checklist!.items[1]!, groupId: 'missing' };
+    const groups = [{ id: 'second', checklistId: 'checklist-1', title: 'Second', order: 2 }, { id: 'first', checklistId: 'checklist-1', title: 'First', order: 1 }];
+    const criteria = conductCriteria([first, { ...first, id: 'item-3', groupId: 'first' }, other], data.results, 'sum_points');
+    const output = conductOverviewGroups(criteria, groups, false);
+    expect(output.map(({ id }) => id)).toEqual(['first', 'second', null]);
+    expect(output.flatMap(({ criteria: rows }) => rows.map(({ index }) => index))).toEqual([1, 0, 2]);
+    expect(groups.map(({ id }) => id)).toEqual(['second', 'first']);
+  });
+
+  it('filters addressed criteria and skips them only on Next, preserving context/feedback indices', () => {
+    const data = instance();
+    const items = [...data.checklist!.items, { ...data.checklist!.items[0]!, id: 'unanswered' }];
+    const criteria = conductCriteria(items, data.results.map((result, index) => ({ ...result, answerState: index === 0 ? 'answered' : 'skipped' })), 'sum_points');
+    expect(conductOverviewGroups(criteria, [], true).flatMap(({ criteria: rows }) => rows.map(({ item }) => item.id))).toEqual(['unanswered']);
+    expect(nextConductStep(criteria, 0, false, false)).toBe(1);
+    expect(nextConductStep(criteria, 0, false, true)).toBe(2);
+    expect(nextConductStep(criteria, 0, true, true)).toBe(3);
+    expect(nextConductStep(criteria, 3, true, true)).toBe(4);
+    expect(nextConductStep([], 0, true, true)).toBe(1);
+    expect(nextConductStep([], 0, false, true)).toBe(0);
+  });
+
+  it('renders native overview buttons with text statuses, current step and save locks', () => {
+    const data = instance();
+    const criteria = conductCriteria(data.checklist!.items, data.results.map((result) => ({ ...result, answerState: 'skipped' })), 'sum_points');
+    const html = renderToStaticMarkup(<ChecklistConductOverview criteria={criteria} groups={[]} hideAnswered={false} currentItemIndex={0} disabled onSelect={() => undefined} t={t} />);
+    expect(html).toContain('aria-current="step"');
+    expect(html).toContain('skipped');
+    expect(html.match(/<button[^>]*disabled=""/g)).toHaveLength(2);
+    expect(html).toContain('<ul');
+  });
+
+  it('explains an empty filtered overview', () => {
+    const html = renderToStaticMarkup(<ChecklistConductOverview criteria={[]} groups={[]} hideAnswered currentItemIndex={0} disabled={false} onSelect={() => undefined} t={t} />);
+    expect(html).toContain('No unanswered criteria.');
   });
 });

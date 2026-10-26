@@ -2533,7 +2533,22 @@
       "participantsEmpty": "No employees found in your scope. Try another search or contact an administrator.",
       "sessionsTitle": "Sessions to conduct",
       "sessionsSubtitle": "Sessions where you are the observer.",
-      "screenTitle": "Conduct session"
+      "screenTitle": "Conduct session",
+      "overview": "Sheet overview",
+      "hideAnswered": "Hide answered",
+      "overviewProgress": "{{completed}} of {{total}} addressed",
+      "overviewUngrouped": "Other criteria",
+      "overviewEmpty": "No unanswered criteria. Turn off the filter to see the full sheet.",
+      "overviewNoCriteria": "This sheet has no criteria.",
+      "returnToStep": "Return to current step",
+      "unansweredCount": "Unanswered criteria: {{count}}",
+      "firstUnanswered": "Go to first unanswered",
+      "answerStatus": {
+        "answered": "Answered",
+        "skipped": "Skipped",
+        "unanswered": "Unanswered"
+      },
+      "completeContextFirst": "Complete the required general information before moving to a criterion."
     },
     "learner": {
       "title": "My training sessions",

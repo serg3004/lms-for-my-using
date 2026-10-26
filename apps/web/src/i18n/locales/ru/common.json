@@ -2533,7 +2533,22 @@
       "participantsEmpty": "Сотрудники в вашей зоне не найдены. Измените поиск или обратитесь к администратору.",
       "sessionsTitle": "Сессии к проведению",
       "sessionsSubtitle": "Сессии, где вы наблюдатель.",
-      "screenTitle": "Проведение сессии"
+      "screenTitle": "Проведение сессии",
+      "overview": "Обзор листа",
+      "hideAnswered": "Скрыть отвеченное",
+      "overviewProgress": "Обработано {{completed}} из {{total}}",
+      "overviewUngrouped": "Другие критерии",
+      "overviewEmpty": "Неотвеченных критериев нет. Отключите фильтр, чтобы увидеть весь лист.",
+      "overviewNoCriteria": "В этом листе нет критериев.",
+      "returnToStep": "Вернуться к текущему шагу",
+      "unansweredCount": "Неотвеченных критериев: {{count}}",
+      "firstUnanswered": "К первому неотвеченному",
+      "answerStatus": {
+        "answered": "Отвечен",
+        "skipped": "Пропущен",
+        "unanswered": "Не отвечен"
+      },
+      "completeContextFirst": "Заполните обязательные общие сведения перед переходом к критерию."
     },
     "learner": {
       "title": "Мои обучающие сессии",

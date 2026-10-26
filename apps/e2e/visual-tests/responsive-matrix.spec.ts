@@ -282,15 +282,12 @@ function lesson(overrides: { id: string; courseId: string; title: string; order:
   };
 }
 
-function checklistItem(overrides: { id: string; checklistId: string; order: number; text: string }) {
+function checklistItem(overrides: { id: string; checklistId: string; order: number; text: string; groupId?: string | null; isRequired?: boolean }) {
   return {
-    id: overrides.id,
-    checklistId: overrides.checklistId,
-    order: overrides.order,
-    text: overrides.text,
     points: 10,
     isRequired: true,
     photoRequired: false,
+    ...overrides,
   };
 }
 
@@ -454,7 +451,7 @@ async function installChecklistSessionReportMocks(page: Page) {
   }));
 }
 
-async function installInstructorConductMocks(page: Page) {
+async function installInstructorConductMocks(page: Page, overviewFixture = false) {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
       id: 'visual-instructor',
@@ -540,9 +537,19 @@ async function installInstructorConductMocks(page: Page) {
         createdBy: 'visual-admin',
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z',
-        items: [checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' })],
+        itemGroups: overviewFixture ? [{ id: 'group-1', checklistId: 'checklist-1', title: 'Opening the workplace', order: 0 }] : [],
+        items: [
+          checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment', groupId: overviewFixture ? 'group-1' : null }),
+          ...(overviewFixture ? [
+            checklistItem({ id: 'item-2', checklistId: 'checklist-1', order: 2, text: 'Greet the first customer', groupId: 'group-1', isRequired: false }),
+            checklistItem({ id: 'item-3', checklistId: 'checklist-1', order: 3, text: 'Inspect the spare equipment', isRequired: false }),
+          ] : []),
+        ],
       },
-      results: [],
+      results: overviewFixture ? [
+        { id: 'result-2', itemId: 'item-2', checked: false, scaleLevel: null, points: 0, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null, answerState: 'answered' },
+        { id: 'result-3', itemId: 'item-3', checked: false, scaleLevel: null, points: 0, photoUrl: null, photoFileName: null, comment: null, reviewStatus: 'pending', reviewComment: null, reviewedBy: null, reviewedAt: null, answerState: 'skipped' },
+      ] : [],
     },
   }));
 }
@@ -652,7 +659,8 @@ for (const width of widths) {
     });
 
     test('keeps the instructor mobile observer conduct screen responsive', async ({ page }) => {
-      await installInstructorConductMocks(page);
+      await installInstructorConductMocks(page, true);
+      await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
       await page.goto('/instructor/checklists/sessions');
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
       await expect(page.getByText('Opening shift checklist').first()).toBeVisible();
@@ -665,6 +673,13 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `instructor-checklist-session-conduct-${width}`);
+      if (width <= 768) {
+        await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
+        await expect(page.getByRole('region', { name: 'Обзор листа', exact: true })).toContainText('Обработано 2 из 3');
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await expectVisualMatch(page, `instructor-checklist-session-overview-${width}`);
+      }
     });
 
     test('keeps the observer pre-start screen with past sessions responsive', async ({ page }) => {
