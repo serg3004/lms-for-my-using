@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -19,6 +20,7 @@ function baseScale(overrides: Partial<Record<string, unknown>> = {}) {
     organizationId,
     name: 'Service quality',
     status: 'active',
+    isDefault: false,
     createdBy: actorId,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -73,7 +75,7 @@ describe('ChecklistScaleService', () => {
       await service.list(organizationId);
 
       expect(prisma.checklistScale.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { organizationId }, orderBy: [{ status: 'asc' }, { name: 'asc' }] }),
+        expect.objectContaining({ where: { organizationId }, orderBy: [{ isDefault: 'desc' }, { status: 'asc' }, { name: 'asc' }] }),
       );
     });
 
@@ -216,6 +218,78 @@ describe('ChecklistScaleService', () => {
 
       await expect(service.copy(scaleId, organizationId, undefined, actorId)).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.checklistScale.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('default scale (PR 344)', () => {
+    it('does not create a second default scale when one exists', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => ({ id: 'default-id' })) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await expect(service.ensureDefaultScale(organizationId)).resolves.toBe('default-id');
+      expect(prisma.checklistScale.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the Yes/No default scale in the caller language on first use and audits it', async () => {
+      const prisma = createPrisma({
+        checklistScale: {
+          findFirst: jest.fn(async () => null),
+          create: jest.fn(async () => baseScale({ id: 'default-id', isDefault: true })),
+        },
+      });
+      const auditLog = fakeAuditLog();
+      const service = new ChecklistScaleService(prisma, auditLog);
+
+      await expect(service.ensureDefaultScale(organizationId, 'en')).resolves.toBe('default-id');
+
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith({ data: { organizationId, name: 'Yes/No', isDefault: true } });
+      expect(prisma.checklistScaleLevel.createMany).toHaveBeenCalledWith({
+        data: [
+          { organizationId, scaleId: 'default-id', value: 1, label: 'No', score: 0 },
+          { organizationId, scaleId: 'default-id', value: 2, label: 'Yes', score: 100 },
+        ],
+      });
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_scale.default_created', actorId: null }));
+    });
+
+    it('falls back to Russian for an unknown or missing language', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => null), create: jest.fn(async () => baseScale({ id: 'default-id' })) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await service.ensureDefaultScale(organizationId, null);
+
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith({ data: { organizationId, name: 'Да/Нет', isDefault: true } });
+    });
+
+    it('returns the winner when two first calls race on the unique index', async () => {
+      const findFirst = jest.fn<() => Promise<{ id: string } | null>>().mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'winner-id' });
+      const conflict = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' });
+      const prisma = createPrisma({ checklistScale: { findFirst, create: jest.fn(async () => { throw conflict; }) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await expect(service.ensureDefaultScale(organizationId)).resolves.toBe('winner-id');
+    });
+
+    it.each([
+      ['update', (service: ChecklistScaleService) => service.update(scaleId, organizationId, { name: 'x' }, actorId)],
+      ['archive', (service: ChecklistScaleService) => service.archive(scaleId, organizationId, actorId)],
+      ['remove', (service: ChecklistScaleService) => service.remove(scaleId, organizationId, actorId)],
+    ])('refuses to %s the default scale', async (_name, run) => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => baseScale({ isDefault: true })) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await expect(run(service)).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistScale.update).not.toHaveBeenCalled();
+      expect(prisma.checklistScale.delete).not.toHaveBeenCalled();
+    });
+
+    it('lets the default scale be copied into an ordinary, editable scale', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => baseScale({ isDefault: true })) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await service.copy(scaleId, organizationId, undefined, actorId);
+
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith({ data: { organizationId, name: 'Service quality (copy)', createdBy: actorId } });
     });
   });
 

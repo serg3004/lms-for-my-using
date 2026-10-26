@@ -419,6 +419,8 @@ export type ChecklistScaleSummary = {
   name: string;
   status: ChecklistScaleStatus;
   levels: ChecklistScaleLevelSummary[];
+  /** PR 344: the organization's protected Yes/No scale -- cannot be edited, archived or deleted (copy it instead). */
+  isDefault: boolean;
   /** PR 343: used by an assigned checklist, so its levels are frozen (archive it or make a copy). */
   inUse: boolean;
 };

@@ -22,18 +22,19 @@ import {
 type EditorState = {
   /** null while creating a new scale. */
   scaleId: string | null;
-  /** The scale is used by an assigned checklist: shown read-only, "Make a copy" is the way to change it. */
+  /** The scale is used by an assigned checklist, archived or the default one: shown read-only, "Make a copy" is the way to change it. */
   readOnly: boolean;
+  isDefault: boolean;
   name: string;
   levels: ScaleLevelDraft[];
 };
 
 function newEditor(): EditorState {
-  return { scaleId: null, readOnly: false, name: '', levels: newScaleLevelDrafts() };
+  return { scaleId: null, readOnly: false, isDefault: false, name: '', levels: newScaleLevelDrafts() };
 }
 
 function editorFor(scale: ChecklistScaleSummary): EditorState {
-  return { scaleId: scale.id, readOnly: scale.inUse || scale.status === 'archived', name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
+  return { scaleId: scale.id, readOnly: scale.isDefault || scale.inUse || scale.status === 'archived', isDefault: scale.isDefault, name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
 }
 
 function draftErrorText(error: ScaleDraftError, t: TFunction) {
@@ -167,7 +168,9 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
         </h2>
         {editor.readOnly && (
           <p className="admin-form__hint" role="note">
-            {t('admin.checklists.scaleManager.readOnlyNote', 'This scale is already used by an assigned checklist, so it cannot be changed. Make a copy and edit the copy.')}
+            {editor.isDefault
+              ? t('admin.checklists.scaleManager.defaultNote', 'This is the default scale and cannot be changed. Make a copy and edit the copy.')
+              : t('admin.checklists.scaleManager.readOnlyNote', 'This scale is already used by an assigned checklist, so it cannot be changed. Make a copy and edit the copy.')}
           </p>
         )}
         {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
@@ -276,21 +279,24 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
               <b>{scale.name}</b>
               <span className="admin-form__hint">
                 {' '}{t('admin.checklists.scaleManager.levelsCount', '{{count}} levels', { count: scale.levels.length })}
+                {scale.isDefault ? ` · 🔒 ${t('admin.checklists.scaleManager.defaultBadge', 'Default')}` : ''}
                 {scale.inUse ? ` · ${t('admin.checklists.scaleManager.usedBadge', 'In use')}` : ''}
                 {scale.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived', 'Archived')}` : ''}
               </span>
             </div>
-            <Button aria-label={`${scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}: ${scale.name}`} onClick={() => setEditor(editorFor(scale))} type="button" variant="secondary">
-              {scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}
+            <Button aria-label={`${scale.isDefault || scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}: ${scale.name}`} onClick={() => setEditor(editorFor(scale))} type="button" variant="secondary">
+              {scale.isDefault || scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}
             </Button>
-            {scale.status !== 'archived' && (
+            {!scale.isDefault && scale.status !== 'archived' && (
               <Button onClick={() => void archiveScale(scale.id)} type="button" variant="secondary">
                 {t('admin.checklists.scaleManager.archive', 'Archive')}
               </Button>
             )}
-            <Button onClick={() => setScaleToDelete(scale)} type="button" variant="secondary">
-              {t('admin.checklists.scaleManager.delete', 'Delete')}
-            </Button>
+            {!scale.isDefault && (
+              <Button onClick={() => setScaleToDelete(scale)} type="button" variant="secondary">
+                {t('admin.checklists.scaleManager.delete', 'Delete')}
+              </Button>
+            )}
           </li>
         ))}
       </ul>

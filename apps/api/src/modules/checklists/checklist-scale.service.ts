@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { defaultScaleDefinition } from './checklist-default-scale.js';
 import type { CreateChecklistScaleInput, UpdateChecklistScaleInput } from './checklists.schemas.js';
 
 const scaleSelect = {
@@ -9,6 +11,7 @@ const scaleSelect = {
   organizationId: true,
   name: true,
   status: true,
+  isDefault: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -31,10 +34,46 @@ export class ChecklistScaleService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
-  async list(organizationId: string) {
+  /**
+   * PR 344: the organization's protected "Yes/No" scale, created on first use (idempotent). Two
+   * concurrent first calls race on the partial unique index; the loser re-reads the winner's row.
+   */
+  async ensureDefaultScale(organizationId: string, locale?: string | null) {
+    const existing = await this.prisma.checklistScale.findFirst({ where: { organizationId, isDefault: true }, select: { id: true } });
+    if (existing) return existing.id;
+
+    const definition = defaultScaleDefinition(locale);
+    try {
+      const created = await this.prisma.$transaction(async (tx) => {
+        const scale = await tx.checklistScale.create({ data: { organizationId, name: definition.name, isDefault: true } });
+        await tx.checklistScaleLevel.createMany({
+          data: definition.levels.map((level) => ({ organizationId, scaleId: scale.id, ...level })),
+        });
+        return scale;
+      });
+      await this.auditLog.record({
+        organizationId,
+        actorId: null,
+        action: 'checklist_scale.default_created',
+        targetType: 'checklist_scale',
+        targetId: created.id,
+        summary: 'Created the default Yes/No evaluation scale',
+      });
+      return created.id;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const winner = await this.prisma.checklistScale.findFirst({ where: { organizationId, isDefault: true }, select: { id: true } });
+        if (winner) return winner.id;
+      }
+      throw error;
+    }
+  }
+
+  async list(organizationId: string, locale?: string | null) {
+    await this.ensureDefaultScale(organizationId, locale);
     const scales = await this.prisma.checklistScale.findMany({
       where: { organizationId },
-      orderBy: [{ status: 'asc' }, { name: 'asc' }],
+      orderBy: [{ isDefault: 'desc' }, { status: 'asc' }, { name: 'asc' }],
       select: scaleSelect,
     });
     const usedIds = await this.findUsedScaleIds(
@@ -87,9 +126,10 @@ export class ChecklistScaleService {
   async update(scaleId: string, organizationId: string, input: UpdateChecklistScaleInput, actorId: string) {
     const scale = await this.prisma.checklistScale.findFirst({
       where: { id: scaleId, organizationId },
-      select: { id: true, name: true, status: true },
+      select: { id: true, name: true, status: true, isDefault: true },
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
+    this.assertNotDefault(scale);
     if (scale.status === 'archived') {
       throw new BadRequestException('Cannot modify an archived evaluation scale');
     }
@@ -171,9 +211,10 @@ export class ChecklistScaleService {
   async archive(scaleId: string, organizationId: string, actorId: string) {
     const scale = await this.prisma.checklistScale.findFirst({
       where: { id: scaleId, organizationId },
-      select: { id: true, name: true, status: true },
+      select: { id: true, name: true, status: true, isDefault: true },
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
+    this.assertNotDefault(scale);
 
     if (scale.status !== 'archived') {
       await this.prisma.checklistScale.update({ where: { id: scaleId, organizationId }, data: { status: 'archived' } });
@@ -200,9 +241,10 @@ export class ChecklistScaleService {
   async remove(scaleId: string, organizationId: string, actorId: string) {
     const scale = await this.prisma.checklistScale.findFirst({
       where: { id: scaleId, organizationId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, isDefault: true },
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
+    this.assertNotDefault(scale);
 
     const item = await this.prisma.checklistItem.findFirst({
       where: { organizationId, scaleId },
@@ -235,6 +277,13 @@ export class ChecklistScaleService {
    * err in (a false "used" only costs the caller an archive+recreate, never risks corrupting a
    * snapshot already taken).
    */
+  /** PR 344: the default scale is read-only for everyone; "Make a copy" is the way to customise it. */
+  private assertNotDefault(scale: { isDefault: boolean }) {
+    if (scale.isDefault) {
+      throw new BadRequestException('The default evaluation scale cannot be changed, archived or deleted -- make a copy instead');
+    }
+  }
+
   /** Same "used" definition as `assertNotUsed`, answered for many scales in one query. */
   private async findUsedScaleIds(organizationId: string, scaleIds: string[]) {
     if (scaleIds.length === 0) return new Set<string>();

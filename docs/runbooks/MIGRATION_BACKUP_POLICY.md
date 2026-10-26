@@ -331,6 +331,18 @@ Migration `20261025120000_add_checklist_session_delete_and_message` также a
 
 ---
 
+### Checklist default scale migration
+
+Migration `20261026120000_add_checklist_scale_default` также additive и backward-compatible (PR 344, шкала по умолчанию «Да/Нет»):
+
+- добавляет колонку `checklist_scales.is_default BOOLEAN NOT NULL DEFAULT false`; существующие строки получают `false`, backfill не нужен;
+- добавляет частичный уникальный индекс `checklist_scales_one_default_per_organization` по `organization_id` с условием `is_default = TRUE` (не более одной шкалы по умолчанию на организацию; Prisma такие индексы не выражает, поэтому индекс описан в SQL и в комментарии `schema.prisma`);
+- саму шкалу по умолчанию создаёт приложение лениво при первом открытии списка шкал организации, миграция данные не вставляет;
+- старая версия приложения колонку не читает и не пишет, поэтому overlap выката безопасен;
+- откат: удалить индекс и колонку; созданные приложением шкалы остаются обычными шкалами.
+
+---
+
 ### Checklist recalculation formula migration
 
 Migration `20261025090000_add_checklist_score_formula` (PR 335) is additive. Existing score
