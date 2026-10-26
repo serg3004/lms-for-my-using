@@ -1241,7 +1241,9 @@
         "errorMaxLevels": "量表最多可有 {{count}} 个等级。",
         "errorLabel": "每个等级都需要名称。",
         "errorScore": "分数必须是 0 到 1000 的整数。",
-        "createOption": "创建量表"
+        "createOption": "创建量表",
+        "defaultBadge": "默认",
+        "defaultNote": "这是默认量表，无法修改。请创建副本并编辑副本。"
       },
       "report": {
         "eyebrow": "会话报告",

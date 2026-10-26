@@ -370,6 +370,14 @@ checklist title, case-insensitive) query filters, alongside the existing `status
 
 ## Checklist evaluation scales (PR 293)
 
+PR 343/344 additions: `POST /checklist-scales/:id/copy` (optional `{ name }`, default `<name> (copy)`) creates
+an independent, active, non-default scale with the same levels -- the way to change a scale that is in use or
+the default one. Responses carry `inUse` (see the "used" rule below) and `isDefault`. Every organization has at
+most one protected default "Yes/No" scale (two levels, 0 and 100 points, text in the language of the user who
+first opened the library): `GET /checklist-scales` creates it idempotently, lists it first, and `PATCH`,
+`archive` and `DELETE` on it answer 400. Note: the per-criterion scale is presentation data only -- the server
+scores a criterion from `scoringMode` and the checklist-level `scaleLevels`, never from `ChecklistItem.scaleId`.
+
 Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH/DELETE
 /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) -- coexists with, and never touches,
 the pre-existing per-checklist `scoringMode='scale'` + `Checklist.scaleLevels` JSON mechanism.

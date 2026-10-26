@@ -29,6 +29,7 @@ const scale = (overrides: Record<string, unknown> = {}) => ({
   name: 'Quality',
   status: 'active',
   inUse: false,
+  isDefault: false,
   levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 100 }],
   ...overrides,
 });
@@ -136,6 +137,28 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
 
     expect(api.copyChecklistScale).toHaveBeenCalledWith('s1', 'Quality (копия)');
     expect(api.updateChecklistScale).not.toHaveBeenCalled();
+    expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(false);
+  });
+});
+
+describe('ScaleManagerDialog default scale (PR 344)', () => {
+  it('shows the default scale locked, view-only, without archive or delete, and lets it be copied', async () => {
+    api.listChecklistScales.mockResolvedValue([scale({ id: 'd1', name: 'Да/Нет', isDefault: true })]);
+    api.copyChecklistScale.mockResolvedValue(scale({ id: 's2', name: 'Да/Нет (копия)' }));
+    const { container } = await mount();
+
+    expect(container.textContent).toContain('🔒');
+    expect(container.textContent).toContain('По умолчанию');
+    const rowButtons = [...container.querySelectorAll<HTMLButtonElement>('li button')].map((b) => b.textContent);
+    expect(rowButtons).toEqual(['Просмотр']);
+
+    await act(async () => { byText(container, 'Просмотр')?.click(); });
+    expect(container.textContent).toContain('шкала по умолчанию');
+    expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(true);
+    expect(byText(container, 'Сохранить')).toBeUndefined();
+
+    await act(async () => { byText(container, 'Сделать копию')?.click(); });
+    expect(api.copyChecklistScale).toHaveBeenCalledWith('d1', 'Да/Нет (копия)');
     expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(false);
   });
 });

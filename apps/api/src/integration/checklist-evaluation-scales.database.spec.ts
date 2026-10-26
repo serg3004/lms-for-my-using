@@ -142,6 +142,28 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     expect(original.levels.map((level) => level.label)).toEqual(['Poor', 'Good']);
   });
 
+  it('PR 344: the default Yes/No scale is created once per organization and cannot be changed, archived or deleted', async () => {
+    // Concurrent first calls must still leave exactly one default scale.
+    const ids = await Promise.all([1, 2, 3].map(() => scaleService.ensureDefaultScale(organizationId, 'en')));
+    expect(new Set(ids).size).toBe(1);
+    expect(await prisma.checklistScale.count({ where: { organizationId, isDefault: true } })).toBe(1);
+
+    const listed = await scaleService.list(organizationId, 'en');
+    expect(listed[0]).toMatchObject({ id: ids[0], name: 'Yes/No', isDefault: true, status: 'active' });
+    expect(listed[0]?.levels.map((level) => [level.value, level.label, level.score])).toEqual([[1, 'No', 0], [2, 'Yes', 100]]);
+    expect(await prisma.checklistScale.count({ where: { organizationId, isDefault: true } })).toBe(1);
+
+    await expect(scaleService.update(ids[0]!, organizationId, { name: 'Renamed' }, learnerId)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(scaleService.archive(ids[0]!, organizationId, learnerId)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(scaleService.remove(ids[0]!, organizationId, learnerId)).rejects.toBeInstanceOf(BadRequestException);
+
+    // A copy is an ordinary scale: not default, editable.
+    const copy = await scaleService.copy(ids[0]!, organizationId, 'Yes/No (copy)', learnerId);
+    expect(copy.isDefault).toBe(false);
+    await expect(scaleService.update(copy.id, organizationId, { name: 'My Yes/No' }, learnerId)).resolves.toMatchObject({ name: 'My Yes/No' });
+    expect(await prisma.checklistScale.count({ where: { organizationId, isDefault: true } })).toBe(1);
+  });
+
   it('a criterion resolves the scale through the assignment-time snapshot, immune to a later scale edit/archive', async () => {
     const scale = await scaleService.create(
       organizationId,

@@ -223,7 +223,8 @@ export class ChecklistsController {
   @Get('checklist-scales')
   @Roles(...rolePolicies.checklistsRead)
   listScales(@Req() request: AuthenticatedRequest) {
-    return this.scales.list(request.currentUser!.organizationId);
+    const user = request.currentUser!;
+    return this.scales.list(user.organizationId, user.locale);
   }
   @Get('checklist-scales/:id')
   @Roles(...rolePolicies.checklistsRead)

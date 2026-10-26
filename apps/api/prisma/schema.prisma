@@ -1475,6 +1475,10 @@ model ChecklistScale {
   organizationId String                @map("organization_id") @db.Uuid
   name           String
   status         ChecklistScaleStatus  @default(active)
+  /// PR 344: the organization's protected "Yes/No" scale -- cannot be edited, archived or deleted.
+  /// At most one per organization, enforced by a partial unique index added via raw SQL in this
+  /// column's migration (Prisma's schema DSL has no WHERE-clause index syntax).
+  isDefault      Boolean               @default(false) @map("is_default")
   createdBy      String?               @map("created_by") @db.Uuid
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz

@@ -1241,7 +1241,9 @@
         "errorMaxLevels": "A scale can have at most {{count}} levels.",
         "errorLabel": "Every level needs a name.",
         "errorScore": "Points must be a whole number from 0 to 1000.",
-        "createOption": "Create scale"
+        "createOption": "Create scale",
+        "defaultBadge": "Default",
+        "defaultNote": "This is the default scale and cannot be changed. Make a copy and edit the copy."
       },
       "report": {
         "eyebrow": "Session report",
