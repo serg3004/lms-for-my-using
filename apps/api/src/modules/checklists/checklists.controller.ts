@@ -25,6 +25,7 @@ import {
   checklistSessionParticipantsQuerySchema,
   createChecklistItemGroupSchema,
   createChecklistItemSchema,
+  copyChecklistScaleSchema,
   createChecklistScaleSchema,
   createChecklistSchema,
   createChecklistSessionSchema,
@@ -242,6 +243,13 @@ export class ChecklistsController {
     const input = updateChecklistScaleSchema.parse(body);
     const user = request.currentUser!;
     return this.scales.update(scaleId, user.organizationId, input, user.id);
+  }
+  @Post('checklist-scales/:id/copy')
+  @Roles(...rolePolicies.checklistsCreate)
+  copyScale(@Param('id') scaleId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = copyChecklistScaleSchema.parse(body ?? {});
+    const user = request.currentUser!;
+    return this.scales.copy(scaleId, user.organizationId, input.name, user.id);
   }
   @Post('checklist-scales/:id/archive')
   @Roles(...rolePolicies.checklistsCreate)

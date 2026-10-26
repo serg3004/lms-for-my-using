@@ -139,6 +139,13 @@ export function deleteChecklistScale(scaleId: string) {
   return apiRequest<void>(`/checklist-scales/${encodeURIComponent(scaleId)}`, { method: 'DELETE' });
 }
 
+export function copyChecklistScale(scaleId: string, name?: string) {
+  return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}/copy`, {
+    method: 'POST',
+    body: JSON.stringify(name ? { name } : {}),
+  });
+}
+
 export function archiveChecklistScale(scaleId: string) {
   return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}/archive`, { method: 'POST' });
 }

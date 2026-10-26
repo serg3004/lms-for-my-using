@@ -34,7 +34,7 @@ function createPrisma(overrides: {
   checklistScale?: Partial<Record<'findFirst' | 'findMany' | 'create' | 'update' | 'delete', jest.Mock>>;
   checklistScaleLevel?: Partial<Record<'createMany' | 'deleteMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
-  checklistItem?: Partial<Record<'findFirst', jest.Mock>>;
+  checklistItem?: Partial<Record<'findFirst' | 'findMany', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     checklistScale: {
@@ -56,6 +56,7 @@ function createPrisma(overrides: {
     },
     checklistItem: {
       findFirst: jest.fn(async () => null),
+      findMany: jest.fn(async () => []),
       ...overrides.checklistItem,
     },
   };
@@ -74,6 +75,25 @@ describe('ChecklistScaleService', () => {
       expect(prisma.checklistScale.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { organizationId }, orderBy: [{ status: 'asc' }, { name: 'asc' }] }),
       );
+    });
+
+    it('flags a scale used by an assigned checklist as inUse, in one query for the whole list', async () => {
+      const prisma = createPrisma({
+        checklistScale: { findMany: jest.fn(async () => [baseScale(), baseScale({ id: 'scale-2', name: 'Other' })]) },
+        checklistItem: { findMany: jest.fn(async () => [{ scaleId: scaleId }]) },
+      });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      const result = await service.list(organizationId);
+
+      expect(result.map((scale) => scale.inUse)).toEqual([true, false]);
+      expect(prisma.checklistItem.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports inUse=false for an unused scale on get', async () => {
+      const service = new ChecklistScaleService(createPrisma(), fakeAuditLog());
+
+      await expect(service.get(scaleId, organizationId)).resolves.toMatchObject({ id: scaleId, inUse: false });
     });
 
     it('throws 404 for a scale outside the caller organization', async () => {
@@ -152,6 +172,50 @@ describe('ChecklistScaleService', () => {
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
       await expect(service.update(scaleId, organizationId, { name: 'Renamed' }, actorId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('copy', () => {
+    it('copies name and levels into a new scale and audits it', async () => {
+      const prisma = createPrisma({
+        checklistScale: {
+          create: jest.fn(async () => baseScale({ id: 'copy-id', name: 'Service quality (copy)' })),
+        },
+      });
+      const auditLog = fakeAuditLog();
+      const service = new ChecklistScaleService(prisma, auditLog);
+
+      await service.copy(scaleId, organizationId, undefined, actorId);
+
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith({
+        data: { organizationId, name: 'Service quality (copy)', createdBy: actorId },
+      });
+      expect(prisma.checklistScaleLevel.createMany).toHaveBeenCalledWith({
+        data: [
+          { organizationId, scaleId: 'copy-id', value: 1, label: 'Poor', score: 0 },
+          { organizationId, scaleId: 'copy-id', value: 2, label: 'Good', score: 10 },
+        ],
+      });
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_scale.copied', targetId: 'copy-id' }));
+    });
+
+    it('uses the supplied (localized) name, capped at 120 characters', async () => {
+      const prisma = createPrisma();
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await service.copy(scaleId, organizationId, 'x'.repeat(130), actorId);
+
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith({
+        data: { organizationId, name: 'x'.repeat(120), createdBy: actorId },
+      });
+    });
+
+    it('throws 404 for a scale outside the caller organization', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => null) } });
+      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+
+      await expect(service.copy(scaleId, organizationId, undefined, actorId)).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.checklistScale.create).not.toHaveBeenCalled();
     });
   });
 

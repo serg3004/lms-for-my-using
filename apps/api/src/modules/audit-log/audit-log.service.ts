@@ -42,6 +42,7 @@ export type AuditLogAction =
   | 'checklist_scale.updated'
   | 'checklist_scale.archived'
   | 'checklist_scale.deleted'
+  | 'checklist_scale.copied'
   | 'checklist_score_revision.created'
   | 'certificate.issued'
   // PR 304: privacy audit trail for sensitive checklist-session data. `checklist_location.accessed`

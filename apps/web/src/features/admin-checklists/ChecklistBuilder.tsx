@@ -40,6 +40,7 @@ import {
   buildChecklistSettingsPayload,
   computePreviewResult,
   createDefaultScale,
+  describeScaleLevels,
   groupItems,
   moveGroup,
   moveItem,
@@ -51,6 +52,9 @@ import {
   type SaveState,
   applyScaleLevelPatch,
 } from './domain.js';
+
+/** Pseudo-option of the criterion scale dropdown that opens the scale editor instead of picking a scale. */
+const CREATE_SCALE_OPTION = '__create_scale__';
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = { draft: 'draft', published: 'published', archived: 'neutral' };
 
@@ -97,6 +101,8 @@ export function ChecklistBuilder({
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
   const [scaleManagerOpen, setScaleManagerOpen] = useState(false);
+  // PR 343: the criterion whose scale dropdown asked to "Create scale" -- the new scale is assigned to it once saved.
+  const [scaleCreateForItemId, setScaleCreateForItemId] = useState<string | null>(null);
   const [defaultLocationCapturePolicy, setDefaultLocationCapturePolicy] = useState<ChecklistGeolocationPolicy | ''>(checklist.defaultLocationCapturePolicy ?? '');
   const [preSessionVisibility, setPreSessionVisibility] = useState<ChecklistPreSessionVisibility>(checklist.preSessionVisibility ?? 'structure_only');
   useEffect(() => {
@@ -397,9 +403,17 @@ export function ChecklistBuilder({
                         <select
                           className="admin-criteria-row__scale"
                           value={item.scaleId ?? ''}
-                          onChange={(e) => void persistItem(item.id, { scaleId: e.target.value || null })}
+                          onChange={(e) => {
+                            if (e.target.value === CREATE_SCALE_OPTION) {
+                              setScaleCreateForItemId(item.id);
+                              return;
+                            }
+                            void persistItem(item.id, { scaleId: e.target.value || null });
+                          }}
+                          title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
                           aria-label={t('admin.checklists.field.scale', 'Scale')}
                         >
+                          <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
                           <option value="">{t('admin.checklists.noScale', 'No scale')}</option>
                           {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
                             <option key={s.id} value={s.id}>{s.name}</option>
@@ -677,6 +691,18 @@ export function ChecklistBuilder({
         </ChecklistPreviewDialog>
       )}
       <ScaleManagerDialog onChanged={() => void reloadScales()} onClose={() => setScaleManagerOpen(false)} open={scaleManagerOpen} t={t} />
+      <ScaleManagerDialog
+        onChanged={() => void reloadScales()}
+        onClose={() => setScaleCreateForItemId(null)}
+        onSaved={(scale) => {
+          const itemId = scaleCreateForItemId;
+          setScaleCreateForItemId(null);
+          if (itemId) void persistItem(itemId, { scaleId: scale.id });
+        }}
+        open={scaleCreateForItemId !== null}
+        startCreating
+        t={t}
+      />
     </div>
   );
 }

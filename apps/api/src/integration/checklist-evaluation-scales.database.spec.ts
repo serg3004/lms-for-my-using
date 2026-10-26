@@ -108,6 +108,40 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     void item; // referenced only to establish the scale-in-use precondition above
   });
 
+  it('PR 343: an in-use scale reports inUse and is changed through an independent, editable copy', async () => {
+    const scale = await scaleService.create(
+      organizationId,
+      { name: 'Quality', levels: [{ value: 1, label: 'Poor', score: 0 }, { value: 2, label: 'Good', score: 100 }] },
+      learnerId,
+    );
+    expect(scale.inUse).toBe(false);
+
+    await prisma.checklistItem.create({
+      data: { organizationId, checklistId, order: 0, text: 'Greets the customer', points: 10, isRequired: true, scaleId: scale.id },
+    });
+    await prisma.checklist.update({ where: { id: checklistId }, data: { status: 'published' } });
+    await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+
+    const listed = await scaleService.list(organizationId);
+    expect(listed.find((entry) => entry.id === scale.id)?.inUse).toBe(true);
+
+    const copy = await scaleService.copy(scale.id, organizationId, 'Quality (copy)', learnerId);
+    expect(copy.id).not.toBe(scale.id);
+    expect(copy).toMatchObject({ name: 'Quality (copy)', status: 'active', inUse: false });
+    expect(copy.levels.map((level) => [level.value, level.label, level.score])).toEqual([[1, 'Poor', 0], [2, 'Good', 100]]);
+
+    // The copy is freely editable; the original and its levels stay exactly as assigned.
+    const edited = await scaleService.update(
+      copy.id,
+      organizationId,
+      { levels: [{ value: 1, label: 'Bad', score: 0 }, { value: 2, label: 'OK', score: 50 }, { value: 3, label: 'Great', score: 100 }] },
+      learnerId,
+    );
+    expect(edited.levels).toHaveLength(3);
+    const original = await scaleService.get(scale.id, organizationId);
+    expect(original.levels.map((level) => level.label)).toEqual(['Poor', 'Good']);
+  });
+
   it('a criterion resolves the scale through the assignment-time snapshot, immune to a later scale edit/archive', async () => {
     const scale = await scaleService.create(
       organizationId,
