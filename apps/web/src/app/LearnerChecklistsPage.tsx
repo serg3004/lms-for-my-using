@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
+import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
 import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
@@ -157,8 +158,10 @@ function ChecklistTaking({
     }
   }
   async function uploadPhoto(item: ChecklistItemSummary, file: File) {
-    setSubmitting(item.id);
     setError(null);
+    const invalid = validateChecklistPhoto(file);
+    if (invalid) { setError(checklistPhotoErrorMessage(invalid, t)); return; }
+    setSubmitting(item.id);
     try {
       await uploadChecklistItemPhoto(instance.id, item.id, file);
       await onUpdated();
@@ -341,7 +344,7 @@ function PhotoAttachment({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept={CHECKLIST_PHOTO_ACCEPT}
         {...(cameraOnly ? { capture: 'environment' as const } : {})}
         onChange={handleChange}
         disabled={!canAct}
@@ -397,6 +400,7 @@ function PhotoAttachment({
             {result
               ? t('checklists.photoHint', 'Photo required — tap to attach')
               : t('checklists.photoHintUnanswered', 'Mark this item first, then attach a photo')}
+            {result && <span style={{ display: 'block', fontSize: 11.5 }}>{checklistPhotoHint(cameraOnly, t)}</span>}
           </span>
         </div>
       )}

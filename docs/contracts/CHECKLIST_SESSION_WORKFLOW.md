@@ -123,6 +123,21 @@ criteria will be recorded as skipped. The existing required-progress calculation
 no scoring, RBAC or server-validation changes. The existing assignment API carries the frozen
 group metadata described in `API_CONTRACTS.md`.
 
+### Photo attachment limits (PR 348)
+
+Before a photo is sent, the conduct screen and the learner checklist page check it on the client:
+JPEG, PNG, GIF or WEBP only, not empty and not larger than the server limit (8 MB,
+`MAX_BUFFERED_UPLOAD_SIZE_BYTES`). A file that fails the check is never sent; the user sees the
+reason ("The file is larger than 8 MB", "Only JPEG, PNG, GIF and WEBP photos can be attached",
+"The file is empty") in the existing error area. A hint with the limit sits next to the attach
+button (linked with `aria-describedby`). When the checklist forbids gallery photos, the hint adds
+that the photo can only be taken with the camera and that this is an interface restriction
+(`capture`), not a server check: the server does not know whether a file came from the camera.
+
+The server validation is unchanged and stays authoritative. The web app cannot import API source,
+so `checklist-photo-limits.parity.spec.ts` in the API fails if the client limit or the list of
+accepted image types ever differs from the server's.
+
 ## Learner / employee (`/learn/checklists`)
 
 Three client-side status tabs over the learner's own sessions (`ChecklistInstance.userId ===

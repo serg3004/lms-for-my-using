@@ -2380,7 +2380,12 @@
     "requiredItem": "Required",
     "optionalItem": "Optional",
     "expiredReason": "This checklist expired at its deadline and can no longer be changed.",
-    "requiredProgress": "{{completed}} / {{total}} required"
+    "requiredProgress": "{{completed}} / {{total}} required",
+    "photoLimitHint": "Photo: JPEG, PNG, GIF or WEBP, up to {{max}} MB.",
+    "photoCameraOnlyHint": "The photo can only be taken with the camera. This is an interface restriction, not a server check.",
+    "photoTooLarge": "The file is larger than {{max}} MB. Choose a smaller photo.",
+    "photoEmpty": "The file is empty. Choose another photo.",
+    "photoUnsupportedType": "Only JPEG, PNG, GIF and WEBP photos can be attached."
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",
