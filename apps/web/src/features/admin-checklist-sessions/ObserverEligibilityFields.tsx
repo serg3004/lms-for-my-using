@@ -1,10 +1,14 @@
 import { useEffect, useId, useState } from 'react';
-import { USER_ROLES } from '@lms/shared/constants/roles';
 import type { TFunction } from 'i18next';
 
 import { listUsers } from '../../shared/api/users.js';
-import type { ChecklistWorkplaceSettingsView, UserSummary } from '../../shared/api/types.js';
+import type { ChecklistWorkplaceSettingsView, UserRole, UserSummary } from '../../shared/api/types.js';
 import { Button, Input, Select } from '../../shared/ui.js';
+
+// UI options only; runtime eligibility and role validation remain on the server.
+const roleOptions = {
+  learner: 'learner', instructor: 'instructor', mentor: 'mentor', manager: 'manager', admin: 'admin',
+} satisfies { [Role in UserRole]: Role };
 
 type Props = {
   settings: ChecklistWorkplaceSettingsView;
@@ -68,7 +72,7 @@ export function ObserverEligibilityFields({ settings, onChange, t }: Props) {
         <fieldset style={{ minWidth: 0 }}>
           <legend>{t('admin.checklists.settings.observers.roles')}</legend>
           <ul className="ds-wizard-dialog__picklist">
-          {USER_ROLES.map((role) => (
+          {Object.values(roleOptions).map((role) => (
             <li key={role}><label>
               <input type="checkbox" checked={settings.observerRoles.includes(role)} onChange={() => onChange({
                 observerRoles: settings.observerRoles.includes(role) ? settings.observerRoles.filter((value) => value !== role) : [...settings.observerRoles, role],

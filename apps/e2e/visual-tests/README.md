@@ -89,3 +89,8 @@ Once baselines are regenerated via the workflow above (which uses CI's own
 Chromium build, eliminating the version-drift noise), this budget can very likely
 be tightened back down closer to the pixel counts a real single-element
 regression would produce.
+
+When baseline regeneration fails, the workflow publishes the tail of the test output as a check
+annotation and job summary, in addition to the existing failure artifacts. This keeps the actual
+failure available through the GitHub checks API when downloading workflow logs is unavailable.
+The test exit status and baseline commit gate remain unchanged.

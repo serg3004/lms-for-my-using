@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { userRoleSchema } from '@lms/shared/constants/roles';
+import { UserRole } from '@prisma/client';
 
 export const checklistStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale']);
@@ -237,7 +237,7 @@ export const updateChecklistWorkplaceSettingsSchema = z
     defaultGeolocationPolicy: checklistGeolocationPolicySchema,
     feedbackVisibility: checklistFeedbackVisibilitySchema,
     observerEligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
-    observerRoles: z.array(userRoleSchema).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
+    observerRoles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
     observerUserIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
   })
   .partial()
