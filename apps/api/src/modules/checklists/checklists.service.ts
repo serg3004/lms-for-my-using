@@ -89,12 +89,16 @@ const checklistSelect = {
   updatedAt: true,
 } as const;
 
-const checklistWithItemsSelect = {
+const checklistWithGroupsSelect = {
   ...checklistSelect,
   itemGroups: {
     orderBy: { order: 'asc' as const },
     select: { id: true, checklistId: true, title: true, order: true },
   },
+} as const;
+
+const checklistWithItemsSelect = {
+  ...checklistWithGroupsSelect,
   items: {
     where: { deletedAt: null },
     orderBy: { order: 'asc' as const },
@@ -181,6 +185,7 @@ type ChecklistSnapshotItemScale = {
   name: string;
   levels: Array<{ value: number; label: string; score: number }>;
 };
+type ChecklistSnapshotItemGroup = { id: string; checklistId: string; title: string; order: number };
 type ChecklistSnapshotItem = {
   id: string;
   checklistId: string;
@@ -200,6 +205,7 @@ type ChecklistSnapshotItem = {
   // ChecklistScale table, or an edited/archived scale would silently change a historical instance.
   scaleId?: string | null;
   scale?: ChecklistSnapshotItemScale | null;
+  groupId?: string | null;
 };
 type ChecklistRuntime = {
   id: string;
@@ -220,6 +226,7 @@ type ChecklistRuntime = {
   // PR 330 -- optional for the same reason: older snapshots never had them and read as false.
   allowFinishIncomplete?: boolean;
   forbidGalleryPhotos?: boolean;
+  itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
 };
 type ChecklistTemplateSnapshot = {
@@ -726,7 +733,7 @@ export class ChecklistsService {
   ) {
     const checklist = await db.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: checklistSelect,
+      select: checklistWithGroupsSelect,
     });
 
     if (!checklist) {
@@ -770,6 +777,7 @@ export class ChecklistsService {
         allowSkip: true,
         autoSkipUnanswered: true,
         scaleId: true,
+        groupId: true,
       },
     });
     const itemsWithScale = await this.attachItemScales(db, organizationId, items);
@@ -832,7 +840,7 @@ export class ChecklistsService {
   ) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: checklistSelect,
+      select: checklistWithGroupsSelect,
     });
     if (!checklist) throw new NotFoundException('Checklist not found');
     if (checklist.status !== 'published') {
@@ -891,7 +899,7 @@ export class ChecklistsService {
 
     const items = await this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null }, orderBy: { order: 'asc' },
-      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true },
+      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true, groupId: true },
     });
     const itemsWithScale = await this.attachItemScales(this.prisma, organizationId, items);
     const runtimeChecklist = this.toRuntimeChecklist(checklist, itemsWithScale);
@@ -1698,6 +1706,7 @@ export class ChecklistsService {
       preSessionVisibility?: string;
       allowFinishIncomplete?: boolean;
       forbidGalleryPhotos?: boolean;
+      itemGroups?: ChecklistSnapshotItemGroup[];
     },
     items: ChecklistSnapshotItem[],
   ): ChecklistRuntime {
@@ -1716,6 +1725,7 @@ export class ChecklistsService {
       preSessionVisibility: checklist.preSessionVisibility,
       allowFinishIncomplete: checklist.allowFinishIncomplete,
       forbidGalleryPhotos: checklist.forbidGalleryPhotos,
+      itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
   }
@@ -1725,6 +1735,7 @@ export class ChecklistsService {
       version: CHECKLIST_SNAPSHOT_VERSION,
       checklist: {
         ...checklist,
+        itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
         scaleLevels: checklist.scaleLevels?.map((level) => ({ ...level })) ?? null,
         items: checklist.items.map((item) => ({
           ...item,
@@ -1801,22 +1812,7 @@ export class ChecklistsService {
     const [checklist, items] = await Promise.all([
       this.prisma.checklist.findFirstOrThrow({
         where: { id: instance.checklistId, organizationId },
-        select: {
-          id: true,
-          organizationId: true,
-          title: true,
-          description: true,
-          status: true,
-          scoringMode: true,
-          passThreshold: true,
-          scaleLevels: true,
-          requiresReview: true,
-          contextFields: true,
-          defaultLocationCapturePolicy: true,
-          preSessionVisibility: true,
-          allowFinishIncomplete: true,
-          forbidGalleryPhotos: true,
-        },
+        select: checklistWithGroupsSelect,
       }),
       this.prisma.checklistItem.findMany({
         where: { checklistId: instance.checklistId, deletedAt: null },
@@ -1833,6 +1829,7 @@ export class ChecklistsService {
           allowSkip: true,
           autoSkipUnanswered: true,
           scaleId: true,
+          groupId: true,
         },
       }),
     ]);
@@ -1850,6 +1847,8 @@ export class ChecklistsService {
       ? {
           ...instance.checklist,
           ...snapshot.checklist,
+          // A historical snapshot without groups must not borrow today's live group names.
+          itemGroups: snapshot.checklist.itemGroups ?? [],
           allowFinishIncomplete: snapshot.checklist.allowFinishIncomplete ?? false,
           forbidGalleryPhotos: snapshot.checklist.forbidGalleryPhotos ?? false,
         }

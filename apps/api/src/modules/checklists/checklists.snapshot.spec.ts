@@ -142,6 +142,38 @@ describe('ChecklistsService immutable assignment snapshots', () => {
     });
   });
 
+  it('freezes group names/order and item membership for new assignments (PR 347)', async () => {
+    const group = { id: 'group-original', checklistId, title: 'Original group', order: 2 };
+    const createInstance = jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...instanceRecord(), maxScore: data.maxScore }));
+    const prisma = {
+      checklist: { findFirst: jest.fn(async () => ({ ...liveChecklistWithItems, itemGroups: [group] })) },
+      checklistItem: { findMany: jest.fn(async () => [{ ...assignedItem, groupId: group.id }]) },
+      user: { findFirst: jest.fn(async () => ({ id: userId })) },
+      checklistInstance: { findFirst: jest.fn(async () => null), create: createInstance },
+      checklistInstanceEvent: { create: jest.fn(async () => ({ id: 'event-id' })) },
+    };
+    Object.assign(prisma, { $transaction: async (operation: (transaction: typeof prisma) => unknown) => operation(prisma) });
+    await createService(prisma).assignChecklist(checklistId, organizationId, { userId }, assignerId);
+    group.title = 'Later renamed'; group.order = 9;
+    expect(createInstance.mock.calls[0]?.[0].data.templateSnapshot).toMatchObject({ checklist: {
+      itemGroups: [{ id: group.id, title: 'Original group', order: 2 }], items: [{ id: itemId, groupId: group.id }],
+    } });
+    expect(prisma.checklistItem.findMany).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ groupId: true }) }));
+  });
+
+  it('reads frozen groups and does not fill missing historical groups from the live checklist (PR 347)', async () => {
+    const frozen = { id: 'frozen-group', checklistId, title: 'Frozen', order: 0 };
+    const prisma = { checklistInstance: { findFirst: jest.fn(async () => instanceRecord({
+      templateSnapshot: { ...snapshot, checklist: { ...snapshot.checklist, itemGroups: [frozen], items: [{ ...assignedItem, groupId: frozen.id }] } }, snapshotVersion: 1,
+      checklist: { ...liveChecklistWithItems, itemGroups: [{ ...frozen, title: 'Live renamed', order: 9 }] },
+    })) } };
+    const service = createService(prisma);
+    expect((await service.getInstance(instanceId, organizationId)).checklist).toMatchObject({ itemGroups: [frozen], items: [{ groupId: frozen.id }] });
+    prisma.checklistInstance.findFirst.mockResolvedValueOnce(instanceRecord({ templateSnapshot: snapshot, snapshotVersion: 1, checklist: { ...liveChecklistWithItems, itemGroups: [frozen] } }));
+    expect((await service.getInstance(instanceId, organizationId)).checklist.itemGroups).toEqual([]);
+    expect(snapshot.checklist).not.toHaveProperty('itemGroups');
+  });
+
   it('keeps a null snapshot compatible with the live-template legacy fallback', async () => {
     const prisma = {
       checklistInstance: {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
@@ -23,6 +23,8 @@ import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatu
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
+import { ChecklistConductOverview } from './ChecklistConductOverview.js';
+import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 const COLORS = {
@@ -35,6 +37,8 @@ const COLORS = {
   success: 'var(--color-success)',
   successSoft: 'var(--color-success-bg)',
 };
+
+type FeedbackDraft = { strengths: string; developmentAreas: string; nextSteps: string };
 
 type ConductData = { session: ChecklistSessionSummary; instance: ChecklistInstanceSummary };
 
@@ -214,6 +218,19 @@ export function ConductScreen({
   const { session, instance } = data;
   const checklist = instance.checklist;
   const [stepIndex, setStepIndex] = useState(0);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [hideAnswered, setHideAnswered] = useState(false);
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [feedbackDraft, setFeedbackDraft] = useState<FeedbackDraft>({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '' });
+  const overviewId = useId();
+  const stepHeading = useRef<HTMLParagraphElement>(null);
+  const focusStep = useRef(false);
+  useEffect(() => {
+    if (!overviewOpen && focusStep.current) { stepHeading.current?.focus(); focusStep.current = false; }
+  }, [stepIndex, overviewOpen]);
+  useEffect(() => {
+    setFeedbackDraft({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '' });
+  }, [session.strengths, session.developmentAreas, session.nextSteps]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -230,6 +247,10 @@ export function ConductScreen({
   if (!checklist) return null;
 
   const items = checklist.items;
+  const criteria = conductCriteria(items, instance.results, checklist.scoringMode);
+  const unanswered = criteria.filter(({ state }) => state === 'unanswered');
+  const navigationLocked = busy || cardBusy;
+  const currentStep = resolveConductStep(items.length, stepIndex, contextFields.length > 0);
   const editable = session.status === 'in_progress';
 
   async function transition(action: 'start' | 'pause' | 'resume' | 'complete') {
@@ -270,10 +291,23 @@ export function ConductScreen({
       async () => {
         const updated = await submitChecklistSessionContext(session.id, { values: contextValues, version: session.version });
         onMutate((current) => ({ ...current, session: { ...current.session, ...updated } }));
+        focusStep.current = true;
         setStepIndex(nextIndex);
+        setOverviewOpen(false);
       },
       { setBusy, setError, onConflict: () => setConflict(true), fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
+  }
+
+  async function navigateToStep(nextIndex: number) {
+    if (navigationLocked) return;
+    if (currentStep.isContextStep && nextIndex !== currentStep.boundedIndex) {
+      if (contextComplete) await saveContextAndContinue(nextIndex);
+      return;
+    }
+    focusStep.current = true;
+    setStepIndex(nextIndex);
+    setOverviewOpen(false);
   }
 
   if (conflict) {
@@ -306,6 +340,7 @@ export function ConductScreen({
       <button
         type="button"
         onClick={onBack}
+        disabled={navigationLocked}
         style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: '8px 0', minHeight: 44 }}
       >
         ← {t('checklistSessions.conduct.backToList', 'My sessions')}
@@ -342,7 +377,7 @@ export function ConductScreen({
         // the last criterion instead of a permanently-visible block under the card). "Next" turns
         // into "Complete" only on that last step, gated by the same canComplete this screen already
         // computed for the old standalone Complete button.
-        const { boundedIndex, itemIndex, isContextStep, isFeedbackStep, isLastStep } = resolveConductStep(items.length, stepIndex, contextFields.length > 0);
+        const { boundedIndex, itemIndex, isContextStep, isFeedbackStep, isLastStep } = currentStep;
         return (
           <>
             <div style={{ margin: '16px 0' }}>
@@ -353,105 +388,136 @@ export function ConductScreen({
               />
             </div>
 
-            <p style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, margin: '0 0 8px' }}>
-              {isContextStep
-                ? t('checklistSessions.conduct.contextTitle', 'General information')
-                : isFeedbackStep
-                ? t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')
-                : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: itemIndex + 1, total: items.length })}
-            </p>
-
-            {isContextStep ? (
-              <ContextFields
-                fields={contextFields}
-                values={contextValues}
-                disabled={busy}
-                onChange={(fieldId, value) => setContextValues((current) => ({ ...current, [fieldId]: value }))}
-                t={t}
-              />
-            ) : isFeedbackStep ? (
-              <StructuredFeedback
-                session={session}
-                busy={busy}
-                onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
-                onConflict={() => setConflict(true)}
-                t={t}
-              />
-            ) : (() => {
-              const currentItem = items[itemIndex]!;
-              const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
-              const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
-              return (
-                <div
-                  style={{
-                    border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
-                    background: isDone ? COLORS.successSoft : COLORS.surface,
-                    borderRadius: 14,
-                    padding: 16,
-                  }}
-                >
-                  <CriterionCard
-                    key={currentItem.id}
-                    instanceId={instance.id}
-                    item={currentItem}
-                    result={currentResult}
-                    scoringMode={checklist.scoringMode}
-                    scaleLevels={checklist.scaleLevels}
-                    cameraOnly={checklist.forbidGalleryPhotos === true}
-                    editable={editable}
-                    onSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
-                    onBusyChange={setCardBusy}
-                    onConflict={() => setConflict(true)}
-                    t={t}
-                  />
-                </div>
-              );
-            })()}
-
-            {!canComplete && isLastStep && (
-              <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
-                {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
-              </p>
-            )}
-            {allowFinishIncomplete && editable && isLastStep && completedRequired < requiredCount && (
-              <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
-                {t('checklistSessions.conduct.skipUnansweredHint', 'Criteria you have not answered will be recorded as skipped and left out of the result.')}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={boundedIndex === 0 || cardBusy}
-                onClick={() => setStepIndex(boundedIndex - 1)}
-                style={{ flex: 1, minHeight: 44 }}
-              >
-                {t('checklistSessions.conduct.back', 'Back')}
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              <Button type="button" variant="secondary" disabled={navigationLocked} aria-expanded={overviewOpen} aria-controls={overviewId} onClick={() => setOverviewOpen((open) => !open)} style={{ minHeight: 44 }}>
+                {t('checklistSessions.conduct.overview', 'Sheet overview')}
               </Button>
-              {session.status === 'in_progress' ? (
-                <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('pause')} style={{ flex: 1, minHeight: 44 }}>
-                  {t('checklistSessions.conduct.pause', 'Pause')}
-                </Button>
-              ) : (
-                <Button type="button" variant="secondary" disabled={busy} onClick={() => void transition('resume')} style={{ flex: 1, minHeight: 44 }}>
-                  {t('checklistSessions.conduct.resume', 'Resume')}
-                </Button>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, fontSize: 13 }}>
+                <input type="checkbox" className="admin-switch" style={{ minHeight: 19, padding: 0, borderColor: COLORS.muted }} checked={hideAnswered} disabled={navigationLocked} onChange={(event) => setHideAnswered(event.target.checked)} />
+                {t('checklistSessions.conduct.hideAnswered', 'Hide answered')}
+              </label>
+            </div>
+            <section id={overviewId} hidden={!overviewOpen} aria-label={t('checklistSessions.conduct.overview', 'Sheet overview')}>
+              <p role="status" style={{ fontSize: 13 }}>{t('checklistSessions.conduct.overviewProgress', '{{completed}} of {{total}} addressed', { completed: items.length - unanswered.length, total: items.length })}</p>
+              {isContextStep && !contextComplete && <p style={{ fontSize: 13, color: COLORS.muted }}>{t('checklistSessions.conduct.completeContextFirst', 'Complete the required general information before moving to a criterion.')}</p>}
+              {overviewOpen && <ChecklistConductOverview criteria={criteria} groups={checklist.itemGroups ?? []} hideAnswered={hideAnswered} currentItemIndex={itemIndex} disabled={navigationLocked || (isContextStep && !contextComplete)} onSelect={(index) => void navigateToStep(index + (contextFields.length > 0 ? 1 : 0))} t={t} />}
+              <Button type="button" variant="secondary" disabled={navigationLocked} onClick={() => { focusStep.current = true; setOverviewOpen(false); }} style={{ minHeight: 44, marginTop: 12 }}>
+                {t('checklistSessions.conduct.returnToStep', 'Return to current step')}
+              </Button>
+            </section>
+
+            <div hidden={overviewOpen}>
+              <p ref={stepHeading} tabIndex={-1} style={{ fontSize: 12.5, color: COLORS.muted, fontWeight: 600, margin: '0 0 8px' }}>
+                {isContextStep
+                  ? t('checklistSessions.conduct.contextTitle', 'General information')
+                  : isFeedbackStep
+                  ? t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')
+                  : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: itemIndex + 1, total: items.length })}
+              </p>
+
+              {isContextStep ? (
+                <ContextFields
+                  fields={contextFields}
+                  values={contextValues}
+                  disabled={busy}
+                  onChange={(fieldId, value) => setContextValues((current) => ({ ...current, [fieldId]: value }))}
+                  t={t}
+                />
+              ) : isFeedbackStep ? (
+                <StructuredFeedback
+                  session={session}
+                  busy={busy}
+                  draft={feedbackDraft}
+                  onDraftChange={setFeedbackDraft}
+                  onBusyChange={setCardBusy}
+                  onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
+                  onConflict={() => setConflict(true)}
+                  t={t}
+                />
+              ) : (() => {
+                const currentItem = items[itemIndex]!;
+                const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
+                const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
+                return (
+                  <div
+                    style={{
+                      border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
+                      background: isDone ? COLORS.successSoft : COLORS.surface,
+                      borderRadius: 14,
+                      padding: 16,
+                    }}
+                  >
+                    <CriterionCard
+                      key={currentItem.id}
+                      instanceId={instance.id}
+                      item={currentItem}
+                      result={currentResult}
+                      comment={commentDrafts[currentItem.id] ?? currentResult?.comment ?? ''}
+                      onCommentChange={(comment) => setCommentDrafts((current) => ({ ...current, [currentItem.id]: comment }))}
+                      scoringMode={checklist.scoringMode}
+                      scaleLevels={checklist.scaleLevels}
+                      cameraOnly={checklist.forbidGalleryPhotos === true}
+                      editable={editable}
+                      onSaved={(updatedInstance) => onMutate((current) => ({ ...current, instance: updatedInstance }))}
+                      onBusyChange={setCardBusy}
+                      onConflict={() => setConflict(true)}
+                      t={t}
+                    />
+                  </div>
+                );
+              })()}
+
+              {!canComplete && isLastStep && (
+                <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
+                  {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
+                </p>
               )}
-              {isLastStep ? (
-                <Button type="button" disabled={busy || !canComplete} onClick={() => void transition('complete')} style={{ flex: 1, minHeight: 44 }}>
-                  {t('checklistSessions.conduct.complete', 'Complete')}
+              {isLastStep && unanswered.length > 0 && <div style={{ marginTop: 12 }}>
+                <p role="status" style={{ fontSize: 13 }}>{t('checklistSessions.conduct.unansweredCount', 'Unanswered criteria: {{count}}', { count: unanswered.length })}</p>
+                <Button type="button" variant="secondary" disabled={navigationLocked} onClick={() => void navigateToStep(unanswered[0]!.index + (contextFields.length > 0 ? 1 : 0))} style={{ minHeight: 44 }}>
+                  {t('checklistSessions.conduct.firstUnanswered', 'Go to first unanswered')}
                 </Button>
-              ) : (
+              </div>}
+              {allowFinishIncomplete && editable && isLastStep && unanswered.length > 0 && (
+                <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
+                  {t('checklistSessions.conduct.skipUnansweredHint', 'Criteria you have not answered will be recorded as skipped and left out of the result.')}
+                </p>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 16 }}>
                 <Button
                   type="button"
-                  disabled={cardBusy || busy || (isContextStep && !contextComplete)}
-                  onClick={() => isContextStep ? void saveContextAndContinue(boundedIndex + 1) : setStepIndex(boundedIndex + 1)}
+                  variant="secondary"
+                  disabled={boundedIndex === 0 || navigationLocked}
+                  onClick={() => void navigateToStep(boundedIndex - 1)}
                   style={{ flex: 1, minHeight: 44 }}
                 >
-                  {t('checklistSessions.conduct.next', 'Next')}
+                  {t('checklistSessions.conduct.back', 'Back')}
                 </Button>
-              )}
+                {session.status === 'in_progress' ? (
+                  <Button type="button" variant="secondary" disabled={navigationLocked} onClick={() => void transition('pause')} style={{ flex: 1, minHeight: 44 }}>
+                    {t('checklistSessions.conduct.pause', 'Pause')}
+                  </Button>
+                ) : (
+                  <Button type="button" variant="secondary" disabled={navigationLocked} onClick={() => void transition('resume')} style={{ flex: 1, minHeight: 44 }}>
+                    {t('checklistSessions.conduct.resume', 'Resume')}
+                  </Button>
+                )}
+                {isLastStep ? (
+                  <Button type="button" disabled={navigationLocked || !canComplete} onClick={() => void transition('complete')} style={{ flex: 1, minHeight: 44 }}>
+                    {t('checklistSessions.conduct.complete', 'Complete')}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={cardBusy || busy || (isContextStep && !contextComplete)}
+                    onClick={() => void navigateToStep(nextConductStep(criteria, boundedIndex, contextFields.length > 0, hideAnswered))}
+                    style={{ flex: 1, minHeight: 44 }}
+                  >
+                    {t('checklistSessions.conduct.next', 'Next')}
+                  </Button>
+                )}
+              </div>
             </div>
           </>
         );
@@ -461,6 +527,9 @@ export function ConductScreen({
         <StructuredFeedback
           session={session}
           busy={busy}
+          draft={feedbackDraft}
+          onDraftChange={setFeedbackDraft}
+          onBusyChange={setCardBusy}
           onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
           onConflict={() => setConflict(true)}
           t={t}
@@ -512,7 +581,7 @@ function Header({ session, instance, t }: { session: ChecklistSessionSummary; in
         <p style={{ margin: 0, color: COLORS.muted, fontSize: 13 }}>{instance.checklist?.title ?? session.checklist.title}</p>
       </div>
       <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
-        <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>
+        <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]} style={session.status === 'in_progress' ? { color: COLORS.text } : undefined}>
           {t(`checklistSessions.status.${session.status}`, session.status)}
         </Badge>
         {elapsedLabel && <span style={{ fontSize: 12, color: COLORS.muted, fontVariantNumeric: 'tabular-nums' }}>{elapsedLabel}</span>}
@@ -580,6 +649,8 @@ function CriterionCard({
   instanceId,
   item,
   result,
+  comment,
+  onCommentChange,
   scoringMode,
   scaleLevels,
   cameraOnly,
@@ -592,6 +663,8 @@ function CriterionCard({
   instanceId: string;
   item: ChecklistItemSummary;
   result: ChecklistItemResultSummary | undefined;
+  comment: string;
+  onCommentChange: (comment: string) => void;
   scoringMode: string;
   scaleLevels: { level: number; label: string; points: number }[] | null;
   cameraOnly: boolean;
@@ -604,15 +677,10 @@ function CriterionCard({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [comment, setComment] = useState(result?.comment ?? '');
   // Combines this card's own save state with the photo upload's (tracked separately below, since
   // it doesn't go through run()) so the parent stepper can block navigation during either -- see
   // CriterionStepper's cardBusy comment for why that matters.
   const busy = saving || uploading;
-
-  useEffect(() => {
-    setComment(result?.comment ?? '');
-  }, [result?.comment, item.id]);
 
   useEffect(() => {
     onBusyChange(busy);
@@ -704,7 +772,7 @@ function CriterionCard({
           label={t('checklistSessions.conduct.comment', 'Comment')}
           value={comment}
           disabled={!editable}
-          onChange={(e) => setComment(e.target.value)}
+          onChange={(e) => onCommentChange(e.target.value)}
           rows={2}
         />
         <Button
@@ -836,29 +904,29 @@ function PhotoAttachment({
 function StructuredFeedback({
   session,
   busy,
+  draft,
+  onDraftChange,
+  onBusyChange,
   onSaved,
   onConflict,
   t,
 }: {
   session: ChecklistSessionSummary;
   busy: boolean;
+  draft: FeedbackDraft;
+  onDraftChange: (draft: FeedbackDraft) => void;
+  onBusyChange: (busy: boolean) => void;
   // The feedback endpoint returns the bare ChecklistSession row (no joined checklist/learner/
   // observer/result) -- merging those projected fields back in is the caller's job.
   onSaved: (session: ChecklistSession) => void;
   onConflict: () => void;
   t: TFunction;
 }) {
-  const [strengths, setStrengths] = useState(session.strengths ?? '');
-  const [developmentAreas, setDevelopmentAreas] = useState(session.developmentAreas ?? '');
-  const [nextSteps, setNextSteps] = useState(session.nextSteps ?? '');
+  const { strengths, developmentAreas, nextSteps } = draft;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setStrengths(session.strengths ?? '');
-    setDevelopmentAreas(session.developmentAreas ?? '');
-    setNextSteps(session.nextSteps ?? '');
-  }, [session.strengths, session.developmentAreas, session.nextSteps]);
+  useEffect(() => { onBusyChange(saving); }, [saving, onBusyChange]);
 
   const dirty = strengths !== (session.strengths ?? '') || developmentAreas !== (session.developmentAreas ?? '') || nextSteps !== (session.nextSteps ?? '');
 
@@ -885,21 +953,21 @@ function StructuredFeedback({
           label={t('checklistSessions.conduct.strengths', 'Strengths')}
           value={strengths}
           disabled={busy || saving}
-          onChange={(e) => setStrengths(e.target.value)}
+          onChange={(e) => onDraftChange({ ...draft, strengths: e.target.value })}
           rows={2}
         />
         <Textarea
           label={t('checklistSessions.conduct.developmentAreas', 'Development areas')}
           value={developmentAreas}
           disabled={busy || saving}
-          onChange={(e) => setDevelopmentAreas(e.target.value)}
+          onChange={(e) => onDraftChange({ ...draft, developmentAreas: e.target.value })}
           rows={2}
         />
         <Textarea
           label={t('checklistSessions.conduct.nextSteps', 'Next steps')}
           value={nextSteps}
           disabled={busy || saving}
-          onChange={(e) => setNextSteps(e.target.value)}
+          onChange={(e) => onDraftChange({ ...draft, nextSteps: e.target.value })}
           rows={2}
         />
         <Button type="button" size="sm" disabled={busy || saving || !dirty} onClick={() => void save()} style={{ minHeight: 44 }}>

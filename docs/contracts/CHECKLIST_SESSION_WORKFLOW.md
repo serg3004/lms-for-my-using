@@ -93,6 +93,36 @@ manager/admin action (the existing `PATCH .../:id`), not something the unavailab
 does. See API_RBAC_MATRIX.md's PR 302 entry for the dual-role (manager+instructor) scope nuance
 that action deliberately enforces.
 
+### Sheet overview during conduct (PR 347)
+
+“Sheet overview” opens the assignment snapshot's groups and criteria, with text labels for
+answered, skipped and unanswered states and an addressed/total counter. Native buttons jump to
+the criterion's original step and move keyboard focus to its heading. Unknown or absent group
+IDs appear in “Other criteria”; filtering never changes step identities. New single/bulk
+assignments freeze group names/order and criterion membership. Older stored snapshots without
+groups use the common list, rather than borrowing group names from the current live checklist.
+
+“Hide answered” shows only unanswered criteria in the overview and skips answered/explicitly
+skipped criteria on **Next**. A marked criterion still missing its required photo remains
+unanswered. The current card stays in place until navigation; **Back** retains the original step
+order. Context and the trailing feedback step are never removed. The filter, current step,
+comment drafts and feedback drafts stay in this mounted screen through pause/resume and overview
+navigation; comments/feedback retain their existing explicit Save buttons. Reloading or leaving
+the screen does not persist unsaved drafts.
+
+An overview jump from required general information uses the same context validation/save as
+Next. Navigation, pause/resume, overview and filter controls are blocked while a step save,
+feedback save, photo upload or session transition is in flight. Opening/closing the overview does
+not unmount the current editor. Failed saves keep drafts available; a conflict still follows the
+existing reload flow.
+
+Before Complete, the feedback step reports the number of unanswered criteria (including optional
+ones) and offers a jump to the first. With `allowFinishIncomplete`, it explains that unanswered
+criteria will be recorded as skipped. The existing required-progress calculation and
+`canCompleteSession` gate remain authoritative for the button; these navigation states introduce
+no scoring, RBAC or server-validation changes. The existing assignment API carries the frozen
+group metadata described in `API_CONTRACTS.md`.
+
 ## Learner / employee (`/learn/checklists`)
 
 Three client-side status tabs over the learner's own sessions (`ChecklistInstance.userId ===
