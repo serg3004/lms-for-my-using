@@ -379,6 +379,18 @@ export type ChecklistItemGroup = {
   order: number;
 };
 
+export type ChecklistAccessMode = 'assigned' | 'free';
+
+/** PR 353: one card of the free-access catalog (`GET /checklists/free`) -- never carries the criteria. */
+export type FreeChecklistSummary = {
+  id: string;
+  title: string;
+  description: string | null;
+  itemCount: number;
+  activeInstanceId: string | null;
+  activeInstanceStatus: ChecklistInstanceStatus | null;
+};
+
 export type ChecklistSummary = {
   id: string;
   organizationId: string;
@@ -396,6 +408,8 @@ export type ChecklistSummary = {
   // PR 330 strictness settings -- optional because older payloads never carried them (read as false).
   allowFinishIncomplete?: boolean;
   forbidGalleryPhotos?: boolean;
+  // PR 353 -- optional because older payloads never carried it (read as 'assigned').
+  accessMode?: ChecklistAccessMode;
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   createdAt: string;

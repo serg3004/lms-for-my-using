@@ -149,6 +149,7 @@ describe('rolePolicies', () => {
     notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
     checklistsRead: ['admin', 'manager', 'instructor'],
     checklistsCreate: ['admin', 'instructor'],
+    checklistsStartFree: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistInstancesCreate: ['admin', 'manager', 'instructor'],
     checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],

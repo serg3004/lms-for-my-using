@@ -69,6 +69,8 @@ export const rolePolicies = {
   // A conduct grant still needs observerActionScope(), independently of manager read access.
   checklistsRead: ['admin', 'manager', 'instructor'],
   checklistsCreate: ['admin', 'instructor'],
+  // PR 353: any role starts a free-access checklist for themselves only (service enforces the subject).
+  checklistsStartFree: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistInstancesCreate: ['admin', 'manager', 'instructor'],
   checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],

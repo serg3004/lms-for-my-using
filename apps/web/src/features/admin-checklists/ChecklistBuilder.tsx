@@ -16,6 +16,7 @@ import {
   updateChecklistItemGroup,
 } from '../../shared/api/checklists.js';
 import type {
+  ChecklistAccessMode,
   ChecklistGeolocationPolicy,
   ChecklistItemGroup,
   ChecklistItemSummary,
@@ -80,6 +81,7 @@ export function ChecklistBuilder({
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
+  const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
   // Defaults are system copy and follow the locale at creation time. Existing labels are authored
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
@@ -89,6 +91,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
+    accessMode: checklist.accessMode ?? 'assigned',
   })));
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
@@ -109,7 +112,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -540,6 +543,16 @@ export function ChecklistBuilder({
                 value={passThreshold}
                 onChange={(e) => setPassThreshold(Number(e.target.value))}
               />
+            </FormField>
+            <FormField id="checklist-access-mode" label={t('admin.checklists.field.accessMode', 'How the checklist is taken')} hint={t(`admin.checklists.accessModeHint.${accessMode}`, accessMode)}>
+              <select
+                id="checklist-access-mode"
+                value={accessMode}
+                onChange={(e) => setAccessMode(e.target.value as ChecklistAccessMode)}
+              >
+                <option value="assigned">{t('admin.checklists.accessMode.assigned', 'By assignment')}</option>
+                <option value="free">{t('admin.checklists.accessMode.free', 'Free access')}</option>
+              </select>
             </FormField>
             <details>
               <summary>{t('admin.checklists.advancedTitle', 'Additional settings')}</summary>

@@ -148,6 +148,20 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
+  test('learner free-access checklist catalog has an accessible rendered state', async ({ page }, testInfo) => {
+    await loginAs(page, 'learner');
+    await expect(page).toHaveURL(/\/learn$/);
+    await page.route('**/api/v1/checklists/free', (route) => route.fulfill({
+      json: [
+        { id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал до прихода гостей.', itemCount: 12, activeInstanceId: null, activeInstanceStatus: null },
+        { id: 'free-2', title: 'Закрытие смены', description: null, itemCount: 7, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
+      ],
+    }));
+    await page.goto('/learn/checklists');
+    await expect(page.getByRole('heading', { name: 'Свободное прохождение' })).toBeVisible();
+    await auditAccessibility(page, testInfo);
+  });
+
   test('manager checklist analytics dashboard has an accessible rendered state', async ({ page }, testInfo) => {
     await loginAs(page, 'manager');
     await expect(page).toHaveURL(/\/manager\/dashboard$/);

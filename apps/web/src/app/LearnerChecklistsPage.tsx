@@ -4,8 +4,8 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { getChecklistItemPhotoUrl, listMyChecklistInstances, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
-import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary } from '../shared/api/types.js';
+import { getChecklistItemPhotoUrl, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
@@ -37,19 +37,25 @@ const COLORS = {
   primarySoft: '#eef2ff',
 };
 
-type LearnerChecklistsData = { instances: ChecklistInstanceSummary[] };
+// `free` is null when the catalog could not be loaded: the rest of the page must keep working.
+type LearnerChecklistsData = { instances: ChecklistInstanceSummary[]; free: FreeChecklistSummary[] | null };
 export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: { linkedSessionId?: string | null; onLinkedSessionBack?: () => void } = {}) {
   const { t } = useTranslation();
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
 
   const { state: loadState, reload: load } = useAsyncData<LearnerChecklistsData>(
-    async () => ({ instances: await listMyChecklistInstances() }),
+    async () => {
+      const [instances, free] = await Promise.all([listMyChecklistInstances(), listFreeChecklists().catch(() => null)]);
+      return { instances, free };
+    },
     [t],
     {
       unauthenticated: t('checklists.sessionExpired', 'Your session has expired. Please sign in again.'),
       error: t('checklists.loadError', 'Unable to load your checklists.'),
     },
   );
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
   if (loadState.status === 'loading') {
     return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
@@ -58,6 +64,20 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     return <main style={{ padding: 32 }}><PageState title={t('checklists.title', 'Checklists')} message={loadState.message} variant="error" /></main>;
   }
   const open = openInstanceId ? loadState.data.instances.find((i) => i.id === openInstanceId) : null;
+  async function startFree(checklistId: string) {
+    setStartingId(checklistId);
+    setStartError(null);
+    try {
+      const instance = await startFreeChecklist(checklistId);
+      setOpenInstanceId(instance.id);
+      await load();
+    } catch (err) {
+      setStartError(err instanceof ApiClientError ? err.message : t('checklists.free.startError', 'Unable to start this checklist.'));
+    } finally {
+      setStartingId(null);
+    }
+  }
+  const freeChecklists = loadState.data.free;
 
   if (open) {
     return (
@@ -75,9 +95,10 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
       <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
       <p style={{ color: COLORS.muted }}>{t('checklists.subtitle', 'Checklists assigned to you — complete them and attach photos where required.')}</p>
-      {loadState.data.instances.length === 0 ? (
+      {loadState.data.instances.length === 0 && !(freeChecklists && freeChecklists.length > 0) && (
         <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
-      ) : (
+      )}
+      {loadState.data.instances.length > 0 && (
         <>
         <h2 style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.selfTitle', 'Self-study checklists')}</h2>
         <p style={{ color: COLORS.muted }}>{t('checklists.selfHint', 'You fill these in yourself, at your own pace.')}</p>
@@ -117,6 +138,35 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
           ))}
         </ul>
         </>
+      )}
+      {freeChecklists === null && (
+        <p role="status" style={{ color: COLORS.muted }}>{t('checklists.free.loadError', 'Unable to load free checklists.')}</p>
+      )}
+      {freeChecklists && freeChecklists.length > 0 && (
+        <section aria-labelledby="free-checklists-title" style={{ marginTop: 24 }}>
+          <h2 id="free-checklists-title" style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.free.title', 'Free checklists')}</h2>
+          <p style={{ color: COLORS.muted }}>{t('checklists.free.hint', 'Start any of these yourself, whenever you need.')}</p>
+          {startError && <p style={{ color: '#dc2626' }} role="alert">{startError}</p>}
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
+            {freeChecklists.map((checklist) => (
+              <li key={checklist.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                  <strong>{checklist.title}</strong>
+                  {checklist.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{checklist.description}</p>}
+                  <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: checklist.itemCount })}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={startingId !== null}
+                  onClick={() => (checklist.activeInstanceId ? setOpenInstanceId(checklist.activeInstanceId) : startFree(checklist.id))}
+                  style={{ border: 'none', borderRadius: 10, padding: '9px 16px', minHeight: 44, minWidth: 44, background: COLORS.primary, color: '#ffffff', fontWeight: 600, cursor: startingId !== null ? 'default' : 'pointer', opacity: startingId !== null ? 0.6 : 1 }}
+                >
+                  {checklist.activeInstanceId ? t('checklists.free.continue', 'Continue') : t('checklists.free.start', 'Start')}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <LearnerChecklistSessions linkedSessionId={linkedSessionId} onLinkedSessionBack={onLinkedSessionBack} t={t} />
     </main>

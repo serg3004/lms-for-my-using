@@ -12,6 +12,7 @@ import type {
   ChecklistScaleSummary,
   ChecklistSummary,
   ChecklistWorkplaceSettingsView,
+  FreeChecklistSummary,
   PaginatedResponse,
 } from './types.js';
 
@@ -178,6 +179,14 @@ export function bulkAssignChecklist(checklistId: string, targets: BulkChecklistT
 
 export function listInstancesForChecklist(checklistId: string) {
   return apiRequest<ChecklistInstanceSummary[]>(`/checklists/${encodeURIComponent(checklistId)}/instances`);
+}
+
+export function listFreeChecklists() {
+  return apiRequest<FreeChecklistSummary[]>('/checklists/free');
+}
+
+export function startFreeChecklist(checklistId: string) {
+  return apiRequest<ChecklistInstanceSummary>(`/checklists/${encodeURIComponent(checklistId)}/start`, { method: 'POST' });
 }
 
 export function listMyChecklistInstances() {

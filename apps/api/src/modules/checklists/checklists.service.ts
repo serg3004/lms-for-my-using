@@ -43,6 +43,7 @@ const CHECKLIST_SNAPSHOT_VERSION = 1;
  * throw (e.g. "checklist is not published"), which are request-level validation failures that
  * must abort the whole batch, not silently skip every recipient.
  */
+const ACTIVE_INSTANCE_STATUSES = ['assigned', 'in_progress', 'submitted'] as const;
 export const ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE = 'This user already has an active assignment for this checklist';
 
 export type ManagerAnalyticsEmployeeRow = {
@@ -87,6 +88,7 @@ const checklistSelect = {
   preSessionVisibility: true,
   allowFinishIncomplete: true,
   forbidGalleryPhotos: true,
+  accessMode: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -380,6 +382,7 @@ export class ChecklistsService {
           preSessionVisibility: source.preSessionVisibility,
           allowFinishIncomplete: source.allowFinishIncomplete,
           forbidGalleryPhotos: source.forbidGalleryPhotos,
+          accessMode: source.accessMode,
           createdBy: actorId,
         },
         select: { id: true },
@@ -929,6 +932,91 @@ export class ChecklistsService {
 
   async listMyInstances(userId: string, organizationId: string) {
     return this.listInstancesWithDeadlineRefresh({ userId, organizationId });
+  }
+
+  /**
+   * PR 353: catalog of published `free` checklists of the organization for any signed-in user.
+   * Returns only what the catalog card needs (title, description, criteria count) -- never the
+   * criteria themselves, which stay behind the per-checklist pre-session visibility rules --
+   * plus the caller's own unfinished instance so the UI can offer "continue" instead of "start".
+   */
+  async listFreeChecklists(organizationId: string, userId: string) {
+    const checklists = await this.prisma.checklist.findMany({
+      where: { organizationId, deletedAt: null, status: 'published', accessMode: 'free' },
+      orderBy: [{ title: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        _count: { select: { items: { where: { deletedAt: null } } } },
+      },
+    });
+    const active = checklists.length === 0
+      ? []
+      : await this.prisma.checklistInstance.findMany({
+          where: {
+            organizationId,
+            userId,
+            deletedAt: null,
+            status: { in: [...ACTIVE_INSTANCE_STATUSES] },
+            checklistId: { in: checklists.map((checklist) => checklist.id) },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, checklistId: true, status: true },
+        });
+    const activeByChecklist = new Map<string, { id: string; status: string }>();
+    for (const instance of active) {
+      if (!activeByChecklist.has(instance.checklistId)) activeByChecklist.set(instance.checklistId, instance);
+    }
+    return checklists.map((checklist) => ({
+      id: checklist.id,
+      title: checklist.title,
+      description: checklist.description,
+      itemCount: checklist._count.items,
+      activeInstanceId: activeByChecklist.get(checklist.id)?.id ?? null,
+      activeInstanceStatus: activeByChecklist.get(checklist.id)?.status ?? null,
+    }));
+  }
+
+  /**
+   * PR 353: a user starts a published `free` checklist for themselves. The subject is always the
+   * caller (never taken from a request body). A second start while an unfinished instance exists
+   * returns that instance instead of failing or creating a duplicate; a per-(checklist, user)
+   * advisory lock serialises concurrent starts so two parallel requests cannot both pass the
+   * "no active instance" check. Any other mode, status, tenant or deleted checklist is a 404.
+   */
+  async startFreeChecklist(checklistId: string, organizationId: string, userId: string) {
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null, status: 'published', accessMode: 'free' },
+      select: { id: true, title: true },
+    });
+    if (!checklist) {
+      throw new NotFoundException('Checklist not found');
+    }
+
+    const { instance, created } = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${checklistId}), hashtext(${userId}))`;
+      const existing = await tx.checklistInstance.findFirst({
+        where: { checklistId, organizationId, userId, status: { in: [...ACTIVE_INSTANCE_STATUSES] }, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: instanceSelect,
+      });
+      if (existing) return { instance: existing, created: false };
+      return { instance: await this.assignChecklist(checklistId, organizationId, { userId }, userId, tx), created: true };
+    });
+
+    if (created) {
+      await this.auditLog.record({
+        organizationId,
+        actorId: userId,
+        action: 'checklist_instance.started_free',
+        targetType: 'checklist_instance',
+        targetId: instance.id,
+        summary: `Started free checklist ${checklist.title}`,
+        metadata: { checklistId, userId },
+      });
+    }
+    return instance;
   }
 
   async listInstancesForChecklist(checklistId: string, organizationId: string) {

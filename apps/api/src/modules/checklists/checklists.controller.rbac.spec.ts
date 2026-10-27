@@ -278,4 +278,30 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
       expect(updateSettings).toHaveBeenCalledWith(organizationId, { criticalThreshold: null }, reviewerId);
     });
   });
+
+  describe('free-access checklists (PR 353)', () => {
+    const checklistId = '77777777-7777-7777-7777-777777777777';
+
+    it('starts a free checklist for the caller in the caller\'s own organization', async () => {
+      const startFreeChecklist = jest.fn(async () => ({ id: instanceId }));
+      const controller = makeController({
+        checklistsService: { startFreeChecklist: startFreeChecklist as unknown as ChecklistsService['startFreeChecklist'] },
+      });
+
+      await controller.startFreeChecklist(checklistId, makeRequest(learnerId, ['learner']));
+
+      expect(startFreeChecklist).toHaveBeenCalledWith(checklistId, organizationId, learnerId);
+    });
+
+    it('lists the catalog for the caller\'s own organization and user', async () => {
+      const listFreeChecklists = jest.fn(async () => []);
+      const controller = makeController({
+        checklistsService: { listFreeChecklists: listFreeChecklists as unknown as ChecklistsService['listFreeChecklists'] },
+      });
+
+      await controller.listFreeChecklists(makeRequest(learnerId, ['learner']));
+
+      expect(listFreeChecklists).toHaveBeenCalledWith(organizationId, learnerId);
+    });
+  });
 });

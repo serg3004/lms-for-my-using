@@ -215,6 +215,14 @@ enum ChecklistFeedbackVisibility {
   live
 }
 
+/// PR 353: how a checklist reaches people. `assigned` -- through assignments and observation
+/// sessions (the behaviour before this PR); `free` -- any user of the organization starts the
+/// published checklist themselves from the catalog.
+enum ChecklistAccessMode {
+  assigned
+  free
+}
+
 /// PR 296 observation-sheet builder: what an employee can see about a session before it starts.
 /// Distinct from ChecklistFeedbackVisibility above, which governs when *feedback* becomes visible
 /// after a session completes -- this axis is about the sheet's *structure* beforehand.
@@ -1112,6 +1120,9 @@ model Checklist {
   // the instance snapshot on assignment like the other builder settings.
   allowFinishIncomplete       Boolean                        @default(false) @map("allow_finish_incomplete")
   forbidGalleryPhotos         Boolean                        @default(false) @map("forbid_gallery_photos")
+  // PR 353: assigned (default, existing behaviour) or free self-start. Affects visibility and
+  // start only; it is not frozen into the instance snapshot.
+  accessMode                  ChecklistAccessMode            @default(assigned) @map("access_mode")
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
@@ -1123,6 +1134,7 @@ model Checklist {
   instances      ChecklistInstance[]
 
   @@index([organizationId, status])
+  @@index([organizationId, accessMode, status])
   @@map("checklists")
 }
 

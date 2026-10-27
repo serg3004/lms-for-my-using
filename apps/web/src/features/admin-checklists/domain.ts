@@ -4,6 +4,7 @@ import type {
 } from '../../app/checklistCompletion.js';
 import { isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
+  ChecklistAccessMode,
   ChecklistGeolocationPolicy,
   ChecklistInstanceSummary,
   ChecklistItemGroup,
@@ -68,6 +69,7 @@ export function buildChecklistSettingsPayload(form: {
   preSessionVisibility: ChecklistPreSessionVisibility;
   allowFinishIncomplete: boolean;
   forbidGalleryPhotos: boolean;
+  accessMode: ChecklistAccessMode;
 }) {
   return {
     title: form.title,
@@ -80,6 +82,7 @@ export function buildChecklistSettingsPayload(form: {
     preSessionVisibility: form.preSessionVisibility,
     allowFinishIncomplete: form.allowFinishIncomplete,
     forbidGalleryPhotos: form.forbidGalleryPhotos,
+    accessMode: form.accessMode,
   };
 }
 
