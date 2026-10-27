@@ -67,7 +67,7 @@
 - [x] из выпадающего списка критерия можно создать шкалу и сразу выбрать её — `ChecklistBuilder.createScale.spec.tsx` (шкала создаётся и привязывается к критерию);
 - [x] аудит `checklist_scale.created` / `checklist_scale.updated` уже пишется, добавлен `checklist_scale.copied`; RBAC `checklistsCreate`, без новых ролей; `API_RBAC_MATRIX.md` и `docs/generated/API_INDEX.md` обновлены;
 - [x] тесты: unit (валидация, копия, `inUse`), frontend (`ScaleManagerDialog`, домен); RU/EN/KK/ZH синхронизированы;
-- [x] a11y и visual конструктора (320/375/768 px): `checklist-scale-editor.spec.ts` (axe без critical/serious/moderate, нет горизонтального переполнения, порядок Tab) и тест «keeps the evaluation scale editor responsive» в `responsive-matrix.spec.ts`; визуальные baseline создаются только workflow `update-visual-baselines.yml`. Найдено и исправлено: поле названия уровня сжималось до ~36 px, подсказка `.admin-form__hint` не проходила контраст AA;
+- [x] a11y и visual конструктора (320/375/768 px): `checklist-scale-editor.spec.ts` (axe без critical/serious/moderate, нет горизонтального переполнения, порядок Tab) и тест «keeps the evaluation scale editor responsive» в `responsive-matrix.spec.ts`; визуальные baseline (320–1440 px, 6 снимков `admin-checklist-scale-editor-*-linux.png`) созданы workflow `update-visual-baselines.yml`. Найдено и исправлено: поле названия уровня сжималось до ~36 px, подсказка `.admin-form__hint` не проходила контраст AA;
 
 ## PR 344 — Шкала по умолчанию ✅
 
