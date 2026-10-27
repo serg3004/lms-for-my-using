@@ -58,8 +58,8 @@ const analyticsFixture: ManagerChecklistAnalytics = {
   distribution: [{ bucket: 'low', count: 1 }, { bucket: 'mid', count: 1 }, { bucket: 'high', count: 2 }],
   trend: [{ date: '2026-02-05', averagePercentage: 70, count: 1 }, { date: '2026-02-10', averagePercentage: 86, count: 2 }],
   employees: [
-    { userId: 'u1', firstName: 'Alex', lastName: 'Kim', email: 'alex@example.test', department: 'Warehouse', departmentId: 'd1', sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up', lastSessionAt: '2026-02-10T00:00:00.000Z' },
-    { userId: 'u2', firstName: 'Mira', lastName: 'Lee', email: 'mira@example.test', department: null, departmentId: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, lastSessionAt: null },
+    { userId: 'u1', firstName: 'Alex', lastName: 'Kim', email: 'alex@example.test', department: 'Warehouse', departmentId: 'd1', sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up', performance: 'mid', lastSessionAt: '2026-02-10T00:00:00.000Z' },
+    { userId: 'u2', firstName: 'Mira', lastName: 'Lee', email: 'mira@example.test', department: null, departmentId: null, sessionsCount: 0, completedCount: 0, averagePercentage: null, trend: null, performance: null, lastSessionAt: null },
   ],
   departments: [{ departmentId: 'd1', name: 'Warehouse', employeesCount: 1, sessionsCount: 3, completedCount: 3, averagePercentage: 85, noCompletionCount: 0 }],
   departmentOptions: [{ id: 'd1', name: 'Warehouse' }],
@@ -155,7 +155,7 @@ describe('ManagerChecklistsPage', () => {
     const html = renderToStaticMarkup(<MemoryRouter><ManagerChecklistsPage /></MemoryRouter>);
 
     expect(html).toContain('порог не задан');
-    expect(html).toContain('DEC-CHKS-001');
+    expect(html).toContain('Порог низкого результата не задан администратором');
     expect(html).not.toContain('&lt;null%');
   });
 
@@ -246,7 +246,7 @@ describe('PR 334: department breakdown, search and sort', () => {
   const rows = analyticsFixture.employees;
 
   it('searches by name, email and department, case-insensitively', () => {
-    const options = { onlyNoCompletion: false, sort: null };
+    const options = { onlyNoCompletion: false, performance: null, sort: null };
     expect(filterAndSortEmployees(rows, { ...options, query: 'ALEX' }).map((row) => row.userId)).toEqual(['u1']);
     expect(filterAndSortEmployees(rows, { ...options, query: 'mira@' }).map((row) => row.userId)).toEqual(['u2']);
     expect(filterAndSortEmployees(rows, { ...options, query: 'warehouse' }).map((row) => row.userId)).toEqual(['u1']);
@@ -254,15 +254,28 @@ describe('PR 334: department breakdown, search and sort', () => {
   });
 
   it('keeps only employees without completed sessions when the toggle is on', () => {
-    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: true, sort: null }).map((row) => row.userId)).toEqual(['u2']);
+    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: true, performance: null, sort: null }).map((row) => row.userId)).toEqual(['u2']);
+  });
+
+  it('filters by performance band and combines it with the no-completion toggle (PR 350)', () => {
+    const banded = [
+      { ...rows[0]!, userId: 'low', performance: 'low' as const },
+      { ...rows[0]!, userId: 'mid', performance: 'mid' as const },
+      { ...rows[0]!, userId: 'high', performance: 'high' as const },
+      { ...rows[1]!, userId: 'none' },
+    ];
+    const options = { query: '', onlyNoCompletion: false, sort: null };
+    expect(filterAndSortEmployees(banded, { ...options, performance: 'low' }).map((row) => row.userId)).toEqual(['low']);
+    expect(filterAndSortEmployees(banded, { ...options, performance: 'high' }).map((row) => row.userId)).toEqual(['high']);
+    expect(filterAndSortEmployees(banded, { ...options, performance: 'low', onlyNoCompletion: true })).toEqual([]);
   });
 
   it('sorts with empty values last in both directions', () => {
-    const ascending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'average', direction: 'ascending' } });
-    const descending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'average', direction: 'descending' } });
+    const ascending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, performance: null, sort: { key: 'average', direction: 'ascending' } });
+    const descending = filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, performance: null, sort: { key: 'average', direction: 'descending' } });
     expect(ascending.map((row) => row.userId)).toEqual(['u1', 'u2']);
     expect(descending.map((row) => row.userId)).toEqual(['u1', 'u2']);
-    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, sort: { key: 'employee', direction: 'descending' } }).map((row) => row.userId)).toEqual(['u2', 'u1']);
+    expect(filterAndSortEmployees(rows, { query: '', onlyNoCompletion: false, performance: null, sort: { key: 'employee', direction: 'descending' } }).map((row) => row.userId)).toEqual(['u2', 'u1']);
   });
 });
 

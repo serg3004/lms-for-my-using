@@ -2,7 +2,7 @@ import { employeeExportRows, exportLocale, neutralizeCsvCell, serializeReportCsv
 
 const row = (overrides: Partial<Parameters<typeof viewEmployees>[0][number]> = {}) => ({
   firstName: 'Alex', lastName: 'Kim', email: 'alex@example.test', department: 'Warehouse',
-  sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up' as const, ...overrides,
+  sessionsCount: 3, completedCount: 3, averagePercentage: 85, trend: 'up' as const, performance: 'mid' as const, ...overrides,
 });
 
 describe('report CSV (PR 336)', () => {
@@ -36,6 +36,19 @@ describe('report CSV (PR 336)', () => {
     expect(viewEmployees(rows, { noCompletion: 'true' }).map((r) => r.firstName)).toEqual(['Mira']);
     expect(viewEmployees(rows, { sort: 'average', dir: 'desc' }).map((r) => r.firstName)).toEqual(['Alex', 'Mira']);
     expect(viewEmployees(rows, { sort: 'employee', dir: 'desc' }).map((r) => r.firstName)).toEqual(['Mira', 'Alex']);
+  });
+
+  it('filters employees by performance band and combines it with the other toggles (PR 350)', () => {
+    const rows = [
+      row({ firstName: 'Low', performance: 'low', averagePercentage: 40 }),
+      row({ firstName: 'Mid' }),
+      row({ firstName: 'High', performance: 'high', averagePercentage: 95 }),
+      row({ firstName: 'None', performance: null, completedCount: 0, averagePercentage: null }),
+    ];
+    expect(viewEmployees(rows, { performance: 'low' }).map((r) => r.firstName)).toEqual(['Low']);
+    expect(viewEmployees(rows, { performance: 'high' }).map((r) => r.firstName)).toEqual(['High']);
+    expect(viewEmployees(rows, { performance: 'low', noCompletion: 'true' })).toEqual([]);
+    expect(viewEmployees(rows, {})).toHaveLength(4);
   });
 
   it('exports sessions without feedback or geolocation columns and hides masked results', () => {

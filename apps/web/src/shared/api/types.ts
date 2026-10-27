@@ -538,15 +538,16 @@ export type ChecklistGeolocationPolicy = 'off' | 'optional' | 'required';
 export type ChecklistFeedbackVisibility = 'after_completion' | 'live';
 
 // ---- Workplace-training module settings (PR 286) ----
-// criticalThreshold/lowThreshold are intentionally omitted here even though the API returns them --
-// DEC-CHKS-001 (docs/status/OPEN_DECISIONS.md) defers what counts as a "critical" result to an
-// owner decision, so the settings UI does not show a critical/low band until that's resolved.
+// criticalThreshold is intentionally omitted here even though the API returns it -- DEC-CHKS-001
+// (docs/status/OPEN_DECISIONS.md) leaves what counts as a "critical" result undecided. lowThreshold
+// (PR 350) is editable; null means the owner has not set it.
 export type ChecklistObserverEligibility = 'any_user' | 'selected_roles' | 'selected_users';
 
 export type ChecklistWorkplaceSettingsView = {
   organizationId: string;
   moduleEnabled: boolean;
   highPerformanceThreshold: number;
+  lowThreshold: number | null;
   defaultGeolocationPolicy: ChecklistGeolocationPolicy;
   feedbackVisibility: ChecklistFeedbackVisibility;
   observerEligibility: ChecklistObserverEligibility;

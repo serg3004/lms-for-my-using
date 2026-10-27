@@ -65,6 +65,8 @@ export type ManagerChecklistAnalyticsEmployeeRow = {
   completedCount: number;
   averagePercentage: number | null;
   trend: 'up' | 'down' | 'flat' | null;
+  /** Band of the average against the settings thresholds (PR 350); null without a completed scored session. */
+  performance: 'low' | 'mid' | 'high' | null;
   lastSessionAt: string | null;
 };
 
@@ -101,6 +103,7 @@ export type ManagerChecklistAnalytics = {
 export type ManagerChecklistEmployeesExportQuery = ManagerChecklistAnalyticsQuery & {
   q?: string;
   noCompletion?: 'true' | 'false';
+  performance?: 'low' | 'high';
   sort?: 'employee' | 'department' | 'sessions' | 'average';
   dir?: 'asc' | 'desc';
   format?: 'csv' | 'xlsx';

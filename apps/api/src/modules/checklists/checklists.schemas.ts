@@ -211,6 +211,8 @@ export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnal
 export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
   q: z.string().trim().min(1).max(120).optional(),
   noCompletion: z.enum(['true', 'false']).optional(),
+  // PR 350: band of the employee's average against the settings thresholds.
+  performance: z.enum(['low', 'high']).optional(),
   sort: z.enum(['employee', 'department', 'sessions', 'average']).optional(),
   dir: z.enum(['asc', 'desc']).optional(),
   // Only recorded in the audit entry: the client builds the .xlsx from the same `rows`.

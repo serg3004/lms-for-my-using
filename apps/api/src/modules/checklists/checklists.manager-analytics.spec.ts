@@ -119,6 +119,41 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     ]));
   });
 
+  it('bands an employee by the average against the thresholds, boundaries included (PR 350)', async () => {
+    const { service } = createHarness({
+      employees: [
+        { id: 'u1', firstName: 'A', lastName: 'AtLow' },
+        { id: 'u2', firstName: 'B', lastName: 'BelowLow' },
+        { id: 'u3', firstName: 'C', lastName: 'AtHigh' },
+        { id: 'u4', firstName: 'D', lastName: 'None' },
+      ],
+      currentSessions: [
+        { userId: 'u1', scheduledAt: '2026-02-05T00:00:00.000Z', percentage: 60, passed: true },
+        { userId: 'u2', scheduledAt: '2026-02-05T00:00:00.000Z', percentage: 59, passed: true },
+        { userId: 'u3', scheduledAt: '2026-02-05T00:00:00.000Z', percentage: 90, passed: true },
+      ],
+    });
+
+    const result = await service.getManagerAnalytics(organizationId, query, {}, thresholds);
+    const bandOf = (id: string) => result.employees.find((employee) => employee.userId === id)?.performance;
+
+    expect(bandOf('u1')).toBe('mid');
+    expect(bandOf('u2')).toBe('low');
+    expect(bandOf('u3')).toBe('high');
+    expect(bandOf('u4')).toBeNull();
+  });
+
+  it('gives no low band to employees while lowThreshold is unset', async () => {
+    const { service } = createHarness({
+      employees: [{ id: 'u1', firstName: 'A', lastName: 'One' }],
+      currentSessions: [{ userId: 'u1', scheduledAt: '2026-02-05T00:00:00.000Z', percentage: 10, passed: false }],
+    });
+
+    const result = await service.getManagerAnalytics(organizationId, query, {}, { high: 90, low: null });
+
+    expect(result.employees[0]?.performance).toBe('mid');
+  });
+
   it('excludes not-yet-completed and unscored sessions from percentage-based stats but keeps them in sessionsCount', async () => {
     const { service } = createHarness({
       employees: [{ id: 'u1', firstName: 'A', lastName: 'One' }],

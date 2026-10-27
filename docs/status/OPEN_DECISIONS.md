@@ -105,6 +105,11 @@ Current waiver validator проверяет обязательные поля, u
 `criticalThreshold`/`lowThreshold` намеренно не заданы — что считается «критическим» результатом наблюдаемой
 сессии, product-решение, а не техническая деталь. До решения PR 286 не показывает critical/low band в settings UI.
 
+**Решение владельца (2026-10-27, PR 350):** `lowThreshold` настраивается в диалоге настроек модуля и по умолчанию
+**не задан** (`null`). Пока порог не задан, процентной границы «низкого» нет: фильтр «Низкое выполнение» у
+сотрудников пуст, а сессионные карточки/распределение делят low/mid по флагу `passed`. `criticalThreshold` остаётся
+без UI и значения — «критический» результат по-прежнему не определён.
+
 ## DEC-CHKS-002 — Workplace-training session data retention policy
 
 **Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 304).
