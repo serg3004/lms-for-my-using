@@ -51,11 +51,13 @@ type EmployeeRowLike = {
   completedCount: number;
   averagePercentage: number | null;
   trend: 'up' | 'down' | 'flat' | null;
+  performance: 'low' | 'mid' | 'high' | null;
 };
 
 export type EmployeeExportView = {
   q?: string;
   noCompletion?: 'true' | 'false';
+  performance?: 'low' | 'high';
   sort?: 'employee' | 'department' | 'sessions' | 'average';
   dir?: 'asc' | 'desc';
 };
@@ -67,6 +69,7 @@ export function viewEmployees<T extends EmployeeRowLike>(rows: T[], view: Employ
   const needle = (view.q ?? '').trim().toLocaleLowerCase();
   const filtered = rows.filter((row) => {
     if (view.noCompletion === 'true' && row.completedCount > 0) return false;
+    if (view.performance && row.performance !== view.performance) return false;
     if (!needle) return true;
     return [employeeName(row), row.email, row.department ?? ''].some((value) => value.toLocaleLowerCase().includes(needle));
   });

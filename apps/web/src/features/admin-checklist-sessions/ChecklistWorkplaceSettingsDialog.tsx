@@ -9,9 +9,8 @@ import { Button, Dialog, Select } from '../../shared/ui.js';
 /**
  * Module-wide settings (PR 286), matching the prototype's `#settingsDrawer`: opened contextually
  * from the sessions screen, not a top-level nav item or route. DEC-CHKS-001 (docs/status/
- * OPEN_DECISIONS.md) is why criticalThreshold/lowThreshold have no fields here -- what counts as
- * a "critical" result is an unresolved product decision, not a technical detail this dialog can
- * default its way past.
+ * OPEN_DECISIONS.md) is why criticalThreshold has no field here -- what counts as a "critical"
+ * result is an unresolved product decision. lowThreshold (PR 350) is editable; empty means "not set".
  */
 export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: boolean; onClose: () => void; t: TFunction }) {
   const titleId = useId();
@@ -29,12 +28,17 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
 
   async function save() {
     if (!settings) return;
+    if (settings.lowThreshold !== null && settings.lowThreshold > settings.highPerformanceThreshold) {
+      setError(t('admin.checklists.settings.thresholdOrderError', 'The low threshold must not be above the high-performance threshold.'));
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const updated = await updateChecklistWorkplaceSettings({
         moduleEnabled: settings.moduleEnabled,
         highPerformanceThreshold: settings.highPerformanceThreshold,
+        lowThreshold: settings.lowThreshold,
         defaultGeolocationPolicy: settings.defaultGeolocationPolicy,
         feedbackVisibility: settings.feedbackVisibility,
       });
@@ -73,6 +77,21 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
               type="number"
               value={settings.highPerformanceThreshold}
             />
+          </div>
+          <div className="admin-form__field">
+            <label htmlFor={`${titleId}-low`}>{t('admin.checklists.settings.lowThreshold', 'Low-result threshold')}</label>
+            <input
+              aria-describedby={`${titleId}-low-hint`}
+              id={`${titleId}-low`}
+              max={100}
+              min={0}
+              onChange={(e) => setSettings({ ...settings, lowThreshold: e.target.value === '' ? null : Number(e.target.value) })}
+              type="number"
+              value={settings.lowThreshold ?? ''}
+            />
+            <p className="admin-form__hint" id={`${titleId}-low-hint`}>
+              {t('admin.checklists.settings.lowThresholdHint', 'Results below this percentage count as low. Leave empty to not set a threshold.')}
+            </p>
           </div>
           <Select
             label={t('admin.checklists.settings.defaultGeolocationPolicy', 'Default geolocation policy')}

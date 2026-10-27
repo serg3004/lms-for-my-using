@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
+import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -55,6 +56,8 @@ export type ManagerAnalyticsEmployeeRow = {
   completedCount: number;
   averagePercentage: number | null;
   trend: 'up' | 'down' | 'flat' | null;
+  /** PR 350: band of the employee's average against the thresholds; null without a completed scored session. */
+  performance: ManagerPerformanceBand | null;
   lastSessionAt: string | null;
 };
 
@@ -1053,9 +1056,8 @@ export class ChecklistsService {
     if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(scopedEmployees, allCurrentSessions) };
 
     const bucketOf = (percentage: number, passed: boolean): 'low' | 'mid' | 'high' => {
-      if (percentage >= thresholds.high) return 'high';
-      if (thresholds.low !== null) return percentage < thresholds.low ? 'low' : 'mid';
-      return passed ? 'mid' : 'low';
+      if (thresholds.low === null && percentage < thresholds.high) return passed ? 'mid' : 'low';
+      return performanceBand(percentage, thresholds);
     };
     const average = (values: number[]) => (values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null);
 
@@ -1107,6 +1109,7 @@ export class ChecklistsService {
         completedCount: current?.completed.length ?? 0,
         averagePercentage: currentAverage,
         trend: trendDirection,
+        performance: currentAverage === null ? null : performanceBand(currentAverage, thresholds),
         lastSessionAt: current?.lastSessionAt?.toISOString() ?? null,
       };
     });
@@ -1184,9 +1187,9 @@ export class ChecklistsService {
     thresholds: { high: number; low: number | null },
     actor: { id: string; locale: string | null },
   ) {
-    const { q, noCompletion, sort, dir, format = 'csv', ...analyticsQuery } = query;
+    const { q, noCompletion, performance, sort, dir, format = 'csv', ...analyticsQuery } = query;
     const analytics = await this.getManagerAnalytics(organizationId, analyticsQuery, userScope, thresholds);
-    const rows = viewEmployees(analytics.employees, { q, noCompletion, sort, dir });
+    const rows = viewEmployees(analytics.employees, { q, noCompletion, performance, sort, dir });
     if (rows.length > MAX_EXPORT_ROWS) {
       throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} employees. Narrow the filters.`);
     }

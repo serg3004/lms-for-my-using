@@ -255,6 +255,7 @@ export function getChecklistWorkplaceSettings() {
 export function updateChecklistWorkplaceSettings(input: {
   moduleEnabled?: boolean;
   highPerformanceThreshold?: number;
+  lowThreshold?: number | null;
   defaultGeolocationPolicy?: ChecklistWorkplaceSettingsView['defaultGeolocationPolicy'];
   feedbackVisibility?: ChecklistWorkplaceSettingsView['feedbackVisibility'];
 }) {

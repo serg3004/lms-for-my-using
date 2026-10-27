@@ -572,7 +572,7 @@ PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the 
 browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing
 authenticated client downloads them without a second transport: `GET /checklists/manager-analytics/export`
 (`checklistManagerAnalyticsRead`; the analytics filters plus the table view `q`, `noCompletion`,
-`sort`, `dir`) and `GET /checklist-sessions/export` (`checklistSessionsManage`: `admin`/`manager`;
+`performance=low|high`, `sort`, `dir`) and `GET /checklist-sessions/export` (`checklistSessionsManage`: `admin`/`manager`;
 the `GET /checklist-sessions` filters without paging). Both reuse the caller's own scope
 (`participantLearnerScope()` / `sessionScope()`), so the file equals what the screen shows. Columns
 are only those of the tables (no e-mail, feedback text or geolocation), headers follow the user's
@@ -589,6 +589,10 @@ high buckets (`distribution[]`, `summary.lowCount`/`highCount`) use the tenant's
 design (DEC-CHKS-001 defers a concrete value), so when unset the low/mid split falls back to the
 instance's own `passed` flag instead of inventing a percentage cutoff. `trend[]` is a deterministic
 day-bucketed average-percentage time series from the current period's completed+scored sessions.
+PR 350: each employee row also carries `performance` (`low`/`mid`/`high`/`null`), the band of the
+rounded average against the same thresholds (`>= highPerformanceThreshold` is high, `< lowThreshold` is
+low, `null` without a completed scored session; with `lowThreshold` unset nobody is `low`). The dashboard
+filter and the export `performance` parameter use this one value, so the file equals the screen.
 Each employee row's own `trend` (`up`/`down`/`flat`/`null`) compares their average in the requested
 period against an equal-length immediately-preceding period. Only `completed` + `scored` sessions
 feed percentage-based stats; `sessionsCount`/`totalSessions` count every session in the period
@@ -882,8 +886,9 @@ client wrapper. Closed in this PR:
   `/admin/checklists/sessions`'s header, next to "New session". Not a new nav item or route,
   matching the prototype's `#openAdminSettings` -> `#settingsDrawer` pattern (the prototype uses a
   drawer; this reuses the app's one shared modal primitive instead of introducing a second shell).
-- Editable fields: `moduleEnabled`, `highPerformanceThreshold`, `defaultGeolocationPolicy`,
-  `feedbackVisibility`. **`criticalThreshold`/`lowThreshold` are deliberately not exposed** --
+- Editable fields: `moduleEnabled`, `highPerformanceThreshold`, `lowThreshold` (PR 350, empty = not
+  set, default `null`), `defaultGeolocationPolicy`, `feedbackVisibility`. **`criticalThreshold` is
+  deliberately not exposed** (the next sentences about critical/low predate PR 350) --
   `DEC-CHKS-001` (`docs/status/OPEN_DECISIONS.md`) explicitly defers what counts as a "critical"
   session result to an unresolved owner decision, and states the settings UI must not show a
   critical/low band until that decision is made. Building the fields anyway would have turned an

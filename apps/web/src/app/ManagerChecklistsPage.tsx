@@ -46,11 +46,12 @@ type EmployeeSortKey = (typeof SORT_KEYS)[number];
  */
 export function filterAndSortEmployees(
   rows: ManagerChecklistAnalyticsEmployeeRow[],
-  options: { query: string; onlyNoCompletion: boolean; sort: DataTableSort | null },
+  options: { query: string; onlyNoCompletion: boolean; performance: 'low' | 'high' | null; sort: DataTableSort | null },
 ): ManagerChecklistAnalyticsEmployeeRow[] {
   const needle = options.query.trim().toLocaleLowerCase();
   const filtered = rows.filter((row) => {
     if (options.onlyNoCompletion && row.completedCount > 0) return false;
+    if (options.performance && row.performance !== options.performance) return false;
     if (!needle) return true;
     return [employeeName(row), row.email, row.department ?? ''].some((value) => value.toLocaleLowerCase().includes(needle));
   });
@@ -241,6 +242,8 @@ export function ManagerChecklistsPage() {
   const departmentId = searchParams.get('departmentId') ?? '';
   const searchQuery = searchParams.get('q') ?? '';
   const onlyNoCompletion = searchParams.get('noCompletion') === '1';
+  const performanceParam = searchParams.get('performance');
+  const performance: 'low' | 'high' | null = performanceParam === 'low' || performanceParam === 'high' ? performanceParam : null;
   const sortKey = searchParams.get('sort') as EmployeeSortKey | null;
   const sort: DataTableSort | null = sortKey && SORT_KEYS.includes(sortKey) ? { key: sortKey, direction: searchParams.get('dir') === 'desc' ? 'descending' : 'ascending' } : null;
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -279,6 +282,7 @@ export function ManagerChecklistsPage() {
         departmentId: departmentId || undefined,
         q: searchQuery.trim() || undefined,
         noCompletion: onlyNoCompletion ? 'true' : undefined,
+        performance: performance ?? undefined,
         sort: sort ? (sort.key as EmployeeSortKey) : undefined,
         dir: sort ? (sort.direction === 'descending' ? 'desc' : 'asc') : undefined,
         format,
@@ -297,7 +301,7 @@ export function ManagerChecklistsPage() {
     setWizardOpen(true);
   }
   const toParticipant = (row: ManagerChecklistAnalyticsEmployeeRow): ChecklistSessionParticipant => ({ id: row.userId, firstName: row.firstName, lastName: row.lastName, email: row.email, position: null });
-  const rows = state.status === 'loaded' ? filterAndSortEmployees(state.data.employees, { query: searchQuery, onlyNoCompletion, sort }) : [];
+  const rows = state.status === 'loaded' ? filterAndSortEmployees(state.data.employees, { query: searchQuery, onlyNoCompletion, performance, sort }) : [];
 
   const columns: Column<ManagerChecklistAnalyticsEmployeeRow>[] = [
     { key: 'employee', label: t('manager.checklists.employee', 'Employee'), priority: 'primary', sortable: true, render: employeeName },
@@ -374,6 +378,14 @@ export function ManagerChecklistsPage() {
           {t('manager.checklists.searchLabel', 'Search employees')}
           <input className="ds-input" type="search" value={searchQuery} onChange={(event) => updateParam('q', event.target.value)} placeholder={t('manager.checklists.searchPlaceholder', 'Name, email or department')} />
         </label>
+        <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+          {t('manager.checklists.performanceFilter', 'Result')}
+          <select className="ds-input" value={performance ?? ''} onChange={(event) => updateParam('performance', event.target.value)}>
+            <option value="">{t('manager.checklists.performanceAll', 'All results')}</option>
+            <option value="low">{t('manager.checklists.performanceLow', 'Low completion')}</option>
+            <option value="high">{t('manager.checklists.performanceHigh', 'High completion')}</option>
+          </select>
+        </label>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600, minHeight: 44 }}>
           <input type="checkbox" style={{ width: 20, height: 20, flex: 'none' }} checked={onlyNoCompletion} onChange={(event) => updateParam('noCompletion', event.target.checked ? '1' : '')} />
           {t('manager.checklists.onlyNoCompletion', 'Only without completed sessions')}
@@ -407,7 +419,7 @@ export function ManagerChecklistsPage() {
                 state.data.thresholds.low === null ? (
                   <span>
                     {t('manager.checklists.lowThresholdUnset', 'threshold not set')}{' '}
-                    <span aria-label={t('manager.checklists.lowThresholdUnsetHint', 'lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage')} title={t('manager.checklists.lowThresholdUnsetHint', 'lowThreshold is not configured by the owner (DEC-CHKS-001) — the bucket is determined by whether the session passed, not a fixed percentage')}>
+                    <span aria-label={t('manager.checklists.lowThresholdUnsetHint', 'The low-result threshold is not set by an administrator — "low" is decided by whether the session passed, not by a percentage')} title={t('manager.checklists.lowThresholdUnsetHint', 'The low-result threshold is not set by an administrator — "low" is decided by whether the session passed, not by a percentage')}>
                       ⓘ
                     </span>
                   </span>
