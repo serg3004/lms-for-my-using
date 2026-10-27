@@ -777,6 +777,26 @@ for (const width of widths) {
       await expectVisualMatch(page, `admin-checklist-builder-${width}`);
     });
 
+    test('keeps the evaluation scale editor responsive', async ({ page }) => {
+      await installChecklistBuilderMocks(page);
+      await page.goto('/admin/checklists');
+      await expect(page.getByRole('heading', { name: 'Чек-листы' })).toBeVisible();
+      if (width <= 860) await page.getByRole('button', { name: /Opening shift checklist$/ }).click();
+      await page.getByRole('button', { name: 'Редактировать' }).click();
+      await page.getByRole('button', { name: 'Оценочные шкалы' }).click();
+      await page.getByRole('button', { name: 'Новая шкала' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Новая шкала' });
+      await expect(dialog.getByLabel('Название уровня 2')).toBeVisible();
+      const dialogFits = await dialog.evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+      });
+      expect(dialogFits).toBe(true);
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `admin-checklist-scale-editor-${width}`);
+    });
+
     test('keeps the admin checklist sessions list and wizard responsive', async ({ page }) => {
       await installChecklistSessionsMocks(page);
       await page.goto('/admin/checklists/sessions');

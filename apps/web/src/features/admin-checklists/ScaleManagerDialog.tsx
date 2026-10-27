@@ -186,14 +186,16 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
           {editor.levels.map((level, index) => {
             const n = index + 1;
             return (
-              <li key={level.key}>
-                <Input
-                  aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
-                  disabled={editor.readOnly}
-                  maxLength={80}
-                  onChange={(e) => patchLevel(level.key, { label: e.target.value })}
-                  value={level.label}
-                />
+              <li key={level.key} style={{ flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <Input
+                    aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
+                    disabled={editor.readOnly}
+                    maxLength={80}
+                    onChange={(e) => patchLevel(level.key, { label: e.target.value })}
+                    value={level.label}
+                  />
+                </div>
                 <Input
                   aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
                   disabled={editor.readOnly}

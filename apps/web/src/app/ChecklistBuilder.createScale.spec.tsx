@@ -1,0 +1,83 @@
+// @vitest-environment jsdom
+import '../i18n/index.js';
+
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import i18n from 'i18next';
+
+const api = vi.hoisted(() => ({
+  updateChecklist: vi.fn(),
+  updateChecklistItem: vi.fn(),
+  listChecklistItemGroups: vi.fn(),
+  listChecklistScales: vi.fn(),
+  createChecklistScale: vi.fn(),
+}));
+vi.mock('../shared/api/checklists.js', () => api);
+
+import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder';
+
+Object.assign(HTMLDialogElement.prototype, {
+  showModal(this: HTMLDialogElement) { this.setAttribute('open', ''); },
+  close(this: HTMLDialogElement) { this.removeAttribute('open'); },
+});
+
+const item = { id: 'item-1', checklistId: 'c1', order: 0, text: 'Работа с кассой', points: 10, isRequired: true, photoRequired: false, groupId: null, scaleId: null };
+const checklist = {
+  id: 'c1', organizationId: 'org-1', title: 'Касса', description: null, status: 'draft' as const, scoringMode: 'sum_points' as const,
+  passThreshold: 80, requiresReview: false, createdBy: 'u1', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  scaleLevels: null, items: [item], itemGroups: [], contextFields: [],
+};
+
+let root: ReturnType<typeof createRoot> | undefined;
+afterEach(async () => {
+  if (root) await act(async () => { root?.unmount(); });
+  root = undefined;
+  document.body.innerHTML = '';
+  vi.clearAllMocks();
+});
+
+function setValue(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)', () => {
+  it('opens the level editor, creates the scale and attaches it to that criterion', async () => {
+    const created = { id: 'scale-new', organizationId: 'org-1', name: 'Да/Нет/Частично', status: 'active', inUse: false, isDefault: false, levels: [{ value: 1, label: 'Нет', score: 0 }, { value: 2, label: 'Да', score: 100 }] };
+    api.listChecklistItemGroups.mockResolvedValue([]);
+    api.listChecklistScales.mockResolvedValue([]);
+    api.createChecklistScale.mockResolvedValue(created);
+    api.updateChecklistItem.mockResolvedValue({ ...item, scaleId: 'scale-new' });
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const t = i18n.t.bind(i18n) as never;
+    await act(async () => {
+      root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+    });
+
+    const select = container.querySelector<HTMLSelectElement>('select.admin-criteria-row__scale')!;
+    await act(async () => {
+      select.value = '__create_scale__';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    const dialog = [...document.querySelectorAll<HTMLElement>('dialog[open]')].find((d) => d.querySelector('input[aria-label="Название уровня 1"]'))!;
+    expect(dialog).toBeTruthy();
+    const input = (label: string) => dialog.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!;
+    await act(async () => {
+      setValue(dialog.querySelector<HTMLInputElement>('input:not([aria-label])')!, 'Да/Нет/Частично');
+      setValue(input('Название уровня 1'), 'Нет');
+      setValue(input('Название уровня 2'), 'Да');
+    });
+    const submit = [...dialog.querySelectorAll('button')].find((b) => b.textContent?.includes('Создать'));
+    await act(async () => { submit?.click(); });
+
+    expect(api.createChecklistScale).toHaveBeenCalledWith({
+      name: 'Да/Нет/Частично',
+      levels: [{ value: 1, label: 'Нет', score: 0 }, { value: 2, label: 'Да', score: 100 }],
+    });
+    expect(api.updateChecklistItem).toHaveBeenCalledWith('item-1', { scaleId: 'scale-new' });
+  });
+});
