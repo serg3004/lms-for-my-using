@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -44,6 +44,9 @@ const CHECKLIST_SNAPSHOT_VERSION = 1;
  * must abort the whole batch, not silently skip every recipient.
  */
 const ACTIVE_INSTANCE_STATUSES = ['assigned', 'in_progress', 'submitted'] as const;
+/** PR 354: how many free checklists can be pinned to the learner pages at once (matches the prototype). */
+export const MAX_PINNED_CHECKLISTS = 8;
+export const PINNED_LIMIT_MESSAGE = `At most ${MAX_PINNED_CHECKLISTS} checklists can be pinned. Unpin another checklist first.`;
 export const ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE = 'This user already has an active assignment for this checklist';
 
 export type ManagerAnalyticsEmployeeRow = {
@@ -89,6 +92,7 @@ const checklistSelect = {
   allowFinishIncomplete: true,
   forbidGalleryPhotos: true,
   accessMode: true,
+  pinned: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -304,12 +308,14 @@ export class ChecklistsService {
   async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, scoringMode: true, scaleLevels: true },
+      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true },
     });
 
     if (!checklist) {
       throw new NotFoundException('Checklist not found');
     }
+
+    const pinned = this.resolvePinned(checklist, input);
 
     if (input.status === 'published') {
       await this.ensurePublishable(
@@ -321,19 +327,17 @@ export class ChecklistsService {
     }
 
     const { scaleLevels, contextFields, ...rest } = input;
+    delete rest.pinned;
 
-    const updated = await this.prisma.checklist.update({
-      where: { id: checklistId, organizationId },
-      data: {
-        ...rest,
-        ...(scaleLevels !== undefined
-          ? { scaleLevels: scaleLevels === null ? Prisma.JsonNull : scaleLevels }
-          : {}),
-        ...(contextFields !== undefined
-          ? { contextFields: contextFields === null ? Prisma.JsonNull : contextFields }
-          : {}),
-      },
-      select: checklistWithItemsSelect,
+    const updated = await this.updateWithPinLimit(checklistId, organizationId, pinned, {
+      ...rest,
+      ...(pinned !== undefined ? { pinned } : {}),
+      ...(scaleLevels !== undefined
+        ? { scaleLevels: scaleLevels === null ? Prisma.JsonNull : scaleLevels }
+        : {}),
+      ...(contextFields !== undefined
+        ? { contextFields: contextFields === null ? Prisma.JsonNull : contextFields }
+        : {}),
     });
 
     await this.auditLog.record({
@@ -347,6 +351,39 @@ export class ChecklistsService {
     });
 
     return updated;
+  }
+
+  /**
+   * PR 354: the pinned value to store, or undefined to leave it alone. Pinning needs a published
+   * `free` checklist (400 otherwise); a checklist that stops being free or published is unpinned
+   * automatically, and unpinning is always allowed.
+   */
+  private resolvePinned(
+    current: { accessMode: 'assigned' | 'free'; status: 'draft' | 'published' | 'archived'; pinned: boolean },
+    input: UpdateChecklistInput,
+  ): boolean | undefined {
+    const nextMode = input.accessMode ?? current.accessMode;
+    const nextStatus = input.status ?? current.status;
+    if (nextMode === 'free' && nextStatus === 'published') return input.pinned;
+    if (input.pinned === true && !current.pinned) {
+      throw new BadRequestException('Only a published free checklist can be pinned');
+    }
+    return current.pinned ? false : undefined;
+  }
+
+  /** Pinning takes a per-organization lock so two parallel requests cannot both pass the limit check. */
+  private async updateWithPinLimit(checklistId: string, organizationId: string, pinned: boolean | undefined, data: Prisma.ChecklistUpdateInput) {
+    if (pinned !== true) {
+      return this.prisma.checklist.update({ where: { id: checklistId, organizationId }, data, select: checklistWithItemsSelect });
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('checklist-pin'), hashtext(${organizationId}))`;
+      const others = await tx.checklist.count({
+        where: { organizationId, deletedAt: null, status: 'published', accessMode: 'free', pinned: true, id: { not: checklistId } },
+      });
+      if (others >= MAX_PINNED_CHECKLISTS) throw new ConflictException(PINNED_LIMIT_MESSAGE);
+      return tx.checklist.update({ where: { id: checklistId, organizationId }, data, select: checklistWithItemsSelect });
+    });
   }
 
   /**
@@ -944,11 +981,12 @@ export class ChecklistsService {
   async listFreeChecklists(organizationId: string, userId: string) {
     const checklists = await this.prisma.checklist.findMany({
       where: { organizationId, deletedAt: null, status: 'published', accessMode: 'free' },
-      orderBy: [{ title: 'asc' }, { id: 'asc' }],
+      orderBy: [{ pinned: 'desc' }, { title: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
         title: true,
         description: true,
+        pinned: true,
         _count: { select: { items: { where: { deletedAt: null } } } },
       },
     });
@@ -973,6 +1011,7 @@ export class ChecklistsService {
       id: checklist.id,
       title: checklist.title,
       description: checklist.description,
+      pinned: checklist.pinned,
       itemCount: checklist._count.items,
       activeInstanceId: activeByChecklist.get(checklist.id)?.id ?? null,
       activeInstanceStatus: activeByChecklist.get(checklist.id)?.status ?? null,

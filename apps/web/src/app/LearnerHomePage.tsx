@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { formatDate } from '../shared/formatDate.js';
 
+import { listFreeChecklists } from '../shared/api/checklists.js';
+import type { FreeChecklistSummary } from '../shared/api/types.js';
 import { getLearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
 import type { LearnerDashboardSummary } from '../shared/api/learnerDashboard.js';
 import { useSession } from '../shared/session.js';
@@ -9,6 +11,7 @@ import { getReadableTitle } from '../shared/displayLabels.js';
 import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { Card, PageState, ProgressBar, SectionHeader, StatCard, StatsGrid } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 
 type ContinueLearningItem = {
   courseId: string;
@@ -39,6 +42,8 @@ type DashboardData = {
   continueLearning: ContinueLearningItem[];
   upcomingDeadlines: DeadlineItem[];
   recentActivity: ActivityItem[];
+  // PR 354: optional so a failed catalog request (or an older payload) just hides the tiles.
+  pinnedChecklists?: FreeChecklistSummary[];
 };
 
 function buildContinueLearning(summary: LearnerDashboardSummary): ContinueLearningItem[] {
@@ -83,7 +88,7 @@ export function LearnerHomePage() {
 
   const { state: loadState } = useAsyncData<DashboardData>(
     async () => {
-      const summary = await getLearnerDashboardSummary();
+      const [summary, free] = await Promise.all([getLearnerDashboardSummary(), listFreeChecklists().catch(() => [] as FreeChecklistSummary[])]);
 
       return {
         firstName: currentUser!.firstName,
@@ -94,6 +99,7 @@ export function LearnerHomePage() {
         continueLearning: buildContinueLearning(summary),
         upcomingDeadlines: buildPriorityDeadlines(summary.upcomingDeadlines),
         recentActivity: buildRecentActivity(summary, t),
+        pinnedChecklists: free.filter((checklist) => checklist.pinned),
       };
     },
     [currentUser, t],
@@ -202,6 +208,16 @@ export function LearnerHomePage() {
           )}
         </div>
       </section>
+
+      <PinnedChecklistTiles
+        items={data.pinnedChecklists ?? []}
+        title={t('learner.dashboard.pinnedChecklists.title')}
+        action={(item) => (
+          <a className="ds-button ds-button--secondary ds-button--sm" href="/learn/checklists">
+            {item.activeInstanceId ? t('learner.dashboard.pinnedChecklists.continue') : t('learner.dashboard.pinnedChecklists.open')}
+          </a>
+        )}
+      />
 
       <div className="learner-dashboard__details">
         <div>

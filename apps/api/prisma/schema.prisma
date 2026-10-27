@@ -1123,6 +1123,9 @@ model Checklist {
   // PR 353: assigned (default, existing behaviour) or free self-start. Affects visibility and
   // start only; it is not frozen into the instance snapshot.
   accessMode                  ChecklistAccessMode            @default(assigned) @map("access_mode")
+  // PR 354: shown as a tile on the learner pages. Only a published `free` checklist can be pinned;
+  // the service clears it when the checklist stops being free or published.
+  pinned                      Boolean                        @default(false)
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz

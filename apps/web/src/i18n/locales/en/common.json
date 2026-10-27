@@ -981,7 +981,8 @@
         "isRequired": "Required item",
         "dueAt": "Due date",
         "criterion": "Criterion",
-        "accessMode": "How the checklist is taken"
+        "accessMode": "How the checklist is taken",
+        "pinned": "Pin to the dashboard"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1400,7 +1401,10 @@
       "accessModeHint": {
         "assigned": "Reaches people through assignments and observation sessions.",
         "free": "Every user of the organization can start the published checklist themselves from the Checklists page."
-      }
+      },
+      "pinnedHint": "Shows the checklist as a tile at the top of the learner pages. Up to 8 checklists can be pinned.",
+      "pinnedDraftHint": "Available once the checklist is published.",
+      "pinnedLimit": "Eight checklists are already pinned. Unpin one of them in its settings, then try again."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
@@ -1583,7 +1587,12 @@
         "certificateIssued": "Earned a certificate for \"{{title}}\""
       },
       "nextAction": "Next action",
-      "statsLabel": "Learning summary"
+      "statsLabel": "Learning summary",
+      "pinnedChecklists": {
+        "title": "Pinned checklists",
+        "open": "Open",
+        "continue": "Continue"
+      }
     },
     "mobileNavigation": "Learner navigation"
   },
@@ -2439,7 +2448,8 @@
       "continue": "Continue",
       "itemCount": "Criteria: {{count}}",
       "startError": "Unable to start this checklist.",
-      "loadError": "Unable to load free checklists."
+      "loadError": "Unable to load free checklists.",
+      "pinnedTitle": "Pinned checklists"
     }
   },
   "checklistReview": {

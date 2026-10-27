@@ -387,6 +387,7 @@ export type FreeChecklistSummary = {
   title: string;
   description: string | null;
   itemCount: number;
+  pinned: boolean;
   activeInstanceId: string | null;
   activeInstanceStatus: ChecklistInstanceStatus | null;
 };
@@ -410,6 +411,8 @@ export type ChecklistSummary = {
   forbidGalleryPhotos?: boolean;
   // PR 353 -- optional because older payloads never carried it (read as 'assigned').
   accessMode?: ChecklistAccessMode;
+  // PR 354 -- optional for the same reason (read as false).
+  pinned?: boolean;
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   createdAt: string;

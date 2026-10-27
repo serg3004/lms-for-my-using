@@ -515,6 +515,16 @@ fresh and existing-row defaults, all selection modes, invalid tenant/user reject
 and continuing access to an existing assigned session in PostgreSQL integration tests. Production
 backup/restore remains subject to the live verification requirements above.
 
+### Checklist pinned flag (PR 354)
+
+`20261029120000_add_checklist_pinned` adds one non-null `checklists.pinned` boolean defaulting to
+`false`; no index (the pin limit counts at most one organization's free checklists) and no
+backfill, so every existing checklist stays unpinned. Apply the forward migration before starting
+the new API; an older API ignores the column and simply never shows tiles. Roll back the
+application while retaining the column. Verify the limit (also under parallel requests), the
+automatic unpin when a checklist stops being free or published, and the catalog order in the
+PostgreSQL integration test `checklist-pinned.database.spec.ts`.
+
 ### Checklist access mode (PR 353)
 
 `20261028120000_add_checklist_access_mode` adds the `ChecklistAccessMode` enum, one non-null

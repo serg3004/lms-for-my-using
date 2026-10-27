@@ -25,13 +25,13 @@ const base = {
 let root: ReturnType<typeof createRoot> | undefined;
 let container: HTMLDivElement;
 
-async function render(checklist: typeof base & { accessMode?: 'assigned' | 'free' }) {
+async function render(checklist: Omit<typeof base, 'status'> & { status?: 'draft' | 'published'; accessMode?: 'assigned' | 'free'; pinned?: boolean }) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
   const t = i18n.t.bind(i18n) as never;
   await act(async () => {
-    root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+    root?.render(<ChecklistBuilder checklist={checklist as never} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
   });
 }
 const select = () => container.querySelector<HTMLSelectElement>('#checklist-access-mode')!;
@@ -88,5 +88,58 @@ describe('ChecklistBuilder: access mode (PR 353)', () => {
     await choose('assigned');
 
     expect(container.textContent).toContain('Есть несохранённые изменения');
+  });
+});
+
+const pinBox = () => container.querySelector<HTMLInputElement>('input[type="checkbox"][data-pin]') ?? [...container.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent?.includes('Закрепить в панели'))?.querySelector('input') ?? null;
+
+describe('ChecklistBuilder: pin to the dashboard (PR 354)', () => {
+  it('shows the pin option only for a free checklist', async () => {
+    await render(base);
+    expect(pinBox()).toBeNull();
+
+    await choose('free');
+    expect(pinBox()).not.toBeNull();
+
+    await choose('assigned');
+    expect(pinBox()).toBeNull();
+  });
+
+  it('disables the pin for a draft and explains why', async () => {
+    await render({ ...base, accessMode: 'free' });
+
+    expect(pinBox()?.disabled).toBe(true);
+    expect(container.textContent).toContain('Доступно после публикации листа');
+  });
+
+  it('saves the pin of a published free checklist', async () => {
+    await render({ ...base, status: 'published', accessMode: 'free' });
+    expect(pinBox()?.disabled).toBe(false);
+
+    await act(async () => { pinBox()?.click(); });
+    const save = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Сохранить');
+    await act(async () => { save?.click(); });
+
+    expect(api.updateChecklist).toHaveBeenCalledWith('c1', expect.objectContaining({ accessMode: 'free', pinned: true }));
+  });
+
+  it('clears the pin in the same save when the mode goes back to assigned', async () => {
+    await render({ ...base, status: 'published', accessMode: 'free', pinned: true });
+    await choose('assigned');
+    const save = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Сохранить');
+    await act(async () => { save?.click(); });
+
+    expect(api.updateChecklist).toHaveBeenCalledWith('c1', expect.objectContaining({ accessMode: 'assigned', pinned: false }));
+  });
+
+  it('explains the limit when the server answers 409', async () => {
+    const { ApiClientError } = await import('../shared/apiClient.js');
+    api.updateChecklist.mockRejectedValue(new ApiClientError('At most 8 checklists can be pinned.', 409));
+    await render({ ...base, status: 'published', accessMode: 'free' });
+    await act(async () => { pinBox()?.click(); });
+    const save = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Сохранить');
+    await act(async () => { save?.click(); });
+
+    expect(container.textContent).toContain('Уже закреплено 8 листов');
   });
 });

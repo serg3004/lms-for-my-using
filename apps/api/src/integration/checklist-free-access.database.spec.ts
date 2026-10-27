@@ -105,7 +105,7 @@ describe('checklist free access mode (PR 353) — database', () => {
     const catalog = await service.listFreeChecklists(organizationId, userId);
 
     expect(catalog).toEqual([
-      { id: free.id, title: 'Free published', description: null, itemCount: 3, activeInstanceId: null, activeInstanceStatus: null },
+      { id: free.id, title: 'Free published', description: null, itemCount: 3, pinned: false, activeInstanceId: null, activeInstanceStatus: null },
     ]);
     expect(JSON.stringify(catalog)).not.toContain('Criterion');
   });
