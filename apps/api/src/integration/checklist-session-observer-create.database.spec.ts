@@ -14,8 +14,8 @@ import { OrganizationAccessScopeService } from '../modules/organization-access-s
 import type { UploadService } from '../modules/upload/public.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
-// PR 331 IDOR matrix: real membership guard + controller + scoped Prisma queries.
-describe('observer session creation (PR 331) — database', () => {
+// PR 331/349 IDOR matrix: real membership guard + controller + scoped Prisma queries.
+describe('observer session creation and conduct access (PR 331/349) — database', () => {
   let prisma: PrismaService;
   let controller: ChecklistsController;
   let sessions: ChecklistSessionService;
@@ -169,5 +169,59 @@ describe('observer session creation (PR 331) — database', () => {
     for (const handler of ['createSession', 'bulkCreateSessions', 'listSessionParticipants'] as const) {
       await expect(request(denied, handler)).rejects.toBeInstanceOf(ForbiddenException);
     }
+  });
+
+  async function managedSession(status: 'scheduled' | 'in_progress' | 'paused' = 'scheduled', own = false) {
+    const actor = await user(organizationId, ['manager', 'instructor']);
+    const group = await prisma.group.create({ data: { organizationId, name: 'Conduct audit team', slug: `audit-${randomUUID()}` } });
+    await prisma.managerGroup.create({ data: { organizationId, groupId: group.id, managerId: actor.id } });
+    await prisma.groupMember.create({ data: { organizationId, groupId: group.id, userId: learner.id } });
+    const assigned = await instance(learner.id);
+    const session = await sessions.create(organizationId, { instanceId: assigned.id, observerId: own ? actor.id : observer.id, locationCapturePolicy: 'required' }, observer.id);
+    await prisma.checklistSession.update({ where: { id: session.id }, data: { status, contextFieldsSnapshot: [], contextValues: {} } });
+    return { actor, session };
+  }
+
+  const conductActions = [
+    ['start', 'transitionStart', 'scheduled'], ['pause', 'transitionPause', 'in_progress'],
+    ['resume', 'transitionResume', 'paused'], ['complete', 'transitionComplete', 'in_progress'],
+    ['feedback', 'submitFeedback', 'in_progress'], ['context', 'submitContext', 'in_progress'],
+    ['location', 'captureLocation', 'in_progress'],
+  ] as const;
+
+  it.each(conductActions)('PR 349: team read access never grants another observer’s %s action', async (action, handler, status) => {
+    const { actor, session } = await managedSession(status);
+    expect(await sessions.get(session.id, organizationId, await access.sessionScope(actor), { isLearnerOnly: false, feedbackVisibility: 'live' })).toMatchObject({ id: session.id });
+    const req = await request(actor, handler);
+    const eventsBefore = await prisma.checklistSessionEvent.count({ where: { organizationId, sessionId: session.id } });
+    const operation = action === 'location'
+      ? controller.captureLocation(session.id, 'start', { status: 'denied', overrideReason: 'This caller is not an admin' }, req)
+      : action === 'feedback' ? controller.submitFeedback(session.id, { version: 1, strengths: 'Not my evaluation' }, req)
+      : action === 'context' ? controller.submitContext(session.id, { version: 1, values: {} }, req)
+      : controller[handler as 'transitionStart' | 'transitionPause' | 'transitionResume' | 'transitionComplete'](session.id, { version: 1 }, req);
+    await expect(operation).rejects.toBeInstanceOf(NotFoundException);
+    expect(await prisma.checklistSession.findUniqueOrThrow({ where: { id: session.id } })).toMatchObject({ status, version: 1, strengths: null });
+    expect(await prisma.checklistSessionEvent.count({ where: { organizationId, sessionId: session.id } })).toBe(eventsBefore);
+    expect(await prisma.checklistLocationCapture.count({ where: { organizationId, sessionId: session.id } })).toBe(0);
+  });
+
+  it('PR 349: own conduct, manager cancellation and admin override remain allowed', async () => {
+    const own = await managedSession('scheduled', true);
+    expect(await controller.transitionStart(own.session.id, { version: 1 }, await request(own.actor, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
+    const team = await managedSession();
+    expect(await controller.transitionCancel(team.session.id, { version: 1 }, await request(team.actor, 'transitionCancel'))).toMatchObject({ status: 'cancelled' });
+    const other = await managedSession();
+    const admin = await user(organizationId, ['admin']);
+    expect(await controller.transitionStart(other.session.id, { version: 1 }, await request(admin, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
+  });
+
+  it('PR 349: a cached transition cannot bypass current observer scope', async () => {
+    const { actor, session } = await managedSession();
+    const admin = await user(organizationId, ['admin']);
+    const key = randomUUID();
+    await controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(admin, 'transitionStart'));
+    await expect(controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(actor, 'transitionStart'))).rejects.toBeInstanceOf(NotFoundException);
+    expect(await controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(observer, 'transitionStart'))).toMatchObject({ id: session.id, version: 2 });
+    expect(await prisma.checklistSessionEvent.count({ where: { organizationId, sessionId: session.id, eventType: 'started' } })).toBe(1);
   });
 });

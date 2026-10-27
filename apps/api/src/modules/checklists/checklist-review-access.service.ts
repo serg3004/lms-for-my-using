@@ -57,9 +57,10 @@ export class ChecklistReviewAccessService {
   }
 
   /**
-   * Canonical object scope for the ChecklistSession model introduced by PR 288.
+   * Read/scheduling object scope for the ChecklistSession model introduced by PR 288.
    * Keeping this policy in the existing review-access service lets session rows and every
-   * nested resource apply the same parent scope instead of authorizing child UUIDs directly.
+   * nested read apply the same parent scope instead of authorizing child UUIDs directly.
+   * Observer mutations use observerActionScope() rather than this read-oriented union.
    */
   async sessionScope(user: CurrentUser): Promise<ChecklistSessionAccessScope> {
     if (user.roles.includes('admin')) return {};
@@ -83,6 +84,8 @@ export class ChecklistReviewAccessService {
    * person. This scope is action-specific: unrestricted for admin (acting on the observer's
    * behalf is the documented admin path), otherwise always `{ observerId: user.id }` --
    * never the broader manager-team union, regardless of what other roles the caller also holds.
+   * PR 349 applies this same boundary to lifecycle conduct, feedback, context and location writes.
+   * Scheduling/cancellation and reads keep their existing read/team scope.
    */
   observerActionScope(user: CurrentUser): ChecklistSessionAccessScope {
     return user.roles.includes('admin') ? {} : { observerId: user.id };

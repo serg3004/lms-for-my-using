@@ -160,12 +160,19 @@ transaction with bounded retry on serialization failure
 (`runSerializableWithRetry`, `apps/api/src/modules/departments/org-structure-event.ts`, reused
 rather than duplicated), so two concurrent requests racing on the same session can never both win.
 
-Access is scoped through `ChecklistReviewAccessService.sessionScope()`: tenant-wide for admin, the
+Read and scheduling access is scoped through `ChecklistReviewAccessService.sessionScope()`: tenant-wide for admin, the
 manager's effective team for manager, the assigned session only for instructor (the observer), and
 the learner's own instance only for learner; a manager who also holds `instructor` gets the union of
 both. `RBAC`: `checklistSessionsRead` (admin/manager/instructor/learner) covers every read route;
 `checklistSessionsManage` (admin/manager) covers create/reschedule/cancel; `checklistSessionsRun`
 (admin/instructor) covers start/pause/resume/complete.
+
+Conduct actions (start/pause/resume/complete, feedback, context and location submission) additionally
+use `observerActionScope()`: admin may act tenant-wide, everyone else must be the assigned observer.
+The manager+instructor read union never authorizes conducting another observer's session (404).
+Cancellation retains the scheduler's team scope. A transition's idempotent replay checks current
+object access before returning its cached response, even when the original version is stale; a key
+already used for a different session transition returns 409. A denied replay performs no mutation.
 
 `overdue` is a derived, not stored, boolean: true only while `status === 'scheduled'` and
 `scheduledAt` has passed. It is not persisted and carries no separate lifecycle status of its own.
@@ -214,8 +221,8 @@ same upload/presigned-download endpoints and access checks (`getItemPhotoDownloa
 this PR doesn't actually implement.
 
 Geolocation capture: `POST /checklist-sessions/:id/location/:point` (`point` is `start` or `end`;
-`checklistSessionsRun` role policy, same `sessionScope()` access check as every other session
-sub-resource) and `GET /checklist-sessions/:id/location`. At most one capture per `(session, point)`
+`checklistSessionsRun` role policy plus `observerActionScope()`) and
+`GET /checklist-sessions/:id/location` (read-oriented `sessionScope()`). At most one capture per `(session, point)`
 -- enforced by the PR 288 unique constraint, so a duplicate submission is a 409, never a silent
 overwrite ("start/end only, no continuous tracking" -- the client calls `getCurrentPosition` once
 per point, never `watchPosition`; this endpoint pair is the server-observable half of that
@@ -223,7 +230,7 @@ constraint). A session whose `locationCapturePolicy` is `off` rejects any captur
 `optional`/`required` both accept `captured`/`denied`/`unavailable` status reports (coordinates are
 required in the request body if and only if `status === 'captured'`). When the caller submitting a
 capture is not the session's assigned observer -- reachable only by an admin, since RBAC plus
-`sessionScope()` block everyone else from a session they don't own -- the request requires a non-empty
+`observerActionScope()` block everyone else from submitting for another observer -- the request requires a non-empty
 `overrideReason` and is separately audited via a `ChecklistSessionEvent` of type
 `location_override` carrying the reason in its metadata. `GET .../location` applies a privacy-safe
 projection: only the assigned observer and admin see `latitude`/`longitude`/`accuracyMeters`; every
@@ -349,8 +356,9 @@ Own-only bulk creation preflights the checklist and every learner UUID. An inacc
 or learner returns 404 before writes; existing active assignments still yield per-recipient
 `skipped` outcomes. Admin/manager partial-success behavior is unchanged. Single creation verifies
 the assignment's learner scope before any idempotency replay. Reusing a creation key with another
-assignment or observer returns 409 rather than exposing a different session's response. A fresh
-single creation records `checklist_session.created`; replay does not duplicate that audit entry.
+assignment or observer returns 409 rather than exposing a different session's response. If identical
+keyed creations race on the unique assignment constraint, the losing request rechecks the committed
+key and returns its matching response; a mismatched key/observer stays 409. A fresh single creation records `checklist_session.created`; replay does not duplicate that audit entry.
 The transactional `created` session event and existing bulk audit retain the authenticated actor.
 Creation rights do not grant instructor access to PATCH/cancel/repeat or another observer's
 sessions.
