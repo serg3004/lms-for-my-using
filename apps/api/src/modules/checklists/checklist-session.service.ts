@@ -234,6 +234,11 @@ export class ChecklistSessionService {
       return result;
     } catch (error) {
       if (this.isUniqueConstraintViolation(error, 'instance_id')) {
+        // PostgreSQL can report a unique violation instead of a serialization failure when
+        // identical creations race. The winner committed its response in the same transaction.
+        // Replay only that exact creation; unrelated keys/observers retain the normal 409.
+        const cached = await this.findIdempotentResponse<ChecklistSessionView>(this.prisma, organizationId, 'session.create', input.idempotencyKey);
+        if (cached?.instanceId === input.instanceId && cached.observerId === input.observerId) return cached;
         throw new ConflictException('This checklist assignment already has a session');
       }
       throw error;
@@ -804,13 +809,17 @@ export class ChecklistSessionService {
 
     return runSerializableWithRetry(this.prisma, async (tx) => {
       const cached = await this.findIdempotentResponse<ChecklistSessionView>(tx, organizationId, idempotencyScope, idempotencyKey);
-      if (cached) return cached;
-
       const session = await tx.checklistSession.findFirst({
         where: { id: sessionId, organizationId, deletedAt: null, ...scope },
         include: { instance: { select: { templateSnapshot: true, checklist: { select: { contextFields: true } } } } },
       });
       if (!session) throw new NotFoundException('Checklist session not found');
+      // A replay still requires current object access. An operation key cannot identify another
+      // session, even when the caller may conduct both of them.
+      if (cached) {
+        if (cached.id !== sessionId) throw new ConflictException('Idempotency key belongs to another session transition');
+        return cached;
+      }
       if (!from.includes(session.status)) {
         throw new BadRequestException(`Cannot ${action} a session in status "${session.status}"`);
       }
@@ -943,7 +952,7 @@ export class ChecklistSessionService {
    * never a silent overwrite. "getCurrentPosition once, never watchPosition" is a client-side
    * constraint; this is the server-observable half of "start/end only, no continuous tracking."
    * When the caller is not the assigned observer (only reachable by an admin, since the RBAC
-   * policy + sessionScope() together restrict everyone else), an `overrideReason` is required
+   * policy + observerActionScope() together restrict everyone else), an `overrideReason` is required
    * and the submission is separately audited: a `location_override` ChecklistSessionEvent (the
    * session's own timeline) plus a `checklist_location.accessed` AuditLogService entry (PR 304 --
    * the formal, tenant-wide-reviewable privacy audit trail admin geo override requires).
