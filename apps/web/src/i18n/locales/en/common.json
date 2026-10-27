@@ -1211,7 +1211,36 @@
         "geolocationOff": "Off",
         "feedbackVisibility": "When learners see session feedback",
         "feedbackAfterCompletion": "After the session is completed",
-        "feedbackLive": "As the observer records it"
+        "feedbackLive": "As the observer records it",
+        "observers": {
+          "title": "Who can be an observer",
+          "mode": "Eligible observers",
+          "anyUser": "Any active user",
+          "selectedRoles": "Selected roles",
+          "selectedUsers": "Selected people",
+          "futureOnly": "Changes affect new observer selections. Existing assignments are kept.",
+          "roles": "Allowed roles",
+          "nobody": "No one will be available for new observer selections.",
+          "chosen": "Selected: {{count}}",
+          "inactive": "Inactive; unavailable for new assignments",
+          "search": "Search people by name or email",
+          "loading": "Loading people…",
+          "loadError": "Unable to load people. Your selections are kept.",
+          "retry": "Try again",
+          "empty": "No active users found.",
+          "previous": "Previous",
+          "next": "Next",
+          "page": "Page {{page}} of {{pages}}",
+          "limit": "You can select up to 500 people.",
+          "roleLabels": {
+            "learner": "Employee",
+            "instructor": "Instructor",
+            "mentor": "Mentor",
+            "manager": "Manager",
+            "admin": "Administrator"
+          },
+          "removeUnavailable": "Remove unavailable users"
+        }
       },
       "scaleManager": {
         "title": "Evaluation scales",

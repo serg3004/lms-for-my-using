@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { getChecklistWorkplaceSettings, updateChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
+import { ObserverEligibilityFields } from './ObserverEligibilityFields.js';
 import { Button, Dialog, Select } from '../../shared/ui.js';
 
 /**
@@ -20,10 +21,13 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
 
   useEffect(() => {
     if (!open) return;
+    let cancelled = false;
+    setSettings(null);
     setError(null);
     getChecklistWorkplaceSettings()
-      .then(setSettings)
-      .catch((e) => setError(e instanceof ApiClientError ? e.message : t('admin.checklists.settings.loadError', 'Unable to load settings.')));
+      .then((value) => { if (!cancelled) setSettings(value); })
+      .catch((e) => { if (!cancelled) setError(e instanceof ApiClientError ? e.message : t('admin.checklists.settings.loadError', 'Unable to load settings.')); });
+    return () => { cancelled = true; };
   }, [open, t]);
 
   async function save() {
@@ -41,6 +45,9 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
         lowThreshold: settings.lowThreshold,
         defaultGeolocationPolicy: settings.defaultGeolocationPolicy,
         feedbackVisibility: settings.feedbackVisibility,
+        observerEligibility: settings.observerEligibility,
+        observerRoles: settings.observerRoles,
+        observerUserIds: settings.observerUserIds,
       });
       setSettings(updated);
       onClose();
@@ -55,11 +62,12 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{t('admin.checklists.settings.title', 'Workplace-training settings')}</h2>
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
-      {settings ? (
+      {open && settings ? (
         <>
           <div className="admin-form__field">
-            <label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
               <input
+                style={{ width: 'auto' }}
                 checked={settings.moduleEnabled}
                 onChange={(e) => setSettings({ ...settings, moduleEnabled: e.target.checked })}
                 type="checkbox"
@@ -102,6 +110,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
             <option value="required">{t('admin.checklists.settings.geolocationRequired', 'Required')}</option>
             <option value="off">{t('admin.checklists.settings.geolocationOff', 'Off')}</option>
           </Select>
+          <ObserverEligibilityFields settings={settings} onChange={(patch) => setSettings({ ...settings, ...patch })} t={t} />
           <Select
             label={t('admin.checklists.settings.feedbackVisibility', 'When learners see session feedback')}
             onChange={(e) => setSettings({ ...settings, feedbackVisibility: e.target.value as ChecklistFeedbackVisibility })}
@@ -112,7 +121,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
           </Select>
         </>
       ) : (
-        !error && <p className="admin-form__hint">{t('admin.checklists.settings.loading', 'Loading settings…')}</p>
+        open && !error && <p className="admin-form__hint">{t('admin.checklists.settings.loading', 'Loading settings…')}</p>
       )}
       <div className="ds-dialog__actions">
         <Button disabled={saving} onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>

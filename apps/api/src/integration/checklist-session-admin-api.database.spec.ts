@@ -363,7 +363,7 @@ describe('checklist session admin API (PR 292) — database', () => {
     await expect(checklistsService.copyChecklist(copy.id, randomUUID(), observerId)).rejects.toThrow('Checklist not found');
   });
 
-  it('participant lookup: observer role returns instructor-role users; learner role is scoped to the manager\'s effective team', async () => {
+  it('participant lookup: observer lookup uses the default instructor/manager/admin roles; learner role is scoped to the manager\'s effective team', async () => {
     const manager = await prisma.user.create({ data: { organizationId, email: `manager-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Manager', lastName: 'User' } });
     await prisma.membership.create({ data: { organizationId, userId: manager.id, role: 'manager' } });
 
@@ -374,9 +374,9 @@ describe('checklist session admin API (PR 292) — database', () => {
     await prisma.groupMember.create({ data: { organizationId, groupId: group.id, userId: inTeam.id } });
     const outsideTeam = await prisma.user.create({ data: { organizationId, email: `outside-${randomUUID()}@example.test`, passwordHash: 'x', firstName: 'Outside', lastName: 'Learner' } });
 
-    // Observer lookup: instructor-role users only, regardless of caller.
+    // Default observer lookup includes instructor/manager/admin, independent of learner scope.
     const observerResults = await sessionService.listParticipants(organizationId, { role: 'observer', page: 1, pageSize: 25 }, {});
-    expect(observerResults.items.map((u) => u.id)).toContain(observerId);
+    expect(observerResults.items.map((u) => u.id)).toEqual(expect.arrayContaining([observerId, manager.id]));
     expect(observerResults.items.map((u) => u.id)).not.toContain(inTeam.id);
 
     // Learner lookup for a manager: only their effective team.

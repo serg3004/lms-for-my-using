@@ -6,7 +6,7 @@
 
 ## 0. Границы — обязательно к соблюдению
 
-- Контракты первого плана (разделы 0 и 0.1 `CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`) и раздел 0 плана этапа 2 действуют без изменений: никакого нового module boundary, семейство `Checklist*`, `ChecklistSession` — overlay 1:1 над `ChecklistInstance`, Observer = роль `instructor`.
+- Контракты первого плана (разделы 0 и 0.1 `CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`) и раздел 0 плана этапа 2 действуют без изменений: никакого нового module boundary, семейство `Checklist*`, `ChecklistSession` — overlay 1:1 над `ChecklistInstance`; PR 351 уточняет выбор наблюдателя настройкой, PR 352 отдельно расширяет право проводить свои сессии.
 - **Новых пунктов меню нет.** Всё — диалоги, вкладки, блоки существующих экранов.
 - Миграции только аддитивные. Новые поля попадают в `templateSnapshot` на момент назначения, существующие snapshot не меняются.
 - RBAC на сервере, фронтенд не источник истины. Новые policies — только в `apps/api/src/modules/auth/roles.ts`, затем синхронизировать `docs/contracts/API_RBAC_MATRIX.md`.
@@ -219,7 +219,7 @@
 
 ## PR 351 — Кто может быть наблюдателем: любой пользователь и настраиваемый список
 
-**Статус:** план.
+**Статус:** реализовано в коде: три режима, настройки ролей/людей, единая серверная проверка выбора, аудит до/после, сохранение текущих назначений. PostgreSQL и a11y проверены локально; результаты CI и контролируемые visual baselines — в PR. Права проведения для дополнительных ролей остаются PR 352.
 
 **Заметки по подготовке:**
 - Сейчас `ChecklistSessionService.listParticipants(role: 'observer')` ищет только пользователей с `memberships.some.role = 'instructor'`. Проводить сессию разрешено `checklistSessionsRun` (admin, instructor) и дополнительно `observerActionScope()` (для не-admin — только свои сессии, где он `observerId`, в том числе при совмещении ролей; PR 349). Мастер и «Изменить время или наблюдателя» (`ChecklistSessionWizard`, `EditSessionDialog`) берут список из этого же эндпоинта.

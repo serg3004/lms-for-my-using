@@ -226,7 +226,7 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
 
       await controller.getWorkplaceSettings(makeRequest(learnerId, ['learner']));
 
-      expect(getSettings).toHaveBeenCalledWith(organizationId);
+      expect(getSettings).toHaveBeenCalledWith(organizationId, false);
     });
 
     it('writes settings with the caller as actor, scoped to their own organization', async () => {

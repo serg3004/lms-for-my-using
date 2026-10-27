@@ -69,7 +69,8 @@ export class ChecklistsController {
   @Get('checklists/workplace-settings')
   @Roles(...rolePolicies.checklistWorkplaceSettingsRead)
   getWorkplaceSettings(@Req() request: AuthenticatedRequest) {
-    return this.workplaceSettings.getSettings(request.currentUser!.organizationId);
+    const user = request.currentUser!;
+    return this.workplaceSettings.getSettings(user.organizationId, user.roles.includes('admin'));
   }
   @Patch('checklists/workplace-settings')
   @Roles(...rolePolicies.checklistWorkplaceSettingsWrite)

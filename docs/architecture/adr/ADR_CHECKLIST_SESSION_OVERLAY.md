@@ -50,7 +50,16 @@ This keeps every existing Checklist consumer (reports, `AdminChecklistsPage`, le
 working against `ChecklistInstance` unchanged — a session-mode instance is a normal `ChecklistInstance` with an
 attached `ChecklistSession` row, not a fork of the read model.
 
-### Observer = the existing `instructor` role
+### Original observer mapping and PR 351 selection amendment
+
+**Amendment (PR 351, owner decision 2026-10-26):** the selection of an observer now follows
+`ChecklistWorkplaceSettings.observerEligibility`, with default roles instructor/manager/admin and
+optional any-active-user or explicit-person modes. This supersedes the instructor-only assignment
+invariants in the original rationale below. It adds no technical role. Eligibility affects future
+assignment/reassignment only; existing session access is unchanged. Run/read authorization remains
+separate, with non-instructor own-session execution addressed in PR 352. No session/snapshot rewrite.
+
+The following records the original instructor-only selection rationale:
 
 The prototype's "Observer" screen maps to the existing `instructor` role, not a new role and not a "manager"
 special case. Rationale: `docs/product/MVP_SCOPE_LOCK.md` puts custom/new roles `OUT-OF-MVP`, and `instructor` is
@@ -148,7 +157,7 @@ All new tables listed in PR 288 (`ChecklistSession`, `ChecklistSessionEvent`, `C
 | `criticalThreshold` / `lowThreshold` | **unset — not shipped in PR 286** | Explicitly deferred to an owner/product decision in the plan; shipping a guessed number would silently define what "critical performance" means for every tenant. Track as an open item in `docs/status/OPEN_DECISIONS.md` rather than defaulting it. |
 | `defaultGeolocationPolicy` | `off` | Matches `moduleEnabled=false`'s opt-in posture; a tenant that wants location capture turns it on (`optional` or `required`) deliberately. Consistent with PR 290's "no continuous tracking, start+end only, audited override" constraints — the conservative default is capturing nothing until asked. |
 | `feedbackVisibility` | `after_completion` | The employee sees their result once the session (and any review) is `completed`, not live during an in-progress observed session. Avoids a partially-scored, possibly-still-revised result being shown as if final, and avoids an observer's in-progress notes being visible to the person being observed in real time. |
-| Manager-as-observer | not privileged (see Observer section above) | Keeps a single authorization rule for observer assignment. |
+| Manager-as-observer selection | allowed by default after PR 351 | Current eligibility settings control selection; execution rights remain separate (PR 352). |
 | Email reminders | off unless a production email delivery capability is configured | Restated from PR 291; a missing email capability must never block or break the reminder/session workflow itself. |
 
 ### UI foundation & visual contract (binding for PR 294)

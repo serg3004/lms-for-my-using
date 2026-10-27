@@ -822,6 +822,35 @@ for (const width of widths) {
       await expectVisualMatch(page, `admin-checklist-sessions-wizard-${width}`);
     });
 
+    test('keeps observer eligibility settings responsive', async ({ page }) => {
+      await installChecklistSessionsMocks(page);
+      await page.route('**/api/v1/checklists/workplace-settings', (route) => route.fulfill({ json: {
+        organizationId: 'visual-org', moduleEnabled: true, highPerformanceThreshold: 90,
+        defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
+        observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'],
+        observerUserIds: [], selectedObserverUsers: [],
+      } }));
+      await page.route('**/api/v1/users?*', (route) => route.fulfill({ json: {
+        items: [{ id: 'candidate-1', firstName: 'Елена', lastName: 'Наблюдатель', email: 'observer@example.invalid', status: 'active' }],
+        total: 1, page: 1, pageSize: 20,
+      } }));
+      await page.goto('/admin/checklists/sessions');
+      await page.getByRole('button', { name: /Настройки/ }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByText('Кто может быть наблюдателем')).toBeVisible();
+      await expect(dialog.getByRole('group', { name: 'Разрешённые роли', exact: true }).getByRole('checkbox', { name: 'Инструктор', exact: true })).toBeChecked();
+      await expectNoPageOverflow(page);
+      await page.waitForLoadState('networkidle');
+      await expect.soft(page).toHaveScreenshot(`admin-checklist-observer-roles-${width}.png`, { fullPage: true });
+      await dialog.getByLabel('Выбор наблюдателей').selectOption('selected_users');
+      const person = dialog.getByRole('checkbox', { name: 'Елена Наблюдатель (observer@example.invalid)', exact: true });
+      await expect(person).toBeVisible();
+      await person.scrollIntoViewIfNeeded();
+      await expectNoPageOverflow(page);
+      await page.waitForLoadState('networkidle');
+      await expect.soft(page).toHaveScreenshot(`admin-checklist-observer-people-${width}.png`, { fullPage: true });
+    });
+
     test('keeps the admin session report responsive', async ({ page }) => {
       await installChecklistSessionReportMocks(page);
       await page.goto('/admin/checklists/sessions/session-1');

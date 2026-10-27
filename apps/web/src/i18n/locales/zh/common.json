@@ -1211,7 +1211,36 @@
         "geolocationOff": "关闭",
         "feedbackVisibility": "学员何时可见反馈",
         "feedbackAfterCompletion": "会话完成后",
-        "feedbackLive": "观察员记录时"
+        "feedbackLive": "观察员记录时",
+        "observers": {
+          "title": "谁可以担任观察员",
+          "mode": "选择观察员",
+          "anyUser": "任何有效用户",
+          "selectedRoles": "指定角色",
+          "selectedUsers": "指定人员",
+          "futureOnly": "更改仅影响今后的观察员选择，现有指派保持不变。",
+          "roles": "允许的角色",
+          "nobody": "将没有人可被新指派为观察员。",
+          "chosen": "已选择：{{count}}",
+          "inactive": "非有效用户，无法接受新指派",
+          "search": "按姓名或邮箱搜索人员",
+          "loading": "正在加载用户…",
+          "loadError": "无法加载用户，已保留您的选择。",
+          "retry": "重试",
+          "empty": "未找到有效用户。",
+          "previous": "上一页",
+          "next": "下一页",
+          "page": "第 {{page}} 页，共 {{pages}} 页",
+          "limit": "最多可选择 500 人。",
+          "roleLabels": {
+            "learner": "员工",
+            "instructor": "讲师",
+            "mentor": "导师",
+            "manager": "主管",
+            "admin": "管理员"
+          },
+          "removeUnavailable": "移除不可用用户"
+        }
       },
       "scaleManager": {
         "title": "评估量表",
