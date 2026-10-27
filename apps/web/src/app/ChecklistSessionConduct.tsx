@@ -7,7 +7,7 @@ import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint,
 import { getChecklistInstance, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
 import {
   captureChecklistSessionLocation,
-  getChecklistSession,
+  getConductChecklistSession,
   submitChecklistSessionContext,
   submitChecklistSessionFeedback,
   transitionChecklistSession,
@@ -157,7 +157,7 @@ export function canCompleteSession(status: string, allowFinishIncomplete: boolea
 }
 
 export async function fetchConductData(sessionId: string): Promise<ConductData> {
-  const session = await getChecklistSession(sessionId);
+  const session = await getConductChecklistSession(sessionId);
   const instance = await getChecklistInstance(session.instanceId);
   return { session, instance };
 }

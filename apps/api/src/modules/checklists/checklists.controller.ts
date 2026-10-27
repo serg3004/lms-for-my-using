@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Post, Delete, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Delete, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -328,18 +328,19 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistInstancesRead)
   async getInstance(@Param('id') instanceId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
     const instance = await this.checklistsService.getInstance(instanceId, user.organizationId);
-    if (instance.userId !== user.id && isLearnerOnly(user.roles)) {
+    if (instance.userId !== user.id && isLearnerOnly(user.roles) && !isObserver) {
       throw new ForbiddenException('You can only view your own checklist assignment');
     }
-    if (!isLearnerOnly(user.roles)) {
+    if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
 
     return instance;
   }
   @Patch('checklist-instances/:instanceId/items/:itemId')
-  @Roles(...rolePolicies.checklistItemResultsWrite)
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
   async submitItemResult(
     @Param('instanceId') instanceId: string,
     @Param('itemId') itemId: string,
@@ -348,7 +349,11 @@ export class ChecklistsController {
   ) {
     const input = submitChecklistItemResultSchema.parse(body);
     const user = request.currentUser!;
-    if (!isLearnerOnly(user.roles)) {
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
     return this.checklistsService.submitItemResult(
@@ -356,12 +361,12 @@ export class ChecklistsController {
       itemId,
       user.organizationId,
       user.id,
-      !isLearnerOnly(user.roles),
+      isObserver || !isLearnerOnly(user.roles),
       input,
     );
   }
   @Post('checklist-instances/:instanceId/items/:itemId/skip')
-  @Roles(...rolePolicies.checklistItemResultsWrite)
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
   async skipItem(
     @Param('instanceId') instanceId: string,
     @Param('itemId') itemId: string,
@@ -370,7 +375,11 @@ export class ChecklistsController {
   ) {
     const input = skipChecklistItemSchema.parse(body);
     const user = request.currentUser!;
-    if (!isLearnerOnly(user.roles)) {
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
     return this.checklistsService.skipItem(
@@ -378,12 +387,12 @@ export class ChecklistsController {
       itemId,
       user.organizationId,
       user.id,
-      !isLearnerOnly(user.roles),
+      isObserver || !isLearnerOnly(user.roles),
       input,
     );
   }
   @Post('checklist-instances/:instanceId/items/:itemId/photo')
-  @Roles(...rolePolicies.checklistItemResultsWrite)
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
   @UseInterceptors(
     FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
   )
@@ -399,8 +408,12 @@ export class ChecklistsController {
     }
     validateUploadFile(file);
     const user = request.currentUser!;
-    const isPrivileged = !isLearnerOnly(user.roles);
-    if (isPrivileged) {
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    const isPrivileged = isObserver || !isLearnerOnly(user.roles);
+    if (isPrivileged && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
     await this.checklistsService.assertInstanceWritable(
@@ -432,7 +445,8 @@ export class ChecklistsController {
     @Req() request: AuthenticatedRequest,
   ) {
     const user = request.currentUser!;
-    if (!isLearnerOnly(user.roles)) {
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
     return this.checklistsService.getItemPhotoDownload(
@@ -440,7 +454,7 @@ export class ChecklistsController {
       itemId,
       user.organizationId,
       user.id,
-      !isLearnerOnly(user.roles),
+      isObserver || !isLearnerOnly(user.roles),
     );
   }
   @Post('checklist-instances/:instanceId/items/:itemId/review')
@@ -485,13 +499,20 @@ export class ChecklistsController {
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
     return this.sessions.list(user.organizationId, query, scope, viewer);
   }
+  @Get('checklist-sessions/to-conduct')
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
+  async listOwnSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.sessions.list(user.organizationId, checklistSessionQuerySchema.parse(rawQuery),
+      this.reviewAccess.observerActionScope(user), { isLearnerOnly: false, feedbackVisibility: 'live' });
+  }
   // PR 336: registered before ':id' so 'export' is never swallowed as a session id.
   @Get('checklist-sessions/export')
   @Roles(...rolePolicies.checklistSessionsManage)
   async exportSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const query = checklistSessionQuerySchema.parse(rawQuery);
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = await this.reviewAccess.sessionManagementScope(user);
     return this.sessions.exportCsv(user.organizationId, query, scope, { id: user.id, locale: user.locale });
   }
   // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
@@ -512,6 +533,15 @@ export class ChecklistsController {
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
     return this.sessions.get(sessionId, user.organizationId, scope, viewer);
   }
+  @Get('checklist-sessions/:id/conduct')
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
+  async getConductSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const session = await this.sessions.get(sessionId, user.organizationId, this.reviewAccess.observerActionScope(user), {
+      isLearnerOnly: false, feedbackVisibility: 'live',
+    });
+    return session;
+  }
   @Get('checklist-sessions/:id/events')
   @Roles(...rolePolicies.checklistSessionsRead)
   async listSessionEvents(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
@@ -524,14 +554,14 @@ export class ChecklistsController {
   async updateSession(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateChecklistSessionSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = await this.reviewAccess.sessionManagementScope(user);
     return this.sessions.update(sessionId, user.organizationId, input, user.id, scope);
   }
   @Delete('checklist-sessions/:id')
   @Roles(...rolePolicies.checklistSessionsManage)
   async deleteSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = await this.reviewAccess.sessionManagementScope(user);
     await this.sessions.deleteSession(sessionId, user.organizationId, user.id, scope);
     return { deleted: true as const };
   }
@@ -540,26 +570,26 @@ export class ChecklistsController {
   async messageSessionParticipant(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = sendChecklistSessionMessageSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = await this.reviewAccess.sessionManagementScope(user);
     return this.sessions.sendMessageToParticipant(sessionId, user.organizationId, input.message, user.id, scope);
   }
   @Post('checklist-sessions/:id/start')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   transitionStart(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('start', sessionId, body, request);
   }
   @Post('checklist-sessions/:id/pause')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   transitionPause(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('pause', sessionId, body, request);
   }
   @Post('checklist-sessions/:id/resume')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   transitionResume(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('resume', sessionId, body, request);
   }
   @Post('checklist-sessions/:id/complete')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   transitionComplete(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.transitionSession('complete', sessionId, body, request);
   }
@@ -572,14 +602,13 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistSessionsManage)
   async repeatSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = await this.reviewAccess.sessionManagementScope(user);
     return this.sessions.repeatSession(sessionId, user.organizationId, user.id, scope);
   }
 
-  // ---- PR 302: observer unavailable (reuses checklistSessionsRun -- the observer's own action,
-  // or admin on their behalf; reassignment itself is the existing PATCH above, checklistSessionsManage) ----
+  // Observer unavailable is own-only for every role; reassignment keeps checklistSessionsManage.
   @Post('checklist-sessions/:id/observer-unavailable')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   async markObserverUnavailable(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = markChecklistSessionObserverUnavailableSchema.parse(body);
     const user = request.currentUser!;
@@ -591,7 +620,7 @@ export class ChecklistsController {
 
   // ---- Structured feedback (PR 297 observer conduct screen) ----
   @Patch('checklist-sessions/:id/feedback')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   async submitFeedback(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = submitChecklistSessionFeedbackSchema.parse(body);
     const user = request.currentUser!;
@@ -600,17 +629,17 @@ export class ChecklistsController {
   }
 
   @Patch('checklist-sessions/:id/context')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   async submitContext(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = submitChecklistSessionContextSchema.parse(body);
     const user = request.currentUser!;
     const scope = this.reviewAccess.observerActionScope(user);
-    return this.sessions.submitContext(sessionId, user.organizationId, input, scope);
+    return this.sessions.submitContext(sessionId, user.organizationId, input, scope, user.id);
   }
 
   // ---- Geolocation capture (PR 290) ----
   @Post('checklist-sessions/:id/location/:point')
-  @Roles(...rolePolicies.checklistSessionsRun)
+  @Roles(...rolePolicies.checklistSessionsRunOwn)
   async captureLocation(
     @Param('id') sessionId: string,
     @Param('point') point: string,
@@ -658,7 +687,7 @@ export class ChecklistsController {
     const user = request.currentUser!;
     // Cancellation is a scheduler action; conduct never inherits manager-team read access.
     const scope = action === 'cancel'
-      ? await this.reviewAccess.sessionScope(user)
+      ? await this.reviewAccess.sessionManagementScope(user)
       : this.reviewAccess.observerActionScope(user);
     return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope, idempotencyKey);
   }
@@ -670,6 +699,6 @@ export class ChecklistsController {
    */
   private async sessionViewerContext(user: AuthenticatedRequest['currentUser']): Promise<ChecklistSessionViewerContext> {
     const settings = await this.workplaceSettings.getSettings(user!.organizationId);
-    return { isLearnerOnly: isLearnerOnly(user!.roles), feedbackVisibility: settings.feedbackVisibility };
+    return { isLearnerOnly: isLearnerOnly(user!.roles), feedbackVisibility: settings.feedbackVisibility, observerId: user!.id };
   }
 }

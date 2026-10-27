@@ -7,6 +7,7 @@ import type { ChecklistInstanceSummary, ChecklistSessionSummary, ChecklistSessio
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, Button, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { useOptionalSession } from '../shared/session.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 const COLORS = {
@@ -48,24 +49,19 @@ export function tabOf(status: ChecklistSessionStatus): SessionTab {
   return 'done';
 }
 
-export async function fetchLearnerSessions(): Promise<ChecklistSessionSummary[]> {
-  const result = await listChecklistSessions({ pageSize: 100 });
+export async function fetchLearnerSessions(learnerId: string): Promise<ChecklistSessionSummary[]> {
+  const result = await listChecklistSessions({ pageSize: 100, learnerId });
   return result.items;
 }
 
-/**
- * PR 298: "Мои обучающие сессии" -- the employee's own workplace-training sessions, additive
- * section inside the existing `/learn/checklists` (no new route/nav-item). `GET /checklist-sessions`
- * already scopes a learner to `{ instance: { userId: user.id } }` via `sessionScope()`, so no extra
- * filter is needed here to get "my sessions". Isolated into its own component (own hooks) so it
- * never shifts LearnerChecklistsPage's existing `useStateAtCalls`-tested hook order.
- */
+/** Employee sessions stay separate from the same user's observer assignments (PR 352). */
 export function LearnerChecklistSessions({ t, linkedSessionId, onLinkedSessionBack }: { t: TFunction; linkedSessionId?: string | null; onLinkedSessionBack?: () => void }) {
+  const currentUser = useOptionalSession()?.currentUser;
   const [tab, setTab] = useState<SessionTab>('scheduled');
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
   const { state } = useAsyncData<ChecklistSessionSummary[]>(
-    fetchLearnerSessions,
-    [],
+    () => currentUser ? fetchLearnerSessions(currentUser.id) : Promise.resolve([]),
+    [currentUser?.id],
     {
       unauthenticated: t('checklistSessions.learner.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('checklistSessions.learner.loadError', 'Unable to load your training sessions.'),

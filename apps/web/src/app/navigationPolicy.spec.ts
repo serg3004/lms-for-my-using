@@ -27,6 +27,13 @@ describe('navigationPolicy', () => {
     expect(canAccessPath('/mentoring', { roles: [] })).toBe(true);
   });
 
+  it.each(['admin', 'manager', 'instructor', 'mentor', 'learner'] as const)('admits %s only to the shared conduct routes, without granting instructor authoring', (role) => {
+    expect(canAccessPath('/instructor/checklists/sessions', { roles: [role] })).toBe(true);
+    expect(canAccessPath('/instructor/checklists/sessions/assigned-session', { roles: [role] })).toBe(true);
+    expect(canAccessPath('/instructor/courses/new', { roles: [role] })).toBe(role === 'instructor');
+    expect(canAccessPath('/instructor/checklists', { roles: [role] })).toBe(role === 'instructor');
+  });
+
   it('allows authenticated users into learner and public routes', () => {
     expect(canAccessPath('/learn/courses', { roles: ['learner'] })).toBe(true);
     expect(canAccessPath('/login', { roles: [] })).toBe(true);

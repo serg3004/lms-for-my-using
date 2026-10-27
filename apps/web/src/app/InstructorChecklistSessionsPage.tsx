@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
 import { useOptionalSession } from '../shared/session.js';
 import { Button } from '../shared/ui.js';
-import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { ChecklistSessionsToConduct } from './ChecklistSessionsToConduct.js';
 
 /**
@@ -21,7 +21,7 @@ export function InstructorChecklistSessionsPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   return (
-    <InstructorPageLayout>
+    <ObserverPageLayout>
       <div style={{ padding: '24px 0', maxWidth: 640 }}>
         <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
           {t('checklistSessions.conduct.eyebrow', 'Workplace training')}
@@ -41,6 +41,6 @@ export function InstructorChecklistSessionsPage() {
         onCreated={() => setReloadKey((value) => value + 1)}
         open={wizardOpen} t={t}
       />}
-    </InstructorPageLayout>
+    </ObserverPageLayout>
   );
 }

@@ -75,10 +75,10 @@ export const rolePolicies = {
   checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
   checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
   checklistWorkplaceSettingsWrite: ['admin'],
-  checklistSessionsRead: ['admin', 'manager', 'instructor', 'learner'],
+  checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistSessionsManage: ['admin', 'manager'],
   checklistSessionsCreateOwn: ['instructor'],
-  checklistSessionsRun: ['admin', 'instructor'],
+  checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistManagerAnalyticsRead: ['admin', 'manager'],
   checklistScoreRecalculate: ['admin'],
 } as const satisfies Record<string, readonly UserRole[]>;

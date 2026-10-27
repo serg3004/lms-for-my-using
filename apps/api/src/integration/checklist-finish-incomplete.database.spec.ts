@@ -71,7 +71,7 @@ describe('checklist finish-incomplete setting (PR 330) — database', () => {
 
   it('skips every unanswered criterion on completion and scores only the answered one', async () => {
     const { items, instance, session } = await startedSession(true);
-    await checklistsService.submitItemResult(instance.id, items[0]!.id, organizationId, learnerId, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, items[0]!.id, organizationId, observerId, true, { checked: true });
 
     await sessionService.transition(session.id, organizationId, 'complete', session.version, observerId, {});
 

@@ -13,11 +13,11 @@ import { ApiClientError } from '../shared/apiClient.js';
 
 const apiMocks = vi.hoisted(() => ({
   captureChecklistSessionLocation: vi.fn().mockResolvedValue({}),
-  getChecklistSession: vi.fn(),
+  getConductChecklistSession: vi.fn(),
 }));
 vi.mock('../shared/api/checklistSessions.js', async () => {
   const actual = await vi.importActual<typeof import('../shared/api/checklistSessions.js')>('../shared/api/checklistSessions.js');
-  return { ...actual, captureChecklistSessionLocation: apiMocks.captureChecklistSessionLocation, getChecklistSession: apiMocks.getChecklistSession };
+  return { ...actual, captureChecklistSessionLocation: apiMocks.captureChecklistSessionLocation, getConductChecklistSession: apiMocks.getConductChecklistSession };
 });
 
 const checklistsApiMocks = vi.hoisted(() => ({ getChecklistInstance: vi.fn() }));
@@ -270,13 +270,13 @@ describe('formatElapsed', () => {
 });
 
 describe('fetchConductData', () => {
-  it('resolves the session then fetches its instance by instanceId', async () => {
+  it('loads the assignment-scoped conduct payload', async () => {
     const s = session();
     const i = instance();
-    apiMocks.getChecklistSession.mockResolvedValueOnce(s);
+    apiMocks.getConductChecklistSession.mockResolvedValueOnce(s);
     checklistsApiMocks.getChecklistInstance.mockResolvedValueOnce(i);
     await expect(fetchConductData('session-1')).resolves.toEqual({ session: s, instance: i });
-    expect(checklistsApiMocks.getChecklistInstance).toHaveBeenCalledWith(s.instanceId);
+    expect(apiMocks.getConductChecklistSession).toHaveBeenCalledWith('session-1');
   });
 });
 

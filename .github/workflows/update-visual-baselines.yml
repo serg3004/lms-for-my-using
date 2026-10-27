@@ -91,8 +91,13 @@ jobs:
           const path = join(process.env.RUNNER_TEMP, 'visual-baseline.log');
           if (!existsSync(path)) process.exit(0);
           const tail = readFileSync(path, 'utf8').replace(/\u001b\[[0-9;]*m/g, '').slice(-24000);
-          const escaped = tail.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
-          console.log(`::error title=Visual baseline failure details::${escaped}`);
+          // GitHub truncates a single annotation near 4 KB. Keep each chunk smaller so
+          // the final test summary survives a noisy Vite proxy log as well.
+          const chunkSize = 3000;
+          for (let offset = 0; offset < tail.length; offset += chunkSize) {
+            const escaped = tail.slice(offset, offset + chunkSize).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+            console.log(`::error title=Visual baseline failure details ${Math.floor(offset / chunkSize) + 1}::${escaped}`);
+          }
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n## Visual baseline failure\n\n\`\`\`text\n${tail}\n\`\`\`\n`);
           NODE
 

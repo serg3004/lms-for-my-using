@@ -1,3 +1,4 @@
+import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -56,7 +57,7 @@ export function ManagerTeamPage() {
     { key: 'activeCourses', label: t('manager.team.columnActiveCourses'), priority: 'secondary', render: (member) => member.activeCoursesCount },
     { key: 'progress', label: t('manager.team.columnProgress'), priority: 'secondary', render: (member) => `${member.completionPercent}%` },
     { key: 'status', label: t('manager.team.columnStatus'), priority: 'primary', render: (member) => (
-      <Badge variant={member.status === 'good' ? 'done' : 'overdue'}>
+      <Badge variant={member.status === 'good' ? 'done' : 'overdue'} style={{ color: 'var(--color-text)' }}>
         {member.status === 'good' ? t('manager.team.filterGood') : t('manager.team.filterRisk')}
       </Badge>
     ) },
@@ -81,13 +82,14 @@ export function ManagerTeamPage() {
           className="ds-input"
           style={{ flex: 1, minWidth: '220px' }}
         />
-        <select className="ds-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} style={{ maxWidth: '200px' }}>
+        <select aria-label={t('manager.team.columnStatus')} className="ds-input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)} style={{ maxWidth: '200px' }}>
           <option value="all">{t('manager.team.filterAll')}</option>
           <option value="good">{t('manager.team.filterGood')}</option>
           <option value="risk">{t('manager.team.filterRisk')}</option>
         </select>
       </div>
 
+      <ObserverSessionsBlock />
       <DataTable columns={columns} density="dense" emptyMessage={t('manager.team.empty')} keyExtractor={(member) => member.userId} label={t('manager.team.title')} responsiveDetails={{ label: t('courses.details'), expandLabel: (member) => `${t('courses.details')}: ${memberName(member)}`, collapseLabel: (member) => `${t('courses.details')}: ${memberName(member)}` }} rows={filtered} />
     </ManagerPageLayout>
   );

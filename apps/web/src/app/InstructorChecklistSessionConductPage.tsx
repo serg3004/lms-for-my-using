@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-import { InstructorPageLayout } from '../shared/instructorLayout.js';
+import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { ChecklistSessionConduct } from './ChecklistSessionConduct.js';
 
 /**
@@ -14,10 +14,10 @@ export function InstructorChecklistSessionConductPage({ sessionId }: { sessionId
   const navigate = useNavigate();
 
   return (
-    <InstructorPageLayout>
+    <ObserverPageLayout>
       <div style={{ padding: '24px 0' }}>
         <ChecklistSessionConduct onBack={() => navigate('/instructor/checklists/sessions')} sessionId={sessionId} t={t} />
       </div>
-    </InstructorPageLayout>
+    </ObserverPageLayout>
   );
 }

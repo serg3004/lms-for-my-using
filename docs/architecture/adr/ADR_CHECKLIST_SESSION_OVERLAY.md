@@ -57,7 +57,12 @@ attached `ChecklistSession` row, not a fork of the read model.
 optional any-active-user or explicit-person modes. This supersedes the instructor-only assignment
 invariants in the original rationale below. It adds no technical role. Eligibility affects future
 assignment/reassignment only; existing session access is unchanged. Run/read authorization remains
-separate, with non-instructor own-session execution addressed in PR 352. No session/snapshot rewrite.
+separate. PR 352 grants own-session conduct to every system role, with no administrator conduct
+exception: the service and action scope both require the assigned observer. Separate team/admin
+read and scheduling policies remain; a linked instance's answer/skip/photo writes require its
+observer too. Self-observation is rejected on new assignments/reassignments. Lifecycle audit is
+unchanged and existing sessions/snapshots are not rewritten. The former administrator location
+submission override is superseded; historical captures and coordinate-read audit remain.
 
 The following records the original instructor-only selection rationale:
 

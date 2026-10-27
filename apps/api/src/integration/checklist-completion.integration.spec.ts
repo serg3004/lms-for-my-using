@@ -176,7 +176,7 @@ describe('Checklist completion HTTP contract', () => {
         { provide: AuditLogService, useValue: { record: jest.fn(async () => undefined) } },
         {
           provide: ChecklistReviewAccessService,
-          useValue: { filterPending: jest.fn(), assertReviewerCanAccess: jest.fn() },
+          useValue: { isAssignedObserver: jest.fn(async () => false), filterPending: jest.fn(), assertReviewerCanAccess: jest.fn() },
         },
         { provide: ChecklistWorkplaceSettingsService, useValue: {} },
         { provide: ChecklistSessionService, useValue: {} },

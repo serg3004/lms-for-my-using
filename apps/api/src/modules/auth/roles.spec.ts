@@ -155,10 +155,10 @@ describe('rolePolicies', () => {
     checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
     checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
     checklistWorkplaceSettingsWrite: ['admin'],
-    checklistSessionsRead: ['admin', 'manager', 'instructor', 'learner'],
+    checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistSessionsManage: ['admin', 'manager'],
     checklistSessionsCreateOwn: ['instructor'],
-    checklistSessionsRun: ['admin', 'instructor'],
+    checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistManagerAnalyticsRead: ['admin', 'manager'],
     checklistScoreRecalculate: ['admin'],
   } satisfies Record<PolicyName, readonly UserRole[]>;
@@ -178,7 +178,7 @@ describe('rolePolicies', () => {
 describe('workplace-training capability composition (PR 349)', () => {
   it('lets every sheet author read the library and every conductor read their scoped sessions', () => {
     for (const role of rolePolicies.checklistsCreate) expect(rolePolicies.checklistsRead).toContain(role);
-    for (const role of rolePolicies.checklistSessionsRun) expect(rolePolicies.checklistSessionsRead).toContain(role);
+    for (const role of rolePolicies.checklistSessionsRunOwn) expect(rolePolicies.checklistSessionsRead).toContain(role);
     for (const role of rolePolicies.checklistSessionsCreateOwn) {
       expect(rolePolicies.checklistsRead).toContain(role);
       expect(rolePolicies.checklistSessionsRead).toContain(role);

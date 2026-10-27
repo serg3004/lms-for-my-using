@@ -66,29 +66,28 @@ export class ChecklistReviewAccessService {
     if (user.roles.includes('admin')) return {};
     if (isManagerTeamScoped(user)) {
       const managerScope = { instance: { user: await this.organizationScope.user(user) } };
-      return user.roles.includes('instructor')
-        ? { OR: [managerScope, { observerId: user.id }] }
-        : managerScope;
+      return { OR: [managerScope, { observerId: user.id }] };
     }
-    if (user.roles.includes('instructor')) return { observerId: user.id };
-    return { instance: { userId: user.id } };
+    if (user.roles.includes('instructor') || user.roles.includes('mentor')) return { observerId: user.id };
+    return { OR: [{ instance: { userId: user.id } }, { observerId: user.id }] };
   }
 
-  /**
-   * PR 302 review fix: `sessionScope()` is a *read* policy -- for a user holding both `manager`
-   * and `instructor` roles it deliberately returns a union (their team's sessions OR sessions
-   * they personally observe), which is correct for visibility but wrong for an action that must
-   * mean "the assigned observer, acting on their own session." Passing the read union into
-   * `markObserverUnavailable` let such a dual-role user report unavailability on a teammate's
-   * session they merely manage but don't observe, triggering a false admin alert for the wrong
-   * person. This scope is action-specific: unrestricted for admin (acting on the observer's
-   * behalf is the documented admin path), otherwise always `{ observerId: user.id }` --
-   * never the broader manager-team union, regardless of what other roles the caller also holds.
-   * PR 349 applies this same boundary to lifecycle conduct, feedback, context and location writes.
-   * Scheduling/cancellation and reads keep their existing read/team scope.
-   */
+  /** Scheduling/export retain the manager's team scope, independently of observer reads. */
+  async sessionManagementScope(user: CurrentUser): Promise<ChecklistSessionAccessScope> {
+    if (user.roles.includes('admin')) return {};
+    return { instance: { user: await this.organizationScope.user(user) } };
+  }
+
+  /** Conduct is always assignment-scoped, including administrators and combined roles. */
   observerActionScope(user: CurrentUser): ChecklistSessionAccessScope {
-    return user.roles.includes('admin') ? {} : { observerId: user.id };
+    return { observerId: user.id };
+  }
+
+  async isAssignedObserver(user: CurrentUser, instanceId: string): Promise<boolean> {
+    return Boolean(await this.prisma.checklistSession.findFirst({
+      where: { organizationId: user.organizationId, instanceId, observerId: user.id, deletedAt: null },
+      select: { id: true },
+    }));
   }
 
   /** Creation is narrower than read access: only schedulers may select another observer. */

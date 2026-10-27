@@ -24,11 +24,10 @@ Creates and schedules sessions via a 4-step wizard (participants -> checklist ->
 screen's header (`ChecklistWorkplaceSettingsDialog`, PR 286/305); opens a per-session report
 (`/admin/checklists/sessions/:id`, PR 300) with Summary/Participants/Criteria/Files/History tabs;
 recalculates a session's score with a required audited reason (`POST .../recalculate`, PR 300);
-submits a required-location override with a reason when an observer couldn't capture geolocation
-(PR 290/304). Admin is the only role that can recalculate, and the only role unrestricted by
-`sessionScope()`/`observerActionScope()` row-level checks -- see API_RBAC_MATRIX.md's PR 300/302
-entries for exactly which actions that unlocks (e.g. overriding a session outside the admin's own
-assigned-observer relationship).
+reads exact location captures through the existing audited administrator read path (PR 304).
+Admin alone can recalculate and has tenant-wide report access. Conduct is separate: PR 352
+requires the administrator to be the assigned observer, just like every other role; neither a
+report read nor administrator status authorizes conducting or sending location for someone else.
 
 The recalculation dialog (PR 335) offers **Checklist settings** (the assignment's original points
 and weights, also the default for older clients) and **By criteria** (marked / non-skipped total,
@@ -57,15 +56,16 @@ each session's declared timezone/instant; see the PR 329 bulk contract in `API_C
 
 Manager shares the admin session-list/wizard/report screens (`checklistSessionsManage`:
 create/reschedule/cancel), scoped to their effective team (Group ∪ Department DIRECT ∪
-ReportingLine DIRECT) by `sessionScope()` -- a manager can schedule and reschedule sessions for
-their reports but never runs one (`checklistSessionsRun` excludes manager) or recalculates a score
-(`checklistScoreRecalculate` is admin-only). `/manager/checklists` (PR 299, the module's one new
+ReportingLine DIRECT) by `sessionManagementScope()`. A manager can schedule and reschedule
+sessions for their reports, conduct only sessions assigned to them as observer (even outside their
+team), and cannot recalculate a score (`checklistScoreRecalculate` is admin-only). Their own
+conduct queue is also embedded in «Моя команда»; it never includes their team's other sessions. `/manager/checklists` (PR 299, the module's one new
 nav item) is a dashboard, not a session-management screen: period-scoped aggregate cards, a
 distribution/trend chart with an accessible table fallback, and an employee table with per-employee
 drill-down into their sessions -- all through `GET /checklists/manager-analytics`
 (`checklistManagerAnalyticsRead`), scoped the same way.
 
-## Instructor / observer (`/instructor/checklists`, "Проведение" tab)
+## Assigned observer (shared `/instructor/checklists/sessions` list/detail)
 
 The observer's session list at `/instructor/checklists/sessions` includes “New session” (PR 331).
 It opens the shared mobile wizard with the signed-in instructor fixed as observer and no change
@@ -77,21 +77,25 @@ Creation refreshes the observer list. Server validation is authoritative: `check
 allows creation only for oneself, within the tenant/manager learner scope described in
 `API_RBAC_MATRIX.md`, without granting general scheduling management rights.
 
-The instructor named as a session's `observerId` is the day-to-day role that runs it through this
-screen and the only one who answers criteria during conduct -- checking off/scoring each item live while watching the learner perform
-the task, not the learner self-reporting. `checklistSessionsRun` (start/pause/resume/complete) is
-`['admin', 'instructor']`, not instructor-only -- admin is unrestricted by session scope and can
-run any session directly via the lifecycle API, this screen is just the instructor's day-to-day
-entry point into the same endpoints. Mobile-first conduct screen
-(`ChecklistSessionConduct`, PR 297): stepped criterion cards (checkbox, scale, or per-item
-`ChecklistScale` when set, PR 293), Skip when `item.allowSkip`, required photo evidence when
-`item.photoRequired`, one-shot geolocation capture on start/end (never continuous tracking, PR
-290), and structured feedback (`PATCH .../feedback`, independently-saved strengths/development
-areas/next steps). If the assigned observer genuinely cannot run a scheduled session, they (or
-admin on their behalf) report it via `POST .../observer-unavailable` (PR 302); reassignment is a
-manager/admin action (the existing `PATCH .../:id`), not something the unavailable-report itself
-does. See API_RBAC_MATRIX.md's PR 302 entry for the dual-role (manager+instructor) scope nuance
-that action deliberately enforces.
+PR 352 allows the user named as `observerId` to conduct with any system role (admin, manager,
+instructor, mentor or learner). `checklistSessionsRunOwn` always requires that assignment; a
+non-observer receives 404 for the conduct read/actions even if they can read the report. The
+server also verifies the observer when criteria are answered/skipped or photos are attached.
+A user cannot be assigned as observer of their own employee session, in the wizard or by API.
+The common queue is hidden without assignments, loads all assigned pages and supports retry.
+Learners reach it from «Чек-листы», managers from «Моя команда», mentors from their existing
+checklist page, using the same component and shared routes with their existing role shell.
+Other instructor routes and general authoring/reporting powers are not granted.
+
+The mobile conduct screen (`ChecklistSessionConduct`, PR 297) has stepped criterion cards
+(checkbox, scale, or per-item `ChecklistScale`, PR 293), Skip when allowed, required photos,
+one-shot location capture on start/end and structured feedback. The assigned observer sees the
+live information needed to conduct, even when their system role is learner; the same person's
+employee-session list is filtered separately and retains employee feedback masking.
+An unavailable observer reports this themselves via `POST .../observer-unavailable` (PR 302);
+reassignment remains a team-scoped manager or administrator scheduling action. Lifecycle audit
+names and actors are unchanged. Administrator conduct/location submission for a different
+observer is no longer an override path; historical audit records are preserved.
 
 ### Sheet overview during conduct (PR 347)
 
@@ -159,7 +163,7 @@ never a blank or misleading `0%`.
   Serializable transaction; `create`/every transition/`recalculate` additionally accept a
   client-supplied `idempotencyKey` so a network retry replays the original response instead of
   erroring or double-mutating -- see API_CONTRACTS.md's PR 301 section for the full mechanism.
-- **Privacy/audit**: admin geo-override (submit and read) and privileged photo-evidence access
+- **Privacy/audit**: administrator exact-coordinate reads and privileged photo-evidence access
   outside a normal review assignment are audited (`checklist_location.accessed`/
   `checklist_evidence.accessed`); routine access by the learner or their assigned reviewer is not,
   since it is already covered by the existing `checklist_item_result.reviewed` entry. Retention/

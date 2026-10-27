@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
-import { listChecklistSessions, markChecklistSessionObserverUnavailable } from '../shared/api/checklistSessions.js';
+import { listOwnChecklistSessions, markChecklistSessionObserverUnavailable } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionSummary } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { formatDate } from '../shared/formatDate.js';
@@ -22,22 +22,20 @@ function isActionable(session: ChecklistSessionSummary) {
 }
 
 export async function fetchObserverSessions(): Promise<ChecklistSessionSummary[]> {
-  const result = await listChecklistSessions({ pageSize: 100 });
-  return result.items;
+  const items: ChecklistSessionSummary[] = [];
+  for (let page = 1; ; page += 1) {
+    const result = await listOwnChecklistSessions({ page, pageSize: 100 });
+    items.push(...result.items);
+    if (items.length >= result.total || result.items.length === 0) return items;
+  }
 }
 
 export function makeOpenHandler(onOpenSession: (sessionId: string) => void, sessionId: string) {
   return () => onOpenSession(sessionId);
 }
 
-/**
- * PR 297: the observer's own sessions, reusing `GET /checklist-sessions` -- `sessionScope()`
- * already restricts a pure instructor to `{ observerId: user.id }`, so no extra query filter is
- * needed here to get "my sessions" (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md).
- * Isolated into its own component (own hooks, own data load) so it never shifts the hook-call
- * order of the review-queue tabs it sits alongside in InstructorChecklistReviewsPage.
- */
-export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession: (sessionId: string) => void; t: TFunction }) {
+/** The server pins this queue to the authenticated observer for every role. */
+export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false }: { onOpenSession: (sessionId: string) => void; t: TFunction; hideEmpty?: boolean }) {
   const { state, reload } = useAsyncData<ChecklistSessionSummary[]>(
     fetchObserverSessions,
     [],
@@ -52,18 +50,19 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
     return <PageState message={t('checklistSessions.conduct.loading', 'Loading your sessions...')} variant="loading" />;
   }
   if (state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') {
-    return <PageState title={t('checklistSessions.conduct.title', 'Sessions')} message={state.message} variant="error" />;
+    return <div><PageState title={t('checklistSessions.conduct.title', 'Sessions')} message={state.message} variant="error" /><Button variant="secondary" onClick={() => void reload()}>{t('checklistSessions.conduct.retry', 'Retry')}</Button></div>;
   }
 
   const toConduct = state.data.filter(isActionable);
   const history = state.data.filter((session) => !isActionable(session));
 
   if (state.data.length === 0) {
-    return <PageState message={t('checklistSessions.conduct.empty', 'No checklist sessions are assigned to you yet.')} />;
+    return hideEmpty ? null : <PageState message={t('checklistSessions.conduct.empty', 'No checklist sessions are assigned to you yet.')} />;
   }
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
+    <section aria-label={t('checklistSessions.conduct.sessionsTitle', 'Sessions to conduct')} style={{ display: 'grid', gap: 20, marginTop: hideEmpty ? 24 : undefined }}>
+      {hideEmpty && <h2>{t('checklistSessions.conduct.sessionsTitle', 'Sessions to conduct')}</h2>}
       <div>
         <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>
           {t('checklistSessions.conduct.toConduct', 'To conduct')}
@@ -94,7 +93,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t }: { onOpenSession
         session={unavailableTarget}
         t={t}
       />
-    </div>
+    </section>
   );
 }
 
@@ -126,7 +125,7 @@ function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: Check
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
           <strong>{session.checklist.title}</strong>
-          <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>
+          <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]} style={{ color: COLORS.text }}>
             {t(`checklistSessions.status.${session.status}`, session.status)}
           </Badge>
         </div>

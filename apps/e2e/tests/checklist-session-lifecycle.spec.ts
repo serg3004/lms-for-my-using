@@ -196,10 +196,10 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
         json: { created: 1, skipped: 0, failed: 0, results: [{ learnerId, status: 'created', sessionId }] },
       });
     });
-    await adminPage.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({
+    await adminPage.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({
       json: { items: [session], page: 1, pageSize: 20, total: 1 },
     }));
-    await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => {
+    await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => {
       if (route.request().method() !== 'GET') return route.fallback();
       return route.fulfill({ json: session });
     });
@@ -256,10 +256,10 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await observerContext.setGeolocation({ latitude: 55.751244, longitude: 37.618423 });
     const observerPage = await observerContext.newPage();
 
-    await observerPage.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({
+    await observerPage.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({
       json: { items: [session], page: 1, pageSize: 100, total: 1 },
     }));
-    await observerPage.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => {
+    await observerPage.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => {
       if (route.request().method() !== 'GET') return route.fallback();
       return route.fulfill({ json: session });
     });
@@ -378,6 +378,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     const learnerContext = await browser.newContext();
     const learnerPage = await learnerContext.newPage();
     await learnerPage.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
+    await learnerPage.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: { items: [], page: 1, pageSize: 100, total: 0 } }));
     await learnerPage.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({
       json: { items: [session], page: 1, pageSize: 100, total: 1 },
     }));
@@ -475,7 +476,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     const page = await context.newPage();
     await page.route('**/api/v1/checklists', (route) => route.fulfill({ json: [checklistSummary()] }));
     await page.route('**/api/v1/checklists/manager-analytics*', (route) => route.fulfill({ json: analytics }));
-    await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({
+    await page.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({
       json: { items: drilldownSessions, page: 1, pageSize: 50, total: drilldownSessions.length },
     }));
 
@@ -577,8 +578,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       const instance = instanceSummary(snapshotChecklist, { status: 'in_progress', results: {} });
 
       const page = await sharedContext.newPage();
-      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
-      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => route.fulfill({ json: session }));
+      await page.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => route.fulfill({ json: session }));
       // The live checklist has since been edited -- the instance's snapshot (served above) must win,
       // this route must never be what the conduct screen actually renders from.
       await page.route(`**/api/v1/checklists/${checklistId}`, (route) => route.fulfill({
@@ -605,8 +606,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       const instance = instanceSummary(checklistSummary(), { status: 'in_progress', results: {} });
       const page = await sharedContext.newPage();
       let submittedBody: unknown;
-      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
-      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => route.fulfill({ json: session }));
+      await page.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => route.fulfill({ json: session }));
       await page.route(`**/api/v1/checklist-instances/${instanceId}`, (route) => route.fulfill({ json: instance }));
       await page.route(`**/api/v1/checklist-sessions/${sessionId}/context`, async (route) => {
         submittedBody = route.request().postDataJSON();
@@ -637,8 +638,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
 
       const page = await sharedContext.newPage();
       let completeAttempts = 0;
-      await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
-      await page.route(`**/api/v1/checklist-sessions/${sessionId}`, (route) => {
+      await page.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+      await page.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => {
         if (route.request().method() !== 'GET') return route.fallback();
         return route.fulfill({ json: session });
       });
@@ -688,7 +689,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
-    await page.route(/\/api\/v1\/checklist-sessions(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
+    await page.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({ json: { items: [session], page: 1, pageSize: 100, total: 1 } }));
 
     await login(page, 'learner');
     await page.goto('/learn/checklists');
