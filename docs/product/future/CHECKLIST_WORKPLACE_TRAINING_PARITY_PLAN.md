@@ -313,7 +313,7 @@
 **Критерии готовности:**
 - [x] закрепить можно только свободный опубликованный лист; снять закрепление можно всегда (`checklist-pinned.database.spec.ts`);
 - [x] закреплённые листы отображаются на странице «Чек-листы» и на главной, незакреплённые — только в большом блоке (`LearnerChecklistsPage.pinned.spec.tsx`, `LearnerHomePage.spec.tsx`);
-- [x] миграция аддитивная; тесты API (лимит, режим, гонка), конструктор (`ChecklistBuilder.accessMode.spec.tsx`), a11y плиток (`accessibility.spec.ts`), visual baseline `learner-pinned-checklists-*` — создаются workflow `update-visual-baselines.yml` на PR.
+- [x] миграция аддитивная; тесты API (лимит, режим, гонка), конструктор (`ChecklistBuilder.accessMode.spec.tsx`), a11y плиток (`accessibility.spec.ts`), visual baseline `learner-pinned-checklists-*` — созданы workflow `update-visual-baselines.yml` на PR и просмотрены (320–1440 px, без горизонтального переполнения).
 
 ## PR 355 — Картинка листа и статусы «По назначению», «Свободное прохождение», «В панели»
 
