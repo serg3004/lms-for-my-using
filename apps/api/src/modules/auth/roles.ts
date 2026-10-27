@@ -65,6 +65,8 @@ export const rolePolicies = {
   auditLogRead: ['admin'],
   notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
   notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
+  // PR 349: fixed role grants; custom permission sets are planned under DEC-CHKS-004.
+  // A conduct grant still needs observerActionScope(), independently of manager read access.
   checklistsRead: ['admin', 'manager', 'instructor'],
   checklistsCreate: ['admin', 'instructor'],
   checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],

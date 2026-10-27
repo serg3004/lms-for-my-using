@@ -594,7 +594,7 @@ export class ChecklistsController {
   async submitFeedback(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = submitChecklistSessionFeedbackSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = this.reviewAccess.observerActionScope(user);
     return this.sessions.submitFeedback(sessionId, user.organizationId, input, user.id, scope);
   }
 
@@ -603,7 +603,7 @@ export class ChecklistsController {
   async submitContext(@Param('id') sessionId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = submitChecklistSessionContextSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = this.reviewAccess.observerActionScope(user);
     return this.sessions.submitContext(sessionId, user.organizationId, input, scope);
   }
 
@@ -619,7 +619,7 @@ export class ChecklistsController {
     const capturePoint = checklistLocationCapturePointSchema.parse(point);
     const input = submitChecklistLocationCaptureSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    const scope = this.reviewAccess.observerActionScope(user);
     return this.sessions.captureLocation(sessionId, user.organizationId, capturePoint, input, user.id, scope);
   }
   @Get('checklist-sessions/:id/location')
@@ -655,7 +655,10 @@ export class ChecklistsController {
   ) {
     const { version, idempotencyKey } = checklistSessionTransitionSchema.parse(body);
     const user = request.currentUser!;
-    const scope = await this.reviewAccess.sessionScope(user);
+    // Cancellation is a scheduler action; conduct never inherits manager-team read access.
+    const scope = action === 'cancel'
+      ? await this.reviewAccess.sessionScope(user)
+      : this.reviewAccess.observerActionScope(user);
     return this.sessions.transition(sessionId, user.organizationId, action, version, user.id, scope, idempotencyKey);
   }
 

@@ -165,6 +165,23 @@ describe('ChecklistSessionService', () => {
       );
     });
 
+    it.each([true, false])('rechecks the committed creation key after a concurrent unique conflict (matching=%s)', async (matches) => {
+      const conflict = Object.assign(new Error('concurrent duplicate'), { code: 'P2002', meta: { target: ['instance_id'] } });
+      const cachedResponse = baseSession({ observerId: matches ? observerId : 'another-observer' });
+      const lookup = jest.fn<() => Promise<unknown>>()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ responseBody: cachedResponse });
+      const prisma = createPrisma({
+        checklistSession: { create: jest.fn(async () => { throw conflict; }) },
+        checklistIdempotencyKey: { findUnique: lookup },
+      });
+      const operation = new ChecklistSessionService(prisma).create(organizationId, { instanceId, observerId, idempotencyKey: 'racing-key' }, actorId);
+      if (matches) await expect(operation).resolves.toEqual(cachedResponse);
+      else await expect(operation).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.auditLog.create).not.toHaveBeenCalled();
+      expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
+
     it('replays the stored response for a retry carrying the same idempotencyKey, without creating a second session', async () => {
       const cachedResponse = { instanceId, observerId, id: sessionId, status: 'scheduled', overdue: false, replayed: true };
       const prisma = createPrisma({
@@ -335,6 +352,21 @@ describe('ChecklistSessionService', () => {
       expect(result).toEqual(cachedResponse);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
       expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('checks current object scope before replaying a cached transition (PR 349)', async () => {
+      const prisma = createPrisma({
+        checklistSession: { findFirst: jest.fn(async () => null) },
+        checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: sessionId, status: 'in_progress' } })) },
+      });
+      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, actorId, { observerId: actorId }, 'old-key')).rejects.toBeInstanceOf(NotFoundException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a transition key already used for another session (PR 349)', async () => {
+      const prisma = createPrisma({ checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: 'other-session', status: 'in_progress' } })) } });
+      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, actorId, {}, 'shared-key')).rejects.toBeInstanceOf(ConflictException);
+      expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
     it('stores the response under the given idempotencyKey on a fresh (first) transition', async () => {
