@@ -61,6 +61,33 @@ afterEach(() => {
 });
 
 describe('LearnerHomePage', () => {
+  it('shows pinned free checklists as tiles linking to the checklists page', () => {
+    reactMocks.useState.mockReturnValueOnce([{
+      ...loadedState,
+      data: {
+        ...loadedState.data,
+        pinnedChecklists: [
+          { id: 'f1', title: 'Открытие смены', description: null, itemCount: 3, pinned: true, activeInstanceId: null, activeInstanceStatus: null },
+          { id: 'f2', title: 'Закрытие смены', description: null, itemCount: 2, pinned: true, activeInstanceId: 'i2', activeInstanceStatus: 'in_progress' },
+        ],
+      },
+    }, vi.fn()]);
+
+    const html = renderToStaticMarkup(<LearnerHomePage />);
+
+    expect(html).toContain('Закреплённые листы');
+    expect(html).toContain('Открытие смены');
+    expect(html).toContain('>Открыть<');
+    expect(html).toContain('>Продолжить<');
+    expect(html).toContain('href="/learn/checklists"');
+  });
+
+  it('shows no pinned section when nothing is pinned', () => {
+    reactMocks.useState.mockReturnValueOnce([loadedState, vi.fn()]);
+
+    expect(renderToStaticMarkup(<LearnerHomePage />)).not.toContain('Закреплённые листы');
+  });
+
   it('renders stats, continue learning, deadlines, and activity', () => {
     reactMocks.useState.mockReturnValueOnce([loadedState, vi.fn()]);
 

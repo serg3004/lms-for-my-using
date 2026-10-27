@@ -70,6 +70,7 @@ export function buildChecklistSettingsPayload(form: {
   allowFinishIncomplete: boolean;
   forbidGalleryPhotos: boolean;
   accessMode: ChecklistAccessMode;
+  pinned: boolean;
 }) {
   return {
     title: form.title,
@@ -83,6 +84,8 @@ export function buildChecklistSettingsPayload(form: {
     allowFinishIncomplete: form.allowFinishIncomplete,
     forbidGalleryPhotos: form.forbidGalleryPhotos,
     accessMode: form.accessMode,
+    // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
+    pinned: form.accessMode === 'free' && form.pinned,
   };
 }
 

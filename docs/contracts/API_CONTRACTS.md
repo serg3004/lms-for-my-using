@@ -479,6 +479,13 @@ answers 404. Switching a checklist from `free` back to `assigned` removes it fro
 keeps instances already started; a completed instance does not block starting a new one. Audit
 action `checklist_instance.started_free` is written only when an instance is created.
 
+PR 354 adds `pinned` (boolean, default `false`) to the checklist and to each catalog entry; the
+catalog orders pinned checklists first, then by title. `PATCH /checklists/:id` accepts `pinned`: a
+new pin needs a published `free` checklist (otherwise 400) and at most 8 pinned checklists per
+organization (`MAX_PINNED_CHECKLISTS`; the 9th answers 409, serialised by a per-organization
+advisory lock so parallel requests cannot exceed it); unpinning is always allowed. A checklist that
+stops being `free` or published is unpinned in the same update, and a copy is never pinned.
+
 **Strictness settings (PR 330)** (same checklist create/update routes): `allowFinishIncomplete`
 (boolean, default `false`) -- when the instance's snapshot has it, `POST /checklist-sessions/:id/transition`
 with `complete` first records every criterion that still has no answer as `answerState='skipped'`

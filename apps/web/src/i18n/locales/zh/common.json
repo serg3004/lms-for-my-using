@@ -981,7 +981,8 @@
         "isRequired": "必填项目",
         "dueAt": "截止日期",
         "criterion": "标准",
-        "accessMode": "清单的完成方式"
+        "accessMode": "清单的完成方式",
+        "pinned": "固定到首页"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1400,7 +1401,10 @@
       "accessModeHint": {
         "assigned": "清单通过分配和观察会话到达相关人员。",
         "free": "组织中的任何用户都可以在“清单”页面自行开始已发布的清单。"
-      }
+      },
+      "pinnedHint": "在学员页面顶部以卡片形式显示该清单。最多可固定 8 个清单。",
+      "pinnedDraftHint": "清单发布后可用。",
+      "pinnedLimit": "已固定 8 个清单。请在其设置中取消固定其中一个后重试。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -1583,7 +1587,12 @@
         "certificateIssued": "获得《{{title}}》课程证书"
       },
       "nextAction": "下一步行动",
-      "statsLabel": "学习摘要"
+      "statsLabel": "学习摘要",
+      "pinnedChecklists": {
+        "title": "已固定的清单",
+        "open": "打开",
+        "continue": "继续"
+      }
     },
     "mobileNavigation": "学员导航"
   },
@@ -2439,7 +2448,8 @@
       "continue": "继续",
       "itemCount": "标准数：{{count}}",
       "startError": "无法开始该清单。",
-      "loadError": "无法加载自由完成的清单。"
+      "loadError": "无法加载自由完成的清单。",
+      "pinnedTitle": "已固定的清单"
     }
   },
   "checklistReview": {

@@ -153,11 +153,12 @@ test.describe('WCAG AA browser baseline', () => {
     await expect(page).toHaveURL(/\/learn$/);
     await page.route('**/api/v1/checklists/free', (route) => route.fulfill({
       json: [
-        { id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал до прихода гостей.', itemCount: 12, activeInstanceId: null, activeInstanceStatus: null },
-        { id: 'free-2', title: 'Закрытие смены', description: null, itemCount: 7, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
+        { id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал до прихода гостей.', itemCount: 12, pinned: true, activeInstanceId: null, activeInstanceStatus: null },
+        { id: 'free-2', title: 'Закрытие смены', description: null, itemCount: 7, pinned: false, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
       ],
     }));
     await page.goto('/learn/checklists');
+    await expect(page.getByRole('heading', { name: 'Закреплённые листы' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Свободное прохождение' })).toBeVisible();
     await auditAccessibility(page, testInfo);
   });

@@ -21,3 +21,11 @@ describe('checklist access mode schema (PR 353)', () => {
     expect(() => updateChecklistSchema.parse({ accessMode: 'public' })).toThrow();
   });
 });
+
+describe('checklist pinned flag schema (PR 354)', () => {
+  it('accepts pinned only on update, as a boolean', () => {
+    expect(updateChecklistSchema.parse({ pinned: true })).toEqual({ pinned: true });
+    expect(() => updateChecklistSchema.parse({ pinned: 'yes' })).toThrow();
+    expect('pinned' in createChecklistSchema.parse({ organizationId, title: 'Sheet' })).toBe(false);
+  });
+});

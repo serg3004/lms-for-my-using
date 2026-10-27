@@ -7,6 +7,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
 import { getChecklistItemPhotoUrl, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
+import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
@@ -79,6 +80,18 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     }
   }
   const freeChecklists = loadState.data.free;
+  const pinnedChecklists = (freeChecklists ?? []).filter((checklist) => checklist.pinned);
+  const catalogChecklists = (freeChecklists ?? []).filter((checklist) => !checklist.pinned);
+  const freeButton = (checklist: FreeChecklistSummary) => (
+    <button
+      type="button"
+      disabled={startingId !== null}
+      onClick={() => (checklist.activeInstanceId ? setOpenInstanceId(checklist.activeInstanceId) : startFree(checklist.id))}
+      style={{ border: 'none', borderRadius: 10, padding: '9px 16px', minHeight: 44, minWidth: 44, background: COLORS.primary, color: '#ffffff', fontWeight: 600, cursor: startingId !== null ? 'default' : 'pointer', opacity: startingId !== null ? 0.6 : 1 }}
+    >
+      {checklist.activeInstanceId ? t('checklists.free.continue', 'Continue') : t('checklists.free.start', 'Start')}
+    </button>
+  );
 
   if (open) {
     return (
@@ -143,27 +156,21 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
       {freeChecklists === null && (
         <p role="status" style={{ color: COLORS.muted }}>{t('checklists.free.loadError', 'Unable to load free checklists.')}</p>
       )}
-      {freeChecklists && freeChecklists.length > 0 && (
+      {startError && <p style={{ color: '#dc2626' }} role="alert">{startError}</p>}
+      <PinnedChecklistTiles items={pinnedChecklists} title={t('checklists.free.pinnedTitle', 'Pinned checklists')} action={freeButton} />
+      {catalogChecklists.length > 0 && (
         <section aria-labelledby="free-checklists-title" style={{ marginTop: 24 }}>
           <h2 id="free-checklists-title" style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.free.title', 'Free checklists')}</h2>
           <p style={{ color: COLORS.muted }}>{t('checklists.free.hint', 'Start any of these yourself, whenever you need.')}</p>
-          {startError && <p style={{ color: '#dc2626' }} role="alert">{startError}</p>}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-            {freeChecklists.map((checklist) => (
+            {catalogChecklists.map((checklist) => (
               <li key={checklist.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                   <strong>{checklist.title}</strong>
                   {checklist.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{checklist.description}</p>}
                   <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: checklist.itemCount })}</p>
                 </div>
-                <button
-                  type="button"
-                  disabled={startingId !== null}
-                  onClick={() => (checklist.activeInstanceId ? setOpenInstanceId(checklist.activeInstanceId) : startFree(checklist.id))}
-                  style={{ border: 'none', borderRadius: 10, padding: '9px 16px', minHeight: 44, minWidth: 44, background: COLORS.primary, color: '#ffffff', fontWeight: 600, cursor: startingId !== null ? 'default' : 'pointer', opacity: startingId !== null ? 0.6 : 1 }}
-                >
-                  {checklist.activeInstanceId ? t('checklists.free.continue', 'Continue') : t('checklists.free.start', 'Start')}
-                </button>
+                {freeButton(checklist)}
               </li>
             ))}
           </ul>

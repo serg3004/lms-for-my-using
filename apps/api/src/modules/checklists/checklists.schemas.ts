@@ -78,6 +78,7 @@ export const updateChecklistSchema = z
     allowFinishIncomplete: z.boolean(),
     forbidGalleryPhotos: z.boolean(),
     accessMode: checklistAccessModeSchema,
+    pinned: z.boolean(),
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;

@@ -22,7 +22,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { LearnerChecklistsPage } from './LearnerChecklistsPage';
 
 const free = (patch: Record<string, unknown> = {}) => ({
-  id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал', itemCount: 3, activeInstanceId: null, activeInstanceStatus: null, ...patch,
+  id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал', itemCount: 3, pinned: false, activeInstanceId: null, activeInstanceStatus: null, ...patch,
 });
 const instance = (id: string, title: string) => ({
   id, organizationId: 'org-1', checklistId: 'free-1', userId: 'u1', assignedBy: 'u1', status: 'assigned', totalScore: null, maxScore: 30,

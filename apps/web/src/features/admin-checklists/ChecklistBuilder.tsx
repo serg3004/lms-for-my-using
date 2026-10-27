@@ -82,6 +82,7 @@ export function ChecklistBuilder({
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
   const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
+  const [pinned, setPinned] = useState(checklist.pinned ?? false);
   // Defaults are system copy and follow the locale at creation time. Existing labels are authored
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
@@ -91,7 +92,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
-    accessMode: checklist.accessMode ?? 'assigned',
+    accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
   })));
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
@@ -112,7 +113,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode, pinned });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -123,7 +124,12 @@ export function ChecklistBuilder({
       setSavedAt(new Date());
       await onReload();
     } catch (error) {
-      setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.') });
+      setSaveState({
+        status: 'error',
+        message: error instanceof ApiClientError && error.status === 409
+          ? t('admin.checklists.pinnedLimit', 'Eight checklists are already pinned. Unpin one of them in its settings, then try again.')
+          : error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.'),
+      });
     }
   }
   async function reloadScales() {
@@ -554,6 +560,24 @@ export function ChecklistBuilder({
                 <option value="free">{t('admin.checklists.accessMode.free', 'Free access')}</option>
               </select>
             </FormField>
+            {accessMode === 'free' && (
+              <label className="admin-checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={pinned}
+                  disabled={checklist.status !== 'published'}
+                  onChange={(e) => setPinned(e.target.checked)}
+                />
+                <span>
+                  {t('admin.checklists.field.pinned', 'Pin to the dashboard')}
+                  <small className="admin-form__hint">
+                    {checklist.status === 'published'
+                      ? t('admin.checklists.pinnedHint', 'Shows the checklist as a tile at the top of the learner pages. Up to 8 checklists can be pinned.')
+                      : t('admin.checklists.pinnedDraftHint', 'Available once the checklist is published.')}
+                  </small>
+                </span>
+              </label>
+            )}
             <details>
               <summary>{t('admin.checklists.advancedTitle', 'Additional settings')}</summary>
             <label className="admin-checkbox-field">
