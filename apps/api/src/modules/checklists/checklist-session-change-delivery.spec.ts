@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import type { PrismaService } from '../../database/prisma.service.js';
-import { sessionChangeText } from './checklist-session-notification-text.js';
+import { observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
 import { CHECKLIST_SESSION_CHANGE_TYPES } from './checklist-session-notifications.js';
 
 const configured = jest.fn(() => false);
@@ -81,5 +81,38 @@ describe('session change delivery', () => {
       expect(text.title.length).toBeGreaterThan(0); expect(text.message.length).toBeGreaterThan(0);
       expect(JSON.stringify(text)).not.toMatch(/@|latitude|longitude|percentage/);
     }
+  });
+  describe('observer deactivated (PR 346)', () => {
+    const link = '/admin/checklists/sessions?observerId=11111111-1111-1111-1111-111111111111';
+    function adminHarness(noticeLink: string | null = link) {
+      const prisma = {
+        notification: { findFirst: jest.fn(async () => ({ userId: 'admin', link: noticeLink })) },
+        user: { findFirst: jest.fn(async () => ({ locale: 'en', email: 'admin@example.invalid' })) },
+      };
+      return { prisma, delivery: new ChecklistSessionReminderDelivery(prisma as unknown as PrismaService) };
+    }
+    it('sends localized generic copy only to an active admin, with the server-authored link', async () => {
+      configured.mockReturnValue(true);
+      const { delivery, prisma } = adminHarness();
+      await delivery.sendObserverDeactivated({ organizationId: 'org', notificationId: 'notice' });
+      expect(prisma.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'admin', organizationId: 'org', status: 'active', memberships: { some: { organizationId: 'org', role: 'admin' } } }) }));
+      expect(sendMail).toHaveBeenCalledWith({ to: 'admin@example.invalid', subject: 'Observer blocked', text: `A blocked observer still has unfinished sessions. Open the list and assign another observer.\nhttps://lms.example.invalid${link}` });
+    });
+    it('is a no-op without mail and ignores forged links or missing recipients', async () => {
+      const off = adminHarness();
+      await off.delivery.sendObserverDeactivated({ organizationId: 'org', notificationId: 'notice' });
+      expect(off.prisma.notification.findFirst).not.toHaveBeenCalled();
+      configured.mockReturnValue(true);
+      await adminHarness('https://outside.example.invalid').delivery.sendObserverDeactivated({ organizationId: 'org', notificationId: 'notice' });
+      const gone = adminHarness();
+      gone.prisma.user.findFirst.mockResolvedValue(null as never);
+      await gone.delivery.sendObserverDeactivated({ organizationId: 'org', notificationId: 'notice' });
+      expect(sendMail).not.toHaveBeenCalled();
+    });
+    it.each(['ru', 'en', 'kk', 'zh'])('has non-empty generic copy in %s', (locale) => {
+      const text = observerDeactivatedText(locale);
+      expect(text.title.length).toBeGreaterThan(0); expect(text.message.length).toBeGreaterThan(0);
+      expect(JSON.stringify(text)).not.toMatch(/@/);
+    });
   });
 });

@@ -8,7 +8,8 @@ import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { checklistSessionReminderDeliveryErrors } from '../../common/observability/metrics.js';
 
 import { CHECKLIST_SESSION_CHANGE_TYPES, type ChecklistSessionChangeType } from './checklist-session-notifications.js';
-import { sessionChangeText } from './checklist-session-notification-text.js';
+import { observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
+import { CHECKLIST_OBSERVER_DEACTIVATED_TYPE } from './checklist-observer-deactivation.js';
 
 export type ChecklistSessionReminderMessage = {
   organizationId: string;
@@ -128,6 +129,32 @@ export class ChecklistSessionReminderDelivery {
     }
     await this.post({ kind: 'session_change', organizationId: message.organizationId, sessionId: session.id,
       recipientId: notification.userId, type, link, locale: recipient.locale }, 'session change');
+  }
+
+  /** PR 346: tells an admin that a deactivated observer still has open sessions. */
+  async sendObserverDeactivated(message: { organizationId: string; notificationId: string }): Promise<void> {
+    if (this.checkReadiness() === 'disabled') return;
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: message.notificationId, organizationId: message.organizationId, type: CHECKLIST_OBSERVER_DEACTIVATED_TYPE },
+      select: { userId: true, link: true },
+    });
+    if (!notification) return;
+    const recipient = await this.prisma.user.findFirst({
+      where: { id: notification.userId, organizationId: message.organizationId, deletedAt: null, status: 'active',
+        memberships: { some: { organizationId: message.organizationId, role: 'admin' } } },
+      select: { locale: true },
+    });
+    if (!recipient) return;
+    // Only the server-authored admin sessions link is allowed, never a job-supplied URL.
+    const link = notification.link;
+    if (!link || !/^\/admin\/checklists\/sessions\?observerId=[0-9a-fA-F-]{36}$/.test(link)) return;
+    if (isMailConfigured()) {
+      const text = observerDeactivatedText(recipient.locale);
+      const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+      await this.email(notification.userId, message.organizationId, text.title, `${text.message}\n${frontend}${link}`);
+      return;
+    }
+    await this.post({ kind: 'observer_deactivated', organizationId: message.organizationId, recipientId: notification.userId, link, locale: recipient.locale }, 'observer deactivated');
   }
 
   /** Resolves the recipient inside the organization; a user without an address is skipped, never a failure. */

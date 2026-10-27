@@ -5,6 +5,7 @@ import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/a
 import type { FormValidationErrors } from '../shared/formValidation.js';
 import { hasValidationErrors } from '../shared/formValidation.js';
 import { PageState, Pagination } from '../shared/ui.js';
+import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
@@ -25,6 +26,7 @@ export function AdminUsersPage() {
   const [mode, setMode] = useState<UserFormMode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormValidationErrors<UserFormField>>({});
+  const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
 
   function open(mode: UserFormMode, user?: AdminUserSummary) {
     setForm(user ? toEditUserForm(user) : { ...EMPTY_USER_FORM });
@@ -33,6 +35,15 @@ export function AdminUsersPage() {
   function close() {
     setForm({ ...EMPTY_USER_FORM });
     setErrors({}); setMessage(null); setMode(null);
+  }
+  async function toggleStatus(user: AdminUserSummary) {
+    if (user.status !== 'active') return mutations.toggleStatus(user);
+    setPendingDeactivation({ user, observerSessions: await mutations.loadObserverSessions(user) });
+  }
+  async function confirmDeactivation() {
+    const pending = pendingDeactivation;
+    setPendingDeactivation(null);
+    if (pending) await mutations.toggleStatus(pending.user);
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -63,7 +74,8 @@ export function AdminUsersPage() {
       action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button>}
     />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void mutations.toggleStatus(user)} />
+    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} />
+    <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
     <AdminUserDialog open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
   </AdminPageLayout>;

@@ -3,6 +3,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { hashPassword } from '../auth/public.js';
+import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
@@ -376,17 +377,26 @@ export class UsersService {
     const organizationId = actor.organizationId;
     const user = await this.prisma.user.findFirst({
       where: { id: userId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId, organizationId },
-      data: { status },
-      select: userSelect,
+    // PR 346: an observer leaving the active state with open sessions notifies the admins once,
+    // in the same transaction as the status change; repeating the same status never re-notifies.
+    const { updatedUser, observerSessions } = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId, organizationId },
+        data: { status },
+        select: userSelect,
+      });
+      const open = status !== 'active' ? await countOpenObserverSessions(tx, organizationId, userId) : 0;
+      if (open > 0 && user.status === 'active') {
+        await notifyObserverDeactivated(tx, { organizationId, observerId: userId, sessionCount: open });
+      }
+      return { updatedUser: updated, observerSessions: open };
     });
 
     const orphanedCourses = status !== 'active' ? await this.findSoleInstructorCourses(userId, organizationId) : [];
@@ -398,10 +408,25 @@ export class UsersService {
       targetType: 'user',
       targetId: userId,
       summary: `Set user ${updatedUser.email} status to ${status}`,
-      metadata: { status },
+      metadata: { status, observerSessions },
     });
 
-    return { ...updatedUser, orphanedCourses };
+    return { ...updatedUser, orphanedCourses, observerSessions };
+  }
+
+  /** PR 346: number of unfinished sessions the user observes, shown before the deactivation is confirmed. */
+  async getObserverSessionImpact(userId: string, actor: TeamScopeActor) {
+    const organizationId = actor.organizationId;
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return { observerSessions: await countOpenObserverSessions(this.prisma, organizationId, userId) };
   }
 
   /** Courses where userId is the only active CourseInstructor — left without an accessible owner once deactivated. */
