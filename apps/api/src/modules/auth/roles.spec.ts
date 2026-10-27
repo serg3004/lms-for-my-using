@@ -174,3 +174,23 @@ describe('rolePolicies', () => {
     },
   );
 });
+
+describe('workplace-training capability composition (PR 349)', () => {
+  it('lets every sheet author read the library and every conductor read their scoped sessions', () => {
+    for (const role of rolePolicies.checklistsCreate) expect(rolePolicies.checklistsRead).toContain(role);
+    for (const role of rolePolicies.checklistSessionsRun) expect(rolePolicies.checklistSessionsRead).toContain(role);
+    for (const role of rolePolicies.checklistSessionsCreateOwn) {
+      expect(rolePolicies.checklistsRead).toContain(role);
+      expect(rolePolicies.checklistSessionsRead).toContain(role);
+    }
+  });
+
+  it('does not turn instructor authoring/own reports into tenant analytics or role administration', () => {
+    expect(rolePolicies.checklistsCreate).toContain('instructor');
+    expect(rolePolicies.checklistSessionsRead).toContain('instructor');
+    expect(rolePolicies.checklistSessionsManage).not.toContain('instructor');
+    expect(rolePolicies.checklistManagerAnalyticsRead).not.toContain('instructor');
+    expect(rolePolicies.reportsRead).not.toContain('instructor');
+    expect(rolePolicies.membershipsCreate).not.toContain('instructor');
+  });
+});
