@@ -261,6 +261,9 @@ export class ChecklistSessionService {
    */
   async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string, learnerScope: Prisma.UserWhereInput, requireAllLearnersInScope = false) {
     await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+    if (input.learnerIds.some((id) => id.toLowerCase() === input.observerId.toLowerCase())) {
+      throw new BadRequestException('An employee cannot observe their own session');
+    }
     if (requireAllLearnersInScope && !await this.prisma.checklist.findFirst({
       where: { id: input.checklistId, organizationId, deletedAt: null }, select: { id: true },
     })) {
@@ -584,13 +587,13 @@ export class ChecklistSessionService {
         // without this check it would still silently clear an unavailability report (and record a
         // no-op "observer_reassigned" event) even though nothing actually changed, letting an
         // admin dismiss a valid report without ever picking a replacement.
-        if (changes.observerId === session.observerId) {
+        if (changes.observerId.toLowerCase() === session.observerId.toLowerCase()) {
           throw new BadRequestException('The new observer must be different from the current one');
         }
         await this.assertValidObserver(tx, changes.observerId, organizationId);
         const employee = await tx.checklistInstance.findFirst({ where: { id: session.instanceId, organizationId, deletedAt: null }, select: { userId: true } });
         if (!employee) throw new NotFoundException('Checklist assignment not found');
-        if (employee.userId === changes.observerId) throw new BadRequestException('An employee cannot observe their own session');
+        if (employee.userId.toLowerCase() === changes.observerId.toLowerCase()) throw new BadRequestException('An employee cannot observe their own session');
       }
 
       const result = await tx.checklistSession.updateMany({
@@ -1199,7 +1202,7 @@ export class ChecklistSessionService {
       select: { userId: true },
     });
     if (!employee) throw new NotFoundException('Checklist assignment not found');
-    if (employee.userId === input.observerId) throw new BadRequestException('An employee cannot observe their own session');
+    if (employee.userId.toLowerCase() === input.observerId.toLowerCase()) throw new BadRequestException('An employee cannot observe their own session');
 
     const created = await tx.checklistSession.create({
       data: {

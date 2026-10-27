@@ -175,7 +175,9 @@ caller as observer; query filters are intersected with this scope. `GET
 scope (foreign/non-observed/nonexistent IDs all return 404). Both return live observer feedback.
 The existing instance detail, item answer/skip/photo routes admit the assigned observer; every
 session-linked instance write independently verifies its observer in the service. Standalone
-instance and reviewer rules remain unchanged. Employee = observer is rejected on single/bulk/repeat
+instance and reviewer rules remain unchanged. Observer UUIDs are normalized at the HTTP boundary;
+service identity checks also ignore UUID letter case. A bulk request containing its observer as
+an employee is rejected before any assignments are written. Employee = observer is rejected on single/bulk/repeat
 creation and reassignment, without changing existing rows or lifecycle audit events.
 
 The existing `/instructor/checklists/sessions` list/detail routes admit authenticated observers

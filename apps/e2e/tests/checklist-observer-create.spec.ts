@@ -35,7 +35,7 @@ async function setup(page: Page, options: { createStatus?: number; lookup?: 'emp
     }
     if (path === '/checklist-sessions/new-session') return route.fulfill({ json: { version: 1 } });
     if (path.endsWith('/start')) { starts++; return route.fulfill({ json: { version: 2, status: 'in_progress' } }); }
-    if (path === '/checklist-sessions') { listLoads++; return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 100 } }); }
+    if (path === '/checklist-sessions/to-conduct') { listLoads++; return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 100 } }); }
     return route.fulfill({ json: { items: [], total: 0 } });
   });
   await page.goto('/instructor/checklists/sessions');

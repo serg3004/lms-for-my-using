@@ -360,11 +360,17 @@ describe('observer session creation and conduct access (PR 331/349) — database
     const admin = await user(organizationId, ['admin']);
     await workplaceSettings.updateSettings(organizationId, { observerEligibility: 'any_user' }, admin.id);
     const assigned = await instance(learner.id);
-    await expect(controller.createSession({ instanceId: assigned.id, observerId: learner.id }, await request(admin, 'createSession'))).rejects.toBeInstanceOf(BadRequestException);
-    const result = await controller.bulkCreateSessions({ checklistId, learnerIds: [learner.id], observerId: learner.id }, await request(admin, 'bulkCreateSessions'));
-    expect(result.created).toBe(0);
+    for (const observerId of [learner.id, learner.id.toUpperCase()]) {
+      await expect(controller.createSession({ instanceId: assigned.id, observerId }, await request(admin, 'createSession'))).rejects.toBeInstanceOf(BadRequestException);
+      await expect(controller.bulkCreateSessions({ checklistId, learnerIds: [learner.id], observerId }, await request(admin, 'bulkCreateSessions'))).rejects.toBeInstanceOf(BadRequestException);
+      // The service must enforce identity without relying on HTTP normalization.
+      await expect(sessions.create(organizationId, { instanceId: assigned.id, observerId }, admin.id)).rejects.toBeInstanceOf(BadRequestException);
+    }
+    expect(await prisma.checklistSession.count({ where: { organizationId } })).toBe(0);
     const valid = await sessions.create(organizationId, { instanceId: assigned.id, observerId: observer.id }, admin.id);
-    await expect(controller.updateSession(valid.id, { version: 1, observerId: learner.id }, await request(admin, 'updateSession'))).rejects.toBeInstanceOf(BadRequestException);
+    for (const observerId of [learner.id, learner.id.toUpperCase(), observer.id.toUpperCase()]) {
+      await expect(controller.updateSession(valid.id, { version: 1, observerId }, await request(admin, 'updateSession'))).rejects.toBeInstanceOf(BadRequestException);
+    }
     expect(await prisma.checklistSession.findUniqueOrThrow({ where: { id: valid.id } })).toMatchObject({ observerId: observer.id, version: 1 });
   });
 
