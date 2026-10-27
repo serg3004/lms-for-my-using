@@ -14,7 +14,7 @@ async function setup(page: Page, unavailable = false) {
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 4 } });
     if (path === '/notifications') return route.fulfill({ json: types.map((type) => ({ id: type, type: `checklist_session_${type}`, data: { sessionId }, link: type === 'deleted' ? '/learn/checklists' : link, createdAt: '2026-10-26T12:00:00Z', readAt: null })) });
     if (path === '/notifications/completed/read') { markedRead = true; return route.fulfill({ json: { readAt: '2026-10-26T12:00:00Z' } }); }
-    if (path === '/checklist-instances/mine') return route.fulfill({ json: [] });
+    if (path === '/checklist-instances/mine' || path === '/checklists/free') return route.fulfill({ json: [] });
     // The notification's completed session deliberately does not appear on the first list page.
     if (path === '/checklist-sessions') return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 100 } });
     if (path === `/checklist-sessions/${sessionId}`) {
