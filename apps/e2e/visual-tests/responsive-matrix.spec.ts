@@ -151,7 +151,7 @@ async function installLearnerChecklistsMocks(page: Page) {
     },
   }));
   await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
-  await page.route('**/api/v1/checklist-sessions{,/to-conduct}?**', (route) => route.fulfill({
+  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
     json: paginated([{
       id: 'session-1', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'observer-1',
       status: 'scheduled', version: 2, scheduledAt: '2026-02-01T09:00:00.000Z', startedAt: null,
