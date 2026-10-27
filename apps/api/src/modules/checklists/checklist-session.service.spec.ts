@@ -81,7 +81,7 @@ function createPrisma(overrides: {
       ...overrides.checklistLocationCapture,
     },
     checklistInstance: {
-      findFirst: jest.fn(async () => ({ id: instanceId, userId: actorId })),
+      findFirst: jest.fn(async () => ({ id: instanceId, userId: '55555555-5555-5555-5555-555555555555' })),
       ...overrides.checklistInstance,
     },
     checklistIdempotencyKey: {
@@ -224,7 +224,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.transition(sessionId, organizationId, 'start', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'start', 1, observerId, {});
 
       expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -233,7 +233,7 @@ describe('ChecklistSessionService', () => {
         }),
       );
       expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ eventType: 'started', actorUserId: actorId }) }),
+        expect.objectContaining({ data: expect.objectContaining({ eventType: 'started', actorUserId: observerId }) }),
       );
     });
 
@@ -241,7 +241,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'scheduled' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'complete', 1, actorId, {})).rejects.toBeInstanceOf(
+      await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
       );
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -251,7 +251,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'start', 1, actorId, {})).rejects.toBeInstanceOf(
+      await expect(service.transition(sessionId, organizationId, 'start', 1, observerId, {})).rejects.toBeInstanceOf(
         ConflictException,
       );
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -261,7 +261,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { updateMany: jest.fn(async () => ({ count: 0 })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'start', 1, actorId, {})).rejects.toBeInstanceOf(
+      await expect(service.transition(sessionId, organizationId, 'start', 1, observerId, {})).rejects.toBeInstanceOf(
         ConflictException,
       );
       expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.transition(sessionId, organizationId, 'start', 1, actorId, { observerId: 'someone-else' }),
+        service.transition(sessionId, organizationId, 'start', 1, observerId, { observerId: 'someone-else' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -282,20 +282,20 @@ describe('ChecklistSessionService', () => {
       const checklistsService = { finishIncompleteInstance: jest.fn(async () => undefined) };
       const service = new ChecklistSessionService(prisma, checklistsService as unknown as ChecklistsService);
 
-      await service.transition(sessionId, organizationId, 'pause', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'pause', 1, observerId, {});
       expect(prisma.checklistSession.updateMany).toHaveBeenLastCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'paused', pausedAt: expect.any(Date) }) }),
       );
 
       status = 'paused';
-      await service.transition(sessionId, organizationId, 'resume', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'resume', 1, observerId, {});
       expect(prisma.checklistSession.updateMany).toHaveBeenLastCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'in_progress', pausedAt: null }) }),
       );
 
       status = 'in_progress';
       expect(checklistsService.finishIncompleteInstance).not.toHaveBeenCalled();
-      await service.transition(sessionId, organizationId, 'complete', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'complete', 1, observerId, {});
       expect(prisma.checklistSession.updateMany).toHaveBeenLastCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ status: 'completed' }) }),
       );
@@ -307,7 +307,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'complete', 1, actorId, {})).rejects.toBeInstanceOf(
+      await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
       );
     });
@@ -325,7 +325,7 @@ describe('ChecklistSessionService', () => {
       });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'complete', 1, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
@@ -333,7 +333,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.transition(sessionId, organizationId, 'cancel', 1, actorId, {})).rejects.toBeInstanceOf(
+      await expect(service.transition(sessionId, organizationId, 'cancel', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
       );
     });
@@ -348,7 +348,7 @@ describe('ChecklistSessionService', () => {
       });
       const service = new ChecklistSessionService(prisma);
 
-      const result = await service.transition(sessionId, organizationId, 'start', 1, actorId, {}, 'retry-key-3');
+      const result = await service.transition(sessionId, organizationId, 'start', 1, observerId, {}, 'retry-key-3');
 
       expect(result).toEqual(cachedResponse);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -360,13 +360,13 @@ describe('ChecklistSessionService', () => {
         checklistSession: { findFirst: jest.fn(async () => null) },
         checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: sessionId, status: 'in_progress' } })) },
       });
-      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, actorId, { observerId: actorId }, 'old-key')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, observerId, { observerId: observerId }, 'old-key')).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
     it('rejects a transition key already used for another session (PR 349)', async () => {
       const prisma = createPrisma({ checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: 'other-session', status: 'in_progress' } })) } });
-      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, actorId, {}, 'shared-key')).rejects.toBeInstanceOf(ConflictException);
+      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, observerId, {}, 'shared-key')).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
@@ -374,7 +374,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.transition(sessionId, organizationId, 'start', 1, actorId, {}, 'retry-key-4');
+      await service.transition(sessionId, organizationId, 'start', 1, observerId, {}, 'retry-key-4');
 
       expect(prisma.checklistIdempotencyKey.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -439,7 +439,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ membership: { findMany: jest.fn(async () => [{ userId: 'admin-1' }, { userId: 'admin-2' }]) } });
       const service = new ChecklistSessionService(prisma);
 
-      const result = await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, actorId, {});
+      const result = await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, observerId, {});
 
       expect(result).toMatchObject({ id: sessionId });
       expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(
@@ -449,7 +449,7 @@ describe('ChecklistSessionService', () => {
         }),
       );
       expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ eventType: 'observer_marked_unavailable', actorUserId: actorId, metadata: { reason: 'Out sick' } }) }),
+        expect.objectContaining({ data: expect.objectContaining({ eventType: 'observer_marked_unavailable', actorUserId: observerId, metadata: { reason: 'Out sick' } }) }),
       );
       expect(prisma.notification.createMany).toHaveBeenCalledWith({
         data: [
@@ -463,7 +463,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ membership: { findMany: jest.fn(async () => []) } });
       const service = new ChecklistSessionService(prisma);
 
-      await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, actorId, {});
+      await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, observerId, {});
 
       expect(prisma.notification.createMany).not.toHaveBeenCalled();
     });
@@ -472,7 +472,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, {})).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
@@ -480,7 +480,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, {})).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, {})).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
@@ -489,7 +489,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, actorId, { observerId: 'someone-else' }),
+        service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, { observerId: 'someone-else' }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
@@ -500,7 +500,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.submitFeedback(sessionId, organizationId, { strengths: 'Great', version: 1 }, actorId, {}),
+        service.submitFeedback(sessionId, organizationId, { strengths: 'Great', version: 1 }, observerId, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -509,7 +509,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.submitFeedback(sessionId, organizationId, { nextSteps: 'Retry', version: 1 }, actorId, {}),
+        service.submitFeedback(sessionId, organizationId, { nextSteps: 'Retry', version: 1 }, observerId, {}),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
@@ -518,7 +518,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.submitFeedback(sessionId, organizationId, { strengths: 'Stale', version: 1 }, actorId, {}),
+        service.submitFeedback(sessionId, organizationId, { strengths: 'Stale', version: 1 }, observerId, {}),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
@@ -528,7 +528,7 @@ describe('ChecklistSessionService', () => {
       const service = new ChecklistSessionService(prisma);
 
       await expect(
-        service.submitFeedback(sessionId, organizationId, { strengths: 'x', version: 1 }, actorId, {}),
+        service.submitFeedback(sessionId, organizationId, { strengths: 'x', version: 1 }, observerId, {}),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
@@ -536,7 +536,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await service.submitFeedback(sessionId, organizationId, { developmentAreas: 'Practice more', version: 1 }, actorId, {});
+      await service.submitFeedback(sessionId, organizationId, { developmentAreas: 'Practice more', version: 1 }, observerId, {});
 
       const updateCall = (prisma.checklistSession.updateMany as jest.Mock).mock.calls[0]?.[0] as { data: Record<string, unknown> };
       expect(updateCall.data).toEqual(expect.objectContaining({ developmentAreas: 'Practice more' }));
@@ -559,7 +559,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', contextFieldsSnapshot: fields })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {});
+      await service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {}, observerId);
 
       expect(prisma.checklistSession.updateMany).toHaveBeenCalledWith(expect.objectContaining({
         where: expect.objectContaining({ version: 1, status: { in: ['in_progress', 'paused'] } }),
@@ -571,9 +571,9 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused', version: 2, contextFieldsSnapshot: fields })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '27/09/2026' }, version: 2 }, {})).rejects.toBeInstanceOf(BadRequestException);
-      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {})).rejects.toBeInstanceOf(ConflictException);
-      await expect(service.submitContext(sessionId, organizationId, { values: { '88888888-8888-4888-8888-888888888888': 'x' }, version: 2 }, {})).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '27/09/2026' }, version: 2 }, {}, observerId)).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {}, observerId)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.submitContext(sessionId, organizationId, { values: { '88888888-8888-4888-8888-888888888888': 'x' }, version: 2 }, {}, observerId)).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
   });
@@ -615,66 +615,14 @@ describe('ChecklistSessionService', () => {
       expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
     });
 
-    it('requires an overrideReason when someone other than the observer submits a capture', async () => {
+    it('rejects non-observer captures even with an override reason and a broad scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
       const service = new ChecklistSessionService(prisma);
-      const adminId = '66666666-6666-6666-6666-666666666666';
-
-      await expect(
-        service.captureLocation(sessionId, organizationId, 'start', { status: 'denied' }, adminId, {}),
-      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.captureLocation(sessionId, organizationId, 'end', {
+        status: 'unavailable', overrideReason: 'Administrative override',
+      }, '66666666-6666-6666-6666-666666666666', {})).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
-    });
-
-    it('audits an admin override with a location_override event and the reason in its metadata', async () => {
-      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
-      const service = new ChecklistSessionService(prisma);
-      const adminId = '66666666-6666-6666-6666-666666666666';
-
-      await service.captureLocation(
-        sessionId,
-        organizationId,
-        'end',
-        { status: 'unavailable', overrideReason: 'Observer device had no GPS signal' },
-        adminId,
-        {},
-      );
-
-      expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            eventType: 'location_override',
-            actorUserId: adminId,
-            metadata: expect.objectContaining({ capturePoint: 'end', overrideReason: 'Observer device had no GPS signal' }),
-          }),
-        }),
-      );
-    });
-
-    it('records a checklist_location.accessed audit log entry for an admin override, after the transaction commits', async () => {
-      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
-      const auditLog = { record: jest.fn(async () => undefined) };
-      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
-      const adminId = '66666666-6666-6666-6666-666666666666';
-
-      await service.captureLocation(
-        sessionId,
-        organizationId,
-        'end',
-        { status: 'unavailable', overrideReason: 'Observer device had no GPS signal' },
-        adminId,
-        {},
-      );
-
-      expect(auditLog.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          organizationId,
-          actorId: adminId,
-          action: 'checklist_location.accessed',
-          targetType: 'checklist_session',
-          targetId: sessionId,
-        }),
-      );
+      expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
     });
 
     it('does not write an audit log entry when the assigned observer submits their own capture', async () => {
@@ -853,7 +801,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.update(sessionId, organizationId, { version: 1, scheduledAt: newScheduledAt.toISOString() }, actorId, {});
+      await service.update(sessionId, organizationId, { version: 1, scheduledAt: newScheduledAt.toISOString() }, observerId, {});
 
       // The upsert-shaped helper tries an update-if-pending first, then falls back to upsert.
       expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
@@ -868,7 +816,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.update(sessionId, organizationId, { version: 1, scheduledAt: null }, actorId, {});
+      await service.update(sessionId, organizationId, { version: 1, scheduledAt: null }, observerId, {});
 
       expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -882,7 +830,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.transition(sessionId, organizationId, 'start', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'start', 1, observerId, {});
 
       expect(prisma.checklistSessionReminder.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -895,7 +843,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma, { finishIncompleteInstance: jest.fn() } as unknown as ChecklistsService);
 
-      await service.transition(sessionId, organizationId, 'complete', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'complete', 1, observerId, {});
 
       expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { organizationId, sessionId, status: 'pending' }, data: { status: 'suppressed' } }),
@@ -906,7 +854,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
-      await service.transition(sessionId, organizationId, 'cancel', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'cancel', 1, observerId, {});
 
       expect(prisma.checklistSessionReminder.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { organizationId, sessionId, status: 'pending' }, data: { status: 'suppressed' } }),
@@ -917,7 +865,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
       const service = new ChecklistSessionService(prisma);
 
-      await service.transition(sessionId, organizationId, 'pause', 1, actorId, {});
+      await service.transition(sessionId, organizationId, 'pause', 1, observerId, {});
 
       expect(prisma.checklistSessionReminder.upsert).not.toHaveBeenCalled();
       expect(prisma.checklistSessionReminder.updateMany).not.toHaveBeenCalled();

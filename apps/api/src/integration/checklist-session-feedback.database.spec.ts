@@ -183,10 +183,10 @@ describe('checklist session structured feedback — database', () => {
       created.id,
       organizationId,
       { values: { [fieldId]: 'A-12' }, version: started.version },
-      {},
+      {}, observerId,
     );
     expect(saved.contextValues).toEqual({ [fieldId]: 'A-12' });
-    await expect(service.submitContext(created.id, organizationId, { values: { [fieldId]: 'stale' }, version: started.version }, {}))
+    await expect(service.submitContext(created.id, organizationId, { values: { [fieldId]: 'stale' }, version: started.version }, {}, observerId))
       .rejects.toThrow('Checklist session was modified by someone else — reload and try again');
 
     await prisma.checklist.update({

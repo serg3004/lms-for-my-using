@@ -143,6 +143,7 @@ function presentProjected(session: SessionWithProjection) {
 
 export type ChecklistSessionViewerContext = {
   isLearnerOnly: boolean;
+  observerId?: string;
   feedbackVisibility: 'after_completion' | 'live';
 };
 
@@ -160,6 +161,7 @@ export type ChecklistSessionViewerContext = {
  */
 function applyFeedbackVisibility<
   T extends {
+    observerId?: string;
     result: { instanceStatus: string; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
     strengths: string | null;
     developmentAreas: string | null;
@@ -167,7 +169,8 @@ function applyFeedbackVisibility<
     contextValues: Prisma.JsonValue | null;
   },
 >(session: T, viewer: ChecklistSessionViewerContext): T {
-  if (!viewer.isLearnerOnly || viewer.feedbackVisibility === 'live' || session.result.instanceStatus === 'completed') {
+  const isObserver = viewer.observerId !== undefined && session.observerId === viewer.observerId;
+  if (isObserver || !viewer.isLearnerOnly || viewer.feedbackVisibility === 'live' || session.result.instanceStatus === 'completed') {
     return session;
   }
   return {
@@ -585,6 +588,9 @@ export class ChecklistSessionService {
           throw new BadRequestException('The new observer must be different from the current one');
         }
         await this.assertValidObserver(tx, changes.observerId, organizationId);
+        const employee = await tx.checklistInstance.findFirst({ where: { id: session.instanceId, organizationId, deletedAt: null }, select: { userId: true } });
+        if (!employee) throw new NotFoundException('Checklist assignment not found');
+        if (employee.userId === changes.observerId) throw new BadRequestException('An employee cannot observe their own session');
       }
 
       const result = await tx.checklistSession.updateMany({
@@ -741,7 +747,7 @@ export class ChecklistSessionService {
   }
 
   /**
-   * PR 302: the assigned observer (or an admin on their behalf, via `checklistSessionsRun`) reports
+   * PR 352: the assigned observer (any system role, via `checklistSessionsRunOwn`) reports
    * they can't conduct this session. An orthogonal business flag, not a lifecycle transition -- it
    * never touches `status` and so never blocks start/pause/resume/complete/cancel; it only surfaces
    * a "Заменить наблюдателя" CTA (`PATCH .../checklist-sessions/:id` with a new `observerId`,
@@ -757,6 +763,7 @@ export class ChecklistSessionService {
     return runSerializableWithRetry(this.prisma, async (tx) => {
       const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'scheduled') {
         throw new BadRequestException('Only a scheduled session\'s observer can be marked unavailable');
       }
@@ -815,6 +822,7 @@ export class ChecklistSessionService {
         include: { instance: { select: { templateSnapshot: true, checklist: { select: { contextFields: true } } } } },
       });
       if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.observerId !== actorId && action !== 'cancel') throw new NotFoundException('Checklist session not found');
       // A replay still requires current object access. An operation key cannot identify another
       // session, even when the caller may conduct both of them.
       if (cached) {
@@ -893,6 +901,7 @@ export class ChecklistSessionService {
     return runSerializableWithRetry(this.prisma, async (tx) => {
       const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
       if (session.status === 'scheduled' || session.status === 'cancelled') {
         throw new BadRequestException(`Cannot record feedback for a session in status "${session.status}"`);
       }
@@ -917,11 +926,12 @@ export class ChecklistSessionService {
     });
   }
 
-  async submitContext(sessionId: string, organizationId: string, input: SubmitChecklistSessionContextInput, scope: object) {
+  async submitContext(sessionId: string, organizationId: string, input: SubmitChecklistSessionContextInput, scope: object, actorId: string) {
     const { version: expectedVersion, values } = input;
     return runSerializableWithRetry(this.prisma, async (tx) => {
       const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
       if (!session) throw new NotFoundException('Checklist session not found');
+      if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
       if (session.status !== 'in_progress' && session.status !== 'paused') {
         throw new BadRequestException(`Cannot record context for a session in status "${session.status}"`);
       }
@@ -947,17 +957,7 @@ export class ChecklistSessionService {
     });
   }
 
-  /**
-   * Geolocation capture (PR 290): at most one report per (session, capturePoint) -- enforced by
-   * the unique constraint added in PR 288, so a second submission for the same point is a 409,
-   * never a silent overwrite. "getCurrentPosition once, never watchPosition" is a client-side
-   * constraint; this is the server-observable half of "start/end only, no continuous tracking."
-   * When the caller is not the assigned observer (only reachable by an admin, since the RBAC
-   * policy + observerActionScope() together restrict everyone else), an `overrideReason` is required
-   * and the submission is separately audited: a `location_override` ChecklistSessionEvent (the
-   * session's own timeline) plus a `checklist_location.accessed` AuditLogService entry (PR 304 --
-   * the formal, tenant-wide-reviewable privacy audit trail admin geo override requires).
-   */
+  /** Capture is an assigned-observer action for every role (PR 352). */
   async captureLocation(
     sessionId: string,
     organizationId: string,
@@ -971,13 +971,9 @@ export class ChecklistSessionService {
       select: { id: true, observerId: true, locationCapturePolicy: true },
     });
     if (!session) throw new NotFoundException('Checklist session not found');
+    if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
     if (session.locationCapturePolicy === 'off') {
       throw new BadRequestException('Geolocation capture is disabled for this session');
-    }
-
-    const isOverride = session.observerId !== actorId;
-    if (isOverride && !input.overrideReason) {
-      throw new BadRequestException('overrideReason is required when submitting a location capture on behalf of the observer');
     }
 
     let capture;
@@ -996,18 +992,6 @@ export class ChecklistSessionService {
           },
         });
 
-        if (isOverride) {
-          await tx.checklistSessionEvent.create({
-            data: {
-              organizationId,
-              sessionId,
-              eventType: 'location_override',
-              actorUserId: actorId,
-              metadata: { capturePoint, status: input.status, overrideReason: input.overrideReason },
-            },
-          });
-        }
-
         return created;
       });
     } catch (error) {
@@ -1015,18 +999,6 @@ export class ChecklistSessionService {
         throw new ConflictException(`A ${capturePoint} location capture already exists for this session`);
       }
       throw error;
-    }
-
-    if (isOverride) {
-      await this.auditLog.record({
-        organizationId,
-        actorId,
-        action: 'checklist_location.accessed',
-        targetType: 'checklist_session',
-        targetId: sessionId,
-        summary: `Submitted a ${capturePoint} location capture on behalf of the assigned observer`,
-        metadata: { capturePoint, reason: input.overrideReason },
-      });
     }
 
     return capture;
@@ -1038,7 +1010,7 @@ export class ChecklistSessionService {
    * only that a capture happened, not where.
    *
    * PR 304: an admin reading another observer's exact coordinates is audited the same way the
-   * write-side override is -- `checklist_location.accessed` -- since it's the same privacy-
+   * historical write-side overrides were -- `checklist_location.accessed` -- since it is a privacy-
    * sensitive exception to the normal "only the observer sees their own coordinates" rule. Not
    * logged for the observer reading their own captures (the routine, expected case), nor when no
    * returned capture actually carries coordinates (e.g. all `denied`/`unavailable`, or none yet) --
@@ -1222,6 +1194,12 @@ export class ChecklistSessionService {
     notificationOptions: { bulk?: boolean; alreadyNotified?: ReadonlySet<string> } = {},
   ) {
     await this.assertValidObserver(tx, input.observerId, input.organizationId);
+    const employee = await tx.checklistInstance.findFirst({
+      where: { id: input.instanceId, organizationId: input.organizationId, deletedAt: null },
+      select: { userId: true },
+    });
+    if (!employee) throw new NotFoundException('Checklist assignment not found');
+    if (employee.userId === input.observerId) throw new BadRequestException('An employee cannot observe their own session');
 
     const created = await tx.checklistSession.create({
       data: {

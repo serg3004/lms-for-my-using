@@ -122,7 +122,7 @@ describe('ChecklistReviewAccessService', () => {
     const service = new ChecklistReviewAccessService({} as PrismaService, scope);
     const manager = currentUser(['manager']);
 
-    await expect(service.sessionScope(manager)).resolves.toEqual({ instance: { user: userWhere } });
+    await expect(service.sessionScope(manager)).resolves.toEqual({ OR: [{ instance: { user: userWhere } }, { observerId: managerId }] });
     expect(scope.user).toHaveBeenCalledWith(manager);
   });
 
@@ -136,7 +136,7 @@ describe('ChecklistReviewAccessService', () => {
     const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
 
     await expect(service.sessionScope(currentUser(['learner']))).resolves.toEqual({
-      instance: { userId: managerId },
+      OR: [{ instance: { userId: managerId } }, { observerId: managerId }],
     });
   });
 
@@ -152,9 +152,9 @@ describe('ChecklistReviewAccessService', () => {
   });
 
   describe('observerActionScope (PR 302 review fix)', () => {
-    it('is unrestricted for admin', () => {
+    it('pins admin to their own observer assignment', () => {
       const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
-      expect(service.observerActionScope(currentUser(['admin']))).toEqual({});
+      expect(service.observerActionScope(currentUser(['admin']))).toEqual({ observerId: managerId });
     });
 
     it('is always observerId-only for a pure instructor', () => {

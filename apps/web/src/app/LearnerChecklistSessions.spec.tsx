@@ -76,9 +76,9 @@ describe('tabOf', () => {
 describe('fetchLearnerSessions', () => {
   it('unwraps the paginated response', async () => {
     apiMocks.listChecklistSessions.mockResolvedValueOnce({ items: [makeSession()], page: 1, pageSize: 100, total: 1 });
-    const items = await fetchLearnerSessions();
+    const items = await fetchLearnerSessions('learner-1');
     expect(items).toEqual([makeSession()]);
-    expect(apiMocks.listChecklistSessions).toHaveBeenCalledWith({ pageSize: 100 });
+    expect(apiMocks.listChecklistSessions).toHaveBeenCalledWith({ pageSize: 100, learnerId: 'learner-1' });
   });
 });
 

@@ -261,7 +261,7 @@ describe('checklist session admin API (PR 292) — database', () => {
     // Completing the *session* doesn't complete the underlying *instance* (they're decoupled per
     // the ADR) -- the learner must actually submit the checklist before it can be repeated,
     // exactly like a real assignment would need to finish before a fresh one can be created.
-    await checklistsService.submitItemResult(instance.id, item.id, organizationId, learner.id, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, item.id, organizationId, observerId, true, { checked: true });
 
     const repeated = await sessionService.repeatSession(session.id, organizationId, observerId, {});
 
@@ -422,7 +422,7 @@ describe('checklist session admin API (PR 292) — database', () => {
     const session = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, observerId);
     await sessionService.transition(session.id, organizationId, 'start', 1, observerId, {});
     await sessionService.transition(session.id, organizationId, 'complete', 2, observerId, {});
-    await checklistsService.submitItemResult(instance.id, item.id, organizationId, learner.id, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, item.id, organizationId, observerId, true, { checked: true });
 
     // The observer loses their instructor membership after the original session completed but
     // before repeat runs, so `createSessionInTransaction`'s observer check fails.

@@ -207,7 +207,7 @@ describe('observer session creation and conduct access (PR 331/349) — database
     for (const candidate of [...all, blocked, deleted, outsider]) {
       const assigned = await instance(learner.id);
       const action = controller.createSession({ instanceId: assigned.id, observerId: candidate.id }, await request(admin, 'createSession'));
-      if (eligible.some((item) => item.id === candidate.id)) await expect(action).resolves.toMatchObject({ observerId: candidate.id });
+      if (candidate.id !== learner.id && eligible.some((item) => item.id === candidate.id)) await expect(action).resolves.toMatchObject({ observerId: candidate.id });
       else {
         await expect(action).rejects.toBeInstanceOf(BadRequestException);
         expect(await prisma.checklistSession.count({ where: { instanceId: assigned.id } })).toBe(0);
@@ -242,8 +242,7 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(await controller.updateSession(second.id, { version: 1, scheduledAt: '2027-01-01T10:00:00Z' }, await request(admin, 'updateSession'))).toMatchObject({ observerId: observer.id, version: 2 });
     await expect(controller.updateSession(second.id, { version: 2, observerId: otherObserver.id }, await request(admin, 'updateSession'))).rejects.toBeInstanceOf(BadRequestException);
     expect(await controller.updateSession(second.id, { version: 2, observerId: manager.id }, await request(admin, 'updateSession'))).toMatchObject({ observerId: manager.id, version: 3 });
-    // PR 351 selection does not implement PR 352's RunOwn grants for other roles.
-    await expect(request(manager, 'transitionStart')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(await controller.transitionStart(second.id, { version: 3 }, await request(manager, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
     const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_workplace_settings.updated' } });
     expect(audit.metadata).toMatchObject({ previous: { observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'] }, updated: { observerRoles: ['manager'] } });
   });
@@ -293,23 +292,105 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(await prisma.checklistLocationCapture.count({ where: { organizationId, sessionId: session.id } })).toBe(0);
   });
 
-  it('PR 349: own conduct, manager cancellation and admin override remain allowed', async () => {
+  it('PR 349: own conduct and manager cancellation remain allowed; admin cannot conduct for another observer', async () => {
     const own = await managedSession('scheduled', true);
     expect(await controller.transitionStart(own.session.id, { version: 1 }, await request(own.actor, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
     const team = await managedSession();
     expect(await controller.transitionCancel(team.session.id, { version: 1 }, await request(team.actor, 'transitionCancel'))).toMatchObject({ status: 'cancelled' });
     const other = await managedSession();
     const admin = await user(organizationId, ['admin']);
-    expect(await controller.transitionStart(other.session.id, { version: 1 }, await request(admin, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
+    await expect(controller.transitionStart(other.session.id, { version: 1 }, await request(admin, 'transitionStart'))).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('PR 349: a cached transition cannot bypass current observer scope', async () => {
     const { actor, session } = await managedSession();
-    const admin = await user(organizationId, ['admin']);
     const key = randomUUID();
-    await controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(admin, 'transitionStart'));
+    await controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(observer, 'transitionStart'));
     await expect(controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(actor, 'transitionStart'))).rejects.toBeInstanceOf(NotFoundException);
     expect(await controller.transitionStart(session.id, { version: 1, idempotencyKey: key }, await request(observer, 'transitionStart'))).toMatchObject({ id: session.id, version: 2 });
     expect(await prisma.checklistSessionEvent.count({ where: { organizationId, sessionId: session.id, eventType: 'started' } })).toBe(1);
   });
+  it.each(['admin', 'manager', 'instructor', 'mentor', 'learner'] as const)(
+    'PR 352: %s conducts only assigned sessions; tenant and object boundaries hold', async (role) => {
+      const actor = await user(organizationId, [role]);
+      await workplaceSettings.updateSettings(organizationId, { observerEligibility: 'any_user' }, actor.id);
+      const own = await sessions.create(organizationId, { instanceId: (await instance(learner.id)).id, observerId: actor.id }, observer.id);
+      const other = await sessions.create(organizationId, { instanceId: (await instance(learner.id)).id, observerId: otherObserver.id }, observer.id);
+      const foreign = await prisma.checklistSession.create({ data: { organizationId: foreignOrganizationId, instanceId: foreignInstanceId, observerId: outsider.id } });
+      const queue = await controller.listOwnSessions({ observerId: otherObserver.id }, await request(actor, 'listOwnSessions'));
+      expect(queue.items).toEqual([]); // forged query cannot replace mandatory own scope
+      expect((await controller.listOwnSessions({}, await request(actor, 'listOwnSessions'))).items.map((row) => row.id)).toEqual([own.id]);
+      expect(await controller.getConductSession(own.id, await request(actor, 'getConductSession'))).toMatchObject({ observerId: actor.id });
+      for (const deniedId of [other.id, foreign.id, randomUUID()]) {
+        await expect(controller.getConductSession(deniedId, await request(actor, 'getConductSession'))).rejects.toBeInstanceOf(NotFoundException);
+        for (const handler of ['transitionStart', 'transitionPause', 'transitionResume', 'transitionComplete'] as const) {
+          await expect(controller[handler](deniedId, { version: 1 }, await request(actor, handler))).rejects.toBeInstanceOf(NotFoundException);
+        }
+        await expect(controller.submitFeedback(deniedId, { version: 1, strengths: 'Forged' }, await request(actor, 'submitFeedback'))).rejects.toBeInstanceOf(NotFoundException);
+        await expect(controller.submitContext(deniedId, { version: 1, values: {} }, await request(actor, 'submitContext'))).rejects.toBeInstanceOf(NotFoundException);
+        await expect(controller.captureLocation(deniedId, 'start', { status: 'denied' }, await request(actor, 'captureLocation'))).rejects.toBeInstanceOf(NotFoundException);
+      }
+      // Service rejects an unsafe broad scope too, including cached transitions.
+      await expect(sessions.transition(other.id, organizationId, 'start', 1, actor.id, {})).rejects.toBeInstanceOf(NotFoundException);
+      if (role === 'manager') {
+        await expect(controller.updateSession(own.id, { version: 1, scheduledAt: '2027-01-01T09:00:00Z' }, await request(actor, 'updateSession'))).rejects.toBeInstanceOf(NotFoundException);
+        expect((await controller.exportSessions({ observerId: actor.id }, await request(actor, 'exportSessions'))).rowCount).toBe(0);
+      }
+      const key = randomUUID();
+      let current = await controller.transitionStart(own.id, { version: 1, idempotencyKey: key }, await request(actor, 'transitionStart'));
+      expect((await controller.transitionStart(own.id, { version: 1, idempotencyKey: key }, await request(actor, 'transitionStart'))).version).toBe(current.version);
+      current = await controller.submitContext(own.id, { version: current.version, values: {} }, await request(actor, 'submitContext'));
+      current = await controller.submitFeedback(own.id, { version: current.version, strengths: 'Observed result' }, await request(actor, 'submitFeedback'));
+      current = await controller.transitionPause(own.id, { version: current.version }, await request(actor, 'transitionPause'));
+      current = await controller.transitionResume(own.id, { version: current.version }, await request(actor, 'transitionResume'));
+      current = await controller.transitionComplete(own.id, { version: current.version }, await request(actor, 'transitionComplete'));
+      expect(current.status).toBe('completed');
+      expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'started', actorUserId: actor.id } })).toBe(1);
+      expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'completed', actorUserId: actor.id } })).toBe(1);
+      if (role === 'learner' || role === 'mentor') {
+        for (const handler of ['createSession', 'updateSession', 'exportSessions', 'recalculateScore'] as const) {
+          // These grants are independent of an observer assignment.
+          await expect(request(actor, handler)).rejects.toBeInstanceOf(ForbiddenException);
+        }
+      }
+    },
+  );
+
+  it('PR 352: blocks self-observation in single/bulk creation and reassignment without side effects', async () => {
+    const admin = await user(organizationId, ['admin']);
+    await workplaceSettings.updateSettings(organizationId, { observerEligibility: 'any_user' }, admin.id);
+    const assigned = await instance(learner.id);
+    await expect(controller.createSession({ instanceId: assigned.id, observerId: learner.id }, await request(admin, 'createSession'))).rejects.toBeInstanceOf(BadRequestException);
+    const result = await controller.bulkCreateSessions({ checklistId, learnerIds: [learner.id], observerId: learner.id }, await request(admin, 'bulkCreateSessions'));
+    expect(result.created).toBe(0);
+    const valid = await sessions.create(organizationId, { instanceId: assigned.id, observerId: observer.id }, admin.id);
+    await expect(controller.updateSession(valid.id, { version: 1, observerId: learner.id }, await request(admin, 'updateSession'))).rejects.toBeInstanceOf(BadRequestException);
+    expect(await prisma.checklistSession.findUniqueOrThrow({ where: { id: valid.id } })).toMatchObject({ observerId: observer.id, version: 1 });
+  });
+
+  it.each(['admin', 'manager', 'instructor', 'mentor', 'learner'] as const)(
+    'PR 352: %s can read and answer the observed instance, with no unrelated item access', async (role) => {
+      const actor = await user(organizationId, [role]);
+      await workplaceSettings.updateSettings(organizationId, { observerEligibility: 'any_user' }, actor.id);
+      const item = await prisma.checklistItem.create({ data: { organizationId, checklistId, order: 0, text: 'Observed criterion', points: 1, isRequired: true } });
+      const optionalItem = await prisma.checklistItem.create({ data: { organizationId, checklistId, order: 1, text: 'Can skip', points: 1, allowSkip: true, isRequired: false } });
+      const checklists = new ChecklistsService(prisma, {} as UploadService);
+      const ownInstance = await checklists.assignChecklist(checklistId, organizationId, { userId: learner.id }, observer.id);
+      const otherInstance = await instance(learner.id);
+      const ownSession = await sessions.create(organizationId, { instanceId: ownInstance.id, observerId: actor.id }, observer.id);
+      await controller.transitionStart(ownSession.id, { version: 1 }, await request(actor, 'transitionStart'));
+      await sessions.create(organizationId, { instanceId: otherInstance.id, observerId: otherObserver.id }, observer.id);
+      expect(await controller.getInstance(ownInstance.id, await request(actor, 'getInstance'))).toMatchObject({ userId: learner.id });
+      expect(await controller.skipItem(ownInstance.id, optionalItem.id, {}, await request(actor, 'skipItem'))).toMatchObject({ id: ownInstance.id });
+      expect(await controller.submitItemResult(ownInstance.id, item.id, { checked: true }, await request(actor, 'submitItemResult'))).toMatchObject({ id: ownInstance.id });
+      for (const target of [otherInstance.id, foreignInstanceId, randomUUID()]) {
+        // Even a caller with broad reviewer/admin permission cannot fill another observer's session.
+        await expect(checklists.submitItemResult(target, item.id, organizationId, actor.id, true, { checked: true })).rejects.toBeInstanceOf(NotFoundException);
+        await expect(checklists.skipItem(target, item.id, organizationId, actor.id, true, { comment: 'forged' })).rejects.toBeInstanceOf(NotFoundException);
+        await expect(checklists.assertInstanceWritable(target, organizationId, actor.id, true)).rejects.toBeInstanceOf(NotFoundException);
+      }
+      await expect(checklists.submitItemResult(ownInstance.id, item.id, organizationId, learner.id, false, { checked: true })).rejects.toBeInstanceOf(NotFoundException);
+    },
+  );
+
 });

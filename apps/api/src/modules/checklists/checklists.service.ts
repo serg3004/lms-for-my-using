@@ -243,6 +243,7 @@ type SnapshotRuntimeRef = {
   snapshotVersion?: number | null;
 };
 type WritableInstance = {
+  session?: { observerId: string; deletedAt: Date | null } | null;
   id: string;
   userId: string;
   status: string;
@@ -1303,7 +1304,7 @@ export class ChecklistsService {
   ) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: { id: true, userId: true, status: true, dueAt: true },
+      select: { id: true, userId: true, status: true, dueAt: true, session: { select: { observerId: true, deletedAt: true } } },
     });
 
     if (!instance) {
@@ -1331,6 +1332,7 @@ export class ChecklistsService {
         checklistId: true,
         templateSnapshot: true,
         snapshotVersion: true,
+        session: { select: { observerId: true, deletedAt: true } },
       },
     });
 
@@ -1404,6 +1406,7 @@ export class ChecklistsService {
         checklistId: true,
         templateSnapshot: true,
         snapshotVersion: true,
+        session: { select: { observerId: true, deletedAt: true } },
       },
     });
 
@@ -1521,7 +1524,7 @@ export class ChecklistsService {
   ) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
-      select: { id: true, userId: true, status: true, dueAt: true },
+      select: { id: true, userId: true, status: true, dueAt: true, session: { select: { observerId: true, deletedAt: true } } },
     });
 
     if (!instance) {
@@ -1643,7 +1646,11 @@ export class ChecklistsService {
     isPrivileged: boolean,
     now: Date,
   ) {
-    if (instance.userId !== requesterId && !isPrivileged) {
+    const session = instance.session;
+    if (session && (session.deletedAt !== null || session.observerId !== requesterId)) {
+      throw new NotFoundException('Checklist session not found');
+    }
+    if (!session && instance.userId !== requesterId && !isPrivileged) {
       throw new ForbiddenException('You can only fill out your own checklist assignment');
     }
 

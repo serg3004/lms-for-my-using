@@ -11,6 +11,7 @@ export function canAccessPath(pathname: string, user: Pick<CurrentUser, 'roles'>
   if (pathname === '/manager' || pathname.startsWith('/manager/')) {
     return user.roles.includes('manager');
   }
+  if (/^\/instructor\/checklists\/sessions(?:\/[^/]+)?\/?$/.test(pathname)) return true;
   if (pathname === '/instructor' || pathname.startsWith('/instructor/')) {
     return user.roles.includes('instructor');
   }
