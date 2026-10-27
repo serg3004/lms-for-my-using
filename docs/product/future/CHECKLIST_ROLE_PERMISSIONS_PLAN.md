@@ -60,7 +60,7 @@
 **Зависимости:** PR 349.
 
 **Что необходимо сделать:**
-- положить таблицу в `docs/product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.xlsx` (исходный вид) и `docs/product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md` (читаемая версия: 22 строки × 5 ролей, сноски, столбец «Статус» — «реализовано» / «план: PR N»);
+- положить таблицу в `docs/product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.xlsx` (исходный вид) и читаемую версию рядом, файл `.md` с тем же именем (создаётся в этом PR; читаемая версия: 22 строки × 5 ролей, сноски, столбец «Статус» — «реализовано» / «план: PR N»);
 - машиночитаемая копия `apps/api/src/modules/checklists/checklist-role-permissions.table.ts`: для каждой строки — ключ действия, права по ролям (`none` / `own` / `team` / `all` / `assigned`), статус и номер PR;
 - тест-сторож `checklist-role-permissions.parity.spec.ts`: для строк со статусом «реализовано» сверяет `rolePolicies` и scope-функции; для строк «план» проверяет, что в таблице указан PR; при расхождении тест падает с понятным сообщением;
 - тест на то, что `.md` и машиночитаемая таблица совпадают (одна строка — один ключ);
