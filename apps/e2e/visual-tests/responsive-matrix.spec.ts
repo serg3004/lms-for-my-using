@@ -709,6 +709,7 @@ for (const width of widths) {
         if (role === 'learner') await installLearnerMocks(page);
         else await installManagerMocks(page);
         await installInstructorConductMocks(page, false, role);
+        await page.route('**/api/v1/checklists/free', (route) => route.fulfill({ json: [] }));
         await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
         await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([]) }));
         await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
