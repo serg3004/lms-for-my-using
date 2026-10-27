@@ -541,12 +541,18 @@ export type ChecklistFeedbackVisibility = 'after_completion' | 'live';
 // criticalThreshold/lowThreshold are intentionally omitted here even though the API returns them --
 // DEC-CHKS-001 (docs/status/OPEN_DECISIONS.md) defers what counts as a "critical" result to an
 // owner decision, so the settings UI does not show a critical/low band until that's resolved.
+export type ChecklistObserverEligibility = 'any_user' | 'selected_roles' | 'selected_users';
+
 export type ChecklistWorkplaceSettingsView = {
   organizationId: string;
   moduleEnabled: boolean;
   highPerformanceThreshold: number;
   defaultGeolocationPolicy: ChecklistGeolocationPolicy;
   feedbackVisibility: ChecklistFeedbackVisibility;
+  observerEligibility: ChecklistObserverEligibility;
+  observerRoles: UserRole[];
+  observerUserIds: string[];
+  selectedObserverUsers?: Array<Pick<UserSummary, 'id' | 'firstName' | 'lastName' | 'email' | 'status'>>;
   updatedAt: string | null;
 };
 

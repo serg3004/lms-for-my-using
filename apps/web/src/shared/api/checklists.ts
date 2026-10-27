@@ -257,6 +257,9 @@ export function updateChecklistWorkplaceSettings(input: {
   highPerformanceThreshold?: number;
   defaultGeolocationPolicy?: ChecklistWorkplaceSettingsView['defaultGeolocationPolicy'];
   feedbackVisibility?: ChecklistWorkplaceSettingsView['feedbackVisibility'];
+  observerEligibility?: ChecklistWorkplaceSettingsView['observerEligibility'];
+  observerRoles?: ChecklistWorkplaceSettingsView['observerRoles'];
+  observerUserIds?: string[];
 }) {
   return apiRequest<ChecklistWorkplaceSettingsView>('/checklists/workplace-settings', {
     method: 'PATCH',

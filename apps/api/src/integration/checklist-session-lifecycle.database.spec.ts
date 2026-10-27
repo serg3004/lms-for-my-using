@@ -83,11 +83,11 @@ describe('checklist session lifecycle — database', () => {
     await prisma.organization.deleteMany({ where: { id: organizationId } });
   });
 
-  it('rejects an observer without the instructor role', async () => {
+  it('rejects an observer outside the default eligible roles', async () => {
     const learnerAsObserver = learnerId;
     await expect(
       service.create(organizationId, { instanceId, observerId: learnerAsObserver }, observerId),
-    ).rejects.toThrow('Observer must be a user with the instructor role');
+    ).rejects.toThrow('Observer is not eligible under the current workplace settings');
   });
 
   it('runs the full documented lifecycle: scheduled -> in_progress -> paused -> in_progress -> completed', async () => {

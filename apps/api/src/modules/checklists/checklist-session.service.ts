@@ -18,6 +18,7 @@ import {
   upsertPreStartReminder,
 } from './checklist-session-reminders.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_MESSAGE_WINDOW_MS } from './checklist-session-message.js';
+import { eligibleObserverScope } from './checklist-observer-eligibility.js';
 import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
@@ -407,7 +408,7 @@ export class ChecklistSessionService {
    * Participant lookup (PR 292): the admin "new session" wizard's employee/observer pickers.
    * `learner` is scoped the same way session visibility is (tenant-wide for admin, effective team
    * for manager) so a manager can't schedule a session for someone outside their team; `observer`
-   * is any active user holding the `instructor` role, tenant-wide (observers aren't team-scoped).
+   * follows the tenant eligibility setting, independently of the learner team scope.
    */
   async listParticipants(organizationId: string, query: ChecklistSessionParticipantsQuery, learnerScope: object, ownObserverId?: string) {
     const searchClause: Prisma.UserWhereInput = query.search
@@ -425,14 +426,14 @@ export class ChecklistSessionService {
       deletedAt: null,
       status: 'active',
       AND: [searchClause, query.role === 'observer'
-        ? { memberships: { some: { role: 'instructor', organizationId } }, ...(ownObserverId ? { id: ownObserverId } : {}) }
+        ? { AND: [await eligibleObserverScope(this.prisma, organizationId), ...(ownObserverId ? [{ id: ownObserverId }] : [])] }
         : learnerScope],
     };
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
-        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+        orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }, { id: 'asc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
         select: { id: true, firstName: true, lastName: true, email: true, position: true },
@@ -1282,18 +1283,14 @@ export class ChecklistSessionService {
   }
 
   private async assertValidObserver(tx: Prisma.TransactionClient, observerId: string, organizationId: string) {
-    // ADR_CHECKLIST_SESSION_OVERLAY.md: Observer = the existing `instructor` role, not `manager`.
+    // Check eligibility when choosing/reassigning, never when conducting an existing session.
     const observer = await tx.user.findFirst({
       where: {
-        id: observerId,
-        organizationId,
-        deletedAt: null,
-        status: 'active',
-        memberships: { some: { role: 'instructor', organizationId } },
+        AND: [{ id: observerId }, await eligibleObserverScope(tx, organizationId)],
       },
       select: { id: true },
     });
-    if (!observer) throw new BadRequestException('Observer must be a user with the instructor role');
+    if (!observer) throw new BadRequestException('Observer is not eligible under the current workplace settings');
   }
 
   private isUniqueConstraintViolation(error: unknown, columnHint: string): boolean {

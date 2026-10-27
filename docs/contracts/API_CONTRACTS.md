@@ -131,7 +131,7 @@ are not yet consumed by any scoring endpoint (deferred to a future reporting PR)
 `ChecklistSession` (PR 288/289) is a 1:1 overlay over an existing `ChecklistInstance`
 (`docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`), not a new top-level entity -- it never
 duplicates score or snapshot fields already owned by the instance. Observer is the existing
-`instructor` role, never `manager`.
+`instructor` role in the original overlay design; PR 351 makes selection configurable as described below.
 
 Endpoints: `POST /checklist-sessions` (create), `GET /checklist-sessions` (list, paginated, filters
 by `status`/`observerId`/`overdueOnly`; `sort=recent` orders newest-started first and `excludeSessionId` leaves one
@@ -148,7 +148,7 @@ same database transaction as the mutation -- never a best-effort side write.
 
 `PATCH` (reschedule) and observer reassignment are only accepted while `status === 'scheduled'`;
 once a session starts, its participants are fixed for the rest of its lifecycle. Creating a session
-validates the observer holds the `instructor` role and that the target instance does not already
+validates the observer against the current tenant eligibility setting and that the target instance does not already
 have one (`instanceId` is unique -- a second `POST` for the same instance is a 409).
 
 Every mutating call (`PATCH` and every transition route) requires the caller's current `version` in
@@ -343,7 +343,7 @@ messages per session in 10 minutes answer 429. Editing time and observer stays `
 the admin UI now sends both in one request.
 
 `GET /checklist-sessions/participants?role=learner|observer` backs both wizard entry points.
-Admin/manager may select any active instructor in their tenant as observer. PR 331 adds
+Admin/manager may select any active, undeleted user allowed by the tenant observer-eligibility setting (PR 351). PR 331 adds
 `checklistSessionsCreateOwn` for instructor: a caller without management rights sees only
 themselves in observer lookup and may create only with `observerId === currentUser.id` (404
 otherwise). Learner lookup and single/bulk creation all use `participantLearnerScope()`: active,
@@ -1127,3 +1127,31 @@ Mail reuses `ChecklistSessionReminderDelivery` (Resend/SMTP, or the delivery hoo
 admin of the same organization and that the link is the server-authored admin sessions link. Without
 a configured capability delivery is a no-op and the portal notice remains. The audit entry
 `user.status_changed` carries `observerSessions` in its metadata.
+
+
+## Configurable observer selection (PR 351)
+
+`GET/PATCH /checklists/workplace-settings` adds `observerEligibility` (`any_user`, `selected_roles`,
+`selected_users`), `observerRoles` (system-role array) and `observerUserIds` (UUID array, maximum 500).
+Missing settings rows and migrated rows both default to `selected_roles` with instructor/manager/admin,
+not instructor alone. Empty selections deliberately allow no new observer. PATCH remains admin-only.
+Duplicate role/user entries and unknown roles are rejected by the schema. Newly added user IDs must
+belong to active, undeleted users of the authenticated organization; previously configured inactive
+IDs may remain when changing unrelated settings, but cannot appear as eligible candidates.
+
+Observer participant lookup uses the same eligibility filter as single/bulk/repeat creation and
+observer reassignment. It always excludes blocked/deleted/foreign users, supports search and stable
+pagination, and retains instructor own-only lookup/creation restrictions. An invalid observer is
+rejected before session writes. Eligibility is rechecked inside the session write transaction.
+Time-only rescheduling and reads/conduct of an existing assignment do not revalidate eligibility;
+changing the selection never rewrites session participants or snapshots.
+
+For the admin editor only, GET includes `selectedObserverUsers` with tenant-scoped names/email/status
+for configured undeleted people. Other settings readers do not receive this roster projection.
+The editor uses the existing admin user search, preserves choices across searches/pages, and can
+remove unavailable entries. The settings audit includes previous and updated values; the preceding
+state and update are read/written in a Serializable transaction.
+
+PR 351 changes selection, not execution rights. Existing read/run policies and observer action scope
+remain enforced. The own-session read/run grants and entry points for non-instructor roles are PR 352.
+An assigned instructor removed from the eligible selection retains their existing session access.

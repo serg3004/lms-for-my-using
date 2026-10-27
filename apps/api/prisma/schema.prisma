@@ -204,6 +204,12 @@ enum ChecklistGeolocationPolicy {
   required
 }
 
+enum ChecklistObserverEligibility {
+  any_user
+  selected_roles
+  selected_users
+}
+
 enum ChecklistFeedbackVisibility {
   after_completion
   live
@@ -1281,17 +1287,20 @@ model ChecklistItemResult {
 /// Tenant-scoped configuration for the Checklist "workplace training session" mode.
 /// See docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md for the safe defaults this row ships with.
 model ChecklistWorkplaceSettings {
-  id                       String                      @id @default(uuid()) @db.Uuid
-  organizationId           String                      @unique @map("organization_id") @db.Uuid
-  moduleEnabled            Boolean                     @default(false) @map("module_enabled")
-  highPerformanceThreshold Int                         @default(90) @map("high_performance_threshold")
-  criticalThreshold        Int?                        @map("critical_threshold")
-  lowThreshold             Int?                        @map("low_threshold")
-  defaultGeolocationPolicy ChecklistGeolocationPolicy  @default(off) @map("default_geolocation_policy")
-  feedbackVisibility       ChecklistFeedbackVisibility @default(after_completion) @map("feedback_visibility")
-  createdAt                DateTime                    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt                DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
-  organization             Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                       String                       @id @default(uuid()) @db.Uuid
+  organizationId           String                       @unique @map("organization_id") @db.Uuid
+  moduleEnabled            Boolean                      @default(false) @map("module_enabled")
+  highPerformanceThreshold Int                          @default(90) @map("high_performance_threshold")
+  criticalThreshold        Int?                         @map("critical_threshold")
+  lowThreshold             Int?                         @map("low_threshold")
+  defaultGeolocationPolicy ChecklistGeolocationPolicy   @default(off) @map("default_geolocation_policy")
+  feedbackVisibility       ChecklistFeedbackVisibility  @default(after_completion) @map("feedback_visibility")
+  observerEligibility      ChecklistObserverEligibility @default(selected_roles) @map("observer_eligibility")
+  observerRoles            UserRole[]                   @default([instructor, manager, admin]) @map("observer_roles")
+  observerUserIds          String[]                     @default([]) @map("observer_user_ids") @db.Uuid
+  createdAt                DateTime                     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime                     @updatedAt @map("updated_at") @db.Timestamptz
+  organization             Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("checklist_workplace_settings")
 }
