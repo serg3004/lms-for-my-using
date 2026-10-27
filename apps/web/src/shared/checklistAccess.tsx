@@ -11,7 +11,7 @@ export function checklistAccessKind(checklist: { accessMode?: ChecklistAccessMod
   return checklist.pinned ? 'pinned' : 'free';
 }
 
-const VARIANT: Record<ChecklistAccessKind, BadgeVariant> = { assigned: 'neutral', free: 'info', pinned: 'accent' };
+const VARIANT: Record<ChecklistAccessKind, BadgeVariant> = { assigned: 'neutral', free: 'accent', pinned: 'success' };
 
 export function checklistAccessLabel(kind: ChecklistAccessKind, t: TFunction): string {
   switch (kind) {
