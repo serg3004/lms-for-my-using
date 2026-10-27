@@ -881,33 +881,39 @@ describe('filterAssignableUsers', () => {
 
 describe('buildChecklistSettingsPayload', () => {
   it('nulls out an empty description', () => {
-    const payload = buildChecklistSettingsPayload({ title: 'Т', description: '', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false });
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: '', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' });
     expect(payload.description).toBeNull();
   });
 
   it('drops scale levels when the scoring mode is not scale', () => {
-    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'all_required', passThreshold: 80, requiresReview: false, scaleLevels: [{ level: 1, label: 'x', points: 1 }], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false });
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'all_required', passThreshold: 80, requiresReview: false, scaleLevels: [{ level: 1, label: 'x', points: 1 }], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' });
     expect(payload.scaleLevels).toBeNull();
   });
 
   it('keeps scale levels when the scoring mode is scale', () => {
     const levels = [{ level: 1, label: 'x', points: 1 }];
-    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'scale', passThreshold: 80, requiresReview: false, scaleLevels: levels, defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false });
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'scale', passThreshold: 80, requiresReview: false, scaleLevels: levels, defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' });
     expect(payload.scaleLevels).toEqual(levels);
   });
 
   it('nulls out an empty defaultLocationCapturePolicy but keeps a real one', () => {
-    const empty = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'full', allowFinishIncomplete: false, forbidGalleryPhotos: false });
+    const empty = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'full', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' });
     expect(empty.defaultLocationCapturePolicy).toBeNull();
-    const set = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: 'required', preSessionVisibility: 'none', allowFinishIncomplete: false, forbidGalleryPhotos: false });
+    const set = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: 'required', preSessionVisibility: 'none', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' });
     expect(set.defaultLocationCapturePolicy).toBe('required');
     expect(set.preSessionVisibility).toBe('none');
   });
 
   it('PR 330: passes the strictness settings through to the update payload', () => {
-    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'full', allowFinishIncomplete: true, forbidGalleryPhotos: true });
+    const payload = buildChecklistSettingsPayload({ title: 'Т', description: 'd', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'full', allowFinishIncomplete: true, forbidGalleryPhotos: true, accessMode: 'assigned' });
     expect(payload.allowFinishIncomplete).toBe(true);
     expect(payload.forbidGalleryPhotos).toBe(true);
+  });
+
+  it('PR 353: passes the access mode through to the update payload', () => {
+    const base = { title: 'Т', description: 'd', scoringMode: 'sum_points' as const, passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '' as const, preSessionVisibility: 'full' as const, allowFinishIncomplete: false, forbidGalleryPhotos: false };
+    expect(buildChecklistSettingsPayload({ ...base, accessMode: 'free' }).accessMode).toBe('free');
+    expect(buildChecklistSettingsPayload({ ...base, accessMode: 'assigned' }).accessMode).toBe('assigned');
   });
 });
 

@@ -70,6 +70,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssessmentStatus` | `draft`, `published`, `archived` |
 | `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
 | `CertificateStatus` | `issued`, `revoked` |
+| `ChecklistAccessMode` | `assigned`, `free` |
 | `ChecklistAnswerState` | `unanswered`, `answered`, `skipped` |
 | `ChecklistContextFieldType` | `text`, `textarea`, `date` |
 | `ChecklistFeedbackVisibility` | `after_completion`, `live` |

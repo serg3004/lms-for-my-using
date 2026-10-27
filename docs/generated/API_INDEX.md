@@ -94,6 +94,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/analytics` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/free` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-template` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/manager-analytics` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/manager-analytics/export` | `Checklists` | `bearer` |
@@ -110,6 +111,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `PATCH` | `/api/v1/checklists/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklists/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/{id}/copy` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklists/{id}/start` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/courses` | `Courses` | `bearer` |
 | `POST` | `/api/v1/courses` | `Courses` | `bearer` |
 | `GET` | `/api/v1/courses/summary` | `Courses` | `bearer` |

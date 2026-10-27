@@ -151,6 +151,8 @@ async function installLearnerChecklistsMocks(page: Page) {
     },
   }));
   await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
+  // PR 353: no free-access checklists unless a test installs a catalog.
+  await page.route('**/api/v1/checklists/free', (route) => route.fulfill({ json: [] }));
   await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
     json: paginated([{
       id: 'session-1', organizationId: 'visual-org', instanceId: 'instance-1', observerId: 'observer-1',
@@ -633,6 +635,23 @@ for (const width of widths) {
       await expectVisualMatch(page, `learner-checklist-sessions-${width}`);
     });
 
+    test('keeps the learner free checklists catalog responsive', async ({ page }) => {
+      await installLearnerChecklistsMocks(page);
+      await page.route('**/api/v1/checklists/free', (route) => route.fulfill({
+        json: [
+          { id: 'free-1', title: 'Opening shift checklist', description: 'Complete before serving the first customer.', itemCount: 12, activeInstanceId: null, activeInstanceStatus: null },
+          { id: 'free-2', title: 'Closing shift checklist with a deliberately long title that has to wrap on a phone', description: null, itemCount: 7, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
+        ],
+      }));
+      await page.goto('/learn/checklists');
+      await expect(page.getByRole('heading', { name: /Free checklists|Свободное прохождение/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^(Start|Начать)$/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^(Continue|Продолжить)$/ })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `learner-free-checklists-${width}`);
+    });
+
     test('keeps the manager team dashboard responsive', async ({ page }) => {
       await installManagerMocks(page);
       await page.goto('/manager/dashboard');
@@ -690,6 +709,7 @@ for (const width of widths) {
         if (role === 'learner') await installLearnerMocks(page);
         else await installManagerMocks(page);
         await installInstructorConductMocks(page, false, role);
+        await page.route('**/api/v1/checklists/free', (route) => route.fulfill({ json: [] }));
         await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
         await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([]) }));
         await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));

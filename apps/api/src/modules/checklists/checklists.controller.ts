@@ -142,6 +142,21 @@ export class ChecklistsController {
     return this.checklistsService.createFromTemplate(input.templateKey, input.locale, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
+  // PR 353: catalog and self-start of free-access checklists. Declared before `checklists/:id` so
+  // `free` is not parsed as a checklist id. The subject of a start is always the caller.
+  @Get('checklists/free')
+  @Roles(...rolePolicies.checklistsStartFree)
+  listFreeChecklists(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.listFreeChecklists(user.organizationId, user.id);
+  }
+  @Post('checklists/:id/start')
+  @Roles(...rolePolicies.checklistsStartFree)
+  startFreeChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.startFreeChecklist(checklistId, user.organizationId, user.id);
+  }
+
   @Get('checklists/:id')
   @Roles(...rolePolicies.checklistsRead)
   getChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {

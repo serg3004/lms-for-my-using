@@ -462,6 +462,23 @@ which governs when *feedback* becomes visible after a session; this one governs 
 *structure* beforehand. Not yet consumed by any employee-facing screen -- storage only in this
 PR, consumption is PR 298's scope).
 
+**Access mode (PR 353)** (same checklist create/update routes, copied by `POST /checklists/:id/copy`):
+`accessMode` is `assigned` (default; the checklist reaches people only through assignments and
+observation sessions, exactly as before) or `free` (a published checklist that any signed-in user of
+the organization starts for themselves). It affects only catalog visibility and self-start and is not
+frozen into `templateSnapshot`. `GET /checklists/free` (policy `checklistsStartFree`, every role)
+returns the caller's organization's published, non-deleted `free` checklists as
+`{ id, title, description, itemCount, activeInstanceId, activeInstanceStatus }` -- never the criteria
+themselves; `activeInstanceId` is the caller's own unfinished instance (`assigned`, `in_progress` or
+`submitted`) or `null`. `POST /checklists/:id/start` (same policy, no body) creates a
+`ChecklistInstance` whose `userId` and `assignedBy` are always the caller, with no due date, reviewer
+or session; if the caller already has an unfinished instance of that checklist it is returned
+instead (idempotent, serialised by a per-(checklist, user) advisory lock so parallel requests create
+exactly one). A checklist that is not `free`, not published, deleted or in another organization
+answers 404. Switching a checklist from `free` back to `assigned` removes it from the catalog but
+keeps instances already started; a completed instance does not block starting a new one. Audit
+action `checklist_instance.started_free` is written only when an instance is created.
+
 **Strictness settings (PR 330)** (same checklist create/update routes): `allowFinishIncomplete`
 (boolean, default `false`) -- when the instance's snapshot has it, `POST /checklist-sessions/:id/transition`
 with `complete` first records every criterion that still has no answer as `answerState='skipped'`

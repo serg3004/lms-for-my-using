@@ -514,3 +514,18 @@ and saved configuration; do not delete assigned sessions or drop the new fields 
 fresh and existing-row defaults, all selection modes, invalid tenant/user rejection, before/after audit,
 and continuing access to an existing assigned session in PostgreSQL integration tests. Production
 backup/restore remains subject to the live verification requirements above.
+
+### Checklist access mode (PR 353)
+
+`20261028120000_add_checklist_access_mode` adds the `ChecklistAccessMode` enum, one non-null
+`checklists.access_mode` column defaulting to `assigned`, and a b-tree index on
+`(organization_id, access_mode, status)`. Every existing checklist therefore keeps its current
+behaviour; no instance, session or snapshot is rewritten and no data backfill is required.
+
+Apply the forward migration before starting the new API. Old API versions ignore the added column
+and never offer free checklists, so a mixed-version window only hides the new catalog. Roll back the
+application while retaining the additive column and index; do not drop the column, because
+checklists switched to `free` and instances already started from them would lose their mode.
+Verify defaults for existing rows, the catalog, idempotent and concurrent start, and 404 for
+non-free, draft, deleted and foreign-tenant checklists in PostgreSQL integration tests. Production
+backup/restore remains subject to the live verification requirements above.

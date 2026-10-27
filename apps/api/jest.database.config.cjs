@@ -22,6 +22,7 @@ module.exports = {
     '<rootDir>/src/integration/checklist-session-observer-unavailable.database.spec.ts',
     '<rootDir>/src/integration/checklist-manager-analytics.database.spec.ts',
     '<rootDir>/src/integration/checklist-evaluation-scales.database.spec.ts',
+    '<rootDir>/src/integration/checklist-free-access.database.spec.ts',
     '<rootDir>/src/integration/checklist-observation-sheet-builder.database.spec.ts',
     '<rootDir>/src/integration/checklist-templates.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-feedback.database.spec.ts',

@@ -12,6 +12,7 @@ export const checklistGeolocationPolicySchema = z.enum(['off', 'optional', 'requ
 // ---- PR 296: observation-sheet builder (context fields, item groups, sheet-level settings) ----
 
 export const checklistPreSessionVisibilitySchema = z.enum(['full', 'structure_only', 'none']);
+export const checklistAccessModeSchema = z.enum(['assigned', 'free']);
 export const checklistContextFieldTypeSchema = z.enum(['text', 'textarea', 'date']);
 
 export const contextFieldSchema = z.object({
@@ -49,6 +50,7 @@ export const createChecklistSchema = z.object({
   preSessionVisibility: checklistPreSessionVisibilitySchema.default('structure_only'),
   allowFinishIncomplete: z.boolean().default(false),
   forbidGalleryPhotos: z.boolean().default(false),
+  accessMode: checklistAccessModeSchema.default('assigned'),
 });
 export type CreateChecklistInput = z.infer<typeof createChecklistSchema>;
 
@@ -75,6 +77,7 @@ export const updateChecklistSchema = z
     preSessionVisibility: checklistPreSessionVisibilitySchema,
     allowFinishIncomplete: z.boolean(),
     forbidGalleryPhotos: z.boolean(),
+    accessMode: checklistAccessModeSchema,
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;

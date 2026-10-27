@@ -980,7 +980,8 @@
         "preSessionVisibility": "Employee sees before the session",
         "isRequired": "Required item",
         "dueAt": "Due date",
-        "criterion": "Criterion"
+        "criterion": "Criterion",
+        "accessMode": "How the checklist is taken"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1391,6 +1392,14 @@
         "summary": "{{groups}} groups · {{items}} criteria",
         "loadError": "Unable to load templates.",
         "createError": "Unable to create a checklist from the template."
+      },
+      "accessMode": {
+        "assigned": "By assignment",
+        "free": "Free access"
+      },
+      "accessModeHint": {
+        "assigned": "Reaches people through assignments and observation sessions.",
+        "free": "Every user of the organization can start the published checklist themselves from the Checklists page."
       }
     },
     "orgTools": {
@@ -2421,7 +2430,17 @@
     "photoCameraOnlyHint": "The photo can only be taken with the camera. This is an interface restriction, not a server check.",
     "photoTooLarge": "The file is larger than {{max}} MB. Choose a smaller photo.",
     "photoEmpty": "The file is empty. Choose another photo.",
-    "photoUnsupportedType": "Only JPEG, PNG, GIF and WEBP photos can be attached."
+    "photoUnsupportedType": "Only JPEG, PNG, GIF and WEBP photos can be attached.",
+    "free": {
+      "title": "Free checklists",
+      "hint": "Start any of these yourself, whenever you need.",
+      "empty": "No free checklists are available yet.",
+      "start": "Start",
+      "continue": "Continue",
+      "itemCount": "Criteria: {{count}}",
+      "startError": "Unable to start this checklist.",
+      "loadError": "Unable to load free checklists."
+    }
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",
