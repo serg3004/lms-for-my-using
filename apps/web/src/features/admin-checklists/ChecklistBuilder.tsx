@@ -28,6 +28,8 @@ import type {
   ChecklistSummary,
   ContextField,
 } from '../../shared/api/types.js';
+import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
+import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
@@ -237,6 +239,8 @@ export function ChecklistBuilder({
         subtitle={
           <>
             <Badge variant={STATUS_BADGE_VARIANT[checklist.status]}>{statusLabels[checklist.status]}</Badge>
+            {' '}
+            <ChecklistAccessBadge checklist={{ accessMode, pinned: accessMode === 'free' && pinned }} t={t} />
             {savedAt && (
               <span role="status" style={{ marginLeft: 8, fontSize: '0.95rem' }}>
                 {t('admin.checklists.savedAt', 'Saved at {{time}}', { time: savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
@@ -290,6 +294,7 @@ export function ChecklistBuilder({
             <FormField id="checklist-description" label={t('admin.checklists.field.description', 'Description')}>
               <textarea id="checklist-description" value={description} onChange={(e) => setDescription(e.target.value)} />
             </FormField>
+            <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
           </ChecklistSettingsForm>
           <ChecklistItemsEditor>
             <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>

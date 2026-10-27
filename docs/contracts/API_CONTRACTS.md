@@ -486,6 +486,19 @@ organization (`MAX_PINNED_CHECKLISTS`; the 9th answers 409, serialised by a per-
 advisory lock so parallel requests cannot exceed it); unpinning is always allowed. A checklist that
 stops being `free` or published is unpinned in the same update, and a copy is never pinned.
 
+PR 355 adds an optional cover image. `POST /checklists/:id/cover` (`checklistsCreate`, multipart
+field `file`) accepts JPEG, PNG, GIF or WEBP up to `MAX_BUFFERED_UPLOAD_SIZE_BYTES` (the same limits
+as item photos); the content signature is checked, so a renamed or mislabelled file is 400. A new
+cover replaces the previous one (the old object is deleted best-effort); `DELETE
+/checklists/:id/cover` removes it. `GET /checklists/:id/cover` (any authenticated role) returns
+`{ url, expiresIn }`, a signed URL valid for 300 seconds: staff get the cover of any checklist of
+their organization, a learner only that of a published `free` checklist or of one assigned to them;
+anything else, another tenant or a checklist without a cover is 404. The storage key and MIME type
+are never in an API payload: checklists and catalog entries carry only `coverUpdatedAt` (ISO
+timestamp or `null`), which is also the client's cache key. A copy does not inherit the cover. The
+"By assignment" / "Free access" / "On the panel" label is computed by clients from `accessMode`
+and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `checklist.cover_removed`.
+
 **Strictness settings (PR 330)** (same checklist create/update routes): `allowFinishIncomplete`
 (boolean, default `false`) -- when the instance's snapshot has it, `POST /checklist-sessions/:id/transition`
 with `complete` first records every criterion that still has no answer as `answerState='skipped'`

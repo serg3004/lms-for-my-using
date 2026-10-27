@@ -1126,6 +1126,11 @@ model Checklist {
   // PR 354: shown as a tile on the learner pages. Only a published `free` checklist can be pinned;
   // the service clears it when the checklist stops being free or published.
   pinned                      Boolean                        @default(false)
+  // PR 355: cover image. The storage key and MIME type are private (never in an API select); the
+  // API exposes only `coverUpdatedAt`, which doubles as the "has a cover" flag and a cache-buster.
+  coverObjectKey              String?                        @map("cover_object_key")
+  coverMimeType               String?                        @map("cover_mime_type")
+  coverUpdatedAt              DateTime?                      @map("cover_updated_at") @db.Timestamptz
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz

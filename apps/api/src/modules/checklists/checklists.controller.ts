@@ -181,6 +181,42 @@ export class ChecklistsController {
   copyChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
     return this.checklistsService.copyChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
   }
+  // PR 355: cover image. The cover is private storage; GET returns a short-lived signed URL.
+  @Post('checklists/:id/cover')
+  @Roles(...rolePolicies.checklistsCreate)
+  @UseInterceptors(
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
+  )
+  async uploadCover(
+    @Param('id') checklistId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    if (!ALLOWED_ITEM_PHOTO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Only image files (JPEG, PNG, GIF, WEBP) can be used as a cover');
+    }
+    validateUploadFile(file);
+    const user = request.currentUser!;
+    const uploaded = await this.uploadService.uploadChecklistCover(file, user.organizationId, checklistId);
+    try {
+      return await this.checklistsService.replaceCover(checklistId, user.organizationId, user.id, uploaded);
+    } catch (error) {
+      await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
+      throw error;
+    }
+  }
+  @Get('checklists/:id/cover')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  getCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getCoverDownload(checklistId, user.organizationId, user.id, !isLearnerOnly(user.roles));
+  }
+  @Delete('checklists/:id/cover')
+  @Roles(...rolePolicies.checklistsCreate)
+  removeCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    return this.checklistsService.removeCover(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
+  }
   @Delete('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)
   deleteChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {

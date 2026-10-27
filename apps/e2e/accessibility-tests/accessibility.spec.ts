@@ -153,12 +153,16 @@ test.describe('WCAG AA browser baseline', () => {
     await expect(page).toHaveURL(/\/learn$/);
     await page.route('**/api/v1/checklists/free', (route) => route.fulfill({
       json: [
-        { id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал до прихода гостей.', itemCount: 12, pinned: true, activeInstanceId: null, activeInstanceStatus: null },
+        { id: 'free-1', title: 'Открытие смены', description: 'Проверьте зал до прихода гостей.', itemCount: 12, pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z', activeInstanceId: null, activeInstanceStatus: null },
         { id: 'free-2', title: 'Закрытие смены', description: null, itemCount: 7, pinned: false, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
       ],
     }));
+    // PR 355: the tile picture needs alternative text; the second tile uses the default illustration.
+    const cover = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/></svg>')}`;
+    await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
     await page.goto('/learn/checklists');
     await expect(page.getByRole('heading', { name: 'Закреплённые листы' })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Открытие смены/ })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Свободное прохождение' })).toBeVisible();
     await auditAccessibility(page, testInfo);
   });

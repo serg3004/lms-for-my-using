@@ -48,6 +48,7 @@ Current storage architecture — S3-compatible и provider-neutral.
 | `uploadMaterialFile` | `implemented` | Загружает buffered material в tenant-scoped quarantine key через `PutObject`. |
 | `createMaterialObjectKey` | `implemented` | Создаёт opaque tenant/material-scoped normal key. |
 | `uploadChecklistItemPhoto` | `implemented` | Загружает validated photo в tenant/instance/item-scoped key через `PutObject`. |
+| `uploadChecklistCover` | `implemented` | Загружает validated cover листа в tenant/checklist-scoped key `checklist-covers/` через `PutObject`; ключ наружу не отдаётся, чтение через `getInlinePresignedUrl`. |
 | `uploadOrganizationLogo` | `implemented` | Загружает validated logo в tenant-scoped branding key через `PutObject`. |
 | `getInlinePresignedUrl` | `implemented` | Выдаёт presigned `GetObject` для inline display с TTL не более 300 секунд. |
 | `createQuarantineObjectKey` | `implemented` | Создаёт opaque tenant/material-scoped quarantine key. |
@@ -61,7 +62,7 @@ Current storage architecture — S3-compatible и provider-neutral.
 | `listObjects` | `implemented` | Постранично перечисляет objects под заданным prefix для lifecycle cleanup. |
 | `deleteObject` | `implemented` | Удаляет object через `DeleteObject`. |
 
-**Итог:** `implemented: 17`, `stub: 0`, `missing: 0` для публичных методов current `UploadService`. Отдельного upload controller нет намеренно: storage используется из domain controllers (materials, checklists, organization branding), где применяются auth/scope/role guards и validation.
+**Итог:** `implemented: 18`, `stub: 0`, `missing: 0` для публичных методов current `UploadService`. Отдельного upload controller нет намеренно: storage используется из domain controllers (materials, checklists, organization branding), где применяются auth/scope/role guards и validation.
 
 ### Аудит upload orchestration
 

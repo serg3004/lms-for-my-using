@@ -388,6 +388,8 @@ export type FreeChecklistSummary = {
   description: string | null;
   itemCount: number;
   pinned: boolean;
+  // PR 355 -- cover image timestamp (null/absent: none). The storage key never reaches the client.
+  coverUpdatedAt?: string | null;
   activeInstanceId: string | null;
   activeInstanceStatus: ChecklistInstanceStatus | null;
 };
@@ -413,6 +415,8 @@ export type ChecklistSummary = {
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).
   pinned?: boolean;
+  // PR 355 -- optional for the same reason (read as no cover).
+  coverUpdatedAt?: string | null;
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   createdAt: string;

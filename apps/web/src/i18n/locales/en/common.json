@@ -942,7 +942,8 @@
         "title": "Title",
         "items": "Items",
         "scoring": "Scoring",
-        "status": "Status"
+        "status": "Status",
+        "access": "Access"
       },
       "edit": "Edit",
       "delete": "Delete",
@@ -1404,7 +1405,17 @@
       },
       "pinnedHint": "Shows the checklist as a tile at the top of the learner pages. Up to 8 checklists can be pinned.",
       "pinnedDraftHint": "Available once the checklist is published.",
-      "pinnedLimit": "Eight checklists are already pinned. Unpin one of them in its settings, then try again."
+      "pinnedLimit": "Eight checklists are already pinned. Unpin one of them in its settings, then try again.",
+      "cover": {
+        "title": "Checklist picture",
+        "hint": "JPEG, PNG, GIF or WEBP, up to {{max}} MB. Without a picture a default illustration is shown.",
+        "file": "Picture file",
+        "replace": "Replace picture",
+        "upload": "Upload picture",
+        "remove": "Remove picture",
+        "uploadError": "Unable to upload the picture.",
+        "removeError": "Unable to remove the picture."
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
@@ -2450,6 +2461,15 @@
       "startError": "Unable to start this checklist.",
       "loadError": "Unable to load free checklists.",
       "pinnedTitle": "Pinned checklists"
+    },
+    "access": {
+      "assigned": "By assignment",
+      "free": "Free access",
+      "pinned": "On the panel"
+    },
+    "cover": {
+      "alt": "Cover of the checklist “{{title}}”",
+      "defaultAlt": "Default checklist illustration"
     }
   },
   "checklistReview": {

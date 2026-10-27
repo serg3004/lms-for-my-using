@@ -7,6 +7,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
 import { getChecklistItemPhotoUrl, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
+import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -80,6 +81,14 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     }
   }
   const freeChecklists = loadState.data.free;
+  // The access label follows the live catalog (the instance snapshot may predate a mode change); the
+  // frozen snapshot is only the fallback when the catalog could not be loaded.
+  const freeById = new Map((freeChecklists ?? []).map((checklist) => [checklist.id, checklist]));
+  const accessOf = (instance: ChecklistInstanceSummary) => {
+    const free = freeById.get(instance.checklistId);
+    if (free) return { accessMode: 'free' as const, pinned: free.pinned };
+    return freeChecklists ? { accessMode: 'assigned' as const } : { accessMode: instance.checklist?.accessMode, pinned: instance.checklist?.pinned };
+  };
   const pinnedChecklists = (freeChecklists ?? []).filter((checklist) => checklist.pinned);
   const catalogChecklists = (freeChecklists ?? []).filter((checklist) => !checklist.pinned);
   const freeButton = (checklist: FreeChecklistSummary) => (
@@ -124,7 +133,10 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
               onClick={() => setOpenInstanceId(instance.id)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <strong>{instance.checklist?.title}</strong>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
+                  <strong>{instance.checklist?.title}</strong>
+                  <ChecklistAccessBadge checklist={accessOf(instance)} t={t} />
+                </span>
                 <span
                   style={{
                     fontSize: 12,
@@ -166,7 +178,8 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
             {catalogChecklists.map((checklist) => (
               <li key={checklist.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 0, flex: '1 1 200px' }}>
-                  <strong>{checklist.title}</strong>
+                  <strong>{checklist.title}</strong>{' '}
+                  <ChecklistAccessBadge checklist={{ accessMode: 'free', pinned: false }} t={t} />
                   {checklist.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{checklist.description}</p>}
                   <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: checklist.itemCount })}</p>
                 </div>

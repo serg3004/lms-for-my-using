@@ -141,6 +141,35 @@ export class UploadService {
     };
   }
 
+  async uploadChecklistCover(
+    file: Express.Multer.File,
+    organizationId: string,
+    checklistId: string,
+  ): Promise<UploadResult> {
+    if (!this.s3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const key = `organizations/${organizationId}/checklist-covers/${checklistId}/${randomUUID()}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return {
+      objectKey: key,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+    };
+  }
+
   async uploadOrganizationLogo(file: Express.Multer.File, organizationId: string): Promise<string> {
     if (!this.s3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');

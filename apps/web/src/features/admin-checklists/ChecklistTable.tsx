@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column } from '../../shared/ui.js';
 import type { ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
+import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = {
@@ -29,6 +30,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   const columns = [
     { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', render: (checklist) => checklist.title },
     { key: 'items', label: t('admin.checklists.col.items', 'Items'), priority: 'secondary', render: (checklist) => checklist.items.length },
+    { key: 'access', label: t('admin.checklists.col.access', 'Access'), priority: 'secondary', render: (checklist) => <ChecklistAccessBadge checklist={checklist} t={t} /> },
     { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
     {
       key: 'status',

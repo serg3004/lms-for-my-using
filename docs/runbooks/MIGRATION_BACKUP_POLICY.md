@@ -525,6 +525,18 @@ application while retaining the column. Verify the limit (also under parallel re
 automatic unpin when a checklist stops being free or published, and the catalog order in the
 PostgreSQL integration test `checklist-pinned.database.spec.ts`.
 
+### Checklist cover (PR 355)
+
+`20261029130000_add_checklist_cover` adds three nullable `checklists` columns (`cover_object_key`,
+`cover_mime_type`, `cover_updated_at`); no default, index or backfill, so every existing checklist
+has no cover. Apply the forward migration before starting the new API; an older API ignores the
+columns. Roll back the application while retaining them. The images live in object storage under
+`organizations/<org>/checklist-covers/<checklist>/`: include that prefix in the storage backup next
+to the other checklist objects, and note that a restored database row whose object is missing only
+degrades to the default illustration. Verify the key never leaves the API, replace/remove cleanup
+and the tenant and learner rules in the PostgreSQL integration test
+`checklist-cover.database.spec.ts`.
+
 ### Checklist access mode (PR 353)
 
 `20261028120000_add_checklist_access_mode` adds the `ChecklistAccessMode` enum, one non-null

@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   submitChecklistItemResult: vi.fn(),
   uploadChecklistItemPhoto: vi.fn(),
   getChecklistItemPhotoUrl: vi.fn(),
+  getChecklistCoverUrl: vi.fn(),
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 vi.mock('./LearnerChecklistSessions.js', () => ({ LearnerChecklistSessions: () => null }));
@@ -88,5 +89,51 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     await render();
     expect(container.querySelector('section[aria-label="Закреплённые листы"]')).toBeNull();
     expect(container.querySelector('#free-checklists-title')).not.toBeNull();
+  });
+
+  // PR 355: picture and access badges.
+  it('shows the picture on a tile, the default illustration without one, and the access badges', async () => {
+    api.getChecklistCoverUrl.mockResolvedValue({ url: 'https://storage.example.test/cover.png', expiresIn: 300 });
+    api.listFreeChecklists.mockResolvedValue([
+      free('a', 'Лист с картинкой', { pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z' }),
+      free('b', 'Лист без картинки', { pinned: true }),
+      free('c', 'Обычный лист'),
+    ]);
+    await render();
+
+    const tiles = container.querySelector('section[aria-label="Закреплённые листы"]');
+    expect(api.getChecklistCoverUrl).toHaveBeenCalledTimes(1);
+    expect(api.getChecklistCoverUrl).toHaveBeenCalledWith('a');
+    expect(tiles?.querySelector('img')?.getAttribute('alt')).toBe('Картинка листа «Лист с картинкой»');
+    expect(tiles?.querySelectorAll('img').length).toBe(1);
+    expect(tiles?.querySelectorAll('svg[role="img"]').length).toBe(1);
+    expect(tiles?.querySelectorAll('.ds-badge').length).toBe(2);
+    expect([...tiles!.querySelectorAll('.ds-badge')].every((badge) => badge.textContent === 'В панели')).toBe(true);
+    const big = container.querySelector('#free-checklists-title')?.closest('section');
+    expect(big?.querySelector('.ds-badge')?.textContent).toBe('Свободное прохождение');
+  });
+
+  it('falls back to the default illustration when the picture cannot be loaded', async () => {
+    api.getChecklistCoverUrl.mockRejectedValue(new Error('offline'));
+    api.listFreeChecklists.mockResolvedValue([free('a', 'Лист', { pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z' })]);
+    await render();
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelectorAll('svg[role="img"]').length).toBe(1);
+  });
+
+  it('labels an assigned list row "По назначению" and a free one by the live catalog', async () => {
+    const instance = (id: string, checklistId: string, title: string) => ({
+      id, checklistId, status: 'assigned', dueAt: null, totalScore: 0, maxScore: 0, percentage: 0, passed: false, results: [],
+      checklist: { id: checklistId, title, items: [] },
+    });
+    api.listMyChecklistInstances.mockResolvedValue([instance('i1', 'x', 'Назначенный'), instance('i2', 'a', 'Свободный закреплённый')]);
+    api.listFreeChecklists.mockResolvedValue([free('a', 'Свободный закреплённый', { pinned: true })]);
+    await render();
+
+    const rows = [...container.querySelectorAll('li')].filter((li) => li.textContent?.includes('Назначенный') || li.textContent?.includes('Свободный закреплённый'));
+    const badgeOf = (title: string) => rows.find((li) => li.querySelector('strong')?.textContent === title)?.querySelector('.ds-badge')?.textContent;
+    expect(badgeOf('Назначенный')).toBe('По назначению');
+    expect(badgeOf('Свободный закреплённый')).toBe('В панели');
   });
 });
