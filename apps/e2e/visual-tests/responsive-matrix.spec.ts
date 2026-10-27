@@ -656,13 +656,18 @@ for (const width of widths) {
       await installLearnerChecklistsMocks(page);
       await page.route('**/api/v1/checklists/free', (route) => route.fulfill({
         json: [
-          { id: 'free-1', title: 'Opening shift checklist', description: null, itemCount: 12, pinned: true, activeInstanceId: null, activeInstanceStatus: null },
+          { id: 'free-1', title: 'Opening shift checklist', description: null, itemCount: 12, pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z', activeInstanceId: null, activeInstanceStatus: null },
           { id: 'free-2', title: 'Closing shift checklist with a deliberately long title that has to wrap on a phone', description: null, itemCount: 7, pinned: true, activeInstanceId: 'instance-2', activeInstanceStatus: 'in_progress' },
           { id: 'free-3', title: 'Cash desk audit', description: 'Not pinned, stays in the big block.', itemCount: 5, pinned: false, activeInstanceId: null, activeInstanceStatus: null },
         ],
       }));
+      // PR 355: one tile has a picture (a deterministic inline SVG), the other falls back to the default illustration.
+      const cover = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/><circle cx="160" cy="90" r="40" fill="#2563eb"/></svg>')}`;
+      await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
       await page.goto('/learn/checklists');
       await expect(page.getByRole('heading', { name: /Pinned checklists|Закреплённые листы/ })).toBeVisible();
+      await expect(page.locator('img[alt*="Opening shift checklist"]')).toBeVisible();
+      await expect.poll(() => page.locator('img[alt*="Opening shift checklist"]').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
       await expect(page.getByRole('heading', { name: /Free checklists|Свободное прохождение/ })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);

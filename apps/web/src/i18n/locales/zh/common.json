@@ -942,7 +942,8 @@
         "title": "标题",
         "items": "项目",
         "scoring": "评分方式",
-        "status": "状态"
+        "status": "状态",
+        "access": "访问方式"
       },
       "edit": "编辑",
       "delete": "删除",
@@ -1404,7 +1405,17 @@
       },
       "pinnedHint": "在学员页面顶部以卡片形式显示该清单。最多可固定 8 个清单。",
       "pinnedDraftHint": "清单发布后可用。",
-      "pinnedLimit": "已固定 8 个清单。请在其设置中取消固定其中一个后重试。"
+      "pinnedLimit": "已固定 8 个清单。请在其设置中取消固定其中一个后重试。",
+      "cover": {
+        "title": "清单图片",
+        "hint": "JPEG、PNG、GIF 或 WEBP，最大 {{max}} MB。没有图片时显示默认插图。",
+        "file": "图片文件",
+        "replace": "更换图片",
+        "upload": "上传图片",
+        "remove": "删除图片",
+        "uploadError": "无法上传图片。",
+        "removeError": "无法删除图片。"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -2450,6 +2461,15 @@
       "startError": "无法开始该清单。",
       "loadError": "无法加载自由完成的清单。",
       "pinnedTitle": "已固定的清单"
+    },
+    "access": {
+      "assigned": "按分配",
+      "free": "自由完成",
+      "pinned": "已固定在面板"
+    },
+    "cover": {
+      "alt": "清单“{{title}}”的图片",
+      "defaultAlt": "默认清单插图"
     }
   },
   "checklistReview": {

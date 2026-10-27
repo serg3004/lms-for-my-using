@@ -93,6 +93,7 @@ const checklistSelect = {
   forbidGalleryPhotos: true,
   accessMode: true,
   pinned: true,
+  coverUpdatedAt: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -285,6 +286,103 @@ export class ChecklistsService {
     }
 
     return checklist;
+  }
+
+  /**
+   * PR 355: stores the uploaded cover as the checklist's only cover. The previous object is removed
+   * best-effort afterwards: a failed delete leaves an orphan in storage, never a broken checklist.
+   */
+  async replaceCover(
+    checklistId: string,
+    organizationId: string,
+    actorId: string,
+    uploaded: { objectKey: string; mimeType: string },
+  ) {
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      select: { id: true, title: true, coverObjectKey: true },
+    });
+    if (!checklist) {
+      throw new NotFoundException('Checklist not found');
+    }
+
+    const updated = await this.prisma.checklist.update({
+      where: { id: checklistId },
+      data: { coverObjectKey: uploaded.objectKey, coverMimeType: uploaded.mimeType, coverUpdatedAt: new Date() },
+      select: { id: true, coverUpdatedAt: true },
+    });
+    if (checklist.coverObjectKey) {
+      await this.uploadService.deleteObject(checklist.coverObjectKey).catch(() => undefined);
+    }
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.cover_updated',
+      targetType: 'checklist',
+      targetId: checklistId,
+      summary: `Updated cover of checklist ${checklist.title}`,
+    });
+    return updated;
+  }
+
+  async removeCover(checklistId: string, organizationId: string, actorId: string) {
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      select: { id: true, title: true, coverObjectKey: true },
+    });
+    if (!checklist) {
+      throw new NotFoundException('Checklist not found');
+    }
+    if (!checklist.coverObjectKey) {
+      return { id: checklistId, coverUpdatedAt: null };
+    }
+
+    await this.prisma.checklist.update({
+      where: { id: checklistId },
+      data: { coverObjectKey: null, coverMimeType: null, coverUpdatedAt: null },
+    });
+    await this.uploadService.deleteObject(checklist.coverObjectKey).catch(() => undefined);
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.cover_removed',
+      targetType: 'checklist',
+      targetId: checklistId,
+      summary: `Removed cover of checklist ${checklist.title}`,
+    });
+    return { id: checklistId, coverUpdatedAt: null };
+  }
+
+  /**
+   * PR 355: short-lived signed URL for the cover. Staff see any checklist of their organization; a
+   * learner only sees the cover of a published free checklist or of one assigned to them, so a
+   * draft cover or another tenant's cover is a plain 404.
+   */
+  async getCoverDownload(checklistId: string, organizationId: string, userId: string, isPrivileged: boolean) {
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      select: { coverObjectKey: true, coverMimeType: true, status: true, accessMode: true },
+    });
+    if (!checklist?.coverObjectKey) {
+      throw new NotFoundException('No cover for this checklist');
+    }
+    if (!isPrivileged) {
+      const visibleFree = checklist.status === 'published' && checklist.accessMode === 'free';
+      const assigned = visibleFree
+        ? true
+        : (await this.prisma.checklistInstance.count({ where: { organizationId, userId, checklistId, deletedAt: null } })) > 0;
+      if (!assigned) {
+        throw new NotFoundException('No cover for this checklist');
+      }
+    }
+
+    const expiresIn = 300;
+    const url = await this.uploadService.getInlinePresignedUrl(
+      checklist.coverObjectKey,
+      checklist.coverMimeType ?? 'image/png',
+      expiresIn,
+    );
+    return { url, expiresIn };
   }
 
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
@@ -987,6 +1085,7 @@ export class ChecklistsService {
         title: true,
         description: true,
         pinned: true,
+        coverUpdatedAt: true,
         _count: { select: { items: { where: { deletedAt: null } } } },
       },
     });
@@ -1012,6 +1111,7 @@ export class ChecklistsService {
       title: checklist.title,
       description: checklist.description,
       pinned: checklist.pinned,
+      coverUpdatedAt: checklist.coverUpdatedAt,
       itemCount: checklist._count.items,
       activeInstanceId: activeByChecklist.get(checklist.id)?.id ?? null,
       activeInstanceStatus: activeByChecklist.get(checklist.id)?.status ?? null,

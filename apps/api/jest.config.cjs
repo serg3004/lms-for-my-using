@@ -27,6 +27,7 @@ module.exports = {
     '/src/integration/checklist-evaluation-scales\\.database\\.spec\\.ts$',
     '/src/integration/checklist-free-access\\.database\\.spec\\.ts$',
     '/src/integration/checklist-pinned\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-cover\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
     '/src/integration/checklist-templates\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',

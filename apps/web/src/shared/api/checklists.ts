@@ -278,3 +278,18 @@ export function updateChecklistWorkplaceSettings(input: {
 }
 
 export type { ChecklistItemResultSummary };
+
+// PR 355: checklist cover image. The server keeps the file private and hands out a short-lived URL.
+export function uploadChecklistCover(checklistId: string, file: File) {
+  const body = new FormData();
+  body.append('file', file);
+  return apiRequest<{ id: string; coverUpdatedAt: string | null }>(`/checklists/${encodeURIComponent(checklistId)}/cover`, { method: 'POST', body });
+}
+
+export function deleteChecklistCover(checklistId: string) {
+  return apiRequest<{ id: string; coverUpdatedAt: string | null }>(`/checklists/${encodeURIComponent(checklistId)}/cover`, { method: 'DELETE' });
+}
+
+export function getChecklistCoverUrl(checklistId: string) {
+  return apiRequest<{ url: string; expiresIn: number }>(`/checklists/${encodeURIComponent(checklistId)}/cover`);
+}

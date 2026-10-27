@@ -1,7 +1,7 @@
 import '../i18n/index.js';
 
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../shared/session.js', () => ({ useSession: () => ({
   currentUser: { id: 'u1', organizationId: 'o1', email: 'alex@example.com', firstName: 'Alex', lastName: 'Learner', middleName: null, position: null, shift: null, phone: null, status: 'active', locale: 'ru', timezone: 'UTC', roles: ['learner'] },
@@ -54,6 +54,11 @@ vi.mock('react', async () => {
 });
 
 import { LearnerHomePage } from './LearnerHomePage';
+
+beforeEach(() => {
+  // Children (e.g. the checklist cover) call useState too; the page's own calls are queued with mockReturnValueOnce.
+  reactMocks.useState.mockImplementation((initial: unknown) => [typeof initial === 'function' ? (initial as () => unknown)() : initial, vi.fn()]);
+});
 
 afterEach(() => {
   reactMocks.useEffect.mockReset();
