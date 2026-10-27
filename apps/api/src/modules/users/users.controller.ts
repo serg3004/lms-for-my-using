@@ -78,6 +78,13 @@ export class UsersController {
     return this.usersService.updateUser(userId, request.currentUser!, input);
   }
 
+  @Get(':id/status-impact')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  getStatusImpact(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.getObserverSessionImpact(userId, request.currentUser!);
+  }
+
   @Patch(':id/status')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersCreate)

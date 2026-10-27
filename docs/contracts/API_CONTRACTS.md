@@ -1098,3 +1098,24 @@ sending, the adapter rechecks the notification, recipient organization/status an
 Deleted sessions suppress queued creation/change/completion mail, reminders and participant
 messages. The deletion notice itself is permitted and links to the list. A deletion that occurs
 while a provider request is already in flight cannot retract that request.
+
+## Observer deactivation notices (PR 346)
+
+`PATCH /users/{id}/status` returns `observerSessions` (the user's unfinished sessions as observer:
+`scheduled`, `in_progress` or `paused`, not deleted) next to `orphanedCourses`. `GET /users/{id}/status-impact`
+returns `{ observerSessions }` for the same user before the change is confirmed; it uses the same
+role policy and team scope as the status change, and an out-of-scope or foreign-tenant user is a 404.
+
+When an `active` user becomes `suspended` and has at least one unfinished session, one
+`checklist_session_observer_deactivated` notice and one `checklists.observer-deactivated-notify`
+outbox event are written per active admin of the organization, in the same transaction as the status
+change. The deactivated user is never a recipient. Repeating the same status, activation and
+deactivation without unfinished sessions write no notices. The notice data holds only `observerId`
+and `sessionCount`; the link is `/admin/checklists/sessions?observerId=...`. Reassignment stays the
+existing "change time or observer" session action; no new reassignment action exists.
+
+Mail reuses `ChecklistSessionReminderDelivery` (Resend/SMTP, or the delivery hook with
+`kind: observer_deactivated`). Before sending, the adapter rechecks that the recipient is an active
+admin of the same organization and that the link is the server-authored admin sessions link. Without
+a configured capability delivery is a no-op and the portal notice remains. The audit entry
+`user.status_changed` carries `observerSessions` in its metadata.

@@ -76,6 +76,18 @@ const texts = {
   }
 } as const;
 
+const observerDeactivatedTexts = {
+  "ru": { "title": "Наблюдатель заблокирован", "message": "У заблокированного наблюдателя остались незавершённые сессии. Откройте список и назначьте другого наблюдателя." },
+  "en": { "title": "Observer blocked", "message": "A blocked observer still has unfinished sessions. Open the list and assign another observer." },
+  "kk": { "title": "Бақылаушы бұғатталды", "message": "Бұғатталған бақылаушының аяқталмаған сессиялары бар. Тізімді ашып, басқа бақылаушыны тағайындаңыз." },
+  "zh": { "title": "观察员已被停用", "message": "已停用的观察员仍有未完成的场次。请打开列表并指派其他观察员。" }
+} as const;
+
+export function observerDeactivatedText(locale: string) {
+  const language = locale.split('-')[0];
+  return language && language in observerDeactivatedTexts ? observerDeactivatedTexts[language as keyof typeof observerDeactivatedTexts] : observerDeactivatedTexts.ru;
+}
+
 export function sessionChangeText(type: ChecklistSessionChangeType, locale: string) {
   const language = locale.split('-')[0];
   const translations = language && language in texts ? texts[language as keyof typeof texts] : texts.ru;
