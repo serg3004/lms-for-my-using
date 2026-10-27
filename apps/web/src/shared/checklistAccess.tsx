@@ -11,7 +11,8 @@ export function checklistAccessKind(checklist: { accessMode?: ChecklistAccessMod
   return checklist.pinned ? 'pinned' : 'free';
 }
 
-const VARIANT: Record<ChecklistAccessKind, BadgeVariant> = { assigned: 'neutral', free: 'accent', pinned: 'success' };
+// Only tones that pass WCAG AA contrast at badge size (info and success do not); the text carries the meaning.
+const VARIANT: Record<ChecklistAccessKind, BadgeVariant> = { assigned: 'neutral', free: 'neutral', pinned: 'accent' };
 
 export function checklistAccessLabel(kind: ChecklistAccessKind, t: TFunction): string {
   switch (kind) {
