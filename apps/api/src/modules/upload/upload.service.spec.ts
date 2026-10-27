@@ -89,6 +89,34 @@ describe('UploadService', () => {
     expect(signed.searchParams.get('response-content-disposition')).not.toMatch(/[\r\n]/);
   });
 
+  it('throws ServiceUnavailableException on uploadChecklistCover when not configured', async () => {
+    const file = { originalname: 'cover.png', mimetype: 'image/png', buffer: Buffer.from([1]), size: 1 } as Express.Multer.File;
+
+    await expect(service.uploadChecklistCover(file, 'org-1', 'checklist-1')).rejects.toThrow(ServiceUnavailableException);
+  });
+
+  it('stores a checklist cover under a tenant and checklist scoped opaque key', async () => {
+    process.env['S3_ENDPOINT'] = 'https://storage.internal.example';
+    process.env['S3_BUCKET'] = 'lms-bucket';
+    process.env['S3_ACCESS_KEY_ID'] = 'test-access-key';
+    process.env['S3_SECRET_ACCESS_KEY'] = 'test-secret-key';
+    const configured = new UploadService();
+    const send = jest.fn(async () => ({}));
+    (configured as unknown as { s3: { send: typeof send } }).s3 = { send };
+    const file = { originalname: 'cover.png', mimetype: 'image/png', buffer: Buffer.from([1, 2]), size: 2 } as Express.Multer.File;
+
+    const uploaded = await configured.uploadChecklistCover(file, 'org-1', 'checklist-1');
+
+    expect(uploaded.objectKey).toMatch(/^organizations\/org-1\/checklist-covers\/checklist-1\/[0-9a-f-]{36}$/);
+    expect(uploaded).toMatchObject({ mimeType: 'image/png', sizeBytes: 2 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((send.mock.calls[0] as unknown as [{ input: { Bucket: string; Key: string; ContentType: string } }])[0].input).toMatchObject({
+      Bucket: 'lms-bucket',
+      Key: uploaded.objectKey,
+      ContentType: 'image/png',
+    });
+  });
+
   it('creates a tenant-scoped opaque material key', () => {
     const key = service.createMaterialObjectKey(
       '11111111-1111-1111-1111-111111111111',
