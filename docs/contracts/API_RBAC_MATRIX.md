@@ -106,6 +106,10 @@ Observer unavailable / reassignment (PR 302: `POST /checklist-sessions/:id/obser
 
 PR 349 does not widen fixed role grants: instructor already has sheet authoring and scoped session/report reads; it does not gain general `reportsRead`, manager analytics, scheduling another observer or administrator recalculation. Individual permission sets were requested by the owner in DEC-CHKS-004; the separate [custom-role model plan](../product/future/CUSTOM_ROLE_PERMISSIONS_PLAN.md) does not introduce runtime roles yet. The dated [access audit](../evidence/2026-10-27-checklist-access-pr349.md) records the current implementation and missing primary prototype checkmarks; it is not a verified replacement for that product matrix.
 
+PR 351 makes observer eligibility configurable without adding a technical role or granting action policies. Settings writes remain admin-only; defaults select instructor/manager/admin, `any_user` admits any active tenant user, and `selected_users` admits only configured active tenant UUIDs. Both lookup and assignment/reassignment use this filter. Instructor own-only creation remains restricted to self even if other candidates are eligible. Existing assignments retain their access after an eligibility change; the filter must never be applied to session reads/conduct. Non-instructor execution grants remain PR 352, so selection alone cannot bypass current run/read policies. Selected-person names in settings responses are admin-only.
+
+The PostgreSQL IDOR matrix additionally verifies all three selection modes against creation, foreign/blocked/deleted IDs, empty selections, search/pagination, administrative settings mutation, admin-only roster projection, guarded reassignment and preserved existing conduct/time-only edits. Settings audit records before/after values scoped to the caller's organization.
+
 For instructor ownership semantics see [`INSTRUCTOR_COURSE_OWNERSHIP.md`](./INSTRUCTOR_COURSE_OWNERSHIP.md).
 
 ## Mentor / curator / instructor terminology

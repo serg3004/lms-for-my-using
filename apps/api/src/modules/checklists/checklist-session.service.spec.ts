@@ -52,6 +52,7 @@ function createPrisma(overrides: {
   notification?: Partial<Record<'create' | 'createMany', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
+    checklistWorkplaceSettings: { findUnique: jest.fn(async () => null) },
     outboxEvent: { create: jest.fn(async () => ({ id: 'outbox-1' })) },
     auditLog: { create: jest.fn(async () => ({})) },
     checklistSession: {
@@ -131,7 +132,7 @@ describe('ChecklistSessionService', () => {
       );
     });
 
-    it('rejects an observer who does not hold the instructor role', async () => {
+    it('rejects an observer who is not eligible', async () => {
       const prisma = createPrisma({ user: { findFirst: jest.fn(async () => null) } });
       const service = new ChecklistSessionService(prisma);
 
@@ -1082,7 +1083,7 @@ describe('ChecklistSessionService', () => {
   });
 
   describe('listParticipants (PR 292)', () => {
-    it('scopes an observer lookup to users holding the instructor role, ignoring the learner scope', async () => {
+    it('applies default observer roles independently of learner scope', async () => {
       const prisma = createPrisma();
       const service = new ChecklistSessionService(prisma);
 
@@ -1090,7 +1091,7 @@ describe('ChecklistSessionService', () => {
 
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ AND: expect.arrayContaining([{ memberships: { some: { role: 'instructor', organizationId } } }]) }),
+          where: expect.objectContaining({ AND: expect.arrayContaining([expect.objectContaining({ AND: expect.arrayContaining([expect.objectContaining({ AND: [{ memberships: { some: { organizationId, role: { in: ['instructor', 'manager', 'admin'] } } } }] })]) })]) }),
         }),
       );
       const call = (prisma.user.findMany as jest.Mock).mock.calls[0]?.[0] as { where: Record<string, unknown> };

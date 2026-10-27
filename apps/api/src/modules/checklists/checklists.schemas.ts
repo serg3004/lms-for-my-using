@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UserRole } from '@prisma/client';
 
 export const checklistStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale']);
@@ -235,6 +236,9 @@ export const updateChecklistWorkplaceSettingsSchema = z
     lowThreshold: z.number().int().min(0).max(100).nullable(),
     defaultGeolocationPolicy: checklistGeolocationPolicySchema,
     feedbackVisibility: checklistFeedbackVisibilitySchema,
+    observerEligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
+    observerRoles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
+    observerUserIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
   })
   .partial()
   .strict()

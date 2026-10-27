@@ -494,3 +494,23 @@ A successful application healthcheck alone does not prove all data migration inv
 - `docs/runbooks/DEPLOY_FOUNDATION.md`
 - `docs/quality/READINESS_AND_SECURITY_GATES.md`
 - `docs/status/OPEN_DECISIONS.md` — current owner for unresolved decisions; retired mixed tracker history is under `docs/archive/old-trackers/`
+
+
+### Checklist observer eligibility (PR 351)
+
+`20261027120000_add_checklist_observer_eligibility` adds a selection enum and three non-null
+settings columns with defaults; no existing session/instance/snapshot is rewritten. Persisted rows
+and organizations without a row both start with instructor/manager/admin selected. This intentionally
+expands future selection to manager/admin while preserving existing instructor assignments.
+
+Apply the forward migration before starting the new API. Old API versions ignore the added columns,
+but retain their previous instructor-only selection, so mixed-version routing can temporarily differ
+for new manager/admin assignments; use a coordinated API rollout. Reads/writes of existing sessions
+continue under their existing authorization. PR 352 supplies additional own-session execution rights.
+
+The ALTER requires a table lock; run during the normal migration window. The enum/constant-array
+defaults require no session backfill. Roll back the application while retaining the additive columns
+and saved configuration; do not delete assigned sessions or drop the new fields to roll back. Verify
+fresh and existing-row defaults, all selection modes, invalid tenant/user rejection, before/after audit,
+and continuing access to an existing assigned session in PostgreSQL integration tests. Production
+backup/restore remains subject to the live verification requirements above.

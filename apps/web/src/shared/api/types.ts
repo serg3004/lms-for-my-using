@@ -541,6 +541,8 @@ export type ChecklistFeedbackVisibility = 'after_completion' | 'live';
 // criticalThreshold is intentionally omitted here even though the API returns it -- DEC-CHKS-001
 // (docs/status/OPEN_DECISIONS.md) leaves what counts as a "critical" result undecided. lowThreshold
 // (PR 350) is editable; null means the owner has not set it.
+export type ChecklistObserverEligibility = 'any_user' | 'selected_roles' | 'selected_users';
+
 export type ChecklistWorkplaceSettingsView = {
   organizationId: string;
   moduleEnabled: boolean;
@@ -548,6 +550,10 @@ export type ChecklistWorkplaceSettingsView = {
   lowThreshold: number | null;
   defaultGeolocationPolicy: ChecklistGeolocationPolicy;
   feedbackVisibility: ChecklistFeedbackVisibility;
+  observerEligibility: ChecklistObserverEligibility;
+  observerRoles: UserRole[];
+  observerUserIds: string[];
+  selectedObserverUsers?: Array<Pick<UserSummary, 'id' | 'firstName' | 'lastName' | 'email' | 'status'>>;
   updatedAt: string | null;
 };
 

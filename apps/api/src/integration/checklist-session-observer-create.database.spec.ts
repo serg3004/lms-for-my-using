@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import { randomUUID } from 'node:crypto';
-import { ForbiddenException, NotFoundException, type ExecutionContext } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../database/prisma.service.js';
@@ -8,6 +8,7 @@ import { RolesGuard } from '../modules/auth/roles.guard.js';
 import type { AuthenticatedRequest, CurrentUser } from '../modules/auth/public.js';
 import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
 import { ChecklistReviewAccessService } from '../modules/checklists/checklist-review-access.service.js';
+import { ChecklistWorkplaceSettingsService } from '../modules/checklists/checklist-workplace-settings.service.js';
 import { ChecklistSessionService } from '../modules/checklists/checklist-session.service.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import { OrganizationAccessScopeService } from '../modules/organization-access-scope/public.js';
@@ -19,6 +20,7 @@ describe('observer session creation and conduct access (PR 331/349) — database
   let prisma: PrismaService;
   let controller: ChecklistsController;
   let sessions: ChecklistSessionService;
+  let workplaceSettings: ChecklistWorkplaceSettingsService;
   let access: ChecklistReviewAccessService;
   let organizationId: string;
   let foreignOrganizationId: string;
@@ -53,7 +55,8 @@ describe('observer session creation and conduct access (PR 331/349) — database
     const checklists = new ChecklistsService(prisma, {} as UploadService);
     access = new ChecklistReviewAccessService(prisma, new OrganizationAccessScopeService(prisma));
     sessions = new ChecklistSessionService(prisma, checklists);
-    controller = new ChecklistsController(checklists, {} as UploadService, access, undefined!, sessions, undefined!);
+    workplaceSettings = new ChecklistWorkplaceSettingsService(prisma);
+    controller = new ChecklistsController(checklists, {} as UploadService, access, workplaceSettings, sessions, undefined!);
   });
   afterAll(async () => { await prisma.$disconnect(); });
   beforeEach(async () => {
@@ -169,6 +172,91 @@ describe('observer session creation and conduct access (PR 331/349) — database
     for (const handler of ['createSession', 'bulkCreateSessions', 'listSessionParticipants'] as const) {
       await expect(request(denied, handler)).rejects.toBeInstanceOf(ForbiddenException);
     }
+  });
+
+  it('PR 351: default observer lookup includes active instructors, managers and admins only', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const manager = await user(organizationId, ['manager']);
+    const mentor = await user(organizationId, ['mentor']);
+    await prisma.user.update({ where: { id: otherObserver.id }, data: { status: 'suspended' } });
+    const result = await controller.listSessionParticipants({ role: 'observer' }, await request(admin, 'listSessionParticipants'));
+    expect(result.items.map((item) => item.id).sort()).toEqual([admin.id, manager.id, observer.id].sort());
+    expect(result.items.map((item) => item.id)).not.toContain(mentor.id);
+    for (const eligible of [manager, admin]) {
+      const assigned = await instance(learner.id);
+      expect(await controller.createSession({ instanceId: assigned.id, observerId: eligible.id }, await request(admin, 'createSession'))).toMatchObject({ observerId: eligible.id });
+    }
+    expect(await prisma.checklistWorkplaceSettings.count({ where: { organizationId } })).toBe(0);
+  });
+
+  it.each(['any_user', 'selected_roles', 'selected_users'] as const)('PR 351: %s filters lookup and authorizes creation from the same selection', async (mode) => {
+    const admin = await user(organizationId, ['admin']);
+    const manager = await user(organizationId, ['manager']);
+    const mentor = await user(organizationId, ['mentor']);
+    const employee = await user(organizationId, ['learner']);
+    const noRole = await user(organizationId, []);
+    const blocked = await user(organizationId, ['instructor']);
+    const deleted = await user(organizationId, ['instructor']);
+    await prisma.user.update({ where: { id: blocked.id }, data: { status: 'suspended' } });
+    await prisma.user.update({ where: { id: deleted.id }, data: { deletedAt: new Date() } });
+    await controller.updateWorkplaceSettings({ observerEligibility: mode, observerRoles: ['mentor'], observerUserIds: [employee.id] }, await request(admin, 'updateWorkplaceSettings'));
+    const all = [admin, manager, mentor, employee, noRole, observer, otherObserver, learner];
+    const eligible = mode === 'any_user' ? all : mode === 'selected_roles' ? [mentor] : [employee];
+    const lookup = await controller.listSessionParticipants({ role: 'observer', pageSize: 100 }, await request(admin, 'listSessionParticipants'));
+    expect(lookup.items.map((item) => item.id).sort()).toEqual(eligible.map((item) => item.id).sort());
+    for (const candidate of [...all, blocked, deleted, outsider]) {
+      const assigned = await instance(learner.id);
+      const action = controller.createSession({ instanceId: assigned.id, observerId: candidate.id }, await request(admin, 'createSession'));
+      if (eligible.some((item) => item.id === candidate.id)) await expect(action).resolves.toMatchObject({ observerId: candidate.id });
+      else {
+        await expect(action).rejects.toBeInstanceOf(BadRequestException);
+        expect(await prisma.checklistSession.count({ where: { instanceId: assigned.id } })).toBe(0);
+      }
+    }
+    const searched = await controller.listSessionParticipants({ role: 'observer', search: employee.email, pageSize: 1 }, await request(admin, 'listSessionParticipants'));
+    expect(searched.total).toBe(mode === 'selected_roles' ? 0 : 1);
+    const page = await controller.listSessionParticipants({ role: 'observer', page: 2, pageSize: 1 }, await request(admin, 'listSessionParticipants'));
+    expect(page.items).toHaveLength(eligible.length > 1 ? 1 : 0);
+    await expect(request(manager, 'updateWorkplaceSettings')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('PR 351: invalid explicit users never change settings or write an audit', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const blocked = await user(organizationId, ['instructor']);
+    await prisma.user.update({ where: { id: blocked.id }, data: { status: 'suspended' } });
+    for (const id of [outsider.id, blocked.id, randomUUID()]) {
+      await expect(controller.updateWorkplaceSettings({ observerEligibility: 'selected_users', observerUserIds: [id] }, await request(admin, 'updateWorkplaceSettings'))).rejects.toBeInstanceOf(BadRequestException);
+    }
+    expect(await prisma.checklistWorkplaceSettings.count({ where: { organizationId } })).toBe(0);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_workplace_settings.updated' } })).toBe(0);
+  });
+
+  it('PR 351: changing eligibility preserves existing conduct and time-only edits, but guards future assignment', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const manager = await user(organizationId, ['manager']);
+    const first = await sessions.create(organizationId, { instanceId: (await instance(learner.id)).id, observerId: observer.id }, admin.id);
+    const second = await sessions.create(organizationId, { instanceId: (await instance(learner.id)).id, observerId: observer.id }, admin.id);
+    await controller.updateWorkplaceSettings({ observerEligibility: 'selected_roles', observerRoles: ['manager'] }, await request(admin, 'updateWorkplaceSettings'));
+    expect(await controller.getSession(first.id, await request(observer, 'getSession'))).toMatchObject({ observerId: observer.id });
+    expect(await controller.transitionStart(first.id, { version: 1 }, await request(observer, 'transitionStart'))).toMatchObject({ status: 'in_progress' });
+    expect(await controller.updateSession(second.id, { version: 1, scheduledAt: '2027-01-01T10:00:00Z' }, await request(admin, 'updateSession'))).toMatchObject({ observerId: observer.id, version: 2 });
+    await expect(controller.updateSession(second.id, { version: 2, observerId: otherObserver.id }, await request(admin, 'updateSession'))).rejects.toBeInstanceOf(BadRequestException);
+    expect(await controller.updateSession(second.id, { version: 2, observerId: manager.id }, await request(admin, 'updateSession'))).toMatchObject({ observerId: manager.id, version: 3 });
+    // PR 351 selection does not implement PR 352's RunOwn grants for other roles.
+    await expect(request(manager, 'transitionStart')).rejects.toBeInstanceOf(ForbiddenException);
+    const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_workplace_settings.updated' } });
+    expect(audit.metadata).toMatchObject({ previous: { observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'] }, updated: { observerRoles: ['manager'] } });
+  });
+
+  it('PR 351: explicit-list names are admin-only and empty selections deny all new observers', async () => {
+    const admin = await user(organizationId, ['admin']);
+    await controller.updateWorkplaceSettings({ observerEligibility: 'selected_users', observerUserIds: [observer.id] }, await request(admin, 'updateWorkplaceSettings'));
+    expect(await controller.getWorkplaceSettings(await request(admin, 'getWorkplaceSettings'))).toMatchObject({ selectedObserverUsers: [{ id: observer.id, email: observer.email }] });
+    expect(await controller.getWorkplaceSettings(await request(learner, 'getWorkplaceSettings'))).not.toHaveProperty('selectedObserverUsers');
+    await controller.updateWorkplaceSettings({ observerUserIds: [] }, await request(admin, 'updateWorkplaceSettings'));
+    expect((await controller.listSessionParticipants({ role: 'observer' }, await request(admin, 'listSessionParticipants'))).total).toBe(0);
+    await controller.updateWorkplaceSettings({ observerEligibility: 'selected_roles', observerRoles: [] }, await request(admin, 'updateWorkplaceSettings'));
+    expect((await controller.listSessionParticipants({ role: 'observer' }, await request(admin, 'listSessionParticipants'))).total).toBe(0);
   });
 
   async function managedSession(status: 'scheduled' | 'in_progress' | 'paused' = 'scheduled', own = false) {

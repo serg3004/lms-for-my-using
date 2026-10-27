@@ -78,6 +78,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
 | `ChecklistLocationCapturePoint` | `start`, `end` |
 | `ChecklistLocationCaptureStatus` | `captured`, `denied`, `unavailable` |
+| `ChecklistObserverEligibility` | `any_user`, `selected_roles`, `selected_users` |
 | `ChecklistPreSessionVisibility` | `full`, `structure_only`, `none` |
 | `ChecklistReviewStatus` | `pending`, `approved`, `rejected` |
 | `ChecklistScaleStatus` | `active`, `archived` |

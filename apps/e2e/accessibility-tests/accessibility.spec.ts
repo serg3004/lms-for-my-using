@@ -115,6 +115,19 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
+  test('observer eligibility settings are accessible in role and people modes', async ({ page }, testInfo) => {
+    await loginAs(page, 'admin');
+    await expect(page).toHaveURL(/\/admin$/);
+    await page.goto('/admin/checklists/sessions');
+    await page.getByRole('button', { name: /Настройки/ }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Кто может быть наблюдателем')).toBeVisible();
+    await auditAccessibility(page, testInfo);
+    await dialog.getByLabel('Выбор наблюдателей').selectOption('selected_users');
+    await expect(dialog.getByText('Загрузка пользователей…')).not.toBeVisible();
+    await auditAccessibility(page, testInfo);
+  });
+
   test('instructor "Conduct" (mobile observer) sessions list has an accessible rendered state', async ({ page }, testInfo) => {
     // Mobile-first screen (PR 297 ADR_CHECKLIST_SESSION_OVERLAY.md) -- audit it at the phone
     // viewport it's actually designed for, not the default desktop one every other test above uses.

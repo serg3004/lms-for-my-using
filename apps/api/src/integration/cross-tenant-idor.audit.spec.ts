@@ -128,6 +128,7 @@ describe('Cross-tenant IDOR audit', () => {
     const transaction = jest.fn();
     const service = new ChecklistSessionService(prismaMock({
       user: { findFirst: jest.fn().mockResolvedValue({ id: actor.id }), findMany },
+      checklistWorkplaceSettings: { findUnique: jest.fn().mockResolvedValue(null) },
       checklist: { findFirst: jest.fn().mockResolvedValue({ id: 'checklist-a' }) }, $transaction: transaction,
     }), {} as ChecklistsService);
     await expect(service.bulkCreate(organizationId, { checklistId: 'checklist-a', learnerIds: [foreignResourceId], observerId: actor.id }, actor.id, {}, true)).rejects.toBeInstanceOf(NotFoundException);
