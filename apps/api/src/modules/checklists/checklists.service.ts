@@ -1200,7 +1200,7 @@ export class ChecklistsService {
       action: 'checklist_report.exported',
       targetType: 'checklist_report',
       summary: `Exported ${rows.length} employees of the checklist dashboard to ${format.toUpperCase()}`,
-      metadata: { kind: 'manager_employees', format, rowCount: rows.length, filters: analyticsQuery },
+      metadata: { kind: 'manager_employees', format, rowCount: rows.length, filters: performance ? { ...analyticsQuery, performance } : analyticsQuery },
     });
     return { filename: `checklist-employees-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount: rows.length };
   }
