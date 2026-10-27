@@ -212,7 +212,7 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
     expect(captures).toHaveLength(2);
   });
 
-  it('geolocation: an admin override on a required-policy session is audited with a location_override event', async () => {
+  it('geolocation: a non-observer admin cannot override capture on a required-policy session', async () => {
     const admin = await prisma.user.create({
       data: {
         organizationId,
@@ -230,26 +230,24 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
       observerId,
     );
 
-    await sessionService.captureLocation(
+    await expect(sessionService.captureLocation(
       session.id,
       organizationId,
       'start',
       { status: 'unavailable', overrideReason: 'Observer device offline; admin confirmed on-site by phone' },
       admin.id,
       {},
-    );
+    )).rejects.toThrow('Checklist session not found');
 
     const events = await prisma.checklistSessionEvent.findMany({ where: { sessionId: session.id, eventType: 'location_override' } });
-    expect(events).toHaveLength(1);
-    expect(events[0]?.metadata).toMatchObject({ capturePoint: 'start', overrideReason: expect.stringContaining('Observer device offline') });
+    expect(events).toHaveLength(0);
 
     // PR 304: the same override is also written to the tenant-wide privacy audit trail, distinct
     // from the session's own timeline above.
     const auditEntries = await prisma.auditLog.findMany({
       where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
     });
-    expect(auditEntries).toHaveLength(1);
-    expect(auditEntries[0]).toMatchObject({ actorId: admin.id, targetType: 'checklist_session' });
+    expect(auditEntries).toHaveLength(0);
   });
 
   it('geolocation: an admin reading another observer\'s exact coordinates is audited; the observer reading their own is not', async () => {

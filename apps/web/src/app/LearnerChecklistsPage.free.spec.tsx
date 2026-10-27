@@ -16,6 +16,7 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 vi.mock('./LearnerChecklistSessions.js', () => ({ LearnerChecklistSessions: () => null }));
+vi.mock('./ObserverSessionsBlock.js', () => ({ ObserverSessionsBlock: () => null }));
 
 import { ApiClientError } from '../shared/apiClient.js';
 import { LearnerChecklistsPage } from './LearnerChecklistsPage';

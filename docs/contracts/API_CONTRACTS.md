@@ -160,15 +160,33 @@ transaction with bounded retry on serialization failure
 (`runSerializableWithRetry`, `apps/api/src/modules/departments/org-structure-event.ts`, reused
 rather than duplicated), so two concurrent requests racing on the same session can never both win.
 
-Read and scheduling access is scoped through `ChecklistReviewAccessService.sessionScope()`: tenant-wide for admin, the
-manager's effective team for manager, the assigned session only for instructor (the observer), and
-the learner's own instance only for learner; a manager who also holds `instructor` gets the union of
-both. `RBAC`: `checklistSessionsRead` (admin/manager/instructor/learner) covers every read route;
-`checklistSessionsManage` (admin/manager) covers create/reschedule/cancel; `checklistSessionsRun`
-(admin/instructor) covers start/pause/resume/complete.
+Read access uses `ChecklistReviewAccessService.sessionScope()`: admin sees its tenant; manager sees
+its team plus own observer assignments; instructor/mentor see own observer assignments; learner
+sees own employee sessions plus own observer assignments. Feedback masking still applies to the
+employee view, while an assigned observer sees the information needed to conduct their session.
+`checklistSessionsRead` includes all system roles. Scheduling/export use the independent
+`sessionManagementScope()` (admin tenant, manager effective team); `checklistSessionsManage`
+remains admin/manager. `checklistSessionsRunOwn` includes all five roles but always requires
+`observerId == currentUser.id` for conduct, including admin.
+
+`GET /checklist-sessions/to-conduct` returns the usual paginated projection, pinned to the
+caller as observer; query filters are intersected with this scope. `GET
+/checklist-sessions/:id/conduct` returns the usual detail projection with the same own-only
+scope (foreign/non-observed/nonexistent IDs all return 404). Both return live observer feedback.
+The existing instance detail, item answer/skip/photo routes admit the assigned observer; every
+session-linked instance write independently verifies its observer in the service. Standalone
+instance and reviewer rules remain unchanged. Observer UUIDs are normalized at the HTTP boundary;
+service identity checks also ignore UUID letter case. A bulk request containing its observer as
+an employee is rejected before any assignments are written. Employee = observer is rejected on single/bulk/repeat
+creation and reassignment, without changing existing rows or lifecycle audit events.
+
+The existing `/instructor/checklists/sessions` list/detail routes admit authenticated observers
+of every system role and use their role's existing shell. Learners reach the shared queue from
+«Чек-листы», managers from «Моя команда», mentors from their existing checklist page; no menu
+items or other instructor routes are granted. The block disappears when there are no assignments.
 
 Conduct actions (start/pause/resume/complete, feedback, context and location submission) additionally
-use `observerActionScope()`: admin may act tenant-wide, everyone else must be the assigned observer.
+use `observerActionScope()`: all roles, including admin, must be the assigned observer (PR 352).
 The manager+instructor read union never authorizes conducting another observer's session (404).
 Cancellation retains the scheduler's team scope. A transition's idempotent replay checks current
 object access before returning its cached response, even when the original version is stale; a key
@@ -221,18 +239,15 @@ same upload/presigned-download endpoints and access checks (`getItemPhotoDownloa
 this PR doesn't actually implement.
 
 Geolocation capture: `POST /checklist-sessions/:id/location/:point` (`point` is `start` or `end`;
-`checklistSessionsRun` role policy plus `observerActionScope()`) and
+`checklistSessionsRunOwn` role policy plus `observerActionScope()`) and
 `GET /checklist-sessions/:id/location` (read-oriented `sessionScope()`). At most one capture per `(session, point)`
 -- enforced by the PR 288 unique constraint, so a duplicate submission is a 409, never a silent
 overwrite ("start/end only, no continuous tracking" -- the client calls `getCurrentPosition` once
 per point, never `watchPosition`; this endpoint pair is the server-observable half of that
 constraint). A session whose `locationCapturePolicy` is `off` rejects any capture attempt (400);
 `optional`/`required` both accept `captured`/`denied`/`unavailable` status reports (coordinates are
-required in the request body if and only if `status === 'captured'`). When the caller submitting a
-capture is not the session's assigned observer -- reachable only by an admin, since RBAC plus
-`observerActionScope()` block everyone else from submitting for another observer -- the request requires a non-empty
-`overrideReason` and is separately audited via a `ChecklistSessionEvent` of type
-`location_override` carrying the reason in its metadata. `GET .../location` applies a privacy-safe
+required in the request body if and only if `status === 'captured'`). A non-observer capture is rejected with 404 even for admin and even with
+`overrideReason` (PR 352); previous override records are preserved. `GET .../location` applies a privacy-safe
 projection: only the assigned observer and admin see `latitude`/`longitude`/`accuracyMeters`; every
 other caller with read access to the session (e.g. a manager) sees only that a capture happened
 (`capturePoint`/`status`/`capturedAt`/`capturedBy`), never where.
@@ -526,7 +541,7 @@ a silent overwrite or a generic error toast. Geolocation is captured client-side
 best-effort (a 409 from an already-existing capture point, or a browser permission denial, is
 swallowed/recorded respectively -- it never blocks the lifecycle transition it rides along with).
 
-**Structured feedback** (`PATCH /checklist-sessions/:id/feedback`, `checklistSessionsRun` role
+**Structured feedback** (`PATCH /checklist-sessions/:id/feedback`, `checklistSessionsRunOwn` role
 policy, same `sessionScope()` access check as every other session sub-resource): three new nullable
 `ChecklistSession` columns -- `strengths`, `developmentAreas`, `nextSteps` -- session-level (not
 per-criterion) free text the observer records during or after the session, matching the prototype's
@@ -541,7 +556,7 @@ required and a mismatch is a 409. Every successful save appends a `feedback_upda
 event's metadata (it lives only on the session row), matching how `rescheduled`/`location_override`
 already carry only the parts of a change that aren't already on the row.
 
-**Session context** (`PATCH /checklist-sessions/:id/context`, `checklistSessionsRun`) accepts
+**Session context** (`PATCH /checklist-sessions/:id/context`, `checklistSessionsRunOwn`) accepts
 `{ values: { [fieldId]: string }, version }` while a session is `in_progress` or `paused`. The
 server rejects unknown field ids, values longer than 4000 characters, and non-ISO (`YYYY-MM-DD`)
 values for `date` fields; stale versions return 409 under the same optimistic-concurrency contract
@@ -751,8 +766,8 @@ endpoint: it's the existing `PATCH /checklist-sessions/:id` with a new `observer
 (`checklistSessionsManage`: admin/manager, already object-scoped via `sessionScope()`), which now
 also clears the flag on the observer it changes away from.
 
-- **`POST /checklist-sessions/:id/observer-unavailable`** (`checklistSessionsRun`: admin/instructor
-  -- the assigned observer reporting it themselves, or admin on their behalf), body
+- **`POST /checklist-sessions/:id/observer-unavailable`** (`checklistSessionsRunOwn`: all system roles,
+  assigned observer only), body
   `{ reason: string (1-500 chars), version: number }`. Restricted to a still-`scheduled` session,
   same optimistic-concurrency contract (409 on stale `version`) as every other session mutation --
   reassignment is only meaningful pre-start (ADR: participants are frozen once a session starts),
@@ -858,15 +873,10 @@ defers retention/deletion to an owner decision instead of inventing one.
   same as every existing `AuditLogAction`) and are written **after** any enclosing transaction
   commits, never inside it -- the same rule PR 300 established for `AuditLogService` writes, to
   avoid duplicate entries on a Serializable-retry.
-- **`checklist_location.accessed`** covers both directions of the pre-existing "only the assigned
-  observer and admin see exact GPS coordinates" exception (PR 290's privacy-safe projection in
-  `listLocationCaptures`): an admin **submitting** a location capture on behalf of the observer
-  (`captureLocation`, the pre-existing `overrideReason`-gated path) and an admin **reading**
-  another observer's exact coordinates (`listLocationCaptures`). Not logged for the observer
-  acting on/reading their own captures -- that is the routine, expected case, not a privacy
-  exception. The pre-existing `location_override` `ChecklistSessionEvent` (session's own timeline)
-  is unchanged and continues to exist alongside this tenant-wide entry; they serve different
-  audiences (a session's own participants vs. an org-wide audit reviewer).
+- **`checklist_location.accessed`** audits administrator reads of another observer's exact
+  coordinates (`listLocationCaptures`). Assigned-observer reads are routine and are not logged
+  as exceptions. PR 352 removes administrator submission on another observer's behalf; historical
+  `location_override` session events and privacy audit entries remain available.
 - **`checklist_evidence.accessed`** covers a privileged viewer (`isPrivileged`, i.e. not
   learner-only) opening photo evidence (`getItemPhotoDownload`) for an instance **outside their own
   normal review assignment** -- neither the learner who owns the instance nor its assigned
@@ -1174,6 +1184,6 @@ The editor uses the existing admin user search, preserves choices across searche
 remove unavailable entries. The settings audit includes previous and updated values; the preceding
 state and update are read/written in a Serializable transaction.
 
-PR 351 changes selection, not execution rights. Existing read/run policies and observer action scope
+PR 351 changes selection; PR 352 separately grants own-session conduct for all roles. Observer action scope
 remain enforced. The own-session read/run grants and entry points for non-instructor roles are PR 352.
 An assigned instructor removed from the eligible selection retains their existing session access.

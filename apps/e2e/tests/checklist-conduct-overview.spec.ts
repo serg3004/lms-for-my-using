@@ -28,7 +28,7 @@ async function setup(page: Page, options: { hold?: 'answer' | 'photo' | 'feedbac
     const method = route.request().method();
     if (path === '/auth/me') return route.fulfill({ json: { id: 'observer', organizationId: 'org', email: 'observer@example.invalid', firstName: 'Olga', lastName: 'Observer', roles: ['instructor'], status: 'active', locale: 'ru', timezone: 'UTC' } });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
-    if (path === '/checklist-sessions/session') return route.fulfill({ json: session });
+    if (path === '/checklist-sessions/session/conduct') return route.fulfill({ json: session });
     if (path === '/checklist-instances/instance') return route.fulfill({ json: instance });
     if (path.startsWith('/checklist-instances/instance/items/')) {
       const itemId = path.split('/')[4]!;

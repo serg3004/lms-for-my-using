@@ -382,7 +382,7 @@ async function installChecklistSessionsMocks(page: Page) {
       items: [checklistItem({ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights and equipment' })],
     }],
   }));
-  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
+  await page.route('**/api/v1/checklist-sessions{,/to-conduct}?**', (route) => route.fulfill({
     json: {
       items: [{
         id: 'session-1',
@@ -424,7 +424,7 @@ async function installChecklistSessionReportMocks(page: Page) {
     observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
     result: { instanceStatus: 'completed', percentage: 92, passed: true, scored: true, visible: true },
   };
-  await page.route('**/api/v1/checklist-sessions/session-1', (route) => route.fulfill({ json: session }));
+  await page.route('**/api/v1/checklist-sessions/session-1{,/conduct}', (route) => route.fulfill({ json: session }));
   await page.route('**/api/v1/checklist-sessions/session-1/events', (route) => route.fulfill({
     json: [
       { id: 'event-1', organizationId: 'visual-org', sessionId: 'session-1', eventType: 'created', actorUserId: 'observer-1', metadata: null, createdAt: '2026-01-01T00:00:00.000Z' },
@@ -453,7 +453,7 @@ async function installChecklistSessionReportMocks(page: Page) {
   }));
 }
 
-async function installInstructorConductMocks(page: Page, overviewFixture = false) {
+async function installInstructorConductMocks(page: Page, overviewFixture = false, observerRole: 'instructor' | 'learner' | 'manager' = 'instructor') {
   await page.route('**/api/v1/auth/me', (route) => route.fulfill({
     json: {
       id: 'visual-instructor',
@@ -468,7 +468,7 @@ async function installInstructorConductMocks(page: Page, overviewFixture = false
       status: 'active',
       locale: 'ru',
       timezone: 'UTC',
-      roles: ['instructor'],
+      roles: [observerRole],
     },
   }));
   await page.route('**/api/v1/checklist-instances/review-queue**', (route) => route.fulfill({ json: paginated([]) }));
@@ -502,10 +502,10 @@ async function installInstructorConductMocks(page: Page, overviewFixture = false
     observer: { id: 'visual-instructor', firstName: 'Visual', lastName: 'Instructor', email: 'instructor@example.invalid' },
     result: { instanceStatus: 'in_progress', percentage: 0, passed: false, scored: false, visible: true },
   };
-  await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([instructorSession]) }));
+  await page.route('**/api/v1/checklist-sessions{,/to-conduct}?**', (route) => route.fulfill({ json: paginated([instructorSession]) }));
   // Distinct from the list route above (no query string) -- fetched by ChecklistSessionConduct
   // when the observer opens a session from the "Conduct" tab.
-  await page.route('**/api/v1/checklist-sessions/session-1', (route) => route.fulfill({ json: instructorSession }));
+  await page.route('**/api/v1/checklist-sessions/session-1{,/conduct}', (route) => route.fulfill({ json: instructorSession }));
   await page.route('**/api/v1/checklist-instances/instance-1', (route) => route.fulfill({
     json: {
       id: 'instance-1',
@@ -580,6 +580,9 @@ async function installGuestMock(page: Page) {
 for (const width of widths) {
   test.describe(`${width}px viewport`, () => {
     test.use({ viewport: { width, height } });
+    test.beforeEach(async ({ page }) => {
+      await page.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: paginated([]) }));
+    });
 
     test('matches the public navigation baseline without page overflow', async ({ page }) => {
       const getRefreshRequests = await installGuestMock(page);
@@ -701,6 +704,33 @@ for (const width of widths) {
       }
     });
 
+    for (const role of ['learner', 'manager'] as const) {
+      test(`keeps the ${role} assigned-observer block and conduct screen responsive`, async ({ page }) => {
+        if (role === 'learner') await installLearnerMocks(page);
+        else await installManagerMocks(page);
+        await installInstructorConductMocks(page, false, role);
+        await page.route('**/api/v1/checklist-instances/mine', (route) => route.fulfill({ json: [] }));
+        await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({ json: paginated([]) }));
+        await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
+        await page.goto(role === 'learner' ? '/learn/checklists' : '/manager/team');
+        const block = page.getByRole('region', { name: 'Сессии к проведению' });
+        await expect(block.getByText('Opening shift checklist')).toBeVisible();
+        await expectNoPageOverflow(page);
+        await page.waitForLoadState('networkidle');
+        await expect.soft(page).toHaveScreenshot(`${role}-observer-block-${width}.png`, { fullPage: true });
+        await block.getByRole('button', { name: /Leo Learner/ }).click();
+        await expect(page.getByRole('button', { name: 'Пауза', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Новая сессия', exact: true })).toHaveCount(0);
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await page.waitForLoadState('networkidle');
+        await expect.soft(page).toHaveScreenshot(`${role}-observer-conduct-${width}.png`, { fullPage: true });
+        // The learner shell has a fixed mobile nav: actions must remain clickable after scrolling.
+        await page.getByRole('button', { name: 'Далее', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Структурированная обратная связь', exact: true })).toBeVisible();
+      });
+    }
+
     test('keeps the observer pre-start screen with past sessions responsive', async ({ page }) => {
       await installInstructorConductMocks(page);
       const scheduledSession: Record<string, unknown> = {
@@ -718,8 +748,8 @@ for (const width of widths) {
         strengths: 'Чётко проводит передачу смены', developmentAreas: 'Скорость работы на кассе',
         result: { instanceStatus: 'completed', percentage: 85, passed: true, scored: true, visible: true },
       };
-      await page.route('**/api/v1/checklist-sessions/session-2', (route) => route.fulfill({ json: scheduledSession }));
-      await page.route('**/api/v1/checklist-sessions?**', (route) => route.fulfill({
+      await page.route('**/api/v1/checklist-sessions/session-2{,/conduct}', (route) => route.fulfill({ json: scheduledSession }));
+      await page.route('**/api/v1/checklist-sessions{,/to-conduct}?**', (route) => route.fulfill({
         json: paginated(route.request().url().includes('status=completed') ? [pastSession] : [scheduledSession]),
       }));
       await page.goto('/instructor/checklists/sessions/session-2');

@@ -1,3 +1,4 @@
+import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
@@ -168,6 +169,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
           </ul>
         </section>
       )}
+      <ObserverSessionsBlock />
       <LearnerChecklistSessions linkedSessionId={linkedSessionId} onLinkedSessionBack={onLinkedSessionBack} t={t} />
     </main>
   );

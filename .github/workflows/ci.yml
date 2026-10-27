@@ -259,7 +259,28 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Browser E2E
-        run: pnpm test:e2e
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm test:e2e 2>&1 | tee "$RUNNER_TEMP/browser-e2e.log"
+
+      - name: Report browser failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { existsSync, readFileSync, appendFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const path = join(process.env.RUNNER_TEMP, 'browser-e2e.log');
+          if (!existsSync(path)) process.exit(0);
+          const tail = readFileSync(path, 'utf8').replace(/\u001b\[[0-9;]*m/g, '').slice(-24000);
+          const chunkSize = 3000;
+          for (let offset = 0; offset < tail.length; offset += chunkSize) {
+            const escaped = tail.slice(offset, offset + chunkSize).replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
+            console.log(`::error title=Browser E2E failure details ${Math.floor(offset / chunkSize) + 1}::${escaped}`);
+          }
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n## Browser E2E failure\n\n\`\`\`text\n${tail}\n\`\`\`\n`);
+          NODE
 
       - name: Upload safe Playwright failure artifacts
         if: failure()

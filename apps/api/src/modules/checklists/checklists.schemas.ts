@@ -271,7 +271,7 @@ const sessionDurationMinutesSchema = z.number().int().min(1).max(1440).nullable(
 export const createChecklistSessionSchema = z
   .object({
     instanceId: z.string().uuid(),
-    observerId: z.string().uuid(),
+    observerId: z.string().uuid().toLowerCase(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
@@ -284,7 +284,7 @@ export type CreateChecklistSessionInput = z.infer<typeof createChecklistSessionS
 // Allowed only while the session is still `scheduled` — enforces "no participant changes after start".
 export const updateChecklistSessionSchema = z
   .object({
-    observerId: z.string().uuid().optional(),
+    observerId: z.string().uuid().toLowerCase().optional(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
@@ -345,7 +345,7 @@ export type RecalculateChecklistScoreInput = z.infer<typeof recalculateChecklist
 
 export const checklistSessionQuerySchema = z.object({
   status: checklistSessionStatusSchema.optional(),
-  observerId: z.string().uuid().optional(),
+  observerId: z.string().uuid().toLowerCase().optional(),
   checklistId: z.string().uuid().optional(),
   learnerId: z.string().uuid().optional(),
   // PR 325: the learner's current primary department (same definition as manager analytics).
@@ -416,7 +416,7 @@ export const bulkCreateChecklistSessionSchema = z
   .object({
     checklistId: z.string().uuid(),
     learnerIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS),
-    observerId: z.string().uuid(),
+    observerId: z.string().uuid().toLowerCase(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     schedules: z.array(recipientSessionScheduleSchema).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS).optional(),

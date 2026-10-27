@@ -26,7 +26,7 @@ function makeController(overrides: {
   workplaceSettings?: Partial<ChecklistWorkplaceSettingsService>;
 } = {}) {
   const checklistsService = overrides.checklistsService ?? {};
-  const reviewAccess = overrides.reviewAccess ?? {};
+  const reviewAccess = { isAssignedObserver: jest.fn(async () => false), ...overrides.reviewAccess };
   const uploadService = overrides.uploadService ?? {};
   const workplaceSettings = overrides.workplaceSettings ?? {};
 
@@ -304,4 +304,17 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
       expect(listFreeChecklists).toHaveBeenCalledWith(organizationId, learnerId);
     });
   });
+
+  it.each(['learner', 'mentor'] as const)('allows the assigned %s observer to submit results without reviewer powers', async (role) => {
+    const submitItemResult = jest.fn(async () => ({ id: instanceId }));
+    const assertReviewerCanAccess = jest.fn(async () => undefined);
+    const controller = makeController({
+      checklistsService: { submitItemResult: submitItemResult as unknown as ChecklistsService['submitItemResult'] },
+      reviewAccess: { isAssignedObserver: jest.fn(async () => true), assertReviewerCanAccess },
+    });
+    await expect(controller.submitItemResult(instanceId, itemId, { checked: true }, makeRequest(reviewerId, [role]))).resolves.toEqual({ id: instanceId });
+    expect(submitItemResult).toHaveBeenCalledWith(instanceId, itemId, organizationId, reviewerId, true, { checked: true });
+    expect(assertReviewerCanAccess).not.toHaveBeenCalled();
+  });
+
 });

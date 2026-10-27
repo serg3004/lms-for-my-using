@@ -34,6 +34,14 @@ export function listChecklistSessions(query: ChecklistSessionQuery = {}) {
   return apiRequest<PaginatedResponse<ChecklistSessionSummary>>(`/checklist-sessions${buildQueryString(query)}`);
 }
 
+export function listOwnChecklistSessions(query: ChecklistSessionQuery = {}) {
+  return apiRequest<PaginatedResponse<ChecklistSessionSummary>>(`/checklist-sessions/to-conduct${buildQueryString(query)}`);
+}
+
+export function getConductChecklistSession(sessionId: string) {
+  return apiRequest<ChecklistSessionSummary>(`/checklist-sessions/${encodeURIComponent(sessionId)}/conduct`);
+}
+
 export type ChecklistReportExport = { filename: string; csv: string; rows: (string | number)[][]; rowCount: number };
 export type ChecklistReportFormat = 'csv' | 'xlsx';
 

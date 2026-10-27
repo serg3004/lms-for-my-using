@@ -1,3 +1,4 @@
+vi.mock('./ObserverSessionsBlock.js', () => ({ ObserverSessionsBlock: () => null }));
 import '../i18n/index.js';
 
 import { renderToStaticMarkup } from 'react-dom/server';

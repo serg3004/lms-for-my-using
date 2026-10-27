@@ -70,11 +70,13 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/checklist-sessions/bulk` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/export` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/participants` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-sessions/to-conduct` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/{id}` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-sessions/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-sessions/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/cancel` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/{id}/complete` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-sessions/{id}/conduct` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-sessions/{id}/context` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/{id}/events` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-sessions/{id}/feedback` | `Checklists` | `bearer` |

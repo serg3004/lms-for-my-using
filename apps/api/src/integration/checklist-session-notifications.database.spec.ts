@@ -136,15 +136,16 @@ describe('session change notifications (PR 345) — database', () => {
     const view = await sessions.get(created.id, organizationId, await access.sessionScope(learner), { isLearnerOnly: true, feedbackVisibility: 'after_completion' });
     expect(view.result.visible).toBe(false); expect(view.strengths).toBeNull();
   });
-  it('creates new participant notices on repeat and deduplicates a learner who is also the observer', async () => {
+  it('creates new participant notices on repeat and rejects self-observation', async () => {
     const created = await create();
     await prisma.checklistSession.update({ where: { id: created.id }, data: { status: 'completed' } });
     await prisma.checklistInstance.update({ where: { id: created.instanceId }, data: { status: 'completed' } });
     const repeated = await sessions.repeatSession(created.id, organizationId, admin.id, {});
     expect((await notices('checklist_session_scheduled')).filter((row) => (row.data as { sessionId: string }).sessionId === repeated.id)).toHaveLength(2);
     const instance = await assignment(observer.id);
-    const own = await sessions.create(organizationId, { instanceId: instance.id, observerId: observer.id }, admin.id);
-    expect((await notices('checklist_session_scheduled')).filter((row) => (row.data as { sessionId: string }).sessionId === own.id)).toHaveLength(1);
+    const before = (await notices('checklist_session_scheduled')).length;
+    await expect(sessions.create(organizationId, { instanceId: instance.id, observerId: observer.id }, admin.id)).rejects.toThrow('An employee cannot observe their own session');
+    expect(await notices('checklist_session_scheduled')).toHaveLength(before);
   });
   it('rolls back the domain change, notifications and outbox together', async () => {
     const created = await create(); const before = await prisma.notification.count({ where: { organizationId } });

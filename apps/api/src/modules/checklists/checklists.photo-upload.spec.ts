@@ -23,7 +23,7 @@ function makeController(overrides: {
   uploadService?: Partial<UploadService>;
 } = {}) {
   const checklistsService = overrides.checklistsService ?? {};
-  const reviewAccess = overrides.reviewAccess ?? { assertReviewerCanAccess: jest.fn(async () => undefined) };
+  const reviewAccess = { isAssignedObserver: jest.fn(async () => false), assertReviewerCanAccess: jest.fn(async () => undefined), ...overrides.reviewAccess };
   const uploadService = overrides.uploadService ?? {};
   const workplaceSettings = {};
 

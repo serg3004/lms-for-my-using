@@ -162,6 +162,21 @@ test.describe('WCAG AA browser baseline', () => {
     await auditAccessibility(page, testInfo);
   });
 
+  for (const role of ['learner', 'manager'] as const) {
+    test(`${role} assigned-observer block is accessible`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await loginAs(page, role);
+      await expect(page).toHaveURL(role === 'learner' ? /\/learn$/ : /\/manager\/dashboard$/);
+      await page.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: {
+        items: [{ id: 'assigned-a11y', status: 'in_progress', checklist: { title: 'Observed checklist' }, learner: { firstName: 'Employee', lastName: 'One' }, scheduledAt: null }],
+        total: 1, page: 1, pageSize: 100,
+      } }));
+      await page.goto(role === 'learner' ? '/learn/checklists' : '/manager/team');
+      await expect(page.getByRole('region', { name: 'Сессии к проведению' })).toBeVisible();
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
   test('manager checklist analytics dashboard has an accessible rendered state', async ({ page }, testInfo) => {
     await loginAs(page, 'manager');
     await expect(page).toHaveURL(/\/manager\/dashboard$/);

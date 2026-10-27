@@ -11,8 +11,8 @@ vi.mock('react', async () => {
   return { ...actual, useState: reactMocks.useState };
 });
 
-const apiMocks = vi.hoisted(() => ({ listChecklistSessions: vi.fn() }));
-vi.mock('../shared/api/checklistSessions.js', () => ({ listChecklistSessions: apiMocks.listChecklistSessions }));
+const apiMocks = vi.hoisted(() => ({ listOwnChecklistSessions: vi.fn() }));
+vi.mock('../shared/api/checklistSessions.js', () => ({ listOwnChecklistSessions: apiMocks.listOwnChecklistSessions }));
 
 import { ChecklistSessionsToConduct, fetchObserverSessions, makeOpenHandler } from './ChecklistSessionsToConduct.js';
 import type { ChecklistSessionSummary } from '../shared/api/types.js';
@@ -63,10 +63,10 @@ function makeSession(overrides: Partial<ChecklistSessionSummary>): ChecklistSess
 
 describe('fetchObserverSessions', () => {
   it('unwraps the paginated response into a plain array', async () => {
-    apiMocks.listChecklistSessions.mockResolvedValueOnce({ items: [makeSession({ id: 'session-9' })], page: 1, pageSize: 100, total: 1 });
+    apiMocks.listOwnChecklistSessions.mockResolvedValueOnce({ items: [makeSession({ id: 'session-9' })], page: 1, pageSize: 100, total: 1 });
     const items = await fetchObserverSessions();
     expect(items).toEqual([makeSession({ id: 'session-9' })]);
-    expect(apiMocks.listChecklistSessions).toHaveBeenCalledWith({ pageSize: 100 });
+    expect(apiMocks.listOwnChecklistSessions).toHaveBeenCalledWith({ page: 1, pageSize: 100 });
   });
 });
 
