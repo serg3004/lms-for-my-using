@@ -2380,7 +2380,12 @@
     "requiredItem": "必填",
     "optionalItem": "可选",
     "expiredReason": "该检查表已过期，无法再修改。",
-    "requiredProgress": "{{completed}} / {{total}} 项必填"
+    "requiredProgress": "{{completed}} / {{total}} 项必填",
+    "photoLimitHint": "照片：JPEG、PNG、GIF 或 WEBP，不超过 {{max}} MB。",
+    "photoCameraOnlyHint": "只能用相机拍摄照片。这是界面限制，不是服务器检查。",
+    "photoTooLarge": "文件超过 {{max}} MB。请选择更小的照片。",
+    "photoEmpty": "文件为空。请选择其他照片。",
+    "photoUnsupportedType": "只能附加 JPEG、PNG、GIF 和 WEBP 照片。"
   },
   "checklistReview": {
     "title": "检查清单审核",

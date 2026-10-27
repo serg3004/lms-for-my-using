@@ -3,6 +3,7 @@ import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
+import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
 import { getChecklistInstance, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
 import {
   captureChecklistSessionLocation,
@@ -861,6 +862,8 @@ function PhotoAttachment({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const invalid = validateChecklistPhoto(file);
+    if (invalid) { onError(checklistPhotoErrorMessage(invalid, t)); return; }
     setProgress(0);
     onUploadingChange(true);
     try {
@@ -876,10 +879,11 @@ function PhotoAttachment({
   }
 
   const canAct = editable && !busy && progress === null;
+  const hintId = useId();
 
   return (
     <div style={{ marginTop: 12 }}>
-      <input ref={inputRef} type="file" accept="image/*" {...(cameraOnly ? { capture: 'environment' as const } : {})} onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} {...(cameraOnly ? { capture: 'environment' as const } : {})} onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div
           style={{
@@ -889,7 +893,7 @@ function PhotoAttachment({
         >
           {attached ? '✓' : '+'}
         </div>
-        <Button type="button" size="sm" variant="secondary" disabled={!canAct} onClick={() => inputRef.current?.click()} style={{ minHeight: 44 }}>
+        <Button type="button" size="sm" variant="secondary" disabled={!canAct} aria-describedby={hintId} onClick={() => inputRef.current?.click()} style={{ minHeight: 44 }}>
           {progress !== null
             ? t('checklistSessions.conduct.photoUploading', 'Uploading... {{progress}}%', { progress })
             : attached
@@ -897,6 +901,7 @@ function PhotoAttachment({
               : t('checklists.photoAttach', 'Attach photo')}
         </Button>
       </div>
+      <p id={hintId} style={{ fontSize: 12, color: COLORS.muted, margin: '6px 0 0' }}>{checklistPhotoHint(cameraOnly, t)}</p>
     </div>
   );
 }

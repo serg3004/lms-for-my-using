@@ -2380,7 +2380,12 @@
     "requiredItem": "Міндетті",
     "optionalItem": "Міндетті емес",
     "expiredReason": "Бұл чек-листтің мерзімі өтті, енді өзгертуге болмайды.",
-    "requiredProgress": "{{completed}} / {{total}} міндетті"
+    "requiredProgress": "{{completed}} / {{total}} міндетті",
+    "photoLimitHint": "Фото: JPEG, PNG, GIF немесе WEBP, {{max}} МБ-тан аспайтын.",
+    "photoCameraOnlyHint": "Фотоны тек камерамен түсіруге болады. Бұл интерфейс шектеуі, сервер тексеруі емес.",
+    "photoTooLarge": "Файл {{max}} МБ-тан үлкен. Кішірек фото таңдаңыз.",
+    "photoEmpty": "Файл бос. Басқа фото таңдаңыз.",
+    "photoUnsupportedType": "Тек JPEG, PNG, GIF және WEBP фотоларын тіркеуге болады."
   },
   "checklistReview": {
     "title": "Чеклистерді тексеру",

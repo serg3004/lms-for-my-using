@@ -2380,7 +2380,12 @@
     "requiredItem": "Обязательный",
     "optionalItem": "Необязательный",
     "expiredReason": "Срок выполнения этого чек-листа истёк, изменения больше невозможны.",
-    "requiredProgress": "{{completed}} / {{total}} обязательных"
+    "requiredProgress": "{{completed}} / {{total}} обязательных",
+    "photoLimitHint": "Фото: JPEG, PNG, GIF или WEBP, не больше {{max}} МБ.",
+    "photoCameraOnlyHint": "Фото можно сделать только камерой. Это ограничение интерфейса, а не серверная проверка.",
+    "photoTooLarge": "Файл больше {{max}} МБ. Выберите фото меньшего размера.",
+    "photoEmpty": "Файл пустой. Выберите другое фото.",
+    "photoUnsupportedType": "Можно прикрепить только фото JPEG, PNG, GIF или WEBP."
   },
   "checklistReview": {
     "loadError": "Не удалось загрузить список на проверку.",
