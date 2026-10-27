@@ -706,6 +706,9 @@ for (const width of widths) {
         if (width <= 375) await expectTouchTargets(page);
         await page.waitForLoadState('networkidle');
         await expect.soft(page).toHaveScreenshot(`${role}-observer-conduct-${width}.png`, { fullPage: true });
+        // The learner shell has a fixed mobile nav: actions must remain clickable after scrolling.
+        await page.getByRole('button', { name: 'Далее', exact: true }).click();
+        await expect(page.getByRole('heading', { name: 'Структурированная обратная связь', exact: true })).toBeVisible();
       });
     }
 
