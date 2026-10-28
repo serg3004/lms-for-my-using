@@ -52,4 +52,15 @@ describe('navigationPolicy', () => {
   ] as const)('evaluates %s for roles %j', (path, roles, expected) => {
     expect(canAccessPath(path, { roles: [...roles] })).toBe(expected);
   });
+
+  it('PR 360б: the organization-wide session list and its reports are for the scheduling roles only', () => {
+    expect(canAccessPath('/instructor/checklists/sessions/all', { roles: ['instructor'] })).toBe(true);
+    expect(canAccessPath('/instructor/checklists/sessions/all/abc', { roles: ['instructor'] })).toBe(true);
+    expect(canAccessPath('/instructor/checklists/sessions/all', { roles: ['learner'] })).toBe(false);
+    expect(canAccessPath('/instructor/checklists/sessions/all/abc', { roles: ['mentor'] })).toBe(false);
+    expect(canAccessPath('/mentor/sessions', { roles: ['mentor'] })).toBe(true);
+    expect(canAccessPath('/mentor/sessions/abc', { roles: ['learner'] })).toBe(false);
+    // The observer's own conduct routes stay open to every role (PR 352).
+    expect(canAccessPath('/instructor/checklists/sessions/abc', { roles: ['learner'] })).toBe(true);
+  });
 });

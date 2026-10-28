@@ -2702,6 +2702,11 @@
       "feedback_updated": "Кері байланыс жаңартылды",
       "score_recalculated": "Балл қайта есептелді",
       "observer_marked_unavailable": "Бақылаушы қолжетімсіздігін белгіледі"
+    },
+    "nav": {
+      "label": "Сессия бөлімдері",
+      "conduct": "Өткізуге",
+      "all": "Барлық сессиялар"
     }
   },
   "common": {

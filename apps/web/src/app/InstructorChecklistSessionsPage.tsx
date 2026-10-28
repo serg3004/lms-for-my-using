@@ -7,6 +7,7 @@ import { useOptionalSession } from '../shared/session.js';
 import { Button } from '../shared/ui.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { ChecklistSessionsToConduct } from './ChecklistSessionsToConduct.js';
+import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 
 /**
  * PR 319: the observer's "sessions to conduct" list, on its own route
@@ -22,6 +23,7 @@ export function InstructorChecklistSessionsPage() {
 
   return (
     <ObserverPageLayout>
+      <ObserverSessionsNav current="conduct" />
       <div style={{ padding: '24px 0', maxWidth: 640 }}>
         <p style={{ margin: '0 0 4px', fontSize: 12.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--color-primary)' }}>
           {t('checklistSessions.conduct.eyebrow', 'Workplace training')}

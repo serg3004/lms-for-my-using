@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -6,6 +6,9 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { downloadCsvFile, downloadXlsxFile } from '../shared/downloadCsv.js';
 import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
+import { ObserverPageLayout } from '../shared/observerLayout.js';
+import { allSessionsPath, ObserverSessionsNav } from './ObserverSessionsNav.js';
+import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
@@ -40,13 +43,19 @@ const PAGE_SIZE = 20;
 
 type AdminChecklistSessionsData = { sessions: ChecklistSessionSummary[]; total: number };
 
-export function AdminChecklistSessionsPage() {
+/**
+ * PR 360б: the same list also serves the instructor and the mentor (`variant="observer"`), inside their own
+ * layout and with their own report path. The admin and the manager keep the admin shell.
+ */
+export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'admin' | 'observer' }) {
   const { t } = useTranslation();
   const { currentUser } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { status: statusTab, period, observerId: observerFilter, checklistId: checklistFilter, learnerId: learnerFilter, departmentId: departmentFilter, search, page } = parseSessionFilters(searchParams);
   const isAdmin = currentUser?.roles.includes('admin') ?? false;
+  const isObserverVariant = variant === 'observer';
+  const reportBase = (isObserverVariant ? allSessionsPath(currentUser) : null) ?? '/admin/checklists/sessions';
   const [observerOptions, setObserverOptions] = useState<ChecklistSessionParticipant[]>([]);
   const [learnerOptions, setLearnerOptions] = useState<ChecklistSessionParticipant[]>([]);
   const [checklistOptions, setChecklistOptions] = useState<ChecklistSummary[]>([]);
@@ -206,7 +215,7 @@ export function AdminChecklistSessionsPage() {
   ];
 
   const columns: Column<ChecklistSessionSummary>[] = [
-    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => <Link to={`/admin/checklists/sessions/${row.id}`}>{row.checklist.title}</Link>, priority: 'primary' },
+    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => <Link to={`${reportBase}/${row.id}`}>{row.checklist.title}</Link>, priority: 'primary' },
     { key: 'learner', label: t('admin.checklists.sessions.columns.learner', 'Employee'), render: (row) => formatParticipantName(row.learner), priority: 'primary' },
     {
       key: 'observer',
@@ -262,7 +271,7 @@ export function AdminChecklistSessionsPage() {
       // only the rarer ones so the row still fits one line at 1440px.
       render: (row) => (
         <div className="admin-toolbar__right">
-          <Link className="ds-button ds-button--secondary ds-button--sm" to={`/admin/checklists/sessions/${row.id}`}>
+          <Link className="ds-button ds-button--secondary ds-button--sm" to={`${reportBase}/${row.id}`}>
             {t('admin.checklists.sessions.open', 'Open')}
           </Link>
           {canRepeatSession(row) && (
@@ -304,8 +313,12 @@ export function AdminChecklistSessionsPage() {
     },
   ];
 
-  return (
-    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>
+  const wrap = (children: ReactNode) => (isObserverVariant
+    ? <ObserverPageLayout>{children}</ObserverPageLayout>
+    : <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>{children}</AdminPageLayout>);
+
+  return wrap(
+    <>
       <AdminPageHeader
         eyebrow={t('admin.checklists.sessions.eyebrow', 'Workplace training')}
         title={t('admin.checklists.sessions.pageTitle', 'Training sessions')}
@@ -314,13 +327,14 @@ export function AdminChecklistSessionsPage() {
           <>
             <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
-            <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>
-            <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>
+            {!isObserverVariant && <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
+            {!isObserverVariant && <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
             <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>
         }
       />
-      <ChecklistsTabs current="sessions" />
+      {isObserverVariant ? <ObserverSessionsNav current="all" /> : <ChecklistsTabs current="sessions" />}
+      {isAdmin && !isObserverVariant && <ObserverSessionsBlock />}
       {actionError && (
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">
           <p>{actionError}</p>
@@ -420,11 +434,12 @@ export function AdminChecklistSessionsPage() {
         keyExtractor={(row) => row.id}
         label={t('admin.checklists.sessions.title', 'Sessions')}
         responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.checklist.title}`, collapseLabel: (row) => `${t('courses.details')}: ${row.checklist.title}` }}
-        onRowClick={(row) => navigate(`/admin/checklists/sessions/${row.id}`)}
+        onRowClick={(row) => navigate(`${reportBase}/${row.id}`)}
         rows={loadState.data.sessions}
       />
       <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={(nextPage) => setSearchParams(applySessionFilterChange(searchParams, { page: nextPage }), { replace: true })} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
       <ChecklistSessionWizard
+        fixedObserver={currentUser?.roles.includes('instructor') && !currentUser.roles.includes('mentor') && !currentUser.roles.includes('admin') && !currentUser.roles.includes('manager') ? currentUser : undefined}
         onClose={() => {
           setWizardOpen(false);
           // `load()` briefly flips `loadState.status` back to 'loading', and this page's own
@@ -468,7 +483,7 @@ export function AdminChecklistSessionsPage() {
         session={messageTarget}
         t={t}
       />
-      <ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />
-    </AdminPageLayout>
+      {!isObserverVariant && <ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />}
+    </>,
   );
 }

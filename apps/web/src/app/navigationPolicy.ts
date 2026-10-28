@@ -11,6 +11,8 @@ export function canAccessPath(pathname: string, user: Pick<CurrentUser, 'roles'>
   if (pathname === '/manager' || pathname.startsWith('/manager/')) {
     return user.roles.includes('manager');
   }
+  // PR 360б: the organization-wide session list is for the roles that schedule (the API enforces it too).
+  if (pathname.startsWith('/instructor/checklists/sessions/all')) return user.roles.includes('instructor');
   if (/^\/instructor\/checklists\/sessions(?:\/[^/]+)?\/?$/.test(pathname)) return true;
   if (pathname === '/instructor' || pathname.startsWith('/instructor/')) {
     return user.roles.includes('instructor');

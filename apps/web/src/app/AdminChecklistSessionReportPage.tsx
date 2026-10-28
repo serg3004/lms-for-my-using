@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -31,6 +31,8 @@ import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { ObserverPageLayout } from '../shared/observerLayout.js';
+import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import { Badge, Dialog, InlineFeedback, PageState } from '../shared/ui.js';
 import { formatParticipantName } from '../features/admin-checklist-sessions/domain.js';
@@ -315,7 +317,8 @@ export function RecalculateDialog({ open, onClose, sessionId, onDone, t }: { ope
   );
 }
 
-export function AdminChecklistSessionReportPage() {
+/** PR 360б: `variant="observer"` renders the same report in the instructor's and the mentor's own layout. */
+export function AdminChecklistSessionReportPage({ variant = 'admin' }: { variant?: 'admin' | 'observer' }) {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
 
@@ -336,14 +339,16 @@ export function AdminChecklistSessionReportPage() {
     return <main className="admin-state"><PageState title={t('admin.checklists.report.title', 'Session report')} message={state.message} variant="error" /></main>;
   }
 
-  return <SessionReportBody session={state.data} onScoreRecalculated={(revision) => mutate((s) => ({ ...s, result: { ...s.result, percentage: revision.newPercentage, passed: revision.newPassed, scored: revision.scored } }))} t={t} />;
+  return <SessionReportBody session={state.data} onScoreRecalculated={(revision) => mutate((s) => ({ ...s, result: { ...s.result, percentage: revision.newPercentage, passed: revision.newPassed, scored: revision.scored } }))} t={t} variant={variant} />;
 }
 
 export function SessionReportBody({
   session,
   onScoreRecalculated,
   t,
+  variant = 'admin',
 }: {
+  variant?: 'admin' | 'observer';
   session: ChecklistSessionSummary;
   // Merges the recalculation's own response into local state instead of a full page reload --
   // a network reload flips the parent's AsyncDataState back to 'loading', which early-returns
@@ -390,8 +395,13 @@ export function SessionReportBody({
 
   const result = describeChecklistSessionResult(session.result);
 
-  return (
-    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
+  const wrap = (children: ReactNode) => (variant === 'observer'
+    ? <ObserverPageLayout>{children}</ObserverPageLayout>
+    : <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>{children}</AdminPageLayout>);
+
+  return wrap(
+    <>
+      {variant === 'observer' && <ObserverSessionsNav current="all" />}
       <AdminPageHeader
         eyebrow={t('admin.checklists.report.eyebrow', 'Session report')}
         title={session.checklist.title}
@@ -604,6 +614,6 @@ export function SessionReportBody({
       )}
 
       {tab === 'history' && <HistoryTab sessionId={session.id} t={t} />}
-    </AdminPageLayout>
+    </>,
   );
 }

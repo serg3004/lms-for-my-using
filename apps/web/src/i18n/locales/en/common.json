@@ -2702,6 +2702,11 @@
       "feedback_updated": "Feedback updated",
       "score_recalculated": "Score recalculated",
       "observer_marked_unavailable": "Observer marked unavailable"
+    },
+    "nav": {
+      "label": "Session sections",
+      "conduct": "To conduct",
+      "all": "All sessions"
     }
   },
   "common": {
