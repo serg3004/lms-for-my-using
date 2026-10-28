@@ -199,6 +199,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await adminPage.route(/\/api\/v1\/checklist-sessions(?:\/to-conduct)?(\?.*)?$/, (route) => route.fulfill({
       json: { items: [session], page: 1, pageSize: 20, total: 1 },
     }));
+    // PR 360в: this admin only schedules; the observer is another user, so the admin's own queue is empty.
+    await adminPage.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: { items: [], page: 1, pageSize: 100, total: 0 } }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}{,/conduct}`, (route) => {
       if (route.request().method() !== 'GET') return route.fallback();
       return route.fulfill({ json: session });
@@ -213,7 +215,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await test.step('admin creates a session for the learner via the wizard', async () => {
       await login(adminPage, 'admin');
       await adminPage.goto('/admin/checklists/sessions');
-      await expect(adminPage.getByRole('heading', { name: 'Сессии' })).toBeVisible();
+      await expect(adminPage.getByRole('heading', { name: 'Обучающие сессии' })).toBeVisible();
 
       await adminPage.getByRole('button', { name: /Новая сессия/ }).click();
       await expect(adminPage.getByRole('heading', { name: 'Новая сессия' })).toBeVisible();

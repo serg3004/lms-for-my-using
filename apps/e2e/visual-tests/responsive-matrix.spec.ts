@@ -917,6 +917,8 @@ for (const width of widths) {
 
     test('keeps the admin checklist sessions list and wizard responsive', async ({ page }) => {
       await installChecklistSessionsMocks(page);
+      // PR 360в: this admin is not an observer here, so the queue block stays hidden and the baseline is unchanged.
+      await page.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: paginated([]) }));
       await page.goto('/admin/checklists/sessions');
       // PR 318: the page's own <h1> now reads "Обучающие сессии" ("Training sessions") -- the
       // breadcrumb/nav-tab strip keep the shorter "Сессии" label.
@@ -942,6 +944,7 @@ for (const width of widths) {
 
     test('keeps observer eligibility settings responsive', async ({ page }) => {
       await installChecklistSessionsMocks(page);
+      await page.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: paginated([]) }));
       await page.route('**/api/v1/checklists/workplace-settings', (route) => route.fulfill({ json: {
         organizationId: 'visual-org', moduleEnabled: true, highPerformanceThreshold: 90,
         defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
