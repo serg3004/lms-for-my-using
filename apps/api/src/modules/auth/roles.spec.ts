@@ -157,8 +157,9 @@ describe('rolePolicies', () => {
     checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
     checklistWorkplaceSettingsWrite: ['admin'],
     checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
-    checklistSessionsManage: ['admin', 'manager'],
+    checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
     checklistSessionsCreateOwn: ['instructor'],
+    checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],
     checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistManagerAnalyticsRead: ['admin', 'manager'],
     checklistScoreRecalculate: ['admin'],
@@ -186,10 +187,11 @@ describe('workplace-training capability composition (PR 349)', () => {
     }
   });
 
-  it('does not turn instructor authoring/own reports into tenant analytics or role administration', () => {
+  it('lets the instructor schedule sessions (PR 360) but not turn authoring into tenant analytics or role administration', () => {
     expect(rolePolicies.checklistsCreate).toContain('instructor');
     expect(rolePolicies.checklistSessionsRead).toContain('instructor');
-    expect(rolePolicies.checklistSessionsManage).not.toContain('instructor');
+    expect(rolePolicies.checklistSessionsManage).toContain('instructor');
+    expect(rolePolicies.checklistSessionsCreateAnyObserver).not.toContain('instructor');
     expect(rolePolicies.checklistManagerAnalyticsRead).not.toContain('instructor');
     expect(rolePolicies.reportsRead).not.toContain('instructor');
     expect(rolePolicies.membershipsCreate).not.toContain('instructor');

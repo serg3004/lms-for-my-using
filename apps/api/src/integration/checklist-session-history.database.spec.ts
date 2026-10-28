@@ -83,10 +83,11 @@ describe('observer session history (PR 332) — database', () => {
     expect(result.total).toBe(2);
   });
 
-  it('stays inside the observer scope: another observer’s sessions never appear', async () => {
-    await session({ learnerId: learner.id, observerId: otherObserver.id });
+  it('PR 360: an instructor sees every observer’s sessions of the organization, an unrelated employee none', async () => {
+    const theirs = await session({ learnerId: learner.id, observerId: otherObserver.id });
     const own = await session({ learnerId: learner.id, observerId: observer.id });
-    expect((await history(observer)).items.map((item) => item.id)).toEqual([own.id]);
+    expect((await history(observer)).items.map((item) => item.id).sort()).toEqual([theirs.id, own.id].sort());
+    expect((await history(otherLearner)).items).toEqual([]);
   });
 
   it('returns an empty page, not an error, when there is no history', async () => {

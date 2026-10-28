@@ -97,7 +97,10 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(started.status).toBe('in_progress');
     expect(await prisma.checklistSessionEvent.findFirst({ where: { sessionId, eventType: 'created' } })).toMatchObject({ actorUserId: observer.id });
     expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_session.bulk_created' } })).toMatchObject({ actorId: observer.id });
-    await expect(sessions.get(sessionId, organizationId, await access.sessionScope(otherObserver), { isLearnerOnly: false, feedbackVisibility: 'live' })).rejects.toBeInstanceOf(NotFoundException);
+    // PR 360: another instructor reads the whole organization, an unrelated employee does not.
+    expect(await sessions.get(sessionId, organizationId, await access.sessionScope(otherObserver), { isLearnerOnly: false, feedbackVisibility: 'live' })).toMatchObject({ observerId: observer.id });
+    const stranger = await user(organizationId, ['learner']);
+    await expect(sessions.get(sessionId, organizationId, await access.sessionScope(stranger), { isLearnerOnly: true, feedbackVisibility: 'live' })).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it.each(['createSession', 'bulkCreateSessions'] as const)('rejects a forged observer in %s with 404 and no side effects', async (handler) => {
@@ -161,14 +164,25 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(await controller.createSession({ instanceId: included.id, observerId: manager.id }, await request(manager, 'createSession'))).toMatchObject({ observerId: manager.id });
   });
 
-  it('does not grant an instructor general session management rights', async () => {
-    for (const handler of ['updateSession', 'repeatSession', 'transitionCancel'] as const) {
-      await expect(request(observer, handler)).rejects.toBeInstanceOf(ForbiddenException);
+  it('PR 360: lets an instructor manage sessions of the organization but not pick another observer', async () => {
+    for (const handler of ['updateSession', 'repeatSession', 'transitionCancel', 'deleteSession', 'exportSessions'] as const) {
+      await expect(request(observer, handler)).resolves.toBeDefined();
     }
+    const other = await instance(learner.id);
+    await expect(controller.createSession({ instanceId: other.id, observerId: otherObserver.id }, await request(observer, 'createSession'))).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it.each(['learner', 'mentor'] as const)('does not grant creation or participant enumeration to %s', async (role) => {
-    const denied = await user(organizationId, [role]);
+  it('PR 360: lets a mentor create sessions with any observer', async () => {
+    const mentor = await user(organizationId, ['mentor']);
+    for (const handler of ['createSession', 'bulkCreateSessions', 'listSessionParticipants'] as const) {
+      await expect(request(mentor, handler)).resolves.toBeDefined();
+    }
+    const created = await instance(learner.id);
+    expect(await controller.createSession({ instanceId: created.id, observerId: otherObserver.id }, await request(mentor, 'createSession'))).toMatchObject({ observerId: otherObserver.id });
+  });
+
+  it('does not grant creation or participant enumeration to learner', async () => {
+    const denied = await user(organizationId, ['learner']);
     for (const handler of ['createSession', 'bulkCreateSessions', 'listSessionParticipants'] as const) {
       await expect(request(denied, handler)).rejects.toBeInstanceOf(ForbiddenException);
     }
@@ -348,7 +362,9 @@ describe('observer session creation and conduct access (PR 331/349) — database
       expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'started', actorUserId: actor.id } })).toBe(1);
       expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'completed', actorUserId: actor.id } })).toBe(1);
       if (role === 'learner' || role === 'mentor') {
-        for (const handler of ['createSession', 'updateSession', 'exportSessions', 'recalculateScore'] as const) {
+        // PR 360: the mentor schedules and exports; recalculation stays admin-only for both.
+        const denied = role === 'learner' ? ['createSession', 'updateSession', 'exportSessions', 'recalculateScore'] as const : ['recalculateScore'] as const;
+        for (const handler of denied) {
           // These grants are independent of an observer assignment.
           await expect(request(actor, handler)).rejects.toBeInstanceOf(ForbiddenException);
         }

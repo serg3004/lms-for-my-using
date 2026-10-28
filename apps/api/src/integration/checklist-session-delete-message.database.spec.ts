@@ -118,10 +118,11 @@ describe('session delete and participant message (PR 333) — database', () => {
 
   it('restricts delete and message to the manage policy and the caller’s tenant', async () => {
     const created = await session();
-    for (const actor of [observer, learner]) {
-      await expect(request(actor, 'deleteSession')).rejects.toBeInstanceOf(ForbiddenException);
-      await expect(request(actor, 'messageSessionParticipant')).rejects.toBeInstanceOf(ForbiddenException);
-    }
+    // PR 360: the instructor now holds the manage policy; only the employee is denied.
+    await expect(request(learner, 'deleteSession')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(request(learner, 'messageSessionParticipant')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(request(observer, 'deleteSession')).resolves.toBeDefined();
+    await expect(request(observer, 'messageSessionParticipant')).resolves.toBeDefined();
     await expect(controller.deleteSession(created.id, await request(foreignAdmin, 'deleteSession'))).rejects.toBeInstanceOf(NotFoundException);
     await expect(controller.messageSessionParticipant(created.id, { message: 'Hi' }, await request(foreignAdmin, 'messageSessionParticipant'))).rejects.toBeInstanceOf(NotFoundException);
     expect(await prisma.checklistSession.findUnique({ where: { id: created.id } })).toMatchObject({ deletedAt: null });

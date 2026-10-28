@@ -63,18 +63,18 @@ export class ChecklistReviewAccessService {
    * Observer mutations use observerActionScope() rather than this read-oriented union.
    */
   async sessionScope(user: CurrentUser): Promise<ChecklistSessionAccessScope> {
-    if (user.roles.includes('admin')) return {};
+    if (user.roles.includes('admin') || user.roles.includes('instructor') || user.roles.includes('mentor')) return {};
     if (isManagerTeamScoped(user)) {
       const managerScope = { instance: { user: await this.organizationScope.user(user) } };
       return { OR: [managerScope, { observerId: user.id }] };
     }
-    if (user.roles.includes('instructor') || user.roles.includes('mentor')) return { observerId: user.id };
     return { OR: [{ instance: { userId: user.id } }, { observerId: user.id }] };
   }
 
   /** Scheduling/export retain the manager's team scope, independently of observer reads. */
   async sessionManagementScope(user: CurrentUser): Promise<ChecklistSessionAccessScope> {
-    if (user.roles.includes('admin')) return {};
+    // PR 360: instructor and mentor schedule across the whole organization; only the manager is team-scoped.
+    if (user.roles.includes('admin') || user.roles.includes('instructor') || user.roles.includes('mentor')) return {};
     return { instance: { user: await this.organizationScope.user(user) } };
   }
 
@@ -90,9 +90,14 @@ export class ChecklistReviewAccessService {
     }));
   }
 
+  /** The instructor schedules sessions for the whole organization but is always the observer. */
+  canPickAnyObserver(user: CurrentUser): boolean {
+    return rolePolicies.checklistSessionsCreateAnyObserver.some((role) => user.roles.includes(role));
+  }
+
   /** Creation is narrower than read access: only schedulers may select another observer. */
   assertSessionCreationObserver(user: CurrentUser, observerId: string): void {
-    if (!rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role)) && observerId !== user.id) {
+    if (!this.canPickAnyObserver(user) && observerId !== user.id) {
       throw new NotFoundException('Observer not found');
     }
   }

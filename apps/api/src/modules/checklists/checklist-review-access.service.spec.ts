@@ -126,10 +126,11 @@ describe('ChecklistReviewAccessService', () => {
     expect(scope.user).toHaveBeenCalledWith(manager);
   });
 
-  it('restricts instructors to sessions where they are the assigned observer', async () => {
+  it.each([['instructor'], ['mentor']] as const)('lets %s read every session of the organization (PR 360)', async (role) => {
     const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
 
-    await expect(service.sessionScope(currentUser(['instructor']))).resolves.toEqual({ observerId: managerId });
+    await expect(service.sessionScope(currentUser([role]))).resolves.toEqual({});
+    await expect(service.sessionManagementScope(currentUser([role]))).resolves.toEqual({});
   });
 
   it('restricts employees to sessions attached to their own checklist instance', async () => {
@@ -140,15 +141,21 @@ describe('ChecklistReviewAccessService', () => {
     });
   });
 
-  it('combines manager scope with assigned-observer scope for a dual-role user', async () => {
+  it('combines manager scope with assigned-observer scope for a manager who is not an instructor or mentor', async () => {
     const userWhere = { id: { in: ['managed-user'] } };
     const scope = accessScope(userWhere);
     const service = new ChecklistReviewAccessService({} as PrismaService, scope);
 
-    await expect(service.sessionScope(currentUser(['manager', 'instructor']))).resolves.toEqual({ OR: [
+    await expect(service.sessionScope(currentUser(['manager']))).resolves.toEqual({ OR: [
       { instance: { user: userWhere } },
       { observerId: managerId },
     ] });
+  });
+
+  it('gives a manager who is also an instructor the organization-wide scope of the wider role (PR 360)', async () => {
+    const service = new ChecklistReviewAccessService({} as PrismaService, accessScope({ id: { in: ['managed-user'] } }));
+
+    await expect(service.sessionScope(currentUser(['manager', 'instructor']))).resolves.toEqual({});
   });
 
   describe('observerActionScope (PR 302 review fix)', () => {
@@ -178,7 +185,7 @@ describe('ChecklistReviewAccessService', () => {
       expect(() => service.assertSessionCreationObserver(user, user.id)).not.toThrow();
       expect(() => service.assertSessionCreationObserver(user, 'another-observer')).toThrow(NotFoundException);
     });
-    it.each([['admin'], ['manager'], ['manager', 'instructor']] as const)('preserves scheduler rights for %j', (...roles) => {
+    it.each([['admin'], ['manager'], ['mentor'], ['manager', 'instructor']] as const)('lets %j pick any observer', (...roles) => {
       const service = new ChecklistReviewAccessService({} as PrismaService, accessScope());
       expect(() => service.assertSessionCreationObserver(currentUser([...roles]), 'another-observer')).not.toThrow();
     });
