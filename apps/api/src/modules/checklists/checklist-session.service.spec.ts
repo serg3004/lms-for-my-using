@@ -615,7 +615,7 @@ describe('ChecklistSessionService', () => {
       expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
     });
 
-    it('rejects non-observer captures even with an override reason and a broad scope', async () => {
+    it('rejects non-observer captures without admin standing, even with a reason and a broad scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
       const service = new ChecklistSessionService(prisma);
       await expect(service.captureLocation(sessionId, organizationId, 'end', {
@@ -623,6 +623,29 @@ describe('ChecklistSessionService', () => {
       }, '66666666-6666-6666-6666-666666666666', {})).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
       expect(prisma.checklistSessionEvent.create).not.toHaveBeenCalled();
+    });
+
+    it('requires a reason when an admin captures for another observer', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const service = new ChecklistSessionService(prisma);
+      await expect(service.captureLocation(sessionId, organizationId, 'end', { status: 'unavailable' },
+        '66666666-6666-6666-6666-666666666666', {}, true)).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
+    });
+
+    it('records an admin override with a session event and an audit entry', async () => {
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
+      const auditLog = { record: jest.fn(async () => undefined) };
+      const service = new ChecklistSessionService(prisma, undefined as never, auditLog as never);
+      const adminId = '66666666-6666-6666-6666-666666666666';
+      await service.captureLocation(sessionId, organizationId, 'end', { status: 'unavailable', overrideReason: 'Device offline' }, adminId, {}, true);
+      expect(prisma.checklistLocationCapture.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ capturedBy: adminId }) }),
+      );
+      expect(prisma.checklistSessionEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ eventType: 'location_override', actorUserId: adminId }) }),
+      );
+      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_location.accessed', targetId: sessionId }));
     });
 
     it('does not write an audit log entry when the assigned observer submits their own capture', async () => {

@@ -212,7 +212,7 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
     expect(captures).toHaveLength(2);
   });
 
-  it('geolocation: a non-observer admin cannot override capture on a required-policy session', async () => {
+  it('geolocation: an admin may capture for another observer only with a reason, and it is audited twice', async () => {
     const admin = await prisma.user.create({
       data: {
         organizationId,
@@ -230,24 +230,34 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
       observerId,
     );
 
+    // Without admin standing the session is invisible; without a reason an admin is refused.
     await expect(sessionService.captureLocation(
+      session.id, organizationId, 'start', { status: 'unavailable', overrideReason: 'No standing' }, admin.id, {},
+    )).rejects.toThrow('Checklist session not found');
+    await expect(sessionService.captureLocation(
+      session.id, organizationId, 'start', { status: 'unavailable' }, admin.id, {}, true,
+    )).rejects.toThrow('overrideReason is required');
+    expect(await prisma.checklistLocationCapture.count({ where: { sessionId: session.id } })).toBe(0);
+
+    await sessionService.captureLocation(
       session.id,
       organizationId,
       'start',
       { status: 'unavailable', overrideReason: 'Observer device offline; admin confirmed on-site by phone' },
       admin.id,
       {},
-    )).rejects.toThrow('Checklist session not found');
+      true,
+    );
 
     const events = await prisma.checklistSessionEvent.findMany({ where: { sessionId: session.id, eventType: 'location_override' } });
-    expect(events).toHaveLength(0);
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ actorUserId: admin.id });
 
-    // PR 304: the same override is also written to the tenant-wide privacy audit trail, distinct
-    // from the session's own timeline above.
+    // PR 304: the override is also written to the tenant-wide privacy audit trail.
     const auditEntries = await prisma.auditLog.findMany({
       where: { organizationId, action: 'checklist_location.accessed', targetId: session.id },
     });
-    expect(auditEntries).toHaveLength(0);
+    expect(auditEntries).toHaveLength(1);
   });
 
   it('geolocation: an admin reading another observer\'s exact coordinates is audited; the observer reading their own is not', async () => {

@@ -48,7 +48,7 @@ export const CHECKLIST_ROLE_PERMISSIONS: readonly ChecklistPermissionRow[] = [
   row(4, 'sessions.create', ['all', 'team', 'own', 'yes', 'none'], { status: 'implemented', policies: ['checklistSessionsManage', 'checklistSessionsCreateOwn'] }),
   row(5, 'sessions.manage', ['all', 'team', 'all', 'all', 'none'], { status: 'implemented', policies: ['checklistSessionsManage'] }),
   row(6, 'sessions.conduct', ['assigned', 'assigned', 'assigned', 'assigned', 'assigned'], { status: 'implemented', policies: ['checklistSessionsRunOwn'] }),
-  row(7, 'sessions.location', ['yes', 'assigned', 'assigned', 'assigned', 'assigned'], { status: 'planned', prs: [361], policies: ['checklistSessionsRunOwn'], scopeGap: 'an admin acting for another observer with a reason was removed in PR 352; the owner has to confirm whether it returns' }),
+  row(7, 'sessions.location', ['yes', 'assigned', 'assigned', 'assigned', 'assigned'], { status: 'implemented', policies: ['checklistSessionsRunOwn'] }),
   row(8, 'sessions.read', ['all', 'team', 'all', 'all', 'own'], { status: 'implemented', policies: ['checklistSessionsRead'] }),
   row(9, 'sessions.export', ['all', 'team', 'all', 'all', 'none'], { status: 'implemented', policies: ['checklistSessionsManage'] }),
   row(10, 'sessions.analytics', ['all', 'team', 'all', 'all', 'none'], { status: 'planned', prs: [363], policies: ['checklistManagerAnalyticsRead'] }),
