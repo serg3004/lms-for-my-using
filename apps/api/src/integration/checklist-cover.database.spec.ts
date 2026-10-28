@@ -32,6 +32,7 @@ describe('checklist cover (PR 355) — database', () => {
     const upload = {
       deleteObject: async (key: string) => { deleted.push(key); },
       getInlinePresignedUrl: async (key: string) => `https://storage.example.test/${key}`,
+      copyChecklistCover: async (key: string, org: string, id: string) => `organizations/${org}/checklist-covers/${id}/copy-of-${key.split('/').pop()}`,
     };
     service = new ChecklistsService(prisma, upload as unknown as UploadService);
   });
@@ -68,6 +69,17 @@ describe('checklist cover (PR 355) — database', () => {
       data: { organizationId, title: 'With cover', status: data.status ?? 'published', accessMode: data.accessMode ?? 'free' },
     });
   const png = (key: string) => ({ objectKey: key, mimeType: 'image/png' });
+
+  it('copies the cover with the checklist onto its own object', async () => {
+    const checklist = await makeChecklist();
+    await service.replaceCover(checklist.id, organizationId, userId, png('organizations/o/checklist-covers/a'));
+    const copy = await service.copyChecklist(checklist.id, organizationId, userId);
+    const stored = await prisma.checklist.findUniqueOrThrow({ where: { id: copy.id } });
+    expect(stored.coverObjectKey).toContain(`/checklist-covers/${copy.id}/`);
+    expect(stored.coverObjectKey).not.toBe('organizations/o/checklist-covers/a');
+    expect(stored.coverMimeType).toBe('image/png');
+    expect(stored.coverUpdatedAt).toBeInstanceOf(Date);
+  });
 
   it('stores a cover, exposes only coverUpdatedAt and never the key', async () => {
     const checklist = await makeChecklist();

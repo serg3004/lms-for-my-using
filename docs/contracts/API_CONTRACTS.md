@@ -495,7 +495,8 @@ cover replaces the previous one (the old object is deleted best-effort); `DELETE
 their organization, a learner only that of a published `free` checklist or of one assigned to them;
 anything else, another tenant or a checklist without a cover is 404. The storage key and MIME type
 are never in an API payload: checklists and catalog entries carry only `coverUpdatedAt` (ISO
-timestamp or `null`), which is also the client's cache key. A copy does not inherit the cover. The
+timestamp or `null`), which is also the client's cache key. A copy of a checklist gets its own cover object (the storage
+object is copied, never shared; if storage fails the copy is created without a cover). The
 "By assignment" / "Free access" / "On the panel" label is computed by clients from `accessMode`
 and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `checklist.cover_removed`.
 

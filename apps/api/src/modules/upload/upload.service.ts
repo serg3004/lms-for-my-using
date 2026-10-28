@@ -265,6 +265,18 @@ export class UploadService {
     return uploads;
   }
 
+  /** PR 355 follow-up: a copied checklist gets its own object, so replacing or removing one cover never touches the other. */
+  async copyChecklistCover(sourceKey: string, organizationId: string, checklistId: string): Promise<string> {
+    const { s3, bucket } = this.requireStorage();
+    const key = `organizations/${organizationId}/checklist-covers/${checklistId}/${randomUUID()}`;
+    await s3.send(new CopyObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      CopySource: `${bucket}/${encodeURIComponent(sourceKey).replace(/%2F/g, '/')}`,
+    }));
+    return key;
+  }
+
   private requireStorage(): { s3: S3Client; bucket: string } {
     if (!this.s3 || !this.bucket) throw new ServiceUnavailableException('File storage is not configured');
     return { s3: this.s3, bucket: this.bucket };

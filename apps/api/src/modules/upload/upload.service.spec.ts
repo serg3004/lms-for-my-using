@@ -117,6 +117,29 @@ describe('UploadService', () => {
     });
   });
 
+  it('copies a checklist cover to a new opaque key of the target checklist', async () => {
+    process.env['S3_ENDPOINT'] = 'https://storage.internal.example';
+    process.env['S3_BUCKET'] = 'lms-bucket';
+    process.env['S3_ACCESS_KEY_ID'] = 'test-access-key';
+    process.env['S3_SECRET_ACCESS_KEY'] = 'test-secret-key';
+    const configured = new UploadService();
+    const send = jest.fn(async () => ({}));
+    (configured as unknown as { s3: { send: typeof send } }).s3 = { send };
+
+    const key = await configured.copyChecklistCover('organizations/org-1/checklist-covers/source/aaa', 'org-1', 'copy-1');
+
+    expect(key).toMatch(/^organizations\/org-1\/checklist-covers\/copy-1\/[0-9a-f-]{36}$/);
+    expect((send.mock.calls[0] as unknown as [{ input: { Bucket: string; Key: string; CopySource: string } }])[0].input).toMatchObject({
+      Bucket: 'lms-bucket',
+      Key: key,
+      CopySource: 'lms-bucket/organizations/org-1/checklist-covers/source/aaa',
+    });
+  });
+
+  it('throws ServiceUnavailableException on copyChecklistCover when not configured', async () => {
+    await expect(service.copyChecklistCover('k', 'org-1', 'c')).rejects.toThrow(ServiceUnavailableException);
+  });
+
   it('creates a tenant-scoped opaque material key', () => {
     const key = service.createMaterialObjectKey(
       '11111111-1111-1111-1111-111111111111',

@@ -7,6 +7,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
 import { getChecklistItemPhotoUrl, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
+import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
@@ -40,11 +41,22 @@ const COLORS = {
   primarySoft: '#eef2ff',
 };
 
+type LearnerChecklistRow = {
+  key: string;
+  checklistId: string;
+  title: string;
+  description: string | null;
+  coverUpdatedAt: string | null;
+  access: { accessMode?: 'assigned' | 'free'; pinned?: boolean };
+  instance?: ChecklistInstanceSummary;
+  free?: FreeChecklistSummary;
+};
+
 // `free` is null when the catalog could not be loaded: the rest of the page must keep working.
 type LearnerChecklistsData = { instances: ChecklistInstanceSummary[]; free: FreeChecklistSummary[] | null };
-export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: { linkedSessionId?: string | null; onLinkedSessionBack?: () => void } = {}) {
+export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, openInstanceId: initialOpenInstanceId }: { linkedSessionId?: string | null; onLinkedSessionBack?: () => void; openInstanceId?: string | null } = {}) {
   const { t } = useTranslation();
-  const [openInstanceId, setOpenInstanceId] = useState<string | null>(null);
+  const [openInstanceId, setOpenInstanceId] = useState<string | null>(initialOpenInstanceId ?? null);
 
   const { state: loadState, reload: load } = useAsyncData<LearnerChecklistsData>(
     async () => {
@@ -90,7 +102,33 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     return freeChecklists ? { accessMode: 'assigned' as const } : { accessMode: instance.checklist?.accessMode, pinned: instance.checklist?.pinned };
   };
   const pinnedChecklists = (freeChecklists ?? []).filter((checklist) => checklist.pinned);
-  const catalogChecklists = (freeChecklists ?? []).filter((checklist) => !checklist.pinned);
+  // One list: every instance of the learner (assigned or free) plus the free checklists not started yet.
+  // A free checklist with an unfinished instance is shown through that instance, never twice; once it is finished it offers "Start" again.
+  const instanceIds = new Set(loadState.data.instances.map((instance) => instance.id));
+  const rows: LearnerChecklistRow[] = [
+    ...loadState.data.instances.map((instance): LearnerChecklistRow => {
+      const free = freeById.get(instance.checklistId);
+      return {
+        key: `instance-${instance.id}`,
+        checklistId: instance.checklistId,
+        title: instance.checklist?.title ?? '',
+        description: instance.checklist?.description ?? null,
+        coverUpdatedAt: free?.coverUpdatedAt ?? instance.checklist?.coverUpdatedAt ?? null,
+        access: accessOf(instance),
+        instance,
+        free,
+      };
+    }),
+    ...(freeChecklists ?? []).filter((checklist) => !checklist.activeInstanceId || !instanceIds.has(checklist.activeInstanceId)).map((checklist): LearnerChecklistRow => ({
+      key: `free-${checklist.id}`,
+      checklistId: checklist.id,
+      title: checklist.title,
+      description: checklist.description ?? null,
+      coverUpdatedAt: checklist.coverUpdatedAt ?? null,
+      access: { accessMode: 'free', pinned: checklist.pinned },
+      free: checklist,
+    })),
+  ];
   const freeButton = (checklist: FreeChecklistSummary) => (
     <button
       type="button"
@@ -118,72 +156,61 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack }: 
     <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
       <h1 style={{ color: COLORS.text }}>{t('checklists.title', 'Checklists')}</h1>
       <p style={{ color: COLORS.muted }}>{t('checklists.subtitle', 'Checklists assigned to you — complete them and attach photos where required.')}</p>
-      {loadState.data.instances.length === 0 && !(freeChecklists && freeChecklists.length > 0) && (
-        <PageState message={t('checklists.empty', 'You have no checklists assigned yet.')} />
-      )}
-      {loadState.data.instances.length > 0 && (
-        <>
-        <h2 style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.selfTitle', 'Self-study checklists')}</h2>
-        <p style={{ color: COLORS.muted }}>{t('checklists.selfHint', 'You fill these in yourself, at your own pace.')}</p>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-          {loadState.data.instances.map((instance) => (
-            <li
-              key={instance.id}
-              style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, cursor: 'pointer' }}
-              onClick={() => setOpenInstanceId(instance.id)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-                  <strong>{instance.checklist?.title}</strong>
-                  <ChecklistAccessBadge checklist={accessOf(instance)} t={t} />
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    borderRadius: 999,
-                    padding: '3px 10px',
-                    color: instance.status === 'completed' ? COLORS.success : COLORS.warning,
-                    background: instance.status === 'completed' ? COLORS.successSoft : COLORS.warningSoft,
-                  }}
-                >
-                  {t(`checklists.status.${instance.status}`, instance.status)}
-                </span>
-              </div>
-              <ChecklistDeadlineMeta instance={instance} />
-              {instance.status === 'completed' && (
-                <p style={{ color: COLORS.muted, marginBottom: 0 }}>
-                  {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
-                    score: instance.totalScore,
-                    max: instance.maxScore,
-                    percentage: instance.percentage,
-                  })}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
-        </>
-      )}
+      {rows.length === 0 && <PageState message={t('checklists.empty', 'There are no checklists available to you yet.')} />}
       {freeChecklists === null && (
         <p role="status" style={{ color: COLORS.muted }}>{t('checklists.free.loadError', 'Unable to load free checklists.')}</p>
       )}
       {startError && <p style={{ color: '#dc2626' }} role="alert">{startError}</p>}
       <PinnedChecklistTiles items={pinnedChecklists} title={t('checklists.free.pinnedTitle', 'Pinned checklists')} action={freeButton} />
-      {catalogChecklists.length > 0 && (
-        <section aria-labelledby="free-checklists-title" style={{ marginTop: 24 }}>
-          <h2 id="free-checklists-title" style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.free.title', 'Free checklists')}</h2>
-          <p style={{ color: COLORS.muted }}>{t('checklists.free.hint', 'Start any of these yourself, whenever you need.')}</p>
+      {rows.length > 0 && (
+        <section aria-labelledby="all-checklists-title" style={{ marginTop: 24 }}>
+          <h2 id="all-checklists-title" style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.all.title', 'All my checklists')}</h2>
+          <p style={{ color: COLORS.muted }}>{t('checklists.all.hint', 'Assigned checklists and free ones in one list.')}</p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-            {catalogChecklists.map((checklist) => (
-              <li key={checklist.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: COLORS.surface, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
-                  <strong>{checklist.title}</strong>{' '}
-                  <ChecklistAccessBadge checklist={{ accessMode: 'free', pinned: false }} t={t} />
-                  {checklist.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{checklist.description}</p>}
-                  <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: checklist.itemCount })}</p>
+            {rows.map((row) => (
+              <li
+                key={row.key}
+                style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, background: COLORS.surface, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', cursor: row.instance ? 'pointer' : 'default' }}
+                onClick={row.instance ? () => setOpenInstanceId(row.instance!.id) : undefined}
+              >
+                <div style={{ width: 112, flex: '0 0 112px' }}>
+                  <ChecklistCover checklistId={row.checklistId} coverUpdatedAt={row.coverUpdatedAt} title={row.title} ratio="16 / 9" />
                 </div>
-                {freeButton(checklist)}
+                <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ overflowWrap: 'anywhere' }}>{row.title}</strong>
+                    <ChecklistAccessBadge checklist={row.access} t={t} />
+                    {row.instance && (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          borderRadius: 999,
+                          padding: '3px 10px',
+                          color: row.instance.status === 'completed' ? COLORS.success : COLORS.warning,
+                          background: row.instance.status === 'completed' ? COLORS.successSoft : COLORS.warningSoft,
+                        }}
+                      >
+                        {t(`checklists.status.${row.instance.status}`, row.instance.status)}
+                      </span>
+                    )}
+                  </div>
+                  {row.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{row.description}</p>}
+                  {row.free && !row.instance && (
+                    <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: row.free.itemCount })}</p>
+                  )}
+                  {row.instance && <ChecklistDeadlineMeta instance={row.instance} />}
+                  {row.instance?.status === 'completed' && (
+                    <p style={{ color: COLORS.muted, marginBottom: 0 }}>
+                      {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
+                        score: row.instance.totalScore,
+                        max: row.instance.maxScore,
+                        percentage: row.instance.percentage,
+                      })}
+                    </p>
+                  )}
+                </div>
+                {row.free && (!row.instance || row.free.activeInstanceId === row.instance.id) && freeButton(row.free)}
               </li>
             ))}
           </ul>

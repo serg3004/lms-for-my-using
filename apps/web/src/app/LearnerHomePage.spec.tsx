@@ -66,7 +66,7 @@ afterEach(() => {
 });
 
 describe('LearnerHomePage', () => {
-  it('shows pinned free checklists as tiles linking to the checklists page', () => {
+  it('shows pinned free checklists as tiles that start or continue the checklist', () => {
     reactMocks.useState.mockReturnValueOnce([{
       ...loadedState,
       data: {
@@ -82,9 +82,8 @@ describe('LearnerHomePage', () => {
 
     expect(html).toContain('Закреплённые листы');
     expect(html).toContain('Открытие смены');
-    expect(html).toContain('>Открыть<');
+    expect(html).toContain('>Начать<');
     expect(html).toContain('>Продолжить<');
-    expect(html).toContain('href="/learn/checklists"');
   });
 
   it('shows no pinned section when nothing is pinned', () => {

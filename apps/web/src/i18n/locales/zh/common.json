@@ -1601,7 +1601,7 @@
       "statsLabel": "学习摘要",
       "pinnedChecklists": {
         "title": "已固定的清单",
-        "open": "打开",
+        "open": "开始",
         "continue": "继续"
       }
     },
@@ -2417,8 +2417,8 @@
     "sessionExpired": "会话已过期，请重新登录。",
     "loadError": "无法加载您的检查清单。",
     "loading": "正在加载检查清单...",
-    "subtitle": "分配给您的检查清单——请完成并在需要的地方附上照片。",
-    "empty": "您目前没有分配到的检查清单。",
+    "subtitle": "分配给您的清单和可自行开始的自由清单——请完成并在需要的地方附上照片。",
+    "empty": "您目前没有可用的检查清单。",
     "selfTitle": "自主完成的清单",
     "selfHint": "这些清单由您自己按自己的节奏填写。",
     "status": {
@@ -2470,6 +2470,10 @@
     "cover": {
       "alt": "清单“{{title}}”的图片",
       "defaultAlt": "默认清单插图"
+    },
+    "all": {
+      "title": "我的全部清单",
+      "hint": "已分配的清单和自由清单在同一列表中。"
     }
   },
   "checklistReview": {

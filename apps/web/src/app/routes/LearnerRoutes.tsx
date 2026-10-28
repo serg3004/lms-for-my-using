@@ -35,7 +35,7 @@ function LearnerLayoutRoute() {
 
 function LearnerChecklistsRoute() {
   const [params, setParams] = useSearchParams();
-  return <LearnerChecklistsPage linkedSessionId={params.get('sessionId')} onLinkedSessionBack={() => {
+  return <LearnerChecklistsPage linkedSessionId={params.get('sessionId')} openInstanceId={params.get('open')} onLinkedSessionBack={() => {
     const next = new URLSearchParams(params); next.delete('sessionId'); setParams(next);
   }} />;
 }

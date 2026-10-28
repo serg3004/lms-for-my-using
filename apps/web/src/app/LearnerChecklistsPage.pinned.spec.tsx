@@ -27,11 +27,11 @@ const free = (id: string, title: string, patch: Record<string, unknown> = {}) =>
 
 let root: ReturnType<typeof createRoot> | undefined;
 let container: HTMLDivElement;
-async function render() {
+async function render(props: { openInstanceId?: string | null } = {}) {
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  await act(async () => { root?.render(<LearnerChecklistsPage />); });
+  await act(async () => { root?.render(<LearnerChecklistsPage {...props} />); });
 }
 
 beforeEach(async () => {
@@ -46,7 +46,7 @@ afterEach(async () => {
 });
 
 describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
-  it('shows pinned checklists as tiles on top and keeps the rest in the big block', async () => {
+  it('shows pinned checklists as tiles on top and also lists every checklist in the big block (PR 355 follow-up)', async () => {
     api.listFreeChecklists.mockResolvedValue([free('a', 'Закреплённый лист', { pinned: true }), free('b', 'Обычный лист')]);
 
     await render();
@@ -54,9 +54,9 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     const tiles = container.querySelector('section[aria-label="Закреплённые листы"]');
     expect(tiles?.textContent).toContain('Закреплённый лист');
     expect(tiles?.textContent).not.toContain('Обычный лист');
-    const big = container.querySelector('#free-checklists-title')?.closest('section');
+    const big = container.querySelector('#all-checklists-title')?.closest('section');
     expect(big?.textContent).toContain('Обычный лист');
-    expect(big?.textContent).not.toContain('Закреплённый лист');
+    expect(big?.textContent).toContain('Закреплённый лист');
   });
 
   it('starts a checklist straight from its tile', async () => {
@@ -77,10 +77,10 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     expect([...container.querySelectorAll('button')].some((b) => b.textContent === 'Продолжить')).toBe(true);
   });
 
-  it('hides the big block when every free checklist is pinned, and the tiles when none is', async () => {
+  it('hides the tiles when nothing is pinned, and the big block when there is nothing to list', async () => {
     api.listFreeChecklists.mockResolvedValue([free('a', 'Закреплённый лист', { pinned: true })]);
     await render();
-    expect(container.querySelector('#free-checklists-title')).toBeNull();
+    expect(container.querySelector('#all-checklists-title')).not.toBeNull();
     expect(container.querySelector('section[aria-label="Закреплённые листы"]')).not.toBeNull();
 
     await act(async () => { root?.unmount(); });
@@ -88,7 +88,13 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     api.listFreeChecklists.mockResolvedValue([free('b', 'Обычный лист')]);
     await render();
     expect(container.querySelector('section[aria-label="Закреплённые листы"]')).toBeNull();
-    expect(container.querySelector('#free-checklists-title')).not.toBeNull();
+    expect(container.querySelector('#all-checklists-title')).not.toBeNull();
+
+    await act(async () => { root?.unmount(); });
+    document.body.innerHTML = '';
+    api.listFreeChecklists.mockResolvedValue([]);
+    await render();
+    expect(container.querySelector('#all-checklists-title')).toBeNull();
   });
 
   // PR 355: picture and access badges.
@@ -102,15 +108,19 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     await render();
 
     const tiles = container.querySelector('section[aria-label="Закреплённые листы"]');
-    expect(api.getChecklistCoverUrl).toHaveBeenCalledTimes(1);
+    // The picture is requested once for the tile and once for the row of the same checklist.
+    expect(api.getChecklistCoverUrl).toHaveBeenCalledTimes(2);
     expect(api.getChecklistCoverUrl).toHaveBeenCalledWith('a');
     expect(tiles?.querySelector('img')?.getAttribute('alt')).toBe('Картинка листа «Лист с картинкой»');
     expect(tiles?.querySelectorAll('img').length).toBe(1);
     expect(tiles?.querySelectorAll('svg[role="img"]').length).toBe(1);
-    expect(tiles?.querySelectorAll('.ds-badge').length).toBe(2);
-    expect([...tiles!.querySelectorAll('.ds-badge')].every((badge) => badge.textContent === 'В панели')).toBe(true);
-    const big = container.querySelector('#free-checklists-title')?.closest('section');
-    expect(big?.querySelector('.ds-badge')?.textContent).toBe('Свободное прохождение');
+    expect(tiles?.querySelectorAll('[data-access-kind]').length).toBe(2);
+    expect([...tiles!.querySelectorAll('[data-access-kind]')].every((badge) => badge.textContent === 'В панели')).toBe(true);
+    const big = container.querySelector('#all-checklists-title')?.closest('section');
+    const bigRow = (title: string) => [...big!.querySelectorAll('li')].find((li) => li.querySelector('strong')?.textContent === title);
+    expect(bigRow('Обычный лист')?.querySelector('[data-access-kind]')?.textContent).toBe('Свободное прохождение');
+    expect(bigRow('Лист с картинкой')?.querySelector('[data-access-kind]')?.textContent).toBe('В панели');
+    expect(bigRow('Лист с картинкой')?.querySelector('img')).not.toBeNull();
   });
 
   it('falls back to the default illustration when the picture cannot be loaded', async () => {
@@ -119,7 +129,8 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     await render();
 
     expect(container.querySelector('img')).toBeNull();
-    expect(container.querySelectorAll('svg[role="img"]').length).toBe(1);
+    // tile + row
+    expect(container.querySelectorAll('svg[role="img"]').length).toBe(2);
   });
 
   it('labels an assigned list row "По назначению" and a free one by the live catalog', async () => {
@@ -131,9 +142,21 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     api.listFreeChecklists.mockResolvedValue([free('a', 'Свободный закреплённый', { pinned: true })]);
     await render();
 
-    const rows = [...container.querySelectorAll('li')].filter((li) => li.textContent?.includes('Назначенный') || li.textContent?.includes('Свободный закреплённый'));
-    const badgeOf = (title: string) => rows.find((li) => li.querySelector('strong')?.textContent === title)?.querySelector('.ds-badge')?.textContent;
+    const rows = [...container.querySelectorAll('#all-checklists-title ~ ul li')].filter((li) => li.textContent?.includes('Назначенный') || li.textContent?.includes('Свободный закреплённый'));
+    const badgeOf = (title: string) => rows.find((li) => li.querySelector('strong')?.textContent === title)?.querySelector('[data-access-kind]')?.textContent;
     expect(badgeOf('Назначенный')).toBe('По назначению');
     expect(badgeOf('Свободный закреплённый')).toBe('В панели');
+  });
+
+  it('opens the instance named by the openInstanceId prop (a start from the learner home)', async () => {
+    api.listMyChecklistInstances.mockResolvedValue([{
+      id: 'i1', checklistId: 'a', status: 'assigned', dueAt: null, totalScore: 0, maxScore: 0, percentage: 0, passed: false, results: [],
+      checklist: { id: 'a', title: 'Открытый с главной', items: [], scoringMode: 'checkbox' },
+    }]);
+    api.listFreeChecklists.mockResolvedValue([free('a', 'Открытый с главной', { pinned: true, activeInstanceId: 'i1' })]);
+
+    await render({ openInstanceId: 'i1' });
+
+    expect(container.querySelector('h1')?.textContent).toBe('Открытый с главной');
   });
 });
