@@ -54,7 +54,7 @@ export async function installManagerReportMocks(page: Page, role: 'admin' | 'man
         const rows = [['Руководитель', 'Сотрудники', 'Завершённые сессии', 'Среднее, %'], ...data.managers.map((row) => [row.name ?? 'Без руководителя', row.employeesCount, row.completedCount, row.averagePercentage ?? ''])];
         const csv = '\uFEFF' + rows.map((row) => row.map((value) => {
           const text = String(value);
-          return `"${(/^[=+@\-]/.test(text) ? "'" + text : text).replaceAll('"', '""')}"`;
+          return `"${(/^[=+@-]/.test(text) ? "'" + text : text).replaceAll('"', '""')}"`;
         }).join(',')).join('\r\n') + '\r\n';
         return route.fulfill({ json: { filename: 'checklist-managers.csv', rows, csv, rowCount: data.managers.length } });
       }

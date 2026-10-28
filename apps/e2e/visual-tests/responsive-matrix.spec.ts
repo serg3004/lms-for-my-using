@@ -716,7 +716,14 @@ for (const width of widths) {
         }
         await expectNoPageOverflow(page);
         if (width <= 375) await expectTouchTargets(page);
-        await expectVisualMatch(page, `${role}-checklist-manager-report-${width}`);
+        if (role === 'admin' && width > 860) {
+          // The desktop admin shell scrolls internally: a full-page screenshot only
+          // paints its first viewport. Capture the report after actually reaching it.
+          await section.scrollIntoViewIfNeeded();
+          await expect(section).toBeInViewport();
+          await page.waitForLoadState('networkidle');
+          await expect(section).toHaveScreenshot(`${role}-checklist-manager-report-${width}.png`);
+        } else await expectVisualMatch(page, `${role}-checklist-manager-report-${width}`);
       });
     }
 
