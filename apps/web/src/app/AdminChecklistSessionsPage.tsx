@@ -8,7 +8,6 @@ import { formatDate } from '../shared/formatDate.js';
 import { useSession } from '../shared/session.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { allSessionsPath, ObserverSessionsNav } from './ObserverSessionsNav.js';
-import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT, describeChecklistSessionResult } from '../shared/checklistStatus.js';
@@ -334,7 +333,6 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         }
       />
       {isObserverVariant ? <ObserverSessionsNav current="all" /> : <ChecklistsTabs current="sessions" />}
-      {isAdmin && !isObserverVariant && <ObserverSessionsBlock />}
       {actionError && (
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">
           <p>{actionError}</p>
