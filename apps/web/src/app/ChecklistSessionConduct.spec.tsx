@@ -423,7 +423,8 @@ describe('conduct sheet overview and navigation (PR 347)', () => {
     expect(conductAnswerState(item, { ...result, checked: true }, 'sum_points')).toBe('answered');
     expect(conductAnswerState(item, { ...result, checked: false, scaleLevel: null }, 'sum_points')).toBe('unanswered');
     expect(conductAnswerState(item, { ...result, scaleLevel: 0 }, 'scale')).toBe('answered');
-    expect(conductAnswerState(instance().checklist!.items[0]!, { ...result, scaleLevel: 0 }, 'sum_points')).toBe('answered');
+    expect(conductAnswerState(instance().checklist!.items[0]!, { ...result, scaleLevel: 1 }, 'sum_points')).toBe('answered');
+    expect(conductAnswerState(instance().checklist!.items[0]!, { ...result, scaleLevel: 99 }, 'sum_points')).toBe('unanswered');
     expect(canCompleteSession('in_progress', false, 0, 1)).toBe(false);
   });
 

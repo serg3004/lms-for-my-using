@@ -125,6 +125,24 @@ percentage = max > 0 ? round(earned / max * 100) : not_scored
   mechanism (whatever `ChecklistInstance` already uses for non-session checklists) — this PR does not introduce
   a second pass/fail rule.
 
+### Per-criterion scale scoring amendment (PR 358)
+
+A criterion with a resolved evaluation scale uses its assignment-time `scale.levels`: the
+selected `value` supplies `score`, and the largest score supplies its maximum, in every checklist
+scoring mode. Without that scale, the original checklist-level scoring remains unchanged. The
+existing weight, skip, rejection, photo and zero-maximum rules above continue to apply. A zero-score
+level is an answered criterion, and must neither block completion for lack of a mark nor be
+auto-skipped. Invalid level values are rejected before persistence. Both assignment-time maxima
+and explicit score computation use these same frozen definitions.
+
+New criteria default to the organization's protected Yes/No scale when `scaleId` is omitted;
+explicit null preserves legacy checklist scoring. Existing criteria and snapshots are not
+backfilled. There is no automatic recalculation of completed instances/sessions: reads and reports
+retain stored results. An administrator can still request an explicit audited recalculation;
+that operation uses the snapshot's criterion levels, including old snapshots with resolved scales,
+and never today's live scale. This amendment corrects scoring, without rewriting historical data
+or changing session state transitions, access rules, or the snapshot format/version.
+
 ### API/RBAC contract (binding for PR 287, 292)
 
 - Admin: tenant-wide access to `ChecklistSession`, unchanged from the existing admin Checklist scope.

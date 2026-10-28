@@ -2436,6 +2436,7 @@
     },
     "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
     "backToList": "All checklists",
+    "invalidCriterionScale": "Select a valid level from this criterion’s evaluation scale.",
     "submitError": "Unable to save this item.",
     "markDone": "Done",
     "points": "pts",

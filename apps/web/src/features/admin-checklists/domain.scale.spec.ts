@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  computePreviewResult,
   SCALE_MAX_LEVELS,
   createScaleLevelDraft,
   describeScaleLevels,
@@ -68,4 +69,12 @@ describe('scale editor domain (PR 343)', () => {
     expect(describeScaleLevels([{ value: 2, label: 'Yes', score: 100 }, { value: 1, label: 'No', score: 0 }])).toBe('No (0), Yes (100)');
     expect(describeScaleLevels([])).toBe('');
   });
+});
+
+
+it('previews mixed criterion scales with the same weights and zero-level completion as the server', () => {
+  const base = { checklistId: 'c', text: 'Criterion', isRequired: true, photoRequired: false, points: 999 };
+  const scale = (score: number) => ({ id: 's', name: 'Scale', levels: [{ value: 7, label: 'No', score: 0 }, { value: 9, label: 'Yes', score }] });
+  const items = [{ ...base, id: 'a', order: 0, weight: 2, scale: scale(40) }, { ...base, id: 'b', order: 1, weight: 3, scale: scale(10) }];
+  expect(computePreviewResult(items, 'sum_points', [], 70, { a: { scaleLevel: 9 }, b: { scaleLevel: 7 } })).toEqual({ totalScore: 80, maxScore: 110, percentage: 73, passed: true, allAnswered: true });
 });

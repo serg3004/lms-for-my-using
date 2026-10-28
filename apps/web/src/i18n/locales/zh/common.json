@@ -2436,6 +2436,7 @@
     },
     "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
     "backToList": "所有检查清单",
+    "invalidCriterionScale": "请选择此标准评分量表中的有效等级。",
     "submitError": "无法保存该项目。",
     "markDone": "已完成",
     "points": "分",

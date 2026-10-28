@@ -1,3 +1,4 @@
+import { checklistItemLevels } from '../../app/checklistCompletion.js';
 import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
@@ -227,7 +228,8 @@ export function ChecklistBuilder({
   function removeScaleLevel(index: number) {
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
-  const previewResult = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, previewAnswers);
+  const previewItems = items.map((item) => ({ ...item, scale: scales.find((scale) => scale.id === item.scaleId) ?? item.scale }));
+  const previewResult = computePreviewResult(previewItems, scoringMode, scaleLevels, passThreshold, previewAnswers);
   return (
     <div className="admin-builder">
       <button type="button" className="admin-back-link" onClick={onBack}>
@@ -669,57 +671,61 @@ export function ChecklistBuilder({
             </div>
             <p className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
             <ul className="admin-checklist-items">
-              {items.map((item) => (
-                <li key={item.id} className="admin-checklist-item admin-checklist-item--preview">
-                  <span className="admin-checklist-item__index">✓</span>
-                  <span className="admin-preview-item__text">
-                    {item.text}{' '}
-                    <small>{item.isRequired ? t('admin.checklists.requiredItem', 'Required') : t('admin.checklists.optionalItem', 'Optional')}</small>
-                  </span>
-                  {scoringMode === 'scale' ? (
-                    <div className="admin-seg">
-                      {scaleLevels.map((level) => (
-                        <button
-                          key={level.level}
-                          type="button"
-                          className={previewAnswers[item.id]?.scaleLevel === level.level ? 'admin-seg__btn admin-seg__btn--active' : 'admin-seg__btn'}
-                          onClick={() => setPreviewAnswers((prev) => ({
+              {previewItems.map((item) => {
+                const levels = checklistItemLevels(item, scoringMode, scaleLevels);
+                return (
+                  <li key={item.id} className="admin-checklist-item admin-checklist-item--preview">
+                    <span className="admin-checklist-item__index">✓</span>
+                    <span className="admin-preview-item__text">
+                      {item.text}{' '}
+                      <small>{item.isRequired ? t('admin.checklists.requiredItem', 'Required') : t('admin.checklists.optionalItem', 'Optional')}</small>
+                    </span>
+                    {levels !== null ? (
+                      <div className="admin-seg">
+                        {levels.map((level) => (
+                          <button
+                            key={level.level}
+                            type="button"
+                            aria-pressed={previewAnswers[item.id]?.scaleLevel === level.level}
+                            className={previewAnswers[item.id]?.scaleLevel === level.level ? 'admin-seg__btn admin-seg__btn--active' : 'admin-seg__btn'}
+                            onClick={() => setPreviewAnswers((prev) => ({
+                              ...prev,
+                              [item.id]: { ...prev[item.id], scaleLevel: level.level },
+                            }))}
+                          >
+                            {level.points} · {level.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <label className="admin-checklist-item__photo">
+                        <input
+                          type="checkbox"
+                          checked={previewAnswers[item.id]?.checked ?? false}
+                          onChange={(e) => setPreviewAnswers((prev) => ({
                             ...prev,
-                            [item.id]: { ...prev[item.id], scaleLevel: level.level },
+                            [item.id]: { ...prev[item.id], checked: e.target.checked },
                           }))}
-                        >
-                          {level.points} · {level.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <label className="admin-checklist-item__photo">
-                      <input
-                        type="checkbox"
-                        checked={previewAnswers[item.id]?.checked ?? false}
-                        onChange={(e) => setPreviewAnswers((prev) => ({
-                          ...prev,
-                          [item.id]: { ...prev[item.id], checked: e.target.checked },
-                        }))}
-                      />
-                      {t('admin.checklists.markDone', 'Done')}
-                    </label>
-                  )}
-                  {item.photoRequired && (
-                    <label className="admin-checklist-item__photo">
-                      <input
-                        type="checkbox"
-                        checked={previewAnswers[item.id]?.hasPhoto ?? false}
-                        onChange={(e) => setPreviewAnswers((prev) => ({
-                          ...prev,
-                          [item.id]: { ...prev[item.id], hasPhoto: e.target.checked },
-                        }))}
-                      />
-                      {t('admin.checklists.previewPhotoAttached', 'Photo attached')}
-                    </label>
-                  )}
-                </li>
-              ))}
+                        />
+                        {t('admin.checklists.markDone', 'Done')}
+                      </label>
+                    )}
+                    {item.photoRequired && (
+                      <label className="admin-checklist-item__photo">
+                        <input
+                          type="checkbox"
+                          checked={previewAnswers[item.id]?.hasPhoto ?? false}
+                          onChange={(e) => setPreviewAnswers((prev) => ({
+                            ...prev,
+                            [item.id]: { ...prev[item.id], hasPhoto: e.target.checked },
+                          }))}
+                        />
+                        {t('admin.checklists.previewPhotoAttached', 'Photo attached')}
+                      </label>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
             <div className={previewResult.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
               <span>{previewResult.allAnswered ? (previewResult.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('admin.checklists.previewIncomplete', 'Not all completion requirements are met yet')}</span>

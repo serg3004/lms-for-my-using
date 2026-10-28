@@ -1,3 +1,4 @@
+import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -724,6 +725,17 @@ for (const width of widths) {
           await page.waitForLoadState('networkidle');
           await expect(section).toHaveScreenshot(`${role}-checklist-manager-report-${width}.png`);
         } else await expectVisualMatch(page, `${role}-checklist-manager-report-${width}`);
+      });
+    }
+
+    for (const role of ['learner', 'instructor'] as const) {
+      test(`keeps ${role} criterion-scale answers responsive`, async ({ page }) => {
+        await openCriterionScalePage(page, role);
+        await page.getByRole('button', { name: /\bNo\b/ }).click();
+        await expect(page.getByRole('button', { name: /\bNo\b/ })).toHaveAttribute('aria-pressed', 'true');
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await expectVisualMatch(page, `${role}-criterion-scale-answer-${width}`);
       });
     }
 

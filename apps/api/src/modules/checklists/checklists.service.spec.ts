@@ -224,8 +224,8 @@ describe('ChecklistsService — scoring modes', () => {
       { organizationId, title: 'Приёмка стажёра', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: false });
-    await service.createItem(checklist.id, organizationId, { text: 'Прошёл инструктаж', points: 20, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Получил СИЗ', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Прошёл инструктаж', points: 20, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(30);
@@ -255,8 +255,8 @@ describe('ChecklistsService — scoring modes', () => {
       { organizationId, title: 'Обязательный обход', scoringMode: 'all_required', passThreshold: 100, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт 1', points: 50, isRequired: true, photoRequired: false });
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт 2', points: 50, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт 1', points: 50, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт 2', points: 50, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(2);
@@ -289,7 +289,7 @@ describe('ChecklistsService — scoring modes', () => {
       },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Работа с кассой', points: 0, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     expect(instance.maxScore).toBe(100);
@@ -318,7 +318,7 @@ describe('ChecklistsService — scoring modes', () => {
       },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт', points: 0, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт', points: 0, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -336,7 +336,7 @@ describe('ChecklistsService — manual review flow', () => {
       { organizationId, title: 'С проверкой наставника', scoringMode: 'sum_points', passThreshold: 50, requiresReview: true },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -356,7 +356,7 @@ describe('ChecklistsService — manual review flow', () => {
       { organizationId, title: 'С проверкой', scoringMode: 'sum_points', passThreshold: 50, requiresReview: true },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -378,7 +378,7 @@ describe('ChecklistsService — manual review flow', () => {
       { organizationId, title: 'Без проверки', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт 1', points: 10, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
 
@@ -396,7 +396,7 @@ describe('ChecklistsService — ownership and validation guards', () => {
       { organizationId, title: 'Тест', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт', points: 10, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -424,7 +424,7 @@ describe('ChecklistsService — ownership and validation guards', () => {
       { organizationId, title: 'Шкала', scoringMode: 'scale', passThreshold: 50, requiresReview: false, scaleLevels: [{ level: 1, label: 'Единственный', points: 10 }] },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт', points: 0, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт', points: 0, isRequired: true, photoRequired: false });
 
     await expect(service.updateChecklist(checklist.id, organizationId, { status: 'published' })).rejects.toBeInstanceOf(BadRequestException);
   });
@@ -462,8 +462,8 @@ describe('ChecklistsService — item photo attachment', () => {
       { organizationId, title: 'С фото', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт с фото', points: 10, isRequired: true, photoRequired: true });
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт без фото', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт с фото', points: 10, isRequired: true, photoRequired: true });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт без фото', points: 10, isRequired: true, photoRequired: false });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -481,7 +481,7 @@ describe('ChecklistsService — item photo attachment', () => {
       { organizationId, title: 'С фото', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'Пункт', points: 10, isRequired: true, photoRequired: true });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт', points: 10, isRequired: true, photoRequired: true });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);
@@ -652,8 +652,8 @@ describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {
       { organizationId, title: 'Skip/weight test', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
       instructorId,
     );
-    await service.createItem(checklist.id, organizationId, { text: 'A', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[0] });
-    await service.createItem(checklist.id, organizationId, { text: 'B', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[1] });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'A', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[0] });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'B', points: 10, isRequired: true, photoRequired: false, ...itemOverrides[1] });
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
     const items = await service.listItems(checklist.id, organizationId);

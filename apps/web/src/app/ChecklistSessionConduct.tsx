@@ -26,7 +26,7 @@ import { useAsyncData } from '../shared/useAsyncData.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
-import { checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
+import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 const COLORS = {
   surface: 'var(--color-surface)',
@@ -693,7 +693,7 @@ function CriterionCard({
         const updated = await fn();
         onSaved(updated);
       },
-      { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+      { setBusy: setSaving, setError: (message) => setError(localizeChecklistScaleError(message, t)), onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
   }
 
@@ -717,12 +717,14 @@ function CriterionCard({
           {item.scale.levels.map((level) => (
             <button
               key={level.value}
+              aria-pressed={result?.scaleLevel === level.value}
               type="button"
               disabled={!canAct}
               onClick={() => void run(() => submitChecklistItemResult(instanceId, item.id, { scaleLevel: level.value }))}
               style={{
                 border: `1px solid ${result?.scaleLevel === level.value ? COLORS.primary : COLORS.border}`,
                 background: result?.scaleLevel === level.value ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
+                color: COLORS.text,
                 borderRadius: 10,
                 padding: '10px 14px',
                 fontSize: 13,
@@ -739,12 +741,14 @@ function CriterionCard({
           {(scaleLevels ?? []).map((level) => (
             <button
               key={level.level}
+              aria-pressed={result?.scaleLevel === level.level}
               type="button"
               disabled={!canAct}
               onClick={() => void run(() => submitChecklistItemResult(instanceId, item.id, { scaleLevel: level.level }))}
               style={{
                 border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
                 background: result?.scaleLevel === level.level ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
+                color: COLORS.text,
                 borderRadius: 10,
                 padding: '10px 14px',
                 fontSize: 13,
@@ -941,7 +945,7 @@ function StructuredFeedback({
         const updated = await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
         onSaved(updated);
       },
-      { setBusy: setSaving, setError, onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
+      { setBusy: setSaving, setError: (message) => setError(localizeChecklistScaleError(message, t)), onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
   }
 
