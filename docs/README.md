@@ -68,6 +68,7 @@ Root `docs/` is not a writable backlog. Old trackers and the frozen development 
 - MVP/product scope: [`product/MVP_SCOPE_LOCK.md`](./product/MVP_SCOPE_LOCK.md)
 - API semantics: [`contracts/API_CONTRACTS.md`](./contracts/API_CONTRACTS.md)
 - RBAC semantics: [`contracts/API_RBAC_MATRIX.md`](./contracts/API_RBAC_MATRIX.md)
+- checklist module rights, owner's reference table (22 actions × 5 roles; pinned to the code by a test): [`product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md`](./product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md)
 - terminology conflicts: [`contracts/GLOSSARY.md`](./contracts/GLOSSARY.md)
 - architecture boundaries/decisions: [`architecture/ARCHITECTURE_MODULE_BOUNDARIES.md`](./architecture/ARCHITECTURE_MODULE_BOUNDARIES.md), [`architecture/adr/`](./architecture/adr/)
 - local/operational procedures: [`runbooks/`](./runbooks/)
