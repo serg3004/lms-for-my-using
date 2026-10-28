@@ -17,7 +17,7 @@ function sessionRow() {
 }
 
 // PR 360б: the instructor and the mentor manage every session of the organization in their own layout.
-async function mockApi(page: Page, role: 'instructor' | 'mentor') {
+async function mockApi(page: Page, role: 'instructor' | 'mentor' | 'admin', toConduct: unknown[] = []) {
   const calls = { cancelled: 0, wizardObserverLookups: 0 };
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
@@ -37,6 +37,7 @@ async function mockApi(page: Page, role: 'instructor' | 'mentor') {
       calls.cancelled++;
       return route.fulfill({ json: { ...sessionRow(), status: 'cancelled', version: 4 } });
     }
+    if (path === '/checklist-sessions/to-conduct') return route.fulfill({ json: { items: toConduct, page: 1, pageSize: 100, total: toConduct.length } });
     if (path === '/checklist-sessions') {
       const items = calls.cancelled ? [] : [sessionRow()];
       return route.fulfill({ json: { items, page: 1, pageSize: 20, total: items.length } });
@@ -68,5 +69,18 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await expect(page.getByText('Alex Learner').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Open' }).first()).toHaveAttribute('href', `/mentor/sessions/${sessionId}`);
     await expect(page.getByRole('button', { name: 'Module settings' })).toHaveCount(0);
+  });
+
+  test('PR 360в: an admin assigned as an observer sees the queue on the sessions page, otherwise nothing extra', async ({ page }) => {
+    await mockApi(page, 'admin', [sessionRow()]);
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toBeVisible();
+  });
+
+  test('PR 360в: an admin without sessions to conduct sees no queue block', async ({ page }) => {
+    await mockApi(page, 'admin');
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByText('Alex Learner').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toHaveCount(0);
   });
 });
