@@ -131,9 +131,9 @@ describe('checklist report CSV export (PR 336) — database', () => {
     expect(list.total).toBe(searched.rowCount);
   });
 
-  it('refuses both exports to learners and instructors, and a missing audit never leaks rows', async () => {
+  it('refuses both exports to learners, the analytics export to instructors (the session export is open to them since PR 360), and a missing audit never leaks rows', async () => {
     await expect(request(learner, 'exportSessions')).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(request(instructor, 'exportSessions')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(request(instructor, 'exportSessions')).resolves.toBeDefined();
     await expect(request(learner, 'exportManagerAnalytics')).rejects.toBeInstanceOf(ForbiddenException);
     await expect(request(instructor, 'exportManagerAnalytics')).rejects.toBeInstanceOf(ForbiddenException);
     expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_report.exported' } })).toBe(0);
