@@ -369,7 +369,7 @@
 
 ## PR 356 — Отчёт по руководителям
 
-**Статус:** реализация подготовлена; проверка visual baseline и итоговый CI ожидаются.
+**Статус:** код и проверки подготовлены. Локальные unit/coverage, DB-integration, браузерные сценарии, сборка, lint/types и docs consistency прошли; visual baselines обновлены и просмотрены после успешного `update-visual-baselines.yml`. Итоговый CI проверяется в Pull Request перед готовностью к слиянию.
 
 **Заметки по подготовке:**
 - В PR 334 разрез «по руководителям» не сделан: связь «сотрудник — руководитель» в модели не однозначна (`ManagerGroup`, `DepartmentManager`, линии подчинения, всё many-to-many).
@@ -392,7 +392,7 @@
 - [x] оба основных типа руководителя учитываются; совпадающий пользователь не дублируется, смена основного подразделения не оставляет старых связей (`checklist-manager-analytics.database.spec.ts`, реальный Postgres);
 - [x] удалённые сессии/экземпляры и закрытые назначения руководителей/членства (`effectiveTo IS NOT NULL`) не учитываются;
 - [x] RBAC `checklistManagerAnalyticsRead`, cross-tenant тест; экспорт совпадает с экраном (`checklist-manager-analytics.database.spec.ts`, `checklist-manager-breakdown.spec.ts`);
-- [ ] RU/EN/KK/ZH, a11y, visual baseline дашборда.
+- [x] RU/EN/KK/ZH; axe без нарушений для admin/manager и «Без руководителя»; visual baseline на 320/375/768/1024/1280/1440px, desktop admin проверяет прокрутку к таблице; браузерные CSV/Excel и URL-проверки на 375/1440px.
 
 ## PR 357 — Установка как PWA для наблюдателя (отложен)
 
