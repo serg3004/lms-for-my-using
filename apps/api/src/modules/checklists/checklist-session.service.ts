@@ -960,7 +960,13 @@ export class ChecklistSessionService {
     });
   }
 
-  /** Capture is an assigned-observer action for every role (PR 352). */
+  /**
+   * Geolocation capture (PR 290): at most one report per (session, capturePoint), so a second
+   * submission for the same point is a 409. Capture is an assigned-observer action for every role
+   * (PR 352). The one exception is an admin acting for another observer (PR 361): it needs an
+   * `overrideReason` and is audited twice -- a `location_override` session event and a
+   * `checklist_location.accessed` tenant audit entry.
+   */
   async captureLocation(
     sessionId: string,
     organizationId: string,
@@ -968,15 +974,20 @@ export class ChecklistSessionService {
     input: SubmitChecklistLocationCaptureInput,
     actorId: string,
     scope: object,
+    actingAsAdmin = false,
   ) {
     const session = await this.prisma.checklistSession.findFirst({
       where: { id: sessionId, organizationId, deletedAt: null, ...scope },
       select: { id: true, observerId: true, locationCapturePolicy: true },
     });
     if (!session) throw new NotFoundException('Checklist session not found');
-    if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
+    const isOverride = session.observerId !== actorId;
+    if (isOverride && !actingAsAdmin) throw new NotFoundException('Checklist session not found');
     if (session.locationCapturePolicy === 'off') {
       throw new BadRequestException('Geolocation capture is disabled for this session');
+    }
+    if (isOverride && !input.overrideReason) {
+      throw new BadRequestException('overrideReason is required when submitting a location capture on behalf of the observer');
     }
 
     let capture;
@@ -995,6 +1006,18 @@ export class ChecklistSessionService {
           },
         });
 
+        if (isOverride) {
+          await tx.checklistSessionEvent.create({
+            data: {
+              organizationId,
+              sessionId,
+              eventType: 'location_override',
+              actorUserId: actorId,
+              metadata: { capturePoint, status: input.status, overrideReason: input.overrideReason },
+            },
+          });
+        }
+
         return created;
       });
     } catch (error) {
@@ -1002,6 +1025,18 @@ export class ChecklistSessionService {
         throw new ConflictException(`A ${capturePoint} location capture already exists for this session`);
       }
       throw error;
+    }
+
+    if (isOverride) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'checklist_location.accessed',
+        targetType: 'checklist_session',
+        targetId: sessionId,
+        summary: `Submitted a ${capturePoint} location capture on behalf of the assigned observer`,
+        metadata: { capturePoint, reason: input.overrideReason },
+      });
     }
 
     return capture;

@@ -342,7 +342,9 @@ describe('observer session creation and conduct access (PR 331/349) — database
         }
         await expect(controller.submitFeedback(deniedId, { version: 1, strengths: 'Forged' }, await request(actor, 'submitFeedback'))).rejects.toBeInstanceOf(NotFoundException);
         await expect(controller.submitContext(deniedId, { version: 1, values: {} }, await request(actor, 'submitContext'))).rejects.toBeInstanceOf(NotFoundException);
-        await expect(controller.captureLocation(deniedId, 'start', { status: 'denied' }, await request(actor, 'captureLocation'))).rejects.toBeInstanceOf(NotFoundException);
+        // PR 361: an admin reaches another observer's session but needs a reason; nobody else does.
+        await expect(controller.captureLocation(deniedId, 'start', { status: 'denied' }, await request(actor, 'captureLocation')))
+          .rejects.toBeInstanceOf(role === 'admin' && deniedId === other.id ? BadRequestException : NotFoundException);
       }
       // Service rejects an unsafe broad scope too, including cached transitions.
       await expect(sessions.transition(other.id, organizationId, 'start', 1, actor.id, {})).rejects.toBeInstanceOf(NotFoundException);

@@ -700,8 +700,10 @@ export class ChecklistsController {
     const capturePoint = checklistLocationCapturePointSchema.parse(point);
     const input = submitChecklistLocationCaptureSchema.parse(body);
     const user = request.currentUser!;
-    const scope = this.reviewAccess.observerActionScope(user);
-    return this.sessions.captureLocation(sessionId, user.organizationId, capturePoint, input, user.id, scope);
+    const isAdmin = user.roles.includes('admin');
+    // Only an admin may capture for another observer (with a reason, PR 361); everyone else is pinned.
+    const scope = isAdmin ? await this.reviewAccess.sessionScope(user) : this.reviewAccess.observerActionScope(user);
+    return this.sessions.captureLocation(sessionId, user.organizationId, capturePoint, input, user.id, scope, isAdmin);
   }
   @Get('checklist-sessions/:id/location')
   @Roles(...rolePolicies.checklistSessionsRead)
