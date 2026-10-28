@@ -63,6 +63,8 @@ const analyticsFixture: ManagerChecklistAnalytics = {
   ],
   departments: [{ departmentId: 'd1', name: 'Warehouse', employeesCount: 1, sessionsCount: 3, completedCount: 3, averagePercentage: 85, noCompletionCount: 0 }],
   departmentOptions: [{ id: 'd1', name: 'Warehouse' }],
+  managers: [{ managerId: 'm1', name: 'Team lead', employeesCount: 1, completedCount: 3, averagePercentage: 85 }, { managerId: null, name: null, employeesCount: 1, completedCount: 0, averagePercentage: null }],
+  managerOptions: [{ id: 'm1', name: 'Team lead' }],
 };
 
 describe('ManagerChecklistsPage', () => {
@@ -194,7 +196,7 @@ describe('ManagerChecklistsPage', () => {
       trend: [],
       employees: [],
       departments: [],
-      departmentOptions: [],
+      departmentOptions: [], managers: [], managerOptions: [],
     };
     reactMocks.useState
       .mockReturnValueOnce([new Set(), vi.fn()])

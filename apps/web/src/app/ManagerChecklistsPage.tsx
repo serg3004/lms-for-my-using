@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
@@ -13,9 +13,11 @@ import { formatDate } from '../shared/formatDate.js';
 import { describeChecklistSessionResult } from '../shared/checklistStatus.js';
 import {
   exportManagerChecklistEmployees,
+  exportManagerChecklistManagers,
   getManagerChecklistAnalytics,
   type ManagerChecklistAnalytics,
   type ManagerChecklistAnalyticsDepartmentRow,
+  type ManagerChecklistAnalyticsManagerRow,
   type ManagerChecklistAnalyticsEmployeeRow,
 } from '../shared/api/manager.js';
 import type { ChecklistSessionParticipant, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
@@ -232,7 +234,7 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t, onMessage }: { 
   );
 }
 
-export function ManagerChecklistsPage() {
+export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?: ComponentType<{ children: ReactNode; currentPath?: string }> } = {}) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const period = (searchParams.get('period') as Period | null) ?? 'month';
@@ -240,6 +242,7 @@ export function ManagerChecklistsPage() {
   const customFrom = searchParams.get('from') ?? '';
   const customTo = searchParams.get('to') ?? '';
   const departmentId = searchParams.get('departmentId') ?? '';
+  const managerId = searchParams.get('managerId') ?? '';
   const searchQuery = searchParams.get('q') ?? '';
   const onlyNoCompletion = searchParams.get('noCompletion') === '1';
   const performanceParam = searchParams.get('performance');
@@ -253,6 +256,7 @@ export function ManagerChecklistsPage() {
   const [notice, setNotice] = useState<string | null>(null);
   // The filter must not vanish while a department change reloads the analytics.
   const departmentOptions = useRef<{ id: string; name: string }[]>([]);
+  const managerOptions = useRef<{ id: string; name: string }[]>([]);
 
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
 
@@ -263,23 +267,30 @@ export function ManagerChecklistsPage() {
   }
 
   const { state } = useAsyncData<ManagerChecklistAnalytics>(
-    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined }),
-    [from, to, checklistId, departmentId],
+    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined, managerId: managerId || undefined }),
+    [from, to, checklistId, departmentId, managerId],
     { unauthenticated: t('manager.checklists.loadError', 'Unable to load analytics.'), error: t('manager.checklists.loadError', 'Unable to load analytics.') },
   );
   const { state: checklistsState } = useAsyncData<ChecklistSummary[]>(listChecklists, [], { unauthenticated: '', error: '' });
   const checklists = checklistsState.status === 'loaded' ? checklistsState.data : [];
-  if (state.status === 'loaded') departmentOptions.current = state.data.departmentOptions;
+  if (state.status === 'loaded') {
+    departmentOptions.current = state.data.departmentOptions;
+    managerOptions.current = state.data.managerOptions ?? [];
+  }
 
   const exporting = useRef(false);
-  async function exportReport(format: 'csv' | 'xlsx') {
+  async function exportReport(format: 'csv' | 'xlsx', table: 'employees' | 'managers' = 'employees') {
     if (exporting.current) return;
     exporting.current = true;
     try {
-      const file = await exportManagerChecklistEmployees({
+      const file = table === 'managers' ? await exportManagerChecklistManagers({
+        from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined,
+        managerId: managerId || undefined, format,
+      }) : await exportManagerChecklistEmployees({
         from, to,
         checklistId: checklistId || undefined,
         departmentId: departmentId || undefined,
+        managerId: managerId || undefined,
         q: searchQuery.trim() || undefined,
         noCompletion: onlyNoCompletion ? 'true' : undefined,
         performance: performance ?? undefined,
@@ -287,7 +298,7 @@ export function ManagerChecklistsPage() {
         dir: sort ? (sort.direction === 'descending' ? 'desc' : 'asc') : undefined,
         format,
       });
-      if (format === 'xlsx') await downloadXlsxFile(file.filename, file.rows, t('manager.checklists.employeesTableLabel', 'Employees'));
+      if (format === 'xlsx') await downloadXlsxFile(file.filename, file.rows, table === 'managers' ? t('manager.checklists.managersTitle', 'By manager') : t('manager.checklists.employeesTableLabel', 'Employees'));
       else downloadCsvFile(file.filename, file.csv);
     } catch {
       setNotice(t('manager.checklists.exportError', 'Unable to export the table.'));
@@ -320,6 +331,13 @@ export function ManagerChecklistsPage() {
       ),
     },
   ];
+  const managerName = (row: ManagerChecklistAnalyticsManagerRow) => row.managerId === null ? t('manager.checklists.noManager', 'No manager') : row.name || '—';
+  const managerColumns: Column<ManagerChecklistAnalyticsManagerRow>[] = [
+    { key: 'manager', label: t('manager.checklists.managerFilter', 'Manager'), priority: 'primary', render: managerName },
+    { key: 'employees', label: t('manager.checklists.employees', 'Employees'), priority: 'secondary', render: (row) => row.employeesCount },
+    { key: 'completed', label: t('manager.checklists.completedSessions', 'Completed sessions'), priority: 'secondary', render: (row) => row.completedCount },
+    { key: 'average', label: t('manager.checklists.average', 'Average'), priority: 'primary', render: (row) => row.averagePercentage === null ? '—' : `${row.averagePercentage}%` },
+  ];
   const departmentColumns: Column<ManagerChecklistAnalyticsDepartmentRow>[] = [
     { key: 'department', label: t('manager.checklists.department', 'Department'), priority: 'primary', render: (row) => row.name },
     { key: 'employees', label: t('manager.checklists.employees', 'Employees'), priority: 'secondary', render: (row) => row.employeesCount },
@@ -329,7 +347,7 @@ export function ManagerChecklistsPage() {
   ];
 
   return (
-    <ManagerPageLayout currentPath="/manager/checklists">
+    <Layout currentPath="/manager/checklists">
       <header style={{ marginBottom: 20 }}>
         <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
         <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('manager.checklists.title', 'Checklist analytics')}</h1>
@@ -374,6 +392,15 @@ export function ManagerChecklistsPage() {
             </select>
           </label>
         )}
+        <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
+          {t('manager.checklists.managerFilter', 'Manager')}
+          <select aria-label={t('manager.checklists.managerFilter', 'Manager')} className="ds-input" value={managerId} onChange={(event) => updateParam('managerId', event.target.value)}>
+            <option value="">{t('manager.checklists.allManagers', 'All managers')}</option>
+            <option value="unassigned">{t('manager.checklists.noManager', 'No manager')}</option>
+            {managerId && managerId !== 'unassigned' && !managerOptions.current.some((option) => option.id === managerId) && <option value={managerId} disabled>{t('manager.checklists.managerUnavailable', 'Manager unavailable')}</option>}
+            {managerOptions.current.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+          </select>
+        </label>
         <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
           {t('manager.checklists.searchLabel', 'Search employees')}
           <input className="ds-input" type="search" value={searchQuery} onChange={(event) => updateParam('q', event.target.value)} placeholder={t('manager.checklists.searchPlaceholder', 'Name, email or department')} />
@@ -459,6 +486,23 @@ export function ManagerChecklistsPage() {
             </section>
           )}
 
+          <section aria-labelledby="manager-checklists-managers" style={{ marginBottom: 20 }}>
+            <h2 id="manager-checklists-managers" style={{ fontSize: 16 }}>{t('manager.checklists.managersTitle', 'By manager')}</h2>
+            <p style={{ color: 'var(--color-text-muted)' }}>{t('manager.checklists.managersHint', 'Both primary manager types are included. Overall employee totals count each person once.')}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+              {(['csv', 'xlsx'] as const).map((format) => <Button key={format}
+                aria-label={`${format === 'csv' ? t('manager.checklists.exportCsv', 'Download CSV') : t('manager.checklists.exportXlsx', 'Download Excel')}: ${t('manager.checklists.managersTitle', 'By manager')}`}
+                onClick={() => void exportReport(format, 'managers')} size="sm" type="button" variant="secondary">
+                {format === 'csv' ? t('manager.checklists.exportCsv', 'Download CSV') : t('manager.checklists.exportXlsx', 'Download Excel')}
+              </Button>)}
+            </div>
+            <DataTable columns={managerColumns} density="dense" keyExtractor={(row) => row.managerId ?? 'unassigned'}
+              label={t('manager.checklists.managersTitle', 'By manager')}
+              emptyMessage={t('manager.checklists.employeesEmpty', 'No employees in scope for this period.')}
+              responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${managerName(row)}`, collapseLabel: (row) => `${t('courses.details')}: ${managerName(row)}` }}
+              rows={state.data.managers ?? []} />
+          </section>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
             <Button onClick={() => void exportReport('csv')} size="sm" type="button" variant="secondary">{t('manager.checklists.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => void exportReport('xlsx')} size="sm" type="button" variant="secondary">{t('manager.checklists.exportXlsx', 'Download Excel')}</Button>
@@ -501,6 +545,6 @@ export function ManagerChecklistsPage() {
         session={messageTarget}
         t={t}
       />
-    </ManagerPageLayout>
+    </Layout>
   );
 }

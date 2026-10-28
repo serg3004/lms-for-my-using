@@ -48,6 +48,7 @@ export function sendManagerOverdueReminders(assignmentIds: string[]) {
 // ---- PR 299: manager checklist analytics (`/manager/checklists`) ----
 
 export type ManagerChecklistAnalyticsQuery = {
+  managerId?: string;
   from: string;
   to: string;
   checklistId?: string;
@@ -80,6 +81,14 @@ export type ManagerChecklistAnalyticsDepartmentRow = {
   noCompletionCount: number;
 };
 
+export type ManagerChecklistAnalyticsManagerRow = {
+  managerId: string | null;
+  name: string | null;
+  employeesCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
+};
+
 export type ManagerChecklistAnalytics = {
   summary: {
     totalEmployees: number;
@@ -96,6 +105,8 @@ export type ManagerChecklistAnalytics = {
   employees: ManagerChecklistAnalyticsEmployeeRow[];
   /** Roll-up of the whole zone per department (independent of the department filter). */
   departments: ManagerChecklistAnalyticsDepartmentRow[];
+  managers: ManagerChecklistAnalyticsManagerRow[];
+  managerOptions: { id: string; name: string }[];
   /** Departments of the caller's zone for the filter; never wider than the employee scope. */
   departmentOptions: { id: string; name: string }[];
 };
@@ -121,4 +132,9 @@ export function getManagerChecklistAnalytics(query: ManagerChecklistAnalyticsQue
 /** PR 336: CSV of the employees table with the dashboard's own filters and view (built and audited server-side). */
 export function exportManagerChecklistEmployees(query: ManagerChecklistEmployeesExportQuery) {
   return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString(query)}`);
+}
+
+/** PR 356: the same server-built rows as the manager breakdown, with the dashboard's domain filters. */
+export function exportManagerChecklistManagers(query: ManagerChecklistAnalyticsQuery & { format?: 'csv' | 'xlsx' }) {
+  return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString({ ...query, table: 'managers' })}`);
 }

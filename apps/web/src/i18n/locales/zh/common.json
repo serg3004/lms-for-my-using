@@ -2168,7 +2168,7 @@
       "checklistFilter": "检查表",
       "allChecklists": "所有检查表",
       "totalSessions": "会话数",
-      "completedSessions": "已完成",
+      "completedSessions": "已完成会话",
       "averageScore": "平均结果",
       "highPerformers": "高完成率",
       "lowPerformers": "低完成率",
@@ -2224,7 +2224,13 @@
       "sessionCreated": "会话已安排。",
       "exportCsv": "下载 CSV",
       "exportError": "无法导出表格。",
-      "exportXlsx": "下载 Excel"
+      "exportXlsx": "下载 Excel",
+      "managerFilter": "负责人",
+      "allManagers": "所有负责人",
+      "noManager": "无负责人",
+      "managersTitle": "按负责人",
+      "managersHint": "按员工当前主要部门的主要直属负责人和职能负责人统计。员工有两位不同负责人时会计入两行；员工总体统计中每人仅计算一次。",
+      "managerUnavailable": "负责人不可用"
     }
   },
   "instructor": {

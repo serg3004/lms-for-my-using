@@ -625,9 +625,40 @@ is implied), `departments[]` (per-department roll-up of the whole zone, independ
 `departmentId` filter) and `employees[].departmentId`/`email`. `departmentId` filters rows in memory over
 the scoped employees, so a department outside the zone returns an honest empty result. Soft-deleted
 sessions (`deletedAt`) are excluded. Search, sort and the «no completed sessions» toggle are
-client-side over the scoped rows (URL params `q`, `sort`/`dir`, `noCompletion`). A breakdown by
-«руководителей» is not provided: the repo has no stable one-manager-per-employee relation
-(`ManagerGroup` and `DepartmentManager` are many-to-many and mode-dependent).
+client-side over the scoped employee rows (URL params `q`, `sort`/`dir`, `noCompletion`).
+
+PR 356 adds `managers[]` (`managerId`, `name`, `employeesCount`, `completedCount`,
+`averagePercentage`) and `managerOptions[]` (`id`, `name`). Owner clarification 2026-10-28
+(DEC-CHKS-005): use both the primary DIRECT and primary FUNCTIONAL manager of the employee's
+current primary department. Both `DepartmentMembership` and `DepartmentManager` must have
+`isPrimary=true` and `effectiveTo IS NULL`; ended records, secondary memberships, other groups,
+reporting lines and inherited managers do not supply reporting associations. Deleted manager
+users are excluded. The employee is counted once per distinct manager user; the same user holding
+both types creates one association. An employee with two different managers appears in both rows,
+while overall employee/KPI totals remain unique. Replacing the current primary membership or
+manager record reassigns the selected period's sessions to the new current associations.
+
+The manager table respects `departmentId` and `managerId` (UUID or `unassigned`). A manager filter
+selects employees linked to that manager and only that manager's row. With no current primary
+manager of either type, the employee belongs to the null-ID/null-name bucket, localized as
+«Без руководителя» in the UI/export. No scored completed results produce a null average (dash in
+UI, empty export cell); it never invents a zero. `completedCount` counts actual completed sessions,
+including unscored or pending-review ones; the average includes only completed sessions whose
+instance is completed and scored. Deleted sessions/instances and sessions outside the selected
+scheduled period/checklist are excluded. All associations/options are derived only from employees
+already allowed by `participantLearnerScope()`, even when a named manager is outside that zone.
+A foreign/out-of-scope manager filter returns empty data without looking up their name.
+Department options stay zone-scoped; department roll-ups retain their existing independence from
+the department filter and also respect the manager filter. Employee-only search/performance/view
+filters do not change the manager table.
+
+The dashboard's manager filter is stored in the URL. Administrators open the same report at
+`/admin/checklists/analytics` from the sessions page; managers use `/manager/checklists`, under
+their existing authorization and layout. `GET /checklists/manager-analytics/export?table=managers`
+returns the exact manager table for its domain filters in the existing `{filename,csv,rows,rowCount}`
+contract; `table=employees` (default) preserves the existing employee export. Both CSV and Excel
+buttons use the scoped server rows, localized headers and the same 5000-row cap. Export audit
+kind is `manager_managers`, with filters/format/row count, never raw rows.
 
 PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the same rows as CSV and as typed cells for the
 browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing

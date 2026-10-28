@@ -2168,7 +2168,7 @@
       "checklistFilter": "Чек-парақ",
       "allChecklists": "Барлық чек-парақтар",
       "totalSessions": "Сессиялар",
-      "completedSessions": "Аяқталды",
+      "completedSessions": "Аяқталған сессиялар",
       "averageScore": "Орташа нәтиже",
       "highPerformers": "Жоғары орындау",
       "lowPerformers": "Төмен орындау",
@@ -2224,7 +2224,13 @@
       "sessionCreated": "Сессия жоспарланды.",
       "exportCsv": "CSV жүктеу",
       "exportError": "Кестені жүктеу мүмкін болмады.",
-      "exportXlsx": "Excel жүктеу"
+      "exportXlsx": "Excel жүктеу",
+      "managerFilter": "Басшы",
+      "allManagers": "Барлық басшылар",
+      "noManager": "Басшысы жоқ",
+      "managersTitle": "Басшылар бойынша",
+      "managersHint": "Қызметкердің қазіргі негізгі бөліміндегі негізгі тікелей және функционалдық басшылар есепке алынады. Екі түрлі басшысы бар қызметкер екі жолда көрсетіледі; жалпы қорытындыда әр қызметкер бір рет саналады.",
+      "managerUnavailable": "Басшы қолжетімсіз"
     }
   },
   "instructor": {

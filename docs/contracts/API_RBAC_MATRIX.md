@@ -100,6 +100,15 @@ Session context values (PR 323: `PATCH /checklist-sessions/:id/context`) also re
 
 Manager checklist analytics (PR 299: `GET /checklists/manager-analytics`) introduces a new policy, `checklistManagerAnalyticsRead` (admin/manager) — narrower than `checklistReviewWrite` (which also grants instructor/mentor), because this endpoint feeds the manager-only `/manager/checklists` dashboard, not the shared review queue; instructor/mentor have no use for tenant-wide employee analytics and were deliberately left out rather than reusing the broader policy. Row-level scope is `ChecklistReviewAccessService.participantLearnerScope()` (`{}` tenant-wide for admin, `OrganizationAccessScopeService.user()` effective-team for manager — the same helper `sessionScope()`/the participant lookup already use), applied to the employee lookup that seeds the aggregation, so a manager can only ever see analytics for users already in their effective Group ∪ Department DIRECT ∪ ReportingLine DIRECT scope.
 
+PR 356 keeps `checklistManagerAnalyticsRead` and `participantLearnerScope()` unchanged for both
+read and export (`table=managers`). Primary DIRECT/FUNCTIONAL manager associations are loaded
+only through the already scoped employees and their current primary department. Names and filter
+options can include a manager outside the caller's zone only when that manager has an employee
+inside it; their out-of-zone employees/results are never aggregated. A manager UUID from another
+tenant or outside the zone gives an empty table/export, with no name lookup. The `unassigned`
+filter is the absence of either current primary manager type; it never broadens the employee scope.
+
+
 Admin session report and auditable recalculate (PR 300: `POST /checklist-sessions/:id/recalculate`, `GET /checklist-sessions/:id/score-revisions`) introduces a new policy, `checklistScoreRecalculate` (admin-only), for the mutating recalculate action specifically -- it is deliberately narrower than every existing session policy (`checklistSessionsManage`/`checklistSessionsRunOwn`) because overwriting a `ChecklistInstance`'s stored score is a correction of another actor's (observer's) work product, not a scheduling or session-running action a manager or instructor should ever perform. The revision-history read (`GET .../score-revisions`) reuses `checklistSessionsRead` (all system roles) like every other session read, still gated by `sessionScope()` at the row level. The recalculate endpoint is additionally gated by `sessionScope()` (an admin recalculating a session outside their tenant gets a 404, same as every other session route) even though the role policy alone already restricts it to admin, who is unscoped by `sessionScope()`.
 
 PR 352 replaces the role-bound conduct grant with `checklistSessionsRunOwn` for all five

@@ -1,3 +1,4 @@
+import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -236,6 +237,12 @@ async function installManagerChecklistsAnalyticsMocks(page: Page) {
       ],
       departments: [{ departmentId: 'visual-dept-1', name: 'Warehouse', employeesCount: 2, sessionsCount: 5, completedCount: 5, averagePercentage: 74, noCompletionCount: 0 }],
       departmentOptions: [{ id: 'visual-dept-1', name: 'Warehouse' }],
+      managers: [
+        { managerId: 'visual-manager-a', name: 'Primary direct manager', employeesCount: 2, completedCount: 5, averagePercentage: 74 },
+        { managerId: 'visual-manager-b', name: 'Primary functional manager', employeesCount: 2, completedCount: 5, averagePercentage: 74 },
+        { managerId: null, name: null, employeesCount: 1, completedCount: 0, averagePercentage: null },
+      ],
+      managerOptions: [{ id: 'visual-manager-a', name: 'Primary direct manager' }, { id: 'visual-manager-b', name: 'Primary functional manager' }],
     },
   }));
 }
@@ -693,6 +700,25 @@ for (const width of widths) {
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `manager-checklist-analytics-${width}`);
     });
+
+    for (const role of ['admin', 'manager'] as const) {
+      test(`keeps the ${role} manager breakdown responsive`, async ({ page }) => {
+        await installManagerReportMocks(page, role);
+        if (role === 'admin') {
+          await page.goto('/admin/checklists/sessions');
+          await page.getByRole('link', { name: 'Аналитика чек-листов', exact: true }).click();
+        } else await page.goto('/manager/checklists');
+        const section = page.locator('section[aria-labelledby="manager-checklists-managers"]');
+        await expect(section.getByText('=Alice Manager', { exact: true })).toBeVisible();
+        if (role === 'manager') {
+          await page.getByLabel('Руководитель', { exact: true }).selectOption(reportManagerA);
+          await expect(section.getByText('Bob Manager', { exact: true })).toHaveCount(0);
+        }
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await expectVisualMatch(page, `${role}-checklist-manager-report-${width}`);
+      });
+    }
 
     test('keeps the instructor dashboard responsive', async ({ page }) => {
       await installInstructorMocks(page);

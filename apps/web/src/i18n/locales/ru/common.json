@@ -2168,7 +2168,7 @@
       "checklistFilter": "Чек-лист",
       "allChecklists": "Все чек-листы",
       "totalSessions": "Сессии",
-      "completedSessions": "Завершено",
+      "completedSessions": "Завершённые сессии",
       "averageScore": "Средний результат",
       "highPerformers": "Высокое выполнение",
       "lowPerformers": "Низкое выполнение",
@@ -2224,7 +2224,13 @@
       "sessionCreated": "Сессия запланирована.",
       "exportCsv": "Скачать CSV",
       "exportError": "Не удалось выгрузить таблицу.",
-      "exportXlsx": "Скачать Excel"
+      "exportXlsx": "Скачать Excel",
+      "managerFilter": "Руководитель",
+      "allManagers": "Все руководители",
+      "noManager": "Без руководителя",
+      "managersTitle": "По руководителям",
+      "managersHint": "Учитываются основные прямой и функциональный руководители текущего основного подразделения. Сотрудник с двумя разными руководителями входит в обе строки; общие итоги по сотрудникам считаются без повторов.",
+      "managerUnavailable": "Руководитель недоступен"
     }
   },
   "instructor": {
