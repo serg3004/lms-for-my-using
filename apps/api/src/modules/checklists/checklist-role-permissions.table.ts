@@ -1,4 +1,4 @@
-import type { rolePolicies, UserRole } from '../auth/roles.js';
+import type { rolePolicies, UserRole } from '../auth/public.js';
 
 /**
  * PR 359: machine-readable copy of `docs/product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md`, the owner's
