@@ -204,6 +204,7 @@ export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySche
 
 // ---- PR 299: manager checklist analytics ----
 export const checklistManagerAnalyticsQuerySchema = z.object({
+  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
   from: z.string().datetime(),
   to: z.string().datetime(),
   checklistId: z.string().uuid().optional(),
@@ -213,6 +214,7 @@ export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnal
 
 // PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
 export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
+  table: z.enum(['employees', 'managers']).optional(),
   q: z.string().trim().min(1).max(120).optional(),
   noCompletion: z.enum(['true', 'false']).optional(),
   // PR 350: band of the employee's average against the settings thresholds.

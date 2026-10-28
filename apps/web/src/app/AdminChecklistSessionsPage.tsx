@@ -314,6 +314,7 @@ export function AdminChecklistSessionsPage() {
           <>
             <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
+            <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>
             <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>
             <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>

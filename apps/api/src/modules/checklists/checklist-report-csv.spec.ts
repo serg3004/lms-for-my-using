@@ -1,4 +1,4 @@
-import { employeeExportRows, exportLocale, neutralizeCsvCell, serializeReportCsv, sessionExportRows, viewEmployees } from './checklist-report-csv.js';
+import { managerExportRows, employeeExportRows, exportLocale, neutralizeCsvCell, serializeReportCsv, sessionExportRows, viewEmployees } from './checklist-report-csv.js';
 
 const row = (overrides: Partial<Parameters<typeof viewEmployees>[0][number]> = {}) => ({
   firstName: 'Alex', lastName: 'Kim', email: 'alex@example.test', department: 'Warehouse',
@@ -71,5 +71,13 @@ describe('report CSV (PR 336)', () => {
     expect(exportLocale('ru-RU')).toBe('ru');
     expect(exportLocale('fr')).toBe('en');
     expect(exportLocale(null)).toBe('en');
+  });
+});
+
+describe('manager breakdown exports (PR 356)', () => {
+  it.each([['ru', 'Без руководителя'], ['en', 'No manager'], ['kk', 'Басшысы жоқ'], ['zh', '无负责人']] as const)('localizes empty manager rows in %s without inventing a zero score', (locale, label) => {
+    const rows = managerExportRows([{ managerId: null, name: null, employeesCount: 2, completedCount: 0, averagePercentage: null }], locale);
+    expect(rows[1]).toEqual([label, 2, 0, '']);
+    expect(serializeReportCsv(rows)).not.toMatch(/null|undefined/);
   });
 });

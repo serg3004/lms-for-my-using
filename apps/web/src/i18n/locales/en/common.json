@@ -2168,7 +2168,7 @@
       "checklistFilter": "Checklist",
       "allChecklists": "All checklists",
       "totalSessions": "Sessions",
-      "completedSessions": "Completed",
+      "completedSessions": "Completed sessions",
       "averageScore": "Average result",
       "highPerformers": "High completion",
       "lowPerformers": "Low completion",
@@ -2224,7 +2224,13 @@
       "sessionCreated": "Session scheduled.",
       "exportCsv": "Download CSV",
       "exportError": "Unable to export the table.",
-      "exportXlsx": "Download Excel"
+      "exportXlsx": "Download Excel",
+      "managerFilter": "Manager",
+      "allManagers": "All managers",
+      "noManager": "No manager",
+      "managersTitle": "By manager",
+      "managersHint": "Uses the primary direct and functional managers of each employee’s current primary department. Employees with two different managers appear in both rows; overall employee totals count each person once.",
+      "managerUnavailable": "Manager unavailable"
     }
   },
   "instructor": {

@@ -1,3 +1,4 @@
+import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -189,6 +190,20 @@ test.describe('WCAG AA browser baseline', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await auditAccessibility(page, testInfo);
   });
+
+  for (const role of ['admin', 'manager'] as const) {
+    test(`${role} manager breakdown and unassigned filter are accessible`, async ({ page }, testInfo) => {
+      await installManagerReportMocks(page, role);
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(role === 'admin' ? '/admin/checklists/analytics' : '/manager/checklists');
+      const section = page.locator('section[aria-labelledby="manager-checklists-managers"]');
+      await expect(section.getByText('=Alice Manager', { exact: true })).toBeVisible();
+      await auditAccessibility(page, testInfo);
+      await page.getByLabel('Руководитель', { exact: true }).selectOption('unassigned');
+      await expect(section.getByText('—', { exact: true })).toBeVisible();
+      await auditAccessibility(page, testInfo);
+    });
+  }
 
   test('login remains accessible at 320px and 200% browser zoom', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 812 });
