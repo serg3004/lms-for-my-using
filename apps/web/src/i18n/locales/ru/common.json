@@ -2702,6 +2702,11 @@
       "feedback_updated": "Обратная связь обновлена",
       "score_recalculated": "Балл пересчитан",
       "observer_marked_unavailable": "Наблюдатель отметил недоступность"
+    },
+    "nav": {
+      "label": "Разделы сессий",
+      "conduct": "К проведению",
+      "all": "Все сессии"
     }
   },
   "common": {

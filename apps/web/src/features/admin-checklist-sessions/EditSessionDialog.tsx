@@ -45,7 +45,7 @@ export function EditSessionDialog({ session, onClose, onSaved, t }: Props) {
     let cancelled = false;
     listChecklistSessionParticipants({ role: 'observer', search: debounced || undefined, pageSize: 20 })
       .then((result) => {
-        if (!cancelled) setResults(excludeCurrentObserver(result.items, session.observerId));
+        if (!cancelled) setResults(excludeCurrentObserver(result.items, session.observerId).filter((item) => item.id !== session.learner.id));
       })
       .catch(() => { if (!cancelled) setResults([]); });
     return () => { cancelled = true; };

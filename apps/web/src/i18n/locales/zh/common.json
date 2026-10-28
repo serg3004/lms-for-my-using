@@ -2702,6 +2702,11 @@
       "feedback_updated": "反馈已更新",
       "score_recalculated": "分数已重新计算",
       "observer_marked_unavailable": "观察员标记为不可用"
+    },
+    "nav": {
+      "label": "培训场次栏目",
+      "conduct": "待执行",
+      "all": "全部场次"
     }
   },
   "common": {
