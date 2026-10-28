@@ -70,7 +70,8 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistWorkplaceSettingsRead)
   getWorkplaceSettings(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.workplaceSettings.getSettings(user.organizationId, user.roles.includes('admin'));
+    // PR 362: roster names go to every role that can edit the settings, nobody else.
+    return this.workplaceSettings.getSettings(user.organizationId, rolePolicies.checklistWorkplaceSettingsWrite.some((role) => user.roles.includes(role)));
   }
   @Patch('checklists/workplace-settings')
   @Roles(...rolePolicies.checklistWorkplaceSettingsWrite)

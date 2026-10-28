@@ -2706,7 +2706,8 @@
     "nav": {
       "label": "Session sections",
       "conduct": "To conduct",
-      "all": "All sessions"
+      "all": "All sessions",
+      "library": "Checklists"
     }
   },
   "common": {

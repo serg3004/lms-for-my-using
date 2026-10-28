@@ -67,16 +67,18 @@ export const rolePolicies = {
   notificationsWrite: ['admin', 'manager', 'instructor', 'learner'],
   // PR 349: fixed role grants; custom permission sets are planned under DEC-CHKS-004.
   // A conduct grant still needs observerActionScope(), independently of manager read access.
-  checklistsRead: ['admin', 'manager', 'instructor'],
-  checklistsCreate: ['admin', 'instructor'],
+  // PR 362: the four organization roles of the rights table build and edit checklists (whole organization,
+  // owner decision 3 pending: nothing is narrowed to "own" checklists); the learner never does.
+  checklistsRead: ['admin', 'manager', 'instructor', 'mentor'],
+  checklistsCreate: ['admin', 'manager', 'instructor', 'mentor'],
   // PR 353: any role starts a free-access checklist for themselves only (service enforces the subject).
   checklistsStartFree: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistInstancesRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistInstancesCreate: ['admin', 'manager', 'instructor'],
   checklistItemResultsWrite: ['admin', 'manager', 'instructor', 'learner'],
   checklistReviewWrite: ['admin', 'manager', 'instructor', 'mentor'],
-  checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
-  checklistWorkplaceSettingsWrite: ['admin'],
+  checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
+  checklistWorkplaceSettingsWrite: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsCreateOwn: ['instructor'],
@@ -84,7 +86,7 @@ export const rolePolicies = {
   checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],
   checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistManagerAnalyticsRead: ['admin', 'manager'],
-  checklistScoreRecalculate: ['admin'],
+  checklistScoreRecalculate: ['admin', 'manager', 'instructor', 'mentor'],
 } as const satisfies Record<string, readonly UserRole[]>;
 
 export function Roles(...roles: UserRole[]) {

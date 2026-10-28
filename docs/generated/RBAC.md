@@ -37,16 +37,16 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` |
 | `checklistManagerAnalyticsRead` | `admin`, `manager` |
 | `checklistReviewWrite` | `admin`, `manager`, `instructor`, `mentor` |
-| `checklistScoreRecalculate` | `admin` |
+| `checklistScoreRecalculate` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistSessionsCreateAnyObserver` | `admin`, `manager`, `mentor` |
 | `checklistSessionsCreateOwn` | `instructor` |
 | `checklistSessionsManage` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistSessionsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
 | `checklistSessionsRunOwn` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
-| `checklistWorkplaceSettingsRead` | `admin`, `manager`, `instructor`, `learner` |
-| `checklistWorkplaceSettingsWrite` | `admin` |
-| `checklistsCreate` | `admin`, `instructor` |
-| `checklistsRead` | `admin`, `manager`, `instructor` |
+| `checklistWorkplaceSettingsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
+| `checklistWorkplaceSettingsWrite` | `admin`, `manager`, `instructor`, `mentor` |
+| `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` |
+| `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
 | `courseMaterialsCreate` | `admin`, `instructor` |
 | `courseMaterialsRead` | `admin`, `manager`, `instructor`, `learner` |

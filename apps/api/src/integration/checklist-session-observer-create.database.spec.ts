@@ -231,7 +231,37 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(searched.total).toBe(mode === 'selected_roles' ? 0 : 1);
     const page = await controller.listSessionParticipants({ role: 'observer', page: 2, pageSize: 1 }, await request(admin, 'listSessionParticipants'));
     expect(page.items).toHaveLength(eligible.length > 1 ? 1 : 0);
-    await expect(request(manager, 'updateWorkplaceSettings')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(request(employee, 'updateWorkplaceSettings')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it.each(['admin', 'manager', 'instructor', 'mentor'] as const)('PR 362: %s builds checklists, changes the settings and recalculates; the audit names the actor', async (role) => {
+    const actor = await user(organizationId, [role]);
+    const employee = await user(organizationId, ['learner']);
+    const created = await controller.createChecklist({ organizationId, title: `By ${role}`, scoringMode: 'sum_points', passThreshold: 80, requiresReview: false }, await request(actor, 'createChecklist'));
+    expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist.created', targetId: created.id } })).toMatchObject({ actorId: actor.id });
+    expect((await controller.listChecklists({}, await request(actor, 'listChecklists'))).some((row: { id: string }) => row.id === created.id)).toBe(true);
+
+    await controller.updateWorkplaceSettings({ highPerformanceThreshold: 85 }, await request(actor, 'updateWorkplaceSettings'));
+    const audit = await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_workplace_settings.updated', actorId: actor.id } });
+    expect(audit?.metadata).toMatchObject({ previous: { highPerformanceThreshold: 90 }, updated: { highPerformanceThreshold: 85 } });
+    expect(await controller.getWorkplaceSettings(await request(actor, 'getWorkplaceSettings'))).toHaveProperty('selectedObserverUsers');
+
+    // A manager recalculates inside the team only; the other three roles see the whole organization.
+    const target = await sessions.create(organizationId, { instanceId: (await instance(employee.id)).id, observerId: observer.id }, observer.id);
+    const recalculation = controller.recalculateScore(target.id, { reason: 'Scale corrected', idempotencyKey: randomUUID() }, await request(actor, 'recalculateScore'));
+    if (role === 'manager') await expect(recalculation).rejects.toBeInstanceOf(NotFoundException);
+    else {
+      await expect(recalculation).resolves.toMatchObject({ reason: 'Scale corrected', actorUserId: actor.id });
+      expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_score_revision.created', actorId: actor.id } })).toMatchObject({ targetType: 'checklist_instance' });
+    }
+    const foreign = await prisma.checklistSession.create({ data: { organizationId: foreignOrganizationId, instanceId: foreignInstanceId, observerId: outsider.id } });
+    await expect(controller.recalculateScore(foreign.id, { reason: 'Other tenant', idempotencyKey: randomUUID() }, await request(actor, 'recalculateScore'))).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('PR 362: an employee cannot build, change the settings or recalculate', async () => {
+    for (const handler of ['createChecklist', 'updateWorkplaceSettings', 'recalculateScore'] as const) {
+      await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
+    }
   });
 
   it('PR 351: invalid explicit users never change settings or write an audit', async () => {
@@ -363,11 +393,9 @@ describe('observer session creation and conduct access (PR 331/349) — database
       expect(current.status).toBe('completed');
       expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'started', actorUserId: actor.id } })).toBe(1);
       expect(await prisma.checklistSessionEvent.count({ where: { sessionId: own.id, eventType: 'completed', actorUserId: actor.id } })).toBe(1);
-      if (role === 'learner' || role === 'mentor') {
-        // PR 360: the mentor schedules and exports; recalculation stays admin-only for both.
-        const denied = role === 'learner' ? ['createSession', 'updateSession', 'exportSessions', 'recalculateScore'] as const : ['recalculateScore'] as const;
-        for (const handler of denied) {
-          // These grants are independent of an observer assignment.
+      if (role === 'learner') {
+        // These grants are independent of an observer assignment (PR 362: recalculation is for the four organization roles).
+        for (const handler of ['createSession', 'updateSession', 'exportSessions', 'recalculateScore'] as const) {
           await expect(request(actor, handler)).rejects.toBeInstanceOf(ForbiddenException);
         }
       }
