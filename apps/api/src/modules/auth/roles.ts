@@ -78,8 +78,10 @@ export const rolePolicies = {
   checklistWorkplaceSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
   checklistWorkplaceSettingsWrite: ['admin'],
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
-  checklistSessionsManage: ['admin', 'manager'],
+  checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsCreateOwn: ['instructor'],
+  // PR 360: who may pick any observer when scheduling; the instructor stays pinned to themselves.
+  checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],
   checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistManagerAnalyticsRead: ['admin', 'manager'],
   checklistScoreRecalculate: ['admin'],

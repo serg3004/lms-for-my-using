@@ -539,7 +539,7 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const learnerScope = await this.reviewAccess.participantLearnerScope(user);
     this.reviewAccess.assertSessionCreationObserver(user, input.observerId);
-    const createOwn = !rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role));
+    const createOwn = !this.reviewAccess.canPickAnyObserver(user);
     return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope, createOwn);
   }
   @Get('checklist-sessions')
@@ -574,7 +574,7 @@ export class ChecklistsController {
     const query = checklistSessionParticipantsQuerySchema.parse(rawQuery);
     const user = request.currentUser!;
     const learnerScope = await this.reviewAccess.participantLearnerScope(user);
-    const createOwn = !rolePolicies.checklistSessionsManage.some((role) => user.roles.includes(role));
+    const createOwn = !this.reviewAccess.canPickAnyObserver(user);
     return this.sessions.listParticipants(user.organizationId, query, learnerScope, createOwn ? user.id : undefined);
   }
   @Get('checklist-sessions/:id')
