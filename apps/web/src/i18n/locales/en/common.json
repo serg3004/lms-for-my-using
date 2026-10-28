@@ -1601,7 +1601,7 @@
       "statsLabel": "Learning summary",
       "pinnedChecklists": {
         "title": "Pinned checklists",
-        "open": "Open",
+        "open": "Start",
         "continue": "Continue"
       }
     },
@@ -2419,8 +2419,8 @@
     "selfTitle": "Self-study checklists",
     "selfHint": "You fill these in yourself, at your own pace.",
     "title": "Checklists",
-    "subtitle": "Checklists assigned to you — complete them and attach photos where required.",
-    "empty": "You have no checklists assigned yet.",
+    "subtitle": "Checklists assigned to you and free checklists you can start yourself — complete them and attach photos where required.",
+    "empty": "There are no checklists available to you yet.",
     "status": {
       "assigned": "Assigned",
       "in_progress": "In progress",
@@ -2470,6 +2470,10 @@
     "cover": {
       "alt": "Cover of the checklist “{{title}}”",
       "defaultAlt": "Default checklist illustration"
+    },
+    "all": {
+      "title": "All my checklists",
+      "hint": "Assigned checklists and free ones in one list."
     }
   },
   "checklistReview": {

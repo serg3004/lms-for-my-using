@@ -554,6 +554,19 @@ export class ChecklistsService {
       return created.id;
     });
 
+    // The copy gets its own cover object (best effort: a storage failure must not undo the copy).
+    if (source.coverObjectKey && source.coverMimeType) {
+      try {
+        const coverObjectKey = await this.uploadService.copyChecklistCover(source.coverObjectKey, organizationId, copyId);
+        await this.prisma.checklist.update({
+          where: { id: copyId },
+          data: { coverObjectKey, coverMimeType: source.coverMimeType, coverUpdatedAt: new Date() },
+        });
+      } catch {
+        // the copy simply has no cover
+      }
+    }
+
     await this.auditLog.record({
       organizationId,
       actorId,

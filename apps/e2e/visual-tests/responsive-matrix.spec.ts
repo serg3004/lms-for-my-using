@@ -644,7 +644,7 @@ for (const width of widths) {
         ],
       }));
       await page.goto('/learn/checklists');
-      await expect(page.getByRole('heading', { name: /Free checklists|Свободное прохождение/ })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /All my checklists|Все мои листы/ })).toBeVisible();
       await expect(page.getByRole('button', { name: /^(Start|Начать)$/ })).toBeVisible();
       await expect(page.getByRole('button', { name: /^(Continue|Продолжить)$/ })).toBeVisible();
       await expectNoPageOverflow(page);
@@ -666,9 +666,10 @@ for (const width of widths) {
       await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
       await page.goto('/learn/checklists');
       await expect(page.getByRole('heading', { name: /Pinned checklists|Закреплённые листы/ })).toBeVisible();
-      await expect(page.locator('img[alt*="Opening shift checklist"]')).toBeVisible();
-      await expect.poll(() => page.locator('img[alt*="Opening shift checklist"]').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-      await expect(page.getByRole('heading', { name: /Free checklists|Свободное прохождение/ })).toBeVisible();
+      // The picture is shown on the tile and again on the row of the same checklist in the big block.
+      await expect(page.locator('img[alt*="Opening shift checklist"]')).toHaveCount(2);
+      await expect.poll(() => page.locator('img[alt*="Opening shift checklist"]').evaluateAll((imgs) => imgs.every((img) => (img as HTMLImageElement).complete && (img as HTMLImageElement).naturalWidth > 0))).toBe(true);
+      await expect(page.getByRole('heading', { name: /All my checklists|Все мои листы/ })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `learner-pinned-checklists-${width}`);

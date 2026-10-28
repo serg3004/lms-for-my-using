@@ -117,12 +117,14 @@ describe('LearnerChecklistsPage: free-access catalog (PR 353)', () => {
     expect(container.querySelector('[role="status"]')?.textContent).toContain('Не удалось загрузить свободные листы');
   });
 
-  it('hides the section when there are no free checklists', async () => {
+  it('shows only the assigned list and no free badge when there are no free checklists', async () => {
     api.listMyChecklistInstances.mockResolvedValue([instance('inst-1', 'Назначенный лист')]);
     api.listFreeChecklists.mockResolvedValue([]);
 
     await render();
 
-    expect(container.querySelector('#free-checklists-title')).toBeNull();
+    expect(container.querySelector('#all-checklists-title')).not.toBeNull();
+    expect(container.textContent).toContain('Назначенный лист');
+    expect(container.textContent).not.toContain('Свободное прохождение');
   });
 });

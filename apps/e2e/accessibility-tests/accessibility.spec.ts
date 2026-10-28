@@ -162,8 +162,8 @@ test.describe('WCAG AA browser baseline', () => {
     await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
     await page.goto('/learn/checklists');
     await expect(page.getByRole('heading', { name: 'Закреплённые листы' })).toBeVisible();
-    await expect(page.getByRole('img', { name: /Открытие смены/ })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Свободное прохождение' })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Открытие смены/ })).toHaveCount(2);
+    await expect(page.getByRole('heading', { name: 'Все мои листы' })).toBeVisible();
     await auditAccessibility(page, testInfo);
   });
 

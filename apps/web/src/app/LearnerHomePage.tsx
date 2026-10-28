@@ -11,6 +11,7 @@ import { getReadableTitle } from '../shared/displayLabels.js';
 import { getCourseLessonsHref } from '../shared/learnerRoutes.js';
 import { Card, PageState, ProgressBar, SectionHeader, StatCard, StatsGrid } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { PinnedChecklistStartButton } from './PinnedChecklistStartButton.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 
 type ContinueLearningItem = {
@@ -212,11 +213,7 @@ export function LearnerHomePage() {
       <PinnedChecklistTiles
         items={data.pinnedChecklists ?? []}
         title={t('learner.dashboard.pinnedChecklists.title')}
-        action={(item) => (
-          <a className="ds-button ds-button--secondary ds-button--sm" href="/learn/checklists">
-            {item.activeInstanceId ? t('learner.dashboard.pinnedChecklists.continue') : t('learner.dashboard.pinnedChecklists.open')}
-          </a>
-        )}
+        action={(item) => <PinnedChecklistStartButton item={item} />}
       />
 
       <div className="learner-dashboard__details">
