@@ -261,3 +261,11 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     ]);
   });
 });
+
+describe('manager breakdown export limit (PR 356)', () => {
+  it('rejects more than 5000 manager rows without truncating the table', async () => {
+    const { service } = createHarness({ employees: [] });
+    jest.spyOn(service, 'getManagerAnalytics').mockResolvedValue({ managers: Array.from({ length: 5001 }, (_, index) => ({ managerId: String(index), name: 'Leader', employeesCount: 1, completedCount: 0, averagePercentage: null })) } as never);
+    await expect(service.exportManagerAnalytics(organizationId, { ...query, table: 'managers' }, {}, thresholds, { id: 'actor', locale: 'en' })).rejects.toThrow('limited to 5000 managers');
+  });
+});

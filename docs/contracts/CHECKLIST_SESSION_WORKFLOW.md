@@ -65,6 +65,20 @@ distribution/trend chart with an accessible table fallback, and an employee tabl
 drill-down into their sessions -- all through `GET /checklists/manager-analytics`
 (`checklistManagerAnalyticsRead`), scoped the same way.
 
+### Report by manager (PR 356)
+
+«По руководителям» shows employees, completed sessions and average reviewed results for both
+primary direct and functional managers of the employee's current primary department. The same
+person holding both roles counts once; two different managers each receive the employee, so these
+rows can overlap. Overall employee totals remain unique. «Без руководителя» groups employees
+without either current primary manager. Missing scores display a dash.
+
+The manager filter survives reload in the URL and combines with the period, checklist and department
+filters. Each manager table has its own CSV/Excel buttons using the same scoped server data;
+employee-only search/result toggles continue to affect the employee table/export. Managers see
+only their existing zone. Administrators open the dashboard from the sessions page's analytics
+link (`/admin/checklists/analytics`). The primary reporting associations do not grant access rights.
+
 ## Assigned observer (shared `/instructor/checklists/sessions` list/detail)
 
 The observer's session list at `/instructor/checklists/sessions` includes “New session” (PR 331).

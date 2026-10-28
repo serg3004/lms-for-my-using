@@ -28,6 +28,12 @@ export function exportLocale(locale: string | null | undefined): Locale {
 }
 
 export const EXPORT_HEADERS = {
+  managers: {
+    ru: ['Руководитель', 'Сотрудники', 'Завершённые сессии', 'Среднее, %'],
+    en: ['Manager', 'Employees', 'Completed sessions', 'Average, %'],
+    kk: ['Басшы', 'Қызметкерлер', 'Аяқталған сессиялар', 'Орташа, %'],
+    zh: ['负责人', '员工数', '已完成会话', '平均分, %'],
+  },
   employees: {
     ru: ['Сотрудник', 'Подразделение', 'Сессии', 'Среднее, %', 'Динамика'],
     en: ['Employee', 'Department', 'Sessions', 'Average, %', 'Trend'],
@@ -131,5 +137,13 @@ export function sessionExportRows(rows: SessionRowLike[], locale: Locale): Repor
       row.durationMinutes ?? '',
       row.result.visible && row.result.scored && row.result.percentage !== null ? row.result.percentage : '',
     ]),
+  ];
+}
+
+const NO_MANAGER = { ru: 'Без руководителя', en: 'No manager', kk: 'Басшысы жоқ', zh: '无负责人' } as const;
+export function managerExportRows(rows: { managerId: string | null; name: string | null; employeesCount: number; completedCount: number; averagePercentage: number | null }[], locale: Locale): ReportCell[][] {
+  return [
+    [...EXPORT_HEADERS.managers[locale]],
+    ...rows.map((row) => [row.managerId === null ? NO_MANAGER[locale] : row.name || '—', row.employeesCount, row.completedCount, row.averagePercentage ?? '']),
   ];
 }

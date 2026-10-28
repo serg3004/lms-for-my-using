@@ -5,7 +5,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
-import { employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
+import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
   AssignChecklistInput,
@@ -63,6 +63,14 @@ export type ManagerAnalyticsEmployeeRow = {
   /** PR 350: band of the employee's average against the thresholds; null without a completed scored session. */
   performance: ManagerPerformanceBand | null;
   lastSessionAt: string | null;
+};
+
+export type ManagerAnalyticsManagerRow = {
+  managerId: string | null;
+  name: string | null;
+  employeesCount: number;
+  completedCount: number;
+  averagePercentage: number | null;
 };
 
 export type ManagerAnalyticsDepartmentRow = {
@@ -1256,12 +1264,35 @@ export class ChecklistsService {
       where: { organizationId, deletedAt: null, ...userScope },
       select: {
         id: true, firstName: true, lastName: true, email: true,
-        departmentMemberships: { where: { isPrimary: true, effectiveTo: null }, select: { department: { select: { id: true, name: true } } }, take: 1 },
+        departmentMemberships: {
+          where: { organizationId, isPrimary: true, effectiveTo: null },
+          select: { department: { select: {
+            id: true, name: true,
+            managers: {
+              where: { organizationId, type: { in: ['DIRECT', 'FUNCTIONAL'] }, isPrimary: true, effectiveTo: null, user: { organizationId, deletedAt: null } },
+              select: { user: { select: { id: true, firstName: true, lastName: true } } },
+              orderBy: [{ type: 'asc' }, { id: 'asc' }],
+              take: 2,
+            },
+          } } },
+          take: 1,
+        },
       },
       orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
     });
     const departmentOf = (employee: (typeof scopedEmployees)[number]) => employee.departmentMemberships[0]?.department ?? null;
-    const employees = query.departmentId ? scopedEmployees.filter((employee) => departmentOf(employee)?.id === query.departmentId) : scopedEmployees;
+    const managersOf = (employee: (typeof scopedEmployees)[number]) => [...new Map(
+      (departmentOf(employee)?.managers ?? []).map(({ user }) => [user.id, { id: user.id, name: [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || '—' }] as const),
+    ).values()];
+    const managerOptions = [...new Map(scopedEmployees.flatMap((employee) => managersOf(employee).map((manager) => [manager.id, manager] as const))).values()]
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    const managerEmployees = query.managerId ? scopedEmployees.filter((employee) =>
+      query.managerId === 'unassigned' ? managersOf(employee).length === 0 : managersOf(employee).some((manager) => manager.id === query.managerId),
+    ) : scopedEmployees;
+    const employees = query.departmentId ? managerEmployees.filter((employee) => departmentOf(employee)?.id === query.departmentId) : managerEmployees;
+    const managerByEmployee = new Map(employees.map((employee) => [employee.id,
+      managersOf(employee).filter((manager) => !query.managerId || manager.id === query.managerId),
+    ] as const));
     const departmentOptions = [...new Map(scopedEmployees.flatMap((employee) => { const department = departmentOf(employee); return department ? [[department.id, department.name] as const] : []; })).entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -1275,10 +1306,13 @@ export class ChecklistsService {
       employees: [] as ManagerAnalyticsEmployeeRow[],
       departments: [] as ManagerAnalyticsDepartmentRow[],
       departmentOptions,
+      managerOptions,
+      managers: [] as ManagerAnalyticsManagerRow[],
     };
     if (scopedIds.length === 0) return emptyResult;
 
     const sessionSelect = {
+      status: true,
       scheduledAt: true,
       instance: { select: { userId: true, status: true, percentage: true, passed: true, scored: true } },
     } as const;
@@ -1294,7 +1328,7 @@ export class ChecklistsService {
     ]);
     const currentSessions = allCurrentSessions.filter((session) => visibleIds.has(session.instance.userId));
     const previousSessions = allPreviousSessions.filter((session) => visibleIds.has(session.instance.userId));
-    if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(scopedEmployees, allCurrentSessions) };
+    if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(managerEmployees, allCurrentSessions) };
 
     const bucketOf = (percentage: number, passed: boolean): 'low' | 'mid' | 'high' => {
       if (thresholds.low === null && percentage < thresholds.high) return passed ? 'mid' : 'low';
@@ -1373,9 +1407,43 @@ export class ChecklistsService {
       ],
       trend,
       employees: employeeRows,
-      departments: this.departmentBreakdown(scopedEmployees, allCurrentSessions),
+      departments: this.departmentBreakdown(managerEmployees, allCurrentSessions),
       departmentOptions,
+      managerOptions,
+      managers: this.managerBreakdown(managerByEmployee, currentSessions),
     };
+  }
+
+  /** Both primary manager types; deduplicated by user so one person in both roles counts once. */
+  private managerBreakdown(
+    managerByEmployee: Map<string, { id: string; name: string }[]>,
+    sessions: { status: string; instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
+  ): ManagerAnalyticsManagerRow[] {
+    const rows = new Map<string | null, ManagerAnalyticsManagerRow & { total: number; scoredCount: number }>();
+    for (const managers of managerByEmployee.values()) {
+      for (const manager of managers.length ? managers : [null]) {
+        const id = manager?.id ?? null;
+        const row = rows.get(id) ?? { managerId: id, name: manager?.name ?? null, employeesCount: 0, completedCount: 0, averagePercentage: null, total: 0, scoredCount: 0 };
+        row.employeesCount++;
+        rows.set(id, row);
+      }
+    }
+    for (const session of sessions) {
+      const managers = managerByEmployee.get(session.instance.userId);
+      if (session.status !== 'completed' || !managers) continue;
+      for (const manager of managers.length ? managers : [null]) {
+        const row = rows.get(manager?.id ?? null)!;
+        row.completedCount++;
+        if (session.instance.status === 'completed' && session.instance.scored) {
+          row.total += session.instance.percentage;
+          row.scoredCount++;
+        }
+      }
+    }
+    return [...rows.values()].map(({ total, scoredCount, ...row }) => ({
+      ...row, averagePercentage: scoredCount ? Math.round(total / scoredCount) : null,
+    })).sort((a, b) => a.managerId === b.managerId ? 0 : a.managerId === null ? 1 : b.managerId === null ? -1 :
+      a.name!.localeCompare(b.name!) || a.managerId.localeCompare(b.managerId));
   }
 
   /** Per-department roll-up over the whole scoped zone (independent of the selected department filter). */
@@ -1428,22 +1496,23 @@ export class ChecklistsService {
     thresholds: { high: number; low: number | null },
     actor: { id: string; locale: string | null },
   ) {
-    const { q, noCompletion, performance, sort, dir, format = 'csv', ...analyticsQuery } = query;
+    const { table: tableKind = 'employees', q, noCompletion, performance, sort, dir, format = 'csv', ...analyticsQuery } = query;
     const analytics = await this.getManagerAnalytics(organizationId, analyticsQuery, userScope, thresholds);
-    const rows = viewEmployees(analytics.employees, { q, noCompletion, performance, sort, dir });
-    if (rows.length > MAX_EXPORT_ROWS) {
-      throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} employees. Narrow the filters.`);
+    const employeeRows = tableKind === 'employees' ? viewEmployees(analytics.employees, { q, noCompletion, performance, sort, dir }) : [];
+    const rowCount = tableKind === 'managers' ? analytics.managers.length : employeeRows.length;
+    if (rowCount > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} ${tableKind}. Narrow the filters.`);
     }
-    const table = employeeExportRows(rows, exportLocale(actor.locale));
+    const table = tableKind === 'managers' ? managerExportRows(analytics.managers, exportLocale(actor.locale)) : employeeExportRows(employeeRows, exportLocale(actor.locale));
     await this.auditLog.record({
       organizationId,
       actorId: actor.id,
       action: 'checklist_report.exported',
       targetType: 'checklist_report',
-      summary: `Exported ${rows.length} employees of the checklist dashboard to ${format.toUpperCase()}`,
-      metadata: { kind: 'manager_employees', format, rowCount: rows.length, filters: performance ? { ...analyticsQuery, performance } : analyticsQuery },
+      summary: `Exported ${rowCount} ${tableKind} of the checklist dashboard to ${format.toUpperCase()}`,
+      metadata: { kind: tableKind === 'managers' ? 'manager_managers' : 'manager_employees', format, rowCount, filters: performance && tableKind === 'employees' ? { ...analyticsQuery, performance } : analyticsQuery },
     });
-    return { filename: `checklist-employees-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount: rows.length };
+    return { filename: `checklist-${tableKind}-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount };
   }
 
   private async assertValidReviewer(transaction: Prisma.TransactionClient, reviewerId: string, organizationId: string) {
