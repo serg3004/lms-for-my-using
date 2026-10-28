@@ -1,3 +1,4 @@
+import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -58,6 +59,16 @@ test.describe('WCAG AA browser baseline', () => {
     test(`${path} has no blocking axe violations`, async ({ page }, testInfo) => {
       await page.goto(path);
       await expect(page.locator('main')).toBeVisible();
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
+  for (const role of ['learner', 'instructor'] as const) {
+    test(`${role} criterion-scale answers are accessible`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 375, height: 900 });
+      await openCriterionScalePage(page, role);
+      await page.getByRole('button', { name: /\bNo\b/ }).click();
+      await expect(page.getByRole('button', { name: /\bNo\b/ })).toHaveAttribute('aria-pressed', 'true');
       await auditAccessibility(page, testInfo);
     });
   }

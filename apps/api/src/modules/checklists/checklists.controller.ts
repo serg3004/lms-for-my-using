@@ -233,7 +233,7 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   createItem(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = createChecklistItemSchema.parse(body);
-    return this.checklistsService.createItem(checklistId, request.currentUser!.organizationId, input);
+    return this.checklistsService.createItem(checklistId, request.currentUser!.organizationId, input, request.currentUser!.locale);
   }
   @Patch('checklist-items/:id')
   @Roles(...rolePolicies.checklistsCreate)

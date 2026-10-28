@@ -14,6 +14,8 @@ import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
   checklistResultToAnswer,
+  checklistItemLevels,
+  localizeChecklistScaleError,
   getRequiredChecklistProgress,
   isChecklistAnswerComplete,
 } from './checklistCompletion.js';
@@ -251,7 +253,7 @@ function ChecklistTaking({
       await submitChecklistItemResult(instance.id, item.id, input);
       await onUpdated();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('checklists.submitError', 'Unable to save this item.'));
+      setError(localizeChecklistScaleError(err instanceof ApiClientError ? err.message : t('checklists.submitError', 'Unable to save this item.'), t));
     } finally {
       setSubmitting(null);
     }
@@ -298,6 +300,7 @@ function ChecklistTaking({
       <div style={{ display: 'grid', gap: 12 }}>
         {checklist.items.map((item) => {
           const result = resultFor(item.id);
+          const levels = checklistItemLevels(item, checklist.scoringMode, checklist.scaleLevels);
           const isDone = isChecklistAnswerComplete(item, checklist.scoringMode, checklistResultToAnswer(result));
           return (
             <div
@@ -311,23 +314,25 @@ function ChecklistTaking({
             >
               <p style={{ fontWeight: 600, marginTop: 0 }}>
                 {item.text}{' '}
-                <span style={{ color: COLORS.muted, fontSize: 12, fontWeight: 500 }}>
+                <span style={{ color: isDone ? COLORS.text : COLORS.muted, fontSize: 12, fontWeight: 500 }}>
                   {item.isRequired
                     ? t('checklists.requiredItem', 'Required')
                     : t('checklists.optionalItem', 'Optional')}
                 </span>
               </p>
-              {checklist.scoringMode === 'scale' ? (
+              {levels !== null ? (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {(checklist.scaleLevels ?? []).map((level) => (
+                  {levels.map((level) => (
                     <button
                       key={level.level}
+                      aria-pressed={result?.scaleLevel === level.level}
                       type="button"
                       disabled={!editable || submitting === item.id}
                       onClick={() => void submit(item, { scaleLevel: level.level })}
                       style={{
                         border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
                         background: result?.scaleLevel === level.level ? COLORS.primarySoft : COLORS.surface,
+                        color: COLORS.text,
                         borderRadius: 10,
                         padding: '8px 12px',
                         fontSize: 12.5,
@@ -337,7 +342,7 @@ function ChecklistTaking({
                       }}
                     >
                       <strong style={{ display: 'block', fontSize: 14 }}>{level.points}</strong>
-                      <span style={{ color: COLORS.muted }}>{level.label}</span>
+                      <span style={{ color: result?.scaleLevel === level.level ? COLORS.text : COLORS.muted }}>{level.label}</span>
                     </button>
                   ))}
                 </div>

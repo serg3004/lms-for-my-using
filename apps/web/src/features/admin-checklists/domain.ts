@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next';
 import type {
   ChecklistAnswerState,
 } from '../../app/checklistCompletion.js';
-import { isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
+import { checklistItemLevels, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
   ChecklistAccessMode,
   ChecklistGeolocationPolicy,
@@ -123,15 +123,17 @@ export function computePreviewResult(
   let totalScore = 0;
   let maxScore = 0;
   for (const item of items) {
-    if (scoringMode === 'scale') {
-      maxScore += scaleLevels.reduce((max, level) => Math.max(max, level.points), 0);
-      totalScore += scaleLevels.find((level) => level.level === answers[item.id]?.scaleLevel)?.points ?? 0;
+    const levels = checklistItemLevels(item, scoringMode, scaleLevels);
+    const weight = item.weight ?? 1;
+    if (levels !== null) {
+      maxScore += weight * levels.reduce((max, level) => Math.max(max, level.points), 0);
+      totalScore += weight * (levels.find((level) => level.level === answers[item.id]?.scaleLevel)?.points ?? 0);
     } else if (scoringMode === 'all_required') {
-      maxScore += 1;
-      totalScore += answers[item.id]?.checked ? 1 : 0;
+      maxScore += weight;
+      totalScore += answers[item.id]?.checked ? weight : 0;
     } else {
-      maxScore += item.points;
-      totalScore += answers[item.id]?.checked ? item.points : 0;
+      maxScore += item.points * weight;
+      totalScore += answers[item.id]?.checked ? item.points * weight : 0;
     }
   }
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;

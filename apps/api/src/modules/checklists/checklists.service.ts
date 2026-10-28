@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
+import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
@@ -187,8 +188,9 @@ const instanceWithSnapshotSelect = {
   snapshotVersion: true,
 } as const;
 
-type ScoringItem = { id: string; points: number; isRequired: boolean; weight?: number };
-type CompletionItem = { id: string; isRequired: boolean; photoRequired: boolean; autoSkipUnanswered?: boolean };
+type ItemScaleRef = { scale?: ChecklistSnapshotItemScale | null };
+type ScoringItem = ItemScaleRef & { id: string; points: number; isRequired: boolean; weight?: number };
+type CompletionItem = ItemScaleRef & { id: string; isRequired: boolean; photoRequired: boolean; autoSkipUnanswered?: boolean };
 type CompletionResult = {
   itemId: string;
   checked: boolean;
@@ -271,6 +273,7 @@ export class ChecklistsService {
     private readonly prisma: PrismaService,
     private readonly uploadService: UploadService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
+    private readonly scaleService: ChecklistScaleService = new ChecklistScaleService(prisma, auditLog),
   ) {}
 
   // ---- Templates ----
@@ -824,10 +827,11 @@ export class ChecklistsService {
     });
   }
 
-  async createItem(checklistId: string, organizationId: string, input: CreateChecklistItemInput) {
+  async createItem(checklistId: string, organizationId: string, input: CreateChecklistItemInput, locale?: string | null) {
     await this.getChecklist(checklistId, organizationId);
-    if (input.scaleId) {
-      await this.assertValidScale(input.scaleId, organizationId);
+    const scaleId = input.scaleId === undefined ? await this.scaleService.ensureDefaultScale(organizationId, locale) : input.scaleId;
+    if (scaleId) {
+      await this.assertValidScale(scaleId, organizationId);
     }
     if (input.groupId) {
       await this.assertValidGroup(input.groupId, checklistId, organizationId);
@@ -835,7 +839,7 @@ export class ChecklistsService {
     const count = await this.prisma.checklistItem.count({ where: { checklistId, deletedAt: null } });
 
     return this.prisma.checklistItem.create({
-      data: { ...input, checklistId, organizationId, order: count },
+      data: { ...input, scaleId, checklistId, organizationId, order: count },
     });
   }
 
@@ -1597,7 +1601,7 @@ export class ChecklistsService {
     const { totalScore, maxScore, scored } = formula === 'criteria'
       ? { totalScore: criteria.filter((item) => {
           const result = resultByItemId.get(item.id);
-          return result?.reviewStatus !== 'rejected' && this.hasValidAnswer(checklist.scoringMode, result);
+          return result?.reviewStatus !== 'rejected' && this.hasValidAnswer(checklist.scoringMode, result, item);
         }).length, maxScore: criteria.length, scored: criteria.length > 0 }
       : this.computeAggregateScore(checklist.items, checklist.scoringMode, checklist.scaleLevels, resultByItemId);
     const percentage = scored ? Math.round((totalScore / maxScore) * 100) : 0;
@@ -1658,12 +1662,13 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist item not found');
     }
 
-    const points = this.computeItemPoints(
+    const answersCriterion = input.checked !== undefined || input.scaleLevel !== undefined;
+    const points = answersCriterion ? this.computeItemPoints(
       checklist.scoringMode,
-      item.points,
+      item,
       checklist.scaleLevels,
       input,
-    );
+    ) : 0;
 
     await this.prisma.checklistItemResult.upsert({
       where: { instanceId_itemId: { instanceId, itemId } },
@@ -1676,19 +1681,21 @@ export class ChecklistsService {
         points,
         photoUrl: input.photoUrl,
         comment: input.comment,
-        answerState: 'answered',
+        answerState: answersCriterion ? 'answered' : 'unanswered',
       },
       update: {
-        checked: input.checked ?? false,
-        scaleLevel: input.scaleLevel,
-        points,
         photoUrl: input.photoUrl,
         comment: input.comment,
-        // Answering an item that was previously skipped (explicitly or auto-skipped) un-skips it.
-        answerState: 'answered',
-        reviewStatus: 'pending',
-        reviewedBy: null,
-        reviewedAt: null,
+        // Metadata-only saves preserve the selected level, points and skip/review state.
+        ...(answersCriterion ? {
+          checked: input.checked ?? false,
+          scaleLevel: input.scaleLevel,
+          points,
+          answerState: 'answered',
+          reviewStatus: 'pending',
+          reviewedBy: null,
+          reviewedAt: null,
+        } : {}),
       },
     });
 
@@ -2198,17 +2205,23 @@ export class ChecklistsService {
     };
   }
 
+  private itemScaleLevels(item: ItemScaleRef, scoringMode: string, scaleLevels: ScaleLevel[] | null): ScaleLevel[] | null {
+    if (item.scale) return item.scale.levels.map((level) => ({ level: level.value, label: level.label, points: level.score }));
+    return scoringMode === 'scale' ? scaleLevels ?? [] : null;
+  }
+
   private computeItemPoints(
     scoringMode: string,
-    itemPoints: number,
+    item: ItemScaleRef & { points: number },
     scaleLevels: ScaleLevel[] | null,
     input: SubmitChecklistItemResultInput,
   ) {
-    if (scoringMode === 'scale') {
-      const level = (scaleLevels ?? []).find((candidate) => candidate.level === input.scaleLevel);
+    const levels = this.itemScaleLevels(item, scoringMode, scaleLevels);
+    if (levels !== null) {
+      const level = levels.find((candidate) => candidate.level === input.scaleLevel);
 
       if (!level) {
-        throw new BadRequestException('Invalid scale level for this checklist');
+        throw new BadRequestException(item.scale ? 'Select a valid level from this criterion’s evaluation scale' : 'Invalid scale level for this checklist');
       }
 
       return level.points;
@@ -2219,7 +2232,7 @@ export class ChecklistsService {
     }
 
     // sum_points
-    return input.checked ? itemPoints : 0;
+    return input.checked ? item.points : 0;
   }
 
   // Assignment-time estimate only (used before any ChecklistItemResult exists, to seed the
@@ -2229,9 +2242,9 @@ export class ChecklistsService {
     return items.reduce((sum, item) => sum + this.computeItemMax(scoring.scoringMode, item, scoring.scaleLevels as ScaleLevel[] | null) * (item.weight ?? 1), 0);
   }
 
-  private computeItemMax(scoringMode: string, item: { points: number }, scaleLevels: ScaleLevel[] | null) {
-    if (scoringMode === 'scale') {
-      const levels = scaleLevels ?? [];
+  private computeItemMax(scoringMode: string, item: ItemScaleRef & { points: number }, scaleLevels: ScaleLevel[] | null) {
+    const levels = this.itemScaleLevels(item, scoringMode, scaleLevels);
+    if (levels !== null) {
       return levels.reduce((max, level) => Math.max(max, level.points), 0);
     }
 
@@ -2242,8 +2255,9 @@ export class ChecklistsService {
     return item.points;
   }
 
-  private hasValidAnswer(scoringMode: string, result: CompletionResult | undefined) {
-    if (!result) return false;
+  private hasValidAnswer(scoringMode: string, result: CompletionResult | undefined, item?: ItemScaleRef) {
+    if (!result || result.answerState === 'skipped') return false;
+    if (item?.scale) return item.scale.levels.some((level) => level.value === result.scaleLevel);
     return scoringMode === 'scale' ? result.scaleLevel !== null : result.checked;
   }
 
@@ -2255,7 +2269,7 @@ export class ChecklistsService {
       return true;
     }
 
-    const hasAnswer = this.hasValidAnswer(scoringMode, result);
+    const hasAnswer = this.hasValidAnswer(scoringMode, result, item);
 
     if (!hasAnswer) {
       return !item.isRequired;
@@ -2290,7 +2304,9 @@ export class ChecklistsService {
       const weight = item.weight ?? 1;
       maxScore += this.computeItemMax(scoringMode, item, scaleLevels) * weight;
 
-      const earned = result && result.reviewStatus !== 'rejected' ? (result.points ?? 0) : 0;
+      const earned = result && result.reviewStatus !== 'rejected'
+        ? item.scale ? item.scale.levels.find((level) => level.value === result.scaleLevel)?.score ?? 0 : result.points ?? 0
+        : 0;
       totalScore += earned * weight;
     }
 
@@ -2355,7 +2371,7 @@ export class ChecklistsService {
       if (!item.autoSkipUnanswered && !skipAllUnanswered) return false;
       const result = resultByItemId.get(item.id);
       if (result?.answerState === 'skipped') return false;
-      return !this.hasValidAnswer(checklist.scoringMode, result);
+      return !this.hasValidAnswer(checklist.scoringMode, result, item);
     });
     if (autoSkipCandidates.length > 0) {
       await this.prisma.$transaction(
@@ -2390,7 +2406,8 @@ export class ChecklistsService {
     const allRequirementsSatisfied =
       checklist.items.length > 0 &&
       checklist.items.every((item) => this.isItemSatisfied(checklist.scoringMode, item, resultByItemId.get(item.id)));
-    const reviewableResults = [...resultByItemId.values()].filter((result) => this.hasValidAnswer(checklist.scoringMode, result));
+    const itemById = new Map(checklist.items.map((item) => [item.id, item]));
+    const reviewableResults = [...resultByItemId.values()].filter((result) => this.hasValidAnswer(checklist.scoringMode, result, itemById.get(result.itemId)));
     const allReviewed = reviewableResults.every((result) => result.reviewStatus !== 'pending');
 
     let status = instance.status;

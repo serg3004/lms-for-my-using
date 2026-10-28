@@ -2436,6 +2436,7 @@
     },
     "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
     "backToList": "Барлық чеклистер",
+    "invalidCriterionScale": "Осы критерий шкаласының жарамды деңгейін таңдаңыз.",
     "submitError": "Тармақты сақтау мүмкін болмады.",
     "markDone": "Орындалды",
     "points": "балл",

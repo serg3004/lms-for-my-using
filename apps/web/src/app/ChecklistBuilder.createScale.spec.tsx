@@ -12,6 +12,7 @@ const api = vi.hoisted(() => ({
   listChecklistItemGroups: vi.fn(),
   listChecklistScales: vi.fn(),
   createChecklistScale: vi.fn(),
+  createChecklistItem: vi.fn(),
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 
@@ -80,4 +81,25 @@ describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)'
     });
     expect(api.updateChecklistItem).toHaveBeenCalledWith('item-1', { scaleId: 'scale-new' });
   });
+});
+
+
+it('PR 358: keeps the server-selected default scale and uses it in a sum-points preview', async () => {
+  const scale = { id: 'default-scale', name: 'Да/Нет', status: 'active', isDefault: true, levels: [{ value: 1, label: 'Нет', score: 0 }, { value: 2, label: 'Да', score: 100 }] };
+  api.listChecklistItemGroups.mockResolvedValue([]);
+  api.listChecklistScales.mockResolvedValue([scale]);
+  api.createChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: scale.id });
+  const container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
+  await act(async () => root?.render(<ChecklistBuilder checklist={{ ...checklist, items: [] }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={i18n.t.bind(i18n) as never} />));
+  const button = (text: string) => [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(text))!;
+  await act(async () => button('Критерий').click());
+  expect(api.createChecklistItem).toHaveBeenCalledWith('c1', expect.not.objectContaining({ scaleId: null }));
+  expect(container.querySelector<HTMLSelectElement>('select.admin-criteria-row__scale')?.value).toBe('default-scale');
+  await act(async () => button('Предпросмотр').click());
+  const dialog = document.querySelector('[role="dialog"][aria-label="Предпросмотр"]')!;
+  const no = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('0 · Нет'))!;
+  await act(async () => no.click());
+  expect(no.getAttribute('aria-pressed')).toBe('true');
+  expect(dialog.querySelector('.admin-preview-result')?.textContent).toContain('0 / 100 (0%)');
+  expect(dialog.querySelector('.admin-preview-result')?.textContent).not.toContain('Не все');
 });

@@ -101,10 +101,11 @@ export const createChecklistItemSchema = z
     weight: z.number().int().min(1).max(100).default(1),
     allowSkip: z.boolean().default(false),
     autoSkipUnanswered: z.boolean().default(false),
+    // Omitted: tenant Yes/No default (PR 358). Explicit null: legacy checklist scoring.
     // Optional reusable evaluation scale (PR 293) -- independent of scoringMode='scale'/
     // Checklist.scaleLevels above. Validity (exists in org, not archived) is checked in the
     // service, not here (needs a DB lookup this schema can't do).
-    scaleId: z.string().uuid().optional(),
+    scaleId: z.string().uuid().nullable().optional(),
     // Optional ChecklistItemGroup (PR 296 observation-sheet builder). Validity (exists in org,
     // belongs to the same checklist) is checked in the service.
     groupId: z.string().uuid().optional(),

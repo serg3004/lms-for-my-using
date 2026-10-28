@@ -245,4 +245,64 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     expect(snapshot.checklist.scaleLevels).toHaveLength(2);
     expect(snapshot.checklist.items[0]?.scale ?? null).toBeNull();
   });
+  it('PR 358: mixed frozen scales score, validate, complete and skip independently of the checklist mode', async () => {
+    const first = await scaleService.create(organizationId, { name: 'Quality', levels: [{ value: 1, label: 'No', score: 0 }, { value: 4, label: 'Excellent', score: 40 }] }, learnerId);
+    const second = await scaleService.create(organizationId, { name: 'Safety', levels: [{ value: 7, label: 'No', score: 0 }, { value: 9, label: 'Yes', score: 10 }] }, learnerId);
+    const a = await checklistsService.createItem(checklistId, organizationId, { text: 'Quality', points: 999, weight: 2, isRequired: true, photoRequired: false, scaleId: first.id });
+    const b = await checklistsService.createItem(checklistId, organizationId, { text: 'Safety', points: 999, weight: 3, isRequired: true, photoRequired: false, allowSkip: true, autoSkipUnanswered: true, scaleId: second.id });
+    const guard = await checklistsService.createItem(checklistId, organizationId, { text: 'Final legacy mark', points: 0, isRequired: true, photoRequired: false, scaleId: null });
+    await checklistsService.updateChecklist(checklistId, organizationId, { status: 'published', requiresReview: true }, learnerId);
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+    expect(instance.maxScore).toBe(110);
+    await scaleService.archive(first.id, organizationId, learnerId);
+    await prisma.checklistItem.update({ where: { id: a.id }, data: { points: 1, scaleId: second.id } });
+    for (const input of [{ scaleLevel: 9 }, { checked: true }]) {
+      await expect(checklistsService.submitItemResult(instance.id, a.id, organizationId, learnerId, false, input)).rejects.toThrow('criterion');
+    }
+    expect(await prisma.checklistItemResult.count({ where: { instanceId: instance.id } })).toBe(0);
+    const skipped = await checklistsService.submitItemResult(instance.id, a.id, organizationId, learnerId, false, { scaleLevel: 4 });
+    expect(skipped).toMatchObject({ totalScore: 80, maxScore: 80, percentage: 100, status: 'in_progress' });
+    // A zero-score level is a real answer, can unskip, and must not auto-skip again.
+    const zero = await checklistsService.submitItemResult(instance.id, b.id, organizationId, learnerId, false, { scaleLevel: 7 });
+    expect(zero).toMatchObject({ totalScore: 80, maxScore: 110, percentage: 73, status: 'in_progress' });
+    expect(zero.results.find((r) => r.itemId === b.id)).toMatchObject({ points: 0, answerState: 'answered', scaleLevel: 7 });
+    await checklistsService.submitItemResult(instance.id, b.id, organizationId, learnerId, false, { comment: 'Still a No' });
+    expect(await prisma.checklistItemResult.findUniqueOrThrow({ where: { instanceId_itemId: { instanceId: instance.id, itemId: b.id } } })).toMatchObject({ points: 0, scaleLevel: 7, answerState: 'answered' });
+    expect(await checklistsService.computeInstanceScore(instance.id, organizationId)).toMatchObject({ totalScore: 80, maxScore: 110, percentage: 73 });
+    expect(await checklistsService.submitItemResult(instance.id, guard.id, organizationId, learnerId, false, { checked: true })).toMatchObject({ status: 'submitted', percentage: 73 });
+  });
+
+  it('PR 358: new criteria default to the tenant Yes/No scale; explicit null retains legacy scoring', async () => {
+    const item = await checklistsService.createItem(checklistId, organizationId, { text: 'Default criterion', points: 999, isRequired: true, photoRequired: false }, 'en');
+    const defaultScale = await scaleService.get(item.scaleId!, organizationId);
+    expect(defaultScale).toMatchObject({ isDefault: true, name: 'Yes/No' });
+    expect(defaultScale.levels.map((l) => l.score)).toEqual([0, 100]);
+    const legacy = await checklistsService.createItem(checklistId, organizationId, { text: 'Legacy', points: 10, isRequired: true, photoRequired: false, scaleId: null });
+    expect(legacy.scaleId).toBeNull();
+    await checklistsService.updateChecklist(checklistId, organizationId, { status: 'published' }, learnerId);
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+    expect(instance.maxScore).toBe(110);
+    const no = await checklistsService.submitItemResult(instance.id, item.id, organizationId, learnerId, false, { scaleLevel: 1 });
+    expect(no.status).toBe('in_progress');
+    const completed = await checklistsService.submitItemResult(instance.id, legacy.id, organizationId, learnerId, false, { checked: true });
+    expect(completed).toMatchObject({ status: 'completed', totalScore: 10, maxScore: 110, percentage: 9 });
+  });
+
+  it('PR 358: stored completed scores and reports are not rewritten by reads or live scale changes', async () => {
+    const scale = await scaleService.create(organizationId, { name: 'Frozen', levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 100 }] }, learnerId);
+    const item = await checklistsService.createItem(checklistId, organizationId, { text: 'Criterion', points: 10, isRequired: true, photoRequired: false, scaleId: scale.id });
+    await checklistsService.updateChecklist(checklistId, organizationId, { status: 'published' }, learnerId);
+    const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+    // Represents a completion stored before per-criterion scoring shipped.
+    await prisma.checklistInstance.update({ where: { id: instance.id }, data: { status: 'completed', totalScore: 10, maxScore: 10, percentage: 100, passed: true, scored: true } });
+    const before = await checklistsService.getAnalytics(organizationId, {});
+    await scaleService.archive(scale.id, organizationId, learnerId);
+    await prisma.checklistItem.update({ where: { id: item.id }, data: { scaleId: null, points: 999 } });
+    const restored = await checklistsService.getInstance(instance.id, organizationId);
+    expect(restored).toMatchObject({ totalScore: 10, maxScore: 10, percentage: 100, status: 'completed' });
+    expect(restored.checklist.items[0]?.scale?.levels[1]?.score).toBe(100);
+    expect(await checklistsService.getAnalytics(organizationId, {})).toEqual(before);
+    expect(await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instance.id } })).toMatchObject({ totalScore: 10, maxScore: 10, percentage: 100 });
+  });
+
 });

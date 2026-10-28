@@ -140,3 +140,22 @@ describe('recalculate formula validation (PR 335)', () => {
     expect(recalculateChecklistScoreSchema.safeParse({ reason: 'audit', formula: 'unknown' }).success).toBe(false);
   });
 });
+
+describe('criterion scale scoring (PR 358)', () => {
+  const scale = (id: string, high: number) => ({ id, name: id, levels: [{ value: 7, label: 'No', score: 0 }, { value: 9, label: 'Yes', score: high }] });
+  it.each(['sum_points', 'all_required', 'scale'])('uses each frozen scale and weight in %s, not stored points or the checklist scale', async (scoringMode) => {
+    const frozen = { ...snapshot, checklist: { ...snapshot.checklist, scoringMode,
+      scaleLevels: [{ level: 9, label: 'Wrong global scale', points: 999 }],
+      items: snapshot.checklist.items.map((item, index) => ({ ...item, weight: index ? 3 : 2, scale: scale(item.id, index ? 10 : 40) })),
+    } };
+    const results = snapshot.checklist.items.map((item, index) => ({ itemId: item.id, checked: false, scaleLevel: index ? 7 : 9, points: 999, reviewStatus: 'approved', answerState: 'answered', photoObjectKey: null }));
+    const prisma = { checklistInstance: { findFirst: jest.fn(async () => ({ ...instanceRow(), templateSnapshot: frozen })) }, checklistItemResult: { findMany: jest.fn(async () => results) } };
+    const service = createService(prisma);
+    expect(await service.computeInstanceScore(instanceId, organizationId)).toMatchObject({ totalScore: 80, maxScore: 110, percentage: 73, scored: true });
+    expect(await service.computeInstanceScore(instanceId, organizationId, undefined, 'criteria')).toMatchObject({ totalScore: 2, maxScore: 2, percentage: 100 });
+    results[1]!.answerState = 'skipped';
+    expect(await service.computeInstanceScore(instanceId, organizationId)).toMatchObject({ totalScore: 80, maxScore: 80, percentage: 100 });
+    results[0]!.reviewStatus = 'rejected';
+    expect(await service.computeInstanceScore(instanceId, organizationId)).toMatchObject({ totalScore: 0, maxScore: 80, percentage: 0 });
+  });
+});

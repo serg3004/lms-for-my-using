@@ -2436,6 +2436,7 @@
     },
     "resultLine": "{{score}} / {{max}} ({{percentage}}%)",
     "backToList": "Все чек-листы",
+    "invalidCriterionScale": "Выберите допустимый уровень шкалы этого критерия.",
     "submitError": "Не удалось сохранить пункт.",
     "markDone": "Выполнено",
     "points": "баллов",

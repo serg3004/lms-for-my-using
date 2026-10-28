@@ -398,8 +398,10 @@ an independent, active, non-default scale with the same levels -- the way to cha
 the default one. Responses carry `inUse` (see the "used" rule below) and `isDefault`. Every organization has at
 most one protected default "Yes/No" scale (two levels, 0 and 100 points, text in the language of the user who
 first opened the library): `GET /checklist-scales` creates it idempotently, lists it first, and `PATCH`,
-`archive` and `DELETE` on it answer 400. Note: the per-criterion scale is presentation data only -- the server
-scores a criterion from `scoringMode` and the checklist-level `scaleLevels`, never from `ChecklistItem.scaleId`.
+`archive` and `DELETE` on it answer 400. PR 358 makes the criterion's resolved scale the scoring
+source: the selected level's `score` is earned points, and the greatest level score is the maximum.
+It takes precedence over the checklist's `scoringMode`/`scaleLevels`. Without a criterion scale,
+the existing checklist-level scale, `sum_points` and `all_required` behavior is unchanged.
 
 Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH/DELETE
 /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) -- coexists with, and never touches,
@@ -436,6 +438,28 @@ retroactively change an already-assigned instance. `POST /checklists/:checklistI
 whose items reference an archived scale (400) -- this only blocks a *new* publish attempt; a
 checklist that was already published while its scale was still active keeps working exactly as
 before, since its instances already snapshotted the scale as it looked at assignment time.
+
+PR 358 scoring/completion details:
+- `scaleLevel` must match a value in this criterion's frozen `scale.levels`; a value belonging
+  only to another criterion or the live scale is rejected with 400 before the result is written.
+- A selected zero-score level (including "No") is a valid answer and satisfies the answer
+  requirement; photo evidence is still required when configured. It is reviewed normally and
+  must not be auto-skipped. Missing or invalid levels do not satisfy the criterion.
+- Each non-skipped criterion contributes its own earned/max multiplied by its weight. Rejected
+  answers earn zero; explicit/automatic skips exclude both earned and max. Recalculation reads
+  level scores from the immutable snapshot, not a submitted point value or today's scale library.
+  The `criteria` formula continues to count each valid selection, including zero-score levels,
+  once without weights. Assignment and bulk assignment seed the same per-criterion maximum.
+- `POST /checklists/:checklistId/items` with omitted `scaleId` idempotently obtains the tenant's
+  protected Yes/No scale and stores its ID. First creation follows the caller's locale. Explicit
+  `scaleId: null` opts into the legacy checklist scoring; existing criteria, template/group copies
+  and snapshots are not backfilled. `PATCH` omission retains the current reference.
+- Comment/photo metadata-only result saves retain the answer, points and skip/review state; a
+  comment before an answer does not invent a selected level. Answer changes still reset review.
+- No migration, background job or read-time recomputation rewrites completed scores or reports.
+  The existing explicit, audited administrator recalculation remains available and uses the
+  frozen criterion definitions, even for a snapshot created before this correction. Changing or
+  archiving a live scale never replaces those definitions. No existing snapshot is rewritten.
 
 No new role policies -- `checklist-scales` routes reuse `checklistsRead` (list/get) and
 `checklistsCreate` (create/update/archive), the same policies that already gate checklist/item

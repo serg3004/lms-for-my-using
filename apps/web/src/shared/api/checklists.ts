@@ -73,7 +73,7 @@ export function deleteChecklist(checklistId: string) {
 
 export function createChecklistItem(
   checklistId: string,
-  input: { text: string; points: number; isRequired: boolean; photoRequired: boolean },
+  input: { text: string; points: number; isRequired: boolean; photoRequired: boolean; scaleId?: string | null; groupId?: string },
 ) {
   return apiRequest<ChecklistItemSummary>(`/checklists/${encodeURIComponent(checklistId)}/items`, {
     method: 'POST',

@@ -79,3 +79,15 @@ describe('checklist completion helpers', () => {
     });
   });
 });
+
+
+describe('per-criterion scale completion (PR 358)', () => {
+  const criterion = item({ scale: { id: 's', name: 'Yes/No', levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 100 }] } });
+  it.each<ChecklistScoringMode>(['sum_points', 'all_required', 'scale'])('counts a zero-point selection as answered in %s', (mode) => {
+    expect(isChecklistAnswerComplete(criterion, mode, { scaleLevel: 1, checked: false })).toBe(true);
+    expect(isChecklistAnswerComplete(criterion, mode, { scaleLevel: 99, checked: true })).toBe(false);
+    expect(isChecklistAnswerComplete(criterion, mode, { checked: true })).toBe(false);
+    expect(isChecklistAnswerComplete({ ...criterion, photoRequired: true }, mode, { scaleLevel: 1 })).toBe(false);
+    expect(isChecklistAnswerComplete({ ...criterion, photoRequired: true }, mode, { scaleLevel: 1, hasPhoto: true })).toBe(true);
+  });
+});

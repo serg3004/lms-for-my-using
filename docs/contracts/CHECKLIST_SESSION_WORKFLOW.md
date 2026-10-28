@@ -200,3 +200,18 @@ email addresses. Mail is optional and uses the existing configured delivery capa
 notices are persisted with the change regardless of mail availability. Queued mail about an old
 change is suppressed after deletion; the deletion notice itself remains deliverable. The
 transaction/replay and delivery contract is specified in `API_CONTRACTS.md`.
+
+
+## Criterion evaluation scales (PR 358)
+
+A criterion's own scale determines its buttons, earned points, maximum and completion. A valid
+zero-point selection such as "No" is an answer; it still needs evidence if the criterion requires
+a photo. Without a criterion scale the existing checklist scoring applies. Skipped criteria do
+not contribute to either side of the total, and weights apply to both sides. Learner answers,
+observer progress and builder previews follow the same per-criterion rules. New criteria select
+the protected Yes/No scale by default; selecting "No scale" retains checklist-level scoring.
+
+Assigned instances read scale levels from their immutable snapshot. Later live edits/archival do
+not change those definitions or saved completed scores. No historical recalculation runs on
+release or when opening a report; administrator-requested recalculation remains explicit and
+audited, using the snapshot. Saving a comment preserves an existing scale answer.
