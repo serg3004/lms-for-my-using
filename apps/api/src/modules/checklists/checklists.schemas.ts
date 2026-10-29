@@ -64,6 +64,19 @@ export const createChecklistFromTemplateSchema = z.object({
   locale: z.string().trim().max(10).optional(),
 });
 
+// ---- PR 367: administrator-only result deletion and organization templates ----
+export const deleteChecklistResultSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+export const createChecklistOrgTemplateSchema = z.object({
+  sourceChecklistId: z.string().uuid(),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().max(2000).nullable().optional(),
+});
+export const updateChecklistOrgTemplateSchema = z
+  .object({ title: z.string().trim().min(1).max(200), description: z.string().trim().max(2000).nullable() })
+  .partial()
+  .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to update' });
+export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid() });
+
 export const updateChecklistSchema = z
   .object({
     title: z.string().trim().min(1).max(200),

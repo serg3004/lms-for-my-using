@@ -30,6 +30,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistSession` |
 | `ChecklistSessionEvent` |
 | `ChecklistSessionReminder` |
+| `ChecklistTemplate` |
 | `ChecklistWorkplaceSettings` |
 | `Course` |
 | `CourseInstructor` |

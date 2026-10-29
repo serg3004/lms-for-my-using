@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, Menu, type BadgeVariant } from '../../shared
 import {
   copyChecklistItemGroup,
   createChecklistItem,
+  createChecklistOrgTemplate,
   createChecklistItemGroup,
   deleteChecklistItem,
   getChecklist,
@@ -91,6 +92,18 @@ export function ChecklistBuilder({
   const currentUser = useOptionalSession()?.currentUser;
   // PR 366: only an administrator switches a checklist to or from the free-access mode.
   const canSwitchAccessMode = !currentUser || currentUser.roles.includes('admin');
+  // PR 367: only an administrator saves a sheet as a template of the organization (the server enforces it too).
+  const canManageTemplates = currentUser?.roles.includes('admin') ?? false;
+  const [templateState, setTemplateState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  async function saveAsTemplate() {
+    setTemplateState('saving');
+    try {
+      await createChecklistOrgTemplate(checklist.id);
+      setTemplateState('saved');
+    } catch {
+      setTemplateState('error');
+    }
+  }
   const canManageEditAccess = !currentUser || currentUser.roles.includes('admin') || checklist.createdBy === currentUser.id;
   const canEdit = canManageEditAccess || (checklist.allowEditByAll ?? true);
   const [allowEditByAll, setAllowEditByAll] = useState(checklist.allowEditByAll ?? true);
@@ -277,6 +290,11 @@ export function ChecklistBuilder({
             >
               {t('admin.checklists.preview', 'Preview')}
             </Button>
+            {canManageTemplates && (
+              <Button type="button" variant="secondary" disabled={templateState === 'saving' || items.length === 0} onClick={() => void saveAsTemplate()}>
+                {t('admin.checklists.templates.saveAs', 'Save as template')}
+              </Button>
+            )}
             {checklist.status !== 'published' && (
               <Button
                 variant="primary"
@@ -292,6 +310,8 @@ export function ChecklistBuilder({
           </div>
         }
       />
+      {templateState === 'saved' && <p role="status" className="admin-form__hint">{t('admin.checklists.templates.saved', 'Saved as a template of the organization.')}</p>}
+      {templateState === 'error' && <p role="alert" className="learner-quiz__submit-error">{t('admin.checklists.templates.saveError', 'Unable to save the template.')}</p>}
       {items.length === 0 && (
         <p id="checklist-needs-items" role="note" className="admin-form__hint">
           {t('admin.checklists.needItemsHint', 'Preview and Publish become available after you add at least one criterion.')}

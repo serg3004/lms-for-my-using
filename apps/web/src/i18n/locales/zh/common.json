@@ -1424,11 +1424,21 @@
       "templates": {
         "open": "从模板创建",
         "title": "从模板创建",
-        "hint": "模板会生成可自由编辑的草稿。若要以自己的清单为基础，请使用列表中的“复制”。",
+        "hint": "模板会创建一份可自由编辑的草稿。若要以自己的表单为基础，请使用列表中的“复制”。管理员可在该表单页面将其保存为组织模板。",
         "use": "使用",
         "summary": "{{groups}} 个分组 · {{items}} 条标准",
         "loadError": "无法加载模板。",
-        "createError": "无法从模板创建清单。"
+        "createError": "无法从模板创建清单。",
+        "orgTitle": "组织模板",
+        "builtInTitle": "内置模板",
+        "rename": "模板名称",
+        "renameOpen": "重命名",
+        "save": "保存",
+        "remove": "删除",
+        "manageError": "无法修改模板。",
+        "saveAs": "保存为模板",
+        "saved": "已保存为组织模板。",
+        "saveError": "无法保存模板。"
       },
       "accessMode": {
         "assigned": "按分配",
@@ -1453,7 +1463,22 @@
         "removeError": "无法删除图片。"
       },
       "allowEditByAllHint": "关闭后，只有您和管理员可以编辑此检查表。其他员工仍可查看并分配。",
-      "readOnlyNotice": "只有创建者或管理员可以编辑此检查表。您可以查看。"
+      "readOnlyNotice": "只有创建者或管理员可以编辑此检查表。您可以查看。",
+      "resultDelete": {
+        "open": "删除结果",
+        "title": "删除结果",
+        "hint": "该结果将从报告、导出和分析中消失。30天内可以恢复。",
+        "reason": "原因",
+        "confirm": "删除结果",
+        "error": "无法删除结果。",
+        "loadError": "无法加载已删除的结果。",
+        "restoreError": "无法恢复结果。",
+        "listTitle": "已删除的结果（{{count}}）",
+        "meta": "{{reason}} · 于 {{date}} 删除，{{until}} 前可恢复",
+        "restore": "恢复",
+        "done": "结果已删除。30天内可在会话页面恢复。",
+        "backToSessions": "返回会话"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

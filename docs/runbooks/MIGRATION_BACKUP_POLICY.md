@@ -523,6 +523,18 @@ forward migration before starting the new API (an older API ignores the column).
 while retaining the column. Verified by the PostgreSQL integration test
 `checklist-session-observer-create.database.spec.ts` ("PR 362в").
 
+### Checklist result deletion and organization templates (PR 367)
+
+`20261029150000_add_checklist_results_delete_and_templates` is additive: two nullable columns on
+`checklist_instances` (`result_delete_reason`, `result_deleted_by`) and a new `checklist_templates` table
+with an organization foreign key (`ON DELETE CASCADE`) and one index. No backfill and no destructive
+statement; existing rows keep `NULL` and behave as before. Apply the forward migration before starting
+the new API (an older API ignores the columns and the table). Roll back the application while retaining
+the schema; a deleted result is only soft-deleted (`deleted_at` set together with a reason) and stays
+restorable by an administrator for 30 days, so no extra backup is needed. Verified by the PostgreSQL
+integration test `checklist-session-observer-create.database.spec.ts` ("PR 367"). Production backup/restore
+remains subject to the live verification requirements above.
+
 ### Checklist pinned flag (PR 354)
 
 `20261029120000_add_checklist_pinned` adds one non-null `checklists.pinned` boolean defaulting to

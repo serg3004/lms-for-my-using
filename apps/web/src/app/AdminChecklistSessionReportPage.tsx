@@ -39,6 +39,7 @@ import { formatParticipantName } from '../features/admin-checklist-sessions/doma
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
+import { DeleteResultDialog } from '../features/admin-checklist-sessions/ChecklistResultDeletion.js';
 
 type CriterionResultDisplay =
   | { kind: 'done'; detail: string }
@@ -363,6 +364,10 @@ export function SessionReportBody({
   const canRecalculate = currentUser?.roles.some((role) => role !== 'learner') ?? false;
   const [tab, setTab] = useState<Tab>('summary');
   const [recalcOpen, setRecalcOpen] = useState(false);
+  // PR 367: only an administrator deletes a finished result; the server enforces it too.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [resultDeleted, setResultDeleted] = useState(false);
+  const canDeleteResult = isAdmin && session.status === 'completed';
 
   const { state: instanceState } = useAsyncData<ChecklistInstanceSummary>(
     () => getChecklistInstance(session.instanceId),
@@ -423,6 +428,9 @@ export function SessionReportBody({
             {canRecalculate && (
               <button className="admin-btn admin-btn--secondary" onClick={() => setRecalcOpen(true)} type="button">{t('admin.checklists.report.recalculateOpen', 'Recalculate')}</button>
             )}
+            {canDeleteResult && !resultDeleted && (
+              <button className="admin-btn admin-btn--secondary" onClick={() => setDeleteOpen(true)} type="button">{t('admin.checklists.resultDelete.open', 'Delete result')}</button>
+            )}
           </div>
         }
       />
@@ -435,6 +443,21 @@ export function SessionReportBody({
           sessionId={session.id}
           t={t}
         />
+      )}
+
+      {canDeleteResult && (
+        <DeleteResultDialog
+          instanceId={session.instanceId}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => { setDeleteOpen(false); setResultDeleted(true); }}
+          open={deleteOpen}
+          t={t}
+        />
+      )}
+      {resultDeleted && (
+        <InlineFeedback tone="success" title={t('admin.checklists.resultDelete.done', 'The result was deleted. You can restore it from the sessions page within 30 days.')}>
+          <a href="/admin/checklists/sessions">{t('admin.checklists.resultDelete.backToSessions', 'Back to sessions')}</a>
+        </InlineFeedback>
       )}
 
       <div aria-label={t('admin.checklists.report.tabsLabel', 'Session report sections')} className="admin-org-tabs" role="tablist">

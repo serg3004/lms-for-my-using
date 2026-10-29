@@ -158,6 +158,8 @@ describe('rolePolicies', () => {
     checklistWorkplaceSettingsWrite: ['admin', 'manager', 'instructor', 'mentor'],
     checklistAccessSettingsWrite: ['admin'],
     checklistFreeAccessCreate: ['admin'],
+    checklistResultsDelete: ['admin'],
+    checklistTemplatesManage: ['admin'],
     checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
     checklistSessionsImport: ['admin', 'manager', 'instructor', 'mentor'],

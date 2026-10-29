@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 /// <reference types="jest" />
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException, NotFoundException, type ExecutionContext } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../database/prisma.service.js';
@@ -391,6 +391,99 @@ describe('observer session creation and conduct access (PR 331/349) — database
     const manager = await user(organizationId, ['manager']);
     expect(await controller.getAnalytics({ checklistId: free.id }, await request(manager, 'getAnalytics'))).toMatchObject({ assignmentsTotal: 0 });
     await expect(request(learner, 'getAnalytics')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('PR 367: only an admin deletes a finished result; it leaves every report and an admin restores it', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const peers = await Promise.all((['manager', 'instructor', 'mentor'] as const).map((role) => user(organizationId, [role])));
+    const finished = await prisma.checklistInstance.create({ data: { organizationId, checklistId, userId: learner.id, status: 'completed', passed: true, percentage: 90, completedAt: new Date() } });
+    const session = await prisma.checklistSession.create({ data: { organizationId, instanceId: finished.id, observerId: observer.id, status: 'completed', scheduledAt: new Date() } });
+    const query = { from: '2026-01-01T00:00:00.000Z', to: '2030-12-31T00:00:00.000Z' };
+    const analytics = async () => (await controller.getAnalytics({ checklistId }, await request(admin, 'getAnalytics'))).assignmentsTotal;
+    const managerView = async () => (await controller.getManagerAnalytics(query, await request(admin, 'getManagerAnalytics'))).summary.totalSessions;
+    const open = await instance(learner.id);
+    expect([await analytics(), await managerView()]).toEqual([2, 1]);
+
+    for (const actor of [...peers, learner]) {
+      await expect(request(actor, 'deleteResult')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(request(actor, 'restoreResult')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(request(actor, 'listDeletedResults')).rejects.toBeInstanceOf(ForbiddenException);
+    }
+    await expect(controller.deleteResult(finished.id, { reason: '  ' }, await request(admin, 'deleteResult'))).rejects.toThrow();
+    // Another tenant's admin and an unfinished result are refused; nothing changes.
+    const foreignAdmin = await user(foreignOrganizationId, ['admin']);
+    await expect(controller.deleteResult(finished.id, { reason: 'Other tenant' }, await request(foreignAdmin, 'deleteResult'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.deleteResult(open.id, { reason: 'Not finished' }, await request(admin, 'deleteResult'))).rejects.toBeInstanceOf(ConflictException);
+    expect(await prisma.checklistInstance.count({ where: { organizationId, deletedAt: { not: null } } })).toBe(0);
+
+    const deleted = await controller.deleteResult(finished.id, { reason: 'Entered by mistake' }, await request(admin, 'deleteResult'));
+    expect(deleted.restorableUntil).toBeTruthy();
+    expect([await analytics(), await managerView()]).toEqual([1, 0]);
+    await expect(controller.getInstance(finished.id, await request(admin, 'getInstance'))).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.getSession(session.id, await request(admin, 'getSession'))).rejects.toBeInstanceOf(NotFoundException);
+    expect((await controller.listMyInstances(await request(learner, 'listMyInstances'))).map((row) => row.id)).not.toContain(finished.id);
+    await expect(controller.deleteResult(finished.id, { reason: 'Twice' }, await request(admin, 'deleteResult'))).rejects.toBeInstanceOf(NotFoundException);
+    expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_result.deleted', actorId: admin.id } })).toMatchObject({ targetId: finished.id, metadata: { reason: 'Entered by mistake' } });
+    // The foreign admin does not see it in the deleted list either.
+    expect((await controller.listDeletedResults(await request(admin, 'listDeletedResults'))).items.map((row) => row.id)).toEqual([finished.id]);
+    expect((await controller.listDeletedResults(await request(foreignAdmin, 'listDeletedResults'))).items).toEqual([]);
+    await expect(controller.restoreResult(finished.id, await request(foreignAdmin, 'restoreResult'))).rejects.toBeInstanceOf(NotFoundException);
+
+    await controller.restoreResult(finished.id, await request(admin, 'restoreResult'));
+    expect([await analytics(), await managerView()]).toEqual([2, 1]);
+    expect(await controller.getSession(session.id, await request(admin, 'getSession'))).toMatchObject({ id: session.id });
+    expect(await prisma.checklistInstance.findUniqueOrThrow({ where: { id: finished.id } })).toMatchObject({ deletedAt: null, resultDeleteReason: null, resultDeletedBy: null });
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_result.restored', actorId: admin.id } })).toBe(1);
+
+    // A session cancelled the ordinary way is not an administrator's deletion and can never be restored; the window is enforced.
+    const cancelled = await prisma.checklistInstance.create({ data: { organizationId, checklistId, userId: learner.id, deletedAt: new Date() } });
+    await expect(controller.restoreResult(cancelled.id, await request(admin, 'restoreResult'))).rejects.toBeInstanceOf(NotFoundException);
+    await controller.deleteResult(finished.id, { reason: 'Again' }, await request(admin, 'deleteResult'));
+    await prisma.checklistInstance.update({ where: { id: finished.id }, data: { deletedAt: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000) } });
+    await expect(controller.restoreResult(finished.id, await request(admin, 'restoreResult'))).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('PR 367: only an admin manages organization templates; builders start a draft from one', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const builders = await Promise.all((['manager', 'instructor', 'mentor'] as const).map((role) => user(organizationId, [role])));
+    const source = await controller.createChecklist({ organizationId, title: 'Source', scoringMode: 'sum_points', passThreshold: 70, requiresReview: true }, await request(admin, 'createChecklist'));
+    const group = await controller.createItemGroup(source.id, { title: 'Opening' }, await request(admin, 'createItemGroup'));
+    await controller.createItem(source.id, { text: 'Greets', points: 10, groupId: group.id }, await request(admin, 'createItem'));
+    await controller.createItem(source.id, { text: 'Thanks', points: 5 }, await request(admin, 'createItem'));
+
+    for (const actor of [...builders, learner]) {
+      await expect(request(actor, 'createOrgTemplate')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(request(actor, 'updateOrgTemplate')).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(request(actor, 'deleteOrgTemplate')).rejects.toBeInstanceOf(ForbiddenException);
+    }
+    await expect(request(learner, 'listOrgTemplates')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(request(learner, 'createChecklistFromOrgTemplate')).rejects.toBeInstanceOf(ForbiddenException);
+    const foreignAdmin = await user(foreignOrganizationId, ['admin']);
+    await expect(controller.createOrgTemplate({ sourceChecklistId: source.id }, await request(foreignAdmin, 'createOrgTemplate'))).rejects.toBeInstanceOf(NotFoundException);
+
+    const template = await controller.createOrgTemplate({ sourceChecklistId: source.id, title: 'Standard opening' }, await request(admin, 'createOrgTemplate'));
+    expect(template).toMatchObject({ title: 'Standard opening', groupCount: 1, itemCount: 2 });
+    // The template is a frozen copy: editing or deleting the source changes nothing.
+    await controller.createItem(source.id, { text: 'Later criterion', points: 1 }, await request(admin, 'createItem'));
+    await controller.deleteChecklist(source.id, await request(admin, 'deleteChecklist'));
+
+    for (const actor of builders) {
+      expect((await controller.listOrgTemplates(await request(actor, 'listOrgTemplates'))).items.map((row) => row.id)).toEqual([template.id]);
+      const draft = await controller.createChecklistFromOrgTemplate({ templateId: template.id }, await request(actor, 'createChecklistFromOrgTemplate'));
+      expect(draft).toMatchObject({ title: 'Standard opening', status: 'draft', scoringMode: 'sum_points', passThreshold: 70, requiresReview: true, createdBy: actor.id });
+      expect(draft.items.map((item) => item.text)).toEqual(['Greets', 'Thanks']);
+      expect(draft.itemGroups.map((row) => row.title)).toEqual(['Opening']);
+      expect(draft.items[0]!.groupId).toBe(draft.itemGroups[0]!.id);
+    }
+    expect((await controller.listOrgTemplates(await request(foreignAdmin, 'listOrgTemplates'))).items).toEqual([]);
+    await expect(controller.createChecklistFromOrgTemplate({ templateId: template.id }, await request(foreignAdmin, 'createChecklistFromOrgTemplate'))).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(await controller.updateOrgTemplate(template.id, { title: 'Renamed' }, await request(admin, 'updateOrgTemplate'))).toMatchObject({ title: 'Renamed' });
+    await expect(controller.updateOrgTemplate(template.id, { title: 'Hijack' }, await request(foreignAdmin, 'updateOrgTemplate'))).rejects.toBeInstanceOf(NotFoundException);
+    await controller.deleteOrgTemplate(template.id, await request(admin, 'deleteOrgTemplate'));
+    expect((await controller.listOrgTemplates(await request(builders[0]!, 'listOrgTemplates'))).items).toEqual([]);
+    await expect(controller.createChecklistFromOrgTemplate({ templateId: template.id }, await request(builders[0]!, 'createChecklistFromOrgTemplate'))).rejects.toBeInstanceOf(NotFoundException);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: { in: ['checklist_template.created', 'checklist_template.updated', 'checklist_template.deleted'] }, actorId: admin.id } })).toBe(3);
   });
 
   it('PR 362: an employee cannot build, change the settings or recalculate', async () => {

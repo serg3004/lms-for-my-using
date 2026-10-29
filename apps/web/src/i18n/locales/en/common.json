@@ -1424,11 +1424,21 @@
       "templates": {
         "open": "From template",
         "title": "Create from template",
-        "hint": "A template creates a draft you can edit freely. To start from one of your own sheets, use \"Copy\" in the list.",
+        "hint": "A template creates a draft you can edit freely. To start from one of your own sheets, use \"Copy\" in the list. An administrator saves a sheet as a template of the organization from the page of that sheet.",
         "use": "Use",
         "summary": "{{groups}} groups · {{items}} criteria",
         "loadError": "Unable to load templates.",
-        "createError": "Unable to create a checklist from the template."
+        "createError": "Unable to create a checklist from the template.",
+        "orgTitle": "Templates of the organization",
+        "builtInTitle": "Built-in templates",
+        "rename": "Template name",
+        "renameOpen": "Rename",
+        "save": "Save",
+        "remove": "Delete",
+        "manageError": "Unable to change the template.",
+        "saveAs": "Save as template",
+        "saved": "Saved as a template of the organization.",
+        "saveError": "Unable to save the template."
       },
       "accessMode": {
         "assigned": "By assignment",
@@ -1453,7 +1463,22 @@
         "removeError": "Unable to remove the picture."
       },
       "allowEditByAllHint": "When off, only you and administrators can edit this checklist. Other employees can still view it and assign it.",
-      "readOnlyNotice": "Only the creator or an administrator can edit this checklist. You can view it."
+      "readOnlyNotice": "Only the creator or an administrator can edit this checklist. You can view it.",
+      "resultDelete": {
+        "open": "Delete result",
+        "title": "Delete result",
+        "hint": "The result disappears from reports, exports and analytics. You can restore it within 30 days.",
+        "reason": "Reason",
+        "confirm": "Delete result",
+        "error": "Unable to delete the result.",
+        "loadError": "Unable to load deleted results.",
+        "restoreError": "Unable to restore the result.",
+        "listTitle": "Deleted results ({{count}})",
+        "meta": "{{reason}} · deleted {{date}}, can be restored until {{until}}",
+        "restore": "Restore",
+        "done": "The result was deleted. You can restore it from the sessions page within 30 days.",
+        "backToSessions": "Back to sessions"
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

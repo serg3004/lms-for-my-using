@@ -605,6 +605,23 @@ code. `locale` is `ru`, `en`, `kk` or `zh`; anything else gets English. Creation
 that yields an independent draft (settings, groups, criteria; context fields get fresh ids) and
 audit event `checklist.created_from_template`; an unknown `templateKey` is 404.
 
+**Organization templates and deleted results (PR 367).** `checklist_templates` rows are frozen copies
+of a checklist (settings, groups, criteria in `payload`) saved by an administrator:
+`POST /checklist-org-templates { sourceChecklistId, title?, description? }` (admin, at most 100 per
+organization), `PATCH /checklist-org-templates/:id { title?, description? }` (admin),
+`DELETE /checklist-org-templates/:id` (admin, soft), `GET /checklist-org-templates` and
+`POST /checklists/from-org-template { templateId }` (`checklistsCreate`; the draft is built in one
+transaction, a scale deleted since is dropped from the criterion). Audit: `checklist_template.created`,
+`.updated`, `.deleted`, `checklist.created_from_org_template`. Another tenant's id is 404.
+`DELETE /checklist-instances/:id/result { reason }` (admin; reason 3-500 characters) soft-deletes a
+`completed` instance and its session with the same `deletedAt`, stores `resultDeleteReason` and
+`resultDeletedBy`, and audits `checklist_result.deleted`; every read, report, export and analytics
+query already filters `deletedAt: null`. A non-completed result is 409, an unknown or foreign id 404.
+`GET /checklist-instances/deleted-results` lists them (reason, `restorableUntil`);
+`POST /checklist-instances/:id/result/restore` (admin) restores within 30 days (409 after) and audits
+`checklist_result.restored`. A session cancelled the ordinary way has no `resultDeleteReason` and is
+never restorable here.
+
 Snapshot integration: `contextFields`/`defaultLocationCapturePolicy`/`preSessionVisibility` are
 resolved into `ChecklistInstance.templateSnapshot` at assignment time exactly like `scaleLevels`
 (PR 293's pattern) -- a later edit to the live checklist can never retroactively change what an

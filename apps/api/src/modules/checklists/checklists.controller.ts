@@ -23,6 +23,10 @@ import {
   checklistListQuerySchema,
   checklistTemplatesQuerySchema,
   createChecklistFromTemplateSchema,
+  createChecklistFromOrgTemplateSchema,
+  createChecklistOrgTemplateSchema,
+  deleteChecklistResultSchema,
+  updateChecklistOrgTemplateSchema,
   checklistLocationCapturePointSchema,
   checklistSessionParticipantsQuerySchema,
   createChecklistItemGroupSchema,
@@ -147,6 +151,57 @@ export class ChecklistsController {
   createChecklistFromTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = createChecklistFromTemplateSchema.parse(body);
     return this.checklistsService.createFromTemplate(input.templateKey, input.locale, request.currentUser!.organizationId, request.currentUser!.id);
+  }
+
+  // PR 367: organization templates. Everyone who builds sheets reads and starts from them; only an administrator changes them.
+  @Get('checklist-org-templates')
+  @Roles(...rolePolicies.checklistsCreate)
+  listOrgTemplates(@Req() request: AuthenticatedRequest) {
+    return this.checklistsService.listOrgTemplates(request.currentUser!.organizationId).then((items) => ({ items }));
+  }
+  @Post('checklist-org-templates')
+  @Roles(...rolePolicies.checklistTemplatesManage)
+  async createOrgTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.createOrgTemplate(user.organizationId, createChecklistOrgTemplateSchema.parse(body), user.id);
+  }
+  @Patch('checklist-org-templates/:id')
+  @Roles(...rolePolicies.checklistTemplatesManage)
+  async updateOrgTemplate(@Param('id') templateId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.updateOrgTemplate(templateId, user.organizationId, updateChecklistOrgTemplateSchema.parse(body), user.id);
+  }
+  @Delete('checklist-org-templates/:id')
+  @Roles(...rolePolicies.checklistTemplatesManage)
+  async deleteOrgTemplate(@Param('id') templateId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.deleteOrgTemplate(templateId, user.organizationId, user.id);
+    return { id: templateId };
+  }
+  @Post('checklists/from-org-template')
+  @Roles(...rolePolicies.checklistsCreate)
+  async createChecklistFromOrgTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.createFromOrgTemplate(createChecklistFromOrgTemplateSchema.parse(body).templateId, user.organizationId, user.id);
+  }
+
+  // PR 367: administrator-only deletion of finished results (soft, with a reason) and their restore.
+  @Get('checklist-instances/deleted-results')
+  @Roles(...rolePolicies.checklistResultsDelete)
+  async listDeletedResults(@Req() request: AuthenticatedRequest) {
+    return { items: await this.checklistsService.listDeletedResults(request.currentUser!.organizationId) };
+  }
+  @Delete('checklist-instances/:id/result')
+  @Roles(...rolePolicies.checklistResultsDelete)
+  async deleteResult(@Param('id') instanceId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.deleteResult(instanceId, user.organizationId, deleteChecklistResultSchema.parse(body).reason, user.id);
+  }
+  @Post('checklist-instances/:id/result/restore')
+  @Roles(...rolePolicies.checklistResultsDelete)
+  async restoreResult(@Param('id') instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.restoreResult(instanceId, user.organizationId, user.id);
   }
 
   // PR 353: catalog and self-start of free-access checklists. Declared before `checklists/:id` so
