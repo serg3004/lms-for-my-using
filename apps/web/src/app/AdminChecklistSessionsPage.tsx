@@ -326,14 +326,14 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         title={t('admin.checklists.sessions.pageTitle', 'Training sessions')}
         subtitle={t('admin.checklists.sessions.subtitle', 'Planning, running and tracking training.')}
         action={
-          <>
+          <div className="admin-header-actions">
             <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
             {!isObserverVariant && <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
             {<Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
             {canImport && <Button onClick={() => { setImportMode(true); setWizardOpen(true); }} size="sm" type="button" variant="secondary">{t('sessionImport.title')}</Button>}
             <Button onClick={() => { setImportMode(false); setWizardOpen(true); }} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
-          </>
+          </div>
         }
       />
       {isObserverVariant ? <ObserverSessionsNav current="all" /> : <ChecklistsTabs current="sessions" />}

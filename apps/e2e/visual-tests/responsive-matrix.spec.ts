@@ -935,6 +935,11 @@ for (const width of widths) {
       await expect(page.getByRole('heading', { name: 'Обучающие сессии' })).toBeVisible();
       await expect(page.getByText('Opening shift checklist')).toBeVisible();
       await expectNoPageOverflow(page);
+      // Hidden horizontal overflow must not conceal the primary action on wide screens.
+      const createButtonBounds = await page.getByRole('button', { name: /Новая сессия/ }).boundingBox();
+      expect(createButtonBounds).not.toBeNull();
+      expect(createButtonBounds!.x).toBeGreaterThanOrEqual(0);
+      expect(createButtonBounds!.x + createButtonBounds!.width).toBeLessThanOrEqual(width);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-sessions-list-${width}`);
 
