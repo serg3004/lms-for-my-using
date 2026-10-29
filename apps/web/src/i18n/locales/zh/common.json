@@ -1,4 +1,15 @@
 {
+  "checklistPreview": {
+    "employee": "姓名示例",
+    "department": "部门示例",
+    "feedbackRequired": "必须填写优势和改进领域。",
+    "incomplete": "未完成",
+    "scoreHint": "百分比按已回答的标准计算。跳过的标准不计入。",
+    "yes": "是",
+    "no": "否",
+    "points": "{{points}} 分",
+    "attachPhoto": "添加照片（仅本地预览）"
+  },
   "sessionImport": {
     "done": "导入完成",
     "title": "导入员工名单",

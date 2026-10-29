@@ -96,10 +96,10 @@ it('PR 358: keeps the server-selected default scale and uses it in a sum-points 
   expect(api.createChecklistItem).toHaveBeenCalledWith('c1', expect.not.objectContaining({ scaleId: null }));
   expect(container.querySelector<HTMLSelectElement>('select.admin-criteria-row__scale')?.value).toBe('default-scale');
   await act(async () => button('Предпросмотр').click());
-  const dialog = document.querySelector('[role="dialog"][aria-label="Предпросмотр"]')!;
-  const no = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes('0 · Нет'))!;
+  const dialog = document.querySelector('dialog.admin-preview-overlay[open]')!;
+  const no = [...dialog.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent?.startsWith('Нет'))!.querySelector<HTMLInputElement>('input[type=radio]')!;
   await act(async () => no.click());
-  expect(no.getAttribute('aria-pressed')).toBe('true');
+  expect(no.checked).toBe(true);
   expect(dialog.querySelector('.admin-preview-result')?.textContent).toContain('0 / 100 (0%)');
   expect(dialog.querySelector('.admin-preview-result')?.textContent).not.toContain('Не все');
 });

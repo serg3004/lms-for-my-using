@@ -17,6 +17,13 @@ The visual suite runs independently from the database-backed functional suite. I
 
 The instructor and mentor session-management shells have separate baselines at all six widths: populated session list, creation wizard, time/observer editing, and completed-session report. They use `fixtures/session-management.ts` with read-only API responses, independent of the conduct queue and shared demo logins. Each screenshot remains a required assertion; a soft screenshot assertion lets the same scenario report differences in all four states.
 
+The observation-sheet preview uses a synthetic 5S fixture (2 groups, 27 criteria; no owner data).
+Functional checks cover local-only traffic, radio arrow keys, focus boundaries/Escape/restoration,
+reset/reopen, conditional sections, required fields and RU/EN/KK/ZH controls. Visual captures at
+all six widths cover the top of the full-screen page, criteria and the feedback/result area;
+the dialog scrolls internally. Axe audits at 375/1440 px scope the active native modal, whose
+background is inert; existing whole-page audits keep their scope and severity gate.
+
 ## Accessibility baseline
 
 Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. See the [accessibility exception policy](../../docs/quality/ACCESSIBILITY.md).

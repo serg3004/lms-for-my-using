@@ -1,3 +1,4 @@
+import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
@@ -907,6 +908,19 @@ for (const width of widths) {
       });
       expect(dialogFits).toBe(true);
       await expectVisualMatch(page, `admin-course-builder-${width}`);
+    });
+
+    test('keeps the observer sheet preview responsive', async ({ page }) => {
+      await openPreviewBuilder(page);
+      const dialog = await openSheetPreview(page);
+      await expectNoPageOverflow(page);
+      expect(await dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+      // A full-screen dialog scrolls internally: capture top, criteria and feedback separately.
+      await expectVisualMatch(page, `checklist-preview-header-${width}`, true);
+      await dialog.getByRole('radiogroup').first().scrollIntoViewIfNeeded();
+      await expectVisualMatch(page, `checklist-preview-criteria-${width}`, true);
+      await dialog.getByRole('button', { name: 'Сбросить', exact: true }).scrollIntoViewIfNeeded();
+      await expectVisualMatch(page, `checklist-preview-feedback-${width}`, true);
     });
 
     test('keeps the admin checklist builder responsive', async ({ page }) => {
