@@ -1,4 +1,4 @@
-import { DEFAULT_LEVEL_COLORS, defaultLevelColor, resolveResultColors, withResolvedLevelColors } from './checklist-colors.js';
+import { contrastRatio, DEFAULT_LEVEL_COLORS, defaultLevelColor, highlightStyle, resolveResultColors, withResolvedLevelColors } from './checklist-colors.js';
 import { createChecklistScaleSchema, updateChecklistScaleSchema } from './checklists.schemas.js';
 
 describe('checklist highlight colours (PR 369б)', () => {
@@ -29,5 +29,26 @@ describe('checklist highlight colours (PR 369б)', () => {
     const levels = [{ value: 1, label: 'A', score: 0 }, { value: 2, label: 'B', score: 5 }];
     expect(createChecklistScaleSchema.safeParse({ name: 'x'.repeat(255), levels }).success).toBe(true);
     expect(createChecklistScaleSchema.safeParse({ name: 'x'.repeat(256), levels }).success).toBe(false);
+  });
+});
+
+describe('highlight style contrast (PR 370)', () => {
+  const samples = ['#000000', '#FFFFFF', '#FFFF00', '#00FFFF', '#FF00FF', '#808080', '#767676', '#C62828', '#2E7D32', '#F9A825', '#E65100', '#0000FF', '#010101', '#FEFEFE'];
+  for (let r = 0; r <= 255; r += 51) for (let g = 0; g <= 255; g += 51) for (let b = 0; b <= 255; b += 51) {
+    samples.push(`#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('').toUpperCase()}`);
+  }
+
+  it('keeps WCAG AA (4.5:1) between row fill and text in both themes for any chosen colour', () => {
+    for (const color of samples) {
+      const style = highlightStyle(color);
+      expect(style.color).toBe(color);
+      expect(contrastRatio(style.light.fill, style.light.text)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(style.dark.fill, style.dark.text)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it('computes known contrast ratios', () => {
+    expect(contrastRatio('#000000', '#FFFFFF')).toBeCloseTo(21, 0);
+    expect(contrastRatio('#777777', '#777777')).toBeCloseTo(1, 5);
   });
 });

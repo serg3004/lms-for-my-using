@@ -1690,6 +1690,76 @@ export class ChecklistsService {
     return { totalScore, maxScore, scored, percentage, passThreshold: checklist.passThreshold };
   }
 
+  /**
+   * PR 370: per-criterion view of the very same calculation `computeInstanceScore` runs, for the
+   * detailed session report. Every number comes from the frozen snapshot plus the persisted
+   * results through `computeItemMax` / `hasValidAnswer` (snapshot formula) or the equal-weight
+   * marks rule (criteria formula, PR 362), so the report can never disagree with the score the
+   * session list and analytics show. Rows follow the sheet order: groups by their order, criteria
+   * by their order inside a group; criteria without a group come last.
+   */
+  async getScoreBreakdown(instanceId: string, organizationId: string, formula: ChecklistScoreFormula = 'snapshot') {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId },
+      select: { checklistId: true, templateSnapshot: true, snapshotVersion: true },
+    });
+    if (!instance) throw new NotFoundException('Checklist assignment not found');
+
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    const results = await this.prisma.checklistItemResult.findMany({
+      where: { instanceId },
+      select: {
+        itemId: true, checked: true, scaleLevel: true, points: true, comment: true, photoObjectKey: true,
+        photoFileName: true, reviewStatus: true, answerState: true,
+      },
+    });
+    const resultByItemId = new Map(results.map((result) => [result.itemId, result]));
+    const groups = [...(checklist.itemGroups ?? [])].sort((a, b) => a.order - b.order);
+    const groupRank = new Map(groups.map((group, index) => [group.id, index]));
+    const orderedItems = [...checklist.items].sort((a, b) => {
+      const rankA = a.groupId ? groupRank.get(a.groupId) ?? groups.length : groups.length;
+      const rankB = b.groupId ? groupRank.get(b.groupId) ?? groups.length : groups.length;
+      return rankA - rankB || a.order - b.order;
+    });
+
+    const rows = orderedItems.map((item) => {
+      const result = resultByItemId.get(item.id) ?? null;
+      const skipped = result?.answerState === 'skipped';
+      const answered = this.hasValidAnswer(checklist.scoringMode, result ?? undefined, item);
+      const weight = item.weight ?? 1;
+      let earned = 0;
+      let max = 0;
+      if (!skipped) {
+        if (formula === 'criteria') {
+          max = 1;
+          earned = result?.reviewStatus !== 'rejected' && answered ? 1 : 0;
+        } else {
+          max = this.computeItemMax(checklist.scoringMode, item, checklist.scaleLevels as ScaleLevel[] | null) * weight;
+          const points = result && result.reviewStatus !== 'rejected'
+            ? item.scale ? item.scale.levels.find((level) => level.value === result.scaleLevel)?.score ?? 0 : result.points ?? 0
+            : 0;
+          earned = points * weight;
+        }
+      }
+      return { item, result, state: skipped ? ('skipped' as const) : answered ? ('answered' as const) : ('unanswered' as const), earned, max };
+    });
+
+    const totalScore = rows.reduce((sum, row) => sum + row.earned, 0);
+    const maxScore = rows.reduce((sum, row) => sum + row.max, 0);
+    return {
+      checklist: {
+        title: checklist.title,
+        scoringMode: checklist.scoringMode,
+        passThreshold: checklist.passThreshold,
+        scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
+        feedbackEnabled: checklist.feedbackEnabled ?? true,
+        itemGroups: groups.map((group) => ({ id: group.id, title: group.title, order: group.order })),
+      },
+      rows,
+      totals: { totalScore: Math.round(totalScore), maxScore: Math.round(maxScore), scored: maxScore > 0 },
+    };
+  }
+
   async assertInstanceWritable(
     instanceId: string,
     organizationId: string,
