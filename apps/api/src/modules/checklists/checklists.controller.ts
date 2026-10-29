@@ -173,8 +173,9 @@ export class ChecklistsController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.checklistsCreate)
   @OrganizationScope('body', 'organizationId')
-  createChecklist(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async createChecklist(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = createChecklistSchema.parse(body);
+    this.assertMayUseFreeAccess(input.accessMode, request.currentUser!);
     return this.checklistsService.createChecklist(input, request.currentUser!.id);
   }
   @Patch('checklists/:id')
@@ -182,13 +183,14 @@ export class ChecklistsController {
   async updateChecklist(@Param('id') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistSchema.parse(body);
+    if (input.accessMode !== undefined) await this.assertMayChangeAccessMode(checklistId, input.accessMode, request.currentUser!);
     if (input.allowEditByAll !== undefined) await this.checklistsService.assertCanChangeEditAccess(checklistId, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
   @Post('checklists/:id/copy')
   @Roles(...rolePolicies.checklistsCreate)
   copyChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
-    return this.checklistsService.copyChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
+    return this.checklistsService.copyChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id, this.mayUseFreeAccess(request.currentUser!));
   }
   // PR 355: cover image. The cover is private storage; GET returns a short-lived signed URL.
   @Post('checklists/:id/cover')
@@ -788,6 +790,24 @@ export class ChecklistsController {
    * one read path that actually needs it -- the employee's own session list/detail. Only the
    * caller's own learner-ness and the tenant's policy matter here, never a per-session override.
    */
+  private mayUseFreeAccess(user: NonNullable<AuthenticatedRequest['currentUser']>) {
+    return rolePolicies.checklistFreeAccessCreate.some((role) => user.roles.includes(role));
+  }
+
+  /** PR 366: other roles with `checklistsCreate` only create "assigned" checklists. */
+  private assertMayUseFreeAccess(accessMode: 'assigned' | 'free', user: NonNullable<AuthenticatedRequest['currentUser']>) {
+    if (accessMode === 'free' && !this.mayUseFreeAccess(user)) {
+      throw new ForbiddenException('Only an administrator can create a free-access checklist');
+    }
+  }
+
+  /** Switching the mode in either direction is administrator-only; resending the stored value is not a change. */
+  private async assertMayChangeAccessMode(checklistId: string, accessMode: 'assigned' | 'free', user: NonNullable<AuthenticatedRequest['currentUser']>) {
+    if (this.mayUseFreeAccess(user)) return;
+    const current = await this.checklistsService.getChecklist(checklistId, user.organizationId);
+    if (current.accessMode !== accessMode) throw new ForbiddenException('Only an administrator can change the free-access mode of a checklist');
+  }
+
   private async sessionViewerContext(user: AuthenticatedRequest['currentUser']): Promise<ChecklistSessionViewerContext> {
     const settings = await this.workplaceSettings.getSettings(user!.organizationId);
     return { isLearnerOnly: isLearnerOnly(user!.roles), feedbackVisibility: settings.feedbackVisibility, observerId: user!.id };

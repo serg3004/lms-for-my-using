@@ -1432,7 +1432,8 @@
       },
       "accessMode": {
         "assigned": "按分配",
-        "free": "自由完成"
+        "free": "自由完成",
+        "adminOnly": "只有管理员可以更改。"
       },
       "accessModeHint": {
         "assigned": "清单通过分配和观察会话到达相关人员。",

@@ -1432,7 +1432,8 @@
       },
       "accessMode": {
         "assigned": "By assignment",
-        "free": "Free access"
+        "free": "Free access",
+        "adminOnly": "Only an administrator can change this."
       },
       "accessModeHint": {
         "assigned": "Reaches people through assignments and observation sessions.",

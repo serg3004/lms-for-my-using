@@ -58,10 +58,10 @@ export const CHECKLIST_ROLE_PERMISSIONS: readonly ChecklistPermissionRow[] = [
   row(14, 'reports.export', ['all', 'team', 'all', 'all', 'none'], { status: 'implemented', policies: ['checklistManagerAnalyticsRead'] }),
   row(15, 'access.settings', ['yes', 'none', 'none', 'none', 'none'], { status: 'implemented', policies: ['checklistAccessSettingsWrite'] }),
   row(16, 'checklists.appearance', ['yes', 'yes', 'yes', 'yes', 'none'], { status: 'implemented', policies: ['checklistsCreate'] }),
-  row(17, 'free.create', ['yes', 'none', 'none', 'none', 'none'], { status: 'planned', prs: [366], policies: ['checklistsCreate'] }),
+  row(17, 'free.create', ['yes', 'none', 'none', 'none', 'none'], { status: 'implemented', policies: ['checklistFreeAccessCreate'] }),
   row(18, 'free.fill', ['yes', 'yes', 'yes', 'yes', 'yes'], { status: 'implemented', policies: ['checklistsStartFree'] }),
-  row(19, 'free.analytics', ['all', 'team', 'all', 'all', 'none'], { status: 'planned', prs: [366] }),
-  row(20, 'free.view', ['yes', 'yes', 'yes', 'yes', 'yes'], { status: 'planned', prs: [366] }),
+  row(19, 'free.analytics', ['all', 'team', 'all', 'all', 'none'], { status: 'implemented', policies: ['checklistManagerAnalyticsRead'] }),
+  row(20, 'free.view', ['yes', 'yes', 'yes', 'yes', 'yes'], { status: 'implemented', policies: ['checklistInstancesRead'] }),
   row(21, 'results.delete', ['yes', 'none', 'none', 'none', 'none'], { status: 'planned', prs: [367] }),
   row(22, 'templates.manage', ['yes', 'none', 'none', 'none', 'none'], { status: 'planned', prs: [367] }),
 ];

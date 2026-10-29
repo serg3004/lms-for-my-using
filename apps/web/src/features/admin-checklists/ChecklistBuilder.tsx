@@ -89,6 +89,8 @@ export function ChecklistBuilder({
   const [pinned, setPinned] = useState(checklist.pinned ?? false);
   // PR 362в: the creator and admins decide who may edit; everyone else sees the sheet read-only when it is closed.
   const currentUser = useOptionalSession()?.currentUser;
+  // PR 366: only an administrator switches a checklist to or from the free-access mode.
+  const canSwitchAccessMode = !currentUser || currentUser.roles.includes('admin');
   const canManageEditAccess = !currentUser || currentUser.roles.includes('admin') || checklist.createdBy === currentUser.id;
   const canEdit = canManageEditAccess || (checklist.allowEditByAll ?? true);
   const [allowEditByAll, setAllowEditByAll] = useState(checklist.allowEditByAll ?? true);
@@ -566,14 +568,21 @@ export function ChecklistBuilder({
               />
             </FormField>
             <FormField id="checklist-access-mode" label={t('admin.checklists.field.accessMode', 'How the checklist is taken')} hint={t(`admin.checklists.accessModeHint.${accessMode}`, accessMode)}>
-              <select
-                id="checklist-access-mode"
-                value={accessMode}
-                onChange={(e) => setAccessMode(e.target.value as ChecklistAccessMode)}
-              >
-                <option value="assigned">{t('admin.checklists.accessMode.assigned', 'By assignment')}</option>
-                <option value="free">{t('admin.checklists.accessMode.free', 'Free access')}</option>
-              </select>
+              {canSwitchAccessMode ? (
+                <select
+                  id="checklist-access-mode"
+                  value={accessMode}
+                  onChange={(e) => setAccessMode(e.target.value as ChecklistAccessMode)}
+                >
+                  <option value="assigned">{t('admin.checklists.accessMode.assigned', 'By assignment')}</option>
+                  <option value="free">{t('admin.checklists.accessMode.free', 'Free access')}</option>
+                </select>
+              ) : (
+                <>
+                  <output id="checklist-access-mode">{t(`admin.checklists.accessMode.${accessMode}`, accessMode)}</output>
+                  <small className="admin-form__hint">{t('admin.checklists.accessMode.adminOnly', 'Only an administrator can change this.')}</small>
+                </>
+              )}
             </FormField>
             {accessMode === 'free' && (
               <label className="admin-checkbox-field">
