@@ -51,6 +51,7 @@ export const createChecklistSchema = z.object({
   allowFinishIncomplete: z.boolean().default(false),
   forbidGalleryPhotos: z.boolean().default(false),
   accessMode: checklistAccessModeSchema.default('assigned'),
+  allowEditByAll: z.boolean().default(false),
 });
 export type CreateChecklistInput = z.infer<typeof createChecklistSchema>;
 
@@ -79,6 +80,7 @@ export const updateChecklistSchema = z
     forbidGalleryPhotos: z.boolean(),
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
+    allowEditByAll: z.boolean(),
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;

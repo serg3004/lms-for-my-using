@@ -880,6 +880,12 @@ describe('filterAssignableUsers', () => {
 });
 
 describe('buildChecklistSettingsPayload', () => {
+  it('sends allowEditByAll only for people allowed to change it (PR 362в)', () => {
+    const form = { title: 'Т', description: '', scoringMode: 'sum_points' as const, passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '' as const, preSessionVisibility: 'structure_only' as const, allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' as const, pinned: false };
+    expect(buildChecklistSettingsPayload(form)).not.toHaveProperty('allowEditByAll');
+    expect(buildChecklistSettingsPayload({ ...form, allowEditByAll: false })).toMatchObject({ allowEditByAll: false });
+  });
+
   it('nulls out an empty description', () => {
     const payload = buildChecklistSettingsPayload({ title: 'Т', description: '', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned', pinned: false });
     expect(payload.description).toBeNull();

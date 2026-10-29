@@ -1131,6 +1131,9 @@ model Checklist {
   coverObjectKey              String?                        @map("cover_object_key")
   coverMimeType               String?                        @map("cover_mime_type")
   coverUpdatedAt              DateTime?                      @map("cover_updated_at") @db.Timestamptz
+  // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
+  // checklist created before this change editable by all; the create schema defaults new ones to false.
+  allowEditByAll              Boolean                        @default(true) @map("allow_edit_by_all")
   createdBy      String?              @map("created_by") @db.Uuid
   createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz

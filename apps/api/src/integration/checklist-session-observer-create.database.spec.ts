@@ -258,6 +258,42 @@ describe('observer session creation and conduct access (PR 331/349) — database
     await expect(controller.recalculateScore(foreign.id, { reason: 'Other tenant', idempotencyKey: randomUUID() }, await request(actor, 'recalculateScore'))).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('PR 362в: a sheet without "edit by all" is editable only by its creator and admins; the flag can be changed by them alone', async () => {
+    const creator = await user(organizationId, ['instructor']);
+    const colleague = await user(organizationId, ['mentor']);
+    const admin = await user(organizationId, ['admin']);
+    const body = { organizationId, title: 'Mine', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false } as const;
+    const created = await controller.createChecklist(body, await request(creator, 'createChecklist'));
+    expect(created.allowEditByAll).toBe(false);
+    const item = await controller.createItem(created.id, { text: 'Step' }, await request(creator, 'createItem'));
+    const group = await controller.createItemGroup(created.id, { title: 'Group' }, await request(creator, 'createItemGroup'));
+
+    const asColleague = async (handler: 'updateChecklist' | 'deleteChecklist' | 'createItem' | 'updateItem' | 'deleteItem' | 'createItemGroup' | 'updateItemGroup' | 'copyItemGroup' | 'removeCover') => request(colleague, handler);
+    await expect(controller.updateChecklist(created.id, { title: 'Hijacked' }, await asColleague('updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.deleteChecklist(created.id, await asColleague('deleteChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.removeCover(created.id, await asColleague('removeCover'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.createItem(created.id, { text: 'Extra' }, await asColleague('createItem'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.updateItem(item.id, { text: 'Changed' }, await asColleague('updateItem'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.deleteItem(item.id, await asColleague('deleteItem'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.createItemGroup(created.id, { title: 'Other' }, await asColleague('createItemGroup'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.updateItemGroup(group.id, { title: 'Renamed' }, await asColleague('updateItemGroup'))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.copyItemGroup(group.id, await asColleague('copyItemGroup'))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(await prisma.checklist.findUniqueOrThrow({ where: { id: created.id } })).toMatchObject({ title: 'Mine', deletedAt: null });
+    expect(await prisma.checklistItem.count({ where: { checklistId: created.id, deletedAt: null } })).toBe(1);
+
+    // The colleague may still read and copy the sheet; the admin edits it.
+    expect((await controller.copyChecklist(created.id, await request(colleague, 'copyChecklist'))).createdBy).toBe(colleague.id);
+    await controller.updateChecklist(created.id, { title: 'Admin edit' }, await request(admin, 'updateChecklist'));
+
+    // Only the creator or an admin switches the flag; afterwards the colleague edits.
+    await expect(controller.updateChecklist(created.id, { allowEditByAll: true }, await asColleague('updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    await controller.updateChecklist(created.id, { allowEditByAll: true }, await request(creator, 'updateChecklist'));
+    await controller.updateChecklist(created.id, { title: 'Colleague edit' }, await asColleague('updateChecklist'));
+    expect(await prisma.checklist.findUniqueOrThrow({ where: { id: created.id } })).toMatchObject({ title: 'Colleague edit', allowEditByAll: true });
+    // Another colleague still cannot hand the flag back to "creator only".
+    await expect(controller.updateChecklist(created.id, { allowEditByAll: false }, await asColleague('updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('PR 362: an employee cannot build, change the settings or recalculate', async () => {
     for (const handler of ['createChecklist', 'updateWorkplaceSettings', 'recalculateScore'] as const) {
       await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);

@@ -173,8 +173,10 @@ export class ChecklistsController {
   }
   @Patch('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)
-  updateChecklist(@Param('id') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateChecklist(@Param('id') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistSchema.parse(body);
+    if (input.allowEditByAll !== undefined) await this.checklistsService.assertCanChangeEditAccess(checklistId, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
   @Post('checklists/:id/copy')
@@ -193,6 +195,7 @@ export class ChecklistsController {
     @UploadedFile() file: Express.Multer.File | undefined,
     @Req() request: AuthenticatedRequest,
   ) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     if (!file) throw new BadRequestException('No file provided');
     if (!ALLOWED_ITEM_PHOTO_MIME_TYPES.has(file.mimetype)) {
       throw new BadRequestException('Only image files (JPEG, PNG, GIF, WEBP) can be used as a cover');
@@ -215,12 +218,14 @@ export class ChecklistsController {
   }
   @Delete('checklists/:id/cover')
   @Roles(...rolePolicies.checklistsCreate)
-  removeCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+  async removeCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.removeCover(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
   }
   @Delete('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)
-  deleteChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+  async deleteChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.deleteChecklist(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 
@@ -232,19 +237,22 @@ export class ChecklistsController {
   }
   @Post('checklists/:checklistId/items')
   @Roles(...rolePolicies.checklistsCreate)
-  createItem(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async createItem(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     const input = createChecklistItemSchema.parse(body);
     return this.checklistsService.createItem(checklistId, request.currentUser!.organizationId, input, request.currentUser!.locale);
   }
   @Patch('checklist-items/:id')
   @Roles(...rolePolicies.checklistsCreate)
-  updateItem(@Param('id') itemId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateItem(@Param('id') itemId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ itemId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistItemSchema.parse(body);
     return this.checklistsService.updateItem(itemId, request.currentUser!.organizationId, input);
   }
   @Delete('checklist-items/:id')
   @Roles(...rolePolicies.checklistsCreate)
-  deleteItem(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {
+  async deleteItem(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ itemId }, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.deleteItem(itemId, request.currentUser!.organizationId);
   }
 
@@ -256,19 +264,22 @@ export class ChecklistsController {
   }
   @Post('checklists/:checklistId/groups')
   @Roles(...rolePolicies.checklistsCreate)
-  createItemGroup(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async createItemGroup(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     const input = createChecklistItemGroupSchema.parse(body);
     return this.checklistsService.createItemGroup(checklistId, request.currentUser!.organizationId, input);
   }
   @Patch('checklist-item-groups/:id')
   @Roles(...rolePolicies.checklistsCreate)
-  updateItemGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateItemGroup(@Param('id') groupId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ groupId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistItemGroupSchema.parse(body);
     return this.checklistsService.updateItemGroup(groupId, request.currentUser!.organizationId, input);
   }
   @Post('checklist-item-groups/:id/copy')
   @Roles(...rolePolicies.checklistsCreate)
-  copyItemGroup(@Param('id') groupId: string, @Req() request: AuthenticatedRequest) {
+  async copyItemGroup(@Param('id') groupId: string, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ groupId }, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.copyItemGroup(groupId, request.currentUser!.organizationId);
   }
 

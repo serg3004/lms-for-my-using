@@ -415,6 +415,8 @@ export type ChecklistSummary = {
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).
   pinned?: boolean;
+  // PR 362в -- optional because older payloads never carried it (read as true: everyone may edit).
+  allowEditByAll?: boolean;
   // PR 355 -- optional for the same reason (read as no cover).
   coverUpdatedAt?: string | null;
   itemGroups?: ChecklistItemGroup[];

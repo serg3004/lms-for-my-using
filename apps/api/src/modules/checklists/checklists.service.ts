@@ -102,6 +102,7 @@ const checklistSelect = {
   forbidGalleryPhotos: true,
   accessMode: true,
   pinned: true,
+  allowEditByAll: true,
   coverUpdatedAt: true,
   createdBy: true,
   createdAt: true,
@@ -396,6 +397,42 @@ export class ChecklistsService {
     return { url, expiresIn };
   }
 
+  /**
+   * PR 362в: a checklist is editable by its creator and by admins always, and by every other author role
+   * only while `allowEditByAll` is on. Reading and assigning are not affected. The target may be the
+   * checklist itself or one of its items or groups.
+   */
+  async assertCanEdit(
+    target: { checklistId: string } | { itemId: string } | { groupId: string },
+    organizationId: string,
+    actor: { id: string; roles: readonly string[] },
+  ) {
+    let checklistId: string | undefined;
+    if ('checklistId' in target) checklistId = target.checklistId;
+    else if ('itemId' in target) {
+      checklistId = (await this.prisma.checklistItem.findFirst({ where: { id: target.itemId, organizationId, deletedAt: null }, select: { checklistId: true } }))?.checklistId;
+    } else {
+      checklistId = (await this.prisma.checklistItemGroup.findFirst({ where: { id: target.groupId, organizationId }, select: { checklistId: true } }))?.checklistId;
+    }
+    // A missing target is reported by the operation itself (404).
+    if (!checklistId) return;
+    const checklist = await this.prisma.checklist.findFirst({
+      where: { id: checklistId, organizationId, deletedAt: null },
+      select: { createdBy: true, allowEditByAll: true },
+    });
+    if (!checklist) return;
+    if (checklist.allowEditByAll || checklist.createdBy === actor.id || actor.roles.includes('admin')) return;
+    throw new ForbiddenException('Only the creator or an administrator can edit this checklist');
+  }
+
+  /** Switching "everyone may edit" on or off belongs to the creator and admins only. */
+  async assertCanChangeEditAccess(checklistId: string, organizationId: string, actor: { id: string; roles: readonly string[] }) {
+    const checklist = await this.prisma.checklist.findFirst({ where: { id: checklistId, organizationId, deletedAt: null }, select: { createdBy: true } });
+    if (!checklist) return;
+    if (checklist.createdBy === actor.id || actor.roles.includes('admin')) return;
+    throw new ForbiddenException('Only the creator or an administrator can change who may edit this checklist');
+  }
+
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
     const created = await this.prisma.checklist.create({
       data: { ...input, createdBy },
@@ -530,6 +567,7 @@ export class ChecklistsService {
           allowFinishIncomplete: source.allowFinishIncomplete,
           forbidGalleryPhotos: source.forbidGalleryPhotos,
           accessMode: source.accessMode,
+          allowEditByAll: source.allowEditByAll,
           createdBy: actorId,
         },
         select: { id: true },

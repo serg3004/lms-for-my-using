@@ -9,7 +9,7 @@ import type { UploadService } from '../upload/public.js';
 const request = { currentUser: { id: 'u1', organizationId: 'org', roles: ['admin'] } } as unknown as AuthenticatedRequest;
 
 function makeController(checklistsService: Partial<ChecklistsService>, uploadService: Partial<UploadService>) {
-  return new ChecklistsController(checklistsService as ChecklistsService, uploadService as UploadService, {} as never, {} as never, {} as never, {} as never);
+  return new ChecklistsController({ assertCanEdit: async () => undefined, ...checklistsService } as ChecklistsService, uploadService as UploadService, {} as never, {} as never, {} as never, {} as never);
 }
 
 function image(overrides: Partial<Express.Multer.File> = {}): Express.Multer.File {

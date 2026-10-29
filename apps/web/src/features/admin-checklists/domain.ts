@@ -71,6 +71,8 @@ export function buildChecklistSettingsPayload(form: {
   forbidGalleryPhotos: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
+  /** Left out for people who may not change it (only the creator and admins can). */
+  allowEditByAll?: boolean;
 }) {
   return {
     title: form.title,
@@ -86,6 +88,7 @@ export function buildChecklistSettingsPayload(form: {
     accessMode: form.accessMode,
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
     pinned: form.accessMode === 'free' && form.pinned,
+    ...(form.allowEditByAll === undefined ? {} : { allowEditByAll: form.allowEditByAll }),
   };
 }
 
