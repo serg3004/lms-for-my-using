@@ -1,4 +1,4 @@
-import type { Page, TestInfo } from '@playwright/test';
+import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
 
@@ -15,7 +15,11 @@ async function loginAsManager(page: Page) {
   await page.locator('input[name="organizationId"]').fill(organization);
   await page.locator('input[name="email"]').fill('manager@demo.com');
   await page.locator('input[name="password"]').fill(password);
+  const responsePromise = page.waitForResponse((response) =>
+    isApiPath(response.url(), '/auth/login') && response.request().method() === 'POST');
   await page.locator('button[type="submit"]').click();
+  const response = await responsePromise;
+  expect(response.status(), 'Manager demo login must succeed before workspace assertions').toBe(201);
   await expect(page).toHaveURL(/\/manager\/dashboard$/);
 }
 
@@ -27,9 +31,29 @@ async function attachScreenshot(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe('manager workspace', () => {
-  test('shows real dashboard aggregates and attaches a desktop screenshot', async ({ page }, testInfo) => {
-    await loginAsManager(page);
+  // Other specs use this demo account too. Authenticate once per suite so the
+  // workspace scenarios cannot exhaust the real 5-logins/minute account limit.
+  test.describe.configure({ mode: 'default' });
+  let managerCookies: Awaited<ReturnType<BrowserContext['cookies']>>;
 
+  test.beforeAll(async ({ browser }) => {
+    const loginContext = await browser.newContext();
+    try {
+      await loginAsManager(await loginContext.newPage());
+      managerCookies = await loginContext.cookies();
+    } finally {
+      await loginContext.close();
+    }
+  });
+
+  test.beforeEach(async ({ context, page }) => {
+    // Cookies stay in worker memory; each scenario retains its own browser
+    // context, local storage and route mocks. No authenticated state is saved.
+    await context.addCookies(managerCookies);
+    await page.goto('/manager/dashboard');
+  });
+
+  test('shows real dashboard aggregates and attaches a desktop screenshot', async ({ page }, testInfo) => {
     const summaryResponsePromise = page.waitForResponse(
       (response) => isApiPath(response.url(), '/manager/team-summary'),
     );
@@ -70,7 +94,6 @@ test.describe('manager workspace', () => {
   });
 
   test('shows only the managed team, denies an out-of-team user, and attaches a mobile screenshot', async ({ page }, testInfo) => {
-    await loginAsManager(page);
     await page.setViewportSize({ width: 375, height: 812 });
 
     const summaryResponsePromise = page.waitForResponse(
@@ -109,7 +132,6 @@ test.describe('manager workspace', () => {
   });
 
   test('renders the dashboard loading and error states', async ({ page }) => {
-    await loginAsManager(page);
     await page.route('**/api/v1/manager/team-summary', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 750));
       await route.continue();
@@ -132,7 +154,6 @@ test.describe('manager workspace', () => {
   });
 
   test('renders the empty team state', async ({ page }) => {
-    await loginAsManager(page);
     const emptySummary = JSON.stringify({
       membersCount: 0,
       completionRate: 0,
