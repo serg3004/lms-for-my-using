@@ -211,18 +211,18 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
                     value={level.label}
                   />
                 </div>
-                <HighlightColorField
-                  disabled={editor.readOnly}
-                  label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
-                  onChange={(color) => patchLevel(level.key, { color })}
-                  value={level.color}
-                />
                 <Input
                   aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
                   disabled={editor.readOnly}
                   inputMode="numeric"
                   onChange={(e) => patchLevel(level.key, { score: e.target.value })}
                   value={level.score}
+                />
+                <HighlightColorField
+                  disabled={editor.readOnly}
+                  label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
+                  onChange={(color) => patchLevel(level.key, { color })}
+                  value={level.color}
                 />
                 {!editor.readOnly && (
                   <>
