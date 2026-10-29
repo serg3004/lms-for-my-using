@@ -22,29 +22,27 @@ type HighlightColorFieldProps = {
 export function HighlightColorField({ label, value, onChange, disabled }: HighlightColorFieldProps) {
   const { t } = useTranslation();
   const [text, setText] = useState(value);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => setText(value), [value]);
   const invalid = !HIGHLIGHT_COLOR_PATTERN.test(text);
 
+  const swatch = { width: 44, height: 44, borderRadius: 6, padding: 0, border: '1px solid currentColor' } as const;
+
   return (
     <div aria-label={label} role="group" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-      {QUICK_HIGHLIGHT_COLORS.map((color) => (
-        <button
-          aria-label={`${label}: ${color}`}
-          aria-pressed={value.toUpperCase() === color}
-          disabled={disabled}
-          key={color}
-          onClick={() => onChange(color)}
-          style={{
-            width: 24, height: 24, borderRadius: 4, padding: 0, background: color, cursor: disabled ? 'default' : 'pointer',
-            border: value.toUpperCase() === color ? '3px solid currentColor' : '1px solid currentColor',
-          }}
-          type="button"
-        />
-      ))}
+      <button
+        aria-expanded={paletteOpen}
+        aria-label={t('admin.checklists.color.palette', '{{label}}: palette ({{color}})', { label, color: value })}
+        disabled={disabled}
+        onClick={() => setPaletteOpen((open) => !open)}
+        style={{ ...swatch, background: HIGHLIGHT_COLOR_PATTERN.test(value) ? value : 'transparent', cursor: disabled ? 'default' : 'pointer' }}
+        type="button"
+      />
       <input
         aria-label={t('admin.checklists.color.picker', '{{label}}: color picker', { label })}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value.toUpperCase())}
+        style={{ width: 44, height: 44, padding: 0 }}
         type="color"
         value={HIGHLIGHT_COLOR_PATTERN.test(value) ? value.toLowerCase() : '#000000'}
       />
@@ -61,6 +59,20 @@ export function HighlightColorField({ label, value, onChange, disabled }: Highli
         size={8}
         value={text}
       />
+      {paletteOpen && !disabled && (
+        <div style={{ display: 'flex', flexBasis: '100%', flexWrap: 'wrap', gap: 6 }}>
+          {QUICK_HIGHLIGHT_COLORS.map((color) => (
+            <button
+              aria-label={`${label}: ${color}`}
+              aria-pressed={value.toUpperCase() === color}
+              key={color}
+              onClick={() => { onChange(color); setPaletteOpen(false); }}
+              style={{ ...swatch, background: color, cursor: 'pointer', borderWidth: value.toUpperCase() === color ? 3 : 1 }}
+              type="button"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

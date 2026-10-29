@@ -168,6 +168,7 @@ describe('ScaleManagerDialog colours (PR 369б)', () => {
     const { container } = await mount();
 
     await act(async () => { byText(container, 'Изменить')?.click(); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label^="Цвет уровня 1: палитра"]')?.click(); });
     await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label="Цвет уровня 1: #1565C0"]')?.click(); });
     await act(async () => { setValue(byLabel(container, 'Цвет уровня 2: код #RRGGBB') as HTMLInputElement, '#abcdef'); });
     await act(async () => { byText(container, 'Сохранить')?.click(); });

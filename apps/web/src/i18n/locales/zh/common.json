@@ -1296,6 +1296,7 @@
         }
       },
       "color": {
+        "palette": "{{label}}：调色板（{{color}}）",
         "picker": "{{label}}：取色器",
         "hex": "{{label}}：#RRGGBB 代码"
       },

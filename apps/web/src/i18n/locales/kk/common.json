@@ -1296,6 +1296,7 @@
         }
       },
       "color": {
+        "palette": "{{label}}: палитра ({{color}})",
         "picker": "{{label}}: түсті таңдау",
         "hex": "{{label}}: #RRGGBB коды"
       },

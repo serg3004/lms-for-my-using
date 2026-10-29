@@ -96,6 +96,7 @@ describe('result colours (PR 369б)', () => {
     expect(host.textContent).toContain('От 60% до 90%');
     expect(host.textContent).toContain('От 90%');
 
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label^="Цвет высокого результата: палитра"]')?.click(); });
     await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="Цвет высокого результата: #1565C0"]')?.click(); });
     await click('Сохранить');
 
