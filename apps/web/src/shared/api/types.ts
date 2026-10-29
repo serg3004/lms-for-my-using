@@ -438,6 +438,8 @@ export type ChecklistScaleLevelSummary = {
   value: number;
   label: string;
   score: number;
+  /** PR 369б: highlight colour `#RRGGBB`. The scale API always resolves it; a snapshot taken earlier has none. */
+  color?: string;
 };
 
 export type ChecklistScaleSummary = {
@@ -575,6 +577,8 @@ export type ChecklistWorkplaceSettingsView = {
   moduleEnabled: boolean;
   highPerformanceThreshold: number;
   lowThreshold: number | null;
+  /** PR 369б: highlight colours (`#RRGGBB`) of the results below the low threshold, between the thresholds and from the high one. */
+  resultColors: { low: string; mid: string; high: string };
   defaultGeolocationPolicy: ChecklistGeolocationPolicy;
   feedbackVisibility: ChecklistFeedbackVisibility;
   observerEligibility: ChecklistObserverEligibility;

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 
+import { HIGHLIGHT_COLOR_PATTERN, normalizeHighlightColor } from './checklist-colors.js';
+
+// PR 369б: free colour choice, but only a strict #RRGGBB value is ever stored (no CSS injection).
+const highlightColorSchema = z.string().regex(HIGHLIGHT_COLOR_PATTERN, 'color must be #RRGGBB').transform(normalizeHighlightColor);
+
 export const checklistStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale']);
 export const checklistInstanceStatusSchema = z.enum(['assigned', 'in_progress', 'submitted', 'completed', 'expired']);
@@ -264,6 +269,10 @@ export const updateChecklistWorkplaceSettingsSchema = z
     lowThreshold: z.number().int().min(0).max(100).nullable(),
     defaultGeolocationPolicy: checklistGeolocationPolicySchema,
     feedbackVisibility: checklistFeedbackVisibilitySchema,
+    // PR 369б: highlight colours of the result bands; null returns a band to its default.
+    resultColorLow: highlightColorSchema.nullable(),
+    resultColorMid: highlightColorSchema.nullable(),
+    resultColorHigh: highlightColorSchema.nullable(),
     observerEligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
     observerRoles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
     observerUserIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
@@ -497,6 +506,7 @@ export const checklistScaleLevelInputSchema = z.object({
   value: z.number().int().min(1),
   label: z.string().trim().min(1).max(80),
   score: z.number().int().min(0).max(1000),
+  color: highlightColorSchema.nullable().optional(),
 });
 export type ChecklistScaleLevelInput = z.infer<typeof checklistScaleLevelInputSchema>;
 

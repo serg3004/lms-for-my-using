@@ -32,8 +32,16 @@ describe('scale editor domain (PR 343)', () => {
     const levels = [createScaleLevelDraft(' No ', '0'), createScaleLevelDraft('Yes', '100')];
     expect(scaleDraftToInput(' Yes/No ', levels)).toEqual({
       name: 'Yes/No',
-      levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 100 }],
+      levels: [{ value: 1, label: 'No', score: 0, color: '#E65100' }, { value: 2, label: 'Yes', score: 100, color: '#E65100' }],
     });
+  });
+
+  it('PR 369б: new scales start red and green, loaded levels keep their colour, bad colour is refused', () => {
+    expect(newScaleLevelDrafts().map((d) => d.color)).toEqual(['#C62828', '#2E7D32']);
+    expect(scaleLevelDraftsFromLevels([{ value: 1, label: 'A', score: 1, color: '#123456' }]).map((d) => d.color)).toEqual(['#123456']);
+    const ok = [createScaleLevelDraft('No', '0', '#C62828'), createScaleLevelDraft('Yes', '100', '#2E7D32')];
+    expect(validateScaleDraft('S', ok)).toBeNull();
+    expect(validateScaleDraft('S', [{ ...ok[0]!, color: 'red' }, ok[1]!])).toBe('color');
   });
 
   it('moves a level and ignores moves past either end', () => {

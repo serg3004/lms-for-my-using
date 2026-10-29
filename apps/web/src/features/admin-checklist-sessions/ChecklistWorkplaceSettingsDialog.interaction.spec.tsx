@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn(), users: vi.fn() 
 vi.mock('../../shared/api/checklists.js', () => ({ getChecklistWorkplaceSettings: mocks.get, updateChecklistWorkplaceSettings: mocks.update }));
 vi.mock('../../shared/api/users.js', () => ({ listUsers: mocks.users }));
 const original = {
-  organizationId: 'org', moduleEnabled: true, highPerformanceThreshold: 90, defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
+  organizationId: 'org', moduleEnabled: true, highPerformanceThreshold: 90, lowThreshold: null, resultColors: { low: '#C62828', mid: '#F9A825', high: '#2E7D32' }, defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
   observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'], observerUserIds: [], selectedObserverUsers: [],
 };
 const person = { id: 'person-1', firstName: 'Лена', lastName: 'Тестова', email: 'lena@example.test', status: 'active' };
@@ -84,5 +84,28 @@ describe('observer eligibility settings (PR 351)', () => {
     expect(host.textContent).not.toContain('deleted-id');
     await click('Убрать недоступных пользователей'); await click('Сохранить');
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ observerUserIds: [person.id] }));
+  });
+});
+
+describe('result colours (PR 369б)', () => {
+  it('shows the ranges that follow the thresholds and saves the chosen colours', async () => {
+    mocks.get.mockResolvedValue({ ...original, lowThreshold: 60 });
+    await render();
+    expect(host.textContent).toContain('Цвета результата');
+    expect(host.textContent).toContain('Ниже 60%');
+    expect(host.textContent).toContain('От 60% до 90%');
+    expect(host.textContent).toContain('От 90%');
+
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label^="Цвет высокого результата: палитра"]')?.click(); });
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="Цвет высокого результата: #1565C0"]')?.click(); });
+    await click('Сохранить');
+
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ resultColorLow: '#C62828', resultColorMid: '#F9A825', resultColorHigh: '#1565C0' }));
+  });
+
+  it('hides the low range when no low threshold is set', async () => {
+    await render();
+    expect(host.textContent).toContain('Ниже 90%');
+    expect(host.querySelector('button[aria-label^="Цвет низкого результата"]')).toBeNull();
   });
 });
