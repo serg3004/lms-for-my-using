@@ -215,3 +215,21 @@ Assigned instances read scale levels from their immutable snapshot. Later live e
 not change those definitions or saved completed scores. No historical recalculation runs on
 release or when opening a report; administrator-requested recalculation remains explicit and
 audited, using the snapshot. Saving a comment preserves an existing scale answer.
+
+
+## Import employees to sessions (PR 364)
+
+The existing sessions page offers «Импорт списка» to the four scheduling roles. The same wizard
+accepts a UTF-8 CSV or one-sheet XLSX with a single `email` column (up to 100 data rows, 1 MiB),
+then shows accepted/skipped rows with reasons before creation. Observer, published checklist,
+time, duration, timezone and location policy are shared by the list. The instructor remains their
+own observer. Replacing the file clears the previous preview and selection. No sessions are
+created by preview. Final import rechecks the current employee scope and creates only eligible
+rows; a duplicate, invalid email, inaccessible employee, self-observer or existing active
+assignment is reported per row. The final report remains visible until the wizard closes.
+
+The UI keeps an operation ID across a network retry with the same file/settings. Previously
+created rows are replayed without duplicate sessions, snapshots, reminders or notifications;
+starting a new import is a separate operation. Standard "conduct now" behavior applies when that
+schedule is explicitly chosen; a scheduled import creates sessions to be conducted later. Files
+and raw emails are not retained in audit metadata; the import event records the executor and counts.

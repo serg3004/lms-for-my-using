@@ -391,6 +391,51 @@ new persisted field, and requires no `ChecklistSession` schema change. `list()` 
 checklist title, case-insensitive) query filters, alongside the existing `status`/`observerId`/
 `overdueOnly`/pagination filters from PR 289.
 
+## Employee-list session import (PR 364)
+
+`POST /checklist-sessions/import/preview` accepts multipart `file` (CSV/XLSX) and performs no
+session/assignment writes. `POST /checklist-sessions/import` accepts the same file plus multipart
+`settings`, a JSON string with `operationId` (UUID), `checklistId`, `observerId`, optional shared
+`scheduledAt` (ISO date-time or null), `durationMinutes`, `timezone` and `locationCapturePolicy`.
+There are no client-supplied learner UUIDs and no per-row scheduling fields. The checklist must be
+published and the observer eligible under current workplace settings.
+
+Owner format decision (2026-10-29, DEC-CHKS-006): exactly one column headed `email`. CSV is UTF-8
+(BOM/quoted fields/CRLF accepted), XLSX has one worksheet. The limits are 1 MiB and 100 data
+records including invalid/duplicate records. Header matching is case-insensitive. Email values
+are trimmed and case-normalized, with the first valid occurrence retained. Invalid values,
+formula-like CSV values, and non-literal Excel cells (including formula/hyperlink objects) are
+skipped, never evaluated or used as identities. Invalid format, encoding, header, workbook or
+limits reject the file before any session is created. XLSX ZIP inflation, XML cell/row counts and
+row addresses are bounded before ExcelJS loads the workbook; rejected long text is truncated in
+the response. File-error messages use stable `session_import.*` codes.
+
+Both endpoints require `checklistSessionsImport` (admin/manager/instructor/mentor; learner 403).
+Every email lookup uses active, non-deleted users in the tenant intersected with
+`participantLearnerScope()`. An unknown, inactive, foreign-tenant or out-of-team email returns the
+same `outside_scope` reason, with no employee ID/name. Preview is advisory: import re-parses the
+file and rechecks the scope, then checks the user again inside each mutation transaction. An
+instructor can import employees across the organization but must be the observer, under the
+existing `assertSessionCreationObserver()` rule. Self-observation is skipped per row.
+
+Preview returns `{ready, skipped, rows}`. Each row carries its one-based record number (header is
+record 1), normalized email, `status: ready|skipped`, optional reason and an employee label only
+when accessible. Import returns `{created, skipped, failed: 0, rows, results}`; created rows add
+`sessionId`, and `results` contains the created session identifiers for the existing wizard.
+Reasons: `invalid_email`, `duplicate`, `outside_scope`, `self_observer`, `active_assignment`,
+`scope_changed`. The displayed report uses these exact server results and localized reasons.
+
+Each accepted row reuses normal assignment/session creation, snapshot capture, reminders and
+notifications in a single Serializable transaction. An active assignment skips that recipient;
+an unexpected failure aborts the current row without an orphan pair, while previously committed
+rows remain. Retrying the same file/settings with the same actor-scoped `operationId` replays
+already-created row IDs even if those sessions have since completed. Changed file/settings with
+that operation ID return 409. Skipped/inaccessible rows are revalidated on retry; no cached result
+bypasses the current scope. Idempotency uses the existing `ChecklistIdempotencyKey` store, not a
+new import entity. Files are not retained. Each completed import request audits
+`checklist_session.imported` with actor, checklist, operation ID and created/skipped/total counts;
+no raw file, emails or employee names are recorded in audit metadata.
+
 ## Checklist evaluation scales (PR 293)
 
 PR 343/344 additions: `POST /checklist-scales/:id/copy` (optional `{ name }`, default `<name> (copy)`) creates

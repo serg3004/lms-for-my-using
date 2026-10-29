@@ -222,3 +222,14 @@ covers:
 | Admin of another organization | Never a recipient; status or impact request for a foreign user is 404 |
 | Manager outside the user's team | 404 from the existing team scope; no notice |
 | Deactivated user is also an admin | Not notified about their own deactivation |
+
+
+PR 364 adds `checklistSessionsImport` for admin, manager, instructor and mentor (owner table
+row 13); learners cannot preview or import. Both multipart endpoints use the existing
+`participantLearnerScope()`: manager's effective team, tenant scope otherwise (the existing
+combined-role scope rules apply). Input email is resolved only through this scope, with no names
+or IDs for unknown/foreign/out-of-zone users. Import repeats validation after preview and again
+inside each row transaction. Existing creation rules remain: instructor is always the observer;
+other schedulers select an eligible observer, and self-observation is skipped. Imports grant no
+analytics rights; PR 363 owns analytics/export policies. The rights-table parity test marks row
+13 implemented and database tests cover all four roles, learner denial and tenant/team limits.

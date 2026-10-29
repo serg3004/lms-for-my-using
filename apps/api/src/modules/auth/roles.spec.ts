@@ -162,6 +162,7 @@ describe('rolePolicies', () => {
     checklistTemplatesManage: ['admin'],
     checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
+    checklistSessionsImport: ['admin', 'manager', 'instructor', 'mentor'],
     checklistSessionsCreateOwn: ['instructor'],
     checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],
     checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],

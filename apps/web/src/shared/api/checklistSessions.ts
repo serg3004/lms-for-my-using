@@ -150,3 +150,20 @@ export function markChecklistSessionObserverUnavailable(sessionId: string, input
     body: JSON.stringify(input),
   });
 }
+
+
+export type SessionImportRow = {
+  row: number; email: string; status: 'ready' | 'skipped' | 'created';
+  reason?: 'invalid_email' | 'duplicate' | 'outside_scope' | 'self_observer' | 'active_assignment' | 'scope_changed';
+  employee?: { id: string; firstName: string; lastName: string; email: string }; sessionId?: string;
+};
+export type SessionImportPreview = { ready: number; skipped: number; rows: SessionImportRow[] };
+export type SessionImportResult = BulkCreateChecklistSessionResult & { rows: SessionImportRow[] };
+export function previewChecklistSessionImport(file: File) {
+  const body = new FormData(); body.append('file', file);
+  return apiRequest<SessionImportPreview>('/checklist-sessions/import/preview', { method: 'POST', body });
+}
+export function importChecklistSessions(file: File, settings: Omit<BulkCreateChecklistSessionInput, 'learnerIds' | 'schedules'> & { operationId: string }) {
+  const body = new FormData(); body.append('file', file); body.append('settings', JSON.stringify(settings));
+  return apiRequest<SessionImportResult>('/checklist-sessions/import', { method: 'POST', body });
+}
