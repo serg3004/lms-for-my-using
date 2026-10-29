@@ -1,4 +1,3 @@
-import { checklistItemLevels } from '../../app/checklistCompletion.js';
 import { useEffect, useState } from 'react';
 import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
@@ -44,7 +43,6 @@ import {
   appendContextField,
   appendScaleLevel,
   buildChecklistSettingsPayload,
-  computePreviewResult,
   createDefaultScale,
   describeScaleLevels,
   groupItems,
@@ -54,7 +52,6 @@ import {
   removeItemById,
   removeScaleLevelAt,
   SCORING_MODES,
-  type PreviewAnswer,
   type SaveState,
   applyScaleLevelPatch,
 } from './domain.js';
@@ -128,7 +125,6 @@ export function ChecklistBuilder({
   const [items, setItems] = useState<ChecklistItemSummary[]>(checklist.items);
   const [contextFieldToDelete, setContextFieldToDelete] = useState<ContextField | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [previewAnswers, setPreviewAnswers] = useState<Record<string, PreviewAnswer>>({});
   // PR 296 observation-sheet builder state.
   const [itemGroups, setItemGroups] = useState<ChecklistItemGroup[]>(checklist.itemGroups ?? []);
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
@@ -255,7 +251,6 @@ export function ChecklistBuilder({
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
   const previewItems = items.map((item) => ({ ...item, scale: scales.find((scale) => scale.id === item.scaleId) ?? item.scale }));
-  const previewResult = computePreviewResult(previewItems, scoringMode, scaleLevels, passThreshold, previewAnswers);
   return (
     <div className="admin-builder">
       <button type="button" className="admin-back-link" onClick={onBack}>
@@ -288,7 +283,6 @@ export function ChecklistBuilder({
               disabled={items.length === 0}
               aria-describedby={items.length === 0 ? 'checklist-needs-items' : undefined}
               onClick={() => {
-                setPreviewAnswers({});
                 setPreviewOpen(true);
               }}
             >
@@ -758,80 +752,22 @@ export function ChecklistBuilder({
         onCancel={() => setContextFieldToDelete(null)}
       />
       {previewOpen && (
-        <ChecklistPreviewDialog label={t('admin.checklists.previewTitle', 'Preview')}>
-          <div className="admin-preview-panel">
-            <div className="admin-preview-panel__header">
-              <h2>{title || checklist.title}</h2>
-              <button type="button" className="admin-dialog__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setPreviewOpen(false)}>×</button>
-            </div>
-            <p className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
-            <ul className="admin-checklist-items">
-              {previewItems.map((item) => {
-                const levels = checklistItemLevels(item, scoringMode, scaleLevels);
-                return (
-                  <li key={item.id} className="admin-checklist-item admin-checklist-item--preview">
-                    <span className="admin-checklist-item__index">✓</span>
-                    <span className="admin-preview-item__text">
-                      {item.text}{' '}
-                      <small>{item.isRequired ? t('admin.checklists.requiredItem', 'Required') : t('admin.checklists.optionalItem', 'Optional')}</small>
-                    </span>
-                    {levels !== null ? (
-                      <div className="admin-seg">
-                        {levels.map((level) => (
-                          <button
-                            key={level.level}
-                            type="button"
-                            aria-pressed={previewAnswers[item.id]?.scaleLevel === level.level}
-                            className={previewAnswers[item.id]?.scaleLevel === level.level ? 'admin-seg__btn admin-seg__btn--active' : 'admin-seg__btn'}
-                            onClick={() => setPreviewAnswers((prev) => ({
-                              ...prev,
-                              [item.id]: { ...prev[item.id], scaleLevel: level.level },
-                            }))}
-                          >
-                            {level.points} · {level.label}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <label className="admin-checklist-item__photo">
-                        <input
-                          type="checkbox"
-                          checked={previewAnswers[item.id]?.checked ?? false}
-                          onChange={(e) => setPreviewAnswers((prev) => ({
-                            ...prev,
-                            [item.id]: { ...prev[item.id], checked: e.target.checked },
-                          }))}
-                        />
-                        {t('admin.checklists.markDone', 'Done')}
-                      </label>
-                    )}
-                    {item.photoRequired && (
-                      <label className="admin-checklist-item__photo">
-                        <input
-                          type="checkbox"
-                          checked={previewAnswers[item.id]?.hasPhoto ?? false}
-                          onChange={(e) => setPreviewAnswers((prev) => ({
-                            ...prev,
-                            [item.id]: { ...prev[item.id], hasPhoto: e.target.checked },
-                          }))}
-                        />
-                        {t('admin.checklists.previewPhotoAttached', 'Photo attached')}
-                      </label>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-            <div className={previewResult.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
-              <span>{previewResult.allAnswered ? (previewResult.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('admin.checklists.previewIncomplete', 'Not all completion requirements are met yet')}</span>
-              <strong>{previewResult.totalScore} / {previewResult.maxScore} ({previewResult.percentage}%)</strong>
-            </div>
-            <div className="admin-form__actions">
-              <button type="button" className="admin-btn admin-btn--secondary" onClick={() => setPreviewAnswers({})}>{t('admin.checklists.previewReset', 'Reset')}</button>
-              <button type="button" className="admin-btn admin-btn--primary" onClick={() => setPreviewOpen(false)}>{t('admin.checklists.close', 'Close')}</button>
-            </div>
-          </div>
-        </ChecklistPreviewDialog>
+        <ChecklistPreviewDialog
+          title={title || checklist.title}
+          description={description}
+          items={previewItems}
+          groups={itemGroups}
+          contextFields={contextFields}
+          scoringMode={scoringMode}
+          scaleLevels={scaleLevels}
+          passThreshold={passThreshold}
+          feedbackEnabled={feedbackEnabled}
+          feedbackRequired={feedbackRequired}
+          allowSkipAll={allowSkipAll}
+          cameraOnly={forbidGalleryPhotos}
+          onClose={() => setPreviewOpen(false)}
+          t={t}
+        />
       )}
       <ScaleManagerDialog onChanged={() => void reloadScales()} onClose={() => setScaleManagerOpen(false)} open={scaleManagerOpen} t={t} />
       <ScaleManagerDialog

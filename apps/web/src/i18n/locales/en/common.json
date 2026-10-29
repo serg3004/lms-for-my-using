@@ -1,4 +1,15 @@
 {
+  "checklistPreview": {
+    "employee": "Sample employee",
+    "department": "Sample department",
+    "feedbackRequired": "Strengths and development areas are required.",
+    "incomplete": "Incomplete",
+    "scoreHint": "The percentage is calculated from answered criteria. Skipped criteria are excluded.",
+    "yes": "Yes",
+    "no": "No",
+    "points": "{{points}} pts",
+    "attachPhoto": "Attach photo (local preview)"
+  },
   "sessionImport": {
     "done": "Import complete",
     "title": "Import employee list",

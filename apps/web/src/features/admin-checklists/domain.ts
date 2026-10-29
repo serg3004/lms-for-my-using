@@ -23,7 +23,7 @@ import type {
 export const CHECKLIST_STATUSES: ChecklistStatus[] = ['draft', 'published', 'archived'];
 export const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale'];
 
-export type PreviewAnswer = ChecklistAnswerState;
+export type PreviewAnswer = ChecklistAnswerState & { answered?: boolean; skipped?: boolean };
 export type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
 /** An untouched draft: the default title and nothing entered. Safe to discard when the author leaves without typing. */
@@ -131,27 +131,35 @@ export function computePreviewResult(
   scaleLevels: ChecklistScaleLevel[],
   passThreshold: number,
   answers: Record<string, PreviewAnswer>,
+  allowSkipAll = false,
+  answeredOnly = false,
 ) {
+  // Keep the existing weighted scoring formula; partial previews show the percentage
+  // of explicitly answered criteria, not zeroes for answers the observer has not given.
+  const eligible = items.filter((item) => !(answers[item.id]?.skipped && (allowSkipAll || item.allowSkip)));
+  const answered = eligible.filter((item) => {
+    const levels = checklistItemLevels(item, scoringMode, scaleLevels);
+    return levels !== null ? levels.some((level) => level.level === answers[item.id]?.scaleLevel)
+      : answers[item.id]?.answered === true || answers[item.id]?.checked === true;
+  });
   let totalScore = 0;
   let maxScore = 0;
-  for (const item of items) {
+  for (const item of (answeredOnly ? answered : eligible)) {
     const levels = checklistItemLevels(item, scoringMode, scaleLevels);
     const weight = item.weight ?? 1;
     if (levels !== null) {
       maxScore += weight * levels.reduce((max, level) => Math.max(max, level.points), 0);
       totalScore += weight * (levels.find((level) => level.level === answers[item.id]?.scaleLevel)?.points ?? 0);
-    } else if (scoringMode === 'all_required') {
-      maxScore += weight;
-      totalScore += answers[item.id]?.checked ? weight : 0;
     } else {
-      maxScore += item.points * weight;
-      totalScore += answers[item.id]?.checked ? item.points * weight : 0;
+      const maximum = scoringMode === 'all_required' ? 1 : item.points;
+      maxScore += maximum * weight;
+      totalScore += answers[item.id]?.checked ? maximum * weight : 0;
     }
   }
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
-  const allAnswered = items.length > 0 && items.every((item) =>
-    isChecklistRequirementSatisfied(item, scoringMode, answers[item.id]),
-  );
+  const allAnswered = items.length > 0 && (answeredOnly
+    ? eligible.length === answered.length && eligible.every((item) => !item.photoRequired || answers[item.id]?.hasPhoto === true)
+    : eligible.every((item) => isChecklistRequirementSatisfied(item, scoringMode, answers[item.id])));
   return { totalScore, maxScore, percentage, passed: allAnswered && percentage >= passThreshold, allAnswered };
 }
 

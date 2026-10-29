@@ -18,7 +18,6 @@ import type {
   ChecklistItemSummary,
   ChecklistSession,
   ChecklistSessionSummary,
-  ContextField,
 } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
@@ -27,6 +26,8 @@ import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
+
+import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } from './ChecklistConductFields.js';
 
 const COLORS = {
   surface: 'var(--color-surface)',
@@ -39,7 +40,6 @@ const COLORS = {
   successSoft: 'var(--color-success-bg)',
 };
 
-type FeedbackDraft = { strengths: string; developmentAreas: string; nextSteps: string };
 
 type ConductData = { session: ChecklistSessionSummary; instance: ChecklistInstanceSummary };
 
@@ -608,52 +608,6 @@ export function formatElapsed(ms: number) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 }
 
-function ContextFields({
-  fields,
-  values,
-  disabled,
-  onChange,
-  t,
-}: {
-  fields: ContextField[];
-  values: Record<string, string>;
-  disabled: boolean;
-  onChange: (fieldId: string, value: string) => void;
-  t: TFunction;
-}) {
-  return (
-    <div className="admin-card" style={{ display: 'grid', gap: 12 }}>
-      {fields.map((field) => (
-        <label key={field.id} style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 600 }}>
-          <span>
-            {field.label}{field.required ? ` ${t('common.requiredMark', '*')}` : ''}
-          </span>
-          {field.type === 'textarea' ? (
-            <textarea
-              disabled={disabled}
-              maxLength={4000}
-              required={field.required}
-              rows={3}
-              value={values[field.id] ?? ''}
-              onChange={(event) => onChange(field.id, event.target.value)}
-              style={{ minHeight: 88, resize: 'vertical' }}
-            />
-          ) : (
-            <input
-              disabled={disabled}
-              maxLength={field.type === 'date' ? undefined : 4000}
-              required={field.required}
-              type={field.type === 'date' ? 'date' : 'text'}
-              value={values[field.id] ?? ''}
-              onChange={(event) => onChange(field.id, event.target.value)}
-            />
-          )}
-        </label>
-      ))}
-    </div>
-  );
-}
-
 function CriterionCard({
   instanceId,
   item,
@@ -709,10 +663,7 @@ function CriterionCard({
 
   return (
     <div>
-      <p style={{ fontWeight: 600, margin: '0 0 6px' }}>{item.text}</p>
-      <p style={{ color: COLORS.muted, fontSize: 12, margin: '0 0 10px' }}>
-        {item.isRequired ? t('checklists.requiredItem', 'Required') : t('checklists.optionalItem', 'Optional')}
-      </p>
+      <CriterionHeading text={item.text} required={item.isRequired} t={t} />
 
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 12.5 }}>
@@ -966,27 +917,7 @@ function StructuredFeedback({
         </p>
       )}
       <div style={{ display: 'grid', gap: 10 }}>
-        <Textarea
-          label={t('checklistSessions.conduct.strengths', 'Strengths')}
-          value={strengths}
-          disabled={busy || saving}
-          onChange={(e) => onDraftChange({ ...draft, strengths: e.target.value })}
-          rows={2}
-        />
-        <Textarea
-          label={t('checklistSessions.conduct.developmentAreas', 'Development areas')}
-          value={developmentAreas}
-          disabled={busy || saving}
-          onChange={(e) => onDraftChange({ ...draft, developmentAreas: e.target.value })}
-          rows={2}
-        />
-        <Textarea
-          label={t('checklistSessions.conduct.nextSteps', 'Next steps')}
-          value={nextSteps}
-          disabled={busy || saving}
-          onChange={(e) => onDraftChange({ ...draft, nextSteps: e.target.value })}
-          rows={2}
-        />
+        <FeedbackFields draft={draft} disabled={busy || saving} onDraftChange={onDraftChange} t={t} />
         <Button type="button" size="sm" disabled={busy || saving || !dirty} onClick={() => void save()} style={{ minHeight: 44 }}>
           {t('checklistSessions.conduct.saveFeedback', 'Save feedback')}
         </Button>
