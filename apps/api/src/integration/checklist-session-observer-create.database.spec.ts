@@ -294,6 +294,21 @@ describe('observer session creation and conduct access (PR 331/349) — database
     await expect(controller.updateChecklist(created.id, { allowEditByAll: false }, await asColleague('updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it.each(['admin', 'manager', 'instructor', 'mentor'] as const)('PR 363: %s reads the employee analytics and exports them within the own scope; an employee gets 403', async (role) => {
+    const actor = await user(organizationId, [role]);
+    const query = { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' };
+    const analytics = await controller.getManagerAnalytics(query, await request(actor, 'getManagerAnalytics'));
+    // A manager without a team sees nobody; the other three see the whole organization and never another tenant.
+    const orgUsers = await prisma.user.count({ where: { organizationId, deletedAt: null } });
+    expect(analytics.summary.totalEmployees).toBe(role === 'manager' ? 0 : orgUsers);
+    const exported = await controller.exportManagerAnalytics({ ...query, format: 'csv' }, await request(actor, 'exportManagerAnalytics'));
+    expect(exported.rowCount).toBe(role === 'manager' ? 0 : orgUsers);
+    expect(await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_report.exported', actorId: actor.id } })).toMatchObject({ actorId: actor.id });
+    for (const handler of ['getManagerAnalytics', 'exportManagerAnalytics'] as const) {
+      await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
+    }
+  });
+
   it('PR 362: an employee cannot build, change the settings or recalculate', async () => {
     for (const handler of ['createChecklist', 'updateWorkplaceSettings', 'recalculateScore'] as const) {
       await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);

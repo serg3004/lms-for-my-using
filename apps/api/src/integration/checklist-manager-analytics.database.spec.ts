@@ -342,9 +342,15 @@ describe('manager checklist analytics (PR 299) — database', () => {
     const selected = await api.getManagerAnalytics({ ...query, managerId: hiddenLabel.id, departmentId: hiddenDept.id }, await request(admin, 'getManagerAnalytics'));
     expect(selected.employees.map((row) => row.userId)).toEqual([unmanagedEmployeeId]);
     expect(selected.managers).toEqual([{ managerId: hiddenLabel.id, name: 'Private manager', employeesCount: 1, completedCount: 1, averagePercentage: 10 }]);
-    for (const role of ['instructor', 'mentor', 'learner'] as const) {
-      const denied = await reportUser(role, role);
-      for (const handler of ['getManagerAnalytics', 'exportManagerAnalytics'] as const) await expect(request(denied, handler)).rejects.toBeInstanceOf(ForbiddenException);
+    const learner = await reportUser('learner', 'learner');
+    for (const handler of ['getManagerAnalytics', 'exportManagerAnalytics'] as const) await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
+    // PR 363: the instructor and the mentor read the same whole-organization analytics as the admin.
+    const readers = [await reportUser('instructor', 'instructor'), await reportUser('mentor', 'mentor')];
+    const everyone = await api.getManagerAnalytics(query, await request(admin, 'getManagerAnalytics'));
+    for (const reader of readers) {
+      const own = await api.getManagerAnalytics(query, await request(reader, 'getManagerAnalytics'));
+      expect(own.summary).toEqual(everyone.summary);
+      expect(own.employees.map((row) => row.userId).sort()).toEqual(everyone.employees.map((row) => row.userId).sort());
     }
   });
 

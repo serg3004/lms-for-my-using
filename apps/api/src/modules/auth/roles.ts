@@ -85,7 +85,8 @@ export const rolePolicies = {
   // PR 360: who may pick any observer when scheduling; the instructor stays pinned to themselves.
   checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],
   checklistSessionsRunOwn: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
-  checklistManagerAnalyticsRead: ['admin', 'manager'],
+  // PR 363: employee analytics and their exports; the manager is team-scoped, the other three see the whole organization.
+  checklistManagerAnalyticsRead: ['admin', 'manager', 'instructor', 'mentor'],
   checklistScoreRecalculate: ['admin', 'manager', 'instructor', 'mentor'],
 } as const satisfies Record<string, readonly UserRole[]>;
 

@@ -27,8 +27,15 @@ export function libraryPath(user: SessionsNavUser): string | null {
   return null;
 }
 
+/** PR 363: the employee analytics of an instructor or a mentor (a manager and an admin use their own routes). */
+export function analyticsPath(user: SessionsNavUser): string | null {
+  if (user?.roles.includes('instructor')) return '/instructor/checklists/analytics';
+  if (user?.roles.includes('mentor')) return '/mentor/analytics';
+  return null;
+}
+
 /** In-page tabs between "to conduct", "all sessions" and the checklist library -- no new menu item (PR 360б, 362). */
-export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' }) {
+export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' | 'analytics' }) {
   const { t } = useTranslation();
   const user = useOptionalSession()?.currentUser;
   const allPath = allSessionsPath(user);
@@ -37,6 +44,7 @@ export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 
     { key: 'conduct' as const, href: conductSessionsPath(user), label: t('checklistSessions.nav.conduct', 'To conduct') },
     { key: 'all' as const, href: allPath, label: t('checklistSessions.nav.all', 'All sessions') },
     { key: 'library' as const, href: libraryPath(user) ?? allPath, label: t('checklistSessions.nav.library', 'Checklists') },
+    { key: 'analytics' as const, href: analyticsPath(user) ?? allPath, label: t('checklistSessions.nav.analytics', 'Analytics') },
   ];
   return (
     <nav aria-label={t('checklistSessions.nav.label', 'Session sections')} className="admin-org-tabs">
