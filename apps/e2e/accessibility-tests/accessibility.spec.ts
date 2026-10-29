@@ -1,4 +1,5 @@
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
+import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -24,7 +25,7 @@ async function loginAs(page: Page, role: DemoRole) {
 
 const severityOrder = ['critical', 'serious', 'moderate', 'minor', 'unknown'] as const;
 
-async function auditAccessibility(page: Page, testInfo: TestInfo) {
+async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-findings') {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
@@ -38,10 +39,10 @@ async function auditAccessibility(page: Page, testInfo: TestInfo) {
     findings,
   };
   const reportBody = JSON.stringify(report, null, 2);
-  const reportPath = testInfo.outputPath('accessibility-reports', 'axe-findings.json');
+  const reportPath = testInfo.outputPath('accessibility-reports', `${name}.json`);
   await mkdir(dirname(reportPath), { recursive: true });
   await writeFile(reportPath, reportBody);
-  await testInfo.attach('axe-findings-by-severity', { body: reportBody, contentType: 'application/json' });
+  await testInfo.attach(`${name}-by-severity`, { body: reportBody, contentType: 'application/json' });
 
   console.log(`[axe] ${page.url()} ${severityOrder.map((severity) => `${severity}=${findings[severity].length}`).join(' ')}`);
 
@@ -56,6 +57,42 @@ async function auditAccessibility(page: Page, testInfo: TestInfo) {
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  test.describe('session management role shells (PR 360б)', () => {
+    test.use({ timezoneId: 'UTC' });
+    for (const role of ['instructor', 'mentor'] as const) {
+      for (const width of [375, 1440]) {
+        test(`${role} management list, dialogs and report are accessible at ${width}px`, async ({ page }, testInfo) => {
+          test.setTimeout(60_000);
+          await page.setViewportSize({ width, height: 900 });
+          await openManagementList(page, role);
+          await auditAccessibility(page, testInfo, 'management-list');
+
+          const edit = await openManagementEdit(page);
+          await auditAccessibility(page, testInfo, 'management-edit');
+          await page.keyboard.press('Escape');
+          await expect(edit).not.toBeVisible();
+
+          const wizard = await openManagementWizard(page);
+          await auditAccessibility(page, testInfo, 'management-create');
+          await page.keyboard.press('Escape');
+          await expect(wizard).not.toBeVisible();
+          await expect(page.getByRole('button', { name: /Новая сессия/ })).toBeFocused();
+
+          await openManagementReport(page, role);
+          await auditAccessibility(page, testInfo, 'management-report-summary');
+          for (const [tab, report] of [['Участники', 'participants'], ['Критерии', 'criteria'], ['История', 'history']]) {
+            const button = page.getByRole('tab', { name: tab, exact: true });
+            await button.focus();
+            await page.keyboard.press('Enter');
+            await expect(button).toHaveAttribute('aria-selected', 'true');
+            if (report === 'criteria') await expect(page.getByText(managementCriterion, { exact: true })).toBeVisible();
+            await auditAccessibility(page, testInfo, `management-report-${report}`);
+          }
+        });
+      }
+    }
+  });
+
   for (const path of ['/', '/login']) {
     test(`${path} has no blocking axe violations`, async ({ page }, testInfo) => {
       await page.goto(path);

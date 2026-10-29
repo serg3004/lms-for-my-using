@@ -11,9 +11,9 @@
   --color-accent-muted: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   --color-selected: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface));
   --color-danger: #dc2626;
-  --color-success: #0f9f6e;
+  --color-success: #067647;
   --color-warning: #d97706;
-  --color-info: #0284c7;
+  --color-info: #0369a1;
   --color-warning-bg: #fff7e8;
   --color-success-bg: #e9f8f2;
   --color-danger-bg: #fee2e2;
