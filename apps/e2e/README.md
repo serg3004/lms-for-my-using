@@ -21,7 +21,8 @@ The observation-sheet preview uses a synthetic 5S fixture (2 groups, 27 criteria
 Functional checks cover local-only traffic, radio arrow keys, focus boundaries/Escape/restoration,
 reset/reopen, conditional sections, required fields and RU/EN/KK/ZH controls. Visual captures at
 all six widths cover the top of the full-screen page, criteria and the feedback/result area;
-the dialog scrolls internally. Axe audits at 375/1440 px scope the active native modal, whose
+the dialog scrolls internally. These viewport captures use a 3000-pixel difference budget
+(existing visual scenarios retain their budget). Axe audits at 375/1440 px scope the active native modal, whose
 background is inert; existing whole-page audits keep their scope and severity gate.
 
 ## Accessibility baseline

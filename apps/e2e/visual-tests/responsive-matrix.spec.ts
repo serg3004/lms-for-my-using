@@ -38,11 +38,11 @@ async function expectTouchTargets(page: Page) {
 //
 // `networkidle` plus a short settle guards against capturing a screenshot before in-flight
 // rendering work (e.g. a route that resolves a tick late) has finished.
-async function expectVisualMatch(page: Page, name: string, soft = false, fullPage = true) {
+async function expectVisualMatch(page: Page, name: string, soft = false, options: { fullPage?: boolean; maxDiffPixels?: number } = {}) {
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(300);
   const assertion = soft ? expect.soft(page) : expect(page);
-  await assertion.toHaveScreenshot(`${name}.png`, { fullPage });
+  await assertion.toHaveScreenshot(`${name}.png`, { fullPage: true, ...options });
 }
 
 async function installAdminMocks(page: Page) {
@@ -920,12 +920,15 @@ for (const width of widths) {
         return { x: box.x, y: box.y, width: box.width, height: box.height };
       })).toEqual({ x: 0, y: 0, width, height });
       // Capture the actual viewport: fullPage temporarily enlarges the viewport to
-      // the inert builder's height and changes a fixed dialog's dimensions.
-      await expectVisualMatch(page, `checklist-preview-header-${width}`, true, false);
+      // the inert builder's height and changes a fixed dialog's dimensions. The
+      // new captures use a 3000-pixel budget so scrolling to another block cannot
+      // pass against a duplicate header baseline under the legacy 30000 budget.
+      await expectVisualMatch(page, `checklist-preview-header-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
       await dialog.getByRole('radiogroup').first().evaluate((node) => node.parentElement?.scrollIntoView({ block: 'start' }));
-      await expectVisualMatch(page, `checklist-preview-criteria-${width}`, true, false);
+      expect(await dialog.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+      await expectVisualMatch(page, `checklist-preview-criteria-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
       await dialog.getByRole('button', { name: 'Сбросить', exact: true }).scrollIntoViewIfNeeded();
-      await expectVisualMatch(page, `checklist-preview-feedback-${width}`, true, false);
+      await expectVisualMatch(page, `checklist-preview-feedback-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
     });
 
     test('keeps the admin checklist builder responsive', async ({ page }) => {
