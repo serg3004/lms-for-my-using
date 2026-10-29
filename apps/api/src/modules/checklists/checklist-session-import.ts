@@ -66,7 +66,9 @@ function csvRows(buffer: Buffer): unknown[][] {
   const rows: string[][] = []; let row: string[] = [], field = '', quoted = false, closed = false;
   const addField = () => { row.push(field); field = ''; closed = false; if (row.length > 1) importFileError('header'); };
   const addRow = () => { addField(); rows.push(row); row = []; if (rows.length > MAX_SESSION_IMPORT_ROWS + 1) importFileError('rows_limit'); };
-  for (let i = 0; i < text.length; i++) {
+  // UTF-8 decoding cannot produce more UTF-16 code units than the input byte limit.
+  for (let i = 0; i < MAX_SESSION_IMPORT_BYTES; i++) {
+    if (i >= text.length) break;
     const char = text[i]!;
     if (quoted) {
       if (char === '"' && text[i + 1] === '"') { field += '"'; i++; }
