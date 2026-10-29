@@ -33,6 +33,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `certificatesCreate` | `admin`, `manager`, `instructor` |
 | `certificatesRead` | `admin`, `manager`, `instructor`, `learner` |
 | `checklistAccessSettingsWrite` | `admin` |
+| `checklistFreeAccessCreate` | `admin` |
 | `checklistInstancesCreate` | `admin`, `manager`, `instructor` |
 | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
 | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` |
