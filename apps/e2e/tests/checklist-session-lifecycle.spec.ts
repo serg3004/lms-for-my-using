@@ -413,7 +413,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await test.step('admin opens the session report (#11)', async () => {
       await adminPage.goto(`/admin/checklists/sessions/${sessionId}`);
       await expect(adminPage.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
-      await expect(adminPage.getByText(`${session.result.percentage}%`)).toBeVisible();
+      // PR 371: the headline percentage is the arc label; the "N% — x of y points" line is a different text node.
+      await expect(adminPage.getByText(`${session.result.percentage}%`, { exact: true })).toBeVisible();
     });
 
     await test.step('admin recalculates the score from the header dialog, creating a new revision (#12)', async () => {
