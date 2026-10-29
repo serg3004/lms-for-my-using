@@ -233,3 +233,19 @@ created rows are replayed without duplicate sessions, snapshots, reminders or no
 starting a new import is a separate operation. Standard "conduct now" behavior applies when that
 schedule is explicitly chosen; a scheduled import creates sessions to be conducted later. Files
 and raw emails are not retained in audit metadata; the import event records the executor and counts.
+
+## Detailed session report (PR 370)
+
+`GET /checklist-sessions/:id/report` returns one object for the report screen, PDF and XLSX:
+`header` (status, timezone, planned and actual period, learner and observer with primary
+department), `generalInfo`, `summary` (percentage, earned, maximum, criteria count, skipped count,
+passed, formula, range colour), `groups` (number, title, earned, maximum, percentage, colour),
+`criteria` (number such as `2.3`, text, `state` answered/skipped/unanswered, earned and maximum,
+scale level name, comment, photo file name, review status, colour), `feedback` and `location`.
+Skipped criteria are excluded from the maximum. Numbers follow group order then criterion order;
+ungrouped criteria are numbered after the groups. Scores use the same calculation as the stored
+instance score (`snapshot` points x weight, or the `criteria` formula after a PR 362 revision), so
+the report total equals the sessions list and analytics. Old snapshots without level colours get the
+default colours. Each colour is returned as `{ color, light: { fill, text }, dark: { fill, text } }`
+with AA-contrast text. When `feedbackVisibility` hides the result from a learner the response carries
+only the header and `visible: false`.

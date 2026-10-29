@@ -679,6 +679,14 @@ export class ChecklistsController {
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
     return this.sessions.get(sessionId, user.organizationId, scope, viewer);
   }
+  // PR 370: one server-built object for the detailed report, PDF and XLSX.
+  @Get('checklist-sessions/:id/report')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async getSessionReport(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
+    return this.sessions.getReport(sessionId, user.organizationId, scope, viewer, { id: user.id, isAdmin: user.roles.includes('admin') });
+  }
   @Get('checklist-sessions/:id/conduct')
   @Roles(...rolePolicies.checklistSessionsRunOwn)
   async getConductSession(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {

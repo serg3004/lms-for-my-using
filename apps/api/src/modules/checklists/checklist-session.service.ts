@@ -21,6 +21,8 @@ import {
 } from './checklist-session-reminders.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_MESSAGE_WINDOW_MS } from './checklist-session-message.js';
 import { eligibleObserverScope } from './checklist-observer-eligibility.js';
+import { buildSessionReport, type ReportPerson } from './checklist-session-report.js';
+import { resolveResultColors } from './checklist-colors.js';
 import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
@@ -631,6 +633,84 @@ export class ChecklistSessionService {
     });
     if (!session) throw new NotFoundException('Checklist session not found');
     return applyFeedbackVisibility(presentProjected(session), viewer);
+  }
+
+  /**
+   * PR 370: the detailed session report as one server-built object (see `buildSessionReport`).
+   * Access, tenant and the learner's feedback-visibility masking all come from `get()`, so the
+   * report can never show more than the session detail does; a learner whose result is still
+   * hidden gets the header only. Coordinates come from `listLocationCaptures`, which keeps its own
+   * observer/admin rule and audit entry.
+   */
+  async getReport(
+    sessionId: string,
+    organizationId: string,
+    scope: object,
+    viewer: ChecklistSessionViewerContext,
+    actor: { id: string; isAdmin: boolean },
+  ) {
+    const masked = await this.get(sessionId, organizationId, scope, viewer);
+    const primaryDepartment = {
+      where: { organizationId, isPrimary: true, effectiveTo: null },
+      select: { department: { select: { id: true, name: true } } },
+      take: 1,
+    } as const;
+    const [extra, settingsRow, revision] = await Promise.all([
+      this.prisma.checklistSession.findFirstOrThrow({
+        where: { id: sessionId, organizationId },
+        select: {
+          instance: {
+            select: {
+              totalScore: true, maxScore: true, completedAt: true,
+              user: { select: { departmentMemberships: primaryDepartment } },
+            },
+          },
+          observer: { select: { departmentMemberships: primaryDepartment } },
+        },
+      }),
+      this.prisma.checklistWorkplaceSettings.findUnique({ where: { organizationId } }),
+      this.prisma.checklistScoreRevision.findFirst({
+        where: { organizationId, instanceId: masked.instanceId },
+        orderBy: { createdAt: 'desc' },
+        select: { formula: true },
+      }),
+    ]);
+    const formula = revision?.formula ?? 'snapshot';
+    const withDepartment = (
+      person: { id: string; firstName: string; lastName: string; email: string },
+      memberships: Array<{ department: { id: string; name: string } }>,
+    ): ReportPerson => ({ ...person, department: memberships[0]?.department ?? null });
+
+    const [breakdown, captures] = await Promise.all([
+      this.checklistsService.getScoreBreakdown(masked.instanceId, organizationId, formula),
+      masked.result.visible ? this.listLocationCaptures(sessionId, organizationId, scope, actor.id, actor.isAdmin) : Promise.resolve([]),
+    ]);
+
+    return buildSessionReport({
+      session: masked,
+      instance: {
+        id: masked.instanceId,
+        status: masked.result.instanceStatus,
+        totalScore: extra.instance.totalScore,
+        maxScore: extra.instance.maxScore,
+        percentage: masked.result.percentage,
+        passed: masked.result.passed,
+        scored: masked.result.scored,
+        completedAt: extra.instance.completedAt,
+      },
+      checklistId: masked.checklist.id,
+      learner: withDepartment(masked.learner, extra.instance.user.departmentMemberships),
+      observer: withDepartment(masked.observer, extra.observer.departmentMemberships),
+      breakdown,
+      formula,
+      settings: {
+        highPerformanceThreshold: settingsRow?.highPerformanceThreshold ?? 90,
+        lowThreshold: settingsRow?.lowThreshold ?? null,
+        resultColors: resolveResultColors(settingsRow),
+      },
+      visible: masked.result.visible,
+      locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
+    });
   }
 
   async listEvents(sessionId: string, organizationId: string, scope: object) {
