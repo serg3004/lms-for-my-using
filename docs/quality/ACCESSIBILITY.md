@@ -4,6 +4,10 @@ The browser baseline targets WCAG 2.1 level AA. `pnpm test:a11y` starts the same
 
 Release candidates must also be evaluated with the [manual accessibility checklist](./A11Y_MANUAL_CHECKLIST.md), which covers screen-reader output, zoom and reflow, focus behavior, contrast across interaction states, and other checks that automation cannot establish conclusively.
 
+The instructor and mentor session-management pages have independent audits at mobile (375 px) and desktop (1440 px) widths. Each role is checked with populated list data, creation and time/observer dialogs, and the report's summary, participants, criteria and history tabs. Each audited state retains its own severity report. Dialog Escape/focus restoration and report-tab keyboard activation are also checked. These reads use isolated API fixtures rather than shared demo-account logins.
+
+Populated session statuses exposed contrast failures in the default success/info colors. Their text tokens in `tokens.css` use darker shades against the existing pale status backgrounds; the WCAG AA gate and its severity threshold remain unchanged.
+
 ## Exceptions
 
 There are currently **no accessibility exceptions**.

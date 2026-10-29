@@ -15,9 +15,13 @@ pnpm test:visual
 
 The visual suite runs independently from the database-backed functional suite. It intercepts API calls with fixed synthetic `.invalid` data, captures named screenshots at 320, 375, 768, 1024, 1280, and 1440 px, and checks explicit layout baselines for page overflow, mobile touch targets, dialogs, and 200% zoom. CI retains screenshots, traces, and the rendered report when a baseline fails.
 
+The instructor and mentor session-management shells have separate baselines at all six widths: populated session list, creation wizard, time/observer editing, and completed-session report. They use `fixtures/session-management.ts` with read-only API responses, independent of the conduct queue and shared demo logins. Each screenshot remains a required assertion; a soft screenshot assertion lets the same scenario report differences in all four states.
+
 ## Accessibility baseline
 
-Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. The exception policy is documented in `docs/ACCESSIBILITY.md`.
+Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. See the [accessibility exception policy](../../docs/quality/ACCESSIBILITY.md).
+
+Session-management audits cover instructor and mentor at 375/1440 px: list, creation/edit dialogs, and report summary, participants, criteria and history. Each state writes its own JSON report; the checks also exercise Escape, focus restoration and keyboard tab activation.
 
 Playwright builds the API, runs the guarded `admin:demo-seed` task with confirmations derived from the non-production `NODE_ENV` and parsed `DATABASE_URL`, and then starts the API and Vite development servers. A local PostgreSQL database matching `DATABASE_URL` must be available and migrated. Existing local servers are reused; when reusing them, apply the guarded seed as documented in `docs/ADMIN_DEMO_SEED.md` first. CI always starts clean server processes.
 

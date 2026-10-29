@@ -1,4 +1,5 @@
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
+import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { expect, test, type Page } from '@playwright/test';
@@ -36,10 +37,11 @@ async function expectTouchTargets(page: Page) {
 //
 // `networkidle` plus a short settle guards against capturing a screenshot before in-flight
 // rendering work (e.g. a route that resolves a tick late) has finished.
-async function expectVisualMatch(page: Page, name: string) {
+async function expectVisualMatch(page: Page, name: string, soft = false) {
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(300);
-  await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true });
+  const assertion = soft ? expect.soft(page) : expect(page);
+  await assertion.toHaveScreenshot(`${name}.png`, { fullPage: true });
 }
 
 async function installAdminMocks(page: Page) {
@@ -748,6 +750,38 @@ for (const width of widths) {
         await expectVisualMatch(page, `${role}-session-employee-import-${width}`);
       });
     }
+
+    test.describe('session management role shells (PR 360б)', () => {
+      test.use({ timezoneId: 'UTC' });
+      for (const role of ['instructor', 'mentor'] as const) {
+        test(`keeps the ${role} management list, dialogs and report responsive`, async ({ page }) => {
+          test.setTimeout(60_000);
+          await openManagementList(page, role);
+          await expectNoPageOverflow(page);
+          if (width <= 375) await expectTouchTargets(page);
+          await expectVisualMatch(page, `${role}-management-sessions-list-${width}`, true);
+
+          const edit = await openManagementEdit(page);
+          await expectNoPageOverflow(page);
+          if (width <= 375) await expectTouchTargets(page);
+          await expectVisualMatch(page, `${role}-management-session-edit-${width}`, true);
+          await page.keyboard.press('Escape');
+          await expect(edit).not.toBeVisible();
+
+          const wizard = await openManagementWizard(page);
+          await expectNoPageOverflow(page);
+          if (width <= 375) await expectTouchTargets(page);
+          await expectVisualMatch(page, `${role}-management-session-create-${width}`, true);
+          await page.keyboard.press('Escape');
+          await expect(wizard).not.toBeVisible();
+
+          await openManagementReport(page, role);
+          await expectNoPageOverflow(page);
+          if (width <= 375) await expectTouchTargets(page);
+          await expectVisualMatch(page, `${role}-management-session-report-${width}`, true);
+        });
+      }
+    });
 
     test('keeps the instructor dashboard responsive', async ({ page }) => {
       await installInstructorMocks(page);
