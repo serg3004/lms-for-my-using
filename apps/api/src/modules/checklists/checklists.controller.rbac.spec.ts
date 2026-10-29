@@ -246,9 +246,9 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
         workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
       });
 
-      expect(() =>
+      await expect(
         controller.updateWorkplaceSettings({ moduleEnabled: true, notARealField: 1 }, makeRequest(reviewerId, ['admin'])),
-      ).toThrow();
+      ).rejects.toThrow();
       expect(updateSettings).not.toHaveBeenCalled();
     });
 
@@ -258,12 +258,12 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
         workplaceSettings: { updateSettings: updateSettings as unknown as ChecklistWorkplaceSettingsService['updateSettings'] },
       });
 
-      expect(() =>
+      await expect(
         controller.updateWorkplaceSettings(
           { criticalThreshold: 40, lowThreshold: 60 },
           makeRequest(reviewerId, ['admin']),
         ),
-      ).toThrow();
+      ).rejects.toThrow();
       expect(updateSettings).not.toHaveBeenCalled();
     });
 

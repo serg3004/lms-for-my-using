@@ -244,7 +244,10 @@ describe('observer session creation and conduct access (PR 331/349) — database
     await controller.updateWorkplaceSettings({ highPerformanceThreshold: 85 }, await request(actor, 'updateWorkplaceSettings'));
     const audit = await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist_workplace_settings.updated', actorId: actor.id } });
     expect(audit?.metadata).toMatchObject({ previous: { highPerformanceThreshold: 90 }, updated: { highPerformanceThreshold: 85 } });
-    expect(await controller.getWorkplaceSettings(await request(actor, 'getWorkplaceSettings'))).toHaveProperty('selectedObserverUsers');
+    // The roster names are an access setting: only the admin gets them (PR 365).
+    const view = await controller.getWorkplaceSettings(await request(actor, 'getWorkplaceSettings'));
+    if (role === 'admin') expect(view).toHaveProperty('selectedObserverUsers');
+    else expect(view).not.toHaveProperty('selectedObserverUsers');
 
     // A manager recalculates inside the team only; the other three roles see the whole organization.
     const target = await sessions.create(organizationId, { instanceId: (await instance(employee.id)).id, observerId: observer.id }, observer.id);
@@ -307,6 +310,33 @@ describe('observer session creation and conduct access (PR 331/349) — database
     for (const handler of ['getManagerAnalytics', 'exportManagerAnalytics'] as const) {
       await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
     }
+  });
+
+  it.each(['manager', 'instructor', 'mentor'] as const)('PR 365: %s changes other settings but not who may be an observer; the admin does', async (role) => {
+    const actor = await user(organizationId, [role]);
+    const admin = await user(organizationId, ['admin']);
+    const peer = await user(organizationId, ['instructor']);
+    const asActor = async () => request(actor, 'updateWorkplaceSettings');
+    await controller.updateWorkplaceSettings({ highPerformanceThreshold: 70 }, await asActor());
+    const stored = await prisma.checklistWorkplaceSettings.findUniqueOrThrow({ where: { organizationId } });
+    for (const change of [
+      { observerEligibility: 'any_user' as const },
+      { observerRoles: ['mentor' as const] },
+      { observerUserIds: [peer.id] },
+    ]) {
+      await expect(controller.updateWorkplaceSettings(change, await asActor())).rejects.toBeInstanceOf(ForbiddenException);
+    }
+    expect(await prisma.checklistWorkplaceSettings.findUniqueOrThrow({ where: { organizationId } })).toMatchObject({ observerEligibility: stored.observerEligibility, observerRoles: stored.observerRoles, highPerformanceThreshold: 70 });
+    // A whole-form save that repeats the stored access values is not a change.
+    await controller.updateWorkplaceSettings({ highPerformanceThreshold: 75, observerEligibility: stored.observerEligibility, observerRoles: stored.observerRoles, observerUserIds: stored.observerUserIds }, await asActor());
+    expect(await prisma.checklistWorkplaceSettings.findUniqueOrThrow({ where: { organizationId } })).toMatchObject({ highPerformanceThreshold: 75 });
+    // The roster names are an admin-only part of the settings view.
+    expect(await controller.getWorkplaceSettings(await request(actor, 'getWorkplaceSettings'))).not.toHaveProperty('selectedObserverUsers');
+    expect(await controller.getWorkplaceSettings(await request(admin, 'getWorkplaceSettings'))).toHaveProperty('selectedObserverUsers');
+
+    await controller.updateWorkplaceSettings({ observerEligibility: 'selected_users', observerUserIds: [peer.id] }, await request(admin, 'updateWorkplaceSettings'));
+    expect(await prisma.checklistWorkplaceSettings.findUniqueOrThrow({ where: { organizationId } })).toMatchObject({ observerEligibility: 'selected_users', observerUserIds: [peer.id] });
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_workplace_settings.updated', actorId: admin.id } })).toBe(1);
   });
 
   it('PR 362: an employee cannot build, change the settings or recalculate', async () => {

@@ -56,7 +56,7 @@ export const CHECKLIST_ROLE_PERMISSIONS: readonly ChecklistPermissionRow[] = [
   row(12, 'results.recalculate', ['yes', 'yes', 'yes', 'yes', 'none'], { status: 'implemented', policies: ['checklistScoreRecalculate'] }),
   row(13, 'sessions.import', ['all', 'team', 'all', 'all', 'none'], { status: 'planned', prs: [364] }),
   row(14, 'reports.export', ['all', 'team', 'all', 'all', 'none'], { status: 'implemented', policies: ['checklistManagerAnalyticsRead'] }),
-  row(15, 'access.settings', ['yes', 'none', 'none', 'none', 'none'], { status: 'planned', prs: [365] }),
+  row(15, 'access.settings', ['yes', 'none', 'none', 'none', 'none'], { status: 'implemented', policies: ['checklistAccessSettingsWrite'] }),
   row(16, 'checklists.appearance', ['yes', 'yes', 'yes', 'yes', 'none'], { status: 'implemented', policies: ['checklistsCreate'] }),
   row(17, 'free.create', ['yes', 'none', 'none', 'none', 'none'], { status: 'planned', prs: [366], policies: ['checklistsCreate'] }),
   row(18, 'free.fill', ['yes', 'yes', 'yes', 'yes', 'yes'], { status: 'implemented', policies: ['checklistsStartFree'] }),

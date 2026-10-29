@@ -1243,7 +1243,8 @@
             "manager": "Manager",
             "admin": "Administrator"
           },
-          "removeUnavailable": "Remove unavailable users"
+          "removeUnavailable": "Remove unavailable users",
+          "readOnly": "Only an administrator can change who may be an observer."
         }
       },
       "scaleManager": {

@@ -78,6 +78,19 @@ export class ChecklistWorkplaceSettingsService {
     return settings;
   }
 
+  /**
+   * PR 365: the observer-eligibility fields are access settings. A request that merely repeats the stored
+   * value is not a change (a form of a non-admin sends the whole object), only a different value is.
+   */
+  async changesAccessSettings(organizationId: string, input: UpdateChecklistWorkplaceSettingsInput): Promise<boolean> {
+    if (input.observerEligibility === undefined && input.observerRoles === undefined && input.observerUserIds === undefined) return false;
+    const current = this.present(organizationId, await this.prisma.checklistWorkplaceSettings.findUnique({ where: { organizationId } }));
+    const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((value) => b.includes(value));
+    return (input.observerEligibility !== undefined && input.observerEligibility !== current.observerEligibility)
+      || (input.observerRoles !== undefined && !sameSet(input.observerRoles, current.observerRoles))
+      || (input.observerUserIds !== undefined && !sameSet(input.observerUserIds, current.observerUserIds));
+  }
+
   async updateSettings(
     organizationId: string,
     input: UpdateChecklistWorkplaceSettingsInput,
