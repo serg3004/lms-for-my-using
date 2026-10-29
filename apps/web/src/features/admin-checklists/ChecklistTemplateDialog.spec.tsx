@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import i18n from 'i18next';
 
-const api = vi.hoisted(() => ({ listChecklistTemplates: vi.fn(), createChecklistFromTemplate: vi.fn() }));
+const api = vi.hoisted(() => ({ listChecklistTemplates: vi.fn(), createChecklistFromTemplate: vi.fn(), listChecklistOrgTemplates: vi.fn().mockResolvedValue({ items: [] }) }));
 vi.mock('../../shared/api/checklists.js', () => api);
 
 import { ChecklistTemplateDialog } from './ChecklistTemplateDialog';

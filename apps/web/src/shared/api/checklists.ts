@@ -67,6 +67,48 @@ export function createChecklistFromTemplate(templateKey: string, locale: string)
   return apiRequest<ChecklistSummary>('/checklists/from-template', { method: 'POST', body: JSON.stringify({ templateKey, locale }) });
 }
 
+// ---- PR 367: organization templates (administrator manages, builders use) ----
+export type ChecklistOrgTemplateSummary = { id: string; title: string; description: string | null; groupCount: number; itemCount: number; createdAt: string; updatedAt: string };
+
+export function listChecklistOrgTemplates() {
+  return apiRequest<{ items: ChecklistOrgTemplateSummary[] }>('/checklist-org-templates');
+}
+
+export function createChecklistOrgTemplate(sourceChecklistId: string, title?: string) {
+  return apiRequest<ChecklistOrgTemplateSummary>('/checklist-org-templates', { method: 'POST', body: JSON.stringify({ sourceChecklistId, ...(title ? { title } : {}) }) });
+}
+
+export function updateChecklistOrgTemplate(templateId: string, input: { title?: string; description?: string | null }) {
+  return apiRequest<ChecklistOrgTemplateSummary>(`/checklist-org-templates/${encodeURIComponent(templateId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function deleteChecklistOrgTemplate(templateId: string) {
+  return apiRequest<{ id: string }>(`/checklist-org-templates/${encodeURIComponent(templateId)}`, { method: 'DELETE' });
+}
+
+export function createChecklistFromOrgTemplate(templateId: string) {
+  return apiRequest<ChecklistSummary>('/checklists/from-org-template', { method: 'POST', body: JSON.stringify({ templateId }) });
+}
+
+// ---- PR 367: administrator-only deletion of finished results ----
+export type DeletedChecklistResult = {
+  id: string; deletedAt: string; reason: string; restorableUntil: string; percentage: number; passed: boolean; completedAt: string | null;
+  checklist: { id: string; title: string };
+  user: { id: string; firstName: string; lastName: string; email: string };
+};
+
+export function deleteChecklistResult(instanceId: string, reason: string) {
+  return apiRequest<{ id: string; deletedAt: string; restorableUntil: string }>(`/checklist-instances/${encodeURIComponent(instanceId)}/result`, { method: 'DELETE', body: JSON.stringify({ reason }) });
+}
+
+export function restoreChecklistResult(instanceId: string) {
+  return apiRequest<{ id: string }>(`/checklist-instances/${encodeURIComponent(instanceId)}/result/restore`, { method: 'POST' });
+}
+
+export function listDeletedChecklistResults() {
+  return apiRequest<{ items: DeletedChecklistResult[] }>('/checklist-instances/deleted-results');
+}
+
 export function deleteChecklist(checklistId: string) {
   return apiRequest<void>(`/checklists/${encodeURIComponent(checklistId)}`, { method: 'DELETE' });
 }

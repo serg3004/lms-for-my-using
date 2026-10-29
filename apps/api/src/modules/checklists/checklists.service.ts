@@ -7,6 +7,8 @@ import { UploadService } from '../upload/public.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
+import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { ChecklistResultDeletion } from './checklist-result-deletion.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
   AssignChecklistInput,
@@ -275,7 +277,27 @@ export class ChecklistsService {
     private readonly uploadService: UploadService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly scaleService: ChecklistScaleService = new ChecklistScaleService(prisma, auditLog),
-  ) {}
+  ) {
+    // Plain helpers, not providers: built here so Nest does not try to inject them.
+    this.resultDeletion = new ChecklistResultDeletion(prisma, auditLog);
+    this.orgTemplates = new ChecklistOrgTemplates(prisma, auditLog);
+  }
+
+  private readonly resultDeletion: ChecklistResultDeletion;
+  private readonly orgTemplates: ChecklistOrgTemplates;
+
+  // ---- PR 367: administrator-only deletion of results and organization templates ----
+  deleteResult(instanceId: string, organizationId: string, reason: string, actorId: string) { return this.resultDeletion.delete(instanceId, organizationId, reason, actorId); }
+  restoreResult(instanceId: string, organizationId: string, actorId: string) { return this.resultDeletion.restore(instanceId, organizationId, actorId); }
+  listDeletedResults(organizationId: string) { return this.resultDeletion.listDeleted(organizationId); }
+  listOrgTemplates(organizationId: string) { return this.orgTemplates.list(organizationId); }
+  createOrgTemplate(organizationId: string, input: Parameters<ChecklistOrgTemplates['create']>[1], actorId: string) { return this.orgTemplates.create(organizationId, input, actorId); }
+  updateOrgTemplate(templateId: string, organizationId: string, input: Parameters<ChecklistOrgTemplates['update']>[2], actorId: string) { return this.orgTemplates.update(templateId, organizationId, input, actorId); }
+  deleteOrgTemplate(templateId: string, organizationId: string, actorId: string) { return this.orgTemplates.remove(templateId, organizationId, actorId); }
+  async createFromOrgTemplate(templateId: string, organizationId: string, actorId: string) {
+    const checklistId = await this.orgTemplates.createChecklist(templateId, organizationId, actorId);
+    return this.prisma.checklist.findFirstOrThrow({ where: { id: checklistId, organizationId }, select: checklistWithItemsSelect });
+  }
 
   // ---- Templates ----
 

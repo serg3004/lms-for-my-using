@@ -347,6 +347,7 @@ model Organization {
   auditLogs                  AuditLog[]
   notifications              Notification[]
   checklists                 Checklist[]
+  checklistTemplates         ChecklistTemplate[]
   checklistItems             ChecklistItem[]
   checklistItemGroups        ChecklistItemGroup[]
   checklistInstances         ChecklistInstance[]
@@ -1238,6 +1239,10 @@ model ChecklistInstance {
   createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz
+  // PR 367: set only when an administrator deletes a finished result (a cancelled session also sets
+  // `deletedAt`, but never these two). The reason is what lets the administrator restore it.
+  resultDeleteReason String?                @map("result_delete_reason")
+  resultDeletedBy  String?                  @map("result_deleted_by") @db.Uuid
   organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   checklist        Checklist                @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   user             User                     @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
@@ -1502,6 +1507,26 @@ model ChecklistLocationCapture {
 /// ad-hoc per-checklist JSON scale) rather than replacing it — see PR 293/ADR. Referenced by
 /// ChecklistItem.scaleId (per-criterion, not per-checklist); hard-deleted only while no item references it,
 /// otherwise archived (status), so an item's scaleId FK never dangles.
+/// PR 367: a template of the organization, saved by an administrator from an existing checklist.
+/// `payload` is a frozen copy (settings, groups, criteria); later edits of the source change nothing.
+model ChecklistTemplate {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  title          String
+  description    String?
+  payload        Json
+  groupCount     Int          @default(0) @map("group_count")
+  itemCount      Int          @default(0) @map("item_count")
+  createdBy      String?      @map("created_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, deletedAt])
+  @@map("checklist_templates")
+}
+
 model ChecklistScale {
   id             String                @id @default(uuid()) @db.Uuid
   organizationId String                @map("organization_id") @db.Uuid

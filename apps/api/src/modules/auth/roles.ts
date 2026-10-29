@@ -83,6 +83,9 @@ export const rolePolicies = {
   checklistAccessSettingsWrite: ['admin'],
   // PR 366: only an administrator creates a checklist in, or switches one to, the free-access mode.
   checklistFreeAccessCreate: ['admin'],
+  // PR 367: only an administrator deletes (and restores) finished results and manages organization templates.
+  checklistResultsDelete: ['admin'],
+  checklistTemplatesManage: ['admin'],
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsCreateOwn: ['instructor'],
