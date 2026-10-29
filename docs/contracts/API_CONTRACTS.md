@@ -460,8 +460,8 @@ Rows follow the reference: blank row 1, title A2, sheet/periods/employee/observe
 "Overall score" at row 9 (B9:C9 merged), observation information, all ordered context fields
 (including the configured location field), results, numbered groups and criteria, then enabled
 feedback. A session has one learner: that person is the group-members row. Departments and
-context come from the report; exact geolocation, signed photo URLs and emails are never fetched
-or exported. Criteria include their scale label and comment in the observation cell. At most
+context come from the report; exact geolocation and signed photo URLs are never fetched or exported; emails are not included
+in the exported table. Criteria include their scale label and comment in the observation cell. At most
 `MAX_EXPORT_ROWS` (5000) input criterion/group/context rows and 5000 output rows are allowed;
 limits reject instead of truncating.
 
