@@ -37,6 +37,7 @@ function createPrisma(overrides: {
   checklistScaleLevel?: Partial<Record<'createMany' | 'deleteMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
   checklistItem?: Partial<Record<'findFirst' | 'findMany', jest.Mock>>;
+  checklist?: Partial<Record<'count', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
     checklistScale: {
@@ -55,6 +56,10 @@ function createPrisma(overrides: {
     checklistInstance: {
       findFirst: jest.fn(async () => null),
       ...overrides.checklistInstance,
+    },
+    checklist: {
+      count: jest.fn(async () => 0),
+      ...overrides.checklist,
     },
     checklistItem: {
       findFirst: jest.fn(async () => null),
@@ -142,9 +147,6 @@ describe('ChecklistScaleService', () => {
 
       await service.update(scaleId, organizationId, { name: 'Renamed', levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 5 }] }, actorId);
 
-      expect(prisma.checklistInstance.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { organizationId, checklist: { items: { some: { scaleId } } } } }),
-      );
       expect(prisma.checklistScaleLevel.deleteMany).toHaveBeenCalledWith(expect.objectContaining({ where: { scaleId, organizationId } }));
       expect(prisma.checklistScaleLevel.createMany).toHaveBeenCalled();
       expect(prisma.checklistScale.update).toHaveBeenCalledWith(
@@ -153,12 +155,17 @@ describe('ChecklistScaleService', () => {
       expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_scale.updated' }));
     });
 
-    it('rejects modifying a scale already used by an assigned checklist', async () => {
-      const prisma = createPrisma({ checklistInstance: { findFirst: jest.fn(async () => ({ id: 'instance-1' })) } });
-      const service = new ChecklistScaleService(prisma, fakeAuditLog());
+    it('PR 369: edits a scale used by assigned checklists and audits how many checklists it affects', async () => {
+      const prisma = createPrisma({ checklist: { count: jest.fn(async () => 3) } });
+      const auditLog = fakeAuditLog();
+      const service = new ChecklistScaleService(prisma, auditLog);
 
-      await expect(service.update(scaleId, organizationId, { name: 'Renamed' }, actorId)).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.checklistScale.update).not.toHaveBeenCalled();
+      await service.update(scaleId, organizationId, { name: 'Renamed' }, actorId);
+
+      expect(prisma.checklistScale.update).toHaveBeenCalled();
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'checklist_scale.updated', metadata: { fields: ['name'], affectedChecklists: 3 } }),
+      );
     });
 
     it('rejects modifying an already-archived scale even if unused', async () => {
@@ -166,7 +173,7 @@ describe('ChecklistScaleService', () => {
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
       await expect(service.update(scaleId, organizationId, { name: 'Renamed' }, actorId)).rejects.toBeInstanceOf(BadRequestException);
-      expect(prisma.checklistInstance.findFirst).not.toHaveBeenCalled();
+      expect(prisma.checklistScale.update).not.toHaveBeenCalled();
     });
 
     it('throws 404 for a scale outside the caller organization', async () => {
@@ -201,14 +208,14 @@ describe('ChecklistScaleService', () => {
       expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'checklist_scale.copied', targetId: 'copy-id' }));
     });
 
-    it('uses the supplied (localized) name, capped at 120 characters', async () => {
+    it('uses the supplied (localized) name, capped at 255 characters', async () => {
       const prisma = createPrisma();
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
-      await service.copy(scaleId, organizationId, 'x'.repeat(130), actorId);
+      await service.copy(scaleId, organizationId, 'x'.repeat(300), actorId);
 
       expect(prisma.checklistScale.create).toHaveBeenCalledWith({
-        data: { organizationId, name: 'x'.repeat(120), createdBy: actorId },
+        data: { organizationId, name: 'x'.repeat(255), createdBy: actorId },
       });
     });
 

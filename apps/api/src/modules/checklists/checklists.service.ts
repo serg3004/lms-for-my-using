@@ -2413,6 +2413,41 @@ export class ChecklistsService {
     return this.recomputeInstance(instanceId, organizationId, { skipAllUnanswered: true });
   }
 
+  /**
+   * PR 369: an evaluation scale may be edited while checklists using it are assigned. Instances
+   * keep a frozen copy of the levels, so an instance whose session has not started yet is brought
+   * up to date when the observer starts it. Once any answer exists the snapshot is left alone, so
+   * started and finished work is never re-scored. A scale that no longer exists keeps its copy.
+   */
+  async refreshScaleSnapshot(instanceId: string, organizationId: string) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId },
+      select: { templateSnapshot: true, _count: { select: { results: true } } },
+    });
+    if (!instance || instance._count.results > 0 || instance.templateSnapshot == null) return;
+
+    const snapshot = this.parseTemplateSnapshot(instance.templateSnapshot);
+    if (!snapshot) return;
+    const scaled = snapshot.checklist.items.filter((item) => item.scaleId);
+    if (scaled.length === 0) return;
+
+    const fresh = await this.attachItemScales(this.prisma, organizationId, scaled as (ChecklistSnapshotItem & { scaleId: string })[]);
+    const freshById = new Map(fresh.map((item) => [item.id, item.scale]));
+    let changed = false;
+    const items = snapshot.checklist.items.map((item) => {
+      const scale = freshById.get(item.id);
+      if (!scale || JSON.stringify(scale) === JSON.stringify(item.scale)) return item;
+      changed = true;
+      return { ...item, scale };
+    });
+    if (!changed) return;
+
+    await this.prisma.checklistInstance.update({
+      where: { id: instanceId },
+      data: { templateSnapshot: { ...snapshot, checklist: { ...snapshot.checklist, items } } as unknown as Prisma.InputJsonValue },
+    });
+  }
+
   private async recomputeInstance(instanceId: string, organizationId: string, options: { skipAllUnanswered?: boolean } = {}) {
     const instance = await this.prisma.checklistInstance.findFirstOrThrow({
       where: { id: instanceId, organizationId },

@@ -508,7 +508,7 @@ const UNIQUE_LEVEL_VALUES_ISSUE = { message: 'level values must be unique within
 // level" operation distinct from "here is the complete level set now".
 export const createChecklistScaleSchema = z
   .object({
-    name: z.string().trim().min(1).max(120),
+    name: z.string().trim().min(1).max(255),
     levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
   })
   .strict()
@@ -516,12 +516,11 @@ export const createChecklistScaleSchema = z
 export type CreateChecklistScaleInput = z.infer<typeof createChecklistScaleSchema>;
 
 // Update replaces name and/or the full level set -- never partial-patches individual levels. Only
-// permitted while the scale is not yet used by any assigned checklist (ChecklistScaleService
-// enforces this; it needs a DB lookup this schema can't do). Archiving (the only lifecycle
-// transition allowed on a used scale) is a separate endpoint, not part of this schema.
+// permitted for a scale used by assigned checklists too (PR 369): instance snapshots keep started
+// sessions unchanged. Archiving is a separate endpoint, not part of this schema.
 export const updateChecklistScaleSchema = z
   .object({
-    name: z.string().trim().min(1).max(120),
+    name: z.string().trim().min(1).max(255),
     levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
   })
   .partial()
@@ -531,5 +530,5 @@ export type UpdateChecklistScaleInput = z.infer<typeof updateChecklistScaleSchem
 
 // PR 343: "Make a copy" of a scale (the way to change an in-use one). The client sends the localized
 // copy name; without it the server falls back to "<name> (copy)".
-export const copyChecklistScaleSchema = z.object({ name: z.string().trim().min(1).max(120).optional() }).strict();
+export const copyChecklistScaleSchema = z.object({ name: z.string().trim().min(1).max(255).optional() }).strict();
 export type CopyChecklistScaleInput = z.infer<typeof copyChecklistScaleSchema>;

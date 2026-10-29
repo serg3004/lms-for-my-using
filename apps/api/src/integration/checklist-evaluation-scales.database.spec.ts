@@ -13,8 +13,7 @@ import { assertSafeTestDatabase } from './database-test-safety.js';
 // PR 293 acceptance criteria, verified against real Postgres:
 // - a criterion resolves its scale through the instance's templateSnapshot, never a live query;
 // - an archived scale cannot be selected for a *new* publication;
-// - editing a scale already used by an assigned checklist is rejected (archive-and-recreate is
-//   the only path forward); archiving itself is always allowed, even while in use;
+// - a scale used by an assigned checklist may be edited (PR 369); instances keep their snapshot; archiving is always allowed, even while in use;
 // - existing scaleLevels-based (non-reusable-scale) checklists are entirely unaffected.
 describe('checklist evaluation scales (PR 293) — database', () => {
   let prisma: PrismaService;
@@ -74,7 +73,7 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     await prisma.organization.deleteMany({ where: { id: organizationId } });
   });
 
-  it('create/edit/archive lifecycle: edit is rejected once a scale is used by an assigned checklist, but archive always succeeds', async () => {
+  it('create/edit/archive lifecycle: a used scale stays editable and archive always succeeds', async () => {
     const scale = await scaleService.create(
       organizationId,
       { name: '5-point scale', levels: [{ value: 1, label: 'Poor', score: 0 }, { value: 5, label: 'Excellent', score: 100 }] },
@@ -92,8 +91,9 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     await prisma.checklist.update({ where: { id: checklistId }, data: { status: 'published' } });
     await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
 
-    // Now used by an assigned checklist -- edits rejected.
-    await expect(scaleService.update(scale.id, organizationId, { name: 'Should not apply' }, learnerId)).rejects.toBeInstanceOf(BadRequestException);
+    // PR 369: a used scale stays editable (instances keep their own snapshot).
+    const editedWhileUsed = await scaleService.update(scale.id, organizationId, { name: 'Renamed 5-point scale' }, learnerId);
+    expect(editedWhileUsed.name).toBe('Renamed 5-point scale');
 
     // Archiving remains allowed regardless of usage, and is idempotent.
     const archived = await scaleService.archive(scale.id, organizationId, learnerId);
@@ -303,6 +303,42 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     expect(restored.checklist.items[0]?.scale?.levels[1]?.score).toBe(100);
     expect(await checklistsService.getAnalytics(organizationId, {})).toEqual(before);
     expect(await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instance.id } })).toMatchObject({ totalScore: 10, maxScore: 10, percentage: 100 });
+  });
+
+  it('PR 369: editing a used scale updates a not-started instance on refresh, but never an instance that already has answers', async () => {
+    const scale = await scaleService.create(organizationId, { name: 'Shared', levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 100 }] }, learnerId);
+    const item = await checklistsService.createItem(checklistId, organizationId, { text: 'Criterion', points: 10, isRequired: true, photoRequired: false, scaleId: scale.id });
+    await checklistsService.updateChecklist(checklistId, organizationId, { status: 'published' }, learnerId);
+    const fresh = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+    const other = await prisma.user.create({
+      data: { organizationId, email: `other-${randomUUID()}@example.test`, passwordHash: 'not-used-by-this-test', firstName: 'Other', lastName: 'Learner' },
+    });
+    const answered = await checklistsService.assignChecklist(checklistId, organizationId, { userId: other.id }, learnerId);
+    await prisma.checklistItemResult.create({
+      data: { organizationId, instanceId: answered.id, itemId: item.id, checked: true, scaleLevel: 2, points: 10, answerState: 'answered' },
+    });
+
+    const edited = await scaleService.update(
+      scale.id,
+      organizationId,
+      { name: 'Shared v2', levels: [{ value: 1, label: 'Bad', score: 0 }, { value: 2, label: 'Fine', score: 50 }, { value: 3, label: 'Great', score: 100 }] },
+      learnerId,
+    );
+    expect(edited.inUse).toBe(true);
+
+    const levelsOf = async (instanceId: string) => {
+      const stored = await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instanceId }, select: { templateSnapshot: true } });
+      const scaleCopy = (stored.templateSnapshot as { checklist: { items: Array<{ scale: { name: string; levels: Array<{ label: string }> } }> } }).checklist.items[0]!.scale;
+      return { name: scaleCopy.name, labels: scaleCopy.levels.map((level) => level.label) };
+    };
+    // Nothing changes until a session starts.
+    expect(await levelsOf(fresh.id)).toEqual({ name: 'Shared', labels: ['No', 'Yes'] });
+
+    await checklistsService.refreshScaleSnapshot(fresh.id, organizationId);
+    await checklistsService.refreshScaleSnapshot(answered.id, organizationId);
+
+    expect(await levelsOf(fresh.id)).toEqual({ name: 'Shared v2', labels: ['Bad', 'Fine', 'Great'] });
+    expect(await levelsOf(answered.id)).toEqual({ name: 'Shared', labels: ['No', 'Yes'] });
   });
 
 });

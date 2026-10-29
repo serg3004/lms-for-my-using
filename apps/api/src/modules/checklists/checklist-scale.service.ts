@@ -119,9 +119,9 @@ export class ChecklistScaleService {
 
   /**
    * Full name/levels replace -- never a partial per-level patch (levels have no identity a caller
-   * can address individually). Rejected once the scale is used by any checklist that has actually
-   * been assigned (see `assertNotUsed`): the fix for an in-use scale is to archive it and create a
-   * fresh one, never to mutate levels that a real ChecklistInstance already snapshotted.
+   * can address individually). PR 369: a scale used by assigned checklists may be edited. Instances
+   * keep their own snapshot of the levels, so started and finished sessions are unchanged; only a
+   * session that has not started yet picks up the new levels (see `refreshScaleSnapshot`).
    */
   async update(scaleId: string, organizationId: string, input: UpdateChecklistScaleInput, actorId: string) {
     const scale = await this.prisma.checklistScale.findFirst({
@@ -133,7 +133,7 @@ export class ChecklistScaleService {
     if (scale.status === 'archived') {
       throw new BadRequestException('Cannot modify an archived evaluation scale');
     }
-    await this.assertNotUsed(scaleId, organizationId);
+    const affectedChecklists = await this.countUsingChecklists(scaleId, organizationId);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       if (input.levels) {
@@ -155,16 +155,15 @@ export class ChecklistScaleService {
       targetType: 'checklist_scale',
       targetId: scaleId,
       summary: `Updated evaluation scale ${updated.name}`,
-      metadata: { fields: Object.keys(input) },
+      metadata: { fields: Object.keys(input), affectedChecklists },
     });
 
     return this.get(scaleId, organizationId);
   }
 
   /**
-   * PR 343: an in-use scale cannot be edited (see `assertNotUsed`), so "Make a copy" is the way to
-   * change it: a new, active, independent scale with the same levels. The copy never inherits the
-   * source's usage, so it is editable until a checklist using it is assigned.
+   * PR 343: "Make a copy" is the way to change a system or archived scale: a new, active, independent scale with the same levels. The copy never inherits the
+   * source's usage, so it is editable.
    */
   async copy(scaleId: string, organizationId: string, name: string | undefined, actorId: string) {
     const source = await this.prisma.checklistScale.findFirst({
@@ -173,7 +172,7 @@ export class ChecklistScaleService {
     });
     if (!source) throw new NotFoundException('Evaluation scale not found');
 
-    const copyName = (name ?? `${source.name} (copy)`).slice(0, 120);
+    const copyName = (name ?? `${source.name} (copy)`).slice(0, 255);
     const created = await this.prisma.$transaction(async (tx) => {
       const scale = await tx.checklistScale.create({
         data: { organizationId, name: copyName, createdBy: actorId },
@@ -284,7 +283,7 @@ export class ChecklistScaleService {
     }
   }
 
-  /** Same "used" definition as `assertNotUsed`, answered for many scales in one query. */
+  /** Same "used" definition as `countUsingChecklists`, answered for many scales in one query. */
   private async findUsedScaleIds(organizationId: string, scaleIds: string[]) {
     if (scaleIds.length === 0) return new Set<string>();
     const items = await this.prisma.checklistItem.findMany({
@@ -295,15 +294,9 @@ export class ChecklistScaleService {
     return new Set(items.flatMap((item) => (item.scaleId ? [item.scaleId] : [])));
   }
 
-  private async assertNotUsed(scaleId: string, organizationId: string) {
-    const instance = await this.prisma.checklistInstance.findFirst({
-      where: { organizationId, checklist: { items: { some: { scaleId } } } },
-      select: { id: true },
+  private countUsingChecklists(scaleId: string, organizationId: string) {
+    return this.prisma.checklist.count({
+      where: { organizationId, items: { some: { scaleId } }, instances: { some: { organizationId } } },
     });
-    if (instance) {
-      throw new BadRequestException(
-        'Cannot modify an evaluation scale already used by an assigned checklist -- archive it and create a new one instead',
-      );
-    }
   }
 }
