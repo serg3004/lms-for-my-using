@@ -637,6 +637,26 @@ and renders its criteria under “Other criteria”; the reader never fills hist
 today's live checklist. A null pre-snapshot assignment retains its existing live-template fallback.
 Grouping does not change scoring or completion validation.
 
+## Local observation-sheet preview (PR 374)
+
+The builder's existing Preview action opens a full-screen native modal from the current local
+sheet settings. It renders sample employee/department labels, ordered general-information inputs,
+numbered groups and criteria, named scale radios (points alongside the label), photo controls and
+optional structured feedback. General-information fields, criterion headings and feedback inputs
+are shared with the observer conduct screen; this does not create a session or a new route.
+
+Opening, answering, attaching a photo, resetting and closing the preview issue **no API requests**.
+Photo validation runs locally with the existing MIME/size limits; the selected file stays in the
+browser and is never uploaded. Reset and close discard every simulated answer, file selection,
+context value and feedback field. Escape closes the preview, Tab stays within it, and focus returns
+to the Preview action. A sheet without criteria cannot be previewed.
+
+The weighted `computePreviewResult` calculation retains its existing default semantics. The page
+opts into answered-only percentages: an explicit No is an answered zero, permitted skips are
+excluded, and remaining unanswered criteria keep the result incomplete. Required photo evidence,
+required context and enabled required feedback also keep the preview incomplete until supplied.
+The preview is a simulation; persisted session scoring, lifecycle, scope and RBAC are unchanged.
+
 ## Observer conduct screen and structured feedback (PR 297)
 
 Frontend: mobile-first "Observer conducts a session" screen, reached from a new "Conduct" tab

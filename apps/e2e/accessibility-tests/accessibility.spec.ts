@@ -1,3 +1,4 @@
+import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
@@ -25,8 +26,10 @@ async function loginAs(page: Page, role: DemoRole) {
 
 const severityOrder = ['critical', 'serious', 'moderate', 'minor', 'unknown'] as const;
 
-async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-findings') {
-  const results = await new AxeBuilder({ page })
+async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-findings', include?: string) {
+  const builder = new AxeBuilder({ page });
+  if (include) builder.include(include);
+  const results = await builder
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
   const findings = Object.fromEntries(severityOrder.map((severity) => [
@@ -57,6 +60,15 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 1440]) {
+    test(`observer sheet preview is accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openPreviewBuilder(page);
+      const dialog = await openSheetPreview(page);
+      await expect(dialog.locator(':focus')).toHaveCount(1);
+      await auditAccessibility(page, testInfo, 'observer-sheet-preview', 'dialog.admin-preview-overlay');
+    });
+  }
   test.describe('session management role shells (PR 360б)', () => {
     test.use({ timezoneId: 'UTC' });
     for (const role of ['instructor', 'mentor'] as const) {

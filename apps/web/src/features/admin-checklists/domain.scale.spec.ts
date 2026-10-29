@@ -86,3 +86,25 @@ it('previews mixed criterion scales with the same weights and zero-level complet
   const items = [{ ...base, id: 'a', order: 0, weight: 2, scale: scale(40) }, { ...base, id: 'b', order: 1, weight: 3, scale: scale(10) }];
   expect(computePreviewResult(items, 'sum_points', [], 70, { a: { scaleLevel: 9 }, b: { scaleLevel: 7 } })).toEqual({ totalScore: 80, maxScore: 110, percentage: 73, passed: true, allAnswered: true });
 });
+
+// Partial and skipped responses are preview state, never persisted session results.
+describe('observer preview scoring (PR 374)', () => {
+  const item = { id: 'a', checklistId: 'c', order: 0, text: 'Safety', points: 3, weight: 2, isRequired: true, photoRequired: false, allowSkip: false };
+  const other = { ...item, id: 'b', weight: 1 };
+  it('uses answered criteria for partial percentages and keeps the result incomplete', () => {
+    expect(computePreviewResult([item, other], 'sum_points', [], 70, { a: { checked: true } }, false, true)).toEqual({ totalScore: 6, maxScore: 6, percentage: 100, passed: false, allAnswered: false });
+  });
+  it('counts an explicit No as an answered zero and still requires photo evidence', () => {
+    expect(computePreviewResult([item], 'sum_points', [], 0, { a: { checked: false, answered: true } }, false, true)).toMatchObject({ totalScore: 0, maxScore: 6, allAnswered: true });
+    expect(computePreviewResult([{ ...item, photoRequired: true }], 'sum_points', [], 70, { a: { checked: true } }).allAnswered).toBe(false);
+  });
+  it('only excludes a skip that the sheet or criterion allows', () => {
+    const answers = { a: { skipped: true }, b: { checked: true } };
+    expect(computePreviewResult([item, other], 'sum_points', [], 70, answers).allAnswered).toBe(false);
+    expect(computePreviewResult([{ ...item, allowSkip: true }, other], 'sum_points', [], 70, answers)).toMatchObject({ totalScore: 3, maxScore: 3, passed: true });
+    expect(computePreviewResult([item, other], 'sum_points', [], 70, answers, true).passed).toBe(true);
+  });
+  it('does not silently accept an unknown scale level', () => {
+    expect(computePreviewResult([{ ...item, scale: { id: 's', name: 'S', levels: [{ value: 1, label: 'Good', score: 3 }] } }], 'sum_points', [], 70, { a: { scaleLevel: 99 } }).allAnswered).toBe(false);
+  });
+});
