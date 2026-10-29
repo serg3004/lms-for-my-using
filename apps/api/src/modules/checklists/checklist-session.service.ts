@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { parseSessionImport, type SessionImportFile, type SessionImportRow } from './checklist-session-import.js';
-import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type {
   ChecklistLocationCapturePoint,
   ChecklistScoreRevision,
@@ -184,6 +184,12 @@ function applyFeedbackVisibility<
     nextSteps: null,
     contextValues: null,
   };
+}
+
+/** PR 368: read from the frozen instance snapshot; snapshots made before it read as "not required". */
+function feedbackRequiredBySnapshot(snapshot: unknown): boolean {
+  const checklist = (snapshot as { checklist?: { feedbackEnabled?: boolean; feedbackRequired?: boolean } } | null)?.checklist;
+  return checklist?.feedbackRequired === true && checklist.feedbackEnabled !== false;
 }
 
 @Injectable()
@@ -910,6 +916,10 @@ export class ChecklistSessionService {
         const values = parseContextValues(session.contextValues);
         const missing = fields.find((field) => field.required && !values[field.id]?.trim());
         if (missing) throw new BadRequestException(`Required context field is missing: ${missing.label}`);
+        // PR 368: a sheet that requires the feedback section needs strengths and development areas.
+        if (feedbackRequiredBySnapshot(session.instance?.templateSnapshot) && !(session.strengths?.trim() && session.developmentAreas?.trim())) {
+          throw new UnprocessableEntityException('Feedback is required: fill in strengths and development areas before completing the session');
+        }
       }
 
       // PR 330: on a checklist that allows finishing incomplete, unanswered criteria are recorded as

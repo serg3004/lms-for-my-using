@@ -102,6 +102,9 @@ const checklistSelect = {
   preSessionVisibility: true,
   allowFinishIncomplete: true,
   forbidGalleryPhotos: true,
+  feedbackEnabled: true,
+  feedbackRequired: true,
+  allowSkipAll: true,
   accessMode: true,
   pinned: true,
   allowEditByAll: true,
@@ -249,6 +252,10 @@ type ChecklistRuntime = {
   // PR 330 -- optional for the same reason: older snapshots never had them and read as false.
   allowFinishIncomplete?: boolean;
   forbidGalleryPhotos?: boolean;
+  // PR 368 -- optional too: older snapshots read as feedback on, optional, no sheet-level skip.
+  feedbackEnabled?: boolean;
+  feedbackRequired?: boolean;
+  allowSkipAll?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
 };
@@ -269,6 +276,13 @@ type WritableInstance = {
   status: string;
   dueAt: Date | null;
 };
+
+/** PR 368: a required feedback section only makes sense while the feedback section is shown. */
+export function assertFeedbackSettingsConsistent(feedbackEnabled: boolean, feedbackRequired: boolean) {
+  if (feedbackRequired && !feedbackEnabled) {
+    throw new BadRequestException('feedbackRequired needs feedbackEnabled to also be true');
+  }
+}
 
 @Injectable()
 export class ChecklistsService {
@@ -456,6 +470,7 @@ export class ChecklistsService {
   }
 
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
+    assertFeedbackSettingsConsistent(input.feedbackEnabled ?? true, input.feedbackRequired ?? false);
     const created = await this.prisma.checklist.create({
       data: { ...input, createdBy },
       select: checklistWithItemsSelect,
@@ -476,13 +491,14 @@ export class ChecklistsService {
   async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true },
+      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, feedbackEnabled: true, feedbackRequired: true },
     });
 
     if (!checklist) {
       throw new NotFoundException('Checklist not found');
     }
 
+    assertFeedbackSettingsConsistent(input.feedbackEnabled ?? checklist.feedbackEnabled ?? true, input.feedbackRequired ?? checklist.feedbackRequired ?? false);
     const pinned = this.resolvePinned(checklist, input);
 
     if (input.status === 'published') {
@@ -588,6 +604,9 @@ export class ChecklistsService {
           preSessionVisibility: source.preSessionVisibility,
           allowFinishIncomplete: source.allowFinishIncomplete,
           forbidGalleryPhotos: source.forbidGalleryPhotos,
+          feedbackEnabled: source.feedbackEnabled,
+          feedbackRequired: source.feedbackRequired,
+          allowSkipAll: source.allowSkipAll,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
@@ -1800,7 +1819,7 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist item not found');
     }
 
-    if (!(item.allowSkip ?? false)) {
+    if (!(item.allowSkip ?? false) && checklist.allowSkipAll !== true) {
       throw new BadRequestException('This checklist item cannot be skipped');
     }
 
@@ -2093,6 +2112,9 @@ export class ChecklistsService {
       preSessionVisibility?: string;
       allowFinishIncomplete?: boolean;
       forbidGalleryPhotos?: boolean;
+      feedbackEnabled?: boolean;
+      feedbackRequired?: boolean;
+      allowSkipAll?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
     },
     items: ChecklistSnapshotItem[],
@@ -2112,6 +2134,9 @@ export class ChecklistsService {
       preSessionVisibility: checklist.preSessionVisibility,
       allowFinishIncomplete: checklist.allowFinishIncomplete,
       forbidGalleryPhotos: checklist.forbidGalleryPhotos,
+      feedbackEnabled: checklist.feedbackEnabled,
+      feedbackRequired: checklist.feedbackRequired,
+      allowSkipAll: checklist.allowSkipAll,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
@@ -2238,6 +2263,9 @@ export class ChecklistsService {
           itemGroups: snapshot.checklist.itemGroups ?? [],
           allowFinishIncomplete: snapshot.checklist.allowFinishIncomplete ?? false,
           forbidGalleryPhotos: snapshot.checklist.forbidGalleryPhotos ?? false,
+          feedbackEnabled: snapshot.checklist.feedbackEnabled ?? true,
+          feedbackRequired: snapshot.checklist.feedbackRequired ?? false,
+          allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
         }
       : instance.checklist;
 

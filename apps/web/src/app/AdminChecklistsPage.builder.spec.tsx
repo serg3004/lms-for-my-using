@@ -179,9 +179,19 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
     expect(html).toContain('<details><summary>Additional settings</summary>');
     const advanced = html.slice(html.indexOf('<details>'), html.indexOf('</details>'));
     expect(advanced).toContain('Require an instructor to confirm');
-    expect(advanced).toContain('Location requirement');
     expect(advanced).toContain('Employee sees before the session');
-    expect(html.slice(0, html.indexOf('<details>'))).not.toContain('Location requirement');
+    expect(advanced).not.toContain('Photos only from the camera');
+    expect(advanced).not.toContain('Location requirement');
+  });
+
+  it('keeps the four sheet flags in a Settings block above the criteria (PR 368)', () => {
+    const settings = html.slice(html.indexOf('id="checklist-settings-title"'), html.indexOf('<details>'));
+    expect(settings).toContain('Add a “Skip” answer option');
+    expect(settings).toContain('Photos only from the camera, not from the gallery');
+    expect(settings).toContain('Record location at the start and end of the observation');
+    expect(settings).toContain('Add a “Feedback” section');
+    expect(settings).toContain('Feedback is required');
+    expect(html).toContain('id="checklist-feedback-title"');
   });
 
   it('explains the active scoring mode and shows the save status', () => {

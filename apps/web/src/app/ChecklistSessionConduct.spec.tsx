@@ -253,6 +253,11 @@ describe('resolveConductStep', () => {
     expect(resolveConductStep(0, 0)).toMatchObject({ boundedIndex: 0, totalSteps: 1, isFeedbackStep: true, isLastStep: true });
   });
 
+  it('ends on the last criterion when the sheet has no feedback section (PR 368)', () => {
+    expect(resolveConductStep(2, 99, false, false)).toMatchObject({ boundedIndex: 1, totalSteps: 2, isFeedbackStep: false, isLastStep: true });
+    expect(resolveConductStep(2, 99, true, false)).toMatchObject({ boundedIndex: 2, totalSteps: 3, isFeedbackStep: false, isLastStep: true });
+  });
+
   it('places general information before criteria when context fields exist', () => {
     expect(resolveConductStep(2, 0, true)).toMatchObject({ isContextStep: true, itemIndex: -1, totalSteps: 4 });
     expect(resolveConductStep(2, 1, true)).toMatchObject({ isContextStep: false, itemIndex: 0, isFeedbackStep: false });

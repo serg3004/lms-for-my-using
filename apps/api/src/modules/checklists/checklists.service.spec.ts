@@ -694,6 +694,40 @@ describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {
     await expect(service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {})).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('lets every criterion be skipped when the sheet turns on allowSkipAll (PR 368)', async () => {
+    const prisma = createFakePrisma();
+    const service = new ChecklistsService(prisma);
+    const checklist = await service.createChecklist(
+      { organizationId, title: 'Skip all', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
+      instructorId,
+    );
+    await service.updateChecklist(checklist.id, organizationId, { allowSkipAll: true });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'A', points: 10, isRequired: true, photoRequired: false });
+    await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'B', points: 10, isRequired: true, photoRequired: false });
+    await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
+    const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
+    const items = await service.listItems(checklist.id, organizationId);
+
+    await expect(service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {})).resolves.toBeDefined();
+  });
+
+  it('rejects a required feedback section on a sheet without a feedback section (PR 368)', async () => {
+    const prisma = createFakePrisma();
+    const service = new ChecklistsService(prisma);
+    await expect(
+      service.createChecklist(
+        { organizationId, title: 'Bad feedback', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false, feedbackEnabled: false, feedbackRequired: true },
+        instructorId,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    const checklist = await service.createChecklist(
+      { organizationId, title: 'Ok feedback', scoringMode: 'sum_points', passThreshold: 50, requiresReview: false },
+      instructorId,
+    );
+    await service.updateChecklist(checklist.id, organizationId, { feedbackRequired: true });
+    await expect(service.updateChecklist(checklist.id, organizationId, { feedbackEnabled: false })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('applies per-item weight to both earned and max', async () => {
     const prisma = createFakePrisma();
     // A: weight 1, 10 points, checked -> earns 10, contributes 10 to max.

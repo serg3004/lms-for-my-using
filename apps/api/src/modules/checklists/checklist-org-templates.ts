@@ -21,6 +21,10 @@ export type ChecklistTemplatePayload = {
   preSessionVisibility: ChecklistPreSessionVisibility;
   allowFinishIncomplete: boolean;
   forbidGalleryPhotos: boolean;
+  // PR 368: templates saved before it have no such keys and read as the defaults.
+  feedbackEnabled?: boolean;
+  feedbackRequired?: boolean;
+  allowSkipAll?: boolean;
   groups: Array<{ title: string; order: number }>;
   items: PayloadItem[];
 };
@@ -56,6 +60,9 @@ export class ChecklistOrgTemplates {
       preSessionVisibility: source.preSessionVisibility,
       allowFinishIncomplete: source.allowFinishIncomplete,
       forbidGalleryPhotos: source.forbidGalleryPhotos,
+      feedbackEnabled: source.feedbackEnabled,
+      feedbackRequired: source.feedbackRequired,
+      allowSkipAll: source.allowSkipAll,
       groups: source.itemGroups.map((group) => ({ title: group.title, order: group.order })),
       items: source.items.map((item) => ({
         groupIndex: item.groupId ? groupIndex.get(item.groupId) ?? null : null, order: item.order, text: item.text, points: item.points,
@@ -126,6 +133,7 @@ export class ChecklistOrgTemplates {
           defaultLocationCapturePolicy: payload.defaultLocationCapturePolicy,
           preSessionVisibility: payload.preSessionVisibility,
           allowFinishIncomplete: payload.allowFinishIncomplete, forbidGalleryPhotos: payload.forbidGalleryPhotos,
+          feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false, allowSkipAll: payload.allowSkipAll ?? false,
           createdBy: actorId,
         },
         select: { id: true },

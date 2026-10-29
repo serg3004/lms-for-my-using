@@ -86,6 +86,9 @@ export function ChecklistBuilder({
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
+  const [feedbackEnabled, setFeedbackEnabled] = useState(checklist.feedbackEnabled ?? true);
+  const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
+  const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
   const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
   const [pinned, setPinned] = useState(checklist.pinned ?? false);
   // PR 362в: the creator and admins decide who may edit; everyone else sees the sheet read-only when it is closed.
@@ -116,6 +119,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
+    feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
   })));
@@ -138,7 +142,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -328,6 +332,61 @@ export function ChecklistBuilder({
             </FormField>
             <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
           </ChecklistSettingsForm>
+          <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
+            <h3 id="checklist-settings-title">{t('admin.checklists.settingsBlockTitle', 'Settings')}</h3>
+            <label className="admin-checkbox-field">
+              <input type="checkbox" checked={allowSkipAll} disabled={!canEdit} onChange={(e) => setAllowSkipAll(e.target.checked)} />
+              {t('admin.checklists.field.allowSkipAll', 'Add a “Skip” answer option')}
+            </label>
+            <p className="admin-form__hint">{t('admin.checklists.allowSkipAllHint', 'The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.')}</p>
+            <label className="admin-checkbox-field">
+              <input type="checkbox" checked={forbidGalleryPhotos} disabled={!canEdit} onChange={(e) => setForbidGalleryPhotos(e.target.checked)} />
+              {t('admin.checklists.field.forbidGalleryPhotos', 'Photos only from the camera, not from the gallery')}
+            </label>
+            <p className="admin-form__hint">{t('admin.checklists.forbidGalleryPhotosHint', 'The photo button opens the camera on phones. This is a convenience for the person filling in the checklist, not protection: the system cannot check where a photo was taken from. Applies to sessions assigned after you save.')}</p>
+            <label className="admin-checkbox-field">
+              <input
+                type="checkbox"
+                checked={defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required'}
+                disabled={!canEdit}
+                onChange={(e) => setDefaultLocationCapturePolicy(e.target.checked ? 'optional' : 'off')}
+              />
+              {t('admin.checklists.field.recordLocation', 'Record location at the start and end of the observation')}
+            </label>
+            {(defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required') ? (
+              <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')} hint={t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}>
+                <select id="checklist-default-location-policy" value={defaultLocationCapturePolicy} disabled={!canEdit} onChange={(e) => setDefaultLocationCapturePolicy(e.target.value as ChecklistGeolocationPolicy)}>
+                  <option value="optional">{t('admin.checklists.sessions.wizard.locationOptional', 'Optional')}</option>
+                  <option value="required">{t('admin.checklists.sessions.wizard.locationRequired', 'Required')}</option>
+                </select>
+              </FormField>
+            ) : (
+              <p className="admin-form__hint">
+                {defaultLocationCapturePolicy === ''
+                  ? t('admin.checklists.recordLocationOrgDefault', 'Not set: the organization default applies when a session is scheduled.')
+                  : t('admin.checklists.recordLocationOffHint', 'Location is not recorded for this checklist.')}
+              </p>
+            )}
+            <label className="admin-checkbox-field">
+              <input
+                type="checkbox"
+                checked={feedbackEnabled}
+                disabled={!canEdit}
+                onChange={(e) => { setFeedbackEnabled(e.target.checked); if (!e.target.checked) setFeedbackRequired(false); }}
+              />
+              {t('admin.checklists.field.feedbackEnabled', 'Add a “Feedback” section')}
+            </label>
+            <p className="admin-form__hint">{t('admin.checklists.feedbackEnabledHint', 'The observer leaves strengths, development areas and a comment at the end of the session.')}</p>
+            {feedbackEnabled && (
+              <>
+                <label className="admin-checkbox-field">
+                  <input type="checkbox" checked={feedbackRequired} disabled={!canEdit} onChange={(e) => setFeedbackRequired(e.target.checked)} />
+                  {t('admin.checklists.field.feedbackRequired', 'Feedback is required')}
+                </label>
+                <p className="admin-form__hint">{t('admin.checklists.feedbackRequiredHint', 'A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.')}</p>
+              </>
+            )}
+          </section>
           <ChecklistItemsEditor>
             <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
             <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
@@ -527,6 +586,17 @@ export function ChecklistBuilder({
               </div>
             ))}
           </ChecklistItemsEditor>
+          {feedbackEnabled && (
+            <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
+              <h3 id="checklist-feedback-title">{t('admin.checklists.feedbackSectionTitle', 'Feedback')}</h3>
+              <p className="admin-form__hint">{t('admin.checklists.feedbackSectionHint', 'Feedback is left at the end of the observation.')}</p>
+              <ul>
+                <li>{t('checklistSessions.conduct.strengths', 'Strengths')}{feedbackRequired ? ' *' : ''}</li>
+                <li>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}{feedbackRequired ? ' *' : ''}</li>
+                <li>{t('checklistSessions.conduct.nextSteps', 'Comment')}</li>
+              </ul>
+            </section>
+          )}
         </div>
         <div className="admin-builder__column">
           <ChecklistSettingsForm>
@@ -649,29 +719,6 @@ export function ChecklistBuilder({
             <p className="admin-form__hint">
               {t('admin.checklists.allowFinishIncompleteHint', 'The observer can complete the session without answering every criterion. Unanswered criteria are recorded as skipped and are not counted in the result. Applies to sessions assigned after you save.')}
             </p>
-            {(items.some((item) => item.photoRequired) || forbidGalleryPhotos) && (
-              <>
-                <label className="admin-checkbox-field">
-                  <input type="checkbox" checked={forbidGalleryPhotos} onChange={(e) => setForbidGalleryPhotos(e.target.checked)} />
-                  {t('admin.checklists.field.forbidGalleryPhotos', 'Photos only from the camera, not from the gallery')}
-                </label>
-                <p className="admin-form__hint">
-                  {t('admin.checklists.forbidGalleryPhotosHint', 'The photo button opens the camera on phones. This is a convenience for the person filling in the checklist, not protection: the system cannot check where a photo was taken from. Applies to sessions assigned after you save.')}
-                </p>
-              </>
-            )}
-            <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')} hint={t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}>
-              <select
-                id="checklist-default-location-policy"
-                value={defaultLocationCapturePolicy}
-                onChange={(e) => setDefaultLocationCapturePolicy(e.target.value as ChecklistGeolocationPolicy | '')}
-              >
-                <option value="">{t('admin.checklists.orgDefault', 'Organization default')}</option>
-                <option value="off">{t('admin.checklists.sessions.wizard.locationOff', 'Off')}</option>
-                <option value="optional">{t('admin.checklists.sessions.wizard.locationOptional', 'Optional')}</option>
-                <option value="required">{t('admin.checklists.sessions.wizard.locationRequired', 'Required')}</option>
-              </select>
-            </FormField>
             <FormField id="checklist-pre-session-visibility" label={t('admin.checklists.field.preSessionVisibility', 'Employee sees before the session')}>
               <select
                 id="checklist-pre-session-visibility"
