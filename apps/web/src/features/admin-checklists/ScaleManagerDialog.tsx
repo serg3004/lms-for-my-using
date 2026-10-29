@@ -5,6 +5,7 @@ import { ApiClientError } from '../../shared/apiClient.js';
 import { archiveChecklistScale, copyChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
 import { ConfirmDialog } from '../../shared/adminPage.js';
+import { HighlightColorField } from '../../shared/HighlightColorField.js';
 import { Button, Dialog, Input } from '../../shared/ui.js';
 import {
   SCALE_MAX_LEVELS,
@@ -15,6 +16,7 @@ import {
   scaleDraftToInput,
   scaleLevelDraftsFromLevels,
   validateScaleDraft,
+  SCALE_LEVEL_COLORS,
   type ScaleDraftError,
   type ScaleLevelDraft,
 } from './domain.js';
@@ -53,6 +55,8 @@ function draftErrorText(error: ScaleDraftError, t: TFunction) {
       return t('admin.checklists.scaleManager.errorLabel', 'Every level needs a name.');
     case 'score':
       return t('admin.checklists.scaleManager.errorScore', 'Points must be a whole number from 0 to 1000.');
+    case 'color':
+      return t('admin.checklists.scaleManager.errorColor', 'Every level colour must be a code like #2E7D32.');
   }
 }
 
@@ -207,6 +211,12 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
                     value={level.label}
                   />
                 </div>
+                <HighlightColorField
+                  disabled={editor.readOnly}
+                  label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
+                  onChange={(color) => patchLevel(level.key, { color })}
+                  value={level.color}
+                />
                 <Input
                   aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
                   disabled={editor.readOnly}
@@ -292,6 +302,9 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
               <b>{scale.name}</b>
               <span className="admin-form__hint">
                 {' '}{t('admin.checklists.scaleManager.levelsCount', '{{count}} levels', { count: scale.levels.length })}
+                {scale.levels.map((level) => (
+                  <span aria-hidden="true" key={level.value} style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, marginLeft: 4, background: level.color ?? SCALE_LEVEL_COLORS.partial }} />
+                ))}
                 {scale.isDefault ? ` · 🔒 ${t('admin.checklists.scaleManager.defaultBadge', 'Default')}` : ''}
                 {scale.inUse ? ` · ${t('admin.checklists.scaleManager.usedBadge', 'In use')}` : ''}
                 {scale.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived', 'Archived')}` : ''}

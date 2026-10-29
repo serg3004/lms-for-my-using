@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import type {
   ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistObserverEligibility,
   ChecklistWorkplaceSettings, UserRole, User,
@@ -7,6 +7,7 @@ import type {
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { runSerializableWithRetry } from '../departments/public.js';
+import { resolveResultColors, type ResultColors } from './checklist-colors.js';
 import { DEFAULT_OBSERVER_SELECTION } from './checklist-observer-eligibility.js';
 import type { UpdateChecklistWorkplaceSettingsInput } from './checklists.schemas.js';
 
@@ -16,6 +17,8 @@ export type ChecklistWorkplaceSettingsView = {
   highPerformanceThreshold: number;
   criticalThreshold: number | null;
   lowThreshold: number | null;
+  /** PR 369б: resolved highlight colours of the low / middle / high result bands. */
+  resultColors: ResultColors;
   defaultGeolocationPolicy: ChecklistGeolocationPolicy;
   feedbackVisibility: ChecklistFeedbackVisibility;
   observerEligibility: ChecklistObserverEligibility;
@@ -31,7 +34,7 @@ export type ChecklistWorkplaceSettingsView = {
  * criticalThreshold/lowThreshold stay null: DEC-CHKS-001 (docs/status/OPEN_DECISIONS.md) defers a concrete
  * value to an owner decision, this is not an oversight.
  */
-const DEFAULT_SETTINGS: Omit<ChecklistWorkplaceSettingsView, 'organizationId' | 'updatedAt'> = {
+const DEFAULT_SETTINGS: Omit<ChecklistWorkplaceSettingsView, 'organizationId' | 'updatedAt' | 'resultColors'> = {
   ...DEFAULT_OBSERVER_SELECTION,
   moduleEnabled: false,
   highPerformanceThreshold: 90,
@@ -49,13 +52,14 @@ export class ChecklistWorkplaceSettingsService {
   ) {}
 
   private present(organizationId: string, row: ChecklistWorkplaceSettings | null): ChecklistWorkplaceSettingsView {
-    if (!row) return { organizationId, updatedAt: null, ...DEFAULT_SETTINGS };
+    if (!row) return { organizationId, updatedAt: null, resultColors: resolveResultColors(null), ...DEFAULT_SETTINGS };
     return {
       organizationId,
       moduleEnabled: row.moduleEnabled,
       highPerformanceThreshold: row.highPerformanceThreshold,
       criticalThreshold: row.criticalThreshold,
       lowThreshold: row.lowThreshold,
+      resultColors: resolveResultColors(row),
       defaultGeolocationPolicy: row.defaultGeolocationPolicy,
       feedbackVisibility: row.feedbackVisibility,
       observerEligibility: row.observerEligibility,
@@ -102,6 +106,13 @@ export class ChecklistWorkplaceSettingsService {
       if (addedIds.length) {
         const count = await tx.user.count({ where: { organizationId, id: { in: addedIds }, deletedAt: null, status: 'active' } });
         if (count !== addedIds.length) throw new BadRequestException('Selected observers must be active users in this organization');
+      }
+      // PR 369б: the result bands are cut by the two thresholds, so they overlap or leave a gap only
+      // when the low cut-off is not below the high one.
+      const high = input.highPerformanceThreshold ?? previous.highPerformanceThreshold;
+      const low = input.lowThreshold !== undefined ? input.lowThreshold : previous.lowThreshold;
+      if (low !== null && low >= high) {
+        throw new UnprocessableEntityException('lowThreshold must be below highPerformanceThreshold so the result ranges do not overlap');
       }
       const row = await tx.checklistWorkplaceSettings.upsert({
         where: { organizationId },

@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { UploadService } from '../upload/public.js';
+import { withResolvedLevelColors } from './checklist-colors.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
@@ -209,7 +210,8 @@ type CompletionResult = {
 type ChecklistSnapshotItemScale = {
   id: string;
   name: string;
-  levels: Array<{ value: number; label: string; score: number }>;
+  // `color` is frozen with the levels (PR 369б); snapshots taken earlier have none and read as the default.
+  levels: Array<{ value: number; label: string; score: number; color?: string }>;
 };
 type ChecklistSnapshotItemGroup = { id: string; checklistId: string; title: string; order: number };
 type ChecklistSnapshotItem = {
@@ -2088,7 +2090,7 @@ export class ChecklistsService {
         scaleMap.set(scale.id, {
           id: scale.id,
           name: scale.name,
-          levels: scale.levels.map((level) => ({ value: level.value, label: level.label, score: level.score })),
+          levels: withResolvedLevelColors(scale.levels).map((level) => ({ value: level.value, label: level.label, score: level.score, color: level.color })),
         });
       }
     }

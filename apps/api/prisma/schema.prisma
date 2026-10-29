@@ -1328,6 +1328,10 @@ model ChecklistWorkplaceSettings {
   highPerformanceThreshold Int                          @default(90) @map("high_performance_threshold")
   criticalThreshold        Int?                         @map("critical_threshold")
   lowThreshold             Int?                         @map("low_threshold")
+  /// PR 369б: highlight colours of the three result bands (`#RRGGBB`); null = built-in default.
+  resultColorLow           String?                      @map("result_color_low")
+  resultColorMid           String?                      @map("result_color_mid")
+  resultColorHigh          String?                      @map("result_color_high")
   defaultGeolocationPolicy ChecklistGeolocationPolicy   @default(off) @map("default_geolocation_policy")
   feedbackVisibility       ChecklistFeedbackVisibility  @default(after_completion) @map("feedback_visibility")
   observerEligibility      ChecklistObserverEligibility @default(selected_roles) @map("observer_eligibility")
@@ -1562,6 +1566,8 @@ model ChecklistScaleLevel {
   value          Int
   label          String
   score          Int
+  /// PR 369б: owner-chosen highlight colour, `#RRGGBB`; null = derived from the score share.
+  color          String?
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
   organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)

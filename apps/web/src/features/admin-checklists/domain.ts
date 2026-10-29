@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import type {
   ChecklistAnswerState,
 } from '../../app/checklistCompletion.js';
+import { HIGHLIGHT_COLOR_PATTERN } from '../../shared/HighlightColorField.js';
 import { checklistItemLevels, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
   ChecklistAccessMode,
@@ -232,7 +233,10 @@ export const SCALE_MAX_LEVELS = 20;
 export const SCALE_MAX_SCORE = 1000;
 
 /** One editable row of the scale editor. `score` stays a string so a half-typed number is not lost. */
-export type ScaleLevelDraft = { key: string; label: string; score: string };
+export type ScaleLevelDraft = { key: string; label: string; score: string; color: string };
+
+/** PR 369б defaults, the same rule the server applies: best level green, zero red, between orange. */
+export const SCALE_LEVEL_COLORS = { full: '#2E7D32', partial: '#E65100', zero: '#C62828' } as const;
 
 let scaleLevelKeySeed = 0;
 function nextScaleLevelKey() {
@@ -240,22 +244,22 @@ function nextScaleLevelKey() {
   return `scale-level-${scaleLevelKeySeed}`;
 }
 
-export function createScaleLevelDraft(label = '', score = ''): ScaleLevelDraft {
-  return { key: nextScaleLevelKey(), label, score };
+export function createScaleLevelDraft(label = '', score = '', color: string = SCALE_LEVEL_COLORS.partial): ScaleLevelDraft {
+  return { key: nextScaleLevelKey(), label, score, color };
 }
 
 /** A new scale starts with two empty levels worth 0 and 100 points. */
 export function newScaleLevelDrafts(): ScaleLevelDraft[] {
-  return [createScaleLevelDraft('', '0'), createScaleLevelDraft('', '100')];
+  return [createScaleLevelDraft('', '0', SCALE_LEVEL_COLORS.zero), createScaleLevelDraft('', '100', SCALE_LEVEL_COLORS.full)];
 }
 
 export function scaleLevelDraftsFromLevels(levels: ChecklistScaleLevelSummary[]): ScaleLevelDraft[] {
   return [...levels]
     .sort((a, b) => a.value - b.value)
-    .map((level) => createScaleLevelDraft(level.label, String(level.score)));
+    .map((level) => createScaleLevelDraft(level.label, String(level.score), level.color ?? SCALE_LEVEL_COLORS.partial));
 }
 
-export type ScaleDraftError = 'name' | 'tooFewLevels' | 'tooManyLevels' | 'label' | 'score';
+export type ScaleDraftError = 'name' | 'tooFewLevels' | 'tooManyLevels' | 'label' | 'score' | 'color';
 
 export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): ScaleDraftError | null {
   if (!name.trim()) return 'name';
@@ -264,6 +268,7 @@ export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): Sca
   if (levels.some((level) => !level.label.trim())) return 'label';
   const validScore = (value: string) => /^\d+$/.test(value.trim()) && Number(value) <= SCALE_MAX_SCORE;
   if (levels.some((level) => !validScore(level.score))) return 'score';
+  if (levels.some((level) => !HIGHLIGHT_COLOR_PATTERN.test(level.color))) return 'color';
   return null;
 }
 
@@ -271,7 +276,7 @@ export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): Sca
 export function scaleDraftToInput(name: string, levels: ScaleLevelDraft[]) {
   return {
     name: name.trim(),
-    levels: levels.map((level, index) => ({ value: index + 1, label: level.label.trim(), score: Number(level.score) })),
+    levels: levels.map((level, index) => ({ value: index + 1, label: level.label.trim(), score: Number(level.score), color: level.color })),
   };
 }
 
