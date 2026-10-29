@@ -328,7 +328,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
             <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
             <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
             {!isObserverVariant && <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
-            {!isObserverVariant && <Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
+            {<Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
             <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>
         }
@@ -484,7 +484,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         session={messageTarget}
         t={t}
       />
-      {!isObserverVariant && <ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />}
+      {<ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />}
     </>,
   );
 }

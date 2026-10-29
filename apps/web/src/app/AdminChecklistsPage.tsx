@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
+import { ObserverPageLayout } from '../shared/observerLayout.js';
+import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
@@ -23,7 +25,11 @@ import type {
   ChecklistSummary,
 } from '../shared/api/types.js';
 type AdminChecklistsData = { checklists: ChecklistSummary[] };
-export function AdminChecklistsPage() {
+/**
+ * PR 362: the same builder also serves the instructor and the mentor (`variant="observer"`) inside their own
+ * layout; the API grants `checklistsCreate` to admin, manager, instructor and mentor alike.
+ */
+export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' | 'observer' }) {
   const { t, i18n } = useTranslation();
   const { currentUser } = useSession();
   const [search, setSearch] = useState('');
@@ -125,14 +131,17 @@ export function AdminChecklistsPage() {
     { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments' },
     { label: t('admin.checklists.title', 'Checklists'), href: '/admin/checklists', isCurrent: true },
   ];
+  const shell = (children: ReactNode) => (variant === 'observer'
+    ? <ObserverPageLayout>{children}</ObserverPageLayout>
+    : <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>{children}</AdminPageLayout>);
   if (selectedId) {
     const checklist = loadState.data.checklists.find((c) => c.id === selectedId);
     if (!checklist) {
       setSelectedId(null);
       return null;
     }
-    return (
-      <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>
+    return shell(
+      <>
         <ChecklistBuilder
           checklist={checklist}
           statusLabels={statusLabels}
@@ -144,12 +153,12 @@ export function AdminChecklistsPage() {
           onReload={() => refreshChecklist(checklist.id)}
           t={t}
         />
-      </AdminPageLayout>
+      </>,
     );
   }
   const filtered = filterChecklists(loadState.data.checklists, search, statusFilter);
-  return (
-    <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems} currentUser={currentUser!}>
+  return shell(
+    <>
       <AdminPageHeader
         eyebrow={t('admin.checklists.eyebrow', 'Knowledge control')}
         title={t('admin.checklists.title', 'Checklists')}
@@ -179,7 +188,7 @@ export function AdminChecklistsPage() {
           </div>
         }
       />
-      <ChecklistsTabs current="checklists" />
+      {variant === 'observer' ? <ObserverSessionsNav current="library" /> : <ChecklistsTabs current="checklists" />}
       {statusError && (
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">
           <p>{statusError}</p>
@@ -216,7 +225,7 @@ export function AdminChecklistsPage() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </AdminPageLayout>
+    </>,
   );
 }
 
