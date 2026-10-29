@@ -316,9 +316,9 @@ async function executeApiRequest(path: string, init: RequestInit, signal: AbortS
   });
 }
 
-export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
+async function apiResponse(path: string, init: RequestInit, timeoutMs: number) {
   const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => timeoutController.abort(), timeoutMs);
   const signal = init.signal
     ? AbortSignal.any([init.signal, timeoutController.signal])
     : timeoutController.signal;
@@ -338,19 +338,7 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
     }
 
     clearTimeout(timeoutId);
-    const body = await parseJsonResponse(response);
-
-    if (!response.ok) {
-      const errorResponse = isApiErrorResponse(body) ? body : null;
-      throw new ApiClientError(
-        errorResponse?.error.message ?? getLegacyErrorMessage(body),
-        response.status,
-        errorResponse,
-        response.headers.get('x-request-id'),
-      );
-    }
-
-    return body as TResponse;
+    return response;
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof DOMException && error.name === 'AbortError') {
@@ -359,6 +347,43 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
     }
     throw error;
   }
+}
+
+function failedResponseError(response: Response, body: unknown) {
+  const errorResponse = isApiErrorResponse(body) ? body : null;
+  return new ApiClientError(
+    errorResponse?.error.message ?? getLegacyErrorMessage(body),
+    response.status,
+    errorResponse,
+    response.headers.get('x-request-id'),
+  );
+}
+
+export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
+  const response = await apiResponse(path, init, REQUEST_TIMEOUT_MS);
+  const body = await parseJsonResponse(response);
+
+  if (!response.ok) {
+    throw failedResponseError(response, body);
+  }
+
+  return body as TResponse;
+}
+
+/** A binary download (PDF): the file as a Blob with the server's file name; failures carry the JSON error message. */
+export async function apiDownloadRequest(path: string, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const response = await apiResponse(path, {}, timeoutMs);
+
+  if (!response.ok) {
+    const text = await response.text();
+    let body: unknown;
+    try { body = text ? JSON.parse(text) : null; } catch { body = null; }
+    throw failedResponseError(response, body);
+  }
+
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? null;
+  return { blob: await response.blob(), filename };
 }
 
 export type {

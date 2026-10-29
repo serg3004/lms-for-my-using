@@ -259,3 +259,22 @@ values, no new CSS); every highlighted row also carries a symbol and a text labe
 partial score, no points, skipped, no answer), so colour is not the only carrier of meaning. The
 "Files" and "History" tabs, recalculation, result deletion and the on-behalf location entry keep
 their own requests. After a recalculation the report is refetched.
+
+### Report PDF (PR 372)
+
+`GET /checklist-sessions/:id/report.pdf` renders the same report object (never a second calculation)
+as `application/pdf` (`Content-Disposition: attachment`, `Cache-Control: private, no-store`). It reuses
+the report's route policy (`checklistSessionsRead`), `sessionScope()`, tenant filter and learner
+feedback-visibility masking: a session outside the caller's zone or tenant is a 404, and a learner
+whose result is still hidden receives a header-only file. Every download is audited as
+`checklist_session.report_pdf_downloaded` with the locale, size and photo counts, never the content.
+The file language is the downloader's interface language (`ru`, `en`, `kk`, `zh`, default `en`).
+Content: header, general information, total ring with percentage and points, groups with bars,
+criteria table with score, scale level and comment, feedback, photos with captions. Rows use the same
+owner-chosen colours as the screen (fill, left stripe, ring, group bars) and a vector icon per state
+(tick, triangle, cross, dash, dot), so black-and-white print stays readable. Fonts: Noto Sans and
+Noto Sans SC (SIL OFL 1.1, see `docs/runbooks/PDF_FONTS.md`); a character no font covers prints as `?`.
+Limits: at most 40 photos (JPEG and PNG, up to 4 MB each and 16 MB in total; the rest are counted in a
+note "photos not included"), 30 seconds for the whole build (504 `GatewayTimeoutException`) and 25 MB
+for the file (413 `PayloadTooLargeException`). The web button "Download PDF" sits next to "Print" and
+shows the server's message on failure.

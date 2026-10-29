@@ -7,6 +7,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { getChecklistInstance } from '../shared/api/checklists.js';
 import {
   captureChecklistSessionLocation,
+  downloadChecklistSessionReportPdf,
   getChecklistSession,
   getChecklistSessionReport,
   listChecklistScoreRevisions,
@@ -340,6 +341,25 @@ export function SessionReportBody({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [resultDeleted, setResultDeleted] = useState(false);
   const canDeleteResult = isAdmin && session.status === 'completed';
+  // PR 372: the PDF is built on the server (same rights and audit as the report); failures (too large, too slow) show the server's message.
+  const [pdfState, setPdfState] = useState<{ status: 'idle' | 'loading' | 'error'; message?: string }>({ status: 'idle' });
+  const downloadPdf = async () => {
+    setPdfState({ status: 'loading' });
+    try {
+      const { blob, filename } = await downloadChecklistSessionReportPdf(session.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename ?? `checklist-session-${session.id}.pdf`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setPdfState({ status: 'idle' });
+    } catch (err) {
+      setPdfState({ status: 'error', message: err instanceof ApiClientError ? err.message : t('admin.checklists.report.pdfError', 'Unable to download the PDF.') });
+    }
+  };
 
   const { state: instanceState } = useAsyncData<ChecklistInstanceSummary>(
     () => getChecklistInstance(session.instanceId),
@@ -401,6 +421,9 @@ export function SessionReportBody({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>{t(`checklistSessions.status.${session.status}`, session.status)}</Badge>
             <button className="admin-btn admin-btn--secondary" onClick={() => window.print()} type="button">{t('admin.checklists.report.print', 'Print')}</button>
+            <button className="admin-btn admin-btn--secondary" disabled={pdfState.status === 'loading'} onClick={() => void downloadPdf()} type="button">
+              {pdfState.status === 'loading' ? t('admin.checklists.report.pdfLoading', 'Preparing PDF…') : t('admin.checklists.report.pdf', 'Download PDF')}
+            </button>
             {canRecalculate && (
               <button className="admin-btn admin-btn--secondary" onClick={() => setRecalcOpen(true)} type="button">{t('admin.checklists.report.recalculateOpen', 'Recalculate')}</button>
             )}
@@ -410,6 +433,10 @@ export function SessionReportBody({
           </div>
         }
       />
+
+      {pdfState.status === 'error' && (
+        <InlineFeedback tone="error" title={t('admin.checklists.report.pdfError', 'Unable to download the PDF.')}>{pdfState.message}</InlineFeedback>
+      )}
 
       {canRecalculate && (
         <RecalculateDialog

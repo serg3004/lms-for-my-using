@@ -22,6 +22,7 @@ import {
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_MESSAGE_WINDOW_MS } from './checklist-session-message.js';
 import { eligibleObserverScope } from './checklist-observer-eligibility.js';
 import { buildSessionReport, type ReportPerson } from './checklist-session-report.js';
+import { exportSessionReportPdf } from './checklist-session-report-pdf-export.js';
 import { resolveResultColors } from './checklist-colors.js';
 import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
@@ -711,6 +712,21 @@ export class ChecklistSessionService {
       visible: masked.result.visible,
       locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
     });
+  }
+
+  /** PR 372: the PDF of `getReport` -- same access, masking and tenant rules, plus an audit entry per download. */
+  async getReportPdf(
+    sessionId: string,
+    organizationId: string,
+    scope: object,
+    viewer: ChecklistSessionViewerContext,
+    actor: { id: string; isAdmin: boolean; locale: string | null },
+  ) {
+    const report = await this.getReport(sessionId, organizationId, scope, viewer, actor);
+    return exportSessionReportPdf(
+      { prisma: this.prisma, auditLog: this.auditLog, readPhotoBytes: (key, max) => this.checklistsService.readPhotoBytes(key, max) },
+      report, organizationId, actor,
+    );
   }
 
   async listEvents(sessionId: string, organizationId: string, scope: object) {

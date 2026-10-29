@@ -34,6 +34,7 @@
     "@aws-sdk/client-s3": "^3.1156.0",
     "@aws-sdk/s3-request-presigner": "^3.1156.0",
     "@fontsource/noto-sans": "^5.3.0",
+    "@fontsource/noto-sans-sc": "5",
     "@lms/shared": "workspace:*",
     "@nestjs/common": "^11.2.1",
     "@nestjs/core": "^11.2.1",
