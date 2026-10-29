@@ -307,6 +307,9 @@ export function updateChecklistWorkplaceSettings(input: {
   moduleEnabled?: boolean;
   highPerformanceThreshold?: number;
   lowThreshold?: number | null;
+  resultColorLow?: string | null;
+  resultColorMid?: string | null;
+  resultColorHigh?: string | null;
   defaultGeolocationPolicy?: ChecklistWorkplaceSettingsView['defaultGeolocationPolicy'];
   feedbackVisibility?: ChecklistWorkplaceSettingsView['feedbackVisibility'];
   observerEligibility?: ChecklistWorkplaceSettingsView['observerEligibility'];

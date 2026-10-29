@@ -1017,7 +1017,8 @@ for (const width of widths) {
       await installChecklistSessionsMocks(page);
       await page.route('**/api/v1/checklist-sessions/to-conduct?**', (route) => route.fulfill({ json: paginated([]) }));
       await page.route('**/api/v1/checklists/workplace-settings', (route) => route.fulfill({ json: {
-        organizationId: 'visual-org', moduleEnabled: true, highPerformanceThreshold: 90,
+        organizationId: 'visual-org', moduleEnabled: true, highPerformanceThreshold: 90, lowThreshold: null,
+        resultColors: { low: '#C62828', mid: '#F9A825', high: '#2E7D32' },
         defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
         observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'],
         observerUserIds: [], selectedObserverUsers: [],

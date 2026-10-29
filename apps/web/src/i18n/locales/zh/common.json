@@ -1256,7 +1256,18 @@
         "highPerformanceThreshold": "高绩效阈值",
         "lowThreshold": "低结果阈值",
         "lowThresholdHint": "低于该百分比的结果视为低。留空则不设置阈值。",
-        "thresholdOrderError": "低结果阈值不能高于高绩效阈值。",
+        "resultColors": {
+          "title": "结果颜色",
+          "hint": "用于在报告中突出显示结果。范围由上方阈值决定。已完成的报告保留原有颜色。",
+          "low": "低于 {{low}}%",
+          "mid": "{{low}}% 至 {{high}}%",
+          "midNoLow": "低于 {{high}}%",
+          "high": "{{high}}% 及以上",
+          "lowLabel": "低结果颜色",
+          "midLabel": "中等结果颜色",
+          "highLabel": "高结果颜色"
+        },
+        "thresholdOrderError": "低结果阈值必须低于高绩效阈值。",
         "defaultGeolocationPolicy": "默认地理位置策略",
         "geolocationOptional": "可选",
         "geolocationRequired": "必须",
@@ -1295,6 +1306,11 @@
           "readOnly": "只有管理员可以更改谁可以担任观察员。"
         }
       },
+      "color": {
+        "palette": "{{label}}：调色板（{{color}}）",
+        "picker": "{{label}}：取色器",
+        "hex": "{{label}}：#RRGGBB 代码"
+      },
       "scaleManager": {
         "title": "评估量表",
         "error": "无法保存量表。",
@@ -1323,6 +1339,8 @@
         "usedBadge": "使用中",
         "makeCopy": "创建副本",
         "copyName": "{{name}}（副本）",
+        "levelColor": "等级 {{n}} 颜色",
+        "errorColor": "每个等级的颜色必须是形如 #2E7D32 的代码。",
         "readOnlyNote": "该量表已归档，无法修改。请创建副本并编辑副本。",
         "usedWarning": "该量表已用于观察清单。更新后的量表将用于尚未开始的会话，其余会话保持不变。",
         "appliesToNew": "更改适用于新的和尚未开始的会话；已开始的会话保留各自的副本。",

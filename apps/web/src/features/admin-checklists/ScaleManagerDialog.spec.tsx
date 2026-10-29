@@ -30,7 +30,7 @@ const scale = (overrides: Record<string, unknown> = {}) => ({
   status: 'active',
   inUse: false,
   isDefault: false,
-  levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 100 }],
+  levels: [{ value: 1, label: 'Low', score: 0, color: '#C62828' }, { value: 2, label: 'High', score: 100, color: '#2E7D32' }],
   ...overrides,
 });
 
@@ -81,7 +81,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
 
     expect(api.createChecklistScale).toHaveBeenCalledWith({
       name: 'Yes/No',
-      levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 100 }],
+      levels: [{ value: 1, label: 'No', score: 0, color: '#C62828' }, { value: 2, label: 'Yes', score: 100, color: '#2E7D32' }],
     });
     expect(onSaved).toHaveBeenCalledWith(saved);
     expect(onChanged).toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
 
     expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
       name: 'Quality',
-      levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 90 }],
+      levels: [{ value: 1, label: 'Low', score: 0, color: '#C62828' }, { value: 2, label: 'High', score: 90, color: '#2E7D32' }],
     });
   });
 
@@ -140,7 +140,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
 
     expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
       name: 'Quality',
-      levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 80 }],
+      levels: [{ value: 1, label: 'Low', score: 0, color: '#C62828' }, { value: 2, label: 'High', score: 80, color: '#2E7D32' }],
     });
   });
 
@@ -158,6 +158,39 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
     expect(api.copyChecklistScale).toHaveBeenCalledWith('s1', 'Quality (копия)');
     expect(api.updateChecklistScale).not.toHaveBeenCalled();
     expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(false);
+  });
+});
+
+describe('ScaleManagerDialog colours (PR 369б)', () => {
+  it('lets the owner pick a level colour and sends it with the levels', async () => {
+    api.listChecklistScales.mockResolvedValue([scale()]);
+    api.updateChecklistScale.mockResolvedValue(scale());
+    const { container } = await mount();
+
+    await act(async () => { byText(container, 'Изменить')?.click(); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label^="Цвет уровня 1: палитра"]')?.click(); });
+    await act(async () => { container.querySelector<HTMLButtonElement>('button[aria-label="Цвет уровня 1: #1565C0"]')?.click(); });
+    await act(async () => { setValue(byLabel(container, 'Цвет уровня 2: код #RRGGBB') as HTMLInputElement, '#abcdef'); });
+    await act(async () => { byText(container, 'Сохранить')?.click(); });
+
+    expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
+      name: 'Quality',
+      levels: [{ value: 1, label: 'Low', score: 0, color: '#1565C0' }, { value: 2, label: 'High', score: 100, color: '#ABCDEF' }],
+    });
+  });
+
+  it('keeps the last valid colour while a half-typed code is invalid', async () => {
+    api.listChecklistScales.mockResolvedValue([scale()]);
+    const { container } = await mount();
+
+    await act(async () => { byText(container, 'Изменить')?.click(); });
+    await act(async () => { setValue(byLabel(container, 'Цвет уровня 1: код #RRGGBB') as HTMLInputElement, '#12'); });
+
+    expect(byLabel(container, 'Цвет уровня 1: код #RRGGBB')?.getAttribute('aria-invalid')).toBe('true');
+    await act(async () => { byText(container, 'Сохранить')?.click(); });
+    expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', expect.objectContaining({
+      levels: [expect.objectContaining({ color: '#C62828' }), expect.objectContaining({ color: '#2E7D32' })],
+    }));
   });
 });
 

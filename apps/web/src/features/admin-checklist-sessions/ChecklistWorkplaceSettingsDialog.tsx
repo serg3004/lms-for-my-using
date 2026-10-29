@@ -6,6 +6,7 @@ import { useOptionalSession } from '../../shared/session.js';
 import { getChecklistWorkplaceSettings, updateChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
 import { ObserverEligibilityFields } from './ObserverEligibilityFields.js';
+import { HighlightColorField } from '../../shared/HighlightColorField.js';
 import { Button, Dialog, Select } from '../../shared/ui.js';
 
 /**
@@ -35,8 +36,8 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
 
   async function save() {
     if (!settings) return;
-    if (settings.lowThreshold !== null && settings.lowThreshold > settings.highPerformanceThreshold) {
-      setError(t('admin.checklists.settings.thresholdOrderError', 'The low threshold must not be above the high-performance threshold.'));
+    if (settings.lowThreshold !== null && settings.lowThreshold >= settings.highPerformanceThreshold) {
+      setError(t('admin.checklists.settings.thresholdOrderError', 'The low threshold must be below the high-performance threshold.'));
       return;
     }
     setSaving(true);
@@ -46,6 +47,9 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
         moduleEnabled: settings.moduleEnabled,
         highPerformanceThreshold: settings.highPerformanceThreshold,
         lowThreshold: settings.lowThreshold,
+        resultColorLow: settings.resultColors.low,
+        resultColorMid: settings.resultColors.mid,
+        resultColorHigh: settings.resultColors.high,
         defaultGeolocationPolicy: settings.defaultGeolocationPolicy,
         feedbackVisibility: settings.feedbackVisibility,
         ...(canEditAccess ? {
@@ -106,6 +110,42 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
               {t('admin.checklists.settings.lowThresholdHint', 'Results below this percentage count as low. Leave empty to not set a threshold.')}
             </p>
           </div>
+          <fieldset className="admin-form__field" style={{ minWidth: 0 }}>
+            <legend>{t('admin.checklists.settings.resultColors.title', 'Result colours')}</legend>
+            <p className="admin-form__hint">
+              {t('admin.checklists.settings.resultColors.hint', 'Used to highlight the result in reports. The ranges follow the thresholds above. Reports that are already finished keep their colours.')}
+            </p>
+            {settings.lowThreshold !== null && (
+              <div className="admin-form__field">
+                <span>{t('admin.checklists.settings.resultColors.low', 'Below {{low}}%', { low: settings.lowThreshold })}</span>
+                <HighlightColorField
+                  label={t('admin.checklists.settings.resultColors.lowLabel', 'Low result colour')}
+                  onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, low: color } })}
+                  value={settings.resultColors.low}
+                />
+              </div>
+            )}
+            <div className="admin-form__field">
+              <span>
+                {settings.lowThreshold !== null
+                  ? t('admin.checklists.settings.resultColors.mid', 'From {{low}}% to {{high}}%', { low: settings.lowThreshold, high: settings.highPerformanceThreshold })
+                  : t('admin.checklists.settings.resultColors.midNoLow', 'Below {{high}}%', { high: settings.highPerformanceThreshold })}
+              </span>
+              <HighlightColorField
+                label={t('admin.checklists.settings.resultColors.midLabel', 'Middle result colour')}
+                onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, mid: color } })}
+                value={settings.resultColors.mid}
+              />
+            </div>
+            <div className="admin-form__field">
+              <span>{t('admin.checklists.settings.resultColors.high', 'From {{high}}%', { high: settings.highPerformanceThreshold })}</span>
+              <HighlightColorField
+                label={t('admin.checklists.settings.resultColors.highLabel', 'High result colour')}
+                onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, high: color } })}
+                value={settings.resultColors.high}
+              />
+            </div>
+          </fieldset>
           <Select
             label={t('admin.checklists.settings.defaultGeolocationPolicy', 'Default geolocation policy')}
             onChange={(e) => setSettings({ ...settings, defaultGeolocationPolicy: e.target.value as ChecklistGeolocationPolicy })}

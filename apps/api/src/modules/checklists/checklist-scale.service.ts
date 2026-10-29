@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { withResolvedLevelColors } from './checklist-colors.js';
 import { defaultScaleDefinition } from './checklist-default-scale.js';
 import type { CreateChecklistScaleInput, UpdateChecklistScaleInput } from './checklists.schemas.js';
 
@@ -17,7 +18,7 @@ const scaleSelect = {
   updatedAt: true,
   levels: {
     orderBy: { value: 'asc' as const },
-    select: { id: true, value: true, label: true, score: true },
+    select: { id: true, value: true, label: true, score: true, color: true },
   },
 } as const;
 
@@ -80,7 +81,7 @@ export class ChecklistScaleService {
       organizationId,
       scales.map((scale) => scale.id),
     );
-    return scales.map((scale) => ({ ...scale, inUse: usedIds.has(scale.id) }));
+    return scales.map((scale) => ({ ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) }));
   }
 
   async get(scaleId: string, organizationId: string) {
@@ -90,7 +91,7 @@ export class ChecklistScaleService {
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
     const usedIds = await this.findUsedScaleIds(organizationId, [scale.id]);
-    return { ...scale, inUse: usedIds.has(scale.id) };
+    return { ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) };
   }
 
   async create(organizationId: string, input: CreateChecklistScaleInput, actorId: string) {
@@ -184,6 +185,7 @@ export class ChecklistScaleService {
           value: level.value,
           label: level.label,
           score: level.score,
+          color: level.color,
         })),
       });
       return scale;

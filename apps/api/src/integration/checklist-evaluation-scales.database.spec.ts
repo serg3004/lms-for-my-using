@@ -2,9 +2,10 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
+import { ChecklistWorkplaceSettingsService } from '../modules/checklists/checklist-workplace-settings.service.js';
 import { ChecklistScaleService } from '../modules/checklists/checklist-scale.service.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import type { UploadService } from '../modules/upload/public.js';
@@ -339,6 +340,59 @@ describe('checklist evaluation scales (PR 293) — database', () => {
 
     expect(await levelsOf(fresh.id)).toEqual({ name: 'Shared v2', labels: ['Bad', 'Fine', 'Great'] });
     expect(await levelsOf(answered.id)).toEqual({ name: 'Shared', labels: ['No', 'Yes'] });
+  });
+
+  it('PR 369б: level colours are stored, default by score share, frozen in the snapshot and not repainted for answered work', async () => {
+    const scale = await scaleService.create(
+      organizationId,
+      { name: 'Colours', levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Part', score: 5, color: '#AA00BB' }, { value: 3, label: 'Full', score: 10 }] },
+      learnerId,
+    );
+    expect(scale.levels.map((level) => level.color)).toEqual(['#C62828', '#AA00BB', '#2E7D32']);
+
+    const item = await checklistsService.createItem(checklistId, organizationId, { text: 'Criterion', points: 10, isRequired: true, photoRequired: false, scaleId: scale.id });
+    await checklistsService.updateChecklist(checklistId, organizationId, { status: 'published' }, learnerId);
+    const answered = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, learnerId);
+    await prisma.checklistItemResult.create({
+      data: { organizationId, instanceId: answered.id, itemId: item.id, checked: true, scaleLevel: 3, points: 10, answerState: 'answered' },
+    });
+
+    await scaleService.update(
+      scale.id,
+      organizationId,
+      { levels: [{ value: 1, label: 'No', score: 0, color: '#000001' }, { value: 2, label: 'Part', score: 5, color: '#000002' }, { value: 3, label: 'Full', score: 10, color: '#000003' }] },
+      learnerId,
+    );
+    await checklistsService.refreshScaleSnapshot(answered.id, organizationId);
+
+    const stored = await prisma.checklistInstance.findUniqueOrThrow({ where: { id: answered.id }, select: { templateSnapshot: true } });
+    const snapshotLevels = (stored.templateSnapshot as { checklist: { items: Array<{ scale: { levels: Array<{ color: string }> } }> } }).checklist.items[0]!.scale.levels;
+    expect(snapshotLevels.map((level) => level.color)).toEqual(['#C62828', '#AA00BB', '#2E7D32']);
+    expect((await scaleService.get(scale.id, organizationId)).levels.map((level) => level.color)).toEqual(['#000001', '#000002', '#000003']);
+
+    // A copy keeps the chosen colours; a cleared colour returns to the default.
+    const copy = await scaleService.copy(scale.id, organizationId, 'Colours (copy)', learnerId);
+    expect(copy.levels.map((level) => level.color)).toEqual(['#000001', '#000002', '#000003']);
+    const cleared = await scaleService.update(copy.id, organizationId, { levels: [{ value: 1, label: 'No', score: 0, color: null }, { value: 2, label: 'Yes', score: 9, color: null }] }, learnerId);
+    expect(cleared.levels.map((level) => level.color)).toEqual(['#C62828', '#2E7D32']);
+  });
+
+  it('PR 369б: result band colours are stored per organization, default when unset, and overlapping ranges are refused', async () => {
+    const settings = new ChecklistWorkplaceSettingsService(prisma);
+    const other = await prisma.organization.create({ data: { name: 'Other colours org', slug: `other-colours-${randomUUID()}` } });
+    try {
+      expect((await settings.getSettings(organizationId)).resultColors).toEqual({ low: '#C62828', mid: '#F9A825', high: '#2E7D32' });
+
+      const saved = await settings.updateSettings(organizationId, { lowThreshold: 50, resultColorLow: '#111111', resultColorHigh: '#222222' }, learnerId);
+      expect(saved.resultColors).toEqual({ low: '#111111', mid: '#F9A825', high: '#222222' });
+      expect((await settings.getSettings(other.id)).resultColors).toEqual({ low: '#C62828', mid: '#F9A825', high: '#2E7D32' });
+
+      await expect(settings.updateSettings(organizationId, { lowThreshold: 95 }, learnerId)).rejects.toBeInstanceOf(UnprocessableEntityException);
+      const reset = await settings.updateSettings(organizationId, { resultColorLow: null }, learnerId);
+      expect(reset.resultColors.low).toBe('#C62828');
+    } finally {
+      await prisma.organization.delete({ where: { id: other.id } });
+    }
   });
 
 });

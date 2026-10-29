@@ -1,3 +1,4 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -34,6 +35,7 @@ describe('ChecklistWorkplaceSettingsService', () => {
         highPerformanceThreshold: 90,
         criticalThreshold: null,
         lowThreshold: null,
+        resultColors: { low: '#C62828', mid: '#F9A825', high: '#2E7D32' },
         defaultGeolocationPolicy: 'off',
         feedbackVisibility: 'after_completion',
         updatedAt: null,
@@ -76,10 +78,45 @@ describe('ChecklistWorkplaceSettingsService', () => {
         highPerformanceThreshold: 95,
         criticalThreshold: 50,
         lowThreshold: 60,
+        resultColors: { low: '#C62828', mid: '#F9A825', high: '#2E7D32' },
         defaultGeolocationPolicy: 'required',
         feedbackVisibility: 'live',
         updatedAt,
       });
+    });
+  });
+
+  describe('result colours (PR 369б)', () => {
+    it('resolves stored band colours and falls back to the defaults for unset ones', async () => {
+      const prisma = {
+        checklistWorkplaceSettings: {
+          findUnique: jest.fn(async () => ({
+            organizationId, ...DEFAULT_OBSERVER_SELECTION, moduleEnabled: true, highPerformanceThreshold: 90, criticalThreshold: null,
+            lowThreshold: 60, resultColorLow: '#112233', resultColorMid: null, resultColorHigh: '#445566',
+            defaultGeolocationPolicy: 'off', feedbackVisibility: 'live', updatedAt: new Date(),
+          })),
+        },
+      } as unknown as PrismaService;
+      const service = new ChecklistWorkplaceSettingsService(withTransactions(prisma), fakeAuditLog());
+
+      expect((await service.getSettings(organizationId)).resultColors).toEqual({ low: '#112233', mid: '#F9A825', high: '#445566' });
+    });
+
+    it('accepts only #RRGGBB (stored upper-case) and rejects CSS', () => {
+      expect(updateChecklistWorkplaceSettingsSchema.parse({ resultColorLow: '#aabbcc', resultColorMid: null })).toEqual({ resultColorLow: '#AABBCC', resultColorMid: null });
+      for (const bad of ['red', '#abc', 'url(javascript:alert(1))', '#12345g', '#1234567', 'rgb(1,2,3)']) {
+        expect(updateChecklistWorkplaceSettingsSchema.safeParse({ resultColorHigh: bad }).success).toBe(false);
+      }
+    });
+
+    it('rejects a low threshold that is not below the high one (overlapping ranges) with 422', async () => {
+      const prisma = {
+        checklistWorkplaceSettings: { findUnique: jest.fn(async () => null), upsert: jest.fn() },
+      } as unknown as PrismaService;
+      const service = new ChecklistWorkplaceSettingsService(withTransactions(prisma), fakeAuditLog());
+
+      await expect(service.updateSettings(organizationId, { highPerformanceThreshold: 70, lowThreshold: 70 }, actorId)).rejects.toBeInstanceOf(UnprocessableEntityException);
+      expect(prisma.checklistWorkplaceSettings.upsert).not.toHaveBeenCalled();
     });
   });
 

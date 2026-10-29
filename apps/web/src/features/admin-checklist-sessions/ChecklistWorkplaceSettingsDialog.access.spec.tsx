@@ -11,7 +11,7 @@ vi.mock('../../shared/api/checklists.js', () => ({ getChecklistWorkplaceSettings
 vi.mock('../../shared/api/users.js', () => ({ listUsers: vi.fn() }));
 vi.mock('../../shared/session.js', () => ({ useOptionalSession: () => ({ currentUser: { roles: mocks.roles } }) }));
 const original = {
-  organizationId: 'org', moduleEnabled: true, highPerformanceThreshold: 90, defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
+  organizationId: 'org', moduleEnabled: true, highPerformanceThreshold: 90, lowThreshold: null, resultColors: { low: '#C62828', mid: '#F9A825', high: '#2E7D32' }, defaultGeolocationPolicy: 'off', feedbackVisibility: 'after_completion', updatedAt: null,
   observerEligibility: 'selected_roles', observerRoles: ['instructor', 'manager', 'admin'], observerUserIds: [],
 };
 let root: ReturnType<typeof createRoot>;

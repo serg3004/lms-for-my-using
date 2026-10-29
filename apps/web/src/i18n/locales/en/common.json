@@ -1256,7 +1256,18 @@
         "highPerformanceThreshold": "High-performance threshold",
         "lowThreshold": "Low-result threshold",
         "lowThresholdHint": "Results below this percentage count as low. Leave empty to not set a threshold.",
-        "thresholdOrderError": "The low threshold must not be above the high-performance threshold.",
+        "resultColors": {
+          "title": "Result colours",
+          "hint": "Used to highlight the result in reports. The ranges follow the thresholds above. Reports that are already finished keep their colours.",
+          "low": "Below {{low}}%",
+          "mid": "From {{low}}% to {{high}}%",
+          "midNoLow": "Below {{high}}%",
+          "high": "From {{high}}%",
+          "lowLabel": "Low result colour",
+          "midLabel": "Middle result colour",
+          "highLabel": "High result colour"
+        },
+        "thresholdOrderError": "The low threshold must be below the high-performance threshold.",
         "defaultGeolocationPolicy": "Default geolocation policy",
         "geolocationOptional": "Optional",
         "geolocationRequired": "Required",
@@ -1295,6 +1306,11 @@
           "readOnly": "Only an administrator can change who may be an observer."
         }
       },
+      "color": {
+        "palette": "{{label}}: palette ({{color}})",
+        "picker": "{{label}}: color picker",
+        "hex": "{{label}}: code #RRGGBB"
+      },
       "scaleManager": {
         "title": "Evaluation scales",
         "error": "Unable to save the scale.",
@@ -1323,6 +1339,8 @@
         "usedBadge": "In use",
         "makeCopy": "Make a copy",
         "copyName": "{{name}} (copy)",
+        "levelColor": "Level {{n}} colour",
+        "errorColor": "Every level colour must be a code like #2E7D32.",
         "readOnlyNote": "This scale is archived and cannot be changed. Make a copy and edit the copy.",
         "usedWarning": "This scale is already used in observation sheets. The updated scale will be used for sessions that have not started yet; the rest stay unchanged.",
         "appliesToNew": "Changes apply to new and not yet started sessions; sessions already started keep their own copy.",
