@@ -1,3 +1,4 @@
+import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { expect, test, type Page } from '@playwright/test';
@@ -739,6 +740,15 @@ for (const width of widths) {
       });
     }
 
+    for (const role of ['admin', 'instructor'] as const) {
+      test(`keeps the ${role} session employee import preview responsive`, async ({ page }) => {
+        await previewSessionImportPage(page, role);
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await expectVisualMatch(page, `${role}-session-employee-import-${width}`);
+      });
+    }
+
     test('keeps the instructor dashboard responsive', async ({ page }) => {
       await installInstructorMocks(page);
       await page.goto('/instructor/dashboard');
@@ -925,6 +935,11 @@ for (const width of widths) {
       await expect(page.getByRole('heading', { name: 'Обучающие сессии' })).toBeVisible();
       await expect(page.getByText('Opening shift checklist')).toBeVisible();
       await expectNoPageOverflow(page);
+      // Hidden horizontal overflow must not conceal the primary action on wide screens.
+      const createButtonBounds = await page.getByRole('button', { name: /Новая сессия/ }).boundingBox();
+      expect(createButtonBounds).not.toBeNull();
+      expect(createButtonBounds!.x).toBeGreaterThanOrEqual(0);
+      expect(createButtonBounds!.x + createButtonBounds!.width).toBeLessThanOrEqual(width);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `admin-checklist-sessions-list-${width}`);
 

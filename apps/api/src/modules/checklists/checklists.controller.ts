@@ -1,3 +1,4 @@
+import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
 import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Delete, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -18,6 +19,7 @@ import {
   assignChecklistReviewerSchema,
   bulkAssignChecklistSchema,
   bulkCreateChecklistSessionSchema,
+  importChecklistSessionsSchema,
   checklistListQuerySchema,
   checklistTemplatesQuerySchema,
   createChecklistFromTemplateSchema,
@@ -560,6 +562,26 @@ export class ChecklistsController {
     const createOwn = !this.reviewAccess.canPickAnyObserver(user);
     return this.sessions.bulkCreate(user.organizationId, input, user.id, learnerScope, createOwn);
   }
+  @Post('checklist-sessions/import/preview')
+  @Roles(...rolePolicies.checklistSessionsImport)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_SESSION_IMPORT_BYTES, files: 1, fields: 0, parts: 1 } }))
+  async previewSessionImport(@UploadedFile() file: SessionImportFile | undefined, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.sessions.previewImport(user.organizationId, file, await this.reviewAccess.participantLearnerScope(user));
+  }
+
+  @Post('checklist-sessions/import')
+  @Roles(...rolePolicies.checklistSessionsImport)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_SESSION_IMPORT_BYTES, fieldSize: 2048, files: 1, fields: 1, parts: 2 } }))
+  async importSessions(@UploadedFile() file: SessionImportFile | undefined, @Body() body: { settings?: string }, @Req() request: AuthenticatedRequest) {
+    let settings: unknown;
+    try { settings = JSON.parse(body.settings ?? ''); } catch { throw new BadRequestException('session_import.settings'); }
+    const input = importChecklistSessionsSchema.parse(settings);
+    const user = request.currentUser!;
+    this.reviewAccess.assertSessionCreationObserver(user, input.observerId);
+    return this.sessions.importSessions(user.organizationId, file, input, user.id, await this.reviewAccess.participantLearnerScope(user));
+  }
+
   @Get('checklist-sessions')
   @Roles(...rolePolicies.checklistSessionsRead)
   async listSessions(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {

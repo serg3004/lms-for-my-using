@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { parseSessionImport, type SessionImportFile, type SessionImportRow } from './checklist-session-import.js';
 import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   ChecklistLocationCapturePoint,
@@ -23,6 +25,7 @@ import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
   BulkCreateChecklistSessionInput,
+  ImportChecklistSessionsInput,
   ChecklistSessionParticipantsQuery,
   ChecklistScoreFormula,
   ChecklistSessionQuery,
@@ -345,6 +348,71 @@ export class ChecklistSessionService {
       failed: results.filter((r) => r.status === 'failed').length,
       results,
     };
+  }
+
+  async previewImport(organizationId: string, file: SessionImportFile | undefined, learnerScope: Prisma.UserWhereInput) {
+    const rows = await parseSessionImport(file);
+    const emails = rows.filter((row) => row.status === 'ready').map((row) => row.email);
+    const employees = emails.length ? await this.prisma.user.findMany({
+      where: { organizationId, status: 'active', deletedAt: null, AND: [learnerScope], OR: emails.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })) },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    }) : [];
+    for (const row of rows) {
+      if (row.status !== 'ready') continue;
+      const matches = employees.filter((employee) => employee.email.toLowerCase() === row.email);
+      if (matches.length !== 1) { row.status = 'skipped'; row.reason = 'outside_scope'; }
+      else row.employee = matches[0];
+    }
+    return { ready: rows.filter((row) => row.status === 'ready').length, skipped: rows.filter((row) => row.status === 'skipped').length, rows };
+  }
+
+  async importSessions(organizationId: string, file: SessionImportFile | undefined, input: ImportChecklistSessionsInput, actorId: string, learnerScope: Prisma.UserWhereInput) {
+    const preview = await this.previewImport(organizationId, file, learnerScope);
+    await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+    const checklist = await this.prisma.checklist.findFirst({ where: { id: input.checklistId, organizationId, deletedAt: null }, select: { status: true } });
+    if (!checklist) throw new NotFoundException('Checklist not found');
+    if (checklist.status !== 'published') throw new BadRequestException('Checklist must be published before assignment');
+    const { operationId, ...settings } = input;
+    const digest = createHash('sha256').update(file!.buffer).update(JSON.stringify(settings)).digest('hex');
+    const scope = `session.import:${actorId}`;
+    // Reserve this operation for exactly one file/configuration, before any row can mutate.
+    await runSerializableWithRetry(this.prisma, async (tx) => {
+      const prior = await tx.checklistIdempotencyKey.upsert({
+        where: { organizationId_scope_key: { organizationId, scope, key: operationId } },
+        create: { organizationId, scope, key: operationId, responseBody: { digest } }, update: {},
+      });
+      if ((prior.responseBody as { digest: string }).digest !== digest) throw new ConflictException('session_import.operation_conflict');
+    });
+    const rowScope = `${scope}:${operationId}`;
+    const alreadyNotified = new Set<string>();
+    const rows: SessionImportRow[] = [];
+    for (const row of preview.rows) {
+      if (row.status !== 'ready') { rows.push(row); continue; }
+      if (row.employee!.id === input.observerId) { rows.push({ ...row, status: 'skipped', reason: 'self_observer' }); continue; }
+      try {
+        const sessionId = await runSerializableWithRetry(this.prisma, async (tx) => {
+          const employee = await tx.user.findFirst({ where: { id: row.employee!.id, organizationId, deletedAt: null, status: 'active', AND: [learnerScope] }, select: { id: true } });
+          if (!employee) throw new NotFoundException('Learner not found');
+          const cached = await this.findIdempotentResponse<{ sessionId: string }>(tx, organizationId, rowScope, String(row.row));
+          if (cached) return cached.sessionId;
+          const instance = await this.checklistsService.assignChecklist(input.checklistId, organizationId, { userId: employee.id }, actorId, tx);
+          const session = await this.createSessionInTransaction(tx, { organizationId, instanceId: instance.id, observerId: input.observerId, scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null, durationMinutes: input.durationMinutes, timezone: input.timezone, locationCapturePolicy: input.locationCapturePolicy, actorId }, { bulk: true, alreadyNotified });
+          await this.recordIdempotentResponse(tx, organizationId, rowScope, String(row.row), { sessionId: session.id });
+          return session.id;
+        });
+        alreadyNotified.add(row.employee!.id); alreadyNotified.add(input.observerId);
+        rows.push({ ...row, status: 'created', sessionId });
+      } catch (error) {
+        if (error instanceof NotFoundException) { rows.push({ row: row.row, email: row.email, status: 'skipped', reason: 'scope_changed' }); continue; }
+        const cached = await this.findIdempotentResponse<{ sessionId: string }>(this.prisma, organizationId, rowScope, String(row.row));
+        if (cached) { rows.push({ ...row, status: 'created', sessionId: cached.sessionId }); alreadyNotified.add(input.observerId); }
+        else if (error instanceof BadRequestException && error.message === ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE) rows.push({ ...row, status: 'skipped', reason: 'active_assignment' });
+        else throw error;
+      }
+    }
+    const created = rows.filter((row) => row.status === 'created').length;
+    await this.auditLog.record({ organizationId, actorId, action: 'checklist_session.imported', targetType: 'checklist', targetId: input.checklistId, summary: 'Imported employee list for checklist sessions', metadata: { operationId, created, skipped: rows.length - created, total: rows.length } });
+    return { created, skipped: rows.length - created, failed: 0, rows, results: rows.filter((row) => row.status === 'created').map((row) => ({ learnerId: row.employee!.id, status: 'created' as const, sessionId: row.sessionId })) };
   }
 
   /**

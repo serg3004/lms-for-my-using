@@ -85,6 +85,7 @@ export const rolePolicies = {
   checklistFreeAccessCreate: ['admin'],
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
+  checklistSessionsImport: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsCreateOwn: ['instructor'],
   // PR 360: who may pick any observer when scheduling; the instructor stays pinned to themselves.
   checklistSessionsCreateAnyObserver: ['admin', 'manager', 'mentor'],

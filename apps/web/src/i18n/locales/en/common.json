@@ -1,4 +1,37 @@
 {
+  "sessionImport": {
+    "done": "Import complete",
+    "title": "Import employee list",
+    "file": "CSV or Excel file",
+    "instructions": "One email column. UTF-8 CSV or a single-sheet XLSX; up to 100 rows and 1 MB. Checklist, observer and time apply to the entire list. Formulas are not accepted.",
+    "preview": "Check list",
+    "loading": "Checking list…",
+    "report": "Import row report",
+    "summary": "Accepted: {{accepted}}; skipped: {{skipped}}.",
+    "row": "Row {{row}}",
+    "ready": "Ready to create",
+    "created": "Session created",
+    "reasons": {
+      "invalid_email": "Invalid email or formula",
+      "duplicate": "Duplicate email in file",
+      "outside_scope": "Employee unavailable or outside your scope",
+      "self_observer": "Employees cannot observe themselves",
+      "active_assignment": "An active assignment of this checklist already exists",
+      "scope_changed": "Employee is no longer available in your scope"
+    },
+    "errors": {
+      "empty": "The file must contain employee email addresses.",
+      "file_limit": "The file must not exceed 1 MB.",
+      "rows_limit": "Import at most 100 rows at a time.",
+      "header": "The file must contain exactly one column headed email.",
+      "invalid_file": "Unable to read the file. Check its format, UTF-8 encoding and contents.",
+      "one_sheet": "Excel must contain exactly one worksheet.",
+      "format": "Choose a CSV or XLSX file.",
+      "settings": "Check the shared session settings.",
+      "operation_conflict": "This import was already submitted with another file or settings. Check the result and start a new import.",
+      "request": "Unable to process the import. Check the file and settings and try again."
+    }
+  },
   "app": {
     "title": "LMS",
     "subtitle": "Learning management system"

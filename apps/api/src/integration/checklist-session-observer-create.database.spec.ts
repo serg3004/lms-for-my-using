@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 /// <reference types="jest" />
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ForbiddenException, NotFoundException, type ExecutionContext } from '@nestjs/common';
@@ -578,5 +579,72 @@ describe('observer session creation and conduct access (PR 331/349) — database
       await expect(checklists.submitItemResult(ownInstance.id, item.id, organizationId, learner.id, false, { checked: true })).rejects.toBeInstanceOf(NotFoundException);
     },
   );
+
+  const importFile = (emails: string[]) => ({ originalname: 'employees.csv', buffer: Buffer.from('email\n' + emails.join('\n')) });
+  const settings = (observerId: string, operationId = randomUUID()) => ({ settings: JSON.stringify({ checklistId, observerId, operationId, scheduledAt: '2026-11-10T10:00:00.000Z', timezone: 'UTC' }) });
+
+  it.each(['admin', 'instructor', 'mentor'] as const)('PR 364: %s imports only tenant employees, skips duplicates/formulas/foreign rows and audits counts', async (role) => {
+    const actor = role === 'instructor' ? observer : await user(organizationId, [role]);
+    const selectedObserver = role === 'mentor' ? observer : actor;
+    let file = importFile([learner.email, learner.email.toUpperCase(), outsider.email, '=2+2', selectedObserver.email]);
+    if (role === 'admin') {
+      const book = new ExcelJS.Workbook(); const sheet = book.addWorksheet('Employees');
+      ['email', learner.email, learner.email.toUpperCase(), outsider.email, '=2+2', selectedObserver.email].forEach((email, index) => { sheet.getCell(index + 1, 1).value = email; });
+      file = { originalname: 'employees.xlsx', buffer: Buffer.from(await book.xlsx.writeBuffer()) };
+    }
+    const preview = await controller.previewSessionImport(file, await request(actor, 'previewSessionImport'));
+    expect(preview.ready).toBe(2);
+    expect(preview.rows[2]).toMatchObject({ reason: 'outside_scope', status: 'skipped' });
+    expect(preview.rows[2].employee).toBeUndefined();
+    const result = await controller.importSessions(file, settings(selectedObserver.id), await request(actor, 'importSessions'));
+    expect(result).toMatchObject({ created: 1, skipped: 4, failed: 0 });
+    expect(result.rows.map((row) => row.reason)).toEqual([undefined, 'duplicate', 'outside_scope', 'invalid_email', 'self_observer']);
+    expect(await prisma.checklistSession.count({ where: { organizationId } })).toBe(1);
+    const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_session.imported' } });
+    expect(audit).toMatchObject({ actorId: actor.id, metadata: { created: 1, skipped: 4, total: 5 } });
+    expect(JSON.stringify(audit.metadata)).not.toContain(learner.email);
+  });
+
+  it('PR 364: manager import rechecks the team at commit, and both endpoints deny learners', async () => {
+    const manager = await user(organizationId, ['manager']);
+    const outOfTeam = await user(organizationId, ['learner']);
+    const group = await prisma.group.create({ data: { organizationId, name: 'Import team', slug: `import-team-${randomUUID()}` } });
+    await prisma.managerGroup.create({ data: { organizationId, managerId: manager.id, groupId: group.id } });
+    await prisma.groupMember.create({ data: { organizationId, userId: learner.id, groupId: group.id } });
+    const file = importFile([learner.email, outOfTeam.email, outsider.email, 'missing@example.test']);
+    const preview = await controller.previewSessionImport(file, await request(manager, 'previewSessionImport'));
+    expect(preview.ready).toBe(1);
+    for (const row of preview.rows.slice(1)) { expect(row.reason).toBe('outside_scope'); expect(row.employee).toBeUndefined(); }
+    await prisma.groupMember.deleteMany({ where: { groupId: group.id } });
+    const result = await controller.importSessions(file, settings(observer.id), await request(manager, 'importSessions'));
+    expect(result).toMatchObject({ created: 0, skipped: 4 });
+    expect(await prisma.checklistInstance.count({ where: { organizationId } })).toBe(0);
+    for (const handler of ['previewSessionImport', 'importSessions'] as const) await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(controller.importSessions(file, settings(otherObserver.id), await request(observer, 'importSessions'))).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('PR 364: concurrent retries replay original session IDs, even after completion, and cannot change the operation payload', async () => {
+    const file = importFile([learner.email]); const config = settings(observer.id);
+    const req = await request(observer, 'importSessions');
+    const results = await Promise.all([controller.importSessions(file, config, req), controller.importSessions(file, config, req)]);
+    expect(results[0].created).toBe(1); expect(results[1].created).toBe(1);
+    expect(results[0].results[0].sessionId).toBe(results[1].results[0].sessionId);
+    const sessionId = results[0].results[0].sessionId!;
+    const session = await prisma.checklistSession.update({ where: { id: sessionId }, data: { status: 'completed' } });
+    await prisma.checklistInstance.update({ where: { id: session.instanceId }, data: { status: 'completed' } });
+    const replay = await controller.importSessions(file, config, req);
+    expect(replay.results[0].sessionId).toBe(sessionId);
+    expect(await prisma.checklistSession.count({ where: { organizationId } })).toBe(1);
+    await expect(controller.importSessions(importFile([learner.email, observer.email]), config, req)).rejects.toThrow('operation_conflict');
+  });
+
+  it('PR 364: an existing active assignment skips the row without an orphan session', async () => {
+    await instance(learner.id);
+    const result = await controller.importSessions(importFile([learner.email]), settings(observer.id), await request(observer, 'importSessions'));
+    expect(result).toMatchObject({ created: 0, skipped: 1 });
+    expect(result.rows[0].reason).toBe('active_assignment');
+    expect(await prisma.checklistSession.count({ where: { organizationId } })).toBe(0);
+    expect(await prisma.checklistInstance.count({ where: { organizationId } })).toBe(1);
+  });
 
 });

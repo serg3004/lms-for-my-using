@@ -10,10 +10,10 @@ const password = 'Demo1234!';
 // extend on subsequent requests (see entry.resetAt in
 // createInMemoryRateLimitStore(), api-hardening.ts) — it simply expires 60s
 // after that first request, however many logins landed inside it. Other E2E
-// files log in as the same demo accounts (manager-workspace.spec.ts alone logs
-// in as manager 4 times), so this file's login can be the 6th in someone else's
-// window and get a 429 that leaves the login form on /login. A short retry
-// backoff isn't reliable against a fixed window of unknown start time — only
+// files log in as the same demo accounts too, so this file's login can be the
+// 6th attempt in another test's window and get a 429 that leaves the login form
+// on /login. A short retry backoff isn't reliable against a fixed window of
+// unknown start time — only
 // waiting longer than the window itself (60s) guarantees landing outside it.
 //
 // This only covers the 5-per-60s rule. The same account policy also has
