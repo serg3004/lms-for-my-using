@@ -81,6 +81,8 @@ export const rolePolicies = {
   checklistWorkplaceSettingsWrite: ['admin', 'manager', 'instructor', 'mentor'],
   // PR 365: who may be an observer (eligibility mode, roles, people) is an access setting and stays with the admin.
   checklistAccessSettingsWrite: ['admin'],
+  // PR 366: only an administrator creates a checklist in, or switches one to, the free-access mode.
+  checklistFreeAccessCreate: ['admin'],
   checklistSessionsRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
   checklistSessionsManage: ['admin', 'manager', 'instructor', 'mentor'],
   checklistSessionsCreateOwn: ['instructor'],

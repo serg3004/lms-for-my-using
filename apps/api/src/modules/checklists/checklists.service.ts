@@ -538,7 +538,7 @@ export class ChecklistsService {
    * and the copy is always a draft so it can't be assigned before someone has looked at it.
    * One transaction: a copy never exists half-built.
    */
-  async copyChecklist(checklistId: string, organizationId: string, actorId: string) {
+  async copyChecklist(checklistId: string, organizationId: string, actorId: string, keepFreeAccess = true) {
     const source = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
       include: {
@@ -566,7 +566,8 @@ export class ChecklistsService {
           preSessionVisibility: source.preSessionVisibility,
           allowFinishIncomplete: source.allowFinishIncomplete,
           forbidGalleryPhotos: source.forbidGalleryPhotos,
-          accessMode: source.accessMode,
+          // PR 366: only an administrator's copy of a free checklist stays free.
+          accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
           createdBy: actorId,
         },

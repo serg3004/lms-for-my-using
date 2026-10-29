@@ -339,6 +339,59 @@ describe('observer session creation and conduct access (PR 331/349) — database
     expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_workplace_settings.updated', actorId: admin.id } })).toBe(1);
   });
 
+  it.each(['manager', 'instructor', 'mentor'] as const)('PR 366: %s builds only "assigned" checklists; the free-access mode is the admin\'s', async (role) => {
+    const actor = await user(organizationId, [role]);
+    const admin = await user(organizationId, ['admin']);
+    const body = { organizationId, title: 'Sheet', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false } as const;
+    await expect(controller.createChecklist({ ...body, accessMode: 'free' }, await request(actor, 'createChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(await prisma.checklist.count({ where: { organizationId, title: 'Sheet' } })).toBe(0);
+    const own = await controller.createChecklist({ ...body, accessMode: 'assigned' }, await request(actor, 'createChecklist'));
+    expect(own.accessMode).toBe('assigned');
+    await controller.updateChecklist(own.id, { allowEditByAll: true }, await request(actor, 'updateChecklist'));
+
+    // Other fields and resending the stored mode are fine; switching the mode either way is not.
+    await controller.updateChecklist(own.id, { title: 'Renamed', accessMode: 'assigned' }, await request(actor, 'updateChecklist'));
+    await expect(controller.updateChecklist(own.id, { accessMode: 'free' }, await request(actor, 'updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    expect((await prisma.checklist.findUniqueOrThrow({ where: { id: own.id } })).accessMode).toBe('assigned');
+
+    const free = await controller.createChecklist({ ...body, accessMode: 'free' }, await request(admin, 'createChecklist'));
+    expect(free.accessMode).toBe('free');
+    await controller.updateChecklist(free.id, { allowEditByAll: true }, await request(admin, 'updateChecklist'));
+    await expect(controller.updateChecklist(free.id, { accessMode: 'assigned' }, await request(actor, 'updateChecklist'))).rejects.toBeInstanceOf(ForbiddenException);
+    await controller.updateChecklist(free.id, { title: 'Still free', accessMode: 'free' }, await request(actor, 'updateChecklist'));
+    // A copy made by this role is never free; the admin's copy keeps the mode.
+    expect((await controller.copyChecklist(free.id, await request(actor, 'copyChecklist'))).accessMode).toBe('assigned');
+    expect((await controller.copyChecklist(free.id, await request(admin, 'copyChecklist'))).accessMode).toBe('free');
+    await controller.updateChecklist(own.id, { accessMode: 'free' }, await request(admin, 'updateChecklist'));
+    expect((await prisma.checklist.findUniqueOrThrow({ where: { id: own.id } })).accessMode).toBe('free');
+  });
+
+  it('PR 366: an employee starts and sees the own free result; analytics of free checklists stay inside the role scope', async () => {
+    const admin = await user(organizationId, ['admin']);
+    const free = await prisma.checklist.create({ data: { organizationId, title: 'Free', status: 'published', accessMode: 'free' } });
+    const other = await user(organizationId, ['learner']);
+    const own = await controller.startFreeChecklist(free.id, await request(learner, 'startFreeChecklist'));
+    await prisma.checklistInstance.update({ where: { id: own.id }, data: { status: 'completed', passed: true, percentage: 90, completedAt: new Date() } });
+    await controller.startFreeChecklist(free.id, await request(other, 'startFreeChecklist'));
+    const foreignFree = await prisma.checklist.create({ data: { organizationId: foreignOrganizationId, title: 'Foreign free', status: 'published', accessMode: 'free' } });
+    await prisma.checklistInstance.create({ data: { organizationId: foreignOrganizationId, checklistId: foreignFree.id, userId: outsider.id } });
+
+    // Row 20: a result is the employee's own; another employee gets 403, the reviewers read it in their scope.
+    expect(await controller.getInstance(own.id, await request(learner, 'getInstance'))).toMatchObject({ id: own.id, status: 'completed' });
+    await expect(controller.getInstance(own.id, await request(other, 'getInstance'))).rejects.toBeInstanceOf(ForbiddenException);
+    expect(await controller.getInstance(own.id, await request(admin, 'getInstance'))).toMatchObject({ id: own.id });
+
+    // Row 19: the whole organization for admin, instructor and mentor; never another tenant; none for an employee.
+    for (const role of ['admin', 'instructor', 'mentor'] as const) {
+      const actor = await user(organizationId, [role]);
+      expect(await controller.getAnalytics({ checklistId: free.id }, await request(actor, 'getAnalytics'))).toMatchObject({ assignmentsTotal: 2, counts: { completed: 1, assigned: 1 } });
+      expect(await controller.getAnalytics({ checklistId: foreignFree.id }, await request(actor, 'getAnalytics'))).toMatchObject({ assignmentsTotal: 0 });
+    }
+    const manager = await user(organizationId, ['manager']);
+    expect(await controller.getAnalytics({ checklistId: free.id }, await request(manager, 'getAnalytics'))).toMatchObject({ assignmentsTotal: 0 });
+    await expect(request(learner, 'getAnalytics')).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('PR 362: an employee cannot build, change the settings or recalculate', async () => {
     for (const handler of ['createChecklist', 'updateWorkplaceSettings', 'recalculateScore'] as const) {
       await expect(request(learner, handler)).rejects.toBeInstanceOf(ForbiddenException);
