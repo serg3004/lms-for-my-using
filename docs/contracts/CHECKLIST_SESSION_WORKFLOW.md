@@ -249,3 +249,13 @@ the report total equals the sessions list and analytics. Old snapshots without l
 default colours. Each colour is returned as `{ color, light: { fill, text }, dark: { fill, text } }`
 with AA-contrast text. When `feedbackVisibility` hides the result from a learner the response carries
 only the header and `visible: false`.
+
+### Report screen (PR 371)
+
+The "Summary" and "Criteria" tabs of `AdminChecklistSessionReportPage` (admin, instructor and mentor
+shells) render only this report: the client never calculates a score, a percentage, a number or a
+colour. Rows are painted with the server's `light` fill and text and a coloured left stripe (inline
+values, no new CSS); every highlighted row also carries a symbol and a text label (full score,
+partial score, no points, skipped, no answer), so colour is not the only carrier of meaning. The
+"Files" and "History" tabs, recalculation, result deletion and the on-behalf location entry keep
+their own requests. After a recalculation the report is refetched.

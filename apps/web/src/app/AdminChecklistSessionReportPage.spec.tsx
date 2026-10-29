@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type {
   ChecklistInstanceSummary,
-  ChecklistItemResultSummary,
   ChecklistScoreRevision,
   ChecklistSessionEvent,
   ChecklistSessionSummary,
@@ -34,6 +33,7 @@ const apiMocks = vi.hoisted(() => ({
   captureChecklistSessionLocation: vi.fn(),
   getChecklistInstance: vi.fn(),
   getChecklistSession: vi.fn(),
+  getChecklistSessionReport: vi.fn(),
   listChecklistScoreRevisions: vi.fn(),
   listChecklistSessionEvents: vi.fn(),
   listChecklistSessionLocationCaptures: vi.fn(),
@@ -43,6 +43,7 @@ vi.mock('../shared/api/checklists.js', () => ({ getChecklistInstance: apiMocks.g
 vi.mock('../shared/api/checklistSessions.js', () => ({
   captureChecklistSessionLocation: apiMocks.captureChecklistSessionLocation,
   getChecklistSession: apiMocks.getChecklistSession,
+  getChecklistSessionReport: apiMocks.getChecklistSessionReport,
   listChecklistScoreRevisions: apiMocks.listChecklistScoreRevisions,
   listChecklistSessionEvents: apiMocks.listChecklistSessionEvents,
   listChecklistSessionLocationCaptures: apiMocks.listChecklistSessionLocationCaptures,
@@ -51,7 +52,6 @@ vi.mock('../shared/api/checklistSessions.js', () => ({
 
 import {
   AdminChecklistSessionReportPage,
-  describeCriterionResult,
   findResultForItem,
   HistoryTab,
   LocationOverrideForm,
@@ -103,25 +103,12 @@ describe('AdminChecklistSessionReportPage', () => {
 });
 
 describe('SessionReportBody', () => {
-  it('renders the summary tab by default with the result/strengths/development-areas KPI cards', () => {
+  it('shows the summary tab by default and loads its content from the server report', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html).toContain('Opening shift checklist');
-    expect(html).toContain('92%');
-    expect(html).toContain('Passed');
-    expect(html).toContain('Great attention to detail');
-  });
-
-  it('renders snapshotted context labels and values in the summary', () => {
-    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
-    const fieldId = '77777777-7777-4777-8777-777777777777';
-    const html = renderToStaticMarkup(<SessionReportBody session={makeSession({
-      contextFieldsSnapshot: [{ id: fieldId, label: 'Store number', type: 'text', required: true, order: 0 }],
-      contextValues: { [fieldId]: 'A-12' },
-    })} onScoreRecalculated={vi.fn()} t={t} />);
-    expect(html).toContain('General information');
-    expect(html).toContain('Store number');
-    expect(html).toContain('A-12');
+    expect(html).toContain('Loading...');
+    expect(html).not.toContain('92%');
   });
 
   it('shows the header subtitle as "date · employee" and a Recalculate button for an admin', () => {
@@ -146,70 +133,6 @@ describe('SessionReportBody', () => {
     const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html).toContain('Leo Learner');
     expect(html).toContain('Olga Observer');
-  });
-
-  it('renders criteria from the loaded instance, marking a completed item', () => {
-    const instance: ChecklistInstanceSummary = {
-      id: 'instance-1', organizationId: 'org-1', checklistId: 'checklist-1', userId: 'learner-1',
-      assignedBy: 'observer-1', reviewerId: null, reviewAssignedAt: null, reviewAssignedBy: null,
-      status: 'completed', totalScore: 10, maxScore: 10, percentage: 100, passed: true,
-      dueAt: null, submittedAt: null, completedAt: '2026-02-01T10:00:00.000Z',
-      createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-02-01T10:00:00.000Z',
-      checklist: {
-        id: 'checklist-1', organizationId: 'org-1', title: 'Opening shift checklist', description: null,
-        status: 'published', scoringMode: 'sum_points', passThreshold: 80, scaleLevels: null, requiresReview: false,
-        createdBy: 'admin-1', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
-        items: [{ id: 'item-1', checklistId: 'checklist-1', order: 1, text: 'Turn on the lights', points: 10, isRequired: true, photoRequired: false }],
-      },
-      results: [{ id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10, photoUrl: null, photoFileName: null, comment: 'Done well', reviewStatus: 'approved', reviewComment: null, reviewedBy: null, reviewedAt: null }],
-    };
-    reactMocks.useState.mockImplementation((initial: unknown) => {
-      if (initial === 'summary') return ['criteria', vi.fn()];
-      if (typeof initial === 'object' && initial !== null && 'status' in (initial as object)) return [{ status: 'loaded', data: instance }, vi.fn()];
-      return [initial, vi.fn()];
-    });
-    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
-    expect(html).toContain('Turn on the lights');
-    expect(html).toContain('Done well');
-    expect(html).toContain('Done (10)');
-  });
-});
-
-describe('describeCriterionResult', () => {
-  function makeResult(overrides: Partial<ChecklistItemResultSummary> = {}): ChecklistItemResultSummary {
-    return {
-      id: 'result-1', itemId: 'item-1', checked: true, scaleLevel: null, points: 10,
-      photoUrl: null, photoFileName: null, comment: null,
-      reviewStatus: 'approved', reviewComment: null, reviewedBy: null, reviewedAt: null,
-      answerState: 'answered',
-      ...overrides,
-    };
-  }
-
-  it('treats a missing result row as skipped', () => {
-    expect(describeCriterionResult('sum_points', null, undefined)).toEqual({ kind: 'skipped' });
-  });
-
-  it('treats an explicit skip (answerState) as skipped even if a stray checked value is present', () => {
-    expect(describeCriterionResult('sum_points', null, makeResult({ answerState: 'skipped', checked: true }))).toEqual({ kind: 'skipped' });
-  });
-
-  it('reports an explicit "not done" for an answered-but-unchecked sum_points/all_required item', () => {
-    expect(describeCriterionResult('sum_points', null, makeResult({ checked: false }))).toEqual({ kind: 'notDone' });
-    expect(describeCriterionResult('all_required', null, makeResult({ checked: false }))).toEqual({ kind: 'notDone' });
-  });
-
-  it('reports done with the points for a checked sum_points item', () => {
-    expect(describeCriterionResult('sum_points', null, makeResult({ checked: true, points: 10 }))).toEqual({ kind: 'done', detail: '10' });
-  });
-
-  it('reports done with the scale level label+points for a scale item', () => {
-    const scaleLevels = [{ level: 3, label: 'Good', description: undefined, points: 6 }];
-    expect(describeCriterionResult('scale', scaleLevels, makeResult({ checked: false, scaleLevel: 3 }))).toEqual({ kind: 'done', detail: 'Good (6)' });
-  });
-
-  it('treats an unanswered scale item (no scaleLevel) as skipped', () => {
-    expect(describeCriterionResult('scale', null, makeResult({ scaleLevel: null }))).toEqual({ kind: 'skipped' });
   });
 });
 

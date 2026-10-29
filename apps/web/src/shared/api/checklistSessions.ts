@@ -7,6 +7,7 @@ import type {
   ChecklistLocationCapturePoint,
   ChecklistScoreRevision,
   ChecklistSession,
+  ChecklistSessionReport,
   ChecklistSessionAction,
   ChecklistSessionEvent,
   ChecklistSessionParticipant,
@@ -52,6 +53,11 @@ export function exportChecklistSessions(query: Omit<ChecklistSessionQuery, 'page
 
 export function getChecklistSession(sessionId: string) {
   return apiRequest<ChecklistSessionSummary>(`/checklist-sessions/${encodeURIComponent(sessionId)}`);
+}
+
+/** PR 371: the one server-built report behind the summary and criteria tabs. */
+export function getChecklistSessionReport(sessionId: string) {
+  return apiRequest<ChecklistSessionReport>(`/checklist-sessions/${encodeURIComponent(sessionId)}/report`);
 }
 
 export function createChecklistSession(input: CreateChecklistSessionInput) {

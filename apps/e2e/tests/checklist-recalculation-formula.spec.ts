@@ -1,6 +1,21 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import type { ChecklistSessionSummary } from '../../web/src/shared/api/types.js';
+import { sessionReportFixture } from '../fixtures/session-report.js';
+
+function sessionSummary(percentage: number): ChecklistSessionSummary {
+  return {
+    id: 'session-1', organizationId: 'org-1', instanceId: 'instance-1', observerId: 'observer-1', status: 'completed', version: 3,
+    scheduledAt: null, durationMinutes: null, startedAt: null, pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
+    strengths: null, developmentAreas: null, nextSteps: null, observerUnavailableReason: null, observerUnavailableAt: null,
+    createdAt: '2026-10-25T08:00:00.000Z', updatedAt: '2026-10-25T08:00:00.000Z',
+    checklist: { id: 'checklist-1', title: 'Unequal criteria' }, learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
+    observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
+    result: { instanceStatus: 'completed', percentage, passed: percentage >= 80, scored: true, visible: true },
+  };
+}
+
 async function report(page: Page, failFirst = false) {
   const calls: Array<{ reason: string; formula: string; idempotencyKey: string }> = [];
   const revisions: Array<Record<string, unknown>> = [];
@@ -25,15 +40,8 @@ async function report(page: Page, failFirst = false) {
     }
     if (path.endsWith('/score-revisions')) return route.fulfill({ json: revisions });
     if (path.endsWith('/events') || path.endsWith('/location')) return route.fulfill({ json: [] });
-    if (path === '/checklist-sessions/session-1') return route.fulfill({ json: {
-      id: 'session-1', organizationId: 'org-1', instanceId: 'instance-1', observerId: 'observer-1', status: 'completed', version: 3,
-      scheduledAt: null, durationMinutes: null, startedAt: null, pausedAt: null, locationCapturePolicy: 'off', timezone: 'UTC', overdue: false,
-      strengths: null, developmentAreas: null, nextSteps: null, observerUnavailableReason: null, observerUnavailableAt: null,
-      createdAt: '2026-10-25T08:00:00.000Z', updatedAt: '2026-10-25T08:00:00.000Z',
-      checklist: { id: 'checklist-1', title: 'Unequal criteria' }, learner: { id: 'learner-1', firstName: 'Leo', lastName: 'Learner', email: 'learner@example.invalid' },
-      observer: { id: 'observer-1', firstName: 'Olga', lastName: 'Observer', email: 'observer@example.invalid' },
-      result: { instanceStatus: 'completed', percentage, passed: percentage >= 80, scored: true, visible: true },
-    } });
+    if (path === '/checklist-sessions/session-1/report') return route.fulfill({ json: sessionReportFixture(sessionSummary(percentage)) });
+    if (path === '/checklist-sessions/session-1') return route.fulfill({ json: sessionSummary(percentage) });
     if (path === '/checklist-instances/instance-1') return route.fulfill({ json: {
       id: 'instance-1', organizationId: 'org-1', checklistId: 'checklist-1', userId: 'learner-1', status: 'completed',
       percentage, passed: percentage >= 80, totalScore: 180, maxScore: 190, scored: true, results: [],

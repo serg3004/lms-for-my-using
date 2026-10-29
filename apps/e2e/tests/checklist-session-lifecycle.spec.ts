@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
+import { sessionReportFixture } from '../fixtures/session-report.js';
 
 // PR 307: end-to-end coverage for the checklist workplace-training session module (PR 285-306).
 // Real login against the seeded demo org (matching checklist-review-workflow.spec.ts's pattern),
@@ -205,6 +206,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       if (route.request().method() !== 'GET') return route.fallback();
       return route.fulfill({ json: session });
     });
+    await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/report`, (route) => route.fulfill({ json: sessionReportFixture(session) }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/events`, (route) => route.fulfill({ json: events }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/score-revisions`, (route) => route.fulfill({ json: revisions }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/location`, (route) => route.fulfill({
@@ -411,7 +413,8 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
     await test.step('admin opens the session report (#11)', async () => {
       await adminPage.goto(`/admin/checklists/sessions/${sessionId}`);
       await expect(adminPage.getByRole('heading', { name: 'Opening shift checklist' })).toBeVisible();
-      await expect(adminPage.getByText(`${session.result.percentage}%`)).toBeVisible();
+      // PR 371: the headline percentage is the arc label; the "N% — x of y points" line is a different text node.
+      await expect(adminPage.getByText(`${session.result.percentage}%`, { exact: true })).toBeVisible();
     });
 
     await test.step('admin recalculates the score from the header dialog, creating a new revision (#12)', async () => {
