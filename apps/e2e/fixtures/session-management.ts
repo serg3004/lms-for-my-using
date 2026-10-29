@@ -82,6 +82,10 @@ export async function openManagementEdit(page: Page) {
   await page.getByRole('menuitem', { name: 'Изменить время или наблюдателя', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Редактирование сессии', exact: true });
   await expect(dialog.getByLabel('Время проведения', { exact: true })).toHaveValue('2026-11-10T09:00');
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+  // Row actions scroll the page into view. Reset that scroll before a full-page
+  // capture so fixed off-viewport skip links cannot leak into the image.
+  await page.evaluate(() => window.scrollTo(0, 0));
   return dialog;
 }
 
@@ -89,6 +93,8 @@ export async function openManagementWizard(page: Page) {
   await page.getByRole('button', { name: /Новая сессия/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая сессия', exact: true });
   await expect(dialog.getByRole('checkbox', { name: /Алексей Сотрудников/ })).toBeVisible();
+  await expect(dialog.locator(':focus')).toHaveCount(1);
+  await page.evaluate(() => window.scrollTo(0, 0));
   return dialog;
 }
 
