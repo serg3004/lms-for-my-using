@@ -929,6 +929,11 @@ export class ChecklistSessionService {
         await this.checklistsService.finishIncompleteInstance(session.instanceId, organizationId);
       }
 
+      // PR 369: a session that has not started yet picks up the current levels of edited scales.
+      if (action === 'start') {
+        await this.checklistsService.refreshScaleSnapshot(session.instanceId, organizationId);
+      }
+
       const contextFieldsSnapshot = action === 'start' ? contextFieldsFromSessionStart(session) : undefined;
 
       const now = new Date();

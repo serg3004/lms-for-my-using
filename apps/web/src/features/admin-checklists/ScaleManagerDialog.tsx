@@ -19,22 +19,26 @@ import {
   type ScaleLevelDraft,
 } from './domain.js';
 
+const SCALE_NAME_MAX = 255;
+
 type EditorState = {
   /** null while creating a new scale. */
   scaleId: string | null;
-  /** The scale is used by an assigned checklist, archived or the default one: shown read-only, "Make a copy" is the way to change it. */
+  /** The scale is archived or the default one: shown read-only, "Make a copy" is the way to change it. */
   readOnly: boolean;
   isDefault: boolean;
+  /** PR 369: used by assigned checklists -- still editable, with a warning. */
+  inUse: boolean;
   name: string;
   levels: ScaleLevelDraft[];
 };
 
 function newEditor(): EditorState {
-  return { scaleId: null, readOnly: false, isDefault: false, name: '', levels: newScaleLevelDrafts() };
+  return { scaleId: null, readOnly: false, isDefault: false, inUse: false, name: '', levels: newScaleLevelDrafts() };
 }
 
 function editorFor(scale: ChecklistScaleSummary): EditorState {
-  return { scaleId: scale.id, readOnly: scale.isDefault || scale.inUse || scale.status === 'archived', isDefault: scale.isDefault, name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
+  return { scaleId: scale.id, readOnly: scale.isDefault || scale.status === 'archived', isDefault: scale.isDefault, inUse: scale.inUse, name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
 }
 
 function draftErrorText(error: ScaleDraftError, t: TFunction) {
@@ -55,8 +59,9 @@ function draftErrorText(error: ScaleDraftError, t: TFunction) {
 /**
  * "Оценочные шкалы" -- a secondary/contextual dialog reached from the builder (not a top-level
  * nav item): a list of scales with archive and (unused scales only) delete, and (PR 343) a full
- * editor for the name and the levels (name + points each). A scale already used by an assigned
- * checklist is read-only -- the server refuses to change it -- and offers "Make a copy" instead.
+ * editor for the name and the levels (name + points each). A scale used by assigned checklists
+ * stays editable (PR 369, with a warning); the default and archived scales are read-only and offer
+ * "Make a copy" instead.
  * `startCreating` opens the editor for a new scale straight away (the builder's "Create scale"
  * option); `onSaved` hands the saved scale back to the caller.
  */
@@ -170,17 +175,23 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
           <p className="admin-form__hint" role="note">
             {editor.isDefault
               ? t('admin.checklists.scaleManager.defaultNote', 'This is the default scale and cannot be changed. Make a copy and edit the copy.')
-              : t('admin.checklists.scaleManager.readOnlyNote', 'This scale is already used by an assigned checklist, so it cannot be changed. Make a copy and edit the copy.')}
+              : t('admin.checklists.scaleManager.readOnlyNote', 'This scale is archived and cannot be changed. Make a copy and edit the copy.')}
+          </p>
+        )}
+        {editor.inUse && !editor.readOnly && (
+          <p className="admin-form__hint" role="note">
+            {t('admin.checklists.scaleManager.usedWarning', 'This scale is already used in observation sheets. The updated scale will be used for sessions that have not started yet; the rest stay unchanged.')}
           </p>
         )}
         {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
         <Input
           disabled={editor.readOnly}
           label={t('admin.checklists.scaleManager.name', 'Scale name')}
-          maxLength={120}
+          maxLength={SCALE_NAME_MAX}
           onChange={(e) => setEditor({ ...editor, name: e.target.value })}
           value={editor.name}
         />
+        <p aria-live="off" className="admin-form__hint">{editor.name.length}/{SCALE_NAME_MAX}</p>
         <h3>{t('admin.checklists.scaleManager.levels', 'Levels')}</h3>
         <ol className="admin-checklist-instances">
           {editor.levels.map((level, index) => {
@@ -286,8 +297,8 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
                 {scale.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived', 'Archived')}` : ''}
               </span>
             </div>
-            <Button aria-label={`${scale.isDefault || scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}: ${scale.name}`} onClick={() => setEditor(editorFor(scale))} type="button" variant="secondary">
-              {scale.isDefault || scale.inUse || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}
+            <Button aria-label={`${scale.isDefault || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}: ${scale.name}`} onClick={() => setEditor(editorFor(scale))} type="button" variant="secondary">
+              {scale.isDefault || scale.status === 'archived' ? t('admin.checklists.scaleManager.view', 'View') : t('admin.checklists.scaleManager.edit', 'Edit')}
             </Button>
             {!scale.isDefault && scale.status !== 'archived' && (
               <Button onClick={() => void archiveScale(scale.id)} type="button" variant="secondary">

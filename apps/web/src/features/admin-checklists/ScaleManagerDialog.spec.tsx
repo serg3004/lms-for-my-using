@@ -123,12 +123,32 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
     });
   });
 
-  it('shows an in-use scale read-only and makes an editable copy instead of saving it', async () => {
+  it('PR 369: edits an in-use scale after a warning and saves it', async () => {
     api.listChecklistScales.mockResolvedValue([scale({ inUse: true })]);
-    api.copyChecklistScale.mockResolvedValue(scale({ id: 's2', name: 'Quality (копия)' }));
+    api.updateChecklistScale.mockResolvedValue(scale({ name: 'Quality 2', inUse: true }));
     const { container } = await mount();
 
     expect(container.textContent).toContain('Используется');
+    await act(async () => { byText(container, 'Изменить')?.click(); });
+    expect(container.textContent).toContain('Эта шкала уже используется в листах наблюдения');
+    expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(false);
+    expect(container.textContent).toContain('7/255');
+    expect(byText(container, 'Сделать копию')).toBeUndefined();
+
+    await act(async () => { setValue(byLabel(container, 'Баллы уровня 2') as HTMLInputElement, '80'); });
+    await act(async () => { byText(container, 'Сохранить')?.click(); });
+
+    expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
+      name: 'Quality',
+      levels: [{ value: 1, label: 'Low', score: 0 }, { value: 2, label: 'High', score: 80 }],
+    });
+  });
+
+  it('shows an archived scale read-only and makes an editable copy instead of saving it', async () => {
+    api.listChecklistScales.mockResolvedValue([scale({ status: 'archived' })]);
+    api.copyChecklistScale.mockResolvedValue(scale({ id: 's2', name: 'Quality (копия)' }));
+    const { container } = await mount();
+
     await act(async () => { byText(container, 'Просмотр')?.click(); });
     expect(byLabel(container, 'Название уровня 1')?.disabled).toBe(true);
     expect(byText(container, 'Сохранить')).toBeUndefined();

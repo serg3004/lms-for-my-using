@@ -115,11 +115,15 @@ function createPrisma(overrides: {
   return base as unknown as PrismaService;
 }
 
+function fakeChecklists() {
+  return { refreshScaleSnapshot: jest.fn(async () => undefined) } as never;
+}
+
 describe('ChecklistSessionService', () => {
   describe('create', () => {
     it('creates a session and records a "created" event', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.create(organizationId, { instanceId, observerId }, actorId);
 
@@ -134,7 +138,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects an observer who is not eligible', async () => {
       const prisma = createPrisma({ user: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.create(organizationId, { instanceId, observerId }, actorId)).rejects.toBeInstanceOf(
         BadRequestException,
@@ -143,7 +147,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects a session for an instance that does not exist in this tenant', async () => {
       const prisma = createPrisma({ checklistInstance: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.create(organizationId, { instanceId, observerId }, actorId)).rejects.toBeInstanceOf(
         NotFoundException,
@@ -159,7 +163,7 @@ describe('ChecklistSessionService', () => {
           }),
         },
       });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.create(organizationId, { instanceId, observerId }, actorId)).rejects.toBeInstanceOf(
         ConflictException,
@@ -176,7 +180,7 @@ describe('ChecklistSessionService', () => {
         checklistSession: { create: jest.fn(async () => { throw conflict; }) },
         checklistIdempotencyKey: { findUnique: lookup },
       });
-      const operation = new ChecklistSessionService(prisma).create(organizationId, { instanceId, observerId, idempotencyKey: 'racing-key' }, actorId);
+      const operation = new ChecklistSessionService(prisma, fakeChecklists()).create(organizationId, { instanceId, observerId, idempotencyKey: 'racing-key' }, actorId);
       if (matches) await expect(operation).resolves.toEqual(cachedResponse);
       else await expect(operation).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.auditLog.create).not.toHaveBeenCalled();
@@ -188,7 +192,7 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({
         checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: cachedResponse })) },
       });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.create(organizationId, { instanceId, observerId, idempotencyKey: 'retry-key-1' }, actorId);
 
@@ -200,14 +204,14 @@ describe('ChecklistSessionService', () => {
       const prisma = createPrisma({ checklistIdempotencyKey: {
         findUnique: jest.fn(async () => ({ responseBody: { ...baseSession(), observerId: 'other-observer' } })),
       } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       await expect(service.create(organizationId, { instanceId, observerId, idempotencyKey: 'known-key' }, actorId)).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.create).not.toHaveBeenCalled();
     });
 
     it('stores the response under the given idempotencyKey on a fresh (first) create', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.create(organizationId, { instanceId, observerId, idempotencyKey: 'retry-key-2' }, actorId);
 
@@ -222,7 +226,7 @@ describe('ChecklistSessionService', () => {
   describe('transition', () => {
     it('starts a scheduled session and records a "started" event with startedAt set', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.transition(sessionId, organizationId, 'start', 1, observerId, {});
 
@@ -239,7 +243,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects an invalid transition (e.g. completing a scheduled session) as a 400, not a 409', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'scheduled' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
@@ -249,7 +253,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects a stale version with 409 before attempting the write', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'start', 1, observerId, {})).rejects.toBeInstanceOf(
         ConflictException,
@@ -259,7 +263,7 @@ describe('ChecklistSessionService', () => {
 
     it('treats a lost race on the conditional update itself as a stale write (409)', async () => {
       const prisma = createPrisma({ checklistSession: { updateMany: jest.fn(async () => ({ count: 0 })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'start', 1, observerId, {})).rejects.toBeInstanceOf(
         ConflictException,
@@ -269,7 +273,7 @@ describe('ChecklistSessionService', () => {
 
     it('throws 404 when the session is outside the caller scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.transition(sessionId, organizationId, 'start', 1, observerId, { observerId: 'someone-else' }),
@@ -279,7 +283,7 @@ describe('ChecklistSessionService', () => {
     it('pauses an in-progress session, resumes it, then completes it — the full lifecycle', async () => {
       let status = 'in_progress';
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status })) } });
-      const checklistsService = { finishIncompleteInstance: jest.fn(async () => undefined) };
+      const checklistsService = { finishIncompleteInstance: jest.fn(async () => undefined), refreshScaleSnapshot: jest.fn(async () => undefined) };
       const service = new ChecklistSessionService(prisma, checklistsService as unknown as ChecklistsService);
 
       await service.transition(sessionId, organizationId, 'pause', 1, observerId, {});
@@ -305,7 +309,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects completing a paused session directly (must resume first, per the ADR diagram)', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
@@ -323,7 +327,7 @@ describe('ChecklistSessionService', () => {
           })),
         },
       });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -334,7 +338,7 @@ describe('ChecklistSessionService', () => {
       const missing = createPrisma({
         checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance, strengths: 'Good', developmentAreas: ' ' })) },
       });
-      await expect(new ChecklistSessionService(missing).transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
+      await expect(new ChecklistSessionService(missing, fakeChecklists()).transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
         UnprocessableEntityException,
       );
       expect(missing.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -342,21 +346,21 @@ describe('ChecklistSessionService', () => {
       const filled = createPrisma({
         checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance, strengths: 'Good', developmentAreas: 'Tidy up' })) },
       });
-      await new ChecklistSessionService(filled, { finishIncompleteInstance: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
+      await new ChecklistSessionService(filled, { finishIncompleteInstance: jest.fn(async () => undefined), refreshScaleSnapshot: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
       expect(filled.checklistSession.updateMany).toHaveBeenCalled();
     });
 
     it('does not require feedback on older snapshots or when the section is off (PR 368)', async () => {
       for (const instance of [{ templateSnapshot: { checklist: {} } }, { templateSnapshot: { checklist: { feedbackEnabled: false, feedbackRequired: true } } }]) {
         const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance })) } });
-        await new ChecklistSessionService(prisma, { finishIncompleteInstance: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
+        await new ChecklistSessionService(prisma, { finishIncompleteInstance: jest.fn(async () => undefined), refreshScaleSnapshot: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
         expect(prisma.checklistSession.updateMany).toHaveBeenCalled();
       }
     });
 
     it('only allows cancel from scheduled', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.transition(sessionId, organizationId, 'cancel', 1, observerId, {})).rejects.toBeInstanceOf(
         BadRequestException,
@@ -371,7 +375,7 @@ describe('ChecklistSessionService', () => {
         checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) },
         checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: cachedResponse })) },
       });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.transition(sessionId, organizationId, 'start', 1, observerId, {}, 'retry-key-3');
 
@@ -385,19 +389,19 @@ describe('ChecklistSessionService', () => {
         checklistSession: { findFirst: jest.fn(async () => null) },
         checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: sessionId, status: 'in_progress' } })) },
       });
-      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, observerId, { observerId: observerId }, 'old-key')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(new ChecklistSessionService(prisma, fakeChecklists()).transition(sessionId, organizationId, 'start', 1, observerId, { observerId: observerId }, 'old-key')).rejects.toBeInstanceOf(NotFoundException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
     it('rejects a transition key already used for another session (PR 349)', async () => {
       const prisma = createPrisma({ checklistIdempotencyKey: { findUnique: jest.fn(async () => ({ responseBody: { id: 'other-session', status: 'in_progress' } })) } });
-      await expect(new ChecklistSessionService(prisma).transition(sessionId, organizationId, 'start', 1, observerId, {}, 'shared-key')).rejects.toBeInstanceOf(ConflictException);
+      await expect(new ChecklistSessionService(prisma, fakeChecklists()).transition(sessionId, organizationId, 'start', 1, observerId, {}, 'shared-key')).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
     });
 
     it('stores the response under the given idempotencyKey on a fresh (first) transition', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.transition(sessionId, organizationId, 'start', 1, observerId, {}, 'retry-key-4');
 
@@ -412,7 +416,7 @@ describe('ChecklistSessionService', () => {
   describe('update', () => {
     it('rejects rescheduling once the session has left "scheduled"', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.update(sessionId, organizationId, { version: 1, scheduledAt: null }, actorId, {}),
@@ -422,7 +426,7 @@ describe('ChecklistSessionService', () => {
     it('records both "rescheduled" and "observer_reassigned" when the observer changes', async () => {
       const newObserverId = '66666666-6666-6666-6666-666666666666';
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.update(sessionId, organizationId, { version: 1, observerId: newObserverId }, actorId, {});
 
@@ -436,7 +440,7 @@ describe('ChecklistSessionService', () => {
     it('clears any observer-unavailable flag when the observer changes (PR 302)', async () => {
       const newObserverId = '66666666-6666-6666-6666-666666666666';
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.update(sessionId, organizationId, { version: 1, observerId: newObserverId }, actorId, {});
 
@@ -449,7 +453,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects reassigning to the same observer instead of silently no-op-clearing an unavailable flag (review fix)', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.update(sessionId, organizationId, { version: 1, observerId }, actorId, {}),
@@ -462,7 +466,7 @@ describe('ChecklistSessionService', () => {
   describe('markObserverUnavailable (PR 302)', () => {
     it('records the reason, creates an "observer_marked_unavailable" event, and notifies every org admin', async () => {
       const prisma = createPrisma({ membership: { findMany: jest.fn(async () => [{ userId: 'admin-1' }, { userId: 'admin-2' }]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, observerId, {});
 
@@ -486,7 +490,7 @@ describe('ChecklistSessionService', () => {
 
     it('never notifies (skips the createMany call) when the org has no admins', async () => {
       const prisma = createPrisma({ membership: { findMany: jest.fn(async () => []) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.markObserverUnavailable(sessionId, organizationId, 'Out sick', 1, observerId, {});
 
@@ -495,7 +499,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects marking unavailable once the session has left "scheduled"', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -503,7 +507,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects a stale version as a conflict before writing', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ version: 2 })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, {})).rejects.toBeInstanceOf(ConflictException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
@@ -511,7 +515,7 @@ describe('ChecklistSessionService', () => {
 
     it('throws 404 when the session is outside the caller scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.markObserverUnavailable(sessionId, organizationId, 'reason', 1, observerId, { observerId: 'someone-else' }),
@@ -522,7 +526,7 @@ describe('ChecklistSessionService', () => {
   describe('submitFeedback (PR 297)', () => {
     it('rejects feedback while the session is still scheduled', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.submitFeedback(sessionId, organizationId, { strengths: 'Great', version: 1 }, observerId, {}),
@@ -531,7 +535,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects feedback once the session is cancelled', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'cancelled' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.submitFeedback(sessionId, organizationId, { nextSteps: 'Retry', version: 1 }, observerId, {}),
@@ -540,7 +544,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects a stale version as a conflict before writing', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', version: 3 })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.submitFeedback(sessionId, organizationId, { strengths: 'Stale', version: 1 }, observerId, {}),
@@ -550,7 +554,7 @@ describe('ChecklistSessionService', () => {
 
     it('throws 404 when the session is outside the caller scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.submitFeedback(sessionId, organizationId, { strengths: 'x', version: 1 }, observerId, {}),
@@ -559,7 +563,7 @@ describe('ChecklistSessionService', () => {
 
     it('writes only the provided fields and records a feedback_updated event', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.submitFeedback(sessionId, organizationId, { developmentAreas: 'Practice more', version: 1 }, observerId, {});
 
@@ -582,7 +586,7 @@ describe('ChecklistSessionService', () => {
 
     it('saves a valid value with optimistic concurrency', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', contextFieldsSnapshot: fields })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {}, observerId);
 
@@ -594,7 +598,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects unknown fields, invalid dates, and stale versions', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused', version: 2, contextFieldsSnapshot: fields })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '27/09/2026' }, version: 2 }, {}, observerId)).rejects.toBeInstanceOf(BadRequestException);
       await expect(service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27' }, version: 1 }, {}, observerId)).rejects.toBeInstanceOf(ConflictException);
@@ -606,7 +610,7 @@ describe('ChecklistSessionService', () => {
   describe('list', () => {
     it('filters to overdue-only when requested', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.list(organizationId, { overdueOnly: 'true', page: 1, pageSize: 25 }, {}, adminViewer);
 
@@ -620,7 +624,7 @@ describe('ChecklistSessionService', () => {
   describe('captureLocation', () => {
     it('rejects capture when the session policy is "off"', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'off' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
@@ -630,7 +634,7 @@ describe('ChecklistSessionService', () => {
 
     it('records a capture submitted by the assigned observer without requiring an override reason', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 51.1, longitude: 71.4 }, observerId, {});
 
@@ -642,7 +646,7 @@ describe('ChecklistSessionService', () => {
 
     it('rejects non-observer captures without admin standing, even with a reason and a broad scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       await expect(service.captureLocation(sessionId, organizationId, 'end', {
         status: 'unavailable', overrideReason: 'Administrative override',
       }, '66666666-6666-6666-6666-666666666666', {})).rejects.toBeInstanceOf(NotFoundException);
@@ -652,7 +656,7 @@ describe('ChecklistSessionService', () => {
 
     it('requires a reason when an admin captures for another observer', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ locationCapturePolicy: 'required' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       await expect(service.captureLocation(sessionId, organizationId, 'end', { status: 'unavailable' },
         '66666666-6666-6666-6666-666666666666', {}, true)).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistLocationCapture.create).not.toHaveBeenCalled();
@@ -693,7 +697,7 @@ describe('ChecklistSessionService', () => {
           }),
         },
       });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
@@ -702,7 +706,7 @@ describe('ChecklistSessionService', () => {
 
     it('throws 404 when the session is outside the caller scope', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => null) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(
         service.captureLocation(sessionId, organizationId, 'start', { status: 'captured', latitude: 1, longitude: 1 }, observerId, {}),
@@ -726,7 +730,7 @@ describe('ChecklistSessionService', () => {
 
     it('returns full coordinates to the assigned observer', async () => {
       const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.listLocationCaptures(sessionId, organizationId, {}, observerId, false);
 
@@ -735,7 +739,7 @@ describe('ChecklistSessionService', () => {
 
     it('returns full coordinates to an admin', async () => {
       const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.listLocationCaptures(sessionId, organizationId, {}, 'someone-else', true);
 
@@ -803,7 +807,7 @@ describe('ChecklistSessionService', () => {
 
     it('redacts coordinates for everyone else (privacy-safe projection)', async () => {
       const prisma = createPrisma({ checklistLocationCapture: { findMany: jest.fn(async () => [rawCapture]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.listLocationCaptures(sessionId, organizationId, {}, 'a-manager', false);
 
@@ -819,7 +823,7 @@ describe('ChecklistSessionService', () => {
       const scheduledAt = new Date('2026-10-01T12:00:00.000Z');
       const created = baseSession({ scheduledAt });
       const prisma = createPrisma({ checklistSession: { create: jest.fn(async () => created) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.create(organizationId, { instanceId, observerId, scheduledAt: scheduledAt.toISOString() }, actorId);
 
@@ -836,7 +840,7 @@ describe('ChecklistSessionService', () => {
 
     it('creates no reminder on create when no scheduledAt is given', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.create(organizationId, { instanceId, observerId }, actorId);
 
@@ -847,7 +851,7 @@ describe('ChecklistSessionService', () => {
     it('moves the pre_start reminder when the session is rescheduled', async () => {
       const newScheduledAt = new Date('2026-11-01T09:00:00.000Z');
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.update(sessionId, organizationId, { version: 1, scheduledAt: newScheduledAt.toISOString() }, observerId, {});
 
@@ -862,7 +866,7 @@ describe('ChecklistSessionService', () => {
 
     it('suppresses the pre_start reminder when the schedule is cleared on reschedule', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.update(sessionId, organizationId, { version: 1, scheduledAt: null }, observerId, {});
 
@@ -876,7 +880,7 @@ describe('ChecklistSessionService', () => {
 
     it('creates an incomplete_after_start reminder exactly once, on start', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.transition(sessionId, organizationId, 'start', 1, observerId, {});
 
@@ -900,7 +904,7 @@ describe('ChecklistSessionService', () => {
 
     it('suppresses pending reminders when a session is cancelled', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.transition(sessionId, organizationId, 'cancel', 1, observerId, {});
 
@@ -911,7 +915,7 @@ describe('ChecklistSessionService', () => {
 
     it('does not touch reminders on pause/resume (only start/complete/cancel do)', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress' })) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.transition(sessionId, organizationId, 'pause', 1, observerId, {});
 
@@ -1081,7 +1085,7 @@ describe('ChecklistSessionService', () => {
   describe('listParticipants (PR 292)', () => {
     it('applies default observer roles independently of learner scope', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.listParticipants(organizationId, { role: 'observer', page: 1, pageSize: 25 }, { id: { in: ['some-learner'] } });
 
@@ -1096,7 +1100,7 @@ describe('ChecklistSessionService', () => {
 
     it('applies the learner scope for a learner lookup', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const learnerScope = { id: { in: ['team-member-1'] } };
 
       await service.listParticipants(organizationId, { role: 'learner', page: 1, pageSize: 25 }, learnerScope);
@@ -1108,7 +1112,7 @@ describe('ChecklistSessionService', () => {
 
     it('applies a search filter across name/email', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await service.listParticipants(organizationId, { role: 'learner', search: 'ivan', page: 1, pageSize: 25 }, {});
 
@@ -1141,7 +1145,7 @@ describe('ChecklistSessionService', () => {
 
     it('projects checklist/learner/observer/result onto each list item', async () => {
       const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => [projectedSession]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {}, adminViewer);
 
@@ -1155,7 +1159,7 @@ describe('ChecklistSessionService', () => {
 
     it('projects the same shape onto a single get()', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => projectedSession) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       const result = await service.get(sessionId, organizationId, {}, adminViewer);
 
@@ -1187,7 +1191,7 @@ describe('ChecklistSessionService', () => {
 
     it('masks the score and structured feedback for the learner while after_completion and not yet completed', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('in_progress')) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'after_completion' as const };
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
@@ -1200,7 +1204,7 @@ describe('ChecklistSessionService', () => {
 
     it('reveals the score and feedback for the learner once the instance is completed', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('completed')) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'after_completion' as const };
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
@@ -1211,7 +1215,7 @@ describe('ChecklistSessionService', () => {
 
     it('never masks under the live policy, even mid-session', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('in_progress')) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'live' as const };
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
@@ -1222,7 +1226,7 @@ describe('ChecklistSessionService', () => {
 
     it('never masks for a non-learner caller (admin/manager/instructor), regardless of policy', async () => {
       const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => [sessionWithStatus('in_progress')]) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const staffViewer = { isLearnerOnly: false, feedbackVisibility: 'after_completion' as const };
 
       const result = await service.list(organizationId, { page: 1, pageSize: 25 }, {}, staffViewer);
@@ -1235,7 +1239,7 @@ describe('ChecklistSessionService', () => {
   describe('list() combines the caller scope with checklistId/learnerId filters (PR 292 review fix)', () => {
     it('ANDs a manager\'s effective-team `instance` scope with a checklistId/learnerId filter instead of overwriting it', async () => {
       const prisma = createPrisma();
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
       const managerScope = { instance: { user: { id: { in: ['team-member-1'] } } } };
 
       await service.list(organizationId, { checklistId: 'checklist-1', learnerId: 'outside-team-user', page: 1, pageSize: 25 }, managerScope, adminViewer);
@@ -1446,7 +1450,7 @@ describe('ChecklistSessionService', () => {
   describe('exportCsv (PR 336)', () => {
     it('rejects an export above the row cap instead of truncating it silently', async () => {
       const prisma = createPrisma({ checklistSession: { findMany: jest.fn(async () => Array.from({ length: 5001 }, () => ({}))) } });
-      const service = new ChecklistSessionService(prisma);
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
 
       await expect(service.exportCsv(organizationId, { page: 1, pageSize: 25, sort: 'scheduled' }, {}, { id: actorId, locale: 'en' })).rejects.toBeInstanceOf(BadRequestException);
     });
