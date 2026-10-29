@@ -635,6 +635,60 @@ export type ChecklistSessionSummary = {
   result: { instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
 };
 
+/** PR 370/371: colours arrive ready from the server; the client never derives them. */
+export type ChecklistReportHighlight = {
+  color: string;
+  light: { fill: string; text: string };
+  dark: { fill: string; text: string };
+};
+
+export type ChecklistReportPerson = {
+  id: string; firstName: string; lastName: string; email: string;
+  department: { id: string; name: string } | null;
+};
+
+export type ChecklistSessionReport = {
+  sessionId: string;
+  instanceId: string;
+  checklist: { id: string; title: string };
+  visible: boolean;
+  header: {
+    status: ChecklistSessionStatus;
+    timezone: string;
+    scheduledStart: string | null;
+    scheduledEnd: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    learner: ChecklistReportPerson;
+    observer: ChecklistReportPerson;
+  };
+  generalInfo: Array<{ id: string; label: string; type: string; value: string | null }>;
+  summary: null | {
+    scored: boolean;
+    percentage: number | null;
+    totalScore: number;
+    maxScore: number;
+    criteriaCount: number;
+    answeredCount: number;
+    skippedCount: number;
+    passed: boolean | null;
+    passThreshold: number | null;
+    formula: ChecklistScoreFormula;
+    color: ChecklistReportHighlight | null;
+  };
+  groups: Array<{
+    id: string | null; number: string; title: string; score: number; maxScore: number;
+    percentage: number | null; criteriaCount: number; color: ChecklistReportHighlight | null;
+  }>;
+  criteria: Array<{
+    id: string; number: string; groupId: string | null; text: string; state: 'answered' | 'skipped' | 'unanswered' | string;
+    score: number | null; maxScore: number | null; levelLabel: string | null; comment: string | null;
+    photo: { fileName: string | null } | null; reviewStatus: string | null; color: ChecklistReportHighlight | null;
+  }>;
+  feedback: null | { strengths: string | null; developmentAreas: string | null; comment: string | null };
+  location: { policy: ChecklistGeolocationPolicy; captures: Array<{ capturePoint: string; status: string; capturedAt: string }> };
+};
+
 export type ChecklistSessionQuery = {
   status?: ChecklistSessionStatus;
   observerId?: string;

@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
+import { reportGreen, sessionReportFixture } from './session-report.js';
+
 export type SessionManagementRole = 'instructor' | 'mentor';
 export const managementChecklistTitle = 'Открытие смены';
 export const managementCriterion = 'Проверить оборудование перед началом работы';
@@ -54,6 +56,11 @@ export async function installSessionManagementMocks(page: Page, role: SessionMan
     }
     if (path === '/checklist-sessions') return route.fulfill({ json: { items: [scheduled, completed], total: 2, page: 1, pageSize: 20 } });
     if (path === `/checklist-sessions/${completedId}`) return route.fulfill({ json: completed });
+    if (path === `/checklist-sessions/${completedId}/report`) return route.fulfill({ json: sessionReportFixture(completed, {
+      summary: { scored: true, percentage: 100, totalScore: 10, maxScore: 10, criteriaCount: 1, answeredCount: 1, skippedCount: 0, passed: true, passThreshold: 80, formula: 'snapshot', color: reportGreen },
+      groups: [],
+      criteria: [{ id: item.id, number: '1', groupId: null, text: managementCriterion, state: 'answered', score: 10, maxScore: 10, levelLabel: null, comment: 'Оборудование готово.', photo: null, reviewStatus: 'approved', color: reportGreen }],
+    }) });
     if (path === `/checklist-sessions/${completedId}/events`) return route.fulfill({ json: [
       { id: 'created-event', organizationId, sessionId: completedId, eventType: 'created', actorUserId: observer.id, metadata: null, createdAt: '2026-01-01T00:00:00.000Z' },
       { id: 'completed-event', organizationId, sessionId: completedId, eventType: 'completed', actorUserId: observer.id, metadata: null, createdAt: '2026-01-10T09:30:00.000Z' },

@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
+import { sessionReportFixture } from '../fixtures/session-report.js';
 
 // PR 307: end-to-end coverage for the checklist workplace-training session module (PR 285-306).
 // Real login against the seeded demo org (matching checklist-review-workflow.spec.ts's pattern),
@@ -205,6 +206,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       if (route.request().method() !== 'GET') return route.fallback();
       return route.fulfill({ json: session });
     });
+    await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/report`, (route) => route.fulfill({ json: sessionReportFixture(session) }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/events`, (route) => route.fulfill({ json: events }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/score-revisions`, (route) => route.fulfill({ json: revisions }));
     await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/location`, (route) => route.fulfill({

@@ -1,3 +1,4 @@
+import { sessionReportFixture } from '../fixtures/session-report.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
@@ -436,6 +437,7 @@ async function installChecklistSessionReportMocks(page: Page) {
     result: { instanceStatus: 'completed', percentage: 92, passed: true, scored: true, visible: true },
   };
   await page.route('**/api/v1/checklist-sessions/session-1{,/conduct}', (route) => route.fulfill({ json: session }));
+  await page.route('**/api/v1/checklist-sessions/session-1/report', (route) => route.fulfill({ json: sessionReportFixture(session) }));
   await page.route('**/api/v1/checklist-sessions/session-1/events', (route) => route.fulfill({
     json: [
       { id: 'event-1', organizationId: 'visual-org', sessionId: 'session-1', eventType: 'created', actorUserId: 'observer-1', metadata: null, createdAt: '2026-01-01T00:00:00.000Z' },
