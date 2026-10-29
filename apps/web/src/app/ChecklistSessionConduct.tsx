@@ -168,8 +168,8 @@ export async function fetchConductData(sessionId: string): Promise<ConductData> 
  * need a full interactive render to verify (this file's other components are driven by
  * `renderToStaticMarkup`, which can't click through steps).
  */
-export function resolveConductStep(itemCount: number, requestedIndex: number, hasContext = false) {
-  const totalSteps = itemCount + 1 + (hasContext ? 1 : 0);
+export function resolveConductStep(itemCount: number, requestedIndex: number, hasContext = false, hasFeedback = true) {
+  const totalSteps = itemCount + (hasFeedback ? 1 : 0) + (hasContext ? 1 : 0);
   const boundedIndex = Math.min(Math.max(requestedIndex, 0), totalSteps - 1);
   const itemIndex = boundedIndex - (hasContext ? 1 : 0);
   return {
@@ -177,7 +177,7 @@ export function resolveConductStep(itemCount: number, requestedIndex: number, ha
     itemIndex,
     totalSteps,
     isContextStep: hasContext && boundedIndex === 0,
-    isFeedbackStep: boundedIndex === totalSteps - 1,
+    isFeedbackStep: hasFeedback && boundedIndex === totalSteps - 1,
     isLastStep: boundedIndex === totalSteps - 1,
   };
 }
@@ -251,7 +251,10 @@ export function ConductScreen({
   const criteria = conductCriteria(items, instance.results, checklist.scoringMode);
   const unanswered = criteria.filter(({ state }) => state === 'unanswered');
   const navigationLocked = busy || cardBusy;
-  const currentStep = resolveConductStep(items.length, stepIndex, contextFields.length > 0);
+  // PR 368: a sheet can switch the trailing feedback step off (older snapshots read as on).
+  const feedbackEnabled = checklist.feedbackEnabled !== false;
+  const feedbackRequired = feedbackEnabled && checklist.feedbackRequired === true;
+  const currentStep = resolveConductStep(items.length, stepIndex, contextFields.length > 0, feedbackEnabled);
   const editable = session.status === 'in_progress';
 
   async function transition(action: 'start' | 'pause' | 'resume' | 'complete') {
@@ -284,7 +287,8 @@ export function ConductScreen({
   // PR 330: on a checklist that allows finishing incomplete the client doesn't block Complete; the
   // server records the unanswered criteria as skipped.
   const allowFinishIncomplete = checklist.allowFinishIncomplete === true;
-  const canComplete = canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount);
+  const feedbackFilled = Boolean(session.strengths?.trim() && session.developmentAreas?.trim());
+  const canComplete = canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount) && (!feedbackRequired || feedbackFilled);
   const contextComplete = contextFields.every((field) => !field.required || Boolean(contextValues[field.id]?.trim()));
 
   async function saveContextAndContinue(nextIndex: number) {
@@ -436,7 +440,9 @@ export function ConductScreen({
                   t={t}
                 />
               ) : (() => {
-                const currentItem = items[itemIndex]!;
+                const rawItem = items[itemIndex]!;
+                // PR 368: the sheet-level "Skip" flag turns skipping on for every criterion.
+                const currentItem = checklist.allowSkipAll === true && !rawItem.allowSkip ? { ...rawItem, allowSkip: true } : rawItem;
                 const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
                 const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
                 return (
@@ -470,7 +476,9 @@ export function ConductScreen({
 
               {!canComplete && isLastStep && (
                 <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
-                  {t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
+                  {feedbackRequired && !feedbackFilled
+                    ? t('checklistSessions.conduct.feedbackRequiredHint', 'Save the strengths and development areas before completing.')
+                    : t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
                 </p>
               )}
               {isLastStep && unanswered.length > 0 && <div style={{ marginTop: 12 }}>
@@ -524,7 +532,7 @@ export function ConductScreen({
         );
       })()}
 
-      {session.status === 'completed' && (
+      {session.status === 'completed' && feedbackEnabled && (
         <StructuredFeedback
           session={session}
           busy={busy}

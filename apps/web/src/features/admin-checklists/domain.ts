@@ -69,6 +69,10 @@ export function buildChecklistSettingsPayload(form: {
   preSessionVisibility: ChecklistPreSessionVisibility;
   allowFinishIncomplete: boolean;
   forbidGalleryPhotos: boolean;
+  /** PR 368 -- optional so older callers keep the defaults (feedback on, optional, no sheet-level skip). */
+  feedbackEnabled?: boolean;
+  feedbackRequired?: boolean;
+  allowSkipAll?: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
   /** Left out for people who may not change it (only the creator and admins can). */
@@ -85,6 +89,10 @@ export function buildChecklistSettingsPayload(form: {
     preSessionVisibility: form.preSessionVisibility,
     allowFinishIncomplete: form.allowFinishIncomplete,
     forbidGalleryPhotos: form.forbidGalleryPhotos,
+    feedbackEnabled: form.feedbackEnabled ?? true,
+    // A required feedback section only exists while the section is shown.
+    feedbackRequired: (form.feedbackEnabled ?? true) && (form.feedbackRequired ?? false),
+    allowSkipAll: form.allowSkipAll ?? false,
     accessMode: form.accessMode,
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
     pinned: form.accessMode === 'free' && form.pinned,

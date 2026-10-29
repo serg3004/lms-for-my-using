@@ -17,6 +17,7 @@ module.exports = {
     '<rootDir>/src/integration/checklist-observer-deactivation.database.spec.ts',
     '<rootDir>/src/integration/checklist-report-export.database.spec.ts',
     '<rootDir>/src/integration/checklist-finish-incomplete.database.spec.ts',
+    '<rootDir>/src/integration/checklist-sheet-settings.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-recalculate.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-idempotency.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-observer-unavailable.database.spec.ts',

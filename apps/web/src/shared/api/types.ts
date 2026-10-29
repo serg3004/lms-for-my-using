@@ -411,6 +411,10 @@ export type ChecklistSummary = {
   // PR 330 strictness settings -- optional because older payloads never carried them (read as false).
   allowFinishIncomplete?: boolean;
   forbidGalleryPhotos?: boolean;
+  // PR 368 -- optional too: older payloads read as feedback on, optional, no sheet-level skip.
+  feedbackEnabled?: boolean;
+  feedbackRequired?: boolean;
+  allowSkipAll?: boolean;
   // PR 353 -- optional because older payloads never carried it (read as 'assigned').
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).

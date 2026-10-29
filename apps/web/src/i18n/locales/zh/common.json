@@ -1017,7 +1017,11 @@
         "criterion": "标准",
         "accessMode": "清单的完成方式",
         "pinned": "固定到首页",
-        "allowEditByAll": "允许所有人编辑"
+        "allowEditByAll": "允许所有人编辑",
+        "allowSkipAll": "添加“跳过”答案选项",
+        "recordLocation": "在观察开始和结束时记录位置",
+        "feedbackEnabled": "添加“反馈”部分",
+        "feedbackRequired": "反馈为必填"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1478,7 +1482,15 @@
         "restore": "恢复",
         "done": "结果已删除。30天内可在会话页面恢复。",
         "backToSessions": "返回会话"
-      }
+      },
+      "settingsBlockTitle": "设置",
+      "allowSkipAllHint": "观察员可以跳过任何标准。被跳过的标准不计入结果。对保存后分配的会话生效。",
+      "recordLocationOrgDefault": "未设置：安排会话时使用组织的默认设置。",
+      "recordLocationOffHint": "此清单不记录位置。",
+      "feedbackEnabledHint": "会话结束时，观察员留下优势、待发展领域和备注。",
+      "feedbackRequiredHint": "在填写优势和待发展领域之前无法完成会话。对保存后分配的会话生效。",
+      "feedbackSectionTitle": "反馈",
+      "feedbackSectionHint": "观察结束时需要留下反馈。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -2686,7 +2698,7 @@
       "feedbackTitle": "结构化反馈",
       "strengths": "优点",
       "developmentAreas": "待提升领域",
-      "nextSteps": "后续步骤",
+      "nextSteps": "备注",
       "saveFeedback": "保存反馈",
       "markUnavailable": "无法进行此项",
       "markUnavailableTitle": "无法进行此次培训",
@@ -2720,7 +2732,8 @@
         "skipped": "已跳过",
         "unanswered": "未作答"
       },
-      "completeContextFirst": "跳转到标准前，请填写必填的基本信息。"
+      "completeContextFirst": "跳转到标准前，请填写必填的基本信息。",
+      "feedbackRequiredHint": "完成前请先保存优势和待发展领域。"
     },
     "learner": {
       "title": "我的培训会话",

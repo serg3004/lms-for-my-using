@@ -886,6 +886,12 @@ describe('buildChecklistSettingsPayload', () => {
     expect(buildChecklistSettingsPayload({ ...form, allowEditByAll: false })).toMatchObject({ allowEditByAll: false });
   });
 
+  it('sends the PR 368 flags with their defaults and never a required feedback without the section', () => {
+    const base = { title: 'Т', description: 'd', scoringMode: 'sum_points' as const, passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '' as const, preSessionVisibility: 'structure_only' as const, allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned' as const, pinned: false };
+    expect(buildChecklistSettingsPayload(base)).toMatchObject({ feedbackEnabled: true, feedbackRequired: false, allowSkipAll: false });
+    expect(buildChecklistSettingsPayload({ ...base, feedbackEnabled: false, feedbackRequired: true, allowSkipAll: true })).toMatchObject({ feedbackEnabled: false, feedbackRequired: false, allowSkipAll: true });
+  });
+
   it('nulls out an empty description', () => {
     const payload = buildChecklistSettingsPayload({ title: 'Т', description: '', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false, scaleLevels: [], defaultLocationCapturePolicy: '', preSessionVisibility: 'structure_only', allowFinishIncomplete: false, forbidGalleryPhotos: false, accessMode: 'assigned', pinned: false });
     expect(payload.description).toBeNull();

@@ -1017,7 +1017,11 @@
         "criterion": "Criterion",
         "accessMode": "How the checklist is taken",
         "pinned": "Pin to the dashboard",
-        "allowEditByAll": "Allow everyone to edit this checklist"
+        "allowEditByAll": "Allow everyone to edit this checklist",
+        "allowSkipAll": "Add a “Skip” answer option",
+        "recordLocation": "Record location at the start and end of the observation",
+        "feedbackEnabled": "Add a “Feedback” section",
+        "feedbackRequired": "Feedback is required"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1478,7 +1482,15 @@
         "restore": "Restore",
         "done": "The result was deleted. You can restore it from the sessions page within 30 days.",
         "backToSessions": "Back to sessions"
-      }
+      },
+      "settingsBlockTitle": "Settings",
+      "allowSkipAllHint": "The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.",
+      "recordLocationOrgDefault": "Not set: the organization default applies when a session is scheduled.",
+      "recordLocationOffHint": "Location is not recorded for this checklist.",
+      "feedbackEnabledHint": "The observer leaves strengths, development areas and a comment at the end of the session.",
+      "feedbackRequiredHint": "A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.",
+      "feedbackSectionTitle": "Feedback",
+      "feedbackSectionHint": "Feedback is left at the end of the observation."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
@@ -2686,7 +2698,7 @@
       "feedbackTitle": "Structured feedback",
       "strengths": "Strengths",
       "developmentAreas": "Development areas",
-      "nextSteps": "Next steps",
+      "nextSteps": "Comment",
       "saveFeedback": "Save feedback",
       "markUnavailable": "Can't conduct this",
       "markUnavailableTitle": "Can't conduct this session",
@@ -2720,7 +2732,8 @@
         "skipped": "Skipped",
         "unanswered": "Unanswered"
       },
-      "completeContextFirst": "Complete the required general information before moving to a criterion."
+      "completeContextFirst": "Complete the required general information before moving to a criterion.",
+      "feedbackRequiredHint": "Save the strengths and development areas before completing."
     },
     "learner": {
       "title": "My training sessions",

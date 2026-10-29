@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -327,6 +327,31 @@ describe('ChecklistSessionService', () => {
 
       await expect(service.transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.checklistSession.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects completion without strengths and development areas when the sheet requires feedback (PR 368)', async () => {
+      const instance = { templateSnapshot: { checklist: { feedbackEnabled: true, feedbackRequired: true } } };
+      const missing = createPrisma({
+        checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance, strengths: 'Good', developmentAreas: ' ' })) },
+      });
+      await expect(new ChecklistSessionService(missing).transition(sessionId, organizationId, 'complete', 1, observerId, {})).rejects.toBeInstanceOf(
+        UnprocessableEntityException,
+      );
+      expect(missing.checklistSession.updateMany).not.toHaveBeenCalled();
+
+      const filled = createPrisma({
+        checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance, strengths: 'Good', developmentAreas: 'Tidy up' })) },
+      });
+      await new ChecklistSessionService(filled, { finishIncompleteInstance: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
+      expect(filled.checklistSession.updateMany).toHaveBeenCalled();
+    });
+
+    it('does not require feedback on older snapshots or when the section is off (PR 368)', async () => {
+      for (const instance of [{ templateSnapshot: { checklist: {} } }, { templateSnapshot: { checklist: { feedbackEnabled: false, feedbackRequired: true } } }]) {
+        const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', instance })) } });
+        await new ChecklistSessionService(prisma, { finishIncompleteInstance: jest.fn(async () => undefined) } as never).transition(sessionId, organizationId, 'complete', 1, observerId, {});
+        expect(prisma.checklistSession.updateMany).toHaveBeenCalled();
+      }
     });
 
     it('only allows cancel from scheduled', async () => {
