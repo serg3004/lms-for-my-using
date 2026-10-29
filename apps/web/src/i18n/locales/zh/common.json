@@ -1,4 +1,37 @@
 {
+  "sessionImport": {
+    "done": "导入完成",
+    "title": "导入员工名单",
+    "file": "CSV 或 Excel 文件",
+    "instructions": "仅一列 email。UTF-8 CSV 或单工作表 XLSX，最多100行且不超过1 MB。检查表、观察员和时间适用于整个名单。不接受公式。",
+    "preview": "检查名单",
+    "loading": "正在检查名单…",
+    "report": "导入逐行报告",
+    "summary": "已接受：{{accepted}}；已跳过：{{skipped}}。",
+    "row": "第 {{row}} 行",
+    "ready": "可以创建",
+    "created": "会话已创建",
+    "reasons": {
+      "invalid_email": "邮箱无效或包含公式",
+      "duplicate": "文件中邮箱重复",
+      "outside_scope": "员工不可用或不在您的权限范围内",
+      "self_observer": "员工不能观察自己",
+      "active_assignment": "该检查表已有有效分配",
+      "scope_changed": "该员工已不在您的可访问范围内"
+    },
+    "errors": {
+      "empty": "文件必须包含员工邮箱。",
+      "file_limit": "文件大小不得超过1 MB。",
+      "rows_limit": "每次最多导入100行。",
+      "header": "文件必须仅包含标题为 email 的一列。",
+      "invalid_file": "无法读取文件。请检查格式、UTF-8 编码和内容。",
+      "one_sheet": "Excel 文件必须只有一个工作表。",
+      "format": "请选择 CSV 或 XLSX 文件。",
+      "settings": "请检查会话的公共设置。",
+      "operation_conflict": "此导入已使用其他文件或设置提交。请检查结果并开始新的导入。",
+      "request": "无法处理导入。请检查文件和设置后重试。"
+    }
+  },
   "app": {
     "title": "LMS",
     "subtitle": "学习管理系统"

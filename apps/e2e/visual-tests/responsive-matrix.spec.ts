@@ -1,3 +1,4 @@
+import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { expect, test, type Page } from '@playwright/test';
@@ -736,6 +737,15 @@ for (const width of widths) {
         await expectNoPageOverflow(page);
         if (width <= 375) await expectTouchTargets(page);
         await expectVisualMatch(page, `${role}-criterion-scale-answer-${width}`);
+      });
+    }
+
+    for (const role of ['admin', 'instructor'] as const) {
+      test(`keeps the ${role} session employee import preview responsive`, async ({ page }) => {
+        await previewSessionImportPage(page, role);
+        await expectNoPageOverflow(page);
+        if (width <= 375) await expectTouchTargets(page);
+        await expectVisualMatch(page, `${role}-session-employee-import-${width}`);
       });
     }
 

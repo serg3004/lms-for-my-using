@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  exceljs@4.4.0>uuid: ^11.1.1
   esbuild@<=0.24.2: '>=0.25.0'
   tmp@<=0.2.3: '>=0.2.4'
   glob@>=10.2.0 <10.5.0: '>=10.5.0'
@@ -115,6 +116,9 @@ importers:
       bullmq:
         specifier: ^5.58.5
         version: 5.81.3
+      exceljs:
+        specifier: ^4.4.0
+        version: 4.4.0
       ioredis:
         specifier: ^5.6.0
         version: 5.11.1
@@ -5385,8 +5389,8 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@14.0.1:
-    resolution: {integrity: sha512-6ZxzVpzDXDa3bJWaHilVayA+BH/1zmxCJoVgvmqJnid/gPoKHxUrS/aC/T6LGQtNHT+XHG9fXPJB4d+IrU30Ew==}
+  uuid@11.1.1:
+    resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
   v8-to-istanbul@9.3.0:
@@ -5460,7 +5464,7 @@ packages:
       '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
-      vite: '>=6.4.2'
+      vite: '>=8.3.3'
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -9047,7 +9051,7 @@ snapshots:
       saxes: 5.0.1
       tmp: 0.2.7
       unzipper: 0.10.14
-      uuid: 14.0.1
+      uuid: 11.1.1
 
   execa@5.1.1:
     dependencies:
@@ -11319,7 +11323,7 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@14.0.1: {}
+  uuid@11.1.1: {}
 
   v8-to-istanbul@9.3.0:
     dependencies:

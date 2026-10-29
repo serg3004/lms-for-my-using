@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
+import { SessionEmployeeImport, SessionImportReport, sessionImportError } from './SessionEmployeeImport.js';
+import { useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
 import { formatDate } from '../../shared/formatDate.js';
 import {
   bulkCreateChecklistSessions,
+  importChecklistSessions,
+  previewChecklistSessionImport,
+  type SessionImportPreview,
+  type SessionImportRow,
   getChecklistSession,
   listChecklistSessionParticipants,
   listPublishedChecklists,
@@ -46,6 +51,7 @@ export function useDebounced(value: string) {
 
 type Props = {
   open: boolean;
+  importMode?: boolean;
   fixedObserver?: ChecklistSessionParticipant;
   /** PR 334: preselects one participant (the manager dashboard's «Запланировать» quick action). */
   initialLearner?: ChecklistSessionParticipant | null;
@@ -75,7 +81,7 @@ function SessionDurationInput({ value, onChange, t }: ScheduleInputProps) {
   />;
 }
 
-export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, onClose, onCreated, t }: Props) {
+export function ChecklistSessionWizard({ open, importMode = false, fixedObserver, initialLearner, onClose, onCreated, t }: Props) {
   const [step, setStep] = useState(0);
 
   const [learnerSearch, setLearnerSearch] = useState('');
@@ -107,7 +113,24 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
   const [learnerLookup, setLearnerLookup] = useState<'loading' | 'ready' | 'error'>('loading');
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [checklistLoadError, setChecklistLoadError] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<SessionImportPreview | null>(null);
+  const [importRows, setImportRows] = useState<SessionImportRow[] | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importRequest = useRef<{ settings: string; file: File; operationId: string } | null>(null);
   const selectedObserver = fixedObserver ?? observerSelection;
+  const previewRows = importPreview?.rows.map((row) => row.employee?.id === selectedObserver?.id && row.status === 'ready' ? { ...row, status: 'skipped' as const, reason: 'self_observer' as const } : row) ?? null;
+  useEffect(() => {
+    if (importMode && importPreview) setSelectedLearners(new Map(importPreview.rows.filter((row) => row.status === 'ready' && row.employee?.id !== selectedObserver?.id).map((row) => [row.employee!.id, { ...row.employee!, position: null }])));
+  }, [importMode, importPreview, selectedObserver?.id]);
+  async function previewFile() {
+    if (!importFile) return;
+    setImportBusy(true); setImportError(null);
+    try { setImportPreview(await previewChecklistSessionImport(importFile)); }
+    catch (error) { setImportPreview(null); setSelectedLearners(new Map()); setImportError(sessionImportError(error, t)); }
+    finally { setImportBusy(false); }
+  }
 
   const sharedDraft = { scheduledAt, durationMinutes };
   const individualSchedules = buildIndividualSessionSchedules([...selectedLearners.keys()], individualDrafts, sharedDraft, timezone);
@@ -154,6 +177,7 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
 
   function reset() {
     setStep(0);
+    setImportFile(null); setImportPreview(null); setImportRows(null); setImportError(null); setImportBusy(false); importRequest.current = null;
     setLearnerSearch('');
     setLearnerResults([]);
     setSelectedLearners(new Map());
@@ -176,6 +200,7 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
   }
 
   function handleClose() {
+    if (submitting || importBusy) return;
     reset();
     onClose();
   }
@@ -205,7 +230,13 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const result = await bulkCreateChecklistSessions({
+      const settings = { checklistId: selectedChecklistId, observerId: selectedObserver.id,
+        scheduledAt: scheduleMode === 'later' ? toSessionScheduledAt(scheduledAt) : null,
+        durationMinutes: durationMinutes.trim() ? Number(durationMinutes) : null, locationCapturePolicy: locationPolicy, timezone };
+      if (importMode && importFile && (importRequest.current?.settings !== JSON.stringify(settings) || importRequest.current.file !== importFile)) {
+        importRequest.current = { settings: JSON.stringify(settings), file: importFile, operationId: crypto.randomUUID() };
+      }
+      const result: Awaited<ReturnType<typeof bulkCreateChecklistSessions>> & { rows?: SessionImportRow[] } = importMode && importFile ? await importChecklistSessions(importFile, { ...settings, operationId: importRequest.current!.operationId }) : await bulkCreateChecklistSessions({
         checklistId: selectedChecklistId,
         learnerIds: [...selectedLearners.keys()],
         observerId: selectedObserver.id,
@@ -228,10 +259,11 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
         }));
       }
       const partitioned = partitionBulkCreateResults(result);
-      setSubmitResult({ created: partitioned.created.length, skipped: partitioned.skipped.length, failed: partitioned.failed.length });
+      if (result.rows) { setImportRows(result.rows); setSubmitResult({ created: result.created, skipped: result.skipped, failed: result.failed }); }
+      else setSubmitResult({ created: partitioned.created.length, skipped: partitioned.skipped.length, failed: partitioned.failed.length });
       onCreated();
     } catch (error) {
-      setSubmitError(error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.wizard.submitError', 'Unable to create sessions.'));
+      setSubmitError(importMode ? sessionImportError(error, t) : error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.wizard.submitError', 'Unable to create sessions.'));
     } finally {
       setSubmitting(false);
     }
@@ -274,7 +306,7 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
 
   return (
     <WizardDialog
-      busy={submitting}
+      busy={submitting || importBusy}
       cancelLabel={t('admin.checklists.sessions.wizard.cancel', 'Cancel')}
       backLabel={t('admin.checklists.sessions.wizard.back', 'Back')}
       currentStep={step}
@@ -285,11 +317,12 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
       onNext={handleNext}
       open={open}
       steps={steps}
-      title={t('admin.checklists.sessions.wizard.title', 'New session')}
+      title={importMode ? t('sessionImport.title') : t('admin.checklists.sessions.wizard.title', 'New session')}
     >
       {submitResult ? (
-        <InlineFeedback tone="success" title={t('admin.checklists.sessions.wizard.doneTitle', 'Sessions created')}>
+        <InlineFeedback tone="success" title={importMode ? t('sessionImport.done') : t('admin.checklists.sessions.wizard.doneTitle', 'Sessions created')}>
           {t('admin.checklists.sessions.wizard.doneSummary', '{{created}} created, {{skipped}} skipped, {{failed}} failed.', submitResult)}
+          {importRows && <SessionImportReport rows={importRows} t={t} />}
         </InlineFeedback>
       ) : (
         <>
@@ -339,6 +372,9 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
               )}
 
               <h3>{t('admin.checklists.sessions.wizard.learnersLabel', 'Employees')}</h3>
+              {importMode ? <SessionEmployeeImport file={importFile} busy={importBusy} error={importError} rows={previewRows}
+                onFile={(file) => { const tooLarge = !!file && file.size > 1024 * 1024; setImportFile(tooLarge ? null : file); setImportPreview(null); setSelectedLearners(new Map()); setImportError(tooLarge ? t('sessionImport.errors.file_limit') : null); importRequest.current = null; }}
+                onPreview={() => void previewFile()} t={t} /> : <>
               <Input
                 aria-label={t('admin.checklists.sessions.wizard.learnerSearch', 'Find employee')}
                 onChange={(e) => setLearnerSearch(e.target.value)}
@@ -390,6 +426,7 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
                   </li>
                 ))}
               </ul>
+              </>}
             </div>
           )}
 
@@ -426,7 +463,7 @@ export function ChecklistSessionWizard({ open, fixedObserver, initialLearner, on
 
           {step === 2 && (
             <div>
-              <fieldset style={{ margin: '0 0 16px', border: 0, padding: 0 }}>
+              <fieldset hidden={importMode} style={{ margin: '0 0 16px', border: 0, padding: 0 }}>
                 <legend>{t('admin.checklists.sessions.wizard.scheduleGrouping', 'Employee schedules')}</legend>
                 <label style={SCHEDULE_OPTION_STYLE}>
                   <input style={SCHEDULE_RADIO_STYLE} checked={scheduleGrouping === 'shared'} name="scheduleGrouping" onChange={() => setScheduleGrouping('shared')} type="radio" />

@@ -1,3 +1,4 @@
+import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -69,6 +70,14 @@ test.describe('WCAG AA browser baseline', () => {
       await openCriterionScalePage(page, role);
       await page.getByRole('button', { name: /\bNo\b/ }).click();
       await expect(page.getByRole('button', { name: /\bNo\b/ })).toHaveAttribute('aria-pressed', 'true');
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
+  for (const role of ['admin', 'manager', 'instructor', 'mentor'] as const) {
+    test(`${role} employee session import preview is accessible`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width: 375, height: 900 });
+      await previewSessionImportPage(page, role);
       await auditAccessibility(page, testInfo);
     });
   }

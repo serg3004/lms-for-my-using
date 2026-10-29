@@ -446,6 +446,17 @@ export const bulkCreateChecklistSessionSchema = z
   });
 export type BulkCreateChecklistSessionInput = z.infer<typeof bulkCreateChecklistSessionSchema>;
 
+export const importChecklistSessionsSchema = z.object({
+  operationId: z.string().uuid(),
+  checklistId: z.string().uuid(),
+  observerId: z.string().uuid().toLowerCase(),
+  scheduledAt: z.string().datetime().nullable().optional(),
+  durationMinutes: sessionDurationMinutesSchema,
+  locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+}).strict();
+export type ImportChecklistSessionsInput = z.infer<typeof importChecklistSessionsSchema>;
+
 export const checklistSessionParticipantRoleSchema = z.enum(['learner', 'observer']);
 export const checklistSessionParticipantsQuerySchema = z.object({
   role: checklistSessionParticipantRoleSchema,

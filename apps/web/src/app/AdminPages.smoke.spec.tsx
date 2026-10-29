@@ -775,10 +775,10 @@ describe('admin checklist sessions page smoke rendering', () => {
     // 4 departmentOptions, 5 wizardOpen, 6 wizardReloadPending (PR 307 -- defers the wizard's
     // post-create list reload until it actually closes), 7 settingsOpen (PR 305), 8 cancelTarget,
     // 9 editTarget (PR 302/333), 10 messageTarget, 11 deleteTarget (PR 333), 12 notice, 13 actionError,
-    // then useAsyncData's internal loadState is call 14.
+    // PR 364 adds importMode after wizardOpen; useAsyncData's loadState is now call 15.
     // Later calls belong to the (open=false) ChecklistSessionWizard child and the closed dialogs.
     useStateAtCalls({
-      14: {
+      15: {
         status: 'loaded',
         data: {
           total: 1,

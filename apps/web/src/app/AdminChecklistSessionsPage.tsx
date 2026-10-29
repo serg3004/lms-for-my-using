@@ -54,6 +54,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
   const navigate = useNavigate();
   const { status: statusTab, period, observerId: observerFilter, checklistId: checklistFilter, learnerId: learnerFilter, departmentId: departmentFilter, search, page } = parseSessionFilters(searchParams);
   const isAdmin = currentUser?.roles.includes('admin') ?? false;
+  const canImport = currentUser?.roles.some((role) => ['admin', 'manager', 'instructor', 'mentor'].includes(role)) ?? false;
   const isObserverVariant = variant === 'observer';
   const reportBase = (isObserverVariant ? allSessionsPath(currentUser) : null) ?? '/admin/checklists/sessions';
   const [observerOptions, setObserverOptions] = useState<ChecklistSessionParticipant[]>([]);
@@ -61,6 +62,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
   const [checklistOptions, setChecklistOptions] = useState<ChecklistSummary[]>([]);
   const [departmentOptions, setDepartmentOptions] = useState<Department[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [importMode, setImportMode] = useState(false);
   const [wizardReloadPending, setWizardReloadPending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
@@ -329,7 +331,8 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
             <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
             {!isObserverVariant && <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
             {<Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
-            <Button onClick={() => setWizardOpen(true)} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
+            {canImport && <Button onClick={() => { setImportMode(true); setWizardOpen(true); }} size="sm" type="button" variant="secondary">{t('sessionImport.title')}</Button>}
+            <Button onClick={() => { setImportMode(false); setWizardOpen(true); }} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
           </>
         }
       />
@@ -440,6 +443,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
       />
       <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={(nextPage) => setSearchParams(applySessionFilterChange(searchParams, { page: nextPage }), { replace: true })} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
       <ChecklistSessionWizard
+        importMode={importMode}
         fixedObserver={currentUser?.roles.includes('instructor') && !currentUser.roles.includes('mentor') && !currentUser.roles.includes('admin') && !currentUser.roles.includes('manager') ? currentUser : undefined}
         onClose={() => {
           setWizardOpen(false);
