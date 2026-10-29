@@ -983,7 +983,8 @@
         "dueAt": "截止日期",
         "criterion": "标准",
         "accessMode": "清单的完成方式",
-        "pinned": "固定到首页"
+        "pinned": "固定到首页",
+        "allowEditByAll": "允许所有人编辑"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1415,7 +1416,9 @@
         "remove": "删除图片",
         "uploadError": "无法上传图片。",
         "removeError": "无法删除图片。"
-      }
+      },
+      "allowEditByAllHint": "关闭后，只有您和管理员可以编辑此检查表。其他员工仍可查看并分配。",
+      "readOnlyNotice": "只有创建者或管理员可以编辑此检查表。您可以查看。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

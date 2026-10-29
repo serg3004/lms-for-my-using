@@ -983,7 +983,8 @@
         "dueAt": "Due date",
         "criterion": "Criterion",
         "accessMode": "How the checklist is taken",
-        "pinned": "Pin to the dashboard"
+        "pinned": "Pin to the dashboard",
+        "allowEditByAll": "Allow everyone to edit this checklist"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1415,7 +1416,9 @@
         "remove": "Remove picture",
         "uploadError": "Unable to upload the picture.",
         "removeError": "Unable to remove the picture."
-      }
+      },
+      "allowEditByAllHint": "When off, only you and administrators can edit this checklist. Other employees can still view it and assign it.",
+      "readOnlyNotice": "Only the creator or an administrator can edit this checklist. You can view it."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

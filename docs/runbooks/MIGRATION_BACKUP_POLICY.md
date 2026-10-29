@@ -515,6 +515,14 @@ fresh and existing-row defaults, all selection modes, invalid tenant/user reject
 and continuing access to an existing assigned session in PostgreSQL integration tests. Production
 backup/restore remains subject to the live verification requirements above.
 
+### Checklist edit-access flag (PR 362в)
+
+`20261029140000_add_checklist_allow_edit_by_all` adds one non-null `checklists.allow_edit_by_all` boolean
+defaulting to `true`, so every existing checklist stays editable by all; no index, no backfill. Apply the
+forward migration before starting the new API (an older API ignores the column). Roll back the application
+while retaining the column. Verified by the PostgreSQL integration test
+`checklist-session-observer-create.database.spec.ts` ("PR 362в").
+
 ### Checklist pinned flag (PR 354)
 
 `20261029120000_add_checklist_pinned` adds one non-null `checklists.pinned` boolean defaulting to

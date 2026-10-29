@@ -1,5 +1,6 @@
 import { checklistItemLevels } from '../../app/checklistCompletion.js';
 import { useEffect, useState } from 'react';
+import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { AdminPageHeader, ConfirmDialog, FormField } from '../../shared/adminPage.js';
@@ -86,6 +87,11 @@ export function ChecklistBuilder({
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
   const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
   const [pinned, setPinned] = useState(checklist.pinned ?? false);
+  // PR 362в: the creator and admins decide who may edit; everyone else sees the sheet read-only when it is closed.
+  const currentUser = useOptionalSession()?.currentUser;
+  const canManageEditAccess = !currentUser || currentUser.roles.includes('admin') || checklist.createdBy === currentUser.id;
+  const canEdit = canManageEditAccess || (checklist.allowEditByAll ?? true);
+  const [allowEditByAll, setAllowEditByAll] = useState(checklist.allowEditByAll ?? true);
   // Defaults are system copy and follow the locale at creation time. Existing labels are authored
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
@@ -96,6 +102,7 @@ export function ChecklistBuilder({
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
+    allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
   })));
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
@@ -116,7 +123,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode, pinned });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -235,6 +242,7 @@ export function ChecklistBuilder({
       <button type="button" className="admin-back-link" onClick={onBack}>
         ← {t('admin.checklists.backToList', 'All checklists')}
       </button>
+      {!canEdit && <p className="ui-state ui-state--warning admin-inline-banner" role="status">{t('admin.checklists.readOnlyNotice', 'Only the creator or an administrator can edit this checklist. You can view it.')}</p>}
       <AdminPageHeader
         eyebrow={t('admin.checklists.builderEyebrow', 'Observation sheet')}
         title={checklist.title}
@@ -594,6 +602,17 @@ export function ChecklistBuilder({
             <p className="admin-form__hint">
               {t('admin.checklists.requiresReviewHint', 'When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.')}
             </p>
+            {canManageEditAccess && (
+              <>
+                <label className="admin-checkbox-field">
+                  <input type="checkbox" checked={allowEditByAll} onChange={(e) => setAllowEditByAll(e.target.checked)} />
+                  {t('admin.checklists.field.allowEditByAll', 'Allow everyone to edit this checklist')}
+                </label>
+                <p className="admin-form__hint">
+                  {t('admin.checklists.allowEditByAllHint', 'When off, only you and administrators can edit this checklist. Other employees can still view it and assign it.')}
+                </p>
+              </>
+            )}
             <label className="admin-checkbox-field">
               <input type="checkbox" checked={allowFinishIncomplete} onChange={(e) => setAllowFinishIncomplete(e.target.checked)} />
               {t('admin.checklists.field.allowFinishIncomplete', 'Allow finishing a session with unanswered criteria')}
@@ -642,7 +661,7 @@ export function ChecklistBuilder({
                 ? t('admin.checklists.unsavedChanges', 'There are unsaved changes.')
                 : t('admin.checklists.allSaved', 'All changes are saved.')}
             </p>
-            <Button type="button" variant="primary" disabled={saveState.status === 'saving'} onClick={() => void saveSettings()}>
+            <Button type="button" variant="primary" disabled={saveState.status === 'saving' || !canEdit} onClick={() => void saveSettings()}>
               {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
             </Button>
           </ChecklistSettingsForm>

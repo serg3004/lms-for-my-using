@@ -524,6 +524,13 @@ object is copied, never shared; if storage fails the copy is created without a c
 "By assignment" / "Free access" / "On the panel" label is computed by clients from `accessMode`
 and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `checklist.cover_removed`.
 
+**Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
+default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
+creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or
+delete its criteria and groups; anyone else with `checklistsCreate` gets 403. Reading, assigning and
+copying (the copy belongs to the copier and keeps the flag) stay open. Only the creator or an admin may
+send `allowEditByAll` in an update.
+
 **Strictness settings (PR 330)** (same checklist create/update routes): `allowFinishIncomplete`
 (boolean, default `false`) -- when the instance's snapshot has it, `POST /checklist-sessions/:id/transition`
 with `complete` first records every criterion that still has no answer as `answerState='skipped'`
