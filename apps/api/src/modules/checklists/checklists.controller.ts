@@ -70,14 +70,18 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistWorkplaceSettingsRead)
   getWorkplaceSettings(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    // PR 362: roster names go to every role that can edit the settings, nobody else.
-    return this.workplaceSettings.getSettings(user.organizationId, rolePolicies.checklistWorkplaceSettingsWrite.some((role) => user.roles.includes(role)));
+    // PR 365: roster names belong to the access settings, so only their editors get them (the admin).
+    return this.workplaceSettings.getSettings(user.organizationId, rolePolicies.checklistAccessSettingsWrite.some((role) => user.roles.includes(role)));
   }
   @Patch('checklists/workplace-settings')
   @Roles(...rolePolicies.checklistWorkplaceSettingsWrite)
-  updateWorkplaceSettings(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async updateWorkplaceSettings(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateChecklistWorkplaceSettingsSchema.parse(body);
     const user = request.currentUser!;
+    // PR 365: the other three roles change every other setting but not who may be an observer.
+    if (!rolePolicies.checklistAccessSettingsWrite.some((role) => user.roles.includes(role)) && await this.workplaceSettings.changesAccessSettings(user.organizationId, input)) {
+      throw new ForbiddenException('Only an administrator can change who may be an observer');
+    }
     return this.workplaceSettings.updateSettings(user.organizationId, input, user.id);
   }
 

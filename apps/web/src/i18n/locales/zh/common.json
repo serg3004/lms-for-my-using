@@ -1243,7 +1243,8 @@
             "manager": "主管",
             "admin": "管理员"
           },
-          "removeUnavailable": "移除不可用用户"
+          "removeUnavailable": "移除不可用用户",
+          "readOnly": "只有管理员可以更改谁可以担任观察员。"
         }
       },
       "scaleManager": {

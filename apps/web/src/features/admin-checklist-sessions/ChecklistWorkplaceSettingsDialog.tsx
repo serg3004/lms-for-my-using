@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
+import { useOptionalSession } from '../../shared/session.js';
 import { getChecklistWorkplaceSettings, updateChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
 import { ObserverEligibilityFields } from './ObserverEligibilityFields.js';
@@ -15,6 +16,8 @@ import { Button, Dialog, Select } from '../../shared/ui.js';
  */
 export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: boolean; onClose: () => void; t: TFunction }) {
   const titleId = useId();
+  // PR 365: who may be an observer is an access setting, editable by an administrator only (the server enforces it).
+  const canEditAccess = useOptionalSession()?.currentUser?.roles.includes('admin') ?? true;
   const [settings, setSettings] = useState<ChecklistWorkplaceSettingsView | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +48,11 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
         lowThreshold: settings.lowThreshold,
         defaultGeolocationPolicy: settings.defaultGeolocationPolicy,
         feedbackVisibility: settings.feedbackVisibility,
-        observerEligibility: settings.observerEligibility,
-        observerRoles: settings.observerRoles,
-        observerUserIds: settings.observerUserIds,
+        ...(canEditAccess ? {
+          observerEligibility: settings.observerEligibility,
+          observerRoles: settings.observerRoles,
+          observerUserIds: settings.observerUserIds,
+        } : {}),
       });
       setSettings(updated);
       onClose();
@@ -110,7 +115,19 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
             <option value="required">{t('admin.checklists.settings.geolocationRequired', 'Required')}</option>
             <option value="off">{t('admin.checklists.settings.geolocationOff', 'Off')}</option>
           </Select>
-          <ObserverEligibilityFields settings={settings} onChange={(patch) => setSettings({ ...settings, ...patch })} t={t} />
+          {canEditAccess
+            ? <ObserverEligibilityFields settings={settings} onChange={(patch) => setSettings({ ...settings, ...patch })} t={t} />
+            : (
+              <fieldset className="admin-form__field" style={{ minWidth: 0 }}>
+                <legend>{t('admin.checklists.settings.observers.title')}</legend>
+                <p>
+                  {settings.observerEligibility === 'any_user' && t('admin.checklists.settings.observers.anyUser')}
+                  {settings.observerEligibility === 'selected_roles' && `${t('admin.checklists.settings.observers.selectedRoles')}: ${settings.observerRoles.map((role) => t(`admin.checklists.settings.observers.roleLabels.${role}`)).join(', ') || '—'}`}
+                  {settings.observerEligibility === 'selected_users' && t('admin.checklists.settings.observers.chosen', { count: settings.observerUserIds.length })}
+                </p>
+                <p className="admin-form__hint">{t('admin.checklists.settings.observers.readOnly', 'Only an administrator can change who may be an observer.')}</p>
+              </fieldset>
+            )}
           <Select
             label={t('admin.checklists.settings.feedbackVisibility', 'When learners see session feedback')}
             onChange={(e) => setSettings({ ...settings, feedbackVisibility: e.target.value as ChecklistFeedbackVisibility })}
