@@ -1432,7 +1432,14 @@
         "columnCriterion": "Criterion",
         "columnScore": "Score",
         "columnLevel": "Scale level",
-        "columnComment": "Comment"
+        "columnComment": "Comment",
+        "downloadSummaryXlsx": "Download summary (Excel)",
+        "downloadSummaryCsv": "Download summary (CSV)",
+        "summaryExporting": "Preparing summary…",
+        "summaryLimit": "The summary is too large. Select fewer observations.",
+        "summaryUnavailable": "The summary is no longer available or you do not have access.",
+        "summaryCompletedOnly": "Only completed sessions can be exported.",
+        "summaryExportError": "Unable to download the summary. Try again."
       },
       "dueAtHint": "Optional. Enter local time; it is stored as UTC.",
       "requiredItem": "Required",

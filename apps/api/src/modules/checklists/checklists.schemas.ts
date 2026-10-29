@@ -542,3 +542,11 @@ export type UpdateChecklistScaleInput = z.infer<typeof updateChecklistScaleSchem
 // copy name; without it the server falls back to "<name> (copy)".
 export const copyChecklistScaleSchema = z.object({ name: z.string().trim().min(1).max(255).optional() }).strict();
 export type CopyChecklistScaleInput = z.infer<typeof copyChecklistScaleSchema>;
+
+// PR 373: explicit selection; all observations must be authorized before any export is returned.
+export const checklistSessionSummaryQuerySchema = z.object({
+  ids: z.preprocess((value) => typeof value === 'string' ? value.split(',') : value,
+    z.array(z.string().uuid()).min(1).max(50).refine((ids) => new Set(ids).size === ids.length, 'Duplicate session IDs')),
+  format: z.enum(['csv', 'xlsx']).default('xlsx'),
+}).strict();
+export type ChecklistSessionSummaryQuery = z.infer<typeof checklistSessionSummaryQuerySchema>;

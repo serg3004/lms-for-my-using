@@ -1,3 +1,4 @@
+import { ChecklistSummaryExport } from '../features/admin-checklist-sessions/ChecklistSummaryExport.js';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -401,6 +402,9 @@ export function SessionReportBody({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>{t(`checklistSessions.status.${session.status}`, session.status)}</Badge>
             <button className="admin-btn admin-btn--secondary" onClick={() => window.print()} type="button">{t('admin.checklists.report.print', 'Print')}</button>
+            {session.status === 'completed' && !resultDeleted && (
+              <ChecklistSummaryExport sessionId={session.id} disabled={reportState.status !== 'loaded' || !reportState.data.visible} t={t} />
+            )}
             {canRecalculate && (
               <button className="admin-btn admin-btn--secondary" onClick={() => setRecalcOpen(true)} type="button">{t('admin.checklists.report.recalculateOpen', 'Recalculate')}</button>
             )}

@@ -885,3 +885,12 @@ export type RecalculateChecklistScoreInput = { reason: string; formula?: Checkli
 
 // POST keeps the historical scored alias; revisions persist the same fact as newScored.
 export type RecalculateChecklistScoreResult = ChecklistScoreRevision & { scored: boolean };
+
+/** PR 373: server-calculated and authorized summary table, shared by CSV and styled XLSX. */
+export type ChecklistSessionSummaryExport = {
+  filename: string; csv: string; rows: (string | number)[][]; rowCount: number; sessionIds: string[];
+  layout: {
+    sheetName: string; headerRows: number[]; columnWidths: number[]; freezeRows: number;
+    merges: { startRow: number; startColumn: number; endRow: number; endColumn: number }[];
+  };
+};

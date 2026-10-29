@@ -1432,7 +1432,14 @@
         "columnCriterion": "Өлшемше",
         "columnScore": "Балл",
         "columnLevel": "Шкала деңгейі",
-        "columnComment": "Пікір"
+        "columnComment": "Пікір",
+        "downloadSummaryXlsx": "Жиынтықты жүктеу (Excel)",
+        "downloadSummaryCsv": "Жиынтықты жүктеу (CSV)",
+        "summaryExporting": "Жиынтық дайындалуда…",
+        "summaryLimit": "Жиынтық тым үлкен. Бақылаулар санын азайтыңыз.",
+        "summaryUnavailable": "Жиынтық қолжетімсіз немесе оны көруге құқығыңыз жоқ.",
+        "summaryCompletedOnly": "Тек аяқталған сессияларды экспорттауға болады.",
+        "summaryExportError": "Жиынтықты жүктеу мүмкін болмады. Қайта көріңіз."
       },
       "dueAtHint": "Міндетті емес. Жергілікті уақытты енгізіңіз — ол UTC форматында сақталады.",
       "requiredItem": "Міндетті",

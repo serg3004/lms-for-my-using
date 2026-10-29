@@ -6,7 +6,7 @@ const row = (overrides: Partial<Parameters<typeof viewEmployees>[0][number]> = {
 });
 
 describe('report CSV (PR 336)', () => {
-  it.each(['=1+1', '+1', '-1', '@SUM(A1)', '\tx', '\rx'])('neutralises the formula prefix of %j', (value) => {
+  it.each(['=1+1', '+1', '-1', '@SUM(A1)', '\tx', '\rx', '\nx', '  =SUM(A1)', '\u0000+1'])('neutralises the formula prefix of %j', (value) => {
     expect(neutralizeCsvCell(value)).toBe(`'${value}`);
   });
 

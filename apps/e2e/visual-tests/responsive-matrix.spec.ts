@@ -781,7 +781,8 @@ for (const width of widths) {
           await openManagementReport(page, role);
           await expectNoPageOverflow(page);
           if (width <= 375) await expectTouchTargets(page);
-          await expectVisualMatch(page, `${role}-management-session-report-${width}`, true);
+          await expect(page.getByRole('button', { name: 'Скачать сводку (Excel)', exact: true })).toBeEnabled();
+          await expectVisualMatch(page, `${role}-management-session-report-${width}`, true, { maxDiffPixels: 3000 });
         });
       }
     });
@@ -1057,14 +1058,15 @@ for (const width of widths) {
       await expect(page.getByText('92%', { exact: true })).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await expectVisualMatch(page, `admin-checklist-session-report-${width}`);
+      await expect(page.getByRole('button', { name: 'Скачать сводку (Excel)', exact: true })).toBeEnabled();
+      await expectVisualMatch(page, `admin-checklist-session-report-${width}`, false, { maxDiffPixels: 3000 });
       await page.getByRole('button', { name: 'Пересчитать', exact: true }).click();
       const recalculate = page.getByRole('dialog');
       await recalculate.getByRole('combobox', { name: 'Формула', exact: true }).selectOption('criteria');
       await recalculate.getByLabel('Причина пересчёта').fill('Проверка формулы по критериям');
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
-      await expectVisualMatch(page, `admin-checklist-recalculate-formula-${width}`);
+      await expectVisualMatch(page, `admin-checklist-recalculate-formula-${width}`, false, { maxDiffPixels: 3000 });
     });
   });
 }

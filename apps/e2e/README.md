@@ -25,6 +25,14 @@ the dialog scrolls internally. These viewport captures use a 3000-pixel differen
 (existing visual scenarios retain their budget). Axe audits at 375/1440 px scope the active native modal, whose
 background is inert; existing whole-page audits keep their scope and severity gate.
 
+Session-summary downloads (PR 373) use the anonymized `tests/fixtures/checklist-session-summary-5s.json`
+reference: 27 criteria, 71/79 points, two groups. Browser checks parse actual Excel/CSV downloads
+from admin/instructor/mentor shells, verify reference cells, merged score headings, freeze panes
+and grey headers without criterion fills, and exercise errors/retry, busy controls, hidden results,
+unfinished sessions and RU/EN/KK/ZH controls. ExcelJS is a test-only E2E dependency. API unit and
+Postgres tests separately validate the exact table, scoring, authorization, limits and durable audit;
+mocked browser downloads do not replace those server checks.
+
 ## Accessibility baseline
 
 Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. See the [accessibility exception policy](../../docs/quality/ACCESSIBILITY.md).
