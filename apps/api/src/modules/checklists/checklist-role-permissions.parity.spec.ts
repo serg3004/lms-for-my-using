@@ -78,7 +78,8 @@ describe('checklist role permissions table (PR 359)', () => {
     });
   });
 
-  describe.each(CHECKLIST_ROLE_PERMISSIONS.filter((entry) => entry.status === 'planned'))('planned row $number ($key)', (entry) => {
+  // PR 367: every row is implemented now, so the planned-row checks are a loop (describe.each throws on an empty table).
+  for (const entry of CHECKLIST_ROLE_PERMISSIONS.filter((candidate) => candidate.status === 'planned')) describe(`planned row ${entry.number} (${entry.key})`, () => {
     it('names the PR that brings the code to the table', () => {
       expect(entry.prs?.length ?? 0).toBeGreaterThan(0);
       expect(entry.prs?.every((pr) => pr >= 359 && pr <= 367)).toBe(true);
