@@ -295,7 +295,9 @@
       "typeChecklist": "Чек-лист",
       "typeWorkplaceCheck": "Проверка на рабочем месте",
       "typePhoto": "Фото",
-      "typePractical": "Практическое задание"
+      "typePractical": "Практическое задание",
+      "typeLongread": "Лонгрид",
+      "longreadEnabled": "Лонгрид-уроки включены для организации"
     },
     "materials": {
       "eyebrow": "Файлы и ресурсы",

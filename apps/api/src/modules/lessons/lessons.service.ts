@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { LongreadsService } from '../longreads/public.js';
 import { CreateLessonInput, UpdateLessonInput, UpdateLessonStatusInput } from './lessons.schemas.js';
 
 const lessonSelect = {
@@ -26,10 +27,20 @@ const lessonWithCourseSelect = {
 
 @Injectable()
 export class LessonsService {
+  private readonly longreads: LongreadsService;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
-  ) {}
+    longreads?: LongreadsService,
+  ) {
+    this.longreads = longreads ?? new LongreadsService(prisma, auditLog);
+  }
+
+  /** Longread lessons are invisible (and cannot be created) while the organization has the feature off. */
+  private async hiddenTypes(organizationId: string): Promise<{ type?: { not: 'longread' } }> {
+    return (await this.longreads.isEnabled(organizationId)) ? {} : { type: { not: 'longread' } };
+  }
 
   async listLessons(courseId: string, organizationId: string) {
     await this.ensureCourseExists(courseId, organizationId);
@@ -39,6 +50,7 @@ export class LessonsService {
         courseId,
         organizationId,
         deletedAt: null,
+        ...(await this.hiddenTypes(organizationId)),
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'desc' }],
       select: lessonSelect,
@@ -47,7 +59,7 @@ export class LessonsService {
 
   async listAllLessons(organizationId: string, page: number, pageSize: number) {
     const skip = (page - 1) * pageSize;
-    const where = { organizationId, deletedAt: null } as const;
+    const where = { organizationId, deletedAt: null, ...(await this.hiddenTypes(organizationId)) };
     const [items, total] = await Promise.all([
       this.prisma.lesson.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: lessonWithCourseSelect }),
       this.prisma.lesson.count({ where }),
@@ -61,6 +73,7 @@ export class LessonsService {
         id: lessonId,
         organizationId,
         deletedAt: null,
+        ...(await this.hiddenTypes(organizationId)),
       },
       select: lessonSelect,
     });
@@ -89,9 +102,12 @@ export class LessonsService {
       throw new ConflictException('Lesson slug already exists in course');
     }
 
-    const created = await this.prisma.lesson.create({
-      data: input,
-      select: lessonSelect,
+    if (input.type === 'longread') await this.longreads.ensureEnabled(input.organizationId);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const lesson = await tx.lesson.create({ data: input, select: lessonSelect });
+      if (input.type === 'longread') await this.longreads.createForLesson(tx, input.organizationId, lesson.id);
+      return lesson;
     });
 
     await this.auditLog.record({
@@ -139,11 +155,16 @@ export class LessonsService {
   async updateLesson(lessonId: string, organizationId: string, input: UpdateLessonInput, actorId: string | null = null) {
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, type: true },
     });
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
+    }
+
+    // A longread owns a document; switching to or from that type would orphan or invent content.
+    if (input.type !== undefined && input.type !== lesson.type && (input.type === 'longread' || lesson.type === 'longread')) {
+      throw new BadRequestException('The longread lesson type cannot be changed');
     }
 
     const updated = await this.prisma.lesson.update({

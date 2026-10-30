@@ -5,7 +5,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
-import { CreateOrganizationInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+import { CreateOrganizationInput, OrganizationFeaturesInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
@@ -119,6 +119,36 @@ export class OrganizationsService {
       organization,
       admin,
     };
+  }
+
+  async getFeatures(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId }, select: { longreadEnabled: true } });
+    if (!organization) throw new NotFoundException('Organization not found');
+
+    return { longreadEnabled: organization.longreadEnabled };
+  }
+
+  async updateFeatures(organizationId: string, input: OrganizationFeaturesInput, actorId: string | null = null) {
+    const existing = await this.getFeatures(organizationId);
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { longreadEnabled: input.longreadEnabled },
+      select: { longreadEnabled: true },
+    });
+
+    if (existing.longreadEnabled !== updated.longreadEnabled) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'organization.features_updated',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Longread lessons ${updated.longreadEnabled ? 'enabled' : 'disabled'}`,
+        metadata: { longreadEnabled: updated.longreadEnabled },
+      });
+    }
+
+    return { longreadEnabled: updated.longreadEnabled };
   }
 
   async getThemeSettings(organizationId: string) {

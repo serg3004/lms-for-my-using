@@ -571,3 +571,19 @@ checklists switched to `free` and instances already started from them would lose
 Verify defaults for existing rows, the catalog, idempotent and concurrent start, and 404 for
 non-free, draft, deleted and foreign-tenant checklists in PostgreSQL integration tests. Production
 backup/restore remains subject to the live verification requirements above.
+
+### Longread documents and organization flag (PR 381)
+
+`20261030130000_add_longread_documents` adds one non-null boolean `organizations.longread_enabled`
+defaulting to `false` and three new tables, `longread_documents` (unique per lesson), `longread_chapters`
+(unique `(document_id, anchor)`) and `longread_blocks`, with cascading foreign keys and b-tree indexes. Nothing
+existing is rewritten and no backfill is needed: every organization keeps the feature off and every lesson,
+course, progress record and assessment behaves as before.
+
+Apply the forward migration before starting the new API. Old API versions ignore the added column and the new
+tables. Roll back the application while retaining the column and tables; they are unread while the flag is off
+(a longread created meanwhile would otherwise lose its content, so do not drop them). Switching the flag off
+is the functional rollback: longread calls answer 404 and longread lessons disappear from lists, data stays.
+Verify defaults for existing rows, 404 with the flag off, cascade delete with the lesson, 409 on a stale revision
+and tenant isolation in PostgreSQL integration tests (`longreads.database.spec.ts`). Production backup/restore
+remains subject to the live verification requirements above.

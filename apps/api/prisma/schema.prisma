@@ -314,6 +314,8 @@ model Organization {
   slug                       String                      @unique
   status                     OrganizationStatus          @default(active)
   plan                       OrganizationPlan            @default(trial)
+  /// PR 381: longread lessons are off until an administrator enables them for the organization.
+  longreadEnabled            Boolean                     @default(false) @map("longread_enabled")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
@@ -363,6 +365,9 @@ model Organization {
   checklistScaleLevels       ChecklistScaleLevel[]
   checklistIdempotencyKeys   ChecklistIdempotencyKey[]
   theme                      OrganizationTheme?
+  longreadDocuments          LongreadDocument[]
+  longreadChapters           LongreadChapter[]
+  longreadBlocks             LongreadBlock[]
 
   @@map("organizations")
 }
@@ -799,22 +804,23 @@ model CourseInstructor {
 }
 
 model Lesson {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  courseId       String           @map("course_id") @db.Uuid
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  courseId       String            @map("course_id") @db.Uuid
   title          String
   slug           String
   description    String?
-  type           String           @default("text")
-  order          Int              @default(0)
-  status         LessonStatus     @default(draft)
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?        @map("deleted_at") @db.Timestamptz
-  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  type           String            @default("text")
+  order          Int               @default(0)
+  status         LessonStatus      @default(draft)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   materials      CourseMaterial[]
   progress       Progress[]
   assessments    Assessment[]
+  longread       LongreadDocument?
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
@@ -1100,57 +1106,57 @@ model Certificate {
 }
 
 model Checklist {
-  id             String               @id @default(uuid()) @db.Uuid
-  organizationId String               @map("organization_id") @db.Uuid
-  title          String
-  description    String?
-  status         ChecklistStatus      @default(draft)
-  scoringMode    ChecklistScoringMode @default(sum_points) @map("scoring_mode")
-  passThreshold  Int                  @default(80) @map("pass_threshold")
-  scaleLevels    Json?                @map("scale_levels")
-  requiresReview Boolean              @default(false) @map("requires_review")
+  id                           String                        @id @default(uuid()) @db.Uuid
+  organizationId               String                        @map("organization_id") @db.Uuid
+  title                        String
+  description                  String?
+  status                       ChecklistStatus               @default(draft)
+  scoringMode                  ChecklistScoringMode          @default(sum_points) @map("scoring_mode")
+  passThreshold                Int                           @default(80) @map("pass_threshold")
+  scaleLevels                  Json?                         @map("scale_levels")
+  requiresReview               Boolean                       @default(false) @map("requires_review")
   // PR 296 observation-sheet builder settings. See ChecklistContextFieldType/
   // ChecklistPreSessionVisibility docs above -- these are additive, optional/defaulted fields so
   // every pre-PR-296 checklist keeps working unchanged.
-  contextFields               Json?                          @map("context_fields")
+  contextFields                Json?                         @map("context_fields")
   defaultLocationCapturePolicy ChecklistGeolocationPolicy?   @map("default_location_capture_policy")
-  preSessionVisibility        ChecklistPreSessionVisibility  @default(structure_only) @map("pre_session_visibility")
+  preSessionVisibility         ChecklistPreSessionVisibility @default(structure_only) @map("pre_session_visibility")
   // PR 330: strictness settings. allowFinishIncomplete lets a session be completed with unanswered
   // criteria (they are recorded as skipped); forbidGalleryPhotos is a client-side camera-only hint
   // for the photo input -- the server cannot verify where a photo came from. Both are frozen into
   // the instance snapshot on assignment like the other builder settings.
-  allowFinishIncomplete       Boolean                        @default(false) @map("allow_finish_incomplete")
-  forbidGalleryPhotos         Boolean                        @default(false) @map("forbid_gallery_photos")
+  allowFinishIncomplete        Boolean                       @default(false) @map("allow_finish_incomplete")
+  forbidGalleryPhotos          Boolean                       @default(false) @map("forbid_gallery_photos")
   // PR 368: observation-sheet settings block. feedbackEnabled shows the structured feedback step,
   // feedbackRequired (only with feedbackEnabled) needs strengths and development areas before a
   // session completes, allowSkipAll lets every criterion be skipped. Frozen into the instance
   // snapshot on assignment like the other builder settings.
-  feedbackEnabled             Boolean                        @default(true) @map("feedback_enabled")
-  feedbackRequired            Boolean                        @default(false) @map("feedback_required")
-  allowSkipAll                Boolean                        @default(false) @map("allow_skip_all")
+  feedbackEnabled              Boolean                       @default(true) @map("feedback_enabled")
+  feedbackRequired             Boolean                       @default(false) @map("feedback_required")
+  allowSkipAll                 Boolean                       @default(false) @map("allow_skip_all")
   // PR 353: assigned (default, existing behaviour) or free self-start. Affects visibility and
   // start only; it is not frozen into the instance snapshot.
-  accessMode                  ChecklistAccessMode            @default(assigned) @map("access_mode")
+  accessMode                   ChecklistAccessMode           @default(assigned) @map("access_mode")
   // PR 354: shown as a tile on the learner pages. Only a published `free` checklist can be pinned;
   // the service clears it when the checklist stops being free or published.
-  pinned                      Boolean                        @default(false)
+  pinned                       Boolean                       @default(false)
   // PR 355: cover image. The storage key and MIME type are private (never in an API select); the
   // API exposes only `coverUpdatedAt`, which doubles as the "has a cover" flag and a cache-buster.
-  coverObjectKey              String?                        @map("cover_object_key")
-  coverMimeType               String?                        @map("cover_mime_type")
-  coverUpdatedAt              DateTime?                      @map("cover_updated_at") @db.Timestamptz
+  coverObjectKey               String?                       @map("cover_object_key")
+  coverMimeType                String?                       @map("cover_mime_type")
+  coverUpdatedAt               DateTime?                     @map("cover_updated_at") @db.Timestamptz
   // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
   // checklist created before this change editable by all; the create schema defaults new ones to false.
-  allowEditByAll              Boolean                        @default(true) @map("allow_edit_by_all")
-  createdBy      String?              @map("created_by") @db.Uuid
-  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?            @map("deleted_at") @db.Timestamptz
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  creator        User?                @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
-  items          ChecklistItem[]
-  itemGroups     ChecklistItemGroup[]
-  instances      ChecklistInstance[]
+  allowEditByAll               Boolean                       @default(true) @map("allow_edit_by_all")
+  createdBy                    String?                       @map("created_by") @db.Uuid
+  createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                    DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                    DateTime?                     @map("deleted_at") @db.Timestamptz
+  organization                 Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator                      User?                         @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  items                        ChecklistItem[]
+  itemGroups                   ChecklistItemGroup[]
+  instances                    ChecklistInstance[]
 
   @@index([organizationId, status])
   @@index([organizationId, accessMode, status])
@@ -1162,15 +1168,15 @@ model Checklist {
 /// only calls for add/rename/copy/reorder, so ungrouping/removing a group is an explicit future
 /// gap rather than something this PR half-implements.
 model ChecklistItemGroup {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @map("organization_id") @db.Uuid
-  checklistId    String         @map("checklist_id") @db.Uuid
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  checklistId    String          @map("checklist_id") @db.Uuid
   title          String
-  order          Int            @default(0)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checklist      Checklist      @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  order          Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist      Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
   items          ChecklistItem[]
 
   @@index([organizationId])
@@ -1221,45 +1227,45 @@ model ChecklistItem {
 }
 
 model ChecklistInstance {
-  id               String                   @id @default(uuid()) @db.Uuid
-  organizationId   String                   @map("organization_id") @db.Uuid
-  checklistId      String                   @map("checklist_id") @db.Uuid
-  userId           String                   @map("user_id") @db.Uuid
-  assignedBy       String?                  @map("assigned_by") @db.Uuid
-  reviewerId       String?                  @map("reviewer_id") @db.Uuid
-  reviewAssignedAt DateTime?                @map("review_assigned_at") @db.Timestamptz
-  reviewAssignedBy String?                  @map("review_assigned_by") @db.Uuid
-  status           ChecklistInstanceStatus  @default(assigned)
-  totalScore       Int                      @default(0) @map("total_score")
-  maxScore         Int                      @default(0) @map("max_score")
-  percentage       Int                      @default(0)
-  passed           Boolean                  @default(false)
+  id                 String                   @id @default(uuid()) @db.Uuid
+  organizationId     String                   @map("organization_id") @db.Uuid
+  checklistId        String                   @map("checklist_id") @db.Uuid
+  userId             String                   @map("user_id") @db.Uuid
+  assignedBy         String?                  @map("assigned_by") @db.Uuid
+  reviewerId         String?                  @map("reviewer_id") @db.Uuid
+  reviewAssignedAt   DateTime?                @map("review_assigned_at") @db.Timestamptz
+  reviewAssignedBy   String?                  @map("review_assigned_by") @db.Uuid
+  status             ChecklistInstanceStatus  @default(assigned)
+  totalScore         Int                      @default(0) @map("total_score")
+  maxScore           Int                      @default(0) @map("max_score")
+  percentage         Int                      @default(0)
+  passed             Boolean                  @default(false)
   // PR 290: false means "not_scored" (every non-skipped item's max was zero, e.g. all-skipped) —
   // `percentage` stays whatever it last computed to, never a misleading 0%. True for every
   // instance that has no skip capability in play, matching pre-PR-290 behavior unchanged.
-  scored           Boolean                  @default(true)
-  templateSnapshot Json?                    @map("template_snapshot")
-  snapshotVersion  Int?                     @default(1) @map("snapshot_version")
-  dueAt            DateTime?                @map("due_at") @db.Timestamptz
-  submittedAt      DateTime?                @map("submitted_at") @db.Timestamptz
-  completedAt      DateTime?                @map("completed_at") @db.Timestamptz
-  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt        DateTime?                @map("deleted_at") @db.Timestamptz
+  scored             Boolean                  @default(true)
+  templateSnapshot   Json?                    @map("template_snapshot")
+  snapshotVersion    Int?                     @default(1) @map("snapshot_version")
+  dueAt              DateTime?                @map("due_at") @db.Timestamptz
+  submittedAt        DateTime?                @map("submitted_at") @db.Timestamptz
+  completedAt        DateTime?                @map("completed_at") @db.Timestamptz
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?                @map("deleted_at") @db.Timestamptz
   // PR 367: set only when an administrator deletes a finished result (a cancelled session also sets
   // `deletedAt`, but never these two). The reason is what lets the administrator restore it.
-  resultDeleteReason String?                @map("result_delete_reason")
-  resultDeletedBy  String?                  @map("result_deleted_by") @db.Uuid
-  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  checklist        Checklist                @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  user             User                     @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
-  assignedByUser   User?                    @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
-  reviewer         User?                    @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
-  reviewAssigner   User?                    @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
-  results          ChecklistItemResult[]
-  events           ChecklistInstanceEvent[]
-  session          ChecklistSession?
-  scoreRevisions   ChecklistScoreRevision[]
+  resultDeleteReason String?                  @map("result_delete_reason")
+  resultDeletedBy    String?                  @map("result_deleted_by") @db.Uuid
+  organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist          Checklist                @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  user               User                     @relation("ChecklistInstanceUser", fields: [userId], references: [id], onDelete: Restrict)
+  assignedByUser     User?                    @relation("ChecklistInstanceAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+  reviewer           User?                    @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewAssigner     User?                    @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
+  results            ChecklistItemResult[]
+  events             ChecklistInstanceEvent[]
+  session            ChecklistSession?
+  scoreRevisions     ChecklistScoreRevision[]
 
   @@index([organizationId, status])
   @@index([organizationId, reviewerId, status])
@@ -1349,47 +1355,47 @@ model ChecklistWorkplaceSettings {
 /// in-person session needs that a normal async ChecklistInstance doesn't; score/snapshot/status
 /// of the underlying submission stay on ChecklistInstance and are never duplicated here.
 model ChecklistSession {
-  id                    String                     @id @default(uuid()) @db.Uuid
-  organizationId        String                     @map("organization_id") @db.Uuid
-  instanceId            String                     @unique @map("instance_id") @db.Uuid
-  observerId            String                     @map("observer_id") @db.Uuid
-  status                ChecklistSessionStatus     @default(scheduled)
+  id                        String                     @id @default(uuid()) @db.Uuid
+  organizationId            String                     @map("organization_id") @db.Uuid
+  instanceId                String                     @unique @map("instance_id") @db.Uuid
+  observerId                String                     @map("observer_id") @db.Uuid
+  status                    ChecklistSessionStatus     @default(scheduled)
   // PR 333: soft delete of a not-yet-started session. Hidden from every read; the event history
   // and audit rows stay (append-only), the paired instance is soft-deleted in the same transaction.
-  deletedAt             DateTime?                  @map("deleted_at") @db.Timestamptz
+  deletedAt                 DateTime?                  @map("deleted_at") @db.Timestamptz
   // Optimistic concurrency for PR 289's conditional transitions (stale write -> 409).
-  version               Int                        @default(1)
-  scheduledAt           DateTime?                  @map("scheduled_at") @db.Timestamptz
-  durationMinutes       Int?                       @map("duration_minutes")
-  startedAt             DateTime?                  @map("started_at") @db.Timestamptz
-  pausedAt              DateTime?                  @map("paused_at") @db.Timestamptz
-  locationCapturePolicy ChecklistGeolocationPolicy @default(off) @map("location_capture_policy")
-  timezone              String                     @default("Asia/Almaty")
+  version                   Int                        @default(1)
+  scheduledAt               DateTime?                  @map("scheduled_at") @db.Timestamptz
+  durationMinutes           Int?                       @map("duration_minutes")
+  startedAt                 DateTime?                  @map("started_at") @db.Timestamptz
+  pausedAt                  DateTime?                  @map("paused_at") @db.Timestamptz
+  locationCapturePolicy     ChecklistGeolocationPolicy @default(off) @map("location_capture_policy")
+  timezone                  String                     @default("Asia/Almaty")
   // Structured feedback (PR 297 observer conduct screen): free text the observer records during
   // or right after the session. Session-level (not per-item) -- the prototype's "structured
   // feedback" step is about the employee's overall session, not a single criterion.
-  strengths             String?                    @db.Text
-  developmentAreas      String?                    @map("development_areas") @db.Text
-  nextSteps             String?                    @map("next_steps") @db.Text
+  strengths                 String?                    @db.Text
+  developmentAreas          String?                    @map("development_areas") @db.Text
+  nextSteps                 String?                    @map("next_steps") @db.Text
   // PR 323: definitions are frozen when the session starts so later checklist edits cannot
   // relabel historical answers; values remain a compact field-id -> string object.
-  contextFieldsSnapshot Json?                      @map("context_fields_snapshot")
-  contextValues         Json?                      @map("context_values")
+  contextFieldsSnapshot     Json?                      @map("context_fields_snapshot")
+  contextValues             Json?                      @map("context_values")
   // PR 302: an orthogonal business flag, not a lifecycle status -- the assigned observer (or an
   // admin on their behalf) reports they can't conduct this session, which surfaces a "Заменить
   // наблюдателя" CTA for admin/manager. Non-null reason is what "unavailable" means; it never
   // gates start/pause/resume/complete/cancel, and PATCH .../reassigning the observer clears it
   // (see `update()`/`checklist-session.service.ts`).
-  observerUnavailableReason String?                @map("observer_unavailable_reason") @db.Text
-  observerUnavailableAt DateTime?                  @map("observer_unavailable_at") @db.Timestamptz
-  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
-  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  instance              ChecklistInstance          @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  observer              User                       @relation("ChecklistSessionObserver", fields: [observerId], references: [id], onDelete: Restrict)
-  events                ChecklistSessionEvent[]
-  reminders             ChecklistSessionReminder[]
-  locationCaptures      ChecklistLocationCapture[]
+  observerUnavailableReason String?                    @map("observer_unavailable_reason") @db.Text
+  observerUnavailableAt     DateTime?                  @map("observer_unavailable_at") @db.Timestamptz
+  createdAt                 DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  organization              Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance                  ChecklistInstance          @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  observer                  User                       @relation("ChecklistSessionObserver", fields: [observerId], references: [id], onDelete: Restrict)
+  events                    ChecklistSessionEvent[]
+  reminders                 ChecklistSessionReminder[]
+  locationCaptures          ChecklistLocationCapture[]
 
   @@index([organizationId, status])
   @@index([organizationId, observerId])
@@ -1418,26 +1424,26 @@ model ChecklistSessionEvent {
 /// Append-only audit trail of re-scoring events on ChecklistInstance (the score itself stays on
 /// ChecklistInstance; this table only records the before/after of an explicit revision).
 model ChecklistScoreRevision {
-  id                  String                 @id @default(uuid()) @db.Uuid
-  organizationId      String                 @map("organization_id") @db.Uuid
-  instanceId          String                 @map("instance_id") @db.Uuid
-  formula             ChecklistScoreFormula  @default(snapshot)
-  previousPercentage  Int                    @map("previous_percentage")
-  newPercentage       Int                    @map("new_percentage")
-  previousPassed      Boolean                @map("previous_passed")
-  newPassed           Boolean                @map("new_passed")
+  id                 String                @id @default(uuid()) @db.Uuid
+  organizationId     String                @map("organization_id") @db.Uuid
+  instanceId         String                @map("instance_id") @db.Uuid
+  formula            ChecklistScoreFormula @default(snapshot)
+  previousPercentage Int                   @map("previous_percentage")
+  newPercentage      Int                   @map("new_percentage")
+  previousPassed     Boolean               @map("previous_passed")
+  newPassed          Boolean               @map("new_passed")
   /// Whether `newPercentage` is a real score or computeInstanceScore()'s all-skipped/not-scored
   /// placeholder (0). Persisted as an immutable historical fact of this revision -- unlike
   /// ChecklistInstance.scored (which a later mutation can change), this never changes after the
   /// row is created, so an idempotency-cache replay of this exact recalculation can always recover
   /// the correct value by re-reading this row, regardless of what's happened to the instance since.
-  newScored           Boolean                @default(true) @map("new_scored")
-  reason              String?
-  actorUserId         String?                @map("actor_user_id") @db.Uuid
-  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz
-  organization        Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  instance            ChecklistInstance      @relation(fields: [instanceId], references: [id], onDelete: Cascade)
-  actor               User?                  @relation("ChecklistScoreRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  newScored          Boolean               @default(true) @map("new_scored")
+  reason             String?
+  actorUserId        String?               @map("actor_user_id") @db.Uuid
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance           ChecklistInstance     @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  actor              User?                 @relation("ChecklistScoreRevisionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([instanceId, createdAt, id])
   @@index([organizationId, createdAt])
@@ -1674,4 +1680,63 @@ model OutboxEvent {
 
   @@index([publishedAt, createdAt])
   @@map("outbox_events")
+}
+
+/// PR 381: the content of a lesson of type `longread`: chapters and blocks as structured JSON payloads
+/// (never browser HTML). `draftRevision` grows on every save and is the optimistic-lock token.
+model LongreadDocument {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  lessonId       String            @unique @map("lesson_id") @db.Uuid
+  schemaVersion  Int               @default(1) @map("schema_version")
+  draftRevision  Int               @default(1) @map("draft_revision")
+  /// Reader settings (reading order, required chapters, table of contents, text direction); validated by the API.
+  settings       Json              @default("{}")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lesson         Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  chapters       LongreadChapter[]
+
+  @@index([organizationId])
+  @@map("longread_documents")
+}
+
+model LongreadChapter {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  documentId     String           @map("document_id") @db.Uuid
+  order          Int
+  title          String
+  /// Stable link target; survives renaming the chapter.
+  anchor         String
+  hidden         Boolean          @default(false)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document       LongreadDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  blocks         LongreadBlock[]
+
+  @@unique([documentId, anchor])
+  @@index([organizationId])
+  @@index([documentId, order])
+  @@map("longread_chapters")
+}
+
+model LongreadBlock {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  chapterId      String          @map("chapter_id") @db.Uuid
+  order          Int
+  type           String
+  schemaVersion  Int             @default(1) @map("schema_version")
+  content        Json
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chapter        LongreadChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([chapterId, order])
+  @@map("longread_blocks")
 }

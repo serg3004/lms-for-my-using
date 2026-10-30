@@ -186,6 +186,9 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/lessons/{id}` | `Lessons` | `bearer` |
 | `PATCH` | `/api/v1/lessons/{id}` | `Lessons` | `bearer` |
 | `DELETE` | `/api/v1/lessons/{id}` | `Lessons` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
+| `PUT` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/chapters/{chapterId}/duplicate` | `Longreads` | `bearer` |
 | `PATCH` | `/api/v1/lessons/{id}/status` | `Lessons` | `bearer` |
 | `POST` | `/api/v1/manager/overdue-reminders` | `Manager` | `bearer` |
 | `GET` | `/api/v1/manager/team-summary` | `Manager` | `bearer` |
@@ -220,6 +223,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/organizations` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations/register` | `Organizations` | `public` |
 | `GET` | `/api/v1/organizations/{id}` | `Organizations` | `bearer` |
+| `GET` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
+| `PATCH` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations/{id}/logo` | `Organizations` | `bearer` |
 | `GET` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |

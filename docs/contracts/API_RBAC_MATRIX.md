@@ -253,3 +253,5 @@ audit records actor, IDs, requested format, locale and row count (never feedback
 Database tests exercise all five roles, manager-team composition, assigned-observer exceptions,
 learner feedback visibility, soft deletion and cross-tenant IDs. This implements the summary
 format for report/analytics rights 9 and 14 without broadening their scope.
+
+Longread lessons (PR 381): `GET/PUT /lessons/:id/longread` and `POST /lessons/:id/longread/chapters/:chapterId/duplicate` use `lessonsCreate` (admin/instructor) with `@CourseScope('param', 'id', 'lesson')`, i.e. exactly who may edit the lesson and in which course; a learner and a manager do not read the draft (403), a foreign organization or course is 404. `GET/PATCH /organizations/:id/features` use the new `organizationFeaturesRead` (admin/manager/instructor/learner, so every screen can decide what to show) and `organizationFeaturesWrite` (admin only), both with `OrganizationScope('param', 'id')`. With `longreadEnabled = false` all longread calls answer 404 regardless of role.

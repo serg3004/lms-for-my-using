@@ -17,6 +17,8 @@ export type AuditLogAction =
   | 'lesson.created'
   | 'lesson.updated'
   | 'lesson.deleted'
+  | 'longread.updated'
+  | 'organization.features_updated'
   | 'group.created'
   | 'group.updated'
   | 'assignment.created'

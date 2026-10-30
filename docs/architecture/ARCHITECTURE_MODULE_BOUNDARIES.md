@@ -50,6 +50,8 @@ Avoid business/database logic in controllers, private-service coupling across un
 
 A module that validates untrusted input into a server-owned snapshot before a separate, single-use commit step (a preview → commit workflow) is not a new architectural pattern: it still follows `controller -> service -> Prisma/database`, with the snapshot persisted and re-validated by the service layer rather than trusted from the client at commit time.
 
+The `longreads` module (PR 381) owns longread documents, the block registry and the organization flag check; the lessons module reaches it only through `longreads/public.js` (`LongreadsService.ensureEnabled`/`createForLesson`, called inside the lesson-creation transaction) and never touches its tables. The dependency points one way: longreads does not import lessons.
+
 ## Database boundary
 
 `apps/api/prisma/schema.prisma` and migrations are the repository authority for database structure. Runtime database access should go through Prisma. Schema/migration changes require explicit migration scope and review with affected services, validation, tests and docs.

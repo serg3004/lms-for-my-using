@@ -1403,3 +1403,44 @@ state and update are read/written in a Serializable transaction.
 PR 351 changes selection; PR 352 separately grants own-session conduct for all roles. Observer action scope
 remain enforced. The own-session read/run grants and entry points for non-instructor roles are PR 352.
 An assigned instructor removed from the eligible selection retains their existing session access.
+
+## Longread lessons: model, draft API and organization flag (PR 381)
+
+A longread is a `Lesson` with `type = 'longread'` whose content lives in three tables:
+`LongreadDocument` (one per lesson: `draftRevision`, `schemaVersion`, reader `settings`), `LongreadChapter`
+(`order`, `title`, stable `anchor`, `hidden`) and `LongreadBlock` (`order`, `type`, `schemaVersion`, JSON `content`).
+Lesson rows stay light; nothing is stored in `lessons` itself.
+
+**Flag.** `Organization.longreadEnabled` (default `false`) is read and changed through
+`GET/PATCH /organizations/:id/features` (`{ "longreadEnabled": boolean }`; read: every role of the organization,
+write: admin only, audit `organization.features_updated` when the value changes). While the flag is off,
+creating a lesson with `type: "longread"` and every `/lessons/:id/longread*` call answer 404, `GET /lessons/:id`
+for a longread answers 404, and longread lessons are left out of lesson lists; all other lesson types behave as before.
+Existing longread data is kept when the flag is switched off.
+
+**Lessons.** `POST /courses/:courseId/lessons` with `type: "longread"` creates the lesson, its document and one empty
+chapter in one transaction. The type cannot be changed to or from `longread` (`PATCH /lessons/:id` answers 400).
+
+**Draft API** (roles and course scope are those of lesson editing: `lessonsCreate`, `@CourseScope('param','id','lesson')`;
+a learner gets 403, a foreign organization or foreign course 404):
+
+| Call | Purpose |
+|---|---|
+| `GET /lessons/:id/longread` | Whole draft: `revision`, `schemaVersion`, `settings`, chapters with blocks (`known: false` marks a block type this server does not know). |
+| `PUT /lessons/:id/longread` | Atomic save of the whole draft (autosave): `{ revision, settings?, chapters: [{ id?, title, hidden, blocks: [{ id?, type, schemaVersion, content }] }] }`. Chapters and blocks without `id` are created, omitted ones are deleted, order is the array order. Returns the saved draft with `revision + 1`. |
+| `POST /lessons/:id/longread/chapters/:chapterId/duplicate` | `{ revision }`; deep copy of the chapter right after the original, with new block ids, new ids inside the content and a new anchor. Returns the draft. |
+
+**Optimistic revision.** `revision` must equal the stored `draftRevision`. The check is a single atomic
+`UPDATE ... WHERE draft_revision = :revision`, so of two concurrent saves of the same revision exactly one wins; the other
+answers `409` with `{ message, currentRevision }` and changes nothing. A `chapter.id` or `block.id` that does not belong to
+this longread is `400`.
+
+**Blocks.** The server registry validates known types (`paragraph`, `heading` 1-3, `list` up to 3 levels without level jumps,
+`quote`, `note`, `divider`, `code`) with strict zod schemas: unknown keys are rejected, a link must be `http(s)://`, `mailto:`
+or an in-document `#anchor` (no `javascript:`/`data:`), a block is at most 100 KB, a chapter at most 1000 blocks, a document at
+most 200 chapters and 5000 blocks. A block of an unknown type is stored and returned unchanged (only "JSON object up to 100 KB"
+is checked), so an older server never destroys content written by a newer one. Registry growth (composite blocks, media,
+questions) is the job of PR 384-388.
+
+**Audit.** `longread.updated` (target: the lesson) is written at most once per lesson per 5 minutes per API process, because
+autosave is frequent; `organization.features_updated` for the flag.
