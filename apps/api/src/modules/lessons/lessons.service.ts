@@ -102,7 +102,10 @@ export class LessonsService {
       throw new ConflictException('Lesson slug already exists in course');
     }
 
-    if (input.type === 'longread') await this.longreads.ensureEnabled(input.organizationId);
+    if (input.type === 'longread') {
+      await this.longreads.ensureEnabled(input.organizationId);
+      if (input.status !== 'draft') throw new BadRequestException('A longread is published with its own publish action');
+    }
 
     const created = await this.prisma.$transaction(async (tx) => {
       const lesson = await tx.lesson.create({ data: input, select: lessonSelect });
@@ -126,11 +129,17 @@ export class LessonsService {
   async updateLessonStatus(lessonId: string, organizationId: string, status: UpdateLessonStatusInput['status'], actorId: string | null = null) {
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, type: true },
     });
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
+    }
+
+    // A longread goes live only through the publish action, which cuts the immutable version learners read.
+    if (lesson.type === 'longread' && status === 'published') {
+      const published = await this.prisma.longreadDocument.findFirst({ where: { lessonId, organizationId, publishedRevisionId: { not: null } }, select: { id: true } });
+      if (!published) throw new BadRequestException('Publish the longread with its publish action first');
     }
 
     const updated = await this.prisma.lesson.update({

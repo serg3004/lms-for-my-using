@@ -587,3 +587,17 @@ is the functional rollback: longread calls answer 404 and longread lessons disap
 Verify defaults for existing rows, 404 with the flag off, cascade delete with the lesson, 409 on a stale revision
 and tenant isolation in PostgreSQL integration tests (`longreads.database.spec.ts`). Production backup/restore
 remains subject to the live verification requirements above.
+
+### Longread versions (PR 382)
+
+`20261030150000_add_longread_revisions` adds the `longread_revisions` table (unique `(document_id, number)`), two columns on
+`longread_documents` (`last_revision_number` default 0, nullable unique `published_revision_id`) and one nullable column
+`progress.longread_revision_id`, all with `ON DELETE SET NULL` or cascade foreign keys. Nothing existing changes meaning: no
+backfill, every longread starts unpublished and every existing progress row keeps a null pin.
+
+Apply the forward migration before starting the new API. Old API versions ignore the new columns and table. Roll back the
+application while retaining them; do not drop `longread_revisions` or `progress.longread_revision_id`, because learners
+already pinned to a version would lose their version. Revisions are immutable and are never edited by migrations. Verify in
+PostgreSQL integration tests (`longread-versions.database.spec.ts`): pinned version stays after republish, restore leaves all
+versions byte-equal, concurrent publish never repeats a number, tenant isolation. Production backup/restore remains subject
+to the live verification requirements above.

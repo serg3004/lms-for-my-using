@@ -1444,3 +1444,41 @@ questions) is the job of PR 384-388.
 
 **Audit.** `longread.updated` (target: the lesson) is written at most once per lesson per 5 minutes per API process, because
 autosave is frequent; `organization.features_updated` for the flag.
+
+## Longread publishing and immutable versions (PR 382)
+
+Every publish cuts a `LongreadRevision`: a never-updated copy of the settings, chapters (title, anchor, hidden) and blocks
+(type, schemaVersion, content) of the draft, with a number that only grows (`LongreadDocument.lastRevisionNumber` is
+incremented under a row lock, so two publishes never share a number), the author and the time. Learners read only versions;
+editing or restoring the draft never changes one. Everything is behind the `longreadEnabled` flag (404 when off).
+
+| Call | Roles | Purpose |
+|---|---|---|
+| `GET /lessons/:id/longread/publish-check` | `lessonsCreate` | `{ ok, reasons }`; the same check publish runs. |
+| `POST /lessons/:id/longread/publish` `{ revision }` | `lessonsCreate` | Publish or republish. `revision` is the draft revision the author saw: a different current one is `409 { currentRevision }`. Result `{ version, publishedAt }`. |
+| `POST /lessons/:id/longread/unpublish` | `lessonsCreate` | New openings stop (404); versions, pinned versions and learners' progress stay. |
+| `GET /lessons/:id/longread/versions` | `lessonsCreate` | `{ draftRevision, versions: [{ number, createdAt, author, published }] }`, newest first. |
+| `POST /lessons/:id/longread/versions/:number/restore` `{ revision }` | `lessonsCreate` | Replaces the draft with a copy of that version (new block and chapter ids, same anchors, settings restored; `draftRevision + 1`, stale revision is 409). The version itself and all others are untouched. Returns the draft. |
+| `GET /lessons/:id/longread/published` | `lessonsRead` (all roles) | The only longread read for learners, see below. |
+
+**Refusal reasons.** Publish answers `422 { message, reasons: [{ code, message, chapter?, blockIndex? }] }` and creates nothing
+when the draft has: no visible chapter with content (`empty_document`), a block type this server does not know
+(`unknown_block`), a block that fails its schema (`invalid_block`), an internal `#anchor` link to a missing chapter
+(`broken_link`), or more required chapters than visible ones (`required_chapters_exceed_visible`). Media and question blocks
+(PR 386-389) add their own reasons (empty required task, file that failed scanning) to the same list.
+
+**Publish rules.** The first publish after changes creates the next number and makes it current, sets the lesson `published`;
+publishing again after more changes is a republish (a new number). If the draft has not changed since the latest version,
+publishing a published longread is `409` and publishing an unpublished one just switches that version on again (no duplicate).
+Two concurrent publishes are serialised by the row lock: one wins, the other gets 409 (same draft revision) or the next number.
+A longread lesson becomes `published` only through this action: `POST .../lessons` with `status: "published"` and
+`PATCH /lessons/:id/status` to `published` before the first publish are `400`.
+
+**Learner read and pinning.** `GET /lessons/:id/longread/published` returns `{ lessonId, version, publishedAt, schemaVersion,
+settings, chapters: [{ title, anchor, blocks }] }` without hidden chapters. The first open creates the learner's `Progress`
+row (`in_progress`) with `longreadRevisionId` set to the current version; later opens return that pinned version even after
+newer ones are published, while new learners get the latest. Answers are never carried over between versions. The draft is
+never returned by this call; an unpublished or non-`published` lesson, a missing longread, another organization and the
+flag being off are the same `404`.
+
+**Audit.** `longread.published` (`version`, `republished`), `longread.unpublished`, `longread.version_restored`.
