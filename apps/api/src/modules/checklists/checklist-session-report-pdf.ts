@@ -26,7 +26,8 @@ const INK = '#172033';
 const MUTED = '#475569';
 const TRACK = '#E2E8F0';
 const NEUTRAL_STRIPE = '#CBD5E1';
-const PHOTO_BOX = { width: 330, height: 220 };
+/** Photos sit inside the criterion row (as in the reference), scaled to the detail column and this height. */
+const THUMB_MAX_HEIGHT = 72;
 
 type Highlight = HighlightStyle | null;
 type Criterion = Extract<ChecklistSessionReport, { visible: true }>['criteria'][number];
@@ -90,8 +91,8 @@ class ReportPainter {
       this.generalInfo();
       this.groups();
       this.criteriaTable();
+      this.omittedPhotosNote();
       this.feedback();
-      this.photos();
     }
     this.footers();
   }
@@ -293,6 +294,7 @@ class ReportPainter {
     };
     drawHead();
 
+    const photos = new Map(this.options.photos.map((photo) => [photo.criterionId, photo]));
     for (const criterion of this.report.criteria) {
       const highlight: Highlight = criterion.color;
       const status = criterionStatus(criterion);
@@ -301,12 +303,17 @@ class ReportPainter {
       const scoreText = criterion.score === null || criterion.maxScore === null
         ? this.labels.skippedCriterion : `${formatNumber(criterion.score)} / ${formatNumber(criterion.maxScore)}`;
       const level = criterion.levelLabel ?? '';
-      const comment = [criterion.comment, criterion.photo ? `${this.labels.photoFile}: ${criterion.photo.fileName ?? ''}`.trim() : null].filter(Boolean).join('\n');
+      const photo = criterion.photo ? this.thumbnail(photos.get(criterion.id), widths.detail) : null;
+      const fileLine = criterion.photo?.fileName ?? '';
+      const photoLine = !criterion.photo || photo?.drawn ? null
+        : photo?.unavailable ? this.labels.photoUnavailable : `${this.labels.photoFile}: ${fileLine}`.trim();
       const detailParts = [
         level ? { value: level, weight: 700 as PdfFontWeight } : null,
-        ...comment.split('\n').filter(Boolean).map((value) => ({ value, weight: 400 as PdfFontWeight })),
+        ...(criterion.comment ?? '').split('\n').filter(Boolean).map((value) => ({ value, weight: 400 as PdfFontWeight })),
+        photoLine ? { value: photoLine, weight: 400 as PdfFontWeight } : null,
       ].filter((part): part is { value: string; weight: PdfFontWeight } => part !== null);
-      const detailHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2, 0);
+      const textHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2, 0);
+      const detailHeight = textHeight + (photo?.drawn ? photo.height + 4 : 0);
       const height = Math.max(this.measure(title, widths.text, { size: 10 }), detailHeight, 16) + 12;
 
       if (this.y + height > BOTTOM) {
@@ -325,6 +332,7 @@ class ReportPainter {
         this.text(part.value, column.detail, widths.detail, { weight: part.weight, size: 9, color: ink }, detailY);
         detailY += this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2;
       }
+      if (photo?.drawn) this.doc.image(photo.buffer, column.detail, detailY + 2, { width: photo.width, height: photo.height });
       this.y += height;
       this.doc.moveTo(column.stripe, this.y).lineTo(column.stripe + CONTENT_WIDTH, this.y).lineWidth(0.4).strokeColor(TRACK).stroke();
     }
@@ -348,44 +356,23 @@ class ReportPainter {
     }
   }
 
-  private photos() {
-    if (!this.report.visible) return;
-    const byCriterion = new Map(this.report.criteria.map((criterion) => [criterion.id, criterion]));
-    const photos = this.options.photos.filter((photo) => byCriterion.has(photo.criterionId));
-    if (photos.length === 0 && this.options.omittedPhotos === 0) return;
-    this.section(this.labels.photos);
-    for (const photo of photos) {
-      const criterion = byCriterion.get(photo.criterionId)!;
-      const caption = `${criterion.number}  ${criterion.text}${criterion.photo?.fileName ? ` — ${criterion.photo.fileName}` : ''}`;
-      const captionHeight = this.measure(caption, CONTENT_WIDTH, { size: 9 });
-      const embedded = photo.buffer ? this.tryImage(photo.buffer, caption, captionHeight) : false;
-      if (embedded) continue;
-      this.ensureSpace(captionHeight + 18);
-      this.text(caption, PAGE.margin, CONTENT_WIDTH, { size: 9, color: MUTED });
-      this.y += captionHeight + 2;
-      this.text(this.labels.photoUnavailable, PAGE.margin, CONTENT_WIDTH, { size: 9, color: MUTED });
-      this.y += 14;
+  /** Decodes a criterion's photo and sizes its thumbnail; `unavailable` when it could not be read or decoded. */
+  private thumbnail(photo: ReportPdfPhoto | undefined, maxWidth: number):
+    | { drawn: true; buffer: Buffer; width: number; height: number }
+    | { drawn: false; unavailable: boolean } {
+    if (!photo) return { drawn: false, unavailable: false };
+    if (!photo.buffer) return { drawn: false, unavailable: true };
+    try {
+      const opened = (this.doc as unknown as { openImage(source: Buffer): { width: number; height: number } }).openImage(photo.buffer);
+      const scale = Math.min(maxWidth / opened.width, THUMB_MAX_HEIGHT / opened.height, 1);
+      return { drawn: true, buffer: photo.buffer, width: opened.width * scale, height: opened.height * scale };
+    } catch {
+      return { drawn: false, unavailable: true };
     }
-    if (this.options.omittedPhotos > 0) this.paragraph(this.labels.photosOmitted(this.options.omittedPhotos), { size: 9, color: MUTED });
   }
 
-  /** Draws the caption and the picture on one page; returns false when pdfkit cannot decode the image. */
-  private tryImage(buffer: Buffer, caption: string, captionHeight: number): boolean {
-    let opened: { width: number; height: number };
-    try {
-      opened = (this.doc as unknown as { openImage(source: Buffer): { width: number; height: number } }).openImage(buffer);
-    } catch {
-      return false;
-    }
-    const scale = Math.min(PHOTO_BOX.width / opened.width, PHOTO_BOX.height / opened.height, 1);
-    const width = opened.width * scale;
-    const height = opened.height * scale;
-    this.ensureSpace(captionHeight + height + 14);
-    this.text(caption, PAGE.margin, CONTENT_WIDTH, { size: 9, color: MUTED });
-    this.y += captionHeight + 3;
-    this.doc.image(buffer, PAGE.margin, this.y, { width, height });
-    this.y += height + 12;
-    return true;
+  private omittedPhotosNote() {
+    if (this.options.omittedPhotos > 0) this.paragraph(this.labels.photosOmitted(this.options.omittedPhotos), { size: 9, color: MUTED });
   }
 
   private footers() {

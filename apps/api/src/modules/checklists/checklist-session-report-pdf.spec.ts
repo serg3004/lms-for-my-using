@@ -106,7 +106,7 @@ describe('renderSessionReportPdf (PR 372)', () => {
     expect(splitIntoFontRuns('a\u{1F600}b', 400).map((run) => run.text).join('')).toBe('a?b');
   });
 
-  it('embeds a photo with its caption, and says so when a photo cannot be read or was left out', async () => {
+  it('embeds the photo as a thumbnail inside its criterion row, and says so when a photo cannot be read or was left out', async () => {
     const rows = [row('p1', null, 'Floor', 3, 3, { photo: true }), row('p2', null, 'Shelf', 3, 3, { photo: true }), row('p3', null, 'Door', 3, 3, { photo: true })];
     const { pdf, text } = await render(report(rows), 'en', [
       { criterionId: 'p1', buffer: PIXEL, mimeType: 'image/png' },
@@ -114,7 +114,8 @@ describe('renderSessionReportPdf (PR 372)', () => {
       { criterionId: 'p3', buffer: Buffer.from('not an image'), mimeType: 'image/png' },
     ], 4);
     expect(pdf.toString('latin1')).toContain('/Subtype /Image');
-    expect(text).toContain('1  Floor — p1.png');
+    expect(text).toContain('1  Floor');
+    expect(text).not.toContain('Photos\n');
     expect(text.match(/Photo unavailable/g)).toHaveLength(2);
     expect(text).toContain('Photos not included in the file: 4');
   });
