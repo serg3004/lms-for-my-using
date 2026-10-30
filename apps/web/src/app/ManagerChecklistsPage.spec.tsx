@@ -53,7 +53,7 @@ describe('resolvePeriodRange', () => {
 });
 
 const analyticsFixture: ManagerChecklistAnalytics = {
-  summary: { totalEmployees: 2, totalSessions: 5, completedSessions: 4, averagePercentage: 78, lowCount: 1, highCount: 2, noCompletionCount: 1 },
+  summary: { totalEmployees: 2, totalSessions: 5, completedSessions: 4, selfCompletedCount: 1, averagePercentage: 78, lowCount: 1, highCount: 2, noCompletionCount: 1 },
   thresholds: { high: 90, low: 60 },
   distribution: [{ bucket: 'low', count: 1 }, { bucket: 'mid', count: 1 }, { bucket: 'high', count: 2 }],
   trend: [{ date: '2026-02-05', averagePercentage: 70, count: 1 }, { date: '2026-02-10', averagePercentage: 86, count: 2 }],
@@ -135,7 +135,8 @@ describe('ManagerChecklistsPage', () => {
     expect(statCardCount).toBe(4);
     expect(html).toContain('Низкое выполнение');
     expect(html).toContain('Высокое выполнение');
-    expect(html).toContain('Без сессий за период');
+    expect(html).toContain('Без результатов за период');
+    expect(html).toContain('в том числе самостоятельных: 1');
     expect(html).toContain('Средний результат');
     // thresholds: { high: 90, low: 60 } in the fixture -- both sub-labels render the configured %.
     expect(html).toContain('&lt;60%');
@@ -190,7 +191,7 @@ describe('ManagerChecklistsPage', () => {
 
   it('PR 306 #15: shows an explicit empty-scope message, not a blank table, when there are zero employees in scope for the period', () => {
     const emptyAnalytics: ManagerChecklistAnalytics = {
-      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
+      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, selfCompletedCount: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
       thresholds: { high: 90, low: 60 },
       distribution: [],
       trend: [],

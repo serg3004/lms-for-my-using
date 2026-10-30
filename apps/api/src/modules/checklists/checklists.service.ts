@@ -53,6 +53,13 @@ export const MAX_PINNED_CHECKLISTS = 8;
 export const PINNED_LIMIT_MESSAGE = `At most ${MAX_PINNED_CHECKLISTS} checklists can be pinned. Unpin another checklist first.`;
 export const ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE = 'This user already has an active assignment for this checklist';
 
+type AnalyticsRow = {
+  status: string;
+  scheduledAt: Date | null;
+  self: boolean;
+  instance: { userId: string; status: string; percentage: number; passed: boolean; scored: boolean };
+};
+
 export type ManagerAnalyticsEmployeeRow = {
   userId: string;
   firstName: string;
@@ -1388,7 +1395,7 @@ export class ChecklistsService {
     const scopedIds = scopedEmployees.map((employee) => employee.id);
     const visibleIds = new Set(employees.map((employee) => employee.id));
     const emptyResult = {
-      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
+      summary: { totalEmployees: 0, totalSessions: 0, completedSessions: 0, selfCompletedCount: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0 },
       thresholds,
       distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: 0 }, { bucket: 'high', count: 0 }],
       trend: [] as { date: string; averagePercentage: number; count: number }[],
@@ -1400,21 +1407,36 @@ export class ChecklistsService {
     };
     if (scopedIds.length === 0) return emptyResult;
 
-    const sessionSelect = {
-      status: true,
-      scheduledAt: true,
-      instance: { select: { userId: true, status: true, percentage: true, passed: true, scored: true } },
-    } as const;
+    const instanceSelect = { userId: true, status: true, percentage: true, passed: true, scored: true } as const;
+    const sessionSelect = { status: true, scheduledAt: true, instance: { select: instanceSelect } } as const;
     const sessionWhere = (range: { gte: Date; lte: Date }): Prisma.ChecklistSessionWhereInput => ({
       organizationId,
       deletedAt: null,
       scheduledAt: range,
       instance: { deletedAt: null, userId: { in: scopedIds }, ...(query.checklistId ? { checklistId: query.checklistId } : {}) },
     });
-    const [allCurrentSessions, allPreviousSessions] = await Promise.all([
-      this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: from, lte: to }), select: sessionSelect }),
-      this.prisma.checklistSession.findMany({ where: sessionWhere({ gte: previousFrom, lte: from }), select: sessionSelect }),
-    ]);
+    // PR 380: results the employee finished on their own (free access, or assigned without an observation
+    // session) count next to sessions; they are dated by completion and flagged `self` so "sessions" stay sessions.
+    const selfWhere = (range: { gte: Date; lte: Date }): Prisma.ChecklistInstanceWhereInput => ({
+      organizationId,
+      deletedAt: null,
+      session: { is: null },
+      status: 'completed',
+      completedAt: range,
+      userId: { in: scopedIds },
+      ...(query.checklistId ? { checklistId: query.checklistId } : {}),
+    });
+    const asSessions = async (range: { gte: Date; lte: Date }): Promise<AnalyticsRow[]> => {
+      const [sessions, selfDone] = await Promise.all([
+        this.prisma.checklistSession.findMany({ where: sessionWhere(range), select: sessionSelect }),
+        this.prisma.checklistInstance.findMany({ where: selfWhere(range), select: { ...instanceSelect, completedAt: true } }),
+      ]);
+      return [
+        ...sessions.map((session) => ({ ...session, self: false })),
+        ...selfDone.map(({ completedAt, ...instance }) => ({ status: 'completed', scheduledAt: completedAt, self: true, instance })),
+      ];
+    };
+    const [allCurrentSessions, allPreviousSessions] = await Promise.all([asSessions({ gte: from, lte: to }), asSessions({ gte: previousFrom, lte: from })]);
     const currentSessions = allCurrentSessions.filter((session) => visibleIds.has(session.instance.userId));
     const previousSessions = allPreviousSessions.filter((session) => visibleIds.has(session.instance.userId));
     if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(managerEmployees, allCurrentSessions) };
@@ -1446,7 +1468,7 @@ export class ChecklistsService {
       for (const session of sessions) {
         const userId = session.instance.userId;
         const entry = map.get(userId) ?? { sessionsCount: 0, completed: [], lastSessionAt: null };
-        entry.sessionsCount += 1;
+        if (!session.self) entry.sessionsCount += 1;
         if (session.instance.status === 'completed' && session.instance.scored) entry.completed.push({ percentage: session.instance.percentage });
         if (session.scheduledAt && (!entry.lastSessionAt || session.scheduledAt > entry.lastSessionAt)) entry.lastSessionAt = session.scheduledAt;
         map.set(userId, entry);
@@ -1481,8 +1503,9 @@ export class ChecklistsService {
     return {
       summary: {
         totalEmployees: employees.length,
-        totalSessions: currentSessions.length,
-        completedSessions: currentSessions.filter((session) => session.instance.status === 'completed').length,
+        totalSessions: currentSessions.filter((session) => !session.self).length,
+        completedSessions: currentSessions.filter((session) => !session.self && session.instance.status === 'completed').length,
+        selfCompletedCount: currentSessions.filter((session) => session.self).length,
         averagePercentage: average(scoredCompleted.map((session) => session.instance.percentage)) ?? 0,
         lowCount: distributionCounts.low,
         highCount: distributionCounts.high,
@@ -1506,7 +1529,7 @@ export class ChecklistsService {
   /** Both primary manager types; deduplicated by user so one person in both roles counts once. */
   private managerBreakdown(
     managerByEmployee: Map<string, { id: string; name: string }[]>,
-    sessions: { status: string; instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
+    sessions: { status: string; self?: boolean; instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
   ): ManagerAnalyticsManagerRow[] {
     const rows = new Map<string | null, ManagerAnalyticsManagerRow & { total: number; scoredCount: number }>();
     for (const managers of managerByEmployee.values()) {
@@ -1538,7 +1561,7 @@ export class ChecklistsService {
   /** Per-department roll-up over the whole scoped zone (independent of the selected department filter). */
   private departmentBreakdown(
     scopedEmployees: { id: string; departmentMemberships: { department: { id: string; name: string } }[] }[],
-    sessions: { instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
+    sessions: { self?: boolean; instance: { userId: string; status: string; percentage: number; scored: boolean } }[],
   ): ManagerAnalyticsDepartmentRow[] {
     const rows = new Map<string, { name: string; employees: Set<string>; sessionsCount: number; completed: number[]; completedEmployees: Set<string> }>();
     const departmentByUser = new Map<string, { id: string; name: string }>();
@@ -1554,7 +1577,7 @@ export class ChecklistsService {
       const department = departmentByUser.get(session.instance.userId);
       const row = department ? rows.get(department.id) : undefined;
       if (!row) continue;
-      row.sessionsCount += 1;
+      if (!session.self) row.sessionsCount += 1;
       if (session.instance.status === 'completed' && session.instance.scored) {
         row.completed.push(session.instance.percentage);
         row.completedEmployees.add(session.instance.userId);

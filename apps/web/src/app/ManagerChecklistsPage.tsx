@@ -461,8 +461,12 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
               valueStyle={{ color: 'var(--color-success)' }}
               trend={t('manager.checklists.highThresholdSub', '≥{{threshold}}%', { threshold: state.data.thresholds.high })}
             />
-            <StatCard label={t('manager.checklists.noCompletion', 'No sessions in period')} value={state.data.summary.noCompletionCount} />
-            <StatCard label={t('manager.checklists.averageScore', 'Average result')} value={`${state.data.summary.averagePercentage}%`} />
+            <StatCard label={t('manager.checklists.noCompletion', 'No results in period')} value={state.data.summary.noCompletionCount} />
+            <StatCard
+              label={t('manager.checklists.averageScore', 'Average result')}
+              value={`${state.data.summary.averagePercentage}%`}
+              trend={state.data.summary.selfCompletedCount > 0 ? t('manager.checklists.selfCompletedSub', 'including self-completed: {{count}}', { count: state.data.summary.selfCompletedCount }) : undefined}
+            />
           </StatsGrid>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,320px),1fr))', gap: 16, margin: '20px 0' }}>

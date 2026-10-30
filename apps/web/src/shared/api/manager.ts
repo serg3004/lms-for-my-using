@@ -94,6 +94,8 @@ export type ManagerChecklistAnalytics = {
     totalEmployees: number;
     totalSessions: number;
     completedSessions: number;
+    /** PR 380: results finished without an observation session (free access or self-passed), counted in the averages. */
+    selfCompletedCount: number;
     averagePercentage: number;
     lowCount: number;
     highCount: number;
