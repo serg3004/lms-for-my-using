@@ -295,7 +295,9 @@
       "typeChecklist": "Checklist",
       "typeWorkplaceCheck": "Workplace check",
       "typePhoto": "Photo",
-      "typePractical": "Practical assignment"
+      "typePractical": "Practical assignment",
+      "typeLongread": "Longread",
+      "longreadEnabled": "Longread lessons are enabled for this organization"
     },
     "materials": {
       "eyebrow": "Files and resources",

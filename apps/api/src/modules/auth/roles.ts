@@ -13,6 +13,8 @@ export const rolePolicies = {
   organizationsCreate: ['admin'],
   themeSettingsRead: ['admin', 'manager', 'instructor', 'learner'],
   themeSettingsWrite: ['admin'],
+  organizationFeaturesRead: ['admin', 'manager', 'instructor', 'learner'],
+  organizationFeaturesWrite: ['admin'],
   usersRead: ['admin', 'manager'],
   usersCreate: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],

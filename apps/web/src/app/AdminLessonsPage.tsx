@@ -9,6 +9,8 @@ import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { Badge, Button, EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
+import { getOrganizationFeatures, saveOrganizationFeatures } from '../shared/api/organizations.js';
+import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Course = { id: string; organizationId: string; title: string; slug: string; status: string };
@@ -24,13 +26,13 @@ type Lesson = {
   course: { title: string };
 };
 
-type AdminLessonsData = { courses: Course[]; lessons: Lesson[] };
+type AdminLessonsData = { courses: Course[]; lessons: Lesson[]; longreadEnabled?: boolean };
 
 type LessonStatus = 'draft' | 'published' | 'archived';
-type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical';
+type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical' | 'longread';
 
 const LESSON_STATUSES: LessonStatus[] = ['draft', 'published', 'archived'];
-const LESSON_TYPES: LessonType[] = ['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical'];
+const LESSON_TYPES: LessonType[] = ['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical', 'longread'];
 
 const LESSON_TYPE_LABEL_KEYS: Record<LessonType, string> = {
   video: 'typeVideo',
@@ -40,6 +42,7 @@ const LESSON_TYPE_LABEL_KEYS: Record<LessonType, string> = {
   workplace_check: 'typeWorkplaceCheck',
   photo: 'typePhoto',
   practical: 'typePractical',
+  longread: 'typeLongread',
 };
 
 function lessonTypeLabel(t: TFunction, type: string) {
@@ -47,8 +50,15 @@ function lessonTypeLabel(t: TFunction, type: string) {
   return t(`admin.lessons.${labelKey}`, type);
 }
 
+/** The longread type exists only where an admin switched the feature on; an existing longread keeps its own (fixed) type. */
+function selectableTypes(longreadEnabled: boolean, current?: string): LessonType[] {
+  if (current === 'longread') return ['longread'];
+  return longreadEnabled ? LESSON_TYPES : LESSON_TYPES.filter((type) => type !== 'longread');
+}
+
 export function AdminLessonsPage() {
   const { t } = useTranslation();
+  const { currentUser } = useSession();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | LessonType>('all');
 
@@ -78,13 +88,14 @@ export function AdminLessonsPage() {
 
   const { state: loadState, reload: load } = useAsyncData<AdminLessonsData>(
     async () => {
-      const [{ items: courses }, { items: lessons }] = await Promise.all([
+      const [{ items: courses }, { items: lessons }, features] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<Lesson>>('/lessons?pageSize=200'),
+        currentUser ? getOrganizationFeatures(currentUser.organizationId) : Promise.resolve({ longreadEnabled: false }),
       ]);
-      return { courses, lessons };
+      return { courses, lessons, longreadEnabled: features.longreadEnabled };
     },
-    [t],
+    [t, currentUser],
     {
       unauthenticated: t('admin.lessons.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.lessons.loadError', 'Unable to load lesson editor.'),
@@ -237,6 +248,13 @@ export function AdminLessonsPage() {
   }
 
   const filteredLessons = filterLessons(loadState.data.lessons, search, typeFilter);
+  const longreadEnabled = loadState.data.longreadEnabled === true;
+  const isAdmin = currentUser?.roles.includes('admin') ?? false;
+
+  function toggleLongread(enabled: boolean) {
+    if (!currentUser) return;
+    void saveOrganizationFeatures(currentUser.organizationId, { longreadEnabled: enabled }).then(load, load);
+  }
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
@@ -275,7 +293,7 @@ export function AdminLessonsPage() {
             onChange={(e) => setTypeFilter(e.target.value as 'all' | LessonType)}
           >
             <option value="all">{t('admin.lessons.allTypes', 'All types')}</option>
-            {LESSON_TYPES.map((lessonType) => (
+            {selectableTypes(longreadEnabled).map((lessonType) => (
               <option key={lessonType} value={lessonType}>
                 {lessonTypeLabel(t, lessonType)}
               </option>
@@ -283,6 +301,13 @@ export function AdminLessonsPage() {
           </select>
         }
       />
+
+      {isAdmin && (
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
+          <input style={{ width: 'auto' }} type="checkbox" checked={longreadEnabled} onChange={(event) => toggleLongread(event.target.checked)} />
+          {' '}{t('admin.lessons.longreadEnabled', 'Longread lessons are enabled for this organization')}
+        </label>
+      )}
 
       {filteredLessons.length === 0 ? (
         <EmptyState message={t('admin.lessons.noResults', 'No lessons found.')} />
@@ -323,7 +348,7 @@ export function AdminLessonsPage() {
             </FormField>
             <FormField id="lesson-create-type" label={t('admin.lessons.fieldType', 'Type')}>
               <select id="lesson-create-type" value={type} onChange={(event) => setType(event.target.value as LessonType)}>
-                {LESSON_TYPES.map((lessonType) => (
+                {selectableTypes(longreadEnabled).map((lessonType) => (
                   <option key={lessonType} value={lessonType}>
                     {lessonTypeLabel(t, lessonType)}
                   </option>
@@ -369,7 +394,7 @@ export function AdminLessonsPage() {
           </FormField>
           <FormField id="lesson-edit-type" label={t('admin.lessons.fieldType', 'Type')}>
             <select id="lesson-edit-type" value={editType} onChange={(event) => setEditType(event.target.value as LessonType)}>
-              {LESSON_TYPES.map((lessonType) => (
+              {selectableTypes(longreadEnabled, editLesson?.type).map((lessonType) => (
                 <option key={lessonType} value={lessonType}>
                   {lessonTypeLabel(t, lessonType)}
                 </option>

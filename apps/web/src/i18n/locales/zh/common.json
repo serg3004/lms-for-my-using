@@ -295,7 +295,9 @@
       "typeChecklist": "检查表",
       "typeWorkplaceCheck": "现场检查",
       "typePhoto": "照片",
-      "typePractical": "实践任务"
+      "typePractical": "实践任务",
+      "typeLongread": "长文阅读",
+      "longreadEnabled": "为本组织启用长文阅读课程"
     },
     "materials": {
       "eyebrow": "文件与资源",

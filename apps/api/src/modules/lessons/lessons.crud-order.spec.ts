@@ -65,6 +65,9 @@ describe('LessonsService CRUD order', () => {
       course: {
         findFirst: async () => ({ id: courseId }),
       },
+      organization: {
+        findFirst: async () => ({ longreadEnabled: false }),
+      },
       lesson: {
         findMany,
         update,

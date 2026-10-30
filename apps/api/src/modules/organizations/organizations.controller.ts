@@ -12,6 +12,8 @@ import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/pu
 import {
   CreateOrganizationInput,
   RegisterOrganizationInput,
+  OrganizationFeaturesInput,
+  organizationFeaturesSchema,
   ThemeSettingsInput,
   createOrganizationSchema,
   registerOrganizationSchema,
@@ -79,6 +81,24 @@ export class OrganizationsController {
   @OrganizationScope('param', 'id')
   resetThemeSettings(@Param('id') organizationId: string, @Req() request: AuthenticatedRequest) {
     return this.organizationsService.resetThemeSettings(organizationId, request.currentUser?.id ?? null);
+  }
+
+  @Get(':id/features')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.organizationFeaturesRead)
+  @OrganizationScope('param', 'id')
+  getFeatures(@Param('id') organizationId: string) {
+    return this.organizationsService.getFeatures(organizationId);
+  }
+
+  @Patch(':id/features')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.organizationFeaturesWrite)
+  @OrganizationScope('param', 'id')
+  updateFeatures(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input: OrganizationFeaturesInput = organizationFeaturesSchema.parse(body);
+
+    return this.organizationsService.updateFeatures(organizationId, input, request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

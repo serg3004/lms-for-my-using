@@ -42,6 +42,9 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Group` |
 | `GroupMember` |
 | `Lesson` |
+| `LongreadBlock` |
+| `LongreadChapter` |
+| `LongreadDocument` |
 | `ManagerGroup` |
 | `MaterialFileDeletionAudit` |
 | `Membership` |

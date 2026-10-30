@@ -295,7 +295,9 @@
       "typeChecklist": "Чек-лист",
       "typeWorkplaceCheck": "Жұмыс орнындағы тексеру",
       "typePhoto": "Фото",
-      "typePractical": "Практикалық тапсырма"
+      "typePractical": "Практикалық тапсырма",
+      "typeLongread": "Лонгрид",
+      "longreadEnabled": "Лонгрид-сабақтар ұйым үшін қосылған"
     },
     "materials": {
       "eyebrow": "Файлдар мен ресурстар",

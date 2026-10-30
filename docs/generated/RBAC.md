@@ -80,6 +80,8 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `notificationsWrite` | `admin`, `manager`, `instructor`, `learner` |
 | `orgExternalReferencesRead` | `admin` |
 | `orgExternalReferencesWrite` | `admin` |
+| `organizationFeaturesRead` | `admin`, `manager`, `instructor`, `learner` |
+| `organizationFeaturesWrite` | `admin` |
 | `organizationsCreate` | `admin` |
 | `organizationsRead` | `admin` |
 | `positionCoursesRead` | `admin` |
