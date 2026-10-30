@@ -8,6 +8,8 @@ import { NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { ChecklistScaleService } from '../modules/checklists/checklist-scale.service.js';
+import { renderSessionReportPdf } from '../modules/checklists/checklist-session-report-pdf.js';
+import { buildSessionSummary } from '../modules/checklists/checklist-session-summary.js';
 import { ChecklistSessionService } from '../modules/checklists/checklist-session.service.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
 import type { UploadService } from '../modules/upload/public.js';
@@ -146,6 +148,30 @@ describe('checklist session report (PR 370) — database', () => {
     // One calculation: the list shows the same percentage.
     const listed = await sessionService.list(organizationId, { page: 1, pageSize: 10 } as never, {}, live);
     expect(listed.items.find((item) => item.id === session.id)?.result.percentage).toBe(report.summary.percentage);
+  });
+
+  // PR 376: a session scored in Postgres reads the same on the screen data, in the summary table and in the PDF.
+  it('gives the same totals, groups and criteria to the report, the summary table and the PDF', async () => {
+    const { session } = await completedSession();
+    await complete(session);
+    const report = await sessionService.getReport(session.id, organizationId, {}, live, { id: observerId, isAdmin: false });
+    if (!report.visible) throw new Error('unreachable');
+
+    const { rows } = buildSessionSummary([report], 'ru');
+    const column = rows.map((row) => String(row[0] ?? ''));
+    expect(rows[8]?.[1]).toBe('73% · 11 из 15');
+    for (const line of [...report.groups.map((g) => `${g.number} ${g.title}`), ...report.criteria.map((c) => `${c.number} ${c.text}`)]) {
+      expect(column).toContain(line);
+    }
+
+    const trace: string[] = [];
+    await renderSessionReportPdf(report, { locale: 'ru', photos: [], omittedPhotos: 0, compress: false, trace });
+    const text = trace.join('\n');
+    expect(text).toContain('Баллы: 11 / 15');
+    expect(text).toContain('73%');
+    for (const line of [...report.groups.map((g) => `${g.number}. ${g.title}`), ...report.criteria.map((c) => `${c.number}  ${c.text}`)]) {
+      expect(text).toContain(line);
+    }
   });
 
   it('hides the result from the learner until the instance is completed, then shows it', async () => {
