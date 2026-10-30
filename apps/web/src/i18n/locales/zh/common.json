@@ -1552,6 +1552,7 @@
         "backToSessions": "返回会话"
       },
       "settingsBlockTitle": "设置",
+      "helpLabel": "提示：{{name}}",
       "allowSkipAllHint": "观察员可以跳过任何标准。被跳过的标准不计入结果。对保存后分配的会话生效。",
       "recordLocationOrgDefault": "未设置：安排会话时使用组织的默认设置。",
       "recordLocationOffHint": "此清单不记录位置。",

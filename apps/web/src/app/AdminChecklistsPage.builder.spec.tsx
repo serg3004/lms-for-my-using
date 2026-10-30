@@ -195,7 +195,7 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
   });
 
   it('explains the active scoring mode and shows the save status', () => {
-    expect(html).toContain('role="note"');
+    expect(html).toContain('role="tooltip"');
     expect(html).toContain('A criterion can also use its own ready-made scale');
     expect(html).toContain('<p role="status" class="admin-form__hint">All changes are saved.</p>');
   });
