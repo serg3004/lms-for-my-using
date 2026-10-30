@@ -1469,5 +1469,5 @@ Autosave is debounced by 900 ms and serial: a request uses its sent revision and
 kept for the next request. A 409 stops saving without replacing local content; the author can explicitly reload or copy
 their structured draft from a recovery dialog (manual selection also works without clipboard permission). Network errors
 require an explicit retry, since the server may already have committed the request. Saved/changed/saving/error/conflict
-states are announced; invalid chapter names/size prevent autosave. Unsaved edits are held in browser memory only; leaving
+states are announced; invalid chapter names/size prevent autosave. Unsaved edits are held in browser memory only; closing the tab or following a link
 warns the author. Closing despite the warning discards unsaved edits. The editor does not write progress or publish lessons.

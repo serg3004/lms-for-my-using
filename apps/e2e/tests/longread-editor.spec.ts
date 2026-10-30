@@ -107,7 +107,11 @@ test('rich editing, safe links and hostile paste stay structured and inert', asy
 });
 
 test('list nesting stops at level three and pasted code is never executed', async ({ page }) => {
-  const server = longreadEditorServer(); await server.attach(page);
+  const draft = structuredClone(longreadFixture);
+  // A preceding sibling makes a fourth level structurally possible for ProseMirror;
+  // the application must still reject Tab nesting beyond its own limit.
+  (draft.chapters[0]!.blocks[1]!.content.items as { level: number; runs: { text: string }[] }[]).push({ level: 3, runs: [{ text: 'Проверить изоляцию' }] });
+  const server = longreadEditorServer(draft); await server.attach(page);
   await page.getByRole('button', { name: '2. Список', exact: true }).click();
   const list = page.getByRole('textbox', { name: 'Текст', exact: true });
   await list.locator('li').last().click();
@@ -117,7 +121,7 @@ test('list nesting stops at level three and pasted code is never executed', asyn
   await page.getByLabel('Текст кода', { exact: true }).fill('<script>window.codeAttack = true</script>');
   await expect.poll(() => server.snapshot().revision).toBeGreaterThan(1);
   expect(await page.evaluate(() => 'codeAttack' in window)).toBe(false);
-  expect(server.snapshot().chapters[0]!.blocks[1]!.content.items).toMatchObject([{ level: 1 }, { level: 2 }, { level: 3 }]);
+  expect(server.snapshot().chapters[0]!.blocks[1]!.content.items).toMatchObject([{ level: 1 }, { level: 2 }, { level: 3 }, { level: 3 }]);
 });
 
 test('two windows conflict without overwriting; local edits can be copied and the current version reloaded', async ({ page, context }) => {
