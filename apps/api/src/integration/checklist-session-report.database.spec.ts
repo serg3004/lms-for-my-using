@@ -305,7 +305,8 @@ describe('checklist session report (PR 370) — database', () => {
       expect(Date.now() - started).toBeLessThan(30_000);
       expect(readPhoto).toHaveBeenCalledTimes(30);
       expect(pdf.length).toBeLessThan(25 * 1024 * 1024);
-      expect(pdfPages(pdf)).toBeGreaterThan(2);
+      expect(pdfPages(pdf)).toBeGreaterThanOrEqual(2);
+      expect(pdf.toString('latin1').match(/\/Subtype \/Image/g)?.length ?? 0).toBeGreaterThanOrEqual(30);
       const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_session.report_pdf_downloaded' } });
       expect(audit.metadata).toMatchObject({ photosEmbedded: 30, photosOmitted: 0 });
     });
