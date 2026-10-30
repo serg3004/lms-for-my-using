@@ -2947,13 +2947,49 @@
       "quote": "Quote",
       "note": "Note",
       "divider": "Divider",
-      "code": "Code"
+      "code": "Code",
+      "table": "Table",
+      "columns": "Columns",
+      "tabs": "Tabs",
+      "accordion": "Accordion"
     },
     "tones": {
       "info": "Information",
       "success": "Success",
       "warning": "Warning",
       "danger": "Important"
+    },
+    "composite": {
+      "tableActions": "Table actions",
+      "rowAbove": "Row above",
+      "rowBelow": "Row below",
+      "columnLeft": "Column to the left",
+      "columnRight": "Column to the right",
+      "deleteRow": "Delete row",
+      "deleteColumn": "Delete column",
+      "mergeRight": "Merge with the cell on the right",
+      "mergeDown": "Merge with the cell below",
+      "split": "Split cell",
+      "headerRow": "Pin the first row",
+      "columnWidth": "Width of column {{column}}, %",
+      "cell": "Cell: row {{row}}, column {{column}}",
+      "tabsActions": "Tab actions",
+      "accordionActions": "Accordion actions",
+      "addTab": "Add tab",
+      "addSection": "Add section",
+      "toAccordion": "Convert to accordion",
+      "toTabs": "Convert to tabs",
+      "tabList": "Tabs",
+      "itemTitle": "Title",
+      "removeItem": "Delete tab or section",
+      "openByDefault": "Open by default",
+      "newItem": "Section {{number}}",
+      "columnCount": "Number of columns",
+      "column": "Column {{number}}",
+      "emptySlot": "No blocks here yet.",
+      "nestedType": "Nested block type",
+      "addNested": "Add nested block",
+      "unsupportedNested": "This nested block cannot be edited here. It is kept unchanged."
     }
   }
 }

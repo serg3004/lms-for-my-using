@@ -1,5 +1,5 @@
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
-import { longreadEditorServer } from '../fixtures/longread-editor.js';
+import { longreadCompositeFixture, longreadEditorServer } from '../fixtures/longread-editor.js';
 import { sessionReportFixture } from '../fixtures/session-report.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -20,6 +20,15 @@ for (const role of ['admin', 'instructor'] as const) {
       await expectVisualMatch(page, `${role}-longread-editor-${width}`, false, { maxDiffPixels: 3000 });
     });
   }
+}
+
+for (const width of [375, 1440]) {
+  test(`admin longread composite blocks are responsive at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await longreadEditorServer(longreadCompositeFixture()).attach(page);
+    await expectNoPageOverflow(page);
+    await expectVisualMatch(page, `admin-longread-composite-${width}`, false, { maxDiffPixels: 3000 });
+  });
 }
 
 async function expectNoPageOverflow(page: Page) {

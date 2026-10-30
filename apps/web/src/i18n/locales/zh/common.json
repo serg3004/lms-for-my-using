@@ -2947,13 +2947,49 @@
       "quote": "引用",
       "note": "提示",
       "divider": "分隔线",
-      "code": "代码"
+      "code": "代码",
+      "table": "表格",
+      "columns": "分栏",
+      "tabs": "标签页",
+      "accordion": "折叠面板"
     },
     "tones": {
       "info": "信息",
       "success": "成功",
       "warning": "警告",
       "danger": "重要"
+    },
+    "composite": {
+      "tableActions": "表格操作",
+      "rowAbove": "在上方插入行",
+      "rowBelow": "在下方插入行",
+      "columnLeft": "在左侧插入列",
+      "columnRight": "在右侧插入列",
+      "deleteRow": "删除行",
+      "deleteColumn": "删除列",
+      "mergeRight": "与右侧单元格合并",
+      "mergeDown": "与下方单元格合并",
+      "split": "拆分单元格",
+      "headerRow": "固定首行",
+      "columnWidth": "第 {{column}} 列宽度（%）",
+      "cell": "单元格：第 {{row}} 行，第 {{column}} 列",
+      "tabsActions": "标签页操作",
+      "accordionActions": "折叠面板操作",
+      "addTab": "添加标签页",
+      "addSection": "添加分区",
+      "toAccordion": "转换为折叠面板",
+      "toTabs": "转换为标签页",
+      "tabList": "标签页",
+      "itemTitle": "标题",
+      "removeItem": "删除标签页或分区",
+      "openByDefault": "默认展开",
+      "newItem": "分区 {{number}}",
+      "columnCount": "分栏数量",
+      "column": "第 {{number}} 栏",
+      "emptySlot": "这里还没有内容块。",
+      "nestedType": "嵌套块类型",
+      "addNested": "添加嵌套块",
+      "unsupportedNested": "此嵌套块无法在此编辑，将原样保留。"
     }
   }
 }

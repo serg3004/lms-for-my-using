@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { isKnownBlockType, LONGREAD_SCHEMA_VERSION, validateBlockContent } from './longread-blocks.js';
+import { collectContentIds, COMPOSITE_BLOCK_TYPES, isKnownBlockType, LONGREAD_SCHEMA_VERSION, validateBlockContent } from './longread-blocks.js';
 import {
   MAX_BLOCKS_PER_DOCUMENT,
   MAX_CHAPTERS,
@@ -114,11 +114,23 @@ export class LongreadsService {
     // Validate every block before touching the database.
     const validated = input.chapters.map((chapter) =>
       chapter.blocks.map((block) => {
-        const result = validateBlockContent(block.type, block.content);
+        const result = validateBlockContent(block.type, block.content, block.id);
         if (!result.ok) throw new BadRequestException(result.message);
         return result.content;
       }),
     );
+
+    // Every id in the draft (blocks, tabs, columns, nested blocks) is unique: a copy that kept ids would make edits ambiguous.
+    const seenIds = new Set<string>();
+    for (const chapter of input.chapters) {
+      for (const block of chapter.blocks) {
+        const nested = (COMPOSITE_BLOCK_TYPES as readonly string[]).includes(block.type) ? collectContentIds(block.content) : [];
+        for (const id of [...(block.id ? [block.id] : []), ...nested]) {
+          if (seenIds.has(id)) throw new BadRequestException(`Duplicate block id ${id}`);
+          seenIds.add(id);
+        }
+      }
+    }
 
     const revision = await this.prisma.$transaction(async (tx) => {
       const document = await tx.longreadDocument.findFirst({
