@@ -1217,7 +1217,10 @@
         },
         "exportCsv": "CSV жүктеу",
         "exportError": "Сессияларды жүктеу мүмкін болмады.",
-        "exportXlsx": "Excel жүктеу"
+        "exportXlsx": "Excel жүктеу",
+        "summarySameChecklist": "Бір парақтың сессияларын таңдаңыз.",
+        "summarySelectAll": "Барлық аяқталған сессияларды таңдау",
+        "summarySelectRow": "Жиынтыққа таңдау: {{title}}, {{employee}}"
       },
       "newGroupTitle": "Жаңа топ",
       "newCriterionText": "Жаңа критерий",
@@ -1442,7 +1445,12 @@
         "summaryLimit": "Жиынтық тым үлкен. Бақылаулар санын азайтыңыз.",
         "summaryUnavailable": "Жиынтық қолжетімсіз немесе оны көруге құқығыңыз жоқ.",
         "summaryCompletedOnly": "Тек аяқталған сессияларды экспорттауға болады.",
-        "summaryExportError": "Жиынтықты жүктеу мүмкін болмады. Қайта көріңіз."
+        "summaryExportError": "Жиынтықты жүктеу мүмкін болмады. Қайта көріңіз.",
+        "summaryOneChecklist": "Бір парақтың сессияларын таңдаңыз.",
+        "otherObservations": "Қызметкердің осы парақ бойынша басқа бақылауларымен жиынтық",
+        "otherObservationsHint": "Бір файлға кіретін бақылау күндерін белгілеңіз.",
+        "otherObservationsError": "Басқа бақылауларды жүктеу мүмкін болмады.",
+        "currentObservation": "осы сессия"
       },
       "dueAtHint": "Міндетті емес. Жергілікті уақытты енгізіңіз — ол UTC форматында сақталады.",
       "requiredItem": "Міндетті",

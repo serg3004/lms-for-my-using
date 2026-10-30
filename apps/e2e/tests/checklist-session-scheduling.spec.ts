@@ -41,8 +41,8 @@ async function openWizard(page: Page) {
   // Selection replaces the radio with a participant card (PR 326).
   await page.getByRole('radio', { name: /Olga Observer/ }).click();
   await expect(page.getByRole('button', { name: 'Сменить наблюдателя' })).toBeVisible();
-  await page.getByRole('checkbox', { name: /Alex Learner/ }).check();
-  await page.getByRole('checkbox', { name: /Mira Learner/ }).check();
+  await page.getByRole('checkbox', { name: /^Alex Learner/ }).check();
+  await page.getByRole('checkbox', { name: /^Mira Learner/ }).check();
   await page.getByRole('button', { name: 'Далее', exact: true }).click();
   await page.getByRole('radio', { name: 'Safety training', exact: true }).check();
   await page.getByRole('button', { name: 'Далее', exact: true }).click();

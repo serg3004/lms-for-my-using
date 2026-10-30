@@ -21,6 +21,7 @@ import type { ChecklistSessionParticipant, ChecklistSessionStatus, ChecklistSess
 import type { Department } from '../shared/api/departments.js';
 import { ChecklistSessionWizard } from '../features/admin-checklist-sessions/ChecklistSessionWizard.js';
 import { ChecklistWorkplaceSettingsDialog } from '../features/admin-checklist-sessions/ChecklistWorkplaceSettingsDialog.js';
+import { canExportSummary, ChecklistSummarySelection } from '../features/admin-checklist-sessions/ChecklistSummarySelection.js';
 import { EditSessionDialog } from '../features/admin-checklist-sessions/EditSessionDialog.js';
 import { MessageParticipantDialog } from '../features/admin-checklist-sessions/MessageParticipantDialog.js';
 import {
@@ -126,6 +127,9 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
       error: t('admin.checklists.sessions.loadError', 'Unable to load sessions.'),
     },
   );
+
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  useEffect(() => { setSelectedKeys(new Set()); }, [statusTab, period, observerFilter, checklistFilter, learnerFilter, departmentFilter, search, page]);
 
   const exporting = useRef(false);
   async function exportReport(format: 'csv' | 'xlsx') {
@@ -442,6 +446,14 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.checklist.title}`, collapseLabel: (row) => `${t('courses.details')}: ${row.checklist.title}` }}
         onRowClick={(row) => navigate(`${reportBase}/${row.id}`)}
         rows={loadState.data.sessions}
+        selection={{
+          selectedKeys,
+          onChange: setSelectedKeys,
+          isRowSelectable: canExportSummary,
+          selectAllLabel: t('admin.checklists.sessions.summarySelectAll', 'Select all completed sessions'),
+          rowLabel: (row) => t('admin.checklists.sessions.summarySelectRow', 'Select for summary: {{title}}, {{employee}}', { title: row.checklist.title, employee: formatParticipantName(row.learner) }),
+        }}
+        batchActions={(selected) => <ChecklistSummarySelection selected={selected} t={t} />}
       />
       <Pagination label={t('admin.checklists.sessions.paginationLabel', 'Session pages')} onPage={(nextPage) => setSearchParams(applySessionFilterChange(searchParams, { page: nextPage }), { replace: true })} page={page} pageSize={PAGE_SIZE} total={loadState.data.total} />
       <ChecklistSessionWizard

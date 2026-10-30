@@ -1217,7 +1217,10 @@
         },
         "exportCsv": "Скачать CSV",
         "exportError": "Не удалось выгрузить сессии.",
-        "exportXlsx": "Скачать Excel"
+        "exportXlsx": "Скачать Excel",
+        "summarySameChecklist": "Выберите сессии одного листа.",
+        "summarySelectAll": "Выбрать все завершённые сессии",
+        "summarySelectRow": "Выбрать для сводки: {{title}}, {{employee}}"
       },
       "newGroupTitle": "Новая группа",
       "newCriterionText": "Новый критерий",
@@ -1442,7 +1445,12 @@
         "summaryLimit": "Сводка слишком большая. Выберите меньше наблюдений.",
         "summaryUnavailable": "Сводка недоступна или у вас нет прав на её просмотр.",
         "summaryCompletedOnly": "Можно выгружать только завершённые сессии.",
-        "summaryExportError": "Не удалось скачать сводку. Попробуйте ещё раз."
+        "summaryExportError": "Не удалось скачать сводку. Попробуйте ещё раз.",
+        "summaryOneChecklist": "Выберите сессии одного листа.",
+        "otherObservations": "Сводка с другими наблюдениями сотрудника по этому листу",
+        "otherObservationsHint": "Отметьте даты наблюдений для одного файла.",
+        "otherObservationsError": "Не удалось загрузить другие наблюдения.",
+        "currentObservation": "эта сессия"
       },
       "dueAtHint": "Необязательно. Введите локальное время — оно будет сохранено в UTC.",
       "requiredItem": "Обязательный",

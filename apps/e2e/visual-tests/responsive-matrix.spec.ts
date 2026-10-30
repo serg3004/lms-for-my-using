@@ -884,7 +884,7 @@ for (const width of widths) {
       }));
       await page.goto('/instructor/checklists/sessions');
       await page.getByRole('button', { name: 'Новая сессия', exact: true }).click();
-      await expect(page.getByRole('checkbox', { name: /Leo Learner/ })).toBeVisible();
+      await expect(page.getByRole('checkbox', { name: /^Leo Learner/ })).toBeVisible();
       await expect(page.getByRole('dialog')).toContainText('Эту сессию проведёте вы.');
       await expect(page.getByRole('button', { name: 'Сменить наблюдателя' })).toHaveCount(0);
       await expectNoPageOverflow(page);
