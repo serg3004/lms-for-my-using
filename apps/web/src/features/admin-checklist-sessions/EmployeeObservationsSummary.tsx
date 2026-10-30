@@ -25,7 +25,7 @@ export function EmployeeObservationsSummary({ session, t }: { session: Checklist
       .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
   }, [session]);
-  if (failed) return <span role="alert">{t('admin.checklists.report.otherObservationsError', 'Unable to load other observations.')}</span>;
+  if (failed) return <span role="status">{t('admin.checklists.report.otherObservationsError', 'Unable to load other observations.')}</span>;
   if (!sessions || sessions.length < 2) return null;
   const toggle = (id: string, checked: boolean) => {
     const next = new Set(selected);

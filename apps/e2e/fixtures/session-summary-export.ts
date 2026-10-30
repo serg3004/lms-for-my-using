@@ -34,6 +34,7 @@ export async function openSummaryReport(page: Page, options: {
     if (path === '/auth/me') return route.fulfill({ json: { id: 'summary-viewer', organizationId: 'summary-org', firstName: 'Test', lastName: 'Viewer', email: 'viewer@example.invalid', roles: [role], status: 'active', locale, timezone: 'UTC' } });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
+    if (path === '/checklist-sessions') return route.fulfill({ json: { items: [session], total: 1, page: 1, pageSize: 100 } });
     if (path === `/checklist-sessions/${session.id}`) return route.fulfill({ json: session });
     if (path === `/checklist-sessions/${session.id}/report`) return route.fulfill({ json: report });
     if (path === `/checklist-instances/${session.instanceId}`) return route.fulfill({ json: { id: session.instanceId, checklistId: 'sheet', userId: 'employee', status: 'completed', percentage: 90, passed: true, scored: true, checklist: { ...report.checklist, scoringMode: 'sum_points', items: [] }, results: [] } });
