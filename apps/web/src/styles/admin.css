@@ -347,11 +347,13 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 32px;
+  /* The global `main { width: min(1120px, ...); margin: 0 auto }` would otherwise cap and centre the whole admin area. */
+  width: auto;
+  margin: 0;
 }
 
 .admin-shell__inner {
-  width: min(1360px, 100%);
-  margin: 0 auto;
+  width: 100%;
 }
 
 .admin-org-tabs {
