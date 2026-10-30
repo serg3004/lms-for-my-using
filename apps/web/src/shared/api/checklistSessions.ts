@@ -8,6 +8,7 @@ import type {
   ChecklistScoreRevision,
   ChecklistSession,
   ChecklistSessionReport,
+  ChecklistSessionSummaryExport,
   ChecklistSessionAction,
   ChecklistSessionEvent,
   ChecklistSessionParticipant,
@@ -177,4 +178,9 @@ export function previewChecklistSessionImport(file: File) {
 export function importChecklistSessions(file: File, settings: Omit<BulkCreateChecklistSessionInput, 'learnerIds' | 'schedules'> & { operationId: string }) {
   const body = new FormData(); body.append('file', file); body.append('settings', JSON.stringify(settings));
   return apiRequest<SessionImportResult>('/checklist-sessions/import', { method: 'POST', body });
+}
+
+/** The API validates the complete selection; the browser never builds totals from raw sessions. */
+export function exportChecklistSessionSummary(ids: string[], format: ChecklistReportFormat = 'xlsx') {
+  return apiRequest<ChecklistSessionSummaryExport>(`/checklist-sessions/export/summary${buildQueryString({ ids: ids.join(','), format })}`);
 }

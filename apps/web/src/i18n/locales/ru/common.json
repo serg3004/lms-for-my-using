@@ -1435,7 +1435,14 @@
         "columnCriterion": "Критерий",
         "columnScore": "Балл",
         "columnLevel": "Уровень шкалы",
-        "columnComment": "Комментарий"
+        "columnComment": "Комментарий",
+        "downloadSummaryXlsx": "Скачать сводку (Excel)",
+        "downloadSummaryCsv": "Скачать сводку (CSV)",
+        "summaryExporting": "Подготовка сводки…",
+        "summaryLimit": "Сводка слишком большая. Выберите меньше наблюдений.",
+        "summaryUnavailable": "Сводка недоступна или у вас нет прав на её просмотр.",
+        "summaryCompletedOnly": "Можно выгружать только завершённые сессии.",
+        "summaryExportError": "Не удалось скачать сводку. Попробуйте ещё раз."
       },
       "dueAtHint": "Необязательно. Введите локальное время — оно будет сохранено в UTC.",
       "requiredItem": "Обязательный",

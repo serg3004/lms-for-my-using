@@ -1,3 +1,4 @@
+import { ChecklistSummaryExport } from '../features/admin-checklist-sessions/ChecklistSummaryExport.js';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -424,6 +425,9 @@ export function SessionReportBody({
             <button className="admin-btn admin-btn--secondary" disabled={pdfState.status === 'loading'} onClick={() => void downloadPdf()} type="button">
               {pdfState.status === 'loading' ? t('admin.checklists.report.pdfLoading', 'Preparing PDF…') : t('admin.checklists.report.pdf', 'Download PDF')}
             </button>
+            {session.status === 'completed' && !resultDeleted && (
+              <ChecklistSummaryExport sessionId={session.id} disabled={reportState.status !== 'loaded' || !reportState.data.visible} t={t} />
+            )}
             {canRecalculate && (
               <button className="admin-btn admin-btn--secondary" onClick={() => setRecalcOpen(true)} type="button">{t('admin.checklists.report.recalculateOpen', 'Recalculate')}</button>
             )}

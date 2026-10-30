@@ -436,6 +436,50 @@ new import entity. Files are not retained. Each completed import request audits
 `checklist_session.imported` with actor, checklist, operation ID and created/skipped/total counts;
 no raw file, emails or employee names are recorded in audit metadata.
 
+## Session summary export (PR 373)
+
+`GET /checklist-sessions/export/summary?ids=<comma-separated UUIDs>&format=xlsx|csv`
+returns JSON `{ filename, csv, rows, rowCount, sessionIds, layout }`. `format` defaults to `xlsx`;
+`ids` must contain 1–50 distinct session UUIDs from one checklist. The complete selection must be
+completed, non-deleted sessions with non-deleted instances and visible results. The controller
+uses `checklistSessionsRead`, the report's `sessionScope()` and `feedbackVisibility`; no new
+policy or tenant parameter is introduced. A foreign, missing, deleted or outside-scope ID rejects
+the entire request with 404 before any reports are returned. A hidden learner result gives 403;
+incomplete sessions or mixed checklists give 400. Existing list/analytics exports keep their
+existing independent policies.
+
+The server reuses `getReport` and the shared report score module. An individual observation keeps
+its authoritative report percentage; the overall column sums earned/maximum points and derives
+its percentage on the server. Unscored observations and skipped criteria do not invent zero
+percentages. Different employees, calculation formulas or sheet structures have separate blocks,
+so changed criterion text is not silently compared as the same question. Observation columns are
+ordered by actual start (fallback: completion, planned start), then session UUID. Per-observation
+dates use the session timezone; aggregate header periods are explicitly UTC.
+
+Rows follow the reference: blank row 1, title A2, sheet/periods/employee/observer at rows 3–7,
+"Overall score" at row 9 (B9:C9 merged), observation information, all ordered context fields
+(including the configured location field), results, numbered groups and criteria, then enabled
+feedback. A session has one learner: that person is the group-members row. Departments and
+context come from the report; exact geolocation and signed photo URLs are never fetched or exported; emails are not included
+in the exported table. Criteria include their scale label and comment in the observation cell. At most
+`MAX_EXPORT_ROWS` (5000) input criterion/group/context rows and 5000 output rows are allowed;
+limits reject instead of truncating.
+
+`layout` supplies presentation metadata, not executable formulas. The browser renders
+`Worksheet 1` with A=45, remaining columns=16, rows 1–9 frozen, wrap, merged headings and grey
+`E0E0E0` bold headers. Criterion rows have no score-colour fill. The browser calculates no scores.
+XLSX values are typed text/numbers, never formulas/hyperlinks. CSV is generated on the server with
+UTF-8 BOM, RFC-4180 quoting and formula neutralization, including leading whitespace/control
+characters. RU/EN/KK/ZH headings use the authenticated user's locale.
+
+The selection's scope/deletion is checked again after building the table. A successful response
+requires a durable `checklist_session.summary_exported` audit write containing the actor,
+ordered session IDs, format, locale and row count; no feedback, context values or scores are put
+in audit metadata. A failed audit returns no export. The report page offers Excel/CSV only for
+completed sessions, disables both actions while exporting and shows localized retry/access/limit
+errors. Selecting several sessions in the interface belongs to PR 375; this endpoint already
+supports the bounded explicit selection.
+
 ## Checklist evaluation scales (PR 293)
 
 PR 343/344 additions: `POST /checklist-scales/:id/copy` (optional `{ name }`, default `<name> (copy)`) creates

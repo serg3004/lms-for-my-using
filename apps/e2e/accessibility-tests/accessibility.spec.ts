@@ -1,3 +1,4 @@
+import { openSummaryReport } from '../fixtures/session-summary-export.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -60,6 +61,18 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 1440]) {
+    test(`summary export actions are accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      const data = await openSummaryReport(page);
+      await expect(page.getByRole('button', { name: data.labels.xlsx, exact: true })).toBeEnabled();
+      await auditAccessibility(page, testInfo, 'session-summary-export');
+      data.fail(404, 'Not found');
+      await page.getByRole('button', { name: data.labels.xlsx, exact: true }).click();
+      await expect(page.getByRole('alert')).toBeVisible();
+      await auditAccessibility(page, testInfo, 'session-summary-export-error');
+    });
+  }
   for (const width of [375, 1440]) {
     test(`observer sheet preview is accessible at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });

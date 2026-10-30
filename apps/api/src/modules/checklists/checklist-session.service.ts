@@ -1,6 +1,7 @@
+import { buildSessionSummary, MAX_SUMMARY_OBSERVATIONS } from './checklist-session-summary.js';
 import { createHash } from 'node:crypto';
 import { parseSessionImport, type SessionImportFile, type SessionImportRow } from './checklist-session-import.js';
-import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type {
   ChecklistLocationCapturePoint,
   ChecklistScoreRevision,
@@ -32,6 +33,7 @@ import type {
   ChecklistSessionParticipantsQuery,
   ChecklistScoreFormula,
   ChecklistSessionQuery,
+  ChecklistSessionSummaryQuery,
   CreateChecklistSessionInput,
   ContextField,
   SubmitChecklistLocationCaptureInput,
@@ -627,6 +629,43 @@ export class ChecklistSessionService {
     return { filename: `checklist-sessions-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount: items.length };
   }
 
+  /** PR 373: authorize the whole selection first; a mixed accessible/foreign selection
+   * fails atomically. Reuse the report calculation, without fetching raw geolocation. */
+  async exportSummary(organizationId: string, query: ChecklistSessionSummaryQuery, scope: object,
+    viewer: ChecklistSessionViewerContext, actor: { id: string; locale: string | null; isAdmin: boolean }) {
+    if (!query.ids.length || query.ids.length > MAX_SUMMARY_OBSERVATIONS || new Set(query.ids).size !== query.ids.length) {
+      throw new BadRequestException('session_summary.observation_limit');
+    }
+    const exportScope = { AND: [scope, { instance: { deletedAt: null } }] };
+    const where = { AND: [{ id: { in: query.ids }, organizationId, deletedAt: null }, exportScope] };
+    const selected = await this.prisma.checklistSession.findMany({
+      where, select: { id: true, status: true, instance: { select: { checklistId: true } } },
+    });
+    if (selected.length !== query.ids.length) throw new NotFoundException('Checklist session not found');
+    if (selected.some((session) => session.status !== 'completed')) throw new BadRequestException('session_summary.completed_only');
+    if (new Set(selected.map((session) => session.instance.checklistId)).size !== 1) throw new BadRequestException('session_summary.one_checklist');
+    const reports: Awaited<ReturnType<ChecklistSessionService['getReport']>>[] = [];
+    let inputRows = 0;
+    for (const id of query.ids) {
+      const report = await this.getReport(id, organizationId, exportScope, viewer, actor, { includeLocation: false });
+      if (!report.visible) throw new ForbiddenException('session_summary.hidden');
+      inputRows += report.criteria.length + report.groups.length + report.generalInfo.length;
+      if (inputRows > MAX_EXPORT_ROWS) throw new BadRequestException('session_summary.row_limit');
+      reports.push(report);
+    }
+    const locale = exportLocale(actor.locale);
+    const table = buildSessionSummary(reports, locale);
+    // Recheck deletion/scope after loading reports; no partial output or export audit on failure.
+    const remaining = await this.prisma.checklistSession.count({ where });
+    if (remaining !== query.ids.length) throw new NotFoundException('Checklist session not found');
+    await this.auditLog.recordRequired({
+      organizationId, actorId: actor.id, action: 'checklist_session.summary_exported', targetType: 'checklist_report',
+      summary: `Exported ${reports.length} checklist session summaries`,
+      metadata: { sessionIds: table.sessionIds, format: query.format, locale, rowCount: table.rowCount },
+    });
+    return { ...table, csv: serializeReportCsv(table.rows), filename: `checklist-session-summary-${new Date().toISOString().slice(0, 10)}.${query.format}` };
+  }
+
   async get(sessionId: string, organizationId: string, scope: object, viewer: ChecklistSessionViewerContext) {
     const session = await this.prisma.checklistSession.findFirst({
       where: { id: sessionId, organizationId, deletedAt: null, ...scope },
@@ -649,6 +688,7 @@ export class ChecklistSessionService {
     scope: object,
     viewer: ChecklistSessionViewerContext,
     actor: { id: string; isAdmin: boolean },
+    options: { includeLocation?: boolean } = {},
   ) {
     const masked = await this.get(sessionId, organizationId, scope, viewer);
     const primaryDepartment = {
@@ -684,7 +724,7 @@ export class ChecklistSessionService {
 
     const [breakdown, captures] = await Promise.all([
       this.checklistsService.getScoreBreakdown(masked.instanceId, organizationId, formula),
-      masked.result.visible ? this.listLocationCaptures(sessionId, organizationId, scope, actor.id, actor.isAdmin) : Promise.resolve([]),
+      masked.result.visible && options.includeLocation !== false ? this.listLocationCaptures(sessionId, organizationId, scope, actor.id, actor.isAdmin) : Promise.resolve([]),
     ]);
 
     return buildSessionReport({

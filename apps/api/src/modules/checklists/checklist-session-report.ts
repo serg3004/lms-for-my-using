@@ -43,6 +43,15 @@ export type SessionReportInput = {
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const percentOf = (earned: number, max: number) => (max > 0 ? Math.round((earned / max) * 100) : null);
 
+/** Shared server-side aggregation for report groups and multi-observation exports. */
+export function aggregateReportScores(values: ReadonlyArray<{ score: number; maxScore: number; percentage?: number | null } | null>) {
+  const score = round2(values.reduce((sum, value) => sum + (value?.score ?? 0), 0));
+  const maxScore = round2(values.reduce((sum, value) => sum + (value?.maxScore ?? 0), 0));
+  const present = values.filter((value) => value !== null);
+  const percentage = present.length === 1 && present[0]!.percentage !== undefined ? present[0]!.percentage : percentOf(score, maxScore);
+  return { score, maxScore, percentage };
+}
+
 function rangeColor(percentage: number | null, settings: SessionReportInput['settings']): HighlightStyle | null {
   if (percentage === null) return null;
   const band = performanceBand(percentage, { high: settings.highPerformanceThreshold, low: settings.lowThreshold });

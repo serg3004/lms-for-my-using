@@ -44,6 +44,7 @@ export type AuditLogAction =
   | 'checklist_session.created'
   | 'checklist_session.bulk_created'
   | 'checklist_session.imported'
+  | 'checklist_session.summary_exported'
   | 'checklist_session.repeated'
   | 'checklist_session.deleted'
   | 'checklist_session.message_sent'
@@ -93,20 +94,25 @@ export class AuditLogService {
    */
   async record(input: RecordAuditLogInput): Promise<void> {
     try {
-      await this.prisma.auditLog.create({
-        data: {
-          organizationId: input.organizationId,
-          actorId: input.actorId,
-          action: input.action,
-          targetType: input.targetType,
-          targetId: input.targetId ?? null,
-          summary: input.summary,
-          metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
-        },
-      });
+      await this.recordRequired(input);
     } catch (error) {
       this.logger.error(`Failed to record audit log entry (action=${input.action})`, error as Error);
     }
+  }
+
+  /** Read/export operations may require durable audit before releasing sensitive data. */
+  async recordRequired(input: RecordAuditLogInput): Promise<void> {
+    await this.prisma.auditLog.create({
+      data: {
+        organizationId: input.organizationId,
+        actorId: input.actorId,
+        action: input.action,
+        targetType: input.targetType,
+        targetId: input.targetId ?? null,
+        summary: input.summary,
+        metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+      },
+    });
   }
 
   async list(organizationId: string, query: AuditLogQuery) {

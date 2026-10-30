@@ -76,6 +76,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/checklist-sessions` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/bulk` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/export` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-sessions/export/summary` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/import` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-sessions/import/preview` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-sessions/participants` | `Checklists` | `bearer` |

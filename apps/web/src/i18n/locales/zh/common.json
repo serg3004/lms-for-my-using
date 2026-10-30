@@ -1435,7 +1435,14 @@
         "columnCriterion": "标准",
         "columnScore": "分数",
         "columnLevel": "量表等级",
-        "columnComment": "评语"
+        "columnComment": "评语",
+        "downloadSummaryXlsx": "下载汇总（Excel）",
+        "downloadSummaryCsv": "下载汇总（CSV）",
+        "summaryExporting": "正在准备汇总…",
+        "summaryLimit": "汇总过大，请减少观察次数。",
+        "summaryUnavailable": "汇总不可用或您无权查看。",
+        "summaryCompletedOnly": "只能导出已完成的会话。",
+        "summaryExportError": "无法下载汇总，请重试。"
       },
       "dueAtHint": "可选。输入本地时间；系统会以 UTC 存储。",
       "requiredItem": "必填",

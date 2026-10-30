@@ -122,11 +122,13 @@ describe('SessionReportBody', () => {
     expect(html).toContain('>Recalculate<');
   });
 
-  it('offers a PDF download next to Print, with no extra menu', () => {
+  it('offers PDF and summary Excel/CSV downloads together next to Print', () => {
     reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
     const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
     expect(html.indexOf('>Print<')).toBeGreaterThan(-1);
     expect(html.indexOf('>Download PDF<')).toBeGreaterThan(html.indexOf('>Print<'));
+    expect(html).toContain('Download summary (Excel)');
+    expect(html).toContain('Download summary (CSV)');
   });
 
   it('disables the button while the PDF is prepared and shows the server message when it fails', () => {

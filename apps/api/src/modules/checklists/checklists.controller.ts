@@ -36,6 +36,7 @@ import {
   createChecklistSchema,
   createChecklistSessionSchema,
   checklistSessionQuerySchema,
+  checklistSessionSummaryQuerySchema,
   sendChecklistSessionMessageSchema,
   checklistSessionTransitionSchema,
   reviewChecklistItemResultSchema,
@@ -665,6 +666,15 @@ export class ChecklistsController {
     const query = checklistSessionQuerySchema.parse(rawQuery);
     const scope = await this.reviewAccess.sessionManagementScope(user);
     return this.sessions.exportCsv(user.organizationId, query, scope, { id: user.id, locale: user.locale });
+  }
+  @Get('checklist-sessions/export/summary')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async exportSessionSummary(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const query = checklistSessionSummaryQuerySchema.parse(rawQuery);
+    const user = request.currentUser!;
+    const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
+    return this.sessions.exportSummary(user.organizationId, query, scope, viewer,
+      { id: user.id, locale: user.locale, isAdmin: user.roles.includes('admin') });
   }
   // Admin "new session" wizard lookups (PR 292) -- registered before ':id' so 'participants'
   // is never swallowed as a session id.
