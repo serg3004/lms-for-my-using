@@ -784,6 +784,13 @@ the scoped employees, so a department outside the zone returns an honest empty r
 sessions (`deletedAt`) are excluded. Search, sort and the «no completed sessions» toggle are
 client-side over the scoped employee rows (URL params `q`, `sort`/`dir`, `noCompletion`).
 
+PR 380: results an employee finished on their own (free access, or assigned without an observation
+session: `ChecklistInstance` with `status = completed`, no session, not soft-deleted, `completedAt` in the
+period) are counted next to sessions in the distribution, trend, per-employee, per-department and
+per-manager averages and in `completedCount`. They do not raise `sessionsCount` or `summary.totalSessions`;
+`summary.selfCompletedCount` reports how many there are. Scope, filters and permissions are unchanged
+(`checklist-manager-analytics.database.spec.ts`).
+
 PR 356 adds `managers[]` (`managerId`, `name`, `employeesCount`, `completedCount`,
 `averagePercentage`) and `managerOptions[]` (`id`, `name`). Owner clarification 2026-10-28
 (DEC-CHKS-005): use both the primary DIRECT and primary FUNCTIONAL manager of the employee's

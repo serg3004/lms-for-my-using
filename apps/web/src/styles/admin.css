@@ -1494,7 +1494,7 @@
      column, rather than a proportional split -- at this app's (wider, uncapped) admin content
      width a ratio-based split left too little room for the criteria table and contributed to the
      "criterion text is unreadably narrow" defect (PR 317). */
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 400px);
   gap: 20px;
   align-items: start;
 }
@@ -1834,22 +1834,25 @@
 }
 
 .admin-seg {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 3px;
   gap: 2px;
   background: var(--color-surface-muted);
-  flex-wrap: wrap;
 }
 
 .admin-seg__btn {
-  flex: 1;
-  min-width: 100px;
+  display: grid;
+  place-items: center;
+  min-width: 0;
   border: none;
   background: none;
-  padding: 7px 10px;
-  border-radius: 999px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  text-align: center;
+  line-height: 1.25;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-text-muted);
@@ -2150,7 +2153,7 @@
 
 /* Checklist option rows: box, name and a "?" popup hint on one line (the hint text lives in the popup). */
 .admin-option { display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0; }
-.admin-option__label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; font-size: 13.5px; cursor: pointer; }
+.admin-option__label { display: flex; align-items: center; gap: 10px; flex: 0 1 auto; min-width: 0; font-size: 13.5px; cursor: pointer; }
 .admin-option__label input[type='checkbox'] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; }
 .admin-help { position: relative; flex: none; display: inline-flex; }
 .admin-help__btn { display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--color-text-muted); }
@@ -2163,5 +2166,5 @@
 .admin-help:hover .admin-help__tip,
 .admin-option:hover .admin-help__tip,
 .admin-option:focus-within .admin-help__tip { display: block; }
-.admin-heading-tip { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.admin-heading-tip { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } }

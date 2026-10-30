@@ -16,7 +16,9 @@ type SessionRow = {
   scored?: boolean;
 };
 
-function createHarness(options: { employees: Employee[]; currentSessions?: SessionRow[]; previousSessions?: SessionRow[] }) {
+type SelfRow = { userId: string; completedAt: string; percentage: number; passed?: boolean };
+
+function createHarness(options: { employees: Employee[]; currentSessions?: SessionRow[]; previousSessions?: SessionRow[]; currentSelf?: SelfRow[]; previousSelf?: SelfRow[] }) {
   const currentSessions = options.currentSessions ?? [];
   const previousSessions = options.previousSessions ?? [];
 
@@ -36,6 +38,11 @@ function createHarness(options: { employees: Employee[]; currentSessions?: Sessi
     return findMany.mock.calls.length <= 1 ? currentSessions.map(toRow) : previousSessions.map(toRow);
   });
 
+  // PR 380: self-completed results (no session), also read current window first and previous second.
+  const findSelf = jest.fn(async () => (findSelf.mock.calls.length <= 1 ? options.currentSelf ?? [] : options.previousSelf ?? []).map((row) => ({
+    userId: row.userId, status: 'completed', percentage: row.percentage, passed: row.passed ?? false, scored: true, completedAt: new Date(row.completedAt),
+  })));
+
   const prisma = {
     user: {
       findMany: jest.fn(async () => options.employees.map((employee) => ({
@@ -47,9 +54,10 @@ function createHarness(options: { employees: Employee[]; currentSessions?: Sessi
       }))),
     },
     checklistSession: { findMany },
+    checklistInstance: { findMany: findSelf },
   } as unknown as PrismaService;
 
-  return { service: new ChecklistsService(prisma), prisma, findMany };
+  return { service: new ChecklistsService(prisma), prisma, findMany, findSelf };
 }
 
 const query = { from: '2026-02-01T00:00:00.000Z', to: '2026-02-28T00:00:00.000Z' };
@@ -61,7 +69,7 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     const result = await service.getManagerAnalytics(organizationId, query, {}, thresholds);
 
     expect(result.summary).toEqual({
-      totalEmployees: 0, totalSessions: 0, completedSessions: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0,
+      totalEmployees: 0, totalSessions: 0, completedSessions: 0, selfCompletedCount: 0, averagePercentage: 0, lowCount: 0, highCount: 0, noCompletionCount: 0,
     });
     expect(result.employees).toEqual([]);
     expect(result.trend).toEqual([]);
@@ -169,6 +177,25 @@ describe('ChecklistsService.getManagerAnalytics (PR 299)', () => {
     expect(result.employees[0]).toMatchObject({ sessionsCount: 3, completedCount: 1, averagePercentage: 80 });
     expect(result.summary.totalSessions).toBe(3);
     expect(result.summary.completedSessions).toBe(2);
+  });
+
+  it('counts results the employee finished on their own next to sessions, without inflating the session count (PR 380)', async () => {
+    const { service, findSelf } = createHarness({
+      employees: [{ id: 'u1', firstName: 'A', lastName: 'One' }, { id: 'u2', firstName: 'B', lastName: 'Two' }],
+      currentSessions: [{ userId: 'u1', scheduledAt: '2026-02-07T00:00:00.000Z', percentage: 80, passed: true }],
+      currentSelf: [
+        { userId: 'u1', completedAt: '2026-02-08T00:00:00.000Z', percentage: 100, passed: true },
+        { userId: 'u2', completedAt: '2026-02-09T00:00:00.000Z', percentage: 40, passed: false },
+      ],
+    });
+
+    const result = await service.getManagerAnalytics(organizationId, query, {}, thresholds);
+
+    expect(result.summary).toMatchObject({ totalSessions: 1, completedSessions: 1, selfCompletedCount: 2, averagePercentage: 73, lowCount: 1, noCompletionCount: 0 });
+    expect(result.employees.find((row) => row.userId === 'u1')).toMatchObject({ sessionsCount: 1, completedCount: 2, averagePercentage: 90 });
+    expect(result.employees.find((row) => row.userId === 'u2')).toMatchObject({ sessionsCount: 0, completedCount: 1, averagePercentage: 40 });
+    expect(result.trend.map((point) => point.date)).toEqual(['2026-02-07', '2026-02-08', '2026-02-09']);
+    expect(findSelf.mock.calls[0]?.[0]).toMatchObject({ where: { session: { is: null }, status: 'completed', userId: { in: ['u1', 'u2'] } } });
   });
 
   it('computes an up/down/flat trend by comparing the current window average against the equal-length previous window', async () => {

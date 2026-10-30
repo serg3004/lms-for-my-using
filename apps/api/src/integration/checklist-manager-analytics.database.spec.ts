@@ -154,6 +154,7 @@ describe('manager checklist analytics (PR 299) — database', () => {
       totalEmployees: 1,
       totalSessions: 0,
       completedSessions: 0,
+      selfCompletedCount: 0,
       averagePercentage: 0,
       lowCount: 0,
       highCount: 0,
@@ -217,6 +218,27 @@ describe('manager checklist analytics (PR 299) — database', () => {
 
     expect(result.summary.totalSessions).toBe(0);
   });
+  it('PR 380: counts results finished without a session, once, inside the manager zone, and ignores deleted ones', async () => {
+    const own = (userId: string, completedAt: Date, extra: { percentage?: number; passed?: boolean; deletedAt?: Date; status?: 'completed' | 'assigned' } = {}) => prisma.checklistInstance.create({
+      data: {
+        organizationId, checklistId, userId, status: extra.status ?? 'completed', percentage: extra.percentage ?? 100, passed: extra.passed ?? true, scored: true,
+        totalScore: extra.percentage ?? 100, maxScore: 100, completedAt, deletedAt: extra.deletedAt,
+      },
+    });
+    await own(managedEmployeeId, new Date('2026-01-12T00:00:00.000Z'), { percentage: 60, passed: false });
+    await own(managedEmployeeId, new Date('2026-01-13T00:00:00.000Z'), { deletedAt: new Date() });
+    await own(managedEmployeeId, new Date('2026-01-14T00:00:00.000Z'), { status: 'assigned' });
+    await own(managedEmployeeId, new Date('2025-06-01T00:00:00.000Z'));
+    await own(unmanagedEmployeeId, new Date('2026-01-12T00:00:00.000Z'));
+    await createSession(managedEmployeeId, { scheduledAt: new Date('2026-01-10T00:00:00.000Z'), percentage: 80, passed: true });
+
+    const managerScope = await reviewAccess.participantLearnerScope(currentUser(managerId, ['manager']));
+    const result = await checklistsService.getManagerAnalytics(organizationId, query, managerScope, thresholds);
+
+    expect(result.summary).toMatchObject({ totalSessions: 1, completedSessions: 1, selfCompletedCount: 1, averagePercentage: 70 });
+    expect(result.employees).toEqual([expect.objectContaining({ userId: managedEmployeeId, sessionsCount: 1, completedCount: 2, averagePercentage: 70 })]);
+  });
+
   async function reportUser(name: string, role: CurrentUser['roles'][number] = 'manager') {
     const row = await prisma.user.create({ data: { organizationId, email: `${randomUUID()}@example.test`, passwordHash: 'unused', firstName: name, lastName: '' } });
     await prisma.membership.create({ data: { organizationId, userId: row.id, role } });

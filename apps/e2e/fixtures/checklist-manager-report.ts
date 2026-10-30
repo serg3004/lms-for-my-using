@@ -28,7 +28,7 @@ export function managerReportFixture(managerId = '', departmentId = ''): Manager
   const scoredCount = employees.reduce((sum, row) => sum + row.completedCount, 0);
   const departmentEmployees = employees.filter((row) => row.departmentId === reportDepartment);
   return {
-    summary: { totalEmployees: employees.length, totalSessions: scoredCount, completedSessions: scoredCount, averagePercentage: average(employees) ?? 0, lowCount: 0, highCount: employees.filter((row) => row.performance === 'high').length, noCompletionCount: employees.filter((row) => row.completedCount === 0).length },
+    summary: { totalEmployees: employees.length, totalSessions: scoredCount, completedSessions: scoredCount, selfCompletedCount: 0, averagePercentage: average(employees) ?? 0, lowCount: 0, highCount: employees.filter((row) => row.performance === 'high').length, noCompletionCount: employees.filter((row) => row.completedCount === 0).length },
     thresholds: { low: 60, high: 90 },
     distribution: [{ bucket: 'low', count: 0 }, { bucket: 'mid', count: scoredCount ? scoredCount - 1 : 0 }, { bucket: 'high', count: scoredCount ? 1 : 0 }],
     trend: scoredCount ? [{ date: '2026-01-10', averagePercentage: average(employees)!, count: scoredCount }] : [],
