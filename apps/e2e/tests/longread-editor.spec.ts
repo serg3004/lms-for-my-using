@@ -234,7 +234,7 @@ test('nested blocks can be added to a tab and a column, a tab can be removed, an
   await page.getByRole('button', { name: /^2\. Вкладки$/ }).click();
   await page.getByRole('complementary', { name: 'Свойства блока', exact: true }).getByRole('button', { name: 'Создать копию', exact: true }).click();
   await expect.poll(() => server.snapshot().chapters[0]!.blocks.length).toBe(4);
-  const ids = (block: { content: unknown }) => JSON.stringify(block.content).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) ?? [];
+  const ids = (block: { content: unknown }): string[] => JSON.stringify(block.content).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) ?? [];
   const [original, copy] = [server.snapshot().chapters[0]!.blocks[1]!, server.snapshot().chapters[0]!.blocks[2]!];
   expect(ids(copy)).toHaveLength(ids(original).length);
   expect(ids(copy).some((id) => ids(original).includes(id))).toBe(false);
