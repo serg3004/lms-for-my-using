@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { apiRequest, uploadChecklistItemPhotoWithProgress, uploadMaterialFileWithProgress } from './apiClient';
+import { apiDownloadRequest, apiRequest, uploadChecklistItemPhotoWithProgress, uploadMaterialFileWithProgress } from './apiClient';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -408,5 +408,20 @@ describe('uploadChecklistItemPhotoWithProgress', () => {
     await expect(
       uploadChecklistItemPhotoWithProgress('instance-1', 'item-1', new File(['test'], 'photo.jpg', { type: 'image/jpeg' }), vi.fn()),
     ).rejects.toMatchObject({ message: 'Only images allowed' });
+  });
+});
+
+describe('apiDownloadRequest', () => {
+  it('returns the file and the file name the server chose', async () => {
+    const fetchMock = mockFetch(new Response('%PDF-1.3', { status: 200, headers: { 'content-disposition': 'attachment; filename="checklist-session-1.pdf"' } }));
+    const { blob, filename } = await apiDownloadRequest('/checklist-sessions/1/report.pdf');
+    expect(filename).toBe('checklist-session-1.pdf');
+    expect(await blob.text()).toBe('%PDF-1.3');
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/checklist-sessions/1/report.pdf', expect.objectContaining({ credentials: 'same-origin' }));
+  });
+
+  it('turns a 413 JSON error into an ApiClientError with the server message', async () => {
+    mockFetch(new Response(JSON.stringify({ message: 'The PDF is larger than 25 MB.' }), { status: 413, headers: { 'content-type': 'application/json' } }));
+    await expect(apiDownloadRequest('/x.pdf')).rejects.toMatchObject({ name: 'ApiClientError', status: 413, message: 'The PDF is larger than 25 MB.' });
   });
 });

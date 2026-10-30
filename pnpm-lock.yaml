@@ -74,6 +74,9 @@ importers:
       '@fontsource/noto-sans':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource/noto-sans-sc':
+        specifier: '5'
+        version: 5.3.1
       '@lms/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -809,6 +812,9 @@ packages:
 
   '@fontsource-variable/manrope@5.3.0':
     resolution: {integrity: sha512-6D5dgokHsWDDMtmXHznKa0hK229NN+1a4BLPmUCLqcO1Pw5EEhWY5RFt0AcXnVRAljFFPfRtLkJePQj6LSsV6g==}
+
+  '@fontsource/noto-sans-sc@5.3.1':
+    resolution: {integrity: sha512-YxZ/VWAWo9FWzH08Q6fGTzIW6vYNP2TMhUFCnfhlimbhdXnWrxJLrzX3KWt2FKnV0s8XiM5vjpGHQiyFRlTj0w==}
 
   '@fontsource/noto-sans@5.3.0':
     resolution: {integrity: sha512-fBCog2PY7DiVVTEEqtI/Qdinx/knobHYfoGpjFXdfBX5RoJaBp1Prw2G75p0OIsdlMZg3cLo0c+YbIUYOxnQJw==}
@@ -5467,7 +5473,7 @@ packages:
       '@vitest/ui': 4.1.12
       happy-dom: '*'
       jsdom: '*'
-      vite: '>=8.3.3'
+      vite: '>=6.4.2'
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -6301,6 +6307,8 @@ snapshots:
       lodash.uniq: 4.5.0
 
   '@fontsource-variable/manrope@5.3.0': {}
+
+  '@fontsource/noto-sans-sc@5.3.1': {}
 
   '@fontsource/noto-sans@5.3.0': {}
 

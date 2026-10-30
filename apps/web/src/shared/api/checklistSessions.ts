@@ -1,4 +1,4 @@
-import { apiRequest } from '../apiClient.js';
+import { apiDownloadRequest, apiRequest } from '../apiClient.js';
 
 import type {
   BulkCreateChecklistSessionInput,
@@ -59,6 +59,11 @@ export function getChecklistSession(sessionId: string) {
 /** PR 371: the one server-built report behind the summary and criteria tabs. */
 export function getChecklistSessionReport(sessionId: string) {
   return apiRequest<ChecklistSessionReport>(`/checklist-sessions/${encodeURIComponent(sessionId)}/report`);
+}
+
+/** PR 372: the PDF of the same report; the server picks the file language from the user's interface language. */
+export function downloadChecklistSessionReportPdf(sessionId: string) {
+  return apiDownloadRequest(`/checklist-sessions/${encodeURIComponent(sessionId)}/report.pdf`, 60_000);
 }
 
 export function createChecklistSession(input: CreateChecklistSessionInput) {

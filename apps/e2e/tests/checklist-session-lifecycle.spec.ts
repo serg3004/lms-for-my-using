@@ -417,6 +417,20 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       await expect(adminPage.getByText(`${session.result.percentage}%`, { exact: true })).toBeVisible();
     });
 
+    await test.step('admin downloads the report as a PDF, and sees the server message when it is too large (PR 372)', async () => {
+      let tooLarge = false;
+      await adminPage.route(`**/api/v1/checklist-sessions/${sessionId}/report.pdf`, (route) => (tooLarge
+        ? route.fulfill({ status: 413, json: { statusCode: 413, error: { code: 'HTTP_ERROR', message: 'The PDF is larger than 25 MB.' }, path: `/api/v1/checklist-sessions/${sessionId}/report.pdf`, timestamp: new Date().toISOString() } })
+        : route.fulfill({ status: 200, contentType: 'application/pdf', headers: { 'content-disposition': `attachment; filename="checklist-session-${sessionId}.pdf"` }, body: '%PDF-1.3\n%%EOF' })));
+      const downloadPromise = adminPage.waitForEvent('download');
+      await adminPage.getByRole('button', { name: 'Скачать PDF' }).click();
+      expect((await downloadPromise).suggestedFilename()).toBe(`checklist-session-${sessionId}.pdf`);
+
+      tooLarge = true;
+      await adminPage.getByRole('button', { name: 'Скачать PDF' }).click();
+      await expect(adminPage.getByRole('alert').filter({ hasText: 'The PDF is larger than 25 MB.' })).toBeVisible();
+    });
+
     await test.step('admin recalculates the score from the header dialog, creating a new revision (#12)', async () => {
       // PR 322: recalculation moved from an embedded History-tab form to a dialog opened from the
       // header's "Пересчитать" button; the Summary tab's own "История изменений результата" card

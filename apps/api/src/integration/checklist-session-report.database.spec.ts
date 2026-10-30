@@ -2,6 +2,8 @@
 
 import { randomUUID } from 'node:crypto';
 
+import { jest } from '@jest/globals';
+
 import { NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
@@ -204,5 +206,103 @@ describe('checklist session report (PR 370) — database', () => {
     expect(report.header.learner.department).toEqual({ id: department.id, name: 'Sales' });
     expect(report.header.observer.department).toBeNull();
     expect(report.header.timezone).toBe('Asia/Almaty');
+  });
+
+  // ---- PR 372: PDF of the report ----
+  describe('PDF download (PR 372)', () => {
+    const PIXEL = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+    const readPhoto = jest.fn(async () => PIXEL as Buffer | null);
+    let pdfService: ChecklistSessionService;
+    const actor = { id: '', isAdmin: false, locale: 'ru' as string | null };
+
+    beforeEach(() => {
+      readPhoto.mockClear();
+      const uploads = { getObjectBytes: readPhoto } as unknown as UploadService;
+      pdfService = new ChecklistSessionService(prisma, new ChecklistsService(prisma, uploads));
+      actor.id = observerId;
+    });
+
+    const pdfPages = (pdf: Buffer) => (pdf.toString('latin1').match(/\/Type \/Page\n/g) ?? []).length;
+
+    it('downloads the PDF of a completed session and audits it without the content', async () => {
+      const { session } = await completedSession();
+      await complete(session);
+      const { pdf, filename } = await pdfService.getReportPdf(session.id, organizationId, {}, live, actor);
+
+      expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(filename).toBe(`checklist-session-${session.id}.pdf`);
+      const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_session.report_pdf_downloaded' } });
+      expect(audit).toMatchObject({ actorId: observerId, targetType: 'checklist_session', targetId: session.id });
+      expect(audit.metadata).toMatchObject({ locale: 'ru', bytes: pdf.length, photosEmbedded: 0, photosOmitted: 0 });
+      expect(JSON.stringify(audit.metadata)).not.toContain('Tidy');
+    });
+
+    it('is not found outside the caller scope or tenant, and leaves no audit entry', async () => {
+      const { session } = await completedSession();
+      await complete(session);
+      await expect(pdfService.getReportPdf(session.id, organizationId, { observerId: randomUUID() }, live, actor)).rejects.toBeInstanceOf(NotFoundException);
+      const other = await prisma.organization.create({ data: { name: 'Other', slug: `other-${randomUUID()}` } });
+      try {
+        await expect(pdfService.getReportPdf(session.id, other.id, {}, live, { ...actor, isAdmin: true })).rejects.toBeInstanceOf(NotFoundException);
+      } finally {
+        await prisma.organization.delete({ where: { id: other.id } });
+      }
+      expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist_session.report_pdf_downloaded' } })).toBe(0);
+    });
+
+    it('gives a learner whose result is still hidden a header-only file', async () => {
+      const prepared = await startedSession();
+      const learner = { isLearnerOnly: true, feedbackVisibility: 'after_completion' as const };
+      const { pdf } = await pdfService.getReportPdf(prepared.session.id, organizationId, {}, learner, { id: learnerId, isAdmin: false, locale: 'en' });
+      expect(pdfPages(pdf)).toBe(1);
+      expect(readPhoto).not.toHaveBeenCalled();
+    });
+
+    it('embeds photos and survives a 30-photo session within the limits', async () => {
+      const checklist = await prisma.checklist.create({ data: { organizationId, title: 'Photo sheet', status: 'published', passThreshold: 70 } });
+      const items = [];
+      for (let order = 1; order <= 30; order += 1) {
+        items.push(await prisma.checklistItem.create({ data: { organizationId, checklistId: checklist.id, order, text: `Spot ${order}`, points: 1, isRequired: true } }));
+      }
+      const instance = await checklistsService.assignChecklist(checklist.id, organizationId, { userId: learnerId }, observerId);
+      const created = await sessionService.create(organizationId, { instanceId: instance.id, observerId, timezone: 'UTC' } as never, observerId);
+      await sessionService.transition(created.id, organizationId, 'start', created.version, observerId, {});
+      await prisma.checklistItemResult.createMany({
+        data: items.map((item) => ({
+          organizationId, instanceId: instance.id, itemId: item.id, checked: true, points: 1, answerState: 'answered' as const,
+          photoObjectKey: `photos/${item.id}`, photoMimeType: 'image/png', photoFileName: `${item.order}.png`,
+        })),
+      });
+
+      const started = Date.now();
+      const { pdf } = await pdfService.getReportPdf(created.id, organizationId, {}, live, actor);
+      expect(Date.now() - started).toBeLessThan(30_000);
+      expect(readPhoto).toHaveBeenCalledTimes(30);
+      expect(pdf.length).toBeLessThan(25 * 1024 * 1024);
+      expect(pdfPages(pdf)).toBeGreaterThan(2);
+      const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_session.report_pdf_downloaded' } });
+      expect(audit.metadata).toMatchObject({ photosEmbedded: 30, photosOmitted: 0 });
+    });
+
+    it('counts photos above the limit as omitted instead of failing', async () => {
+      const checklist = await prisma.checklist.create({ data: { organizationId, title: 'Many photos', status: 'published', passThreshold: 70 } });
+      const items = [];
+      for (let order = 1; order <= 43; order += 1) {
+        items.push(await prisma.checklistItem.create({ data: { organizationId, checklistId: checklist.id, order, text: `Spot ${order}`, points: 1, isRequired: true } }));
+      }
+      const instance = await checklistsService.assignChecklist(checklist.id, organizationId, { userId: learnerId }, observerId);
+      const created = await sessionService.create(organizationId, { instanceId: instance.id, observerId, timezone: 'UTC' } as never, observerId);
+      await sessionService.transition(created.id, organizationId, 'start', created.version, observerId, {});
+      await prisma.checklistItemResult.createMany({
+        data: items.map((item) => ({
+          organizationId, instanceId: instance.id, itemId: item.id, checked: true, points: 1, answerState: 'answered' as const,
+          photoObjectKey: `photos/${item.id}`, photoMimeType: 'image/png', photoFileName: `${item.order}.png`,
+        })),
+      });
+      await pdfService.getReportPdf(created.id, organizationId, {}, live, actor);
+      expect(readPhoto).toHaveBeenCalledTimes(40);
+      const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_session.report_pdf_downloaded' } });
+      expect(audit.metadata).toMatchObject({ photosEmbedded: 40, photosOmitted: 3 });
+    });
   });
 });

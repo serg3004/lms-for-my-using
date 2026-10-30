@@ -302,6 +302,9 @@ export class ChecklistsService {
   private readonly resultDeletion: ChecklistResultDeletion;
   private readonly orgTemplates: ChecklistOrgTemplates;
 
+  /** PR 372: photo bytes for the report PDF; null when the object is missing or over the limit. */
+  readPhotoBytes(objectKey: string, maxBytes: number) { return this.uploadService.getObjectBytes(objectKey, maxBytes); }
+
   // ---- PR 367: administrator-only deletion of results and organization templates ----
   deleteResult(instanceId: string, organizationId: string, reason: string, actorId: string) { return this.resultDeletion.delete(instanceId, organizationId, reason, actorId); }
   restoreResult(instanceId: string, organizationId: string, actorId: string) { return this.resultDeletion.restore(instanceId, organizationId, actorId); }
