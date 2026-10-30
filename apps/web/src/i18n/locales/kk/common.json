@@ -2947,13 +2947,49 @@
       "quote": "Дәйексөз",
       "note": "Ескертпе",
       "divider": "Бөлгіш",
-      "code": "Код"
+      "code": "Код",
+      "table": "Кесте",
+      "columns": "Бағандар",
+      "tabs": "Қойындылар",
+      "accordion": "Аккордеон"
     },
     "tones": {
       "info": "Ақпарат",
       "success": "Сәттілік",
       "warning": "Ескерту",
       "danger": "Маңызды"
+    },
+    "composite": {
+      "tableActions": "Кестемен әрекеттер",
+      "rowAbove": "Жоғарыда жол",
+      "rowBelow": "Төменде жол",
+      "columnLeft": "Сол жақта баған",
+      "columnRight": "Оң жақта баған",
+      "deleteRow": "Жолды жою",
+      "deleteColumn": "Бағанды жою",
+      "mergeRight": "Оң жақтағы ұяшықпен біріктіру",
+      "mergeDown": "Астындағы ұяшықпен біріктіру",
+      "split": "Ұяшықты бөлу",
+      "headerRow": "Бірінші жолды бекіту",
+      "columnWidth": "{{column}}-баған ені, %",
+      "cell": "Ұяшық: {{row}}-жол, {{column}}-баған",
+      "tabsActions": "Қойындылармен әрекеттер",
+      "accordionActions": "Аккордеонмен әрекеттер",
+      "addTab": "Қойынды қосу",
+      "addSection": "Бөлім қосу",
+      "toAccordion": "Аккордеонға түрлендіру",
+      "toTabs": "Қойындыларға түрлендіру",
+      "tabList": "Қойындылар",
+      "itemTitle": "Атауы",
+      "removeItem": "Қойындыны немесе бөлімді жою",
+      "openByDefault": "Әдепкі бойынша ашық",
+      "newItem": "Бөлім {{number}}",
+      "columnCount": "Бағандар саны",
+      "column": "{{number}}-баған",
+      "emptySlot": "Мұнда әзірге блоктар жоқ.",
+      "nestedType": "Ішкі блок түрі",
+      "addNested": "Ішкі блок қосу",
+      "unsupportedNested": "Бұл ішкі блокты мұнда өңдеуге болмайды. Ол өзгеріссіз сақталады."
     }
   }
 }

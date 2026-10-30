@@ -1511,3 +1511,21 @@ never returned by this call; an unpublished or non-`published` lesson, a missing
 flag being off are the same `404`.
 
 **Audit.** `longread.published` (`version`, `republished`), `longread.unpublished`, `longread.version_restored`.
+
+## Longread composite blocks (PR 384)
+
+Four known block types join the registry; they are validated on every save (`PUT /lessons/:id/longread`) and again before publishing.
+
+| Type | Content |
+|---|---|
+| `table` | `{ columns (1-12), widths? (one 1-100 weight per column), headerRow, rows: [{ cells: [{ runs, colSpan, rowSpan, covered }] }] }`, 1-50 rows. |
+| `columns` | `{ count: 2 \| 3, columns: [{ id, blocks }] }`; `count` must equal the number of columns. |
+| `tabs` / `accordion` | `{ items: [{ id, title (1-100), open?, blocks }] }`, 1-12 items. The two share one shape, so converting tabs to an accordion and back changes only the block `type`; order, titles, ids and nested blocks are kept (`open` exists only for the accordion). |
+
+**Table merge rules.** Every row has exactly `columns` cells. A merged cell is its top-left origin cell with `colSpan`/`rowSpan`; every other cell it covers is `covered: true`, has no text and span 1. The server rejects a span outside the grid, overlapping merges, a covered cell with text (merging must not drop text; the editor moves the covered text into the origin cell) and a covered cell that no merge owns. Table cells hold text runs, edited as plain text in the current editor.
+
+**Nesting.** Tab items, accordion items and columns hold nested blocks `{ id, type, schemaVersion, title?, hidden?, content }`. Nested types are the seven text types, `table`, and the containers themselves, up to 3 container levels (`400` beyond that), at most 50 blocks per slot and 200 per composite block. An unknown type cannot be nested (unlike at the top level, where it is kept as is).
+
+**No cycles, no shared ids.** Every `id` in a composite block (nested blocks, tab/accordion items, columns) is unique, and a block whose own id appears inside its content is rejected (`a block cannot contain itself`). The whole draft is checked as one set: the same id in two blocks is `400 Duplicate block id`. Chapter and block copy (`duplicate`) give every nested id a new value consistently.
+
+Deleting a tab, section or nested block leaves no dangling reference because composites reference nothing outside their own content; internal links still point only at chapter anchors.

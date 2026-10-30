@@ -1,5 +1,5 @@
 import { openSummaryReport } from '../fixtures/session-summary-export.js';
-import { longreadEditorServer } from '../fixtures/longread-editor.js';
+import { longreadCompositeFixture, longreadEditorServer } from '../fixtures/longread-editor.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -72,6 +72,13 @@ test.describe('WCAG AA browser baseline', () => {
       await expect(page.getByRole('alert')).toContainText('Документ изменён');
       await page.getByRole('button', { name: 'Скопировать мои правки', exact: true }).click();
       await auditAccessibility(page, testInfo, 'longread-recovery');
+    });
+  }
+  for (const width of [375, 1440]) {
+    test(`longread composite blocks are accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await longreadEditorServer(longreadCompositeFixture()).attach(page);
+      await auditAccessibility(page, testInfo, 'longread-composite');
     });
   }
   for (const width of [375, 1440]) {

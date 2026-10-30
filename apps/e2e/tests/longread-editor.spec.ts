@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { longreadCourseId, longreadEditorServer, longreadFixture, longreadLessonId } from '../fixtures/longread-editor.js';
+import { longreadCompositeFixture, longreadCourseId, longreadEditorServer, longreadFixture, longreadLessonId } from '../fixtures/longread-editor.js';
 
 test('creating a longread from the lesson form opens its draft editor', async ({ page }) => {
   const server = longreadEditorServer(); await server.attach(page);
@@ -178,4 +178,72 @@ for (const locale of ['en', 'kk', 'zh'] as const) test(`editor controls are tran
 for (const denied of [403, 404]) test(`editor handles ${denied} without displaying draft content`, async ({ page }) => {
   await longreadEditorServer().attach(page, { denied });
   await expect(page.getByRole('alert')).toBeVisible(); await expect(page.locator('.tiptap')).toHaveCount(0);
+});
+
+test('table: add row and column, merge and split cells keep every text after reload', async ({ page }) => {
+  const server = longreadEditorServer(); await server.attach(page);
+  await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
+  await page.getByLabel('Тип нового блока', { exact: true }).selectOption('table');
+  await page.getByRole('button', { name: 'Добавить блок', exact: true }).click();
+  const cell = (row: number, column: number) => page.getByLabel(`Ячейка: строка ${row}, столбец ${column}`, { exact: true });
+  await cell(1, 1).fill('A'); await cell(1, 2).fill('B'); await cell(2, 1).fill('C'); await cell(2, 2).fill('D');
+  await page.getByRole('button', { name: 'Строка ниже', exact: true }).click();
+  await page.getByRole('button', { name: 'Столбец справа', exact: true }).click();
+  await cell(1, 1).focus();
+  await page.getByRole('button', { name: 'Объединить с ячейкой справа', exact: true }).click();
+  await expect(cell(1, 1)).toHaveValue('A B');
+  await expect(cell(1, 2)).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Закрепить первую строку' }).check();
+  await expect.poll(() => (server.snapshot().chapters[1]!.blocks[0]?.content as { rows?: unknown[]; headerRow?: boolean } | undefined)?.headerRow === true && (server.snapshot().chapters[1]!.blocks[0]!.content as { rows: unknown[] }).rows.length === 4).toBe(true);
+  const saved = server.snapshot().chapters[1]!.blocks[0]!.content as { columns: number; headerRow: boolean; rows: { cells: { runs: { text: string }[]; colSpan: number; covered: boolean }[] }[] };
+  expect(saved.columns).toBe(4); expect(saved.headerRow).toBe(true);
+  expect(saved.rows[0]!.cells[0]).toMatchObject({ colSpan: 2, runs: [{ text: 'A' }, { text: ' ' }, { text: 'B' }] });
+  expect(saved.rows[0]!.cells[1]).toMatchObject({ covered: true, runs: [] });
+  await page.reload();
+  await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
+  await expect(cell(1, 1)).toHaveValue('A B');
+  await cell(1, 1).focus();
+  await page.getByRole('button', { name: 'Разъединить ячейку', exact: true }).click();
+  await expect(cell(1, 1)).toHaveValue('A B'); await expect(cell(1, 2)).toHaveValue('');
+  await expect(cell(2, 2)).toHaveValue('D');
+});
+
+test('tabs convert to an accordion and back without losing order, titles or nested blocks', async ({ page }) => {
+  const server = longreadEditorServer(longreadCompositeFixture()); await server.attach(page);
+  const before = structuredClone(server.snapshot().chapters[0]!.blocks[1]!.content);
+  await page.getByRole('button', { name: 'Преобразовать в аккордеон', exact: true }).click();
+  await expect.poll(() => server.snapshot().chapters[0]!.blocks[1]!.type).toBe('accordion');
+  await expect(page.getByLabel('Название', { exact: true })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Преобразовать во вкладки', exact: true }).click();
+  await expect.poll(() => server.snapshot().chapters[0]!.blocks[1]!.type).toBe('tabs');
+  expect(server.snapshot().chapters[0]!.blocks[1]!.content).toEqual(before);
+});
+
+test('nested blocks can be added to a tab and a column, a tab can be removed, and a copy gets new ids', async ({ page }) => {
+  const server = longreadEditorServer(longreadCompositeFixture()); await server.attach(page);
+  const tabs = page.getByRole('group', { name: 'Вкладки', exact: true });
+  await tabs.getByRole('button', { name: '2. Работа', exact: true }).click();
+  await page.getByRole('group', { name: 'Работа', exact: true }).getByRole('button', { name: 'Добавить вложенный блок' }).click();
+  await expect.poll(() => (server.snapshot().chapters[0]!.blocks[1]!.content as { items: { blocks: unknown[] }[] }).items[1]!.blocks.length).toBe(2);
+  await page.getByRole('group', { name: 'Колонка 2', exact: true }).getByLabel('Тип вложенного блока').selectOption('divider');
+  await page.getByRole('group', { name: 'Колонка 2', exact: true }).getByRole('button', { name: 'Добавить вложенный блок' }).click();
+  await expect.poll(() => (server.snapshot().chapters[0]!.blocks[2]!.content as { columns: { blocks: unknown[] }[] }).columns[1]!.blocks.length).toBe(2);
+
+  await page.getByRole('region', { name: 'Вкладки: Работа' }).getByRole('button', { name: 'Удалить вкладку или раздел', exact: true }).click();
+  await expect.poll(() => (server.snapshot().chapters[0]!.blocks[1]!.content as { items: unknown[] }).items.length).toBe(1);
+  await page.getByRole('button', { name: /^2\. Вкладки$/ }).click();
+  await page.getByRole('complementary', { name: 'Свойства блока', exact: true }).getByRole('button', { name: 'Создать копию', exact: true }).click();
+  await expect.poll(() => server.snapshot().chapters[0]!.blocks.length).toBe(4);
+  const ids = (block: { content: unknown }) => JSON.stringify(block.content).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) ?? [];
+  const [original, copy] = [server.snapshot().chapters[0]!.blocks[1]!, server.snapshot().chapters[0]!.blocks[2]!];
+  expect(ids(copy)).toHaveLength(ids(original).length);
+  expect(ids(copy).some((id) => ids(original).includes(id))).toBe(false);
+});
+
+test('composite blocks fit a 375px screen without page scrolling', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
+  const server = longreadEditorServer(longreadCompositeFixture()); await server.attach(page);
+  await expect(page.getByLabel('Ячейка: строка 2, столбец 1', { exact: true })).toBeVisible();
+  const { clientWidth, scrollWidth } = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 });
