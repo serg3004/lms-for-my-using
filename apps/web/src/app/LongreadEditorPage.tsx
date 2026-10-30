@@ -9,8 +9,10 @@ import { getLesson } from '../shared/api/lessons.js';
 import { getLongreadDraft, type LongreadDraft } from '../shared/api/longreads.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { useLongreadEditor } from '../features/longread-editor/useLongreadEditor.js';
-import { blockTypes, copyBlock, editableBlock, moveItem, newBlock, safeHref, type EditorBlock, type EditorChapter, type Run, type TextBlockType } from '../features/longread-editor/model.js';
+import { blockTypes, compositeTypes, copyBlock, editableBlock, moveItem, newBlock, type AddableBlockType, type EditorBlock, type EditorChapter } from '../features/longread-editor/model.js';
 import { RichTextEditor } from '../features/longread-editor/RichTextEditor.js';
+import { ListPreview, TextPreview } from '../features/longread-editor/BlockPreview.js';
+import { CompositeBlockEditor } from '../features/longread-editor/CompositeBlocks.js';
 import '../features/longread-editor/editor.css';
 
 const LongreadPreview = lazy(() => import('../features/longread-reader/LongreadPreview.js'));
@@ -29,34 +31,6 @@ export function LongreadEditorPage() {
   return instructor ? <InstructorPageLayout>{body}</InstructorPageLayout> : <AdminPageLayout brandLabel={t('admin.navLink')} sidebarLabel={t('admin.sidebarLabel')} navItems={[{ label: t('admin.lessons.title'), href: '/admin/lessons', isCurrent: true }]}>{body}</AdminPageLayout>;
 }
 
-function TextPreview({ block }: { block: EditorBlock }) {
-  const runs = (Array.isArray(block.content.runs) ? block.content.runs : []) as Run[];
-  return <div className="lr-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: block.type === 'heading' ? `${1.75 - Number(block.content.level) * 0.2}rem` : undefined, fontWeight: block.type === 'heading' ? 700 : undefined }}>{runs.map((run, index) => {
-    let text = <span>{run.text}</span>;
-    if (run.bold) text = <strong>{text}</strong>;
-    if (run.italic) text = <em>{text}</em>;
-    if (run.underline) text = <u>{text}</u>;
-    if (run.code) text = <code>{text}</code>;
-    if (run.href && safeHref(run.href)) text = <a href={run.href} onClick={(event) => event.preventDefault()}>{text}</a>;
-    return <span key={index}>{text}</span>;
-  })}</div>;
-}
-
-function ListPreview({ block }: { block: EditorBlock }) {
-  const items = block.content.items as { level: number; runs: Run[] }[];
-  let position = 0;
-  function list(level: number): ReactNode {
-    const children: ReactNode[] = [];
-    while (position < items.length && items[position]!.level === level) {
-      const index = position++, item = items[index]!;
-      const nested = position < items.length && items[position]!.level > level ? list(level + 1) : null;
-      children.push(<li key={index}><TextPreview block={{ ...block, content: { runs: item.runs } }} />{nested}</li>);
-    }
-    return block.content.ordered ? <ol>{children}</ol> : <ul>{children}</ul>;
-  }
-  return list(1);
-}
-
 function Editor({ initial, title, back, reload }: { initial: LongreadDraft; title: string; back: string; reload: () => void }) {
   const { t } = useTranslation();
   const editor = useLongreadEditor(initial);
@@ -65,7 +39,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
   const chapter = chapters.find((item) => item.key === chapterKey) ?? chapters[0]!;
   const [blockKey, setBlockKey] = useState<string | null>(chapter.blocks[0]?.key ?? null);
   const selected = chapter.blocks.find((block) => block.key === blockKey);
-  const [blockType, setBlockType] = useState<TextBlockType>('paragraph');
+  const [blockType, setBlockType] = useState<AddableBlockType>('paragraph');
   const [remove, setRemove] = useState<{ chapter: string; block?: string } | null>(null);
   const [recovery, setRecovery] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
@@ -170,14 +144,16 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
               <textarea id={`code-${block.key}`} className="lr-code" value={String(block.content.code ?? '')} maxLength={50_000} spellCheck={false} onFocus={() => setBlockKey(block.key)} onChange={(event) => updateBlock(block.key, (item) => ({ ...item, content: { ...item.content, code: event.target.value } }))} />
               {action(t('longread.copyCode'), () => { (document.getElementById(`code-${block.key}`) as HTMLTextAreaElement | null)?.select(); void navigator.clipboard?.writeText(String(block.content.code ?? '')).catch(() => {}); })}
             </>
+            : compositeTypes.includes(block.type) ? <CompositeBlockEditor block={block} t={t} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))}
+              onConvert={(type, content) => updateBlock(block.key, (item) => ({ ...item, type, content }))} />
             : block.key === blockKey ? <RichTextEditor key={`${block.key}-${Boolean(block.content.ordered)}`} block={block} t={t} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'list' ? <ListPreview block={block} />
             : <TextPreview block={block} />}
         </article>)}
         <div className="admin-card lr-panel">
           <label htmlFor="lr-block-type">{t('longread.blockType')}</label>
-          <select id="lr-block-type" value={blockType} onChange={(event) => setBlockType(event.target.value as TextBlockType)}>{blockTypes.map((type) => <option value={type} key={type}>{t(`longread.types.${type}`)}</option>)}</select>
-          {action(t('longread.addBlock'), () => { const block = newBlock(blockType); updateChapter((item) => ({ ...item, blocks: [...item.blocks, block] })); setBlockKey(block.key); }, chapter.blocks.length >= 1000)}
+          <select id="lr-block-type" value={blockType} onChange={(event) => setBlockType(event.target.value as AddableBlockType)}>{blockTypes.map((type) => <option value={type} key={type}>{t(`longread.types.${type}`)}</option>)}</select>
+          {action(t('longread.addBlock'), () => { const block = newBlock(blockType, (n) => t('longread.composite.newItem', { number: n })); updateChapter((item) => ({ ...item, blocks: [...item.blocks, block] })); setBlockKey(block.key); }, chapter.blocks.length >= 1000)}
         </div>
       </section>
       <aside className="admin-card lr-panel" aria-label={t('longread.properties')}>

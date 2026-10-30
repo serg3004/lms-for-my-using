@@ -237,4 +237,65 @@ describe('longreads (PR 381) — database', () => {
     await expect(lessons.updateLesson(text.id, organizationId, { type: 'longread' }, userId)).rejects.toBeInstanceOf(BadRequestException);
     await expect(lessons.updateLesson(lesson.id, organizationId, { title: 'Renamed', type: 'longread' }, userId)).resolves.toMatchObject({ title: 'Renamed' });
   });
+
+  describe('composite blocks (PR 384)', () => {
+    const uid = () => randomUUID();
+    const text = (value: string) => ({ id: uid(), type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: value }] } });
+    const cell = (value: string, extra: object = {}) => ({ runs: value ? [{ text: value }] : [], ...extra });
+    const composites = () => [
+      { type: 'tabs', schemaVersion: 1, content: { items: [{ id: uid(), title: 'A', blocks: [text('a1')] }, { id: uid(), title: 'B', blocks: [text('b1'), text('b2')] }] } },
+      { type: 'columns', schemaVersion: 1, content: { count: 2, columns: [{ id: uid(), blocks: [text('left')] }, { id: uid(), blocks: [] }] } },
+      { type: 'table', schemaVersion: 1, content: { columns: 3, headerRow: true, rows: [
+        { cells: [cell('h1', { colSpan: 2 }), cell('', { covered: true }), cell('h3')] },
+        { cells: [cell('1'), cell('2'), cell('3')] },
+        { cells: [cell('4'), cell('5'), cell('6')] },
+      ] } },
+    ];
+
+    it('keeps tabs, columns and a merged table after reopening and copies them with all-new ids', async () => {
+      await enable();
+      const lesson = await createLongread();
+      const chapterId = (await longreads.getDraft(lesson.id, organizationId)).chapters[0]!.id;
+      const saved = await longreads.saveDraft(lesson.id, organizationId, {
+        revision: 1,
+        chapters: [{ id: chapterId, title: 'C', hidden: false, blocks: composites().map((block) => ({ ...block })) }],
+      }, userId);
+      const reopened = await longreads.getDraft(lesson.id, organizationId);
+      expect(reopened.chapters[0]!.blocks.map((block) => block.type)).toEqual(['tabs', 'columns', 'table']);
+      const tableRows = (reopened.chapters[0]!.blocks[2]!.content as { rows: { cells: { runs: { text: string }[] }[] }[] }).rows;
+      expect(tableRows.map((row) => row.cells.map((c) => c.runs[0]?.text ?? ''))).toEqual([['h1', '', 'h3'], ['1', '2', '3'], ['4', '5', '6']]);
+
+      const copy = await longreads.duplicateChapter(lesson.id, chapterId, organizationId, saved.revision, userId);
+      const ids = (chapter: (typeof copy.chapters)[number]) => JSON.stringify(chapter.blocks.map((block) => block.content)).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) ?? [];
+      const original = new Set(ids(copy.chapters[0]!));
+      expect(original.size).toBeGreaterThan(5);
+      expect(ids(copy.chapters[1]!)).toHaveLength(ids(copy.chapters[0]!).length);
+      expect(ids(copy.chapters[1]!).some((id) => original.has(id))).toBe(false);
+      // The copy is itself savable: ids stay unique across the whole draft.
+      await longreads.saveDraft(lesson.id, organizationId, {
+        revision: copy.revision,
+        chapters: copy.chapters.map((c) => ({ id: c.id, title: c.title, hidden: c.hidden, blocks: c.blocks.map((b) => ({ id: b.id, type: b.type, schemaVersion: b.schemaVersion, content: b.content })) })),
+      }, userId);
+    });
+
+    it('rejects a block that contains itself, ids repeated across blocks and a broken merge', async () => {
+      await enable();
+      const lesson = await createLongread();
+      const chapterId = (await longreads.getDraft(lesson.id, organizationId)).chapters[0]!.id;
+      const save = (blocks: object[]) => longreads.saveDraft(lesson.id, organizationId, {
+        revision: 1,
+        chapters: [{ id: chapterId, title: 'C', hidden: false, blocks: blocks as never }],
+      }, userId);
+
+      const selfId = uid();
+      await expect(save([{ id: selfId, type: 'tabs', schemaVersion: 1, content: { items: [{ id: uid(), title: 'A', blocks: [{ ...text('x'), id: selfId }] }] } }]))
+        .rejects.toBeInstanceOf(BadRequestException);
+      const shared = text('shared');
+      const tabs = (nested: object) => ({ type: 'tabs', schemaVersion: 1, content: { items: [{ id: uid(), title: 'A', blocks: [nested] }] } });
+      await expect(save([tabs(shared), tabs(shared)])).rejects.toBeInstanceOf(BadRequestException);
+      await expect(save([{ type: 'table', schemaVersion: 1, content: { columns: 2, rows: [{ cells: [cell('a', { colSpan: 2 }), cell('lost', { covered: true })] }] } }]))
+        .rejects.toBeInstanceOf(BadRequestException);
+      expect((await longreads.getDraft(lesson.id, organizationId)).revision).toBe(1);
+    });
+  });
 });

@@ -51,9 +51,34 @@ export function longreadEditorServer(initial: LongreadDraft = longreadFixture) {
     await page.goto(`/${role}/lessons/${longreadLessonId}/longread`);
     if (!options.denied) {
       await expect(page.getByRole('heading', { level: 1, name: 'Безопасная работа' })).toBeVisible();
-      await expect(page.locator('.tiptap')).toBeVisible();
+      if (['paragraph', 'heading', 'quote', 'note', 'list'].includes(initial.chapters[0]?.blocks[0]?.type ?? '')) await expect(page.locator('.tiptap')).toBeVisible();
+      else await expect(page.locator('.lr-editor')).toBeVisible();
     }
   }
   return { attach, writes, snapshot: () => structuredClone(stored), failNext: (status: number) => { failure = status; },
     pause: () => { hold = true; }, resume: () => { hold = false; held?.(); held = null; } };
+}
+
+const compositeId = (n: number) => `38400000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const cell = (text: string, extra: object = {}) => ({ runs: text ? [{ text }] : [], colSpan: 1, rowSpan: 1, covered: false, ...extra });
+const nested = (n: number, text: string) => ({ id: compositeId(n), type: 'paragraph', schemaVersion: 1, content: { runs: [{ text }] } });
+
+/** PR 384: a draft with a merged table, tabs, an accordion and two columns, used by e2e and visual tests. */
+export function longreadCompositeFixture(): LongreadDraft {
+  const draft = structuredClone(longreadFixture);
+  draft.chapters[0]!.blocks = [
+    { id: compositeId(10), type: 'table', schemaVersion: 1, known: true, title: null, hidden: false, content: { columns: 3, headerRow: true, rows: [
+      { cells: [cell('Шаг', { colSpan: 2 }), cell('', { covered: true }), cell('Срок')] },
+      { cells: [cell('Проверить питание'), cell('Электрик'), cell('Пн')] },
+      { cells: [cell('Закрыть доступ'), cell('Мастер'), cell('Вт')] },
+    ] } },
+    { id: compositeId(20), type: 'tabs', schemaVersion: 1, known: true, title: null, hidden: false, content: { items: [
+      { id: compositeId(21), title: 'Подготовка', blocks: [nested(22, 'Соберите инструмент'), nested(23, 'Проверьте допуски')] },
+      { id: compositeId(24), title: 'Работа', blocks: [nested(25, 'Выполните наряд')] },
+    ] } },
+    { id: compositeId(30), type: 'columns', schemaVersion: 1, known: true, title: null, hidden: false, content: { count: 2, columns: [
+      { id: compositeId(31), blocks: [nested(32, 'Слева')] }, { id: compositeId(33), blocks: [nested(34, 'Справа')] },
+    ] } },
+  ];
+  return draft;
 }
