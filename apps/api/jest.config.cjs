@@ -49,6 +49,7 @@ module.exports = {
     '/src/integration/org-structure-admin\\.database\\.spec\\.ts$',
     '/src/integration/org-external-references\\.database\\.spec\\.ts$',
     '/src/integration/longreads\\.database\\.spec\\.ts$',
+    '/src/integration/longread-versions\\.database\\.spec\\.ts$',
   ],
   testEnvironment: 'node',
   collectCoverageFrom: [

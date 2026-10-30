@@ -189,6 +189,12 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `PUT` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/chapters/{chapterId}/duplicate` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/publish` | `Longreads` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/publish-check` | `Longreads` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/published` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/unpublish` | `Longreads` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/versions` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/versions/{number}/restore` | `Longreads` | `bearer` |
 | `PATCH` | `/api/v1/lessons/{id}/status` | `Lessons` | `bearer` |
 | `POST` | `/api/v1/manager/overdue-reminders` | `Manager` | `bearer` |
 | `GET` | `/api/v1/manager/team-summary` | `Manager` | `bearer` |

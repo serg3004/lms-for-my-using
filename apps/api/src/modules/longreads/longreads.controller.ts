@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 
 import { AuthGuard } from '../auth/public.js';
@@ -7,15 +7,21 @@ import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { saveLongreadSchema } from './longreads.schemas.js';
+import { LongreadVersionsService } from './longread-versions.service.js';
 import { LongreadsService } from './longreads.service.js';
 
 const duplicateChapterSchema = z.object({ revision: z.number().int().min(1) }).strict();
+/** `revision` is the draft revision the author saw: publishing or restoring a draft that changed since is a 409. */
+const draftRevisionSchema = duplicateChapterSchema;
 
 /** The draft is for people who edit lessons; learners get the published version in PR 382/385. */
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class LongreadsController {
-  constructor(private readonly longreadsService: LongreadsService) {}
+  constructor(
+    private readonly longreadsService: LongreadsService,
+    private readonly versions: LongreadVersionsService,
+  ) {}
 
   @Get('lessons/:id/longread')
   @Roles(...rolePolicies.lessonsCreate)
@@ -43,5 +49,55 @@ export class LongreadsController {
   ) {
     const { revision } = duplicateChapterSchema.parse(body);
     return this.longreadsService.duplicateChapter(lessonId, chapterId, request.currentUser!.organizationId, revision, request.currentUser!.id);
+  }
+
+  @Get('lessons/:id/longread/publish-check')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  publishCheck(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
+    return this.versions.publishCheck(lessonId, request.currentUser!.organizationId);
+  }
+
+  @Post('lessons/:id/longread/publish')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  publish(@Param('id', ParseUUIDPipe) lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const { revision } = draftRevisionSchema.parse(body);
+    return this.versions.publish(lessonId, request.currentUser!.organizationId, revision, request.currentUser!.id);
+  }
+
+  @Post('lessons/:id/longread/unpublish')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  unpublish(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
+    return this.versions.unpublish(lessonId, request.currentUser!.organizationId, request.currentUser!.id);
+  }
+
+  @Get('lessons/:id/longread/versions')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  listVersions(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
+    return this.versions.listVersions(lessonId, request.currentUser!.organizationId);
+  }
+
+  @Post('lessons/:id/longread/versions/:number/restore')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  restoreVersion(
+    @Param('id', ParseUUIDPipe) lessonId: string,
+    @Param('number', ParseIntPipe) number: number,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const { revision } = draftRevisionSchema.parse(body);
+    return this.versions.restoreVersion(lessonId, request.currentUser!.organizationId, number, revision, request.currentUser!.id);
+  }
+
+  /** The only longread read open to learners: published content only, never the draft. */
+  @Get('lessons/:id/longread/published')
+  @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'id', 'lesson')
+  readPublished(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
+    return this.versions.readPublished(lessonId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 }
