@@ -95,6 +95,39 @@ describe('longread versions (PR 382) — database', () => {
   const textOf = (read: Awaited<ReturnType<LongreadVersionsService['readPublished']>>) =>
     (read.chapters[0]!.blocks[0]!.content as { runs: { text: string }[] }).runs[0]!.text;
 
+  it('retains editor block labels/visibility in immutable versions and restored drafts', async () => {
+    const { lessonId, chapterId } = await newLongread();
+    const draft = await longreads.saveDraft(lessonId, organizationId, { revision: 1, chapters: [
+      { id: chapterId, title: 'Intro', hidden: false, blocks: [
+        { ...paragraph('Visible'), title: 'Visible label', hidden: false },
+        { ...paragraph('Hidden'), title: 'Hidden label', hidden: true },
+      ] },
+    ] }, authorId);
+    await versions.publish(lessonId, organizationId, draft.revision, authorId);
+    const immutable = await prisma.longreadRevision.findFirstOrThrow({ where: { organizationId } });
+    expect((immutable.snapshot as unknown as { blocks: object[] }[])[0]!.blocks).toMatchObject([
+      { title: 'Visible label', hidden: false }, { title: 'Hidden label', hidden: true },
+    ]);
+    const changed = await longreads.saveDraft(lessonId, organizationId, { revision: draft.revision, chapters: [
+      { id: chapterId, title: 'Changed', hidden: false, blocks: [paragraph('Replacement')] },
+    ] }, authorId);
+    const restored = await versions.restoreVersion(lessonId, organizationId, 1, changed.revision, authorId);
+    expect(restored.chapters[0]!.blocks).toMatchObject([{ title: 'Visible label', hidden: false }, { title: 'Hidden label', hidden: true }]);
+    expect((await prisma.longreadRevision.findUniqueOrThrow({ where: { id: immutable.id } })).snapshot).toEqual(immutable.snapshot);
+  });
+
+  it('restores a legacy snapshot without editor metadata using visible/unnamed defaults', async () => {
+    const { lessonId } = await newLongread();
+    const document = await prisma.longreadDocument.findUniqueOrThrow({ where: { lessonId } });
+    await prisma.longreadRevision.create({ data: {
+      organizationId, documentId: document.id, number: 1, schemaVersion: 1, sourceDraftRevision: 1,
+      settings: document.settings!, snapshot: [{ title: 'Legacy', anchor: 'legacy', hidden: false, blocks: [paragraph('Legacy text')] }],
+      createdById: authorId,
+    } });
+    const restored = await versions.restoreVersion(lessonId, organizationId, 1, 1, authorId);
+    expect(restored.chapters[0]!.blocks[0]).toMatchObject({ title: null, hidden: false });
+  });
+
   it('keeps a learner on the version they started and gives new learners the latest', async () => {
     const { lessonId, chapterId, revision } = await newLongread();
     let rev = await writeDraft(lessonId, chapterId, revision, 'one');

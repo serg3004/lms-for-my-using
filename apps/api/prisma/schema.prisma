@@ -1742,6 +1742,8 @@ model LongreadBlock {
   type           String
   schemaVersion  Int             @default(1) @map("schema_version")
   content        Json
+  title          String?
+  hidden         Boolean         @default(false)
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)

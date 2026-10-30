@@ -1,6 +1,6 @@
 import { isKnownBlockType, validateBlockContent } from './longread-blocks.js';
 
-export type SnapshotBlock = { type: string; schemaVersion: number; content: unknown };
+export type SnapshotBlock = { type: string; schemaVersion: number; content: unknown; title?: string | null; hidden?: boolean };
 export type SnapshotChapter = { title: string; anchor: string; hidden: boolean; blocks: SnapshotBlock[] };
 export type PublishRefusalCode = 'empty_document' | 'unknown_block' | 'invalid_block' | 'broken_link' | 'required_chapters_exceed_visible';
 export type PublishRefusal = { code: PublishRefusalCode; message: string; chapter?: string; blockIndex?: number };
@@ -24,7 +24,7 @@ function collectHrefs(value: unknown, found: string[] = []): string[] {
 export function checkPublishable(chapters: SnapshotChapter[], settings: { requiredChapters?: number }): PublishRefusal[] {
   const refusals: PublishRefusal[] = [];
   const visible = chapters.filter((chapter) => !chapter.hidden);
-  if (!visible.some((chapter) => chapter.blocks.length > 0)) {
+  if (!visible.some((chapter) => chapter.blocks.some((block) => !block.hidden))) {
     refusals.push({ code: 'empty_document', message: 'A longread needs at least one visible chapter with content' });
   }
   if ((settings.requiredChapters ?? 0) > visible.length) {

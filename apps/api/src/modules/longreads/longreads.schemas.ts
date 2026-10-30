@@ -21,6 +21,8 @@ export type LongreadSettings = z.infer<typeof longreadSettingsSchema>;
 export const saveBlockSchema = z.object({
   id: uuid.optional(),
   type: blockTypeSchema,
+  title: z.string().trim().max(200).nullable().optional(),
+  hidden: z.boolean().optional(),
   schemaVersion: z.number().int().min(1).max(1000).default(LONGREAD_SCHEMA_VERSION),
   content: z.unknown(),
 }).strict();

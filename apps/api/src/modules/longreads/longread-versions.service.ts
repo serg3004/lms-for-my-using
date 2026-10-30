@@ -43,7 +43,7 @@ export class LongreadVersionsService {
       title: chapter.title,
       anchor: chapter.anchor,
       hidden: chapter.hidden,
-      blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content })),
+      blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
     }));
   }
 
@@ -196,6 +196,8 @@ export class LongreadVersionsService {
               type: block.type,
               schemaVersion: block.schemaVersion,
               content: block.content as Prisma.InputJsonObject,
+              title: block.title ?? null,
+              hidden: block.hidden ?? false,
             },
           });
         }
@@ -264,9 +266,8 @@ export class LongreadVersionsService {
         .map((chapter) => ({
           title: chapter.title,
           anchor: chapter.anchor,
-          blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content })),
+          blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
         })),
     };
   }
 }
-

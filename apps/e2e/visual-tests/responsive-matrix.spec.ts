@@ -1,4 +1,5 @@
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
+import { longreadEditorServer } from '../fixtures/longread-editor.js';
 import { sessionReportFixture } from '../fixtures/session-report.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -8,6 +9,18 @@ import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const role of ['admin', 'instructor'] as const) {
+  for (const width of [375, 1440]) {
+    test(`${role} longread editor is responsive at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await longreadEditorServer().attach(page, { role });
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `${role}-longread-editor-${width}`, false, { maxDiffPixels: 3000 });
+    });
+  }
+}
 
 async function expectNoPageOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({

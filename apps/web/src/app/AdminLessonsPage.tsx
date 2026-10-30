@@ -1,3 +1,4 @@
+import { Link, useNavigate } from 'react-router-dom';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -53,11 +54,12 @@ function lessonTypeLabel(t: TFunction, type: string) {
 /** The longread type exists only where an admin switched the feature on; an existing longread keeps its own (fixed) type. */
 function selectableTypes(longreadEnabled: boolean, current?: string): LessonType[] {
   if (current === 'longread') return ['longread'];
-  return longreadEnabled ? LESSON_TYPES : LESSON_TYPES.filter((type) => type !== 'longread');
+  return longreadEnabled && !current ? LESSON_TYPES : LESSON_TYPES.filter((type) => type !== 'longread');
 }
 
 export function AdminLessonsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { currentUser } = useSession();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | LessonType>('all');
@@ -146,7 +148,7 @@ export function AdminLessonsPage() {
     setSubmitState({ status: 'saving' });
 
     try {
-      await apiRequest<Lesson>(`/courses/${encodeURIComponent(course.id)}/lessons`, {
+      const created = await apiRequest<Lesson>(`/courses/${encodeURIComponent(course.id)}/lessons`, {
         method: 'POST',
         body: JSON.stringify({
           organizationId: course.organizationId,
@@ -159,7 +161,8 @@ export function AdminLessonsPage() {
         }),
       });
       setShowCreate(false);
-      await load();
+      if (type === 'longread') navigate(`/admin/lessons/${created.id}/longread`);
+      else await load();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
@@ -388,6 +391,7 @@ export function AdminLessonsPage() {
             ×
           </button>
         </header>
+        {editLesson?.type === 'longread' && <Link className="admin-btn admin-btn--primary" to={`/admin/lessons/${editLesson.id}/longread`}>{t('longread.openEditor')}</Link>}
         <form className="admin-form" onSubmit={handleUpdateLesson}>
           <FormField id="lesson-edit-title" label={t('admin.lessons.lessonTitle', 'Lesson title')} required error={editErrors.title}>
             <input id="lesson-edit-title" aria-describedby={editErrors.title ? 'lesson-edit-title-error' : undefined} aria-invalid={Boolean(editErrors.title)} value={editTitle} onChange={(event) => { setEditTitle(event.target.value); setEditErrors((prev) => clearFieldError(prev, 'title')); }} maxLength={160} />

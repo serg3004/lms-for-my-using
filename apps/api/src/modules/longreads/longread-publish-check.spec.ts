@@ -11,6 +11,7 @@ describe('checkPublishable (PR 382)', () => {
   it('refuses an empty document, also when only hidden chapters have content', () => {
     expect(checkPublishable([chapter('ch-a', [])], {})[0]).toMatchObject({ code: 'empty_document' });
     expect(checkPublishable([chapter('ch-a', [paragraph('x')], true)], {})[0]).toMatchObject({ code: 'empty_document' });
+    expect(checkPublishable([chapter('ch-a', [{ ...paragraph('hidden'), hidden: true }])], {})[0]).toMatchObject({ code: 'empty_document' });
   });
 
   it('reports unknown and invalid blocks, broken links and impossible required chapters with their place', () => {

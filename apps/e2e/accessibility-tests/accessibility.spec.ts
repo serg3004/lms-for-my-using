@@ -1,4 +1,5 @@
 import { openSummaryReport } from '../fixtures/session-summary-export.js';
+import { longreadEditorServer } from '../fixtures/longread-editor.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -61,6 +62,18 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 1440]) {
+    test(`longread editor and conflict recovery are accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      const server = longreadEditorServer(); await server.attach(page);
+      await auditAccessibility(page, testInfo, 'longread-editor');
+      server.failNext(409);
+      await page.getByLabel('Название главы', { exact: true }).fill('Моя глава');
+      await expect(page.getByRole('alert')).toContainText('Документ изменён');
+      await page.getByRole('button', { name: 'Скопировать мои правки', exact: true }).click();
+      await auditAccessibility(page, testInfo, 'longread-recovery');
+    });
+  }
   for (const width of [375, 1440]) {
     test(`summary export actions are accessible at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });

@@ -1,0 +1,9 @@
+@layer features {
+  .lr-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr) 220px; gap: 16px; }
+  .lr-layout > * { min-width: 0; }
+  .lr-panel, .lr-toolbar { margin-block: 12px; }
+  .lr-editor :is(button, input, select) { max-width: 100%; min-height: 44px; }
+  .lr-editor :is(.tiptap, textarea) { min-height: 120px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .lr-selected { outline: 2px solid var(--color-primary); }
+  @media (width < 1100px) { .lr-layout { grid-template-columns: minmax(0, 1fr); } }
+}

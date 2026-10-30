@@ -70,6 +70,32 @@ describe('longreads (PR 381) — database', () => {
     lessons.createLesson({ organizationId, courseId, title: 'Longread', slug, type: 'longread', order: 0, status: 'draft' }, userId);
   const paragraph = (text: string, id?: string) => ({ ...(id ? { id } : {}), type: 'paragraph', schemaVersion: 1, content: { runs: [{ text }] } });
 
+  it('persists block names/visibility, copies them, and moves retained blocks out of a deleted chapter', async () => {
+    await enable();
+    const lesson = await createLongread();
+    const initial = await longreads.getDraft(lesson.id, organizationId);
+    const first = await longreads.saveDraft(lesson.id, organizationId, { revision: 1, chapters: [
+      { id: initial.chapters[0]!.id, title: 'Source', hidden: false, blocks: [{ ...paragraph('Keep this'), title: 'Author label', hidden: true }] },
+      { title: 'Destination', hidden: false, blocks: [] },
+    ] }, userId);
+    const copied = await longreads.duplicateChapter(lesson.id, first.chapters[0]!.id, organizationId, 2, userId);
+    expect(copied.chapters[1]!.blocks[0]).toMatchObject({ title: 'Author label', hidden: true });
+    const destination = first.chapters[1]!;
+    const retained = first.chapters[0]!.blocks[0]!;
+    const moved = await longreads.saveDraft(lesson.id, organizationId, { revision: 3, chapters: [
+      { id: destination.id, title: 'Renamed destination', hidden: false, blocks: [{ id: retained.id, type: retained.type, schemaVersion: retained.schemaVersion, content: retained.content, title: retained.title, hidden: retained.hidden }] },
+    ] }, userId);
+    expect(moved.chapters).toHaveLength(1);
+    expect(moved.chapters[0]!.anchor).toBe(destination.anchor);
+    expect(moved.chapters[0]!.blocks[0]).toMatchObject({ id: retained.id, title: 'Author label', hidden: true, content: { runs: [{ text: 'Keep this' }] } });
+    const reopened = await longreads.getDraft(lesson.id, organizationId);
+    expect(reopened).toEqual(moved);
+    const legacySave = await longreads.saveDraft(lesson.id, organizationId, { revision: moved.revision, chapters: [
+      { id: destination.id, title: 'Legacy editor', hidden: false, blocks: [{ id: retained.id, type: retained.type, schemaVersion: retained.schemaVersion, content: retained.content }] },
+    ] }, userId);
+    expect(legacySave.chapters[0]!.blocks[0]).toMatchObject({ title: 'Author label', hidden: true });
+  });
+
   it('is off by default: longread lessons cannot be created or opened, other lessons are unaffected', async () => {
     await expect(createLongread()).rejects.toBeInstanceOf(NotFoundException);
     expect(await prisma.lesson.count({ where: { organizationId } })).toBe(0);

@@ -95,6 +95,8 @@ export class LongreadsService {
         blocks: chapter.blocks.map((block) => ({
           id: block.id,
           type: block.type,
+          title: block.title,
+          hidden: block.hidden,
           schemaVersion: block.schemaVersion,
           known: isKnownBlockType(block.type),
           content: block.content,
@@ -163,7 +165,7 @@ export class LongreadsService {
       const dropBlocks = [...blockIds].filter((id) => !keepBlockIds.has(id));
       if (dropBlocks.length) await tx.longreadBlock.deleteMany({ where: { id: { in: dropBlocks }, organizationId } });
       const dropChapters = [...chapterAnchors.keys()].filter((id) => !keepChapterIds.has(id));
-      if (dropChapters.length) await tx.longreadChapter.deleteMany({ where: { id: { in: dropChapters }, documentId: document.id } });
+
 
       for (const [chapterIndex, chapter] of input.chapters.entries()) {
         let chapterId = chapter.id;
@@ -181,15 +183,18 @@ export class LongreadsService {
           if (block.id) {
             await tx.longreadBlock.update({
               where: { id: block.id },
-              data: { chapterId, order: blockIndex, type: block.type, schemaVersion: block.schemaVersion, content },
+              data: { chapterId, order: blockIndex, type: block.type, schemaVersion: block.schemaVersion, content,
+                ...(block.title !== undefined ? { title: block.title } : {}), ...(block.hidden !== undefined ? { hidden: block.hidden } : {}) },
             });
           } else {
             await tx.longreadBlock.create({
-              data: { organizationId, chapterId, order: blockIndex, type: block.type, schemaVersion: block.schemaVersion, content },
+              data: { organizationId, chapterId, order: blockIndex, type: block.type, schemaVersion: block.schemaVersion, content, title: block.title ?? null, hidden: block.hidden ?? false },
             });
           }
         }
       }
+      // Move retained blocks before deleting chapters, whose deletion cascades to their remaining blocks.
+      if (dropChapters.length) await tx.longreadChapter.deleteMany({ where: { id: { in: dropChapters }, documentId: document.id } });
       return input.revision + 1;
     });
 
@@ -245,6 +250,8 @@ export class LongreadsService {
             chapterId: copy.id,
             order: block.order,
             type: block.type,
+            title: block.title,
+            hidden: block.hidden,
             schemaVersion: block.schemaVersion,
             content: remapContentIds(block.content) as Prisma.InputJsonObject,
           },

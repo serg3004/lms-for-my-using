@@ -3,6 +3,8 @@ import { Navigate, Outlet, Route, useParams } from 'react-router-dom';
 
 import { NotFoundPage } from '../NotFoundPage.js';
 
+const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
+
 const InstructorDashboardPage = lazy(() => import('../InstructorDashboardPage.js').then((m) => ({ default: m.InstructorDashboardPage })));
 const InstructorCoursesPage = lazy(() => import('../InstructorCoursesPage.js').then((m) => ({ default: m.InstructorCoursesPage })));
 const InstructorCourseFormPage = lazy(() => import('../InstructorCourseFormPage.js').then((m) => ({ default: m.InstructorCourseFormPage })));
@@ -24,6 +26,7 @@ export function InstructorRoutes() {
     <Route path="/instructor" element={<Outlet />}>
       <Route index element={<Navigate replace to="/instructor/dashboard" />} />
       <Route path="dashboard" element={<InstructorDashboardPage />} />
+      <Route path="lessons/:id/longread" element={<LongreadEditorPage />} />
       <Route path="courses" element={<InstructorCoursesPage />} />
       <Route path="courses/new" element={<InstructorCourseFormPage mode="create" />} />
       <Route path="courses/:courseId/edit" element={<CourseEditRoute />} />
