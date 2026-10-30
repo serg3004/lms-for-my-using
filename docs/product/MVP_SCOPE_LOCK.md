@@ -18,6 +18,7 @@ Scope decision и факт реализации — разные вещи. На�
 - Users and fixed role model.
 - Groups/team management.
 - Courses and lessons.
+- Longreads as a lesson type (owner decision 2026-10-30; plan: `docs/product/future/LONGREAD_LESSON_TYPE_PLAN.md`). The block editor stays limited to that plan; the drag-and-drop visual course builder below stays out of scope.
 - Course materials/uploads.
 - Learner progress.
 - Assessments and attempts.
