@@ -46,7 +46,7 @@ async function setup(page: Page, options: { createStatus?: number; lookup?: 'emp
   return { submitted: () => submitted, starts: () => starts, listLoads: () => listLoads, observerLookups: () => observerLookups };
 }
 async function chooseEmployeeAndChecklist(page: Page) {
-  await page.getByRole('checkbox', { name: /Alex Learner/ }).check();
+  await page.getByRole('checkbox', { name: /^Alex Learner/ }).check();
   await page.getByRole('button', { name: 'Далее', exact: true }).click();
   await page.getByRole('radio', { name: 'Safety training', exact: true }).check();
   await page.getByRole('button', { name: 'Далее', exact: true }).click();
@@ -114,6 +114,6 @@ test.describe('observer creates own sessions (PR 331)', () => {
     await setup(page, { lookup: 'error' });
     await expect(page.getByRole('dialog').getByRole('alert')).toContainText('Не удалось загрузить сотрудников.');
     await page.getByRole('button', { name: 'Повторить', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: /Alex Learner/ })).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: /^Alex Learner/ })).toBeVisible();
   });
 });
