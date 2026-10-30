@@ -1,5 +1,5 @@
 import { ReaderSettings } from '../features/longread-reader/ReaderSettings.js';
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AdminPageLayout, AdminPageHeader } from '../shared/adminPage.js';
