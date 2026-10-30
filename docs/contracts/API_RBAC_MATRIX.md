@@ -261,3 +261,13 @@ Longread versions (PR 382): publish-check, publish, unpublish, version list and 
 PR 383 adds the author editor in the existing admin/instructor lesson workflows. It reuses those draft endpoints and course
 guards, including block labels/visibility; no role or scope is broadened. Clipboard recovery is an explicit author action
 on their local draft. The editor has no learner entry point and writes neither progress nor publication state.
+
+
+Longread reader/preview (PR 385): `PUT /lessons/:id/longread/position` uses `lessonsRead` plus the same course scope
+as published reads; the actor and organization are session-derived. Both calls additionally require fresh learner
+entitlement and a published/non-deleted course for learner-only actors, before pinning or returning any body.
+Assignment revocation, a foreign tenant, hidden/unknown chapter, deleted course or disabled feature yield 404.
+Sequential mode withholds locked chapter bodies and validates one-step navigation on the server; submitted frontier
+or user fields are rejected. `GET /lessons/:id/longread/preview` uses `lessonsCreate` plus the existing editing scope:
+admin or assigned instructor only, never learner/manager. Draft preview does not create progress, attempts or
+certificates and does not pin published versions. Existing roles and policies are unchanged.

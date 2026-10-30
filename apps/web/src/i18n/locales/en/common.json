@@ -2938,7 +2938,7 @@
     "messages": {
       "error": "Unable to save. Your edits remain in the editor. Retry or copy them.",
       "conflict": "This document changed in another window. Your edits have not been overwritten. Copy them or reload the current version.",
-      "invalid": "Name each chapter and check the content size. Changes have not been sent yet."
+      "invalid": "Check chapter names, reader settings and content size. Changes have not been sent yet."
     },
     "types": {
       "paragraph": "Text",
@@ -2955,5 +2955,46 @@
       "warning": "Warning",
       "danger": "Important"
     }
+  },
+  "longreadReader": {
+    "reader": "Longread reader",
+    "chapter": "Chapter",
+    "contents": "Contents",
+    "hideContents": "Hide contents",
+    "showContents": "Show contents",
+    "untitledHeading": "Untitled heading",
+    "navigation": "Chapter navigation",
+    "previous": "Previous chapter",
+    "next": "Next chapter",
+    "emptyChapter": "This chapter has no content yet.",
+    "free": "Free reading order",
+    "sequential": "Sequential reading",
+    "required": "Required chapters: {{count}}",
+    "copyNotice": "Copy buttons are disabled. Text selection and keyboard access remain available.",
+    "code": "Code",
+    "unsupported": "This block is not supported by the reader yet.",
+    "preview": "Preview",
+    "previewNotice": "Preview. Learning results are not saved.",
+    "previewWidth": "Preview width",
+    "desktop": "Desktop",
+    "tablet": "Tablet",
+    "phone": "Phone",
+    "loading": "Loading chapter…",
+    "loadError": "Unable to load the chapter or save your reading position. Try again.",
+    "unavailable": "This chapter or longread is unavailable. Check the link and course access.",
+    "previewError": "Unable to open the preview. Wait for saving to finish and retry.",
+    "bookmarkFailed": "Your reading position was not saved. Check your connection before closing.",
+    "version": "Version {{number}}",
+    "settings": "Reader settings",
+    "order": "Reading order",
+    "requiredSetting": "Number of required chapters",
+    "expanded": "Expanded",
+    "collapsed": "Collapsed",
+    "off": "No contents panel",
+    "direction": "Text direction",
+    "ltr": "Left to right (LTR)",
+    "rtl": "Right to left (RTL)",
+    "allowCopy": "Show copy buttons (not copy protection)",
+    "excludeFromToc": "Exclude heading from contents"
   }
 }

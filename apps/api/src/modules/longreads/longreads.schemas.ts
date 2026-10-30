@@ -18,6 +18,15 @@ export const longreadSettingsSchema = z.object({
 }).strict();
 export type LongreadSettings = z.infer<typeof longreadSettingsSchema>;
 
+export const longreadReaderQuerySchema = z.object({ chapter: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/).optional() }).strict();
+export const longreadPreviewQuerySchema = z.object({ chapterId: uuid.optional() }).strict();
+export const longreadPositionSchema = z.object({
+  version: z.number().int().min(1), chapter: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/),
+  headingIndex: z.number().int().min(0).max(MAX_BLOCKS_PER_CHAPTER - 1).nullable().optional(),
+  mode: z.enum(['navigate', 'bookmark']).default('navigate'),
+}).strict();
+export type LongreadPositionInput = z.infer<typeof longreadPositionSchema>;
+
 export const saveBlockSchema = z.object({
   id: uuid.optional(),
   type: blockTypeSchema,

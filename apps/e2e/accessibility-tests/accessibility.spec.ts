@@ -1,5 +1,6 @@
 import { openSummaryReport } from '../fixtures/session-summary-export.js';
 import { longreadEditorServer } from '../fixtures/longread-editor.js';
+import { longreadReaderServer, openLongreadPreview } from '../fixtures/longread-reader.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { previewSessionImportPage } from '../fixtures/session-employee-import.js';
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
@@ -62,6 +63,20 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 768, 1440]) {
+    test(`longread published reader is accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await longreadReaderServer({ direction: width === 768 ? 'rtl' : 'ltr' }).attach(page);
+      await auditAccessibility(page, testInfo, 'longread-reader');
+    });
+    test(`longread preview is accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      const { dialog, forbiddenWrites } = await openLongreadPreview(page, { chapter: 1 });
+      await expect(dialog.locator(':focus')).toHaveCount(1);
+      await auditAccessibility(page, testInfo, 'longread-preview', 'dialog.admin-preview-overlay');
+      expect(forbiddenWrites).toEqual([]);
+    });
+  }
   for (const width of [375, 1440]) {
     test(`longread editor and conflict recovery are accessible at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 });

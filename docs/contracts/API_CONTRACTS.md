@@ -1465,7 +1465,7 @@ The editor uses the seven existing block schemas: formatted text, H1–H3, quote
 and lists up to three levels. Rich clipboard input is converted to plain text, with active HTML elements removed; URLs
 use the same allowlist as the server. Only typed text runs are serialized, never editor HTML. Code and literal markup
 are inert text. Unsupported block types/versions are retained as opaque data and are not rendered as HTML or edited.
-Reader UI is PR 385; publication/version semantics follow the PR 382 contract below.
+Reader and preview semantics follow the PR 385 contract below; publication/version semantics follow PR 382.
 
 Autosave is debounced by 900 ms and serial: a request uses its sent revision and identifiers, while typing in flight is
 kept for the next request. A 409 stops saving without replacing local content; the author can explicitly reload or copy
@@ -1504,10 +1504,49 @@ A longread lesson becomes `published` only through this action: `POST .../lesson
 `PATCH /lessons/:id/status` to `published` before the first publish are `400`.
 
 **Learner read and pinning.** `GET /lessons/:id/longread/published` returns `{ lessonId, version, publishedAt, schemaVersion,
-settings, chapters: [{ title, anchor, blocks }] }` without hidden chapters. The first open creates the learner's `Progress`
+settings, chapters: [{ title, anchor, blocks }], navigation, preview: false }` without hidden chapters or blocks (reader projection added in PR 385). The first open creates the learner's `Progress`
 row (`in_progress`) with `longreadRevisionId` set to the current version; later opens return that pinned version even after
 newer ones are published, while new learners get the latest. Answers are never carried over between versions. The draft is
 never returned by this call; an unpublished or non-`published` lesson, a missing longread, another organization and the
 flag being off are the same `404`.
 
 **Audit.** `longread.published` (`version`, `republished`), `longread.unpublished`, `longread.version_restored`.
+
+
+## Longread learner reader and author preview (PR 385)
+
+`LearnerLessonDetailPage` opens the published reader for a longread. Before pinning or returning content, the API
+checks the organization flag, non-deleted lesson/course and, for learner-only users, a published course and fresh
+entitlement through the existing learning-target resolver (direct/group/department/position assignments or enabled
+self-enrollment). Revoking access therefore also blocks a previously pinned reader with 404. Existing instructor
+course scope and role policies still apply. No new roles or navigation entries are introduced.
+
+- `GET /lessons/:id/longread/published?chapter=<anchor>` restores the saved cursor, or opens a visible, already
+  accessible chapter. `navigation` contains `chapter`, nullable `headingIndex`, `allowedAnchors`, `previousAnchor`,
+  `nextAnchor`. Chapter anchors survive renaming. Hidden/foreign/unknown chapters answer 404. Sequential mode
+  omits the bodies of unvisited chapters; direct GET of an unvisited chapter is 404.
+- `PUT /lessons/:id/longread/position` accepts only `{ version, chapter, headingIndex?, mode? }`; mode is `navigate`
+  (default) or `bookmark`. The user/organization come from the session. A row lock serializes position updates and
+  keeps the visited frontier monotonic. Sequential navigation allows at most the next chapter; the client cannot
+  submit its own frontier. A heading index addresses a visible heading in that pinned chapter. A stale version or
+  bookmark arriving for a previous chapter is 409; an invalid heading is 400. The response is the same reader view.
+- `GET /lessons/:id/longread/preview?chapterId=<uuid>` is author-only (`lessonsCreate` + existing course scope).
+  It reads the saved draft, filters hidden chapters/blocks and returns `preview: true`, `version: null`,
+  `draftRevision` and navigation through all visible draft chapters. Unknown/hidden/foreign chapter IDs are 404.
+  It never calls the published-reader pinning path and creates no progress, attempts or certificates. The editor
+  enables preview after saving a visible chapter; width presets are desktop, tablet (768 px) and phone (375 px).
+
+Reader preferences use the existing draft `settings`: `readingOrder` free/sequential, `requiredChapters` (0–200,
+validated against visible chapters on publish), `tableOfContents` expanded/collapsed/off, `direction` ltr/rtl,
+`allowCopy`. Heading content additionally accepts optional boolean `excludeFromToc`: the heading stays in the text.
+H2/H3 form nested contents; collapsed/off contents leave no reserved column. Rendering is read-only React text and
+an allowlist of typed blocks/links, never HTML. Unknown/future blocks show a safe placeholder. The reader is lazy
+loaded without TipTap. URLs and chapter counts use bidi isolation; code remains LTR. With `allowCopy: false`, copy
+buttons are omitted, while text selection, keyboard copying and assistive technology remain available. This is a
+UI preference, not content protection.
+
+The existing `Progress` stores `longreadReadingState` (pinned version, chapter anchor, heading index and greatest
+visited chapter index). Chapter/heading links and browser history restore reading position. Navigation is **not**
+chapter completion: neither status, score nor completion time is changed by position writes, and the reader offers
+no generic complete-lesson action. Required chapters are configured/displayed here; assessment/time conditions and
+server chapter-completion rules belong to PR 390. Preview uses local navigation and never calls the position API.

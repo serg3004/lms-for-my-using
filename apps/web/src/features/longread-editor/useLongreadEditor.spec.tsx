@@ -24,6 +24,14 @@ beforeEach(async () => {
 });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
 describe('serial longread autosave', () => {
+  it('keeps reader settings when a later block/chapter edit only changes chapters', async () => {
+    save.mockImplementationOnce(async (_id, input) => ({ ...draft, revision: 2, settings: input.settings, chapters: [{ ...draft.chapters[0]!, title: 'Updated' }] }));
+    await act(async () => current.change((doc) => ({ ...doc, settings: { ...draft.settings, direction: 'rtl', tableOfContents: 'off' } })));
+    await edit('Updated'); await tick();
+    expect(save.mock.calls[0]![1].settings).toMatchObject({ direction: 'rtl', tableOfContents: 'off' });
+    expect(current.document.settings).toMatchObject({ direction: 'rtl', tableOfContents: 'off' });
+    expect(current.status).toBe('saved');
+  });
   it('debounces, serializes requests and retains typing that happened in flight', async () => {
     let resolve!: (value: LongreadDraft) => void;
     save.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));

@@ -612,3 +612,15 @@ omitted metadata. The previous API ignores these columns; rollback retains them 
 Do not drop the columns when rolling back, as that would discard author labels and visibility choices. PostgreSQL tests
 cover save/reopen, chapter copy and moving a retained block while deleting its old chapter. Production backup/restore
 still requires the live verification described above.
+
+### Longread reading position (PR 385)
+
+`20261030170000_add_longread_reading_state` adds non-null JSONB `progress.longread_reading_state` with default `{}`.
+Existing rows retain their status, score, completion timestamp and pinned revision; no backfill or revision rewrite
+is required. The empty state starts at the first visible chapter. Apply the migration before deploying the API.
+Position updates lock the existing progress row and store only the cursor/visited frontier; they do not complete
+chapters or lessons. Author preview never writes progress. Older API versions ignore this additive column.
+Rollback keeps the column and data, reverting the application and/or disabling `longreadEnabled`; do not drop it,
+as that would discard saved reading positions. PostgreSQL tests verify defaults via migrated fixtures, concurrent
+navigation, version pinning, fresh entitlement/tenant checks and preview without learning-record writes. Production
+backup/restore remains subject to the live verification requirements above.

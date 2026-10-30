@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ReaderSettings } from '../features/longread-reader/ReaderSettings.js';
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AdminPageLayout, AdminPageHeader } from '../shared/adminPage.js';
@@ -11,6 +12,8 @@ import { useLongreadEditor } from '../features/longread-editor/useLongreadEditor
 import { blockTypes, copyBlock, editableBlock, moveItem, newBlock, safeHref, type EditorBlock, type EditorChapter, type Run, type TextBlockType } from '../features/longread-editor/model.js';
 import { RichTextEditor } from '../features/longread-editor/RichTextEditor.js';
 import '../features/longread-editor/editor.css';
+
+const LongreadPreview = lazy(() => import('../features/longread-reader/LongreadPreview.js'));
 
 export function LongreadEditorPage() {
   const { id = '' } = useParams();
@@ -65,6 +68,8 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
   const [blockType, setBlockType] = useState<TextBlockType>('paragraph');
   const [remove, setRemove] = useState<{ chapter: string; block?: string } | null>(null);
   const [recovery, setRecovery] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
+  const previewClose = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const chapterInput = useRef<HTMLInputElement>(null), recoveryInput = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -96,6 +101,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
   }}>
     <Link to={back}>← {t('longread.back')}</Link>
     <AdminPageHeader eyebrow={t('longread.editor')} title={title} action={<div className="admin-table-actions lr-toolbar">
+      {action(t('longreadReader.preview'), () => setPreview(true), editor.dirty || editor.status !== 'saved' || chapter.hidden)}
       {action(t('longread.undo'), editor.undo, !editor.canUndo)}{action(t('longread.redo'), editor.redo, !editor.canRedo)}
       <span role="status" aria-live="polite">{t(`longread.states.${editor.status}`)}</span>
       {editor.status === 'error' && action(t('longread.retry'), editor.retry)}
@@ -105,6 +111,18 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
       {editor.status === 'conflict' && action(t('longread.reload'), () => { if (window.confirm(t('longread.discard'))) reload(); })}
       {action(t('longread.copyEdits'), () => { setRecovery(editor.recovery()); setCopied(false); })}
     </section>}
+    <ReaderSettings settings={editor.document.settings ?? initial.settings} onChange={(patch) => editor.change((doc) => ({ ...doc, settings: { ...(doc.settings ?? initial.settings), ...patch } }))} />
+    <Dialog open={preview} onClose={() => setPreview(false)} labelledBy="longread-preview-title" className="admin-preview-overlay" initialFocusRef={previewClose}>
+      {preview && <div style={{ maxWidth: 1400, marginInline: 'auto' }}>
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, position: 'sticky', top: 0, zIndex: 2, background: 'var(--color-surface)', padding: 8 }}>
+          <h2 id="longread-preview-title" style={{ fontSize: 20, minWidth: 0, marginBlock: 8 }}>{t('longreadReader.preview')} · {title}</h2>
+          <button className="admin-btn admin-btn--secondary" type="button" ref={previewClose} onClick={() => setPreview(false)}>{t('longread.close')}</button>
+        </header>
+        <Suspense fallback={<PageState variant="loading" message={t('longreadReader.loading')} />}>
+          <LongreadPreview lessonId={initial.lessonId} chapterId={editor.serverId(chapter.key)} />
+        </Suspense>
+      </div>}
+    </Dialog>
     <div className="lr-layout" style={{ alignItems: 'start' }}>
       <nav className="admin-card lr-panel" style={{ display: 'block' }} aria-label={t('longread.chapters')}>
         <h2>{t('longread.chapters')}</h2>
@@ -178,7 +196,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             editor.change((doc) => ({ chapters: doc.chapters.map((item) => item.key === destination ? { ...item, blocks: [...item.blocks, selected] } : item.key === chapter.key ? { ...item, blocks: item.blocks.filter((b) => b.key !== selected.key) } : item) })); setChapterKey(destination);
           }}>{chapters.map((item) => <option key={item.key} value={item.key} disabled={item.key !== chapter.key && item.blocks.length >= 1000}>{item.title || t('longread.untitled')}</option>)}</select>
           {editableBlock(selected) && <>
-            {selected.type === 'heading' && <><label htmlFor="lr-level">{t('longread.headingLevel')}</label><select id="lr-level" value={Number(selected.content.level)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, level: Number(event.target.value) } }))}>{[1, 2, 3].map((n) => <option key={n} value={n}>H{n}</option>)}</select></>}
+            {selected.type === 'heading' && <><label><input type="checkbox" style={{ width: 'auto' }} checked={Boolean(selected.content.excludeFromToc)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, excludeFromToc: event.target.checked } }))} /> {t('longreadReader.excludeFromToc')}</label><label htmlFor="lr-level">{t('longread.headingLevel')}</label><select id="lr-level" value={Number(selected.content.level)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, level: Number(event.target.value) } }))}>{[1, 2, 3].map((n) => <option key={n} value={n}>H{n}</option>)}</select></>}
             {selected.type === 'list' && <label><input type="checkbox" checked={Boolean(selected.content.ordered)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, ordered: event.target.checked } }))} /> {t('longread.ordered')}</label>}
             {selected.type === 'note' && <><label htmlFor="lr-tone">{t('longread.noteTone')}</label><select id="lr-tone" value={String(selected.content.tone)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, tone: event.target.value } }))}>{['info', 'success', 'warning', 'danger'].map((tone) => <option key={tone} value={tone}>{t(`longread.tones.${tone}`)}</option>)}</select></>}
             {selected.type === 'quote' && <><label htmlFor="lr-caption">{t('longread.caption')}</label><input id="lr-caption" maxLength={500} value={String(selected.content.caption ?? '')} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, caption: event.target.value } }))} /></>}
