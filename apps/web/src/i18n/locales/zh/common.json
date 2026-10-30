@@ -1217,7 +1217,10 @@
         },
         "exportCsv": "下载 CSV",
         "exportError": "无法导出会话。",
-        "exportXlsx": "下载 Excel"
+        "exportXlsx": "下载 Excel",
+        "summarySameChecklist": "请选择同一观察表的会话。",
+        "summarySelectAll": "选择所有已完成的会话",
+        "summarySelectRow": "选择用于汇总：{{title}}，{{employee}}"
       },
       "newGroupTitle": "新建分组",
       "newCriterionText": "新标准",
@@ -1442,7 +1445,12 @@
         "summaryLimit": "汇总过大，请减少观察次数。",
         "summaryUnavailable": "汇总不可用或您无权查看。",
         "summaryCompletedOnly": "只能导出已完成的会话。",
-        "summaryExportError": "无法下载汇总，请重试。"
+        "summaryExportError": "无法下载汇总，请重试。",
+        "summaryOneChecklist": "请选择同一观察表的会话。",
+        "otherObservations": "该员工此观察表的其他观察汇总",
+        "otherObservationsHint": "选择要放入同一文件的观察日期。",
+        "otherObservationsError": "无法加载其他观察。",
+        "currentObservation": "本次会话"
       },
       "dueAtHint": "可选。输入本地时间；系统会以 UTC 存储。",
       "requiredItem": "必填",
