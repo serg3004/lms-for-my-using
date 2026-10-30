@@ -367,6 +367,7 @@ model Organization {
   theme                      OrganizationTheme?
   longreadDocuments          LongreadDocument[]
   longreadChapters           LongreadChapter[]
+  longreadRevisions          LongreadRevision[]
   longreadBlocks             LongreadBlock[]
 
   @@map("organizations")
@@ -433,6 +434,7 @@ model User {
   checklistLocationCaptures  ChecklistLocationCapture[] @relation("ChecklistLocationCaptureActor")
   checklistScalesCreated     ChecklistScale[]           @relation("ChecklistScaleCreatedBy")
   orgStructureEvents         OrgStructureEvent[]        @relation("OrgStructureEventActor")
+  longreadRevisionsCreated   LongreadRevision[]
 
   @@unique([organizationId, email])
   @@unique([id, organizationId])
@@ -921,21 +923,24 @@ model Assignment {
 }
 
 model Progress {
-  id             String         @id @default(uuid()) @db.Uuid
-  organizationId String         @map("organization_id") @db.Uuid
-  courseId       String         @map("course_id") @db.Uuid
-  lessonId       String?        @map("lesson_id") @db.Uuid
-  userId         String         @map("user_id") @db.Uuid
-  status         ProgressStatus @default(in_progress)
-  score          Int?
-  completedAt    DateTime?      @map("completed_at") @db.Timestamptz
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course         Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson         Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  courseId           String            @map("course_id") @db.Uuid
+  lessonId           String?           @map("lesson_id") @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  status             ProgressStatus    @default(in_progress)
+  score              Int?
+  completedAt        DateTime?         @map("completed_at") @db.Timestamptz
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?         @map("deleted_at") @db.Timestamptz
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course             Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson             Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  /// PR 382: the longread version this learner started; new learners get the latest published one.
+  longreadRevisionId String?           @map("longread_revision_id") @db.Uuid
+  longreadRevision   LongreadRevision? @relation(fields: [longreadRevisionId], references: [id], onDelete: SetNull)
 
   @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
@@ -1685,18 +1690,24 @@ model OutboxEvent {
 /// PR 381: the content of a lesson of type `longread`: chapters and blocks as structured JSON payloads
 /// (never browser HTML). `draftRevision` grows on every save and is the optimistic-lock token.
 model LongreadDocument {
-  id             String            @id @default(uuid()) @db.Uuid
-  organizationId String            @map("organization_id") @db.Uuid
-  lessonId       String            @unique @map("lesson_id") @db.Uuid
-  schemaVersion  Int               @default(1) @map("schema_version")
-  draftRevision  Int               @default(1) @map("draft_revision")
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  lessonId            String             @unique @map("lesson_id") @db.Uuid
+  schemaVersion       Int                @default(1) @map("schema_version")
+  draftRevision       Int                @default(1) @map("draft_revision")
   /// Reader settings (reading order, required chapters, table of contents, text direction); validated by the API.
-  settings       Json              @default("{}")
-  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  lesson         Lesson            @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  chapters       LongreadChapter[]
+  settings            Json               @default("{}")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  organization        Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lesson              Lesson             @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  /// Monotonic counter of published versions; incremented under a row lock, so numbers never repeat.
+  lastRevisionNumber  Int                @default(0) @map("last_revision_number")
+  /// The version learners open; null while the longread is unpublished.
+  publishedRevisionId String?            @unique @map("published_revision_id") @db.Uuid
+  chapters            LongreadChapter[]
+  revisions           LongreadRevision[] @relation("RevisionDocument")
+  publishedRevision   LongreadRevision?  @relation("PublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@map("longread_documents")
@@ -1741,4 +1752,29 @@ model LongreadBlock {
   @@index([organizationId])
   @@index([chapterId, order])
   @@map("longread_blocks")
+}
+
+/// PR 382: immutable snapshot of a longread draft (settings, chapters, blocks) taken when it is published.
+model LongreadRevision {
+  id                  String            @id @default(uuid()) @db.Uuid
+  organizationId      String            @map("organization_id") @db.Uuid
+  documentId          String            @map("document_id") @db.Uuid
+  number              Int
+  schemaVersion       Int               @default(1) @map("schema_version")
+  /// Draft revision this version was cut from; lets "publish" detect that nothing changed.
+  sourceDraftRevision Int               @map("source_draft_revision")
+  settings            Json
+  /// `[{ title, anchor, hidden, blocks: [{ type, schemaVersion, content }] }]`, never updated after insert.
+  snapshot            Json
+  createdById         String?           @map("created_by_id") @db.Uuid
+  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  organization        Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document            LongreadDocument  @relation("RevisionDocument", fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy           User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  publishedFor        LongreadDocument? @relation("PublishedRevision")
+  progress            Progress[]
+
+  @@unique([documentId, number])
+  @@index([organizationId])
+  @@map("longread_revisions")
 }

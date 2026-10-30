@@ -46,6 +46,7 @@ module.exports = {
     '<rootDir>/src/integration/org-structure-admin.database.spec.ts',
     '<rootDir>/src/integration/org-external-references.database.spec.ts',
     '<rootDir>/src/integration/longreads.database.spec.ts',
+    '<rootDir>/src/integration/longread-versions.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,
