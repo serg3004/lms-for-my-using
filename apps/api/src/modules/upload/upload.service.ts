@@ -205,6 +205,15 @@ export class UploadService {
     return getSignedUrl(this.downloadS3, command, { expiresIn: safeTtl });
   }
 
+  /** Reads an object into memory; null when it is missing or larger than `maxBytes` (used by the report PDF, which embeds photos). */
+  async getObjectBytes(key: string, maxBytes: number): Promise<Buffer | null> {
+    const { s3, bucket } = this.requireStorage();
+    const object = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    if (!object.Body || (object.ContentLength ?? 0) > maxBytes) return null;
+    const bytes = await object.Body.transformToByteArray();
+    return bytes.length > maxBytes ? null : Buffer.from(bytes);
+  }
+
   createQuarantineObjectKey(organizationId: string, materialId: string): string {
     return `quarantine/organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
   }

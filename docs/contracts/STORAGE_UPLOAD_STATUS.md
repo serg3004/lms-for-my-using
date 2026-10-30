@@ -296,6 +296,10 @@ Repository implementation закрывает code contract, но не автом
 7. `MUST NOT` use `storage: disabled` as proof of upload production readiness.
 8. Live CORS/provider/backfill/backup/smoke assertions require fresh evidence.
 
+## Чтение объектов сервером (PR 372)
+
+`UploadService.getObjectBytes(key, maxBytes)` читает объект в память через сервисный клиент хранилища; для PDF отчёта сессии это фото чек-листа. Метод возвращает `null`, если объект больше `maxBytes`, и не меняет модель загрузки, карантина или очистки. Лимиты и поведение PDF описаны в `docs/contracts/CHECKLIST_SESSION_WORKFLOW.md`.
+
 ## Связанные документы
 
 - `docs/runbooks/RAILWAY_DEPLOY_GUIDE.md`

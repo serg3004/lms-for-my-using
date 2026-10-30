@@ -48,6 +48,7 @@ export type AuditLogAction =
   | 'checklist_session.deleted'
   | 'checklist_session.message_sent'
   | 'checklist_report.exported'
+  | 'checklist_session.report_pdf_downloaded'
   | 'checklist_scale.created'
   | 'checklist_scale.updated'
   | 'checklist_scale.archived'

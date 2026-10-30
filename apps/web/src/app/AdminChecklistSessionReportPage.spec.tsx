@@ -31,6 +31,7 @@ vi.mock('../shared/session.js', () => ({
 
 const apiMocks = vi.hoisted(() => ({
   captureChecklistSessionLocation: vi.fn(),
+  downloadChecklistSessionReportPdf: vi.fn(),
   getChecklistInstance: vi.fn(),
   getChecklistSession: vi.fn(),
   getChecklistSessionReport: vi.fn(),
@@ -42,6 +43,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../shared/api/checklists.js', () => ({ getChecklistInstance: apiMocks.getChecklistInstance }));
 vi.mock('../shared/api/checklistSessions.js', () => ({
   captureChecklistSessionLocation: apiMocks.captureChecklistSessionLocation,
+  downloadChecklistSessionReportPdf: apiMocks.downloadChecklistSessionReportPdf,
   getChecklistSession: apiMocks.getChecklistSession,
   getChecklistSessionReport: apiMocks.getChecklistSessionReport,
   listChecklistScoreRevisions: apiMocks.listChecklistScoreRevisions,
@@ -118,6 +120,25 @@ describe('SessionReportBody', () => {
     // Distinct wording from the dialog's own submit button ("Recalculate score") so the two
     // never collide under the same accessible name once the dialog is open (PR 322).
     expect(html).toContain('>Recalculate<');
+  });
+
+  it('offers a PDF download next to Print, with no extra menu', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial, vi.fn()]);
+    const html = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
+    expect(html.indexOf('>Print<')).toBeGreaterThan(-1);
+    expect(html.indexOf('>Download PDF<')).toBeGreaterThan(html.indexOf('>Print<'));
+  });
+
+  it('disables the button while the PDF is prepared and shows the server message when it fails', () => {
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial && typeof initial === 'object' && 'status' in initial ? { status: 'loading' } : initial, vi.fn()]);
+    const loading = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
+    expect(loading).toContain('Preparing PDF…');
+    expect(loading).toMatch(/disabled=""[^>]*>Preparing PDF…/);
+
+    reactMocks.useState.mockImplementation((initial: unknown) => [initial && typeof initial === 'object' && 'status' in initial ? { status: 'error', message: 'The PDF is larger than 25 MB.' } : initial, vi.fn()]);
+    const failed = renderToStaticMarkup(<SessionReportBody session={makeSession()} onScoreRecalculated={vi.fn()} t={t} />);
+    expect(failed).toContain('role="alert"');
+    expect(failed).toContain('The PDF is larger than 25 MB.');
   });
 
   it('uses underline in-app tabs (admin-org-tabs), not the old pill buttons', () => {

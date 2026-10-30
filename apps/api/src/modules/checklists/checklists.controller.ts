@@ -1,5 +1,5 @@
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
-import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Delete, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -58,6 +58,11 @@ import {
   markChecklistSessionObserverUnavailableSchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+type PdfDownloadResponse = {
+  set(headers: Record<string, string>): PdfDownloadResponse;
+  send(body: Buffer): PdfDownloadResponse;
+};
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
@@ -686,6 +691,21 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
     return this.sessions.getReport(sessionId, user.organizationId, scope, viewer, { id: user.id, isAdmin: user.roles.includes('admin') });
+  }
+  // PR 372: PDF of the same report; the file language is the downloader's interface language.
+  @Get('checklist-sessions/:id/report.pdf')
+  @Roles(...rolePolicies.checklistSessionsRead)
+  async downloadSessionReportPdf(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest, @Res() response: PdfDownloadResponse) {
+    const user = request.currentUser!;
+    const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
+    const { filename, pdf } = await this.sessions.getReportPdf(sessionId, user.organizationId, scope, viewer, { id: user.id, isAdmin: user.roles.includes('admin'), locale: user.locale });
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(pdf.length),
+      'Cache-Control': 'private, no-store',
+    });
+    response.send(pdf);
   }
   @Get('checklist-sessions/:id/conduct')
   @Roles(...rolePolicies.checklistSessionsRunOwn)
