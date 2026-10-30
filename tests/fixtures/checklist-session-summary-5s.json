@@ -1,0 +1,898 @@
+{
+  "description": "Synthetic, anonymized 5S reference structure: 27 criteria, 71/79, groups 1/1 and 70/78. No owner data.",
+  "report": {
+    "sessionId": "11111111-1111-4111-8111-111111111111",
+    "instanceId": "instance",
+    "checklist": {
+      "id": "sheet",
+      "title": "5S"
+    },
+    "visible": true,
+    "header": {
+      "status": "completed",
+      "timezone": "UTC",
+      "scheduledStart": "2026-10-01T10:00:00.000Z",
+      "scheduledEnd": "2026-10-01T11:00:00.000Z",
+      "startedAt": "2026-10-01T10:05:00.000Z",
+      "completedAt": "2026-10-01T11:00:00.000Z",
+      "learner": {
+        "id": "employee",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
+        "email": "employee@example.invalid",
+        "department": {
+          "id": "department",
+          "name": "Склад"
+        }
+      },
+      "observer": {
+        "id": "observer",
+        "firstName": "Тестовый",
+        "lastName": "Наблюдатель",
+        "email": "observer@example.invalid",
+        "department": {
+          "id": "department",
+          "name": "Обучение"
+        }
+      }
+    },
+    "generalInfo": [
+      {
+        "id": "place",
+        "label": "Место проведения",
+        "type": "text",
+        "value": "Учебный участок"
+      }
+    ],
+    "summary": {
+      "scored": true,
+      "percentage": 90,
+      "totalScore": 71,
+      "maxScore": 79,
+      "criteriaCount": 27,
+      "answeredCount": 27,
+      "skippedCount": 0,
+      "passed": true,
+      "passThreshold": 70,
+      "formula": "snapshot",
+      "color": null
+    },
+    "groups": [
+      {
+        "id": "g1",
+        "number": "1",
+        "title": "Подготовка",
+        "score": 1,
+        "maxScore": 1,
+        "percentage": 100,
+        "criteriaCount": 1,
+        "color": null
+      },
+      {
+        "id": "g2",
+        "number": "2",
+        "title": "Порядок",
+        "score": 70,
+        "maxScore": 78,
+        "percentage": 90,
+        "criteriaCount": 26,
+        "color": null
+      }
+    ],
+    "criteria": [
+      {
+        "id": "criterion-0",
+        "number": "1.1",
+        "groupId": "g1",
+        "text": "Критерий 1",
+        "state": "answered",
+        "score": 1,
+        "maxScore": 1,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-1",
+        "number": "2.1",
+        "groupId": "g2",
+        "text": "Критерий 2",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-2",
+        "number": "2.2",
+        "groupId": "g2",
+        "text": "Критерий 3",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-3",
+        "number": "2.3",
+        "groupId": "g2",
+        "text": "Критерий 4",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-4",
+        "number": "2.4",
+        "groupId": "g2",
+        "text": "Критерий 5",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-5",
+        "number": "2.5",
+        "groupId": "g2",
+        "text": "Критерий 6",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-6",
+        "number": "2.6",
+        "groupId": "g2",
+        "text": "Критерий 7",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-7",
+        "number": "2.7",
+        "groupId": "g2",
+        "text": "Критерий 8",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-8",
+        "number": "2.8",
+        "groupId": "g2",
+        "text": "Критерий 9",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-9",
+        "number": "2.9",
+        "groupId": "g2",
+        "text": "Критерий 10",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-10",
+        "number": "2.10",
+        "groupId": "g2",
+        "text": "Критерий 11",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-11",
+        "number": "2.11",
+        "groupId": "g2",
+        "text": "Критерий 12",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-12",
+        "number": "2.12",
+        "groupId": "g2",
+        "text": "Критерий 13",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-13",
+        "number": "2.13",
+        "groupId": "g2",
+        "text": "Критерий 14",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-14",
+        "number": "2.14",
+        "groupId": "g2",
+        "text": "Критерий 15",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-15",
+        "number": "2.15",
+        "groupId": "g2",
+        "text": "Критерий 16",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-16",
+        "number": "2.16",
+        "groupId": "g2",
+        "text": "Критерий 17",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-17",
+        "number": "2.17",
+        "groupId": "g2",
+        "text": "Критерий 18",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-18",
+        "number": "2.18",
+        "groupId": "g2",
+        "text": "Критерий 19",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-19",
+        "number": "2.19",
+        "groupId": "g2",
+        "text": "Критерий 20",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-20",
+        "number": "2.20",
+        "groupId": "g2",
+        "text": "Критерий 21",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-21",
+        "number": "2.21",
+        "groupId": "g2",
+        "text": "Критерий 22",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-22",
+        "number": "2.22",
+        "groupId": "g2",
+        "text": "Критерий 23",
+        "state": "answered",
+        "score": 3,
+        "maxScore": 3,
+        "levelLabel": "Выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-23",
+        "number": "2.23",
+        "groupId": "g2",
+        "text": "Критерий 24",
+        "state": "answered",
+        "score": 2,
+        "maxScore": 3,
+        "levelLabel": "Частично",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-24",
+        "number": "2.24",
+        "groupId": "g2",
+        "text": "Критерий 25",
+        "state": "answered",
+        "score": 2,
+        "maxScore": 3,
+        "levelLabel": "Частично",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-25",
+        "number": "2.25",
+        "groupId": "g2",
+        "text": "Критерий 26",
+        "state": "answered",
+        "score": 0,
+        "maxScore": 3,
+        "levelLabel": "Не выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      },
+      {
+        "id": "criterion-26",
+        "number": "2.26",
+        "groupId": "g2",
+        "text": "Критерий 27",
+        "state": "answered",
+        "score": 0,
+        "maxScore": 3,
+        "levelLabel": "Не выполнено",
+        "comment": null,
+        "photo": null,
+        "reviewStatus": "approved",
+        "color": null
+      }
+    ],
+    "feedback": {
+      "strengths": "Порядок соблюдён",
+      "developmentAreas": "Проверить маркировку",
+      "comment": "Повторить через неделю"
+    },
+    "location": {
+      "policy": "off",
+      "captures": []
+    }
+  },
+  "expectedCells": {
+    "A2": "Отчёт Сводка по сессии",
+    "A3": "Лист наблюдения",
+    "B3": "5S",
+    "A6": "Сотрудник",
+    "B6": "Имя Фамилия",
+    "A9": "Общий балл",
+    "B9": "90% · 71 из 79",
+    "A10": "Информация по наблюдению",
+    "A11": "Подразделение сотрудника",
+    "D11": "Склад",
+    "D13": "Обучение",
+    "A16": "Общая информация",
+    "A17": "Место проведения",
+    "D17": "Учебный участок",
+    "A18": "Результаты сессии",
+    "B18": "90%",
+    "C18": "71 из 79",
+    "D18": "90% · 71 из 79",
+    "A19": "1 Подготовка",
+    "B19": "100%",
+    "C19": "1 из 1",
+    "A20": "1.1 Критерий 1",
+    "D20": "100% · 1 из 1\nВыполнено",
+    "A21": "2 Порядок",
+    "B21": "90%",
+    "C21": "70 из 78",
+    "A47": "2.26 Критерий 27",
+    "D47": "0% · 0 из 3\nНе выполнено",
+    "A48": "Обратная связь",
+    "D49": "Порядок соблюдён",
+    "D50": "Проверить маркировку",
+    "D51": "Повторить через неделю"
+  },
+  "exportTable": {
+    "rows": [
+      [
+        "",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Отчёт Сводка по сессии",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Лист наблюдения",
+        "5S",
+        "",
+        ""
+      ],
+      [
+        "Фактический период",
+        "01.10.2026, 10:05 (UTC) — 01.10.2026, 11:00 (UTC)",
+        "",
+        ""
+      ],
+      [
+        "Запланированный период",
+        "01.10.2026, 10:00 (UTC) — 01.10.2026, 11:00 (UTC)",
+        "",
+        ""
+      ],
+      [
+        "Сотрудник",
+        "Имя Фамилия",
+        "",
+        ""
+      ],
+      [
+        "Наблюдатель",
+        "Тестовый Наблюдатель",
+        "",
+        ""
+      ],
+      [
+        "",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Общий балл",
+        "90% · 71 из 79",
+        "",
+        "Наблюдение 1, 01.10.2026, 10:05 (UTC)"
+      ],
+      [
+        "Информация по наблюдению",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Подразделение сотрудника",
+        "",
+        "",
+        "Склад"
+      ],
+      [
+        "Наблюдатель",
+        "",
+        "",
+        "Тестовый Наблюдатель"
+      ],
+      [
+        "Подразделение наблюдателя",
+        "",
+        "",
+        "Обучение"
+      ],
+      [
+        "Дата оценки",
+        "",
+        "",
+        "01.10.2026, 11:00 (UTC)"
+      ],
+      [
+        "Состав группы",
+        "",
+        "",
+        "Имя Фамилия"
+      ],
+      [
+        "Общая информация",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Место проведения",
+        "",
+        "",
+        "Учебный участок"
+      ],
+      [
+        "Результаты сессии",
+        "90%",
+        "71 из 79",
+        "90% · 71 из 79"
+      ],
+      [
+        "1 Подготовка",
+        "100%",
+        "1 из 1",
+        "100% · 1 из 1"
+      ],
+      [
+        "1.1 Критерий 1",
+        "100%",
+        "1 из 1",
+        "100% · 1 из 1\nВыполнено"
+      ],
+      [
+        "2 Порядок",
+        "90%",
+        "70 из 78",
+        "90% · 70 из 78"
+      ],
+      [
+        "2.1 Критерий 2",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.2 Критерий 3",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.3 Критерий 4",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.4 Критерий 5",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.5 Критерий 6",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.6 Критерий 7",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.7 Критерий 8",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.8 Критерий 9",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.9 Критерий 10",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.10 Критерий 11",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.11 Критерий 12",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.12 Критерий 13",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.13 Критерий 14",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.14 Критерий 15",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.15 Критерий 16",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.16 Критерий 17",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.17 Критерий 18",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.18 Критерий 19",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.19 Критерий 20",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.20 Критерий 21",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.21 Критерий 22",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.22 Критерий 23",
+        "100%",
+        "3 из 3",
+        "100% · 3 из 3\nВыполнено"
+      ],
+      [
+        "2.23 Критерий 24",
+        "67%",
+        "2 из 3",
+        "67% · 2 из 3\nЧастично"
+      ],
+      [
+        "2.24 Критерий 25",
+        "67%",
+        "2 из 3",
+        "67% · 2 из 3\nЧастично"
+      ],
+      [
+        "2.25 Критерий 26",
+        "0%",
+        "0 из 3",
+        "0% · 0 из 3\nНе выполнено"
+      ],
+      [
+        "2.26 Критерий 27",
+        "0%",
+        "0 из 3",
+        "0% · 0 из 3\nНе выполнено"
+      ],
+      [
+        "Обратная связь",
+        "",
+        "",
+        ""
+      ],
+      [
+        "Сильные стороны",
+        "",
+        "",
+        "Порядок соблюдён"
+      ],
+      [
+        "Зоны развития",
+        "",
+        "",
+        "Проверить маркировку"
+      ],
+      [
+        "Комментарий",
+        "",
+        "",
+        "Повторить через неделю"
+      ]
+    ],
+    "layout": {
+      "sheetName": "Worksheet 1",
+      "headerRows": [
+        2,
+        9,
+        10,
+        16,
+        18,
+        19,
+        21,
+        48
+      ],
+      "columnWidths": [
+        45,
+        16,
+        16,
+        16
+      ],
+      "freezeRows": 9,
+      "merges": [
+        {
+          "startRow": 2,
+          "startColumn": 1,
+          "endRow": 2,
+          "endColumn": 4
+        },
+        {
+          "startRow": 3,
+          "startColumn": 2,
+          "endRow": 3,
+          "endColumn": 4
+        },
+        {
+          "startRow": 4,
+          "startColumn": 2,
+          "endRow": 4,
+          "endColumn": 4
+        },
+        {
+          "startRow": 5,
+          "startColumn": 2,
+          "endRow": 5,
+          "endColumn": 4
+        },
+        {
+          "startRow": 6,
+          "startColumn": 2,
+          "endRow": 6,
+          "endColumn": 4
+        },
+        {
+          "startRow": 7,
+          "startColumn": 2,
+          "endRow": 7,
+          "endColumn": 4
+        },
+        {
+          "startRow": 9,
+          "startColumn": 2,
+          "endRow": 9,
+          "endColumn": 3
+        },
+        {
+          "startRow": 10,
+          "startColumn": 1,
+          "endRow": 10,
+          "endColumn": 4
+        },
+        {
+          "startRow": 16,
+          "startColumn": 1,
+          "endRow": 16,
+          "endColumn": 4
+        },
+        {
+          "startRow": 48,
+          "startColumn": 1,
+          "endRow": 48,
+          "endColumn": 4
+        }
+      ]
+    }
+  }
+}

@@ -22,6 +22,7 @@ module.exports = {
     '/src/integration/checklist-finish-incomplete\\.database\\.spec\\.ts$',
     '/src/integration/checklist-sheet-settings\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-report\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-session-summary\\.database\\.spec\\.ts$',
     '/src/integration/checklist-manager-analytics\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-recalculate\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-idempotency\\.database\\.spec\\.ts$',

@@ -239,3 +239,17 @@ analytics rights; PR 363 owns analytics/export policies. The rights-table parity
 Session report data (PR 370: `GET /checklist-sessions/:id/report`) reuses `checklistSessionsRead` (all system roles) with the parent `sessionScope()`; no new policy. It is the single server source of the detailed report (header, general information, summary, groups, criteria, feedback, geolocation) that the screen, PDF and XLSX of PR 371-373 reuse. Scores come from the existing snapshot/criteria calculation (`getScoreBreakdown`), so the total equals the sessions list and analytics. A session outside the tenant or team answers 404. For a learner-only caller the report follows `feedbackVisibility`: until completion under `after_completion` only the header is returned (`visible: false`, no summary, groups, criteria, feedback or captures). Geolocation uses the existing redaction rules (raw coordinates only for the assigned observer and admin). Level colours come from the snapshot, range colours from workplace settings, with ready fill and text colours for the light and dark themes (AA contrast is covered by tests).
 
 Report PDF (PR 372): `GET /checklist-sessions/:id/report.pdf` uses `checklistSessionsRead` with `sessionScope()`, exactly like `GET /checklist-sessions/:id/report`; there is no wider or separate policy. A user outside the zone or tenant gets 404, a learner whose result is hidden gets a header-only file, and each download writes a `checklist_session.report_pdf_downloaded` audit entry.
+
+Session summary export (PR 373: `GET /checklist-sessions/export/summary`) uses the **same**
+`checklistSessionsRead` and `sessionScope()` as `GET /checklist-sessions/:id/report`: organization
+for admin/instructor/mentor, manager team plus assigned-observer reads, employee own sessions
+plus assigned-observer reads. All selected IDs must belong to the caller's tenant and scope;
+a mixed valid/foreign selection fails entirely with 404 and writes no export audit. Hidden
+learner results give 403; deleted sessions/results are excluded; only completed sessions export.
+No new role/policy is introduced and the list/analytics export policies are unchanged. The
+summary includes authorized report feedback/context but no raw coordinates, signed photo URLs
+or email addresses. It returns data only after the durable `checklist_session.summary_exported`
+audit records actor, IDs, requested format, locale and row count (never feedback/context text).
+Database tests exercise all five roles, manager-team composition, assigned-observer exceptions,
+learner feedback visibility, soft deletion and cross-tenant IDs. This implements the summary
+format for report/analytics rights 9 and 14 without broadening their scope.

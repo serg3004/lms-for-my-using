@@ -1,10 +1,10 @@
 // PR 336: CSV for the checklist reports. Values are neutralised against spreadsheet formula
 // injection (OWASP "CSV injection"): a cell that starts with = + - @ TAB or CR gets a leading
 // apostrophe so Excel/Sheets show it as text instead of evaluating it.
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const FORMULA_PREFIX = /^[=+\-@]/;
 
 export function neutralizeCsvCell(value: string): string {
-  return FORMULA_PREFIX.test(value) ? `'${value}` : value;
+  return (value.length > 0 && value.charCodeAt(0) < 32) || FORMULA_PREFIX.test(value.trimStart()) ? `'${value}` : value;
 }
 
 const UTF8_BOM = String.fromCharCode(0xfeff);
