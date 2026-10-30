@@ -25,7 +25,7 @@ for (const width of [375, 768, 1440]) {
     await page.setViewportSize({ width, height });
     const { dialog, forbiddenWrites } = await openLongreadPreview(page, { chapter: 1 });
     await expectNoPageOverflow(page);
-    await expectVisualMatch(page, `longread-preview-${width}`, false, { maxDiffPixels: 3000 });
+    await expectVisualMatch(page, `longread-preview-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
     expect(forbiddenWrites).toEqual([]); await expect(dialog).toBeVisible();
   });
 }
