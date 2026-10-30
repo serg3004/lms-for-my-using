@@ -1444,3 +1444,30 @@ questions) is the job of PR 384-388.
 
 **Audit.** `longread.updated` (target: the lesson) is written at most once per lesson per 5 minutes per API process, because
 autosave is frequent; `organization.features_updated` for the flag.
+
+### Longread chapter/text editor (PR 383)
+
+The existing draft API additionally returns block `title` (nullable author label, at most 200 characters) and `hidden`
+(boolean, default false). Both are optional on `PUT`: omission preserves an existing block's metadata; new blocks default
+to no label and visible. Chapter duplication copies both fields. Retained blocks are moved before deleted chapters are
+removed, so moving a block out of a chapter and deleting its source in one save does not cascade-delete it.
+
+Authors open the lazily loaded TipTap editor from lessons or course forms at `/admin/lessons/:id/longread` or
+`/instructor/lessons/:id/longread`. Existing course editing scope and the organization flag apply; no new menu or role.
+Chapter and block creation, labels, ordering (buttons or Alt+Up/Down), visibility, duplication, confirmed deletion and
+undo/redo are local draft operations until the atomic save. At least one named chapter is kept. Copying creates new
+server identifiers; renaming/reordering retained chapters keeps their anchors. Restoring deleted content with undo
+creates new identifiers if deletion has already been saved.
+
+The editor uses the seven existing block schemas: formatted text, H1–H3, quote/attribution, note/style, divider, code/language
+and lists up to three levels. Rich clipboard input is converted to plain text, with active HTML elements removed; URLs
+use the same allowlist as the server. Only typed text runs are serialized, never editor HTML. Code and literal markup
+are inert text. Unsupported block types/versions are retained as opaque data and are not rendered as HTML or edited.
+Reader UI and publication/version semantics are separate stages (PR 382/385).
+
+Autosave is debounced by 900 ms and serial: a request uses its sent revision and identifiers, while typing in flight is
+kept for the next request. A 409 stops saving without replacing local content; the author can explicitly reload or copy
+their structured draft from a recovery dialog (manual selection also works without clipboard permission). Network errors
+require an explicit retry, since the server may already have committed the request. Saved/changed/saving/error/conflict
+states are announced; invalid chapter names/size prevent autosave. Unsaved edits are held in browser memory only; leaving
+warns the author. Closing despite the warning discards unsaved edits. The editor does not write progress or publish lessons.

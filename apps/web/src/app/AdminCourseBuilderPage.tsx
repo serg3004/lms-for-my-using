@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getOrganizationFeatures } from '../shared/api/organizations.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -53,6 +54,14 @@ export function AdminCourseBuilderPage() {
   const { currentUser } = useSession();
   const { courseId } = useParams<{ courseId: string }>();
   const mutations = useCourseBuilderMutations();
+  const navigate = useNavigate();
+  const [longreadEnabled, setLongreadEnabled] = useState(false);
+  const [longreadLesson, setLongreadLesson] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (currentUser) void getOrganizationFeatures(currentUser.organizationId).then((f) => { if (active) setLongreadEnabled(f.longreadEnabled); }).catch(() => { if (active) setLongreadEnabled(false); });
+    return () => { active = false; };
+  }, [currentUser]);
 
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -154,11 +163,12 @@ export function AdminCourseBuilderPage() {
     const slug = slugify(title);
     setLessonFormState({ status: 'submitting' });
     try {
-      await mutations.createLesson(courseId, {
+      const created = await mutations.createLesson(courseId, {
         organizationId: currentUser!.organizationId,
         title,
         slug,
         description: lessonDesc.trim() || undefined,
+        type: longreadLesson ? 'longread' : 'text',
         order: pageState.data.lessons.length,
         status: 'draft',
       });
@@ -166,7 +176,8 @@ export function AdminCourseBuilderPage() {
       setLessonTitle('');
       setLessonDesc('');
       setLessonFormState({ status: 'idle' });
-      void loadData();
+      if (longreadLesson) navigate(`/admin/lessons/${created.id}/longread`);
+      else void loadData();
     } catch (error) {
       setLessonFormState({
         status: 'error',
@@ -292,6 +303,7 @@ export function AdminCourseBuilderPage() {
                 type="button"
                 onClick={() => {
                   setLessonTitle('');
+                  setLongreadLesson(false);
                   setLessonDesc('');
                   setLessonFormState({ status: 'idle' });
                   setLessonErrors({});
@@ -320,6 +332,7 @@ export function AdminCourseBuilderPage() {
                         <span className="lesson-row__title">{lesson.title}</span>
                         <Badge variant={variant} style={{ marginRight: '4px' }}>{label}</Badge>
                         <div className="lesson-row__actions">
+                          {lesson.type === 'longread' && <Link to={`/admin/lessons/${lesson.id}/longread`}>{t('longread.openEditor')}</Link>}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -422,6 +435,7 @@ export function AdminCourseBuilderPage() {
           </button>
         </div>
         <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
+          {longreadEnabled && <label><input type="checkbox" checked={longreadLesson} onChange={(event) => setLongreadLesson(event.target.checked)} /> {t('admin.lessons.typeLongread')}</label>}
           <FormField id="lesson-title" label={t('admin.courseBuilder.lessonTitleLabel', 'Lesson title')} required error={lessonErrors.title}>
             <input
               id="lesson-title"

@@ -25,6 +25,13 @@ describe('longread block registry (PR 381)', () => {
     expect(ok('paragraph', [])).toMatchObject({ ok: false });
   });
 
+  it('rejects active HTML fields while treating code/markup only as inert text data', () => {
+    expect(ok('paragraph', { html: '<script>alert(1)</script>', runs: [] }).ok).toBe(false);
+    expect(ok('paragraph', { runs: [{ text: 'Hi', onerror: 'alert(1)' }] }).ok).toBe(false);
+    expect(ok('code', { language: 'html', code: '<script>alert(1)</script>' })).toMatchObject({ ok: true, content: { code: '<script>alert(1)</script>' } });
+    expect(ok('list', { items: [{ level: 1, runs: [] }, { level: 2, runs: [] }, { level: 3, runs: [] }, { level: 4, runs: [] }] }).ok).toBe(false);
+  });
+
   it('keeps blocks of an unknown type as they are, but caps their size', () => {
     expect(isKnownBlockType('future_widget')).toBe(false);
     expect(ok('future_widget', { a: 1 })).toEqual({ ok: true, content: { a: 1 }, known: false });

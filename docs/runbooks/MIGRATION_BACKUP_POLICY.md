@@ -535,6 +535,7 @@ restorable by an administrator for 30 days, so no extra backup is needed. Verifi
 integration test `checklist-session-observer-create.database.spec.ts` ("PR 367"). Production backup/restore
 remains subject to the live verification requirements above.
 
+
 ### Checklist pinned flag (PR 354)
 
 `20261029120000_add_checklist_pinned` adds one non-null `checklists.pinned` boolean defaulting to
@@ -587,3 +588,13 @@ is the functional rollback: longread calls answer 404 and longread lessons disap
 Verify defaults for existing rows, 404 with the flag off, cascade delete with the lesson, 409 on a stale revision
 and tenant isolation in PostgreSQL integration tests (`longreads.database.spec.ts`). Production backup/restore
 remains subject to the live verification requirements above.
+
+### Longread editor block metadata (PR 383)
+
+`20261030140000_longread_block_editor_metadata` adds nullable `longread_blocks.title` and non-null `hidden`
+with default `false`. Existing block content, identifiers, anchors, revisions, lessons and progress are unchanged.
+Apply before deploying the API; no backfill or new configuration is required. New API saves from older clients preserve
+omitted metadata. The previous API ignores these columns; rollback retains them and can also disable `longreadEnabled`.
+Do not drop the columns when rolling back, as that would discard author labels and visibility choices. PostgreSQL tests
+cover save/reopen, chapter copy and moving a retained block while deleting its old chapter. Production backup/restore
+still requires the live verification described above.

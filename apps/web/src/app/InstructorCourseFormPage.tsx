@@ -1,3 +1,4 @@
+import { getOrganizationFeatures } from '../shared/api/organizations.js';
 import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +43,8 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
   const [showAddLesson, setShowAddLesson] = useState(false);
   const [editingLesson, setEditingLesson] = useState<LessonSummary | null>(null);
   const [lessonTitle, setLessonTitle] = useState('');
+  const [longreadLesson, setLongreadLesson] = useState(false);
+  const [longreadEnabled, setLongreadEnabled] = useState(false);
   const [lessonErrors, setLessonErrors] = useState<FormValidationErrors<LessonField>>({});
   const [lessonDialogState, setLessonDialogState] = useState<LessonDialogState>({ status: 'idle' });
   const addLessonDialogRef = useRef<HTMLDialogElement>(null);
@@ -50,6 +53,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
   const { state: loadState, mutate } = useAsyncData<InstructorCourseFormData>(
     async () => {
       const user = await getCurrentUser();
+      void getOrganizationFeatures(user.organizationId).then((f) => setLongreadEnabled(f.longreadEnabled)).catch(() => setLongreadEnabled(false));
 
       let lessons: LessonSummary[] = [];
       let updatedAt: string | null = null;
@@ -142,17 +146,19 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
 
     setLessonDialogState({ status: 'submitting' });
     try {
-      await createLesson(courseId, {
+      const created = await createLesson(courseId, {
         organizationId: loadState.data.organizationId,
         title,
         slug: slugify(title),
+        type: longreadLesson ? 'longread' : 'text',
         order: loadState.data.lessons.length,
         status: 'draft',
       });
       setShowAddLesson(false);
       setLessonTitle('');
       setLessonDialogState({ status: 'idle' });
-      await reloadLessons();
+      if (longreadLesson) navigate(`/instructor/lessons/${created.id}/longread`);
+      else await reloadLessons();
     } catch (error) {
       setLessonDialogState({
         status: 'error',
@@ -185,6 +191,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
   }
 
   function openAddLessonDialog() {
+    setLongreadLesson(false);
     setLessonTitle('');
     setLessonErrors({});
     setLessonDialogState({ status: 'idle' });
@@ -349,6 +356,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
           </button>
         </div>
         <form className="admin-form" onSubmit={(e) => void handleAddLesson(e)}>
+          {longreadEnabled && <label><input type="checkbox" checked={longreadLesson} onChange={(event) => setLongreadLesson(event.target.checked)} /> {t('admin.lessons.typeLongread')}</label>}
           <FormField id="lesson-title" label={t('instructor.courseForm.lessonFieldTitle')} required error={lessonErrors.title}>
             <input
               id="lesson-title"
@@ -382,6 +390,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
             ✕
           </button>
         </div>
+        {editingLesson?.type === 'longread' && <Link to={`/instructor/lessons/${editingLesson.id}/longread`}>{t('longread.openEditor')}</Link>}
         <form className="admin-form" onSubmit={(e) => void handleEditLesson(e)}>
           <FormField id="edit-lesson-title" label={t('instructor.courseForm.lessonFieldTitle')} required error={lessonErrors.title}>
             <input

@@ -385,16 +385,16 @@ describe('admin page smoke rendering', () => {
   it('renders course builder loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminCourseBuilderPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminCourseBuilderPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
 
   it('renders course builder happy path without crashing', () => {
-    // useState call order in AdminCourseBuilderPage: 10 form/dialog states, then
-    // useAsyncData's internal state as call #11.
+    // useState call order in AdminCourseBuilderPage: 12 form/dialog/feature states, then
+    // useAsyncData's internal state as call #13.
     useStateAtCalls({
-      11: {
+      13: {
         status: 'loaded',
         data: {
           currentUser,
@@ -414,7 +414,7 @@ describe('admin page smoke rendering', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<AdminCourseBuilderPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminCourseBuilderPage /></MemoryRouter>);
 
     expect(html).toContain('Workplace Safety');
   });
@@ -422,7 +422,7 @@ describe('admin page smoke rendering', () => {
   it('renders lessons page loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminLessonsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminLessonsPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
@@ -440,7 +440,7 @@ describe('admin page smoke rendering', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<AdminLessonsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminLessonsPage /></MemoryRouter>);
 
     expect(html).toContain('Fire Safety Basics');
   });

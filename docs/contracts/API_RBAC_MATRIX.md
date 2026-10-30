@@ -255,3 +255,7 @@ learner feedback visibility, soft deletion and cross-tenant IDs. This implements
 format for report/analytics rights 9 and 14 without broadening their scope.
 
 Longread lessons (PR 381): `GET/PUT /lessons/:id/longread` and `POST /lessons/:id/longread/chapters/:chapterId/duplicate` use `lessonsCreate` (admin/instructor) with `@CourseScope('param', 'id', 'lesson')`, i.e. exactly who may edit the lesson and in which course; a learner and a manager do not read the draft (403), a foreign organization or course is 404. `GET/PATCH /organizations/:id/features` use the new `organizationFeaturesRead` (admin/manager/instructor/learner, so every screen can decide what to show) and `organizationFeaturesWrite` (admin only), both with `OrganizationScope('param', 'id')`. With `longreadEnabled = false` all longread calls answer 404 regardless of role.
+
+PR 383 adds the author editor in the existing admin/instructor lesson workflows. It reuses those draft endpoints and course
+guards, including block labels/visibility; no role or scope is broadened. Clipboard recovery is an explicit author action
+on their local draft. The editor has no learner entry point and writes neither progress nor publication state.

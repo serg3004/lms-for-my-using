@@ -1,6 +1,8 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
 
+const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
+
 const AdminAssessmentBuilderPage = lazy(() => import('../AdminAssessmentBuilderPage.js').then((m) => ({ default: m.AdminAssessmentBuilderPage })));
 const AdminAssignmentCompletionPage = lazy(() => import('../AdminAssignmentCompletionPage.js').then((m) => ({ default: m.AdminAssignmentCompletionPage })));
 const AdminAuditLogPage = lazy(() => import('../AdminAuditLogPage.js').then((m) => ({ default: m.AdminAuditLogPage })));
@@ -40,6 +42,7 @@ export function AdminRoutes() {
     <Route path="/admin/audit-log" element={<AdminAuditLogPage />} />
     <Route path="/admin/courses" element={<AdminCoursesPage />} />
     <Route path="/admin/courses/:courseId" element={<AdminCourseBuilderPage />} />
+    <Route path="/admin/lessons/:id/longread" element={<LongreadEditorPage />} />
     <Route path="/admin/lessons" element={<AdminLessonsPage />} />
     <Route path="/admin/materials" element={<AdminMaterialsPage />} />
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />
