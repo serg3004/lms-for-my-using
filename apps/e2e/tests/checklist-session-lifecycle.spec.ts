@@ -226,7 +226,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       // PR 326: choosing an observer collapses the radio list into a card with a "change" button.
       await adminPage.getByRole('radio', { name: /Olga Observer/ }).click();
       await expect(adminPage.getByRole('button', { name: 'Сменить наблюдателя' })).toBeVisible();
-      await adminPage.getByRole('checkbox', { name: /Leo Learner/ }).check();
+      await adminPage.getByRole('checkbox', { name: /^Leo Learner/ }).check();
       await adminPage.getByRole('button', { name: 'Далее' }).click();
 
       // Step 1: checklist.
