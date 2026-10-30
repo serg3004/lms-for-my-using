@@ -1552,6 +1552,7 @@
         "backToSessions": "Back to sessions"
       },
       "settingsBlockTitle": "Settings",
+      "helpLabel": "Hint: {{name}}",
       "allowSkipAllHint": "The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.",
       "recordLocationOrgDefault": "Not set: the organization default applies when a session is scheduled.",
       "recordLocationOffHint": "Location is not recorded for this checklist.",

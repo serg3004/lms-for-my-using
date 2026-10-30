@@ -2145,3 +2145,21 @@
 .admin-departments-tree__meta .admin-membership-list {
   white-space: normal;
 }
+
+/* Checklist option rows: box, name and a "?" popup hint on one line (the hint text lives in the popup). */
+.admin-option { display: flex; align-items: center; gap: 8px; padding: 4px 0; min-width: 0; }
+.admin-option__label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; font-size: 13.5px; cursor: pointer; }
+.admin-option__label input[type='checkbox'] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; }
+.admin-help { position: relative; flex: none; display: inline-flex; }
+.admin-help__btn { display: grid; place-items: center; width: 28px; height: 28px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--color-text-muted); }
+.admin-help__btn:hover { background: transparent; }
+.admin-help__icon { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--color-border); border-radius: 50%; font-size: 12px; font-weight: 600; background: var(--color-surface); }
+.admin-help__btn:hover .admin-help__icon,
+.admin-help--open .admin-help__icon { border-color: var(--color-primary); color: var(--color-primary); }
+.admin-help__tip { position: absolute; z-index: 20; top: calc(100% + 4px); right: 0; display: none; width: min(280px, 70vw); padding: 9px 11px; border-radius: var(--radius-sm); background: var(--color-text); color: var(--color-surface); font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow-card); }
+.admin-help--open .admin-help__tip,
+.admin-help:hover .admin-help__tip,
+.admin-option:hover .admin-help__tip,
+.admin-option:focus-within .admin-help__tip { display: block; }
+.admin-heading-tip { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+@media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } }

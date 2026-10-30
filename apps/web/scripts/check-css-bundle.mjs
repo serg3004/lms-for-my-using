@@ -9,7 +9,8 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // and org-structure pages to the prototypes and left under 800 B of headroom; the tree row, its
 // toolbar and the wrapping manager/action rows needed ~1.1 KB more. A dead-class scan found only
 // .learner-btn--completed (removed); the tree reuses admin-section-card, admin-code and avatars.
-const maximumCssBytes = 88 * 1024;
+// Bumped 88 KiB -> 90 KiB for checklist option rows with popup hints (the headroom was ~14 B).
+const maximumCssBytes = 90 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 
