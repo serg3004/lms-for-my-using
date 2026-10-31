@@ -401,6 +401,7 @@ async function installAdminAuthMock(page: Page) {
 
 async function installCourseBuilderMocks(page: Page) {
   await installAdminAuthMock(page);
+  await page.route('**/api/v1/organizations/visual-org/features', (route) => route.fulfill({ json: { longreadEnabled: false } }));
   await page.route('**/api/v1/courses/course-1', (route) => route.fulfill({
     json: course({ id: 'course-1', title: 'Onboarding basics', status: 'published' }),
   }));
